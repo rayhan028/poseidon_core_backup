@@ -17,8 +17,6 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/date_time/gregorian/gregorian.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include "graph_db.hpp"
@@ -632,28 +630,8 @@ std::size_t graph_db::import_nodes_from_csv(const std::string &label,
         auto &col = columns[i++];
         //if (!col.empty() && !field.empty()) {
         if (!col.empty() && !(field.empty() && col != "content")) {
-          using namespace boost::posix_time;
-
-          if (col == "id"){
-            uint64_t field_64 = (uint64_t)std::stoll(field);
-            props.insert({col, field_64});
-          }
-          //else if (col.find("Date") != std::string::npos){ // TODO: datetime
-          /*else if (col == "creationDate"){
-            ptime pdt = time_from_string(field);
-            static ptime epoch(boost::gregorian::date(1970, 1, 1));
-            time_duration::sec_type secs = (pdt - epoch).total_seconds();
-            int field_dtime = time_t(secs);
-            props.insert({col, field_dtime});
-          }*/
-          else if (col == "birthday"){
-            boost::gregorian::date dt = boost::gregorian::from_simple_string(field);
-            static ptime epoch(boost::gregorian::date(1970, 1, 1));
-            time_duration::sec_type secs =
-                (ptime(dt, seconds(0)) - epoch).total_seconds();
-            int field_date = time_t(secs);
-            props.insert({col, field_date});
-          }
+          if (col == "id")
+            props.insert({col, (uint64_t)std::stoll(field)});
           else
             props.insert({col, field});
         }
@@ -727,9 +705,8 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
         //if (i != start_col && i != end_col && i != type_col) {  // neo4j
         if (i != start_col && i != end_col) {
           auto &col = columns[i];
-          if (!field.empty()) { 
-            props.insert({col, field}); // TODO: datetime
-          }
+          if (!field.empty())
+            props.insert({col, field});
         }
         i++;
       }

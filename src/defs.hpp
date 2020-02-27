@@ -27,6 +27,8 @@
 #include <vector>
 
 #include <boost/variant.hpp>
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 #define POSEIDON_VERSION "0.0.3"
 
@@ -59,7 +61,8 @@ struct relationship;
  * query result.
  */
 using query_result =
-    boost::variant<node *, relationship *, int, double, std::string, uint64_t>;
+    boost::variant<node *, relationship *, int, double, std::string, 
+                    uint64_t, boost::posix_time::ptime>;
 
 /**
  * Typedef for a list of result elements which are passed to the next query

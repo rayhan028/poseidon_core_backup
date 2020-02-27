@@ -2070,6 +2070,7 @@ void load_snb_data(graph_db_ptr &graph,
                     std::vector<std::string> &rship_files){
   auto delim = '|';
   graph_db::mapping_t mapping;
+  bool nodes_imported = false, rships_imported = false;
   
   if (!node_files.empty()){
     std::cout << "\n######## \n# NODES \n######## \n";
@@ -2087,6 +2088,8 @@ void load_snb_data(graph_db_ptr &graph,
 
       num_nodes[i] = graph->import_nodes_from_csv(label, file, delim, mapping);
       std::cout << num_nodes[i] << " \"" << label << "\" node objects imported \n";
+      if (num_nodes[i] > 0)
+        nodes_imported = true;
       i++;
     }
   }
@@ -2107,9 +2110,12 @@ void load_snb_data(graph_db_ptr &graph,
       num_rships[i] = graph->import_relationships_from_csv(file, delim, mapping);
       std::cout << num_rships[i] << " (" << fn[0] << ")-[\"" << label << "\"]->(" 
                                   << fn[2] << ") relationship objects imported \n";
+      if (num_rships[i] > 0)
+        rships_imported = true;
       i++;
     }
   }
+  assert(nodes_imported || rships_imported); // data imported to run benchmark 
 }
 
 graph_db_ptr create_graph(
@@ -2149,7 +2155,7 @@ graph_db_ptr create_graph(
       {query_result("Mahinda"), query_result("Perera"),
         query_result("1989-12-03"), query_result("119.235.7.103"),
         query_result("Firefox"), query_result("1353"), query_result("male"),
-        query_result("2010-02-14T15:32:10.447+0000")});
+        query_result("2010-02-14T15:32:10.447000")});
 
   ldbc_is_query_1(graph, rs);
 
@@ -2190,46 +2196,46 @@ TEST_CASE("LDBC Interactive Short Query 2", "[ldbc]") {
 
   result_set rs, expected;
   expected.data.push_back(
-      {query_result("2199029789250"), query_result("fine"), query_result("2012-09-13T06:10:24.610+0000"),
+      {query_result("2199029789250"), query_result("fine"), query_result("2012-09-13T06:10:24.610000"),
       query_result("2199029789233"), query_result("4398046519022"), 
       query_result("Zheng"), query_result("Xu")});
   expected.data.push_back(
       {query_result("2199023895468"), query_result("About Pope John Paul II, vanni Paolo II,About Alfred, "
-        "Lord Tennyson, t / T"), query_result("2012-09-12T10:03:59.850+0000"),
+        "Lord Tennyson, t / T"), query_result("2012-09-12T10:03:59.850000"),
       query_result("2199023895464"), query_result("21990232556018"), 
       query_result("K."), query_result("Kumar")});
   expected.data.push_back(
       {query_result("2061590835573"), query_result("About Catherine the Great, ge of 67. She was born "
-        "in Stettin, PomeraniaAbout Bangladesh"), query_result("2012-08-20T04:48:28.061+0000"),
+        "in Stettin, PomeraniaAbout Bangladesh"), query_result("2012-08-20T04:48:28.061000"),
       query_result("2061590835571"), query_result("17592186052552"), 
       query_result("A."), query_result("Nair")});
   expected.data.push_back(
-      {query_result("2061590836130"), query_result("thanks"), query_result("2012-07-28T00:28:44.339+0000"),
+      {query_result("2061590836130"), query_result("thanks"), query_result("2012-07-28T00:28:44.339000"),
       query_result("2061590836122"), query_result("15393162794737"), 
       query_result("Wilson"), query_result("Agudelo")});
   expected.data.push_back(
-      {query_result("2061590835519"), query_result("LOL"), query_result("2012-07-25T05:05:52.401+0000"),
+      {query_result("2061590835519"), query_result("LOL"), query_result("2012-07-25T05:05:52.401000"),
       query_result("2061590835503"), query_result("26388279068563"), 
       query_result("Patrick"), query_result("Ambane")});
   expected.data.push_back(
-      {query_result("2061590835517"), query_result("yes"), query_result("2012-07-25T02:09:45.010+0000"),
+      {query_result("2061590835517"), query_result("yes"), query_result("2012-07-25T02:09:45.010000"),
       query_result("2061590835503"), query_result("26388279068563"), 
       query_result("Patrick"), query_result("Ambane")});
   expected.data.push_back(
-      {query_result("962079207711"), query_result("roflol"), query_result("2011-04-12T14:02:40.962+0000"),
+      {query_result("962079207711"), query_result("roflol"), query_result("2011-04-12T14:02:40.962000"),
       query_result("962079207708"), query_result("13194139542623"), 
       query_result("Andre"), query_result("Dia")});
   expected.data.push_back(
-      {query_result("962079207716"), query_result("yes"), query_result("2011-04-12T11:45:11.947+0000"),
+      {query_result("962079207716"), query_result("yes"), query_result("2011-04-12T11:45:11.947000"),
       query_result("962079207708"), query_result("13194139542623"), 
       query_result("Andre"), query_result("Dia")});
   expected.data.push_back(
-      {query_result("962079207714"), query_result("I see"), query_result("2011-04-11T21:22:03.107+0000"),
+      {query_result("962079207714"), query_result("I see"), query_result("2011-04-11T21:22:03.107000"),
       query_result("962079207708"), query_result("13194139542623"), 
       query_result("Andre"), query_result("Dia")});
   expected.data.push_back(
       {query_result("962079207709"), query_result("About Jerry Lewis, r his slapstick humor in film, "
-        "television, stage and radio."), query_result("2011-04-11T21:01:46.154+0000"),
+        "television, stage and radio."), query_result("2011-04-11T21:01:46.154000"),
       query_result("962079207708"), query_result("13194139542623"), 
       query_result("Andre"), query_result("Dia")});
 
@@ -2269,19 +2275,19 @@ TEST_CASE("LDBC Interactive Short Query 3", "[ldbc]") {
   result_set rs, expected;
   expected.data.push_back(
       {query_result("32985348833579"), query_result("Otto"),
-        query_result("Becker"), query_result("2012-09-07T01:11:30.195+0000")});
+        query_result("Becker"), query_result("2012-09-07T01:11:30.195000")});
   expected.data.push_back(
       {query_result("32985348838375"), query_result("Otto"),
-        query_result("Richter"), query_result("2012-07-17T08:04:49.463+0000")});
+        query_result("Richter"), query_result("2012-07-17T08:04:49.463000")});
   expected.data.push_back(
       {query_result("10995116284808"), query_result("Andrei"),
-        query_result("Condariuc"), query_result("2011-01-02T06:43:41.955+0000")});
+        query_result("Condariuc"), query_result("2011-01-02T06:43:41.955000")});
   expected.data.push_back(
       {query_result("6597069777240"), query_result("Fritz"),
-        query_result("Muller"), query_result("2010-09-20T09:42:43.187+0000")});
+        query_result("Muller"), query_result("2010-09-20T09:42:43.187000")});
   expected.data.push_back(
       {query_result("4139"), query_result("Baruch"),
-        query_result("Dego"), query_result("2010-03-13T07:37:21.718+0000")});
+        query_result("Dego"), query_result("2010-03-13T07:37:21.718000")});
   
   ldbc_is_query_3(graph, rs);
 
@@ -2318,7 +2324,7 @@ TEST_CASE("LDBC Interactive Short Query 4", "[ldbc]") {
 
   result_set rs, expected;
   expected.data.push_back(
-      {query_result("2011-10-05T14:38:36.019+0000"),
+      {query_result("2011-10-05T14:38:36.019000"),
         query_result("photo1374389534791.jpg")});
   
 
@@ -2451,7 +2457,7 @@ TEST_CASE("LDBC Interactive Short Query 7", "[ldbc]") {
   expected.data.push_back(
       {query_result("1649267442217"),
         query_result("maybe"),
-        query_result("2012-01-10T06:31:18.533+0000"),
+        query_result("2012-01-10T06:31:18.533000"),
         query_result("15393162795439"),
         query_result("Lomana Trésor"),
         query_result("Kanam"),
@@ -2460,7 +2466,7 @@ TEST_CASE("LDBC Interactive Short Query 7", "[ldbc]") {
   expected.data.push_back(
       {query_result("1649267442213"),
         query_result("I see"),
-        query_result("2012-01-10T14:57:10.420+0000"),
+        query_result("2012-01-10T14:57:10.420000"),
         query_result("19791209307382"),
         query_result("Amin"),
         query_result("Kamkar"),
@@ -2505,8 +2511,8 @@ TEST_CASE("LDBC Interactive Insert Query 1", "[ldbc]") {
 
   result_set rs, expected;
   expected.append(
-      {query_result("Person[35387]{birthday: 348883200, browserUsed: \"Safari\", "
-                    "creationDate: \"2011-01-11 01:51:21.746\", email: \"\"new1@email1.com\", \"new@email2.com\"\", "
+      {query_result("Person[35387]{birthday: 1981-Jan-21 00:00:00, browserUsed: \"Safari\", "
+                    "creationDate: 2011-Jan-11 01:51:21.746000, email: \"\"new1@email1.com\", \"new@email2.com\"\", "
                     "firstName: \"New\", gender: \"female\", id: 9999999999999, language: \"\"zh\", \"en\"\", "
                     "lastName: \"Person\", locationIP: \"1.183.127.173\"}"),
       query_result("Place[10397]{id: 505, name: \"Artux\", type: \"city\", url: \"http://dbpedia.org/resource/Artux\"}"),
@@ -2555,15 +2561,15 @@ TEST_CASE("LDBC Interactive Insert Query 2", "[ldbc]") {
 
   result_set rs, expected;
   expected.append(
-      {query_result("Person[0]{birthday: 628646400, browserUsed: \"Firefox\", "
-                    "creationDate: \"2010-02-14T15:32:10.447+0000\", firstName: \"Mahinda\", "
+      {query_result("Person[0]{birthday: 1989-Dec-03 00:00:00, browserUsed: \"Firefox\", "
+                    "creationDate: 2010-Feb-14 15:32:10.447000, firstName: \"Mahinda\", "
                     "gender: \"male\", id: 933, lastName: \"Perera\", "
                     "locationIP: \"119.235.7.103\"}"),
         query_result("Post[532552]{browserUsed: \"Firefox\", content: \"About Alexander I of Russia, "
                       "lexander tried to introduce liberal reforms, while in the second half\", "
-                      "creationDate: \"2012-08-20T09:51:28.275+0000\", id: 2061587303627, language: \"uz\", "
+                      "creationDate: 2012-Aug-20 09:51:28.275000, id: 2061587303627, language: \"uz\", "
                       "length: 98, locationIP: \"14.205.203.83\"}"),
-        query_result("::likes[751677]{creationDate: \"2010-02-14 15:32:10.447\"}")});
+        query_result("::likes[751677]{creationDate: 2010-Feb-14 15:32:10.447000}")});
   
   ldbc_iu_query_2(graph, rs);
   
@@ -2600,15 +2606,15 @@ TEST_CASE("LDBC Interactive Insert Query 3", "[ldbc]") {
 
   result_set rs, expected;
   expected.append(
-      {query_result("Person[4807]{birthday: 467251200, browserUsed: \"Chrome\", "
-                    "creationDate: \"2010-01-02T06:04:55.320+0000\", firstName: \"Emperor of Brazil\", "
+      {query_result("Person[4807]{birthday: 1984-Oct-22 00:00:00, browserUsed: \"Chrome\", "
+                    "creationDate: 2010-Jan-02 06:04:55.320000, firstName: \"Emperor of Brazil\", "
                     "gender: \"female\", id: 1564, lastName: \"Silva\", "
                     "locationIP: \"192.223.88.63\"}"),
         query_result("Comment[10108]{browserUsed: \"Firefox\", content: \"About Louis I of Hungary, "
                     "ittle lasting political results. Louis is theAbout Union of Sou\", "
-                    "creationDate: \"2012-01-19T11:39:51.385+0000\", id: 1649267442250, length: 89, "
+                    "creationDate: 2012-Jan-19 11:39:51.385000, id: 1649267442250, length: 89, "
                     "locationIP: \"85.154.120.237\"}"),
-        query_result("::likes[1438418]{creationDate: \"2012-01-23 08:56:30.617\"}")});
+        query_result("::likes[1438418]{creationDate: 2012-Jan-23 08:56:30.617000}")});
   
   ldbc_iu_query_3(graph, rs);
   
@@ -2647,10 +2653,10 @@ TEST_CASE("LDBC Interactive Insert Query 4", "[ldbc]") {
 
   result_set rs, expected;
   expected.append(
-      {query_result("Forum[116464]{creationDate: \"2010-01-02 06:05:05.320\", id: 53975, title: "
+      {query_result("Forum[116464]{creationDate: 2010-Jan-02 06:05:05.320000, id: 53975, title: "
                     "\"Wall of Emperor of Brazil Silva\"}"),
-      query_result("Person[95299]{birthday: 467251200, browserUsed: \"Chrome\", "
-                    "creationDate: \"2010-01-02T06:04:55.320+0000\", firstName: \"Emperor of Brazil\", "
+      query_result("Person[95299]{birthday: 1984-Oct-22 00:00:00, browserUsed: \"Chrome\", "
+                    "creationDate: 2010-Jan-02 06:04:55.320000, firstName: \"Emperor of Brazil\", "
                     "gender: \"female\", id: 1564, lastName: \"Silva\", "
                     "locationIP: \"192.223.88.63\"}"), 
       query_result("::hasModerator[400258]{}"),
@@ -2693,12 +2699,12 @@ TEST_CASE("LDBC Interactive Insert Query 5", "[ldbc]") {
 
   result_set rs, expected;
   expected.append(
-      {query_result("Forum[33]{creationDate: \"2010-02-15T00:46:27.657+0000\", id: 37, title: \"Wall of Hồ Chí Do\"}"),
-      query_result("Person[95299]{birthday: 467251200, browserUsed: \"Chrome\", "
-                    "creationDate: \"2010-01-02T06:04:55.320+0000\", firstName: \"Emperor of Brazil\", "
+      {query_result("Forum[33]{creationDate: 2010-Feb-15 00:46:27.657000, id: 37, title: \"Wall of Hồ Chí Do\"}"),
+      query_result("Person[95299]{birthday: 1984-Oct-22 00:00:00, browserUsed: \"Chrome\", "
+                    "creationDate: 2010-Jan-02 06:04:55.320000, firstName: \"Emperor of Brazil\", "
                     "gender: \"female\", id: 1564, lastName: \"Silva\", "
                     "locationIP: \"192.223.88.63\"}"),
-      query_result("::hasMember[1611869]{creationDate: \"2010-02-23 09:10:25.466\"}")});
+      query_result("::hasMember[1611869]{creationDate: 2010-Feb-23 09:10:25.466000}")});
   
   ldbc_iu_query_5(graph, rs);
   
@@ -2743,14 +2749,14 @@ TEST_CASE("LDBC Interactive Insert Query 6", "[ldbc]") {
       {query_result("Post[1121529]{browser: \"Safari\", content: \"About Alexander I of "
                       "Russia,  (23 December  1777 – 1 December  1825), (Russian: "
                       "Александр Благословенный, Aleksandr Blagoslovennyi, meaning Alexander the Bless\", "
-                      "creationDate: \"2011-09-07 14:52:27.809\", id: 13439, imageFile: \"\", language: \"\"uz\"\", "
+                      "creationDate: 2011-Sep-07 14:52:27.809000, id: 13439, imageFile: \"\", language: \"\"uz\"\", "
                       "length: 159, locationIP: \"46.19.159.176\"}"),
-      query_result("Person[1013316]{birthday: 565315200, browserUsed: \"Safari\", "
-                    "creationDate: \"2010-08-24T20:13:46.569+0000\", firstName: \"Fritz\", "
+      query_result("Person[1013316]{birthday: 1987-Dec-01 00:00:00, browserUsed: \"Safari\", "
+                    "creationDate: 2010-Aug-24 20:13:46.569000, firstName: \"Fritz\", "
                     "gender: \"female\", id: 6597069777240, lastName: \"Muller\", "
                     "locationIP: \"46.19.159.176\"}"),
       query_result("::hasCreator[3724073]{}"),
-      query_result("Forum[1060792]{creationDate: \"2010-09-21T16:25:35.425+0000\", id: 549755871489, "
+      query_result("Forum[1060792]{creationDate: 2010-Sep-21 16:25:35.425000, id: 549755871489, "
                     "title: \"Group for Alexander_I_of_Russia in Umeå\"}"),
       query_result("::containerOf[3724074]{}"),
       query_result("Place[1104039]{id: 50, name: \"Germany\", type: \"country\", "
@@ -2801,16 +2807,16 @@ TEST_CASE("LDBC Interactive Insert Query 7", "[ldbc]") {
 result_set rs, expected;
   expected.append(
       {query_result("Comment[3083206]{browser: \"Chrome\", content: \"fine\", creationDate: "
-                    "\"2012-01-09 11:49:15.991\", "
+                    "2012-Jan-09 11:49:15.991000, "
                       "id: 442214, length: 4, locationIP: \"91.149.169.27\"}"),
-      query_result("Person[3059734]{birthday: 631324800, browserUsed: \"Chrome\", "
-                    "creationDate: \"2010-12-25T08:07:55.284+0000\", "
+      query_result("Person[3059734]{birthday: 1990-Jan-03 00:00:00, browserUsed: \"Chrome\", "
+                    "creationDate: 2010-Dec-25 08:07:55.284000, "
                     "firstName: \"Ivan Ignatyevich\", gender: \"male\", id: 10995116283243, "
                     "lastName: \"Aleksandrov\", locationIP: \"91.149.169.27\"}"),
       query_result("::hasCreator[7814151]{}"),
       query_result("Post[2052494]{browserUsed: \"Internet Explorer\", content: \"About Louis I of Hungary, "
                     "dwig der Große, Bulgarian: Лудвиг I, Serbian: Лајош I Анжујски, Czech: Ludvík I. "
-                    "Veliký, Li\", creationDate: \"2012-01-09T07:50:59.110+0000\", id: 1649267442210, "
+                    "Veliký, Li\", creationDate: 2012-Jan-09 07:50:59.110000, id: 1649267442210, "
                     "language: \"tk\", length: 117, locationIP: \"192.147.218.174\"}"),
       query_result("::replyOf[7814152]{}"),
       query_result("Place[3065729]{id: 63, name: \"Belarus\", type: \"country\", url: "
@@ -2855,15 +2861,15 @@ TEST_CASE("LDBC Interactive Insert Query 8", "[ldbc]") {
 
   result_set rs, expected;
   expected.append(
-      {query_result("Person[2]{birthday: 592790400, browserUsed: \"Internet Explorer\", "
-                    "creationDate: \"2010-02-15T00:46:17.657+0000\", firstName: \"Hồ Chí\", "
+      {query_result("Person[2]{birthday: 1988-Oct-14 00:00:00, browserUsed: \"Internet Explorer\", "
+                    "creationDate: 2010-Feb-15 00:46:17.657000, firstName: \"Hồ Chí\", "
                     "gender: \"male\", id: 4194, lastName: \"Do\", "
                     "locationIP: \"103.2.223.188\"}"),
-      query_result("Person[4807]{birthday: 467251200, browserUsed: \"Chrome\", "
-                    "creationDate: \"2010-01-02T06:04:55.320+0000\", firstName: \"Emperor of Brazil\", "
+      query_result("Person[4807]{birthday: 1984-Oct-22 00:00:00, browserUsed: \"Chrome\", "
+                    "creationDate: 2010-Jan-02 06:04:55.320000, firstName: \"Emperor of Brazil\", "
                     "gender: \"female\", id: 1564, lastName: \"Silva\", "
                     "locationIP: \"192.223.88.63\"}"),
-        query_result("::KNOWS[180623]{creationDate: \"2010-02-23 09:10:15.466\"}")});
+        query_result("::KNOWS[180623]{creationDate: 2010-Feb-23 09:10:15.466000}")});
   
   ldbc_iu_query_8(graph, rs);
   
