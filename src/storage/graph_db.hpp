@@ -164,7 +164,7 @@ public:
   /* ---------------- data import ---------------- */
 
   /**
-   * Read the list of nodes from the given CSV file. The file is in neo4j
+   * Read the list of nodes from the given CSV file. The file is in ldbc
    * format with the given delimiter.
    */
   std::size_t import_nodes_from_csv(const std::string &label,
@@ -173,7 +173,7 @@ public:
 
   /**
    * Read the list of relationships from the given CSV file. The file is in
-   * neo4j format with the given delimiter.
+   * ldbc format with the given delimiter.
    */
   std::size_t import_relationships_from_csv(const std::string &filename,
                                             char delim, const mapping_t &m);

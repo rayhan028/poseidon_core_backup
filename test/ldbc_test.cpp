@@ -2063,7 +2063,8 @@ void run_all_ldbc_queries(graph_db_ptr &gdb, graph_db_ptr &gdb2) {
  * ----------------------------------------------------
  * */
 
-//const std::string snb_dir("/tmp/snb-data/social_network/");
+/*const std::string snb_sta("/home/data/SNB_SF_10/static/");
+const std::string snb_dyn("/home/data/SNB_SF_10/dynamic/");
 
 void load_snb_data(graph_db_ptr &graph, 
                     std::vector<std::string> &node_files,
@@ -2081,7 +2082,7 @@ void load_snb_data(graph_db_ptr &graph,
       std::vector<std::string> fp;
       boost::split(fp, file, boost::is_any_of("/"));
       assert(fp.back().find(".csv") != std::string::npos);
-      auto pos = fp.back().find("_0_0");
+      auto pos = fp.back().find("_");
       auto label = fp.back().substr(0, pos);
       if (label[0] >= 'a' && label[0] <= 'z')
         label[0] -= 32;
@@ -2132,7 +2133,7 @@ graph_db_ptr create_graph(
   return graph;
 }
 
-/*TEST_CASE("LDBC Interactive Short Query 1", "[ldbc]") {
+TEST_CASE("LDBC Interactive Short Query 1", "[ldbc]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
   auto graph = create_graph(pop);
@@ -2144,9 +2145,15 @@ graph_db_ptr create_graph(
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "place_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
+                                          snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "person_isLocatedIn_place_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "person_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_1_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_2_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2184,13 +2191,29 @@ TEST_CASE("LDBC Interactive Short Query 2", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "post_0_0.csv",
-                                          snb_dir + "comment_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "post_hasCreator_person_0_0.csv",
-                                          snb_dir + "comment_hasCreator_person_0_0.csv",
-                                          snb_dir + "comment_replyOf_post_0_0.csv",
-                                          snb_dir + "comment_replyOf_comment_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "post_hasCreator_person_0_0.csv",
+                                          snb_dyn + "post_hasCreator_person_1_0.csv",
+                                          snb_dyn + "post_hasCreator_person_2_0.csv",
+                                          snb_dyn + "post_hasCreator_person_3_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_1_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_2_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_3_0.csv",
+                                          snb_dyn + "comment_replyOf_post_0_0.csv",
+                                          snb_dyn + "comment_replyOf_post_1_0.csv",
+                                          snb_dyn + "comment_replyOf_post_2_0.csv",
+                                          snb_dyn + "comment_replyOf_post_3_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_0_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_1_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_2_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2266,9 +2289,13 @@ TEST_CASE("LDBC Interactive Short Query 3", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "person_knows_person_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "person_knows_person_0_0.csv",
+                                          snb_dyn + "person_knows_person_1_0.csv",
+                                          snb_dyn + "person_knows_person_2_0.csv",
+                                          snb_dyn + "person_knows_person_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2316,7 +2343,8 @@ TEST_CASE("LDBC Interactive Short Query 4", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "post_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv"};
 
   std::vector<std::string> rship_files = {};
 
@@ -2355,9 +2383,15 @@ TEST_CASE("LDBC Interactive Short Query 5", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "comment_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "comment_hasCreator_person_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_1_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_2_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2395,13 +2429,31 @@ TEST_CASE("LDBC Interactive Short Query 6", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "post_0_0.csv",
-                                          snb_dir + "comment_0_0.csv", snb_dir + "forum_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv",
+                                          snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
+                                          snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "comment_replyOf_post_0_0.csv",
-                                          snb_dir + "comment_replyOf_comment_0_0.csv", 
-                                          snb_dir + "forum_containerOf_post_0_0.csv",
-                                          snb_dir + "forum_hasModerator_person_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "comment_replyOf_post_0_0.csv",
+                                          snb_dyn + "comment_replyOf_post_1_0.csv",
+                                          snb_dyn + "comment_replyOf_post_2_0.csv",
+                                          snb_dyn + "comment_replyOf_post_3_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_0_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_1_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_2_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_3_0.csv",
+                                          snb_dyn + "forum_containerOf_post_0_0.csv",
+                                          snb_dyn + "forum_containerOf_post_1_0.csv",
+                                          snb_dyn + "forum_containerOf_post_2_0.csv",
+                                          snb_dyn + "forum_containerOf_post_3_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_0_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_1_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_2_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2446,10 +2498,19 @@ TEST_CASE("LDBC Interactive Short Query 7", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "comment_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "comment_hasCreator_person_0_0.csv",
-                                          snb_dir + "comment_replyOf_comment_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_1_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_2_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_3_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_0_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_1_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_2_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2499,13 +2560,31 @@ TEST_CASE("LDBC Interactive Insert Query 1", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "place_0_0.csv",
-                                          snb_dir + "tag_0_0.csv", snb_dir + "organisation_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
+                                          snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv",
+                                          snb_sta + "tag_0_0.csv", snb_sta + "tag_1_0.csv",
+                                          snb_sta + "tag_2_0.csv", snb_sta + "tag_3_0.csv",
+                                          snb_sta + "organisation_0_0.csv", snb_sta + "organisation_1_0.csv",
+                                          snb_sta + "organisation_2_0.csv", snb_sta + "organisation_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "person_isLocatedIn_place_0_0.csv",
-                                          snb_dir + "person_hasInterest_tag_0_0.csv",
-                                          snb_dir + "person_studyAt_organisation_0_0.csv",
-                                          snb_dir + "person_workAt_organisation_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "person_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_1_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_2_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_3_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_0_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_1_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_2_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_3_0.csv",
+                                          snb_dyn + "person_studyAt_organisation_0_0.csv",
+                                          snb_dyn + "person_studyAt_organisation_1_0.csv",
+                                          snb_dyn + "person_studyAt_organisation_2_0.csv",
+                                          snb_dyn + "person_studyAt_organisation_3_0.csv",
+                                          snb_dyn + "person_workAt_organisation_0_0.csv",
+                                          snb_dyn + "person_workAt_organisation_1_0.csv",
+                                          snb_dyn + "person_workAt_organisation_2_0.csv",
+                                          snb_dyn + "person_workAt_organisation_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2553,9 +2632,15 @@ TEST_CASE("LDBC Interactive Insert Query 2", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "post_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "person_likes_post_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "person_likes_post_0_0.csv",
+                                          snb_dyn + "person_likes_post_1_0.csv",
+                                          snb_dyn + "person_likes_post_2_0.csv",
+                                          snb_dyn + "person_likes_post_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2598,9 +2683,15 @@ TEST_CASE("LDBC Interactive Insert Query 3", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "comment_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "person_likes_comment_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "person_likes_comment_0_0.csv",
+                                          snb_dyn + "person_likes_comment_1_0.csv",
+                                          snb_dyn + "person_likes_comment_2_0.csv",
+                                          snb_dyn + "person_likes_comment_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2643,11 +2734,21 @@ TEST_CASE("LDBC Interactive Insert Query 4", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "forum_0_0.csv", snb_dir + "person_0_0.csv", 
-                                          snb_dir + "tag_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
+                                          snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv",
+                                          snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv", 
+                                          snb_sta + "tag_0_0.csv", snb_sta + "tag_1_0.csv",
+                                          snb_sta + "tag_2_0.csv", snb_sta + "tag_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "forum_hasModerator_person_0_0.csv",
-                                            snb_dir + "forum_hasTag_tag_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "forum_hasModerator_person_0_0.csv",
+                                            snb_dyn + "forum_hasModerator_person_1_0.csv",
+                                            snb_dyn + "forum_hasModerator_person_2_0.csv",
+                                            snb_dyn + "forum_hasModerator_person_3_0.csv",
+                                            snb_dyn + "forum_hasTag_tag_0_0.csv",
+                                            snb_dyn + "forum_hasTag_tag_1_0.csv",
+                                            snb_dyn + "forum_hasTag_tag_2_0.csv",
+                                            snb_dyn + "forum_hasTag_tag_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2691,9 +2792,15 @@ TEST_CASE("LDBC Interactive Insert Query 5", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "forum_0_0.csv", snb_dir + "person_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
+                                          snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv",
+                                          snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "forum_hasMember_person_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "forum_hasMember_person_0_0.csv",
+                                          snb_dyn + "forum_hasMember_person_1_0.csv",
+                                          snb_dyn + "forum_hasMember_person_2_0.csv",
+                                          snb_dyn + "forum_hasMember_person_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2733,14 +2840,33 @@ TEST_CASE("LDBC Interactive Insert Query 6", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "post_0_0.csv", snb_dir + "person_0_0.csv", 
-                                          snb_dir + "forum_0_0.csv", snb_dir + "place_0_0.csv",
-                                          snb_dir + "tag_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv",
+                                          snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
+                                          snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv",
+                                          snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
+                                          snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv",
+                                          snb_sta + "tag_0_0.csv", snb_sta + "tag_1_0.csv",
+                                          snb_sta + "tag_2_0.csv", snb_sta + "tag_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "post_hasCreator_person_0_0.csv",
-                                            snb_dir + "forum_containerOf_post_0_0.csv",
-                                            snb_dir + "post_isLocatedIn_place_0_0.csv",
-                                            snb_dir + "post_hasTag_tag_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "post_hasCreator_person_0_0.csv",
+                                            snb_dyn + "post_hasCreator_person_1_0.csv",
+                                            snb_dyn + "post_hasCreator_person_2_0.csv",
+                                            snb_dyn + "post_hasCreator_person_3_0.csv",
+                                            snb_dyn + "forum_containerOf_post_0_0.csv",
+                                            snb_dyn + "forum_containerOf_post_1_0.csv",
+                                            snb_dyn + "forum_containerOf_post_2_0.csv",
+                                            snb_dyn + "forum_containerOf_post_3_0.csv",
+                                            snb_dyn + "post_isLocatedIn_place_0_0.csv",
+                                            snb_dyn + "post_isLocatedIn_place_1_0.csv",
+                                            snb_dyn + "post_isLocatedIn_place_2_0.csv",
+                                            snb_dyn + "post_isLocatedIn_place_3_0.csv",
+                                            snb_dyn + "post_hasTag_tag_0_0.csv",
+                                            snb_dyn + "post_hasTag_tag_1_0.csv",
+                                            snb_dyn + "post_hasTag_tag_2_0.csv",
+                                            snb_dyn + "post_hasTag_tag_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2793,14 +2919,33 @@ TEST_CASE("LDBC Interactive Insert Query 7", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "comment_0_0.csv", snb_dir + "post_0_0.csv", 
-                                          snb_dir + "person_0_0.csv", snb_dir + "place_0_0.csv",
-                                          snb_dir + "tag_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv",
+                                          snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv",
+                                          snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
+                                          snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv",
+                                          snb_sta + "tag_0_0.csv", snb_sta + "tag_1_0.csv",
+                                          snb_sta + "tag_2_0.csv", snb_sta + "tag_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "comment_hasCreator_person_0_0.csv",
-                                            snb_dir + "comment_replyOf_post_0_0.csv",
-                                            snb_dir + "comment_isLocatedIn_place_0_0.csv",
-                                            snb_dir + "comment_hasTag_tag_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                            snb_dyn + "comment_hasCreator_person_1_0.csv",
+                                            snb_dyn + "comment_hasCreator_person_2_0.csv",
+                                            snb_dyn + "comment_hasCreator_person_3_0.csv",
+                                            snb_dyn + "comment_replyOf_post_0_0.csv",
+                                            snb_dyn + "comment_replyOf_post_1_0.csv",
+                                            snb_dyn + "comment_replyOf_post_2_0.csv",
+                                            snb_dyn + "comment_replyOf_post_3_0.csv",
+                                            snb_dyn + "comment_isLocatedIn_place_0_0.csv",
+                                            snb_dyn + "comment_isLocatedIn_place_1_0.csv",
+                                            snb_dyn + "comment_isLocatedIn_place_2_0.csv",
+                                            snb_dyn + "comment_isLocatedIn_place_3_0.csv",
+                                            snb_dyn + "comment_hasTag_tag_0_0.csv",
+                                            snb_dyn + "comment_hasTag_tag_1_0.csv",
+                                            snb_dyn + "comment_hasTag_tag_2_0.csv",
+                                            snb_dyn + "comment_hasTag_tag_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 
@@ -2853,9 +2998,13 @@ TEST_CASE("LDBC Interactive Insert Query 8", "[ldbc]") {
   auto tx = graph->begin_transaction();
 #endif
 
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "person_knows_person_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "person_knows_person_0_0.csv",
+                                          snb_dyn + "person_knows_person_1_0.csv",
+                                          snb_dyn + "person_knows_person_2_0.csv",
+                                          snb_dyn + "person_knows_person_3_0.csv"};
 
   load_snb_data(graph, node_files, rship_files);
 

@@ -99,7 +99,7 @@ void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs) {
 }
 
 void ldbc_is_query_4(graph_db_ptr &gdb, result_set &rs) {
-  uint64_t postId = 1374389534791;
+  uint64_t postId = 2748782215822;
 
 	auto q = query(gdb)
                 .nodes_where("Post", "id",
@@ -114,7 +114,7 @@ void ldbc_is_query_4(graph_db_ptr &gdb, result_set &rs) {
 }
 
 void ldbc_is_query_5(graph_db_ptr &gdb, result_set &rs) {
-  uint64_t commentId = 1236950581249;
+  uint64_t commentId = 6047316049947;
 
 	auto q = query(gdb)
                 .nodes_where("Comment", "id",
@@ -259,7 +259,7 @@ void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs) {
 
 void ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs) {
   uint64_t personId = 933;
-  uint64_t postId = 2061587303627; 
+  uint64_t postId = 7696582443305; 
   auto creationDate = std::string("2010-02-14T15:32:10.447+0000");
 
   auto q1 = query(gdb).nodes_where("Post", "id",
@@ -278,7 +278,7 @@ void ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs) {
 
 void ldbc_iu_query_3(graph_db_ptr &gdb, result_set &rs) {
   uint64_t personId = 1564;
-  uint64_t commentId = 1649267442250;
+  uint64_t commentId = 2199026401296;
   auto creationDate = std::string("2012-01-23T08:56:30.617+0000");
 
   auto q1 = query(gdb).nodes_where("Comment", "id",
@@ -352,7 +352,7 @@ void ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs) {
                             "Александр Благословенный, Aleksandr Blagoslovennyi, meaning Alexander the Bless"); 
   auto length = 159;
   uint64_t personId = 6597069777240;
-  uint64_t forumId = 549755871489; 
+  uint64_t forumId = 2748782215183; 
   uint64_t countryId = 50;
   uint64_t tagId = 1679;
 
