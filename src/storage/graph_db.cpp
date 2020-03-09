@@ -637,7 +637,8 @@ std::size_t graph_db::import_nodes_from_csv(const std::string &label,
         }
       }
       auto id = import_node(label, props);
-      m.insert({id_label, id});
+      auto id_label_s = id_label + "_" + label;
+      m.insert({id_label_s, id});
       // std::cout << "mapping: " << id_label << " -> " << id << std::endl;
     }
     num++;
@@ -664,6 +665,8 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
   std::vector<std::string> fn;
   boost::split(fn, fp.back(), boost::is_any_of("_"));
   auto label = ":" + fn[1];
+  auto src_node = fn[0];
+  auto des_node = fn[2];
 
   std::vector<std::string> columns;
   //int start_col = -1, end_col = -1, type_col = -1; // neo4j
@@ -687,12 +690,18 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
       assert(end_col >= 0);
       assert(type_col >= 0);*/
     } else {
-      mapping_t::const_iterator it = m.find(row[start_col]);
+      if (src_node[0] >= 'a' && src_node[0] <= 'z')
+        src_node[0] -= 32;
+      auto src_id_s = row[start_col] + "_" + src_node;
+      mapping_t::const_iterator it = m.find(src_id_s);
       if (it == m.end())
         continue;
       node::id_t from_node = it->second;
 
-      it = m.find(row[end_col]);
+      if (des_node[0] >= 'a' && des_node[0] <= 'z')
+        des_node[0] -= 32;
+      auto des_id_s = row[end_col] + "_" + des_node;
+      it = m.find(des_id_s);
       if (it == m.end())
         continue;
       node::id_t to_node = it->second;
