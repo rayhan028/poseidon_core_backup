@@ -64,7 +64,8 @@ public:
   }
 };
 
-const std::string snb_dir("/tmp/snb-data/social_network/");
+const std::string snb_sta("/home/data/SNB_SF_10/static/");
+const std::string snb_dyn("/home/data/SNB_SF_10/dynamic/");
 
 void load_snb_data(graph_db_ptr &graph, 
                     std::vector<std::string> &node_files,
@@ -82,7 +83,7 @@ void load_snb_data(graph_db_ptr &graph,
       std::vector<std::string> fp;
       boost::split(fp, file, boost::is_any_of("/"));
       assert(fp.back().find(".csv") != std::string::npos);
-      auto pos = fp.back().find("_0_0");
+      auto pos = fp.back().find("_");
       auto label = fp.back().substr(0, pos);
       if (label[0] >= 'a' && label[0] <= 'z')
         label[0] -= 32;
@@ -122,8 +123,15 @@ void load_snb_data(graph_db_ptr &graph,
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_1)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "place_0_0.csv"};
-  std::vector<std::string> rship_files = {snb_dir + "person_isLocatedIn_place_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
+                                          snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "person_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_1_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_2_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_3_0.csv"};
 
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
@@ -141,9 +149,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_1)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-  
     ldbc_is_query_1(graph, rs);
-
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -156,13 +162,30 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveShort_1)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_2)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "post_0_0.csv",
-                                          snb_dir + "comment_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "post_hasCreator_person_0_0.csv",
-                                          snb_dir + "comment_hasCreator_person_0_0.csv",
-                                          snb_dir + "comment_replyOf_post_0_0.csv",
-                                          snb_dir + "comment_replyOf_comment_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "post_hasCreator_person_0_0.csv",
+                                          snb_dyn + "post_hasCreator_person_1_0.csv",
+                                          snb_dyn + "post_hasCreator_person_2_0.csv",
+                                          snb_dyn + "post_hasCreator_person_3_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_1_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_2_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_3_0.csv",
+                                          snb_dyn + "comment_replyOf_post_0_0.csv",
+                                          snb_dyn + "comment_replyOf_post_1_0.csv",
+                                          snb_dyn + "comment_replyOf_post_2_0.csv",
+                                          snb_dyn + "comment_replyOf_post_3_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_0_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_1_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_2_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_3_0.csv"};
+
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
@@ -190,8 +213,13 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveShort_2)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_3)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv"};
-  std::vector<std::string> rship_files = {snb_dir + "person_knows_person_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "person_knows_person_0_0.csv",
+                                          snb_dyn + "person_knows_person_1_0.csv",
+                                          snb_dyn + "person_knows_person_2_0.csv",
+                                          snb_dyn + "person_knows_person_3_0.csv"};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
@@ -219,7 +247,9 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveShort_3)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_4)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "post_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv"};
+
   std::vector<std::string> rship_files = {};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
@@ -248,8 +278,15 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveShort_4)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_5)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "comment_0_0.csv"};
-  std::vector<std::string> rship_files = {snb_dir + "comment_hasCreator_person_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_1_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_2_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_3_0.csv"};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
@@ -277,13 +314,31 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveShort_5)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_6)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "post_0_0.csv",
-                                          snb_dir + "comment_0_0.csv", snb_dir + "forum_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv",
+                                          snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
+                                          snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "comment_replyOf_post_0_0.csv",
-                                          snb_dir + "comment_replyOf_comment_0_0.csv", 
-                                          snb_dir + "forum_containerOf_post_0_0.csv",
-                                          snb_dir + "forum_hasModerator_person_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "comment_replyOf_post_0_0.csv",
+                                          snb_dyn + "comment_replyOf_post_1_0.csv",
+                                          snb_dyn + "comment_replyOf_post_2_0.csv",
+                                          snb_dyn + "comment_replyOf_post_3_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_0_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_1_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_2_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_3_0.csv",
+                                          snb_dyn + "forum_containerOf_post_0_0.csv",
+                                          snb_dyn + "forum_containerOf_post_1_0.csv",
+                                          snb_dyn + "forum_containerOf_post_2_0.csv",
+                                          snb_dyn + "forum_containerOf_post_3_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_0_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_1_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_2_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_3_0.csv"};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
@@ -311,9 +366,19 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveShort_6)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_7)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "comment_0_0.csv"};
-  std::vector<std::string> rship_files = {snb_dir + "comment_hasCreator_person_0_0.csv",
-                                          snb_dir + "comment_replyOf_comment_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_1_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_2_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_3_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_0_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_1_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_2_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_3_0.csv"};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
@@ -341,13 +406,31 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveShort_7)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_1)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "place_0_0.csv",
-                                          snb_dir + "tag_0_0.csv", snb_dir + "organisation_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
+                                          snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv",
+                                          snb_sta + "tag_0_0.csv", snb_sta + "tag_1_0.csv",
+                                          snb_sta + "tag_2_0.csv", snb_sta + "tag_3_0.csv",
+                                          snb_sta + "organisation_0_0.csv", snb_sta + "organisation_1_0.csv",
+                                          snb_sta + "organisation_2_0.csv", snb_sta + "organisation_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "person_isLocatedIn_place_0_0.csv",
-                                          snb_dir + "person_hasInterest_tag_0_0.csv",
-                                          snb_dir + "person_studyAt_organisation_0_0.csv",
-                                          snb_dir + "person_workAt_organisation_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "person_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_1_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_2_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_3_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_0_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_1_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_2_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_3_0.csv",
+                                          snb_dyn + "person_studyAt_organisation_0_0.csv",
+                                          snb_dyn + "person_studyAt_organisation_1_0.csv",
+                                          snb_dyn + "person_studyAt_organisation_2_0.csv",
+                                          snb_dyn + "person_studyAt_organisation_3_0.csv",
+                                          snb_dyn + "person_workAt_organisation_0_0.csv",
+                                          snb_dyn + "person_workAt_organisation_1_0.csv",
+                                          snb_dyn + "person_workAt_organisation_2_0.csv",
+                                          snb_dyn + "person_workAt_organisation_3_0.csv"};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
@@ -375,8 +458,15 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveInsert_1)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_2)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "post_0_0.csv"};
-  std::vector<std::string> rship_files = {snb_dir + "person_likes_post_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "person_likes_post_0_0.csv",
+                                          snb_dyn + "person_likes_post_1_0.csv",
+                                          snb_dyn + "person_likes_post_2_0.csv",
+                                          snb_dyn + "person_likes_post_3_0.csv"};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
@@ -404,8 +494,15 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveInsert_2)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_3)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv", snb_dir + "comment_0_0.csv"};
-  std::vector<std::string> rship_files = {snb_dir + "person_likes_comment_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "person_likes_comment_0_0.csv",
+                                          snb_dyn + "person_likes_comment_1_0.csv",
+                                          snb_dyn + "person_likes_comment_2_0.csv",
+                                          snb_dyn + "person_likes_comment_3_0.csv"};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
@@ -433,11 +530,21 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveInsert_3)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_4)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "forum_0_0.csv", snb_dir + "person_0_0.csv", 
-                                          snb_dir + "tag_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
+                                          snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv",
+                                          snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv", 
+                                          snb_sta + "tag_0_0.csv", snb_sta + "tag_1_0.csv",
+                                          snb_sta + "tag_2_0.csv", snb_sta + "tag_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "forum_hasModerator_person_0_0.csv",
-                                            snb_dir + "forum_hasTag_tag_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "forum_hasModerator_person_0_0.csv",
+                                            snb_dyn + "forum_hasModerator_person_1_0.csv",
+                                            snb_dyn + "forum_hasModerator_person_2_0.csv",
+                                            snb_dyn + "forum_hasModerator_person_3_0.csv",
+                                            snb_dyn + "forum_hasTag_tag_0_0.csv",
+                                            snb_dyn + "forum_hasTag_tag_1_0.csv",
+                                            snb_dyn + "forum_hasTag_tag_2_0.csv",
+                                            snb_dyn + "forum_hasTag_tag_3_0.csv"};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
@@ -465,8 +572,15 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveInsert_4)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_5)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "forum_0_0.csv", snb_dir + "person_0_0.csv"};
-  std::vector<std::string> rship_files = {snb_dir + "forum_hasMember_person_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
+                                          snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv",
+                                          snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "forum_hasMember_person_0_0.csv",
+                                          snb_dyn + "forum_hasMember_person_1_0.csv",
+                                          snb_dyn + "forum_hasMember_person_2_0.csv",
+                                          snb_dyn + "forum_hasMember_person_3_0.csv"};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
@@ -494,14 +608,33 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveInsert_5)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_6)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "post_0_0.csv", snb_dir + "person_0_0.csv", 
-                                          snb_dir + "forum_0_0.csv", snb_dir + "place_0_0.csv",
-                                          snb_dir + "tag_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv",
+                                          snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
+                                          snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv",
+                                          snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
+                                          snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv",
+                                          snb_sta + "tag_0_0.csv", snb_sta + "tag_1_0.csv",
+                                          snb_sta + "tag_2_0.csv", snb_sta + "tag_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "post_hasCreator_person_0_0.csv",
-                                            snb_dir + "forum_containerOf_post_0_0.csv",
-                                            snb_dir + "post_isLocatedIn_place_0_0.csv",
-                                            snb_dir + "post_hasTag_tag_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "post_hasCreator_person_0_0.csv",
+                                            snb_dyn + "post_hasCreator_person_1_0.csv",
+                                            snb_dyn + "post_hasCreator_person_2_0.csv",
+                                            snb_dyn + "post_hasCreator_person_3_0.csv",
+                                            snb_dyn + "forum_containerOf_post_0_0.csv",
+                                            snb_dyn + "forum_containerOf_post_1_0.csv",
+                                            snb_dyn + "forum_containerOf_post_2_0.csv",
+                                            snb_dyn + "forum_containerOf_post_3_0.csv",
+                                            snb_dyn + "post_isLocatedIn_place_0_0.csv",
+                                            snb_dyn + "post_isLocatedIn_place_1_0.csv",
+                                            snb_dyn + "post_isLocatedIn_place_2_0.csv",
+                                            snb_dyn + "post_isLocatedIn_place_3_0.csv",
+                                            snb_dyn + "post_hasTag_tag_0_0.csv",
+                                            snb_dyn + "post_hasTag_tag_1_0.csv",
+                                            snb_dyn + "post_hasTag_tag_2_0.csv",
+                                            snb_dyn + "post_hasTag_tag_3_0.csv"};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
@@ -529,14 +662,33 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveInsert_6)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_7)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "comment_0_0.csv", snb_dir + "post_0_0.csv", 
-                                          snb_dir + "person_0_0.csv", snb_dir + "place_0_0.csv",
-                                          snb_dir + "tag_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv",
+                                          snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv",
+                                          snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
+                                          snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv",
+                                          snb_sta + "tag_0_0.csv", snb_sta + "tag_1_0.csv",
+                                          snb_sta + "tag_2_0.csv", snb_sta + "tag_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dir + "comment_hasCreator_person_0_0.csv",
-                                            snb_dir + "comment_replyOf_post_0_0.csv",
-                                            snb_dir + "comment_isLocatedIn_place_0_0.csv",
-                                            snb_dir + "comment_hasTag_tag_0_0.csv"};
+  std::vector<std::string> rship_files = {snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                            snb_dyn + "comment_hasCreator_person_1_0.csv",
+                                            snb_dyn + "comment_hasCreator_person_2_0.csv",
+                                            snb_dyn + "comment_hasCreator_person_3_0.csv",
+                                            snb_dyn + "comment_replyOf_post_0_0.csv",
+                                            snb_dyn + "comment_replyOf_post_1_0.csv",
+                                            snb_dyn + "comment_replyOf_post_2_0.csv",
+                                            snb_dyn + "comment_replyOf_post_3_0.csv",
+                                            snb_dyn + "comment_isLocatedIn_place_0_0.csv",
+                                            snb_dyn + "comment_isLocatedIn_place_1_0.csv",
+                                            snb_dyn + "comment_isLocatedIn_place_2_0.csv",
+                                            snb_dyn + "comment_isLocatedIn_place_3_0.csv",
+                                            snb_dyn + "comment_hasTag_tag_0_0.csv",
+                                            snb_dyn + "comment_hasTag_tag_1_0.csv",
+                                            snb_dyn + "comment_hasTag_tag_2_0.csv",
+                                            snb_dyn + "comment_hasTag_tag_3_0.csv"};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
@@ -564,8 +716,13 @@ BENCHMARK_REGISTER_F(MyFixture, BM_InteractiveInsert_7)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_8)(benchmark::State &state) {
-  std::vector<std::string> node_files = {snb_dir + "person_0_0.csv"};
-  std::vector<std::string> rship_files = {snb_dir + "person_knows_person_0_0.csv"};
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "person_knows_person_0_0.csv",
+                                          snb_dyn + "person_knows_person_1_0.csv",
+                                          snb_dyn + "person_knows_person_2_0.csv",
+                                          snb_dyn + "person_knows_person_3_0.csv"};
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif

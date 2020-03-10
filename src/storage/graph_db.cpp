@@ -17,8 +17,6 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/date_time/gregorian/gregorian.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include "graph_db.hpp"
@@ -645,34 +643,15 @@ std::size_t graph_db::import_nodes_from_csv(const std::string &label,
         auto &col = columns[i++];
         //if (!col.empty() && !field.empty()) {
         if (!col.empty() && !(field.empty() && col != "content")) {
-          using namespace boost::posix_time;
-
-          if (col == "id"){
-            uint64_t field_64 = (uint64_t)std::stoll(field);
-            props.insert({col, field_64});
-          }
-          //else if (col.find("Date") != std::string::npos){ // TODO: datetime
-          /*else if (col == "creationDate"){
-            ptime pdt = time_from_string(field);
-            static ptime epoch(boost::gregorian::date(1970, 1, 1));
-            time_duration::sec_type secs = (pdt - epoch).total_seconds();
-            int field_dtime = time_t(secs);
-            props.insert({col, field_dtime});
-          }*/
-          else if (col == "birthday"){
-            boost::gregorian::date dt = boost::gregorian::from_simple_string(field);
-            static ptime epoch(boost::gregorian::date(1970, 1, 1));
-            time_duration::sec_type secs =
-                (ptime(dt, seconds(0)) - epoch).total_seconds();
-            int field_date = time_t(secs);
-            props.insert({col, field_date});
-          }
+          if (col == "id")
+            props.insert({col, (uint64_t)std::stoll(field)});
           else
             props.insert({col, field});
         }
       }
       auto id = import_node(label, props);
-      m.insert({id_label, id});
+      auto id_label_s = id_label + "_" + label;
+      m.insert({id_label_s, id});
       // std::cout << "mapping: " << id_label << " -> " << id << std::endl;
     }
     num++;
@@ -699,6 +678,8 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
   std::vector<std::string> fn;
   boost::split(fn, fp.back(), boost::is_any_of("_"));
   auto label = ":" + fn[1];
+  auto src_node = fn[0];
+  auto des_node = fn[2];
 
   std::vector<std::string> columns;
   //int start_col = -1, end_col = -1, type_col = -1; // neo4j
@@ -722,12 +703,18 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
       assert(end_col >= 0);
       assert(type_col >= 0);*/
     } else {
-      mapping_t::const_iterator it = m.find(row[start_col]);
+      if (src_node[0] >= 'a' && src_node[0] <= 'z')
+        src_node[0] -= 32;
+      auto src_id_s = row[start_col] + "_" + src_node;
+      mapping_t::const_iterator it = m.find(src_id_s);
       if (it == m.end())
         continue;
       node::id_t from_node = it->second;
 
-      it = m.find(row[end_col]);
+      if (des_node[0] >= 'a' && des_node[0] <= 'z')
+        des_node[0] -= 32;
+      auto des_id_s = row[end_col] + "_" + des_node;
+      it = m.find(des_id_s);
       if (it == m.end())
         continue;
       node::id_t to_node = it->second;
@@ -740,9 +727,8 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
         //if (i != start_col && i != end_col && i != type_col) {  // neo4j
         if (i != start_col && i != end_col) {
           auto &col = columns[i];
-          if (!field.empty()) { 
-            props.insert({col, field}); // TODO: datetime
-          }
+          if (!field.empty())
+            props.insert({col, field});
         }
         i++;
       }

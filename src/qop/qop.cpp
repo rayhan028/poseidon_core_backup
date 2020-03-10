@@ -22,12 +22,12 @@
 #include <numeric>
 #include <sstream>
 
-#include <boost/date_time/gregorian/gregorian.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/dynamic_bitset.hpp>
 #include <boost/hana.hpp>
 
 #include "qop.hpp"
+
+using namespace boost::posix_time;
 
 /* ------------------------------------------------------------------------ */
 
@@ -204,7 +204,8 @@ void printer::process(graph_db_ptr &gdb, const qr_tuple &v) {
       [&](relationship *r) { std::cout << gdb->get_relationship_label(*r); },
       [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
       [&](const std::string &s) { std::cout << s; },
-      [&](uint64_t ll) { std::cout << ll; });
+      [&](uint64_t ll) { std::cout << ll; },
+      [&](ptime dt) { std::cout << dt; });
   for (auto &ge : v) {
     boost::apply_visitor(my_visitor, ge);
     std::cout << " ";
@@ -289,7 +290,8 @@ std::ostream &operator<<(std::ostream &os, const result_set &rs) {
       [&](node *n) { /*os << gdb->get_node_description(*n); */ },
       [&](relationship *r) { /* os << gdb->get_relationship_label(*r); */ },
       [&](int i) { os << i; }, [&](double d) { os << d; },
-      [&](const std::string &s) { os << s; }, [&](uint64_t ll) { os << ll; });
+      [&](const std::string &s) { os << s; }, [&](uint64_t ll) { os << ll; },
+      [&](ptime dt) { os << dt; }); 
 
   for (const qr_tuple &qv : rs.data) {
     os << "{ ";
@@ -324,8 +326,9 @@ void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
       },
       [&](int i) { return std::to_string(i); },
       [&](double d) { return std::to_string(d); },
-      [&](const std::string &s) { return s; },
-      [&](uint64_t ll) { return std::to_string(ll); });
+      [&](const std::string &s) { return s; }, 
+      [&](uint64_t ll) { return std::to_string(ll); },
+      [&](ptime dt) { return to_iso_extended_string(dt); }); 
   for (std::size_t i = 0; i < v.size(); i++) {
     res[i] = boost::apply_visitor(my_visitor, v[i]);
   }
@@ -432,7 +435,9 @@ query_result forward(projection::pr_result &pv) {
   } else if (pv.type() == typeid(node_description)) {
     auto &nd = boost::get<node_description>(pv);
     return nd.to_string();
-  }
+  } else if (pv.type() == typeid(ptime)) { 
+    return boost::get<ptime>(pv);
+  } 
   spdlog::info("builtin::forward: unexpected type: {}", pv.type().name());
   return query_result(0);
 }
@@ -490,6 +495,34 @@ uint64_t uint64_property(projection::pr_result &pv, /* std::size_t vidx, */
   return 0;
 }
 
+ptime ptime_property(projection::pr_result &pv, /* std::size_t vidx, */ // to remove
+                 const std::string &key){
+  //  auto &pv = vec[vidx];
+  if (pv.type() == typeid(node_description &)) {
+    auto nd = boost::get<node_description &>(pv);
+    return get_property<ptime>(nd.properties, key);
+  } else if (pv.type() == typeid(rship_description &)) {
+    auto rd = boost::get<rship_description &>(pv);
+    return get_property<ptime>(rd.properties, key);
+  }
+  return ptime(); 
+}
+
+std::string pr_date(projection::pr_result &pv, /* std::size_t vidx, */
+                 const std::string &key){
+  //  auto &pv = vec[vidx];
+  if (pv.type() == typeid(node_description &)) {
+    auto nd = boost::get<node_description &>(pv);
+    ptime dt = get_property<ptime>(nd.properties, key);
+    return to_iso_extended_string(dt.date());
+  } else if (pv.type() == typeid(rship_description &)) {
+    auto rd = boost::get<rship_description &>(pv);
+    ptime dt = get_property<ptime>(rd.properties, key);
+    return to_iso_extended_string(dt.date());
+  }
+  return ""; 
+}
+
 std::string string_rep(projection::pr_result &res /*, std::size_t vidx*/) {
   auto my_visitor =
       boost::hana::overload([&](node_description &n) { return n.to_string(); },
@@ -499,7 +532,8 @@ std::string string_rep(projection::pr_result &res /*, std::size_t vidx*/) {
                             [&](int i) { return std::to_string(i); },
                             [&](double d) { return std::to_string(d); },
                             [&](const std::string &s) { return s; },
-                            [&](uint64_t ll) { return std::to_string(ll); });
+                            [&](uint64_t ll) { return std::to_string(ll); },  
+                            [&](ptime dt) { return to_iso_extended_string(dt); } ); 
   return boost::apply_visitor(my_visitor, res);
 }
 
@@ -520,7 +554,6 @@ std::string int_to_datestring(int v) {
 }
 
 int datestring_to_int(const std::string &d) {
-  using namespace boost::posix_time;
   boost::gregorian::date dt = boost::gregorian::from_simple_string(d);
   static ptime epoch(boost::gregorian::date(1970, 1, 1));
   time_duration::sec_type secs =
@@ -537,7 +570,6 @@ std::string int_to_dtimestring(int v) {
 }
 
 int dtimestring_to_int(const std::string &dt) {
-  using namespace boost::posix_time;
   ptime pdt = time_from_string(dt);
   static ptime epoch(boost::gregorian::date(1970, 1, 1));
   time_duration::sec_type secs = (pdt - epoch).total_seconds();

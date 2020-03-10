@@ -20,6 +20,9 @@
 #ifndef qop_hpp_
 #define qop_hpp_
 
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 #include <memory>
 #include <vector>
 #include <set>
@@ -437,7 +440,8 @@ struct collect_result : public qop {
  */
 struct projection : public qop {
   using pr_result = boost::variant<node_description, node *, rship_description,
-                                   relationship *, int, double, std::string, uint64_t>;
+                                   relationship *, int, double, 
+                                   std::string, uint64_t, boost::posix_time::ptime>;
 
   struct expr {
     std::size_t vidx;
@@ -491,6 +495,20 @@ std::string string_property(projection::pr_result &res, /*std::size_t vidx, */
  * stored in projection_result res and identified by the given key.
  */
 uint64_t uint64_property(projection::pr_result &res, /* std::size_t vidx, */
+                 const std::string &key);
+
+/**
+ * Return the ptime value of the property of a node/relationship 
+ * stored in projection_result res and identified by the given key.
+ */
+boost::posix_time::ptime ptime_property(projection::pr_result &res, /* std::size_t vidx, */
+                 const std::string &key);
+
+/**
+ * Return the string representation of the date property of a node/relationship 
+ * stored in projection_result res and identified by the given key.
+ */
+std::string pr_date(projection::pr_result &pv, /* std::size_t vidx, */
                  const std::string &key);
 
 /**

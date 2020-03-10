@@ -28,6 +28,19 @@ static std::regex float_expr("[0-9]+\\.[0-9]+");
 
 static std::regex int_expr("(-?[1-9][0-9]*)|0");
 
+static std::regex date_expr("^((19[7-9][0-9])|(20[0-9][0-9]))-" // YYYY-MM-DD
+                            "(0[1-9]|1[012])-"
+                            "(0[1-9]|[12][0-9]|3[01])$");
+
+static std::regex dtime_expr("^((19[7-9][0-9])|(20[0-9][0-9]))-" // YYYY-MM-DDTHH:MM:SS:ZZZZ
+                            "(0[1-9]|1[012])-"
+                            "(0[1-9]|[12][0-9]|3[01])T"
+                            "([01][0-9]|2[0-3]):"
+                            "([0-5][0-9]):"
+                            "([0-5][0-9])."
+                            "[0-9]{3,3}[+]"
+                            "[0-9]{4,4}$");
+
 bool is_quoted_string(const std::string &s) {
   return (s[0] == '"' && s[s.length() - 1] == '"') ||
          (s[0] == '\'' && s[s.length() - 1] == '\'');
@@ -37,7 +50,12 @@ bool is_float(const std::string &s) { return std::regex_match(s, float_expr); }
 
 bool is_int(const std::string &s) { return std::regex_match(s, int_expr); }
 
+bool is_date(const std::string &s) { return std::regex_match(s, date_expr); }
+
+bool is_dtime(const std::string &s) { return std::regex_match(s, dtime_expr); }
+
 /* --------------------------------------------------------------------- */
+using namespace boost::posix_time;
 
 template <> double p_item::get<double>() const {
   assert(P_DOUBLE_VAL(flags_));
@@ -57,6 +75,11 @@ template <> dcode_t p_item::get<dcode_t>() const {
 template <> uint64_t p_item::get<uint64_t>() const {
   assert(P_UINT64_VAL(flags_));
   return *(reinterpret_cast<const uint64_t *>(value_));
+}
+
+template <> ptime p_item::get<ptime>() const {
+  assert(P_PTIME_VAL(flags_));
+  return *(reinterpret_cast<const ptime *>(value_));
 }
 
 template <> void p_item::set<double>(double v) {
@@ -79,10 +102,16 @@ template <> void p_item::set<uint64_t>(uint64_t v) {
   memcpy(&value_, &v, sizeof(uint64_t));
 }
 
+template <> void p_item::set<ptime>(ptime v) {
+  P_SET_VAL(flags_, p_ptime);
+  memcpy(&value_, &v, sizeof(ptime));
+}
+
 p_item::p_item(dcode_t k, double v) : flags_(0), key_(k) { set<double>(v); }
 p_item::p_item(dcode_t k, int v) : flags_(0), key_(k) { set<int>(v); }
 p_item::p_item(dcode_t k, dcode_t v) : flags_(0), key_(k) { set<dcode_t>(v); }
 p_item::p_item(dcode_t k, uint64_t v) : flags_(0), key_(k) { set<uint64_t>(v); }
+p_item::p_item(dcode_t k, boost::posix_time::ptime v) : flags_(0), key_(k) { set<ptime>(v); }
 
 p_item::p_item(const std::string &k, const boost::any &v, dict_ptr &dct)
     : p_item(v, dct) {
@@ -108,6 +137,15 @@ p_item::p_item(const boost::any &v, dict_ptr &dct) : flags_(0), key_(0) {
       set<int>((int)std::stoi(s));
     else if (is_float(s))
       set<double>((double)std::stod(s));
+    else if (is_date(s)){
+      boost::gregorian::date dt = boost::gregorian::from_simple_string(s);
+      set<ptime>(ptime(dt, seconds(0)));
+    }
+    else if (is_dtime(s)){
+      s[s.find("T")] = ' ';
+      auto dts = s.substr(0, s.find("+"));
+      set<ptime>(time_from_string(dts));
+    }
     else 
       set<dcode_t>(dct->insert(s));
     return;
@@ -156,6 +194,12 @@ bool p_item::equal(dcode_t c) const {
 bool p_item::equal(uint64_t ll) const {
   if (P_UINT64_VAL(flags_))
     return get<uint64_t>() == ll;
+  throw invalid_typecast();
+}
+
+bool p_item::equal(boost::posix_time::ptime dt) const {
+  if (P_PTIME_VAL(flags_))
+    return get<ptime>() == dt;
   throw invalid_typecast();
 }
 
@@ -360,6 +404,9 @@ properties_t property_list::all_properties(offset_t id, dict_ptr &dct) {
         pmap.insert({s, std::string(s2)});
         break;
       }
+      case p_item::p_ptime:
+        pmap.insert({s, item.get<ptime>()});
+        break;
       case p_item::p_unused:
         break;
       }
@@ -516,6 +563,9 @@ property_list::build_properties_from_pitems(const std::list<p_item> &pitems,
       pmap.insert({s, std::string(s2)});
       break;
     }
+    case p_item::p_ptime:
+      pmap.insert({s, item.get<ptime>()});
+      break;
     case p_item::p_unused:
       break;
     }

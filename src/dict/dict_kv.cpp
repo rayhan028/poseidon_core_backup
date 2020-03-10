@@ -38,8 +38,10 @@ dict::~dict() {
 }
 
 void dict::initialize() {
-  code_str_map_->runtime_initialize(true);
-  str_code_map_->runtime_initialize(true);
+  //code_str_map_->runtime_initialize(true);
+  //str_code_map_->runtime_initialize(true);
+  code_str_map_->runtime_initialize();
+  str_code_map_->runtime_initialize();
 }
 
 dcode_t dict::insert(const std::string &s) {
