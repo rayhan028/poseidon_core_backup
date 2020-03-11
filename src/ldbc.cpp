@@ -2,10 +2,11 @@
 #include "qop.hpp"
 #include "query.hpp"
 
+#define GET_RESULT
+
 namespace pj = builtin;
 
-void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs) {
-  uint64_t personId = 933;
+void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   
   auto q = query(gdb)
                .nodes_where("Person", "id",
@@ -25,15 +26,13 @@ void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs) {
   rs.wait();
 }
 
-void ldbc_is_query_2(graph_db_ptr &gdb, result_set &rs) {
-  uint64_t personId  = 65;
-  auto maxHops = 10; 
+void ldbc_is_query_2(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
+  auto maxHops = 100; 
 
   auto q1 = query(gdb)
                .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(personId); })
                .to_relationships(":hasCreator")
-               .limit(10)
                .from_node("Comment")
                .from_relationships({1, maxHops}, ":replyOf") 
                .to_node("Post")
@@ -50,13 +49,13 @@ void ldbc_is_query_2(graph_db_ptr &gdb, result_set &rs) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
                         return boost::get<boost::posix_time::ptime>(qr1[2]) > boost::get<boost::posix_time::ptime>(qr2[2]); })
+               .limit(10)
                .collect(rs);
 
   auto q2 = query(gdb)
                .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(personId); })
                .to_relationships(":hasCreator")
-               .limit(10)
                .from_node("Post")
                .project({PExpr_(2, pj::uint64_property(res, "id")),
                         PExpr_(2, !pj::string_property(res, "content").empty() ? 
@@ -70,14 +69,14 @@ void ldbc_is_query_2(graph_db_ptr &gdb, result_set &rs) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
                         return boost::get<boost::posix_time::ptime>(qr1[2]) > boost::get<boost::posix_time::ptime>(qr2[2]); })
+               .limit(10)
                .collect(rs);
 
   query::start({&q2, &q1});
   rs.wait();
 }
 
-void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs) {
-  uint64_t personId = 933;
+void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 
   auto q = query(gdb)
                 .nodes_where("Person", "id",
@@ -98,8 +97,7 @@ void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs) {
   rs.wait();
 }
 
-void ldbc_is_query_4(graph_db_ptr &gdb, result_set &rs) {
-  uint64_t postId = 2748782215822;
+void ldbc_is_query_4(graph_db_ptr &gdb, result_set &rs, uint64_t postId) {
 
 	auto q = query(gdb)
                 .nodes_where("Post", "id",
@@ -113,8 +111,7 @@ void ldbc_is_query_4(graph_db_ptr &gdb, result_set &rs) {
 	rs.wait();
 }
 
-void ldbc_is_query_5(graph_db_ptr &gdb, result_set &rs) {
-  uint64_t commentId = 6047316049947;
+void ldbc_is_query_5(graph_db_ptr &gdb, result_set &rs, uint64_t commentId) {
 
 	auto q = query(gdb)
                 .nodes_where("Comment", "id",
@@ -129,10 +126,8 @@ void ldbc_is_query_5(graph_db_ptr &gdb, result_set &rs) {
 	rs.wait();
 }
 
-void ldbc_is_query_6(graph_db_ptr &gdb, result_set &rs) {
-  uint64_t postId = 1649267442210;
-  uint64_t commentId = 1649267442213;
-  auto maxHops = 10;
+void ldbc_is_query_6(graph_db_ptr &gdb, result_set &rs, uint64_t postId, uint64_t commentId) {
+  auto maxHops = 100;
     
   auto q1 = query(gdb)
                 .nodes_where("Post", "id",
@@ -168,8 +163,7 @@ void ldbc_is_query_6(graph_db_ptr &gdb, result_set &rs) {
 	rs.wait(); 
 }
 
-void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs) {
-  uint64_t commentId = 1649267442212;
+void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t commentId) {
      
   auto q1 = query(gdb)
                 .nodes_where("Comment", "id",
@@ -191,8 +185,8 @@ void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs) {
                           PExpr_(4, pj::uint64_property(res, "id")),
                           PExpr_(4, pj::string_property(res, "firstName")),
                           PExpr_(4, pj::string_property(res, "lastName")),
-                          PExpr_(8, res.type() == typeid(rship_description) ?
-                                      std::string("true") : std::string("false")) })
+                          PExpr_(8, pj::string_rep(res) == "[0]{}" ?
+                                      std::string("false") : std::string("true")) })
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
@@ -252,8 +246,11 @@ void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs) {
                       .create_rship({0, 5}, ":studyAt", {{"classYear", boost::any(classYear)}})
                       .crossjoin(q4)
                       .create_rship({0, 7}, ":workAt", {{"workFrom", boost::any(workFrom)}})
+#ifdef GET_RESULT
                       .collect(rs);
-
+#else
+;
+#endif
   query::start({&q1, &q2, &q3, &q4, &q5});
 }
 
@@ -457,7 +454,7 @@ void ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs) {
 
 void run_ldbc_queries(graph_db_ptr &gdb) {
   // the query set
-  std::function<void(graph_db_ptr &, result_set &)> query_set[] = {
+  /*std::function<void(graph_db_ptr &, result_set &)> query_set[] = {
       ldbc_is_query_1, ldbc_is_query_2, ldbc_is_query_3, 
       ldbc_is_query_4, ldbc_is_query_5, ldbc_is_query_6, ldbc_is_query_7,
       ldbc_iu_query_1, ldbc_iu_query_2, ldbc_iu_query_3, ldbc_iu_query_4,
@@ -480,5 +477,5 @@ void run_ldbc_queries(graph_db_ptr &gdb) {
                                                                        start_qp)
                      .count()
               << " ms" << std::endl;
-  }
+  }*/
 }

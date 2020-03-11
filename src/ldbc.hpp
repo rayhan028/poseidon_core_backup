@@ -7,13 +7,13 @@
 void run_ldbc_queries(graph_db_ptr &gdb);
 
 /* interactive short queries */
-void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs);
-void ldbc_is_query_2(graph_db_ptr &gdb, result_set &rs);
-void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs);
-void ldbc_is_query_4(graph_db_ptr &gdb, result_set &rs);
-void ldbc_is_query_5(graph_db_ptr &gdb, result_set &rs);
-void ldbc_is_query_6(graph_db_ptr &gdb, result_set &rs);
-void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs);
+void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId);
+void ldbc_is_query_2(graph_db_ptr &gdb, result_set &rs, uint64_t personId);
+void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs, uint64_t personId);
+void ldbc_is_query_4(graph_db_ptr &gdb, result_set &rs, uint64_t postId);
+void ldbc_is_query_5(graph_db_ptr &gdb, result_set &rs, uint64_t commentId);
+void ldbc_is_query_6(graph_db_ptr &gdb, result_set &rs, uint64_t postId, uint64_t commentId);
+void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t commentId);
 
 
 /* interactive update queries */

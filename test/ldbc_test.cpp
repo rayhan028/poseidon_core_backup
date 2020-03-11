@@ -12,7 +12,7 @@
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
 
-#define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
+#define PMEMOBJ_POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) 
 
 const std::string test_path = poseidon::gPmemPath + "ldbc_test";
 
@@ -2063,8 +2063,8 @@ void run_all_ldbc_queries(graph_db_ptr &gdb, graph_db_ptr &gdb2) {
  * ----------------------------------------------------
  * */
 
-/*const std::string snb_sta("/home/data/SNB_SF_10/static/");
-const std::string snb_dyn("/home/data/SNB_SF_10/dynamic/");
+/*const std::string snb_sta("/home/data/SNB_SF_1/static/");
+const std::string snb_dyn("/home/data/SNB_SF_1/dynamic/");
 
 void load_snb_data(graph_db_ptr &graph, 
                     std::vector<std::string> &node_files,
@@ -2133,6 +2133,438 @@ graph_db_ptr create_graph(
   return graph;
 }
 
+TEST_CASE("ldbc_is_query_1", "[ldbc]") {
+#ifdef USE_PMDK
+  if (access(test_path.c_str(), F_OK) == 0)
+    remove(test_path.c_str());
+  auto pop = prepare_pool();
+  auto graph = create_graph(pop);
+#else
+  auto graph = create_graph();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
+                                          snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "person_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_1_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_2_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_3_0.csv"};
+
+  std::vector<uint64_t> personIds = {933, 24189255812290, 6597069773744, 2199023266220, 13194139544176,
+                                      17592186050570, 24189255815734, 28587302330379, 32985348842922, 3601,
+                                      4398046511870, 32985348834284, 17592186045096, 17592186053245, 4398046520495,
+                                      4233, 344, 10995116286457, 10976, 24189255813927};
+  
+  load_snb_data(graph, node_files, rship_files);
+  std::cout << "\n\n";
+  auto i = 0;
+  result_set rs[20];
+  
+  for (auto id : personIds){
+    auto start_qp = std::chrono::steady_clock::now();
+    ldbc_is_query_1(graph, rs[i++], id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_1 with PersonId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+  for (auto r : rs)
+    REQUIRE(!r.data.empty()); //std::cout << r << "\n";
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}
+
+TEST_CASE("ldbc_is_query_2", "[ldbc]") {
+#ifdef USE_PMDK
+  if (access(test_path.c_str(), F_OK) == 0)
+    remove(test_path.c_str());
+  auto pop = prepare_pool();
+  auto graph = create_graph(pop);
+#else
+  auto graph = create_graph();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "post_hasCreator_person_0_0.csv",
+                                          snb_dyn + "post_hasCreator_person_1_0.csv",
+                                          snb_dyn + "post_hasCreator_person_2_0.csv",
+                                          snb_dyn + "post_hasCreator_person_3_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_1_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_2_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_3_0.csv",
+                                          snb_dyn + "comment_replyOf_post_0_0.csv",
+                                          snb_dyn + "comment_replyOf_post_1_0.csv",
+                                          snb_dyn + "comment_replyOf_post_2_0.csv",
+                                          snb_dyn + "comment_replyOf_post_3_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_0_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_1_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_2_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_3_0.csv"};
+
+  std::vector<uint64_t> personIds = {65, 28587302330379, 3601, 24189255817217, 4398046511870,
+                                      8698, 6597069773744, 13194139544176, 17592186050570, 6597069766993,
+                                      24189255815734, 26388279077330, 15393162799262, 32985348843825, 32985348843760,
+                                      32985348842653, 13194139540894, 13194139540856, 8796093028361, 6597069766998};
+  
+  load_snb_data(graph, node_files, rship_files);
+  std::cout << "\n\n";
+  auto i = 0;
+  result_set rs[20];
+  
+  for (auto id : personIds){
+    auto start_qp = std::chrono::steady_clock::now();
+    ldbc_is_query_2(graph, rs[i++], id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_2 with PersonId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+  for (auto r : rs)
+    REQUIRE(!r.data.empty()); //std::cout << r << "\n";
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}
+
+TEST_CASE("ldbc_is_query_3", "[ldbc]") {
+#ifdef USE_PMDK
+  if (access(test_path.c_str(), F_OK) == 0)
+    remove(test_path.c_str());
+  auto pop = prepare_pool();
+  auto graph = create_graph(pop);
+#else
+  auto graph = create_graph();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "person_knows_person_0_0.csv",
+                                          snb_dyn + "person_knows_person_1_0.csv",
+                                          snb_dyn + "person_knows_person_2_0.csv",
+                                          snb_dyn + "person_knows_person_3_0.csv"};
+
+  std::vector<uint64_t> personIds = {19791209304051, 28587302326940, 2199023262021, 8796093027111, 2199023262994,
+                                      6597069773744, 13194139544176, 17592186050570, 30786325588658, 24189255815734,
+                                      6597069774931, 13194139544258, 15393162791382, 21990232558836, 28587302322686,
+                                      24189255820923, 32985348833548, 30786325581208, 26388279074032, 32985348834375};
+  
+  load_snb_data(graph, node_files, rship_files);
+  std::cout << "\n\n";
+  auto i = 0;
+  result_set rs[20];
+  
+  for (auto id : personIds){
+    auto start_qp = std::chrono::steady_clock::now();
+    ldbc_is_query_3(graph, rs[i++], id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_3 with PersonId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+  for (auto r : rs)
+    REQUIRE(!r.data.empty()); //std::cout << r << "\n";
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}
+
+TEST_CASE("ldbc_is_query_4", "[ldbc]") {
+#ifdef USE_PMDK
+  if (access(test_path.c_str(), F_OK) == 0)
+    remove(test_path.c_str());
+  auto pop = prepare_pool();
+  auto graph = create_graph(pop);
+#else
+  auto graph = create_graph();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+
+  std::vector<std::string> node_files = {snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv"};
+
+  std::vector<std::string> rship_files = {};
+
+  std::vector<uint64_t> PostIds = {1374389534801, 687194926510, 1236950581577, 824633724379, 687194903818,
+                                      549755930326, 1649267546616, 1649267453265, 1924145376549, 1099511719169};
+  
+  load_snb_data(graph, node_files, rship_files);
+  std::cout << "\n\n";
+  auto i = 0;
+  result_set rs[10];
+  
+  for (auto id : PostIds){
+    auto start_qp = std::chrono::steady_clock::now();
+    ldbc_is_query_4(graph, rs[i++], id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_4 with PostId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+  for (auto r : rs)
+    REQUIRE(!r.data.empty()); //std::cout << r << "\n";
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}
+
+TEST_CASE("ldbc_is_query_5", "[ldbc]") {
+#ifdef USE_PMDK
+  if (access(test_path.c_str(), F_OK) == 0)
+    remove(test_path.c_str());
+  auto pop = prepare_pool();
+  auto graph = create_graph(pop);
+#else
+  auto graph = create_graph();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_1_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_2_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_3_0.csv"};
+
+  std::vector<uint64_t> commentIds = {2061584429975, 1099511764068, 1511828638961, 1099511794459, 1924145529653,
+                                      137439153914, 1374389758562, 687194998602, 1099511869402, 1649267722310};
+  
+  load_snb_data(graph, node_files, rship_files);
+  std::cout << "\n\n";
+  auto i = 0;
+  result_set rs[10];
+  
+  for (auto id : commentIds){
+    auto start_qp = std::chrono::steady_clock::now();
+    ldbc_is_query_5(graph, rs[i++], id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_5 with commentId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+  for (auto r : rs)
+    REQUIRE(!r.data.empty()); //std::cout << r << "\n";
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}
+
+TEST_CASE("ldbc_is_query_6", "[ldbc]") {
+#ifdef USE_PMDK
+  if (access(test_path.c_str(), F_OK) == 0)
+    remove(test_path.c_str());
+  auto pop = prepare_pool();
+  auto graph = create_graph(pop);
+#else
+  auto graph = create_graph();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv",
+                                          snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
+                                          snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "comment_replyOf_post_0_0.csv",
+                                          snb_dyn + "comment_replyOf_post_1_0.csv",
+                                          snb_dyn + "comment_replyOf_post_2_0.csv",
+                                          snb_dyn + "comment_replyOf_post_3_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_0_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_1_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_2_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_3_0.csv",
+                                          snb_dyn + "forum_containerOf_post_0_0.csv",
+                                          snb_dyn + "forum_containerOf_post_1_0.csv",
+                                          snb_dyn + "forum_containerOf_post_2_0.csv",
+                                          snb_dyn + "forum_containerOf_post_3_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_0_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_1_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_2_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_3_0.csv"};
+
+  std::vector<uint64_t> PostIds = {1374389534795, 3, 246, 1786710746552, 1786710746860,
+                                      962077492609, 4818574, 137443772206, 4818783, 1649273779906,
+                                      1099512706784, 1924145709571, 274879100510, 2061585683162, 2061585683383,
+                                      824638318943, 962073868902, 962076990540, 1236955780271, 1924151699930};
+  std::vector<uint64_t> commentIds = {549756150652, 2061587049723, 1786710610862, 1924150141935, 1649271672251,
+                                      1099518023455, 1511835112930, 962079298952, 549762439424, 1786707596571,
+                                      824635086444, 2199024637100, 549762296256, 412319368884, 1924148311956,
+                                      687196868319, 1786710956334, 2882812, 274878321446, 687194840176};
+  
+  load_snb_data(graph, node_files, rship_files);
+  std::cout << "\n\n";
+  auto i = 0;
+  result_set rs[20];
+  
+  for (auto id : PostIds){
+    auto start_qp = std::chrono::steady_clock::now();
+    ldbc_is_query_6(graph, rs[i], id, commentIds[i]);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_6 with PostId " << id << " and commentId " << commentIds[i] << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+  for (auto r : rs)
+    REQUIRE(!r.data.empty()); //std::cout << r << "\n";
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}
+
+TEST_CASE("ldbc_is_query_7", "[ldbc]") {
+#ifdef USE_PMDK
+  if (access(test_path.c_str(), F_OK) == 0)
+    remove(test_path.c_str());
+  auto pop = prepare_pool();
+  auto graph = create_graph(pop);
+#else
+  auto graph = create_graph();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_1_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_2_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_3_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_0_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_1_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_2_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_3_0.csv",
+                                          snb_dyn + "person_knows_person_0_0.csv",
+                                          snb_dyn + "person_knows_person_1_0.csv",
+                                          snb_dyn + "person_knows_person_2_0.csv",
+                                          snb_dyn + "person_knows_person_3_0.csv"};
+
+  std::vector<uint64_t> commentIds = {549755814584, 962074006383, 1374390866272, 1511833539098, 687196097161,
+                                      1786710956803, 1924148155034, 824636527214, 2061587107320, 274880712071,
+                                      962075482675, 1786708701848, 2061588922925, 4784850, 4784913,
+                                      412321645469, 1374394320184, 1374390902281, 1511834991008, 824634964783};
+  
+  load_snb_data(graph, node_files, rship_files);
+  std::cout << "\n\n";
+  auto i = 0;
+  result_set rs[20];
+  
+  for (auto id : commentIds){
+    auto start_qp = std::chrono::steady_clock::now();
+    ldbc_is_query_7(graph, rs[i], id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_7 with commentId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+  for (auto r : rs)
+    std::cout << r << "\n"; //REQUIRE(!r.data.empty()); //std::cout << r << "\n";
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}
+
 TEST_CASE("LDBC Interactive Short Query 1", "[ldbc]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -2164,7 +2596,7 @@ TEST_CASE("LDBC Interactive Short Query 1", "[ldbc]") {
         query_result("Firefox"), query_result("1353"), query_result("male"),
         query_result("2010-02-14T15:32:10.447000")});
 
-  ldbc_is_query_1(graph, rs);
+  ldbc_is_query_1(graph, rs, 933);
 
   REQUIRE(rs == expected);
 
@@ -3034,3 +3466,78 @@ TEST_CASE("LDBC Interactive Insert Query 8", "[ldbc]") {
   remove(test_path.c_str());
 #endif
 }*/
+
+/*
+class root {
+public:
+	graph_db_ptr graph_ptr;
+};
+
+TEST_CASE("LDBC Graph Data", "[ldbc]") {
+#ifdef USE_PMDK
+nvm::pool<root> pop;
+p_ptr<root> root_ptr;
+
+bool new_pool = false;
+if (access(test_path.c_str(), F_OK) != 0) {
+  pop = nvm::pool<root>::create (test_path, "", PMEMOBJ_POOL_SIZE); 
+  std::cout << "pool created \n";
+  new_pool = true;
+} else {
+  pop = nvm::pool<root>::open (test_path, "");
+  std::cout << "pool opened \n";
+}
+
+root_ptr = pop.root ();
+PMEMoid *root_ptr_oid = root_ptr.raw_ptr();
+root *r = (root *) pmemobj_direct(*root_ptr_oid);
+if(new_pool)
+  root_ptr->graph_ptr = create_graph(pop);
+//auto graph = r->graph_ptr;
+#else
+  auto graph = create_graph();
+#endif
+
+#ifdef USE_TX
+  //auto tx = graph->begin_transaction();
+  auto tx = root_ptr->graph_ptr->begin_transaction();
+#endif
+
+  std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                          snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
+                                          snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "person_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_1_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_2_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_3_0.csv"};
+
+  //load_snb_data(graph, node_files, rship_files);
+
+  result_set rs, expected;
+  expected.data.push_back(
+      {query_result("Mahinda"), query_result("Perera"),
+        query_result("1989-12-03"), query_result("119.235.7.103"),
+        query_result("Firefox"), query_result("1353"), query_result("male"),
+        query_result("2010-02-14T15:32:10.447000")});
+#ifdef USE_PMDK
+  ldbc_is_query_1(root_ptr->graph_ptr, rs);
+#else
+ldbc_is_query_1(graph, rs);
+#endif
+
+  REQUIRE(rs == expected);
+
+#ifdef USE_TX
+  //graph->commit_transaction();
+  root_ptr->graph_ptr->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  //nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  //remove(test_path.c_str());
+#endif
+}
+*/

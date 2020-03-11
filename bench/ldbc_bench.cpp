@@ -149,7 +149,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_1)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_1(graph, rs);
+    ldbc_is_query_1(graph, rs, 28587302330379);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -200,7 +200,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_2)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_2(graph, rs);
+    ldbc_is_query_2(graph, rs, 65);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -234,7 +234,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_3)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_3(graph, rs);
+    ldbc_is_query_3(graph, rs, 933);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -265,7 +265,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_4)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_4(graph, rs);
+    ldbc_is_query_4(graph, rs, 1374389534791);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -301,7 +301,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_5)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_5(graph, rs);
+    ldbc_is_query_5(graph, rs, 1099511854641);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -353,7 +353,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_6)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_6(graph, rs);
+    ldbc_is_query_6(graph, rs, 1649267442210, 1649267442213);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -393,7 +393,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_7)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_7(graph, rs);
+    ldbc_is_query_7(graph, rs, 1649267442212);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif

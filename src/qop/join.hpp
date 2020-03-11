@@ -46,7 +46,7 @@ private:
    * of two queries if there exists a relationship defined by an object 
    * (at a given position) in the left tuple as the source node and an 
    * object (at a given position) in the right tuple as the destination 
-   * node. Dangling tuples are output as the string "NULL" 
+   * node. Dangling tuples are padded with "[0]{}" 
    */
 struct left_outerjoin : public qop {
   left_outerjoin(std::pair<int, int> src_des) : src_des_nodes_(src_des) {} 
