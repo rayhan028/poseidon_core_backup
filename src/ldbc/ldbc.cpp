@@ -6,8 +6,7 @@
 
 namespace pj = builtin;
 
-//void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
-void ldbc_is_query_1(graph_db_ptr &gdb, uint64_t personId) {
+void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   
   auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -29,14 +28,12 @@ void ldbc_is_query_1(graph_db_ptr &gdb, uint64_t personId) {
                          PExpr_(2, pj::uint64_property(res, "id")),
                          PExpr_(0, pj::string_property(res, "gender")),
                          PExpr_(0, pj::ptime_property(res, "creationDate")) })
-                .print();
-                //.collect(rs);
+               .collect(rs);
   q.start();
-  //rs.wait();
+  rs.wait();
 }
 
-//void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
-void ldbc_is_query_2_p(graph_db_ptr &gdb, uint64_t personId) {
+void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   auto maxHops = 100; 
 
   auto q = query(gdb)
@@ -64,12 +61,10 @@ void ldbc_is_query_2_p(graph_db_ptr &gdb, uint64_t personId) {
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
                         return boost::get<boost::posix_time::ptime>(qr1[2]) > boost::get<boost::posix_time::ptime>(qr2[2]); })
                .limit(10)
-               .print();
-               //.collect(rs);
+               .collect(rs);
 
-  //query::start({&q1, &q2});
   q.start();
-  //rs.wait();
+  rs.wait();
 }
 
 //void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
