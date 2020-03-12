@@ -1150,7 +1150,7 @@ void run_ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs);
  * */
 
 
-TEST_CASE("Testing LDBC interactive short queries", "[ldbc]") {
+/*TEST_CASE("Testing LDBC interactive short queries", "[ldbc]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
   auto graph = create_graph1(pop);
@@ -1537,7 +1537,7 @@ TEST_CASE("Testing LDBC interactive update queries", "[ldbc]") {
   pop.close();
   remove(test_path.c_str());
 #endif
-}
+}*/
 
 /*TEST_CASE("Testing ALL LDBC interactive queries", "[ldbc]") {
 #ifdef USE_PMDK
@@ -2063,7 +2063,7 @@ void run_all_ldbc_queries(graph_db_ptr &gdb, graph_db_ptr &gdb2) {
  * ----------------------------------------------------
  * */
 
-/*const std::string snb_sta("/home/data/SNB_SF_1/static/");
+const std::string snb_sta("/home/data/SNB_SF_1/static/");
 const std::string snb_dyn("/home/data/SNB_SF_1/dynamic/");
 
 void load_snb_data(graph_db_ptr &graph, 
@@ -2133,7 +2133,875 @@ graph_db_ptr create_graph(
   return graph;
 }
 
-TEST_CASE("ldbc_is_query_1", "[ldbc]") {
+/*TEST_CASE("ldbc_is_queries", "[ldbc]") {
+#ifdef USE_PMDK
+  if (access(test_path.c_str(), F_OK) == 0)
+    remove(test_path.c_str());
+  auto pop = prepare_pool();
+  auto graph = create_graph(pop);
+#else
+  auto graph = create_graph();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+
+  std::vector<std::string> node_files = {snb_sta + "place_0_0.csv", snb_sta + "organisation_0_0.csv",
+                                         snb_sta + "tagclass_0_0.csv", snb_sta + "tag_0_0.csv",
+                                         snb_dyn + "comment_0_0.csv", snb_dyn + "forum_0_0.csv",
+                                         snb_dyn + "person_0_0.csv", snb_dyn + "post_0_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_0_0.csv",
+                                          snb_dyn + "comment_replyOf_post_0_0.csv",
+                                          snb_dyn + "forum_containerOf_post_0_0.csv",
+                                          snb_dyn + "forum_hasMember_person_0_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_0_0.csv",
+                                          snb_dyn + "forum_hasTag_tag_0_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_0_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "person_knows_person_0_0.csv",
+                                          snb_dyn + "person_likes_comment_0_0.csv",
+                                          snb_dyn + "person_likes_post_0_0.csv",
+                                          snb_dyn + "post_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_hasTag_tag_0_0.csv",
+                                          snb_dyn + "post_hasTag_tag_0_0.csv",
+                                          snb_dyn + "post_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "person_studyAt_organisation_0_0.csv",
+                                          snb_dyn + "person_workAt_organisation_0_0.csv"};
+
+  std::vector<uint64_t> personIds_is_1 = {933, 24189255812290, 6597069773744, 2199023266220, 13194139544176,
+                                      17592186050570, 24189255815734, 28587302330379, 32985348842922, 3601,
+                                      4398046511870, 32985348834284, 17592186045096, 17592186053245, 4398046520495,
+                                      4233, 344, 10995116286457, 10976, 24189255813927};
+
+  std::vector<uint64_t> personIds_is_2 = {65, 28587302330379, 3601, 24189255817217, 4398046511870,
+                                      8698, 6597069773744, 13194139544176, 17592186050570, 6597069766993,
+                                      24189255815734, 26388279077330, 15393162799262, 32985348843825, 32985348843760,
+                                      32985348842653, 13194139540894, 13194139540856, 8796093028361, 6597069766998};  
+
+  std::vector<uint64_t> personIds_is_3 = {19791209304051, 28587302326940, 2199023262021, 8796093027111, 2199023262994,
+                                    6597069773744, 13194139544176, 17592186050570, 30786325588658, 24189255815734,
+                                    6597069774931, 13194139544258, 15393162791382, 21990232558836, 28587302322686,
+                                    24189255820923, 32985348833548, 30786325581208, 26388279074032, 32985348834375};
+  
+  std::vector<uint64_t> PostIds_is_4 = {1374389534801, 687194926510, 1236950581577, 824633724379, 687194903818,
+                                      549755930326, 1649267546616, 1649267453265, 1924145376549, 1099511719169};
+
+  std::vector<uint64_t> CommentIds_is_4 = {1236950581249, 1374389535139, 687194767797, 962072674365, 274877974096,
+                                      1374389620660, 1374389535186, 2061584302604, 1099511678319, 1099511755889};
+  
+  std::vector<uint64_t> PostIds_is_5 = {1649267611029, 1649267641500, 1649267717129, 549756117312, 962073027971,
+                                      1924145709571, 1786706759766, 137439322338, 962073047211, 1786706792809};
+
+  std::vector<uint64_t> commentIds_is_5 = {2061584429975, 1099511764068, 1511828638961, 1099511794459, 1924145529653,
+                                      137439153914, 1374389758562, 687194998602, 1099511869402, 1649267722310};
+  
+  std::vector<uint64_t> PostIds_is_6 = {1374389534795, 3, 246, 1786710746552, 1786710746860,
+                                      962077492609, 4818574, 137443772206, 4818783, 1649273779906,
+                                      1099512706784, 1924145709571, 274879100510, 2061585683162, 2061585683383,
+                                      824638318943, 962073868902, 962076990540, 1236955780271, 1924151699930};
+  std::vector<uint64_t> commentIds_is_6 = {549756150652, 2061587049723, 1786710610862, 1924150141935, 1649271672251,
+                                      1099518023455, 1511835112930, 962079298952, 549762439424, 1786707596571,
+                                      824635086444, 2199024637100, 549762296256, 412319368884, 1924148311956,
+                                      687196868319, 1786710956334, 2882812, 274878321446, 687194840176};
+  
+  std::vector<uint64_t> commentIds_is_7 = {549755814584, 962074006383, 1374390866272, 1511833539098, 687196097161,
+                                      1786710956803, 1924148155034, 824636527214, 2061587107320, 274880712071,
+                                      962075482675, 1786708701848, 2061588922925, 4784850, 4784913,
+                                      412321645469, 1374394320184, 1374390902281, 1511834991008, 824634964783};
+  
+  load_snb_data(graph, node_files, rship_files);
+  std::cout << "\n\n";
+
+  auto i = 0;
+  //result_set rs_is_1[20];
+  for (auto id : personIds_is_1){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_1(graph, rs_is_1[i++], id);
+    ldbc_is_query_1(graph, id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_1 with PersonId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  //result_set rs_is_2[20];
+  for (auto id : personIds_is_2){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_2_p(graph, rs_is_2[i++], id);
+    ldbc_is_query_2_p(graph, id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_2_p with PersonId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  //result_set rs_is_2[20];
+  for (auto id : personIds_is_2){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_2_c(graph, rs_is_2[i++], id);
+    ldbc_is_query_2_c(graph, id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_2_c with PersonId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  //result_set rs_is_3[20];
+  for (auto id : personIds_is_3){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_3(graph, rs_is_3[i++], id);
+    ldbc_is_query_3(graph, id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_3 with PersonId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  //result_set rs_is_4[10];
+  for (auto id : PostIds_is_4){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_4(graph, rs_is_4[i++], id);
+    ldbc_is_query_4_p(graph, id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_4_p with PostId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  //result_set rs_is_4[10];
+  for (auto id : CommentIds_is_4){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_4(graph, rs_is_4[i++], id);
+    ldbc_is_query_4_c(graph, id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_4_c with CommentId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  //result_set rs_is_5[10];
+  for (auto id : PostIds_is_5){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_5(graph, rs_is_5[i++], id);
+    ldbc_is_query_5_p(graph, id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_5_p with PostId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  //result_set rs_is_5[10];
+  for (auto id : commentIds_is_5){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_5(graph, rs_is_5[i++], id);
+    ldbc_is_query_5_c(graph, id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_5_c with commentId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  //result_set rs_is_6[20];  
+  for (auto id : PostIds_is_6){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_6(graph, rs_is_6[i], id);
+    ldbc_is_query_6_p(graph, id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_6_p with PostId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  //result_set rs_is_6[20];  
+  for (auto id : commentIds_is_6){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_6(graph, rs_is_6[i], id);
+    ldbc_is_query_6_c(graph, id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_6_c with commentId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  //result_set rs_is_7[20];
+  for (auto id : commentIds_is_7){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_7(graph, rs_is_7[i], id);
+    ldbc_is_query_7(graph, id);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_is_query_7 with commentId " << id << " executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}*/
+
+
+TEST_CASE("ldbc_iu_queries", "[ldbc]") {
+#ifdef USE_PMDK
+  if (access(test_path.c_str(), F_OK) == 0)
+    remove(test_path.c_str());
+  auto pop = prepare_pool();
+  auto graph = create_graph(pop);
+#else
+  auto graph = create_graph();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+
+  std::vector<std::string> node_files = {snb_sta + "place_0_0.csv", snb_sta + "organisation_0_0.csv",
+                                         snb_sta + "tagclass_0_0.csv", snb_sta + "tag_0_0.csv",
+                                         snb_dyn + "comment_0_0.csv", snb_dyn + "forum_0_0.csv",
+                                         snb_dyn + "person_0_0.csv", snb_dyn + "post_0_0.csv"};
+
+  std::vector<std::string> rship_files = {snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_0_0.csv",
+                                          snb_dyn + "comment_replyOf_post_0_0.csv",
+                                          snb_dyn + "forum_containerOf_post_0_0.csv",
+                                          snb_dyn + "forum_hasMember_person_0_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_0_0.csv",
+                                          snb_dyn + "forum_hasTag_tag_0_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_0_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "person_knows_person_0_0.csv",
+                                          snb_dyn + "person_likes_comment_0_0.csv",
+                                          snb_dyn + "person_likes_post_0_0.csv",
+                                          snb_dyn + "post_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_hasTag_tag_0_0.csv",
+                                          snb_dyn + "post_hasTag_tag_0_0.csv",
+                                          snb_dyn + "post_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "person_studyAt_organisation_0_0.csv",
+                                          snb_dyn + "person_workAt_organisation_0_0.csv"};
+
+  std::vector<std::vector<uint64_t>> uint64_props_iu_1 = {
+    {9999999990999, 505, 61, 7954, 5},
+    {9999999999999, 990, 16065, 3179, 5045},
+    {9999999900999, 1288, 15835, 3049, 5753},
+    {999439900999, 1288, 186, 3111, 6666},
+    {9999999449999, 1350, 2515, 941, 2328},
+    {888888999999, 1262, 40, 4, 7939},
+    {9989299900999, 337, 9764, 3714, 10},
+    {912345989999, 412, 14086, 6154, 7216},
+    {7659966990999, 480, 15834, 4198, 6933},
+    {97999999999998, 526, 3724, 1327, 2314},
+    {8765345665433, 569, 9406, 4813, 6102},
+    {90843284933333, 610, 61, 1437, 7954},
+    {9999999990999, 760, 5479, 7731, 307},
+    {6383865350979, 817, 3751, 1380, 676},
+    {1356785432345, 857, 1409, 4030, 1211},
+    {56543245674567, 916, 6042, 3023, 4719},
+    {9876543234567, 967, 389, 6265, 4344},
+    {8473462543452, 1039, 3540, 6947, 836},
+    {9997654456999, 1132, 3456, 4034, 5364},
+    {99999989999999, 1146, 1251, 379, 0}
+  };
+
+  std::vector<std::vector<std::string>> str_props_iu_1 = {
+    {"firstname1", "lastname1", "male", "1982-4-27", "2010-02-14T01:51:21.746+0000", "1.183.127.173", "chrome", "tamil", "ar@xyz.com"},
+    {"firstname2", "lastname2", "male", "1997-4-27", "2010-11-14T01:51:21.746+0000", "13.183.167.173", "safari", "deutsch", "asASA@SSSS.com"},
+    {"firstname3", "lastname3", "female", "1975-12-10", "2014-01-15T01:51:21.746+0000", "33.13.128.183", "explorer", "english", "sss@wwww.com"},
+    {"firstname4", "lastname4", "female", "1974-12-10", "2014-01-15T01:51:21.746+0000", "33.13.128.183", "explorer", "english", "sss@wwww.com"},
+    {"firstname5", "lastname5", "female", "1982-4-19", "2003-02-14T01:51:21.746+0000", "1.183.127.173", "chrome", "kannada", "ar@xyz.com"},
+    {"firstname6", "lastname6", "female", "1997-3-27", "2005-11-14T01:51:21.746+0000", "13.183.167.173", "safari", "deutsch", "asASA@SSSS.com"},
+    {"firstname7", "lastname7", "female", "1975-12-10", "2008-01-15T01:51:21.746+0000", "33.13.128.183", "explorer", "english", "sss@wwww.com"},
+    {"firstname8", "lastname8", "female", "1996-4-17", "2009-05-14T01:51:21.746+0000", "10.183.117.123", "firefox", "urdu", "uuuu@ztrzrzz.com"},
+    {"firstname9", "lastname9", "male", "2000-11-01", "2011-02-14T01:51:21.746+0000", "1.183.127.173", "chrome", "tamil", "ar@xyz.com"},
+    {"firstname10", "lastname10", "male", "2003-4-27", "2007-11-14T01:51:21.746+0000", "13.183.167.173", "safari", "deutsch", "asASA@SSSS.com"},
+    {"firstname11", "lastname11", "female", "2002-12-14", "2005-01-15T01:51:21.746+0000", "33.13.128.183", "explorer", "english", "sss@wwww.com"},
+    {"firstname12", "lastname12", "male", "2012-01-15", "2008-05-14T01:51:21.746+0000", "10.183.117.123", "firefox", "arabic", "uuuu@ztrzrzz.com"},
+    {"firstname13", "lastname13", "female", "2005-10-29", "2010-02-14T01:51:21.746+0000", "1.183.127.173", "chrome", "french", "ar@xyz.com"},
+    {"firstname14", "lastname14", "male", "1993-02-30", "2010-11-14T01:51:21.746+0000", "13.183.167.173", "safari", "deutsch", "asASA@SSSS.com"},
+    {"firstname15", "lastname15", "female", "1997-12-31", "2014-01-15T01:51:21.746+0000", "33.13.128.183", "explorer", "english", "sss@wwww.com"},
+    {"firstname16", "lastname16", "female", "1989-05-16", "2010-05-14T01:51:21.746+0000", "10.183.117.123", "firefox", "persian", "uuuu@ztrzrzz.com"},
+    {"firstname17", "lastname17", "male", "1988-05-11", "2010-02-14T01:51:21.746+0000", "1.183.127.173", "chrome", "tamil", "ar@xyz.com"},
+    {"firstname18", "lastname18", "female", "1999-07-27", "2010-11-14T01:51:21.746+0000", "13.183.167.173", "safari", "deutsch", "asASA@SSSS.com"},
+    {"firstname19", "lastname19", "female", "1975-10-10", "2014-01-15T01:51:21.746+0000", "33.13.128.183", "explorer", "english", "sss@wwww.com"},
+    {"firstname20", "lastname20", "female", "1982-01-17", "2010-05-12T01:51:21.746+0000", "10.183.117.123", "firefox", "spanish", "uuuu@ztrzrzz.com"}
+  };
+
+  std::vector<std::vector<int>> int_props_iu_1 = {
+    {2001, 2012},
+    {1988, 1999},
+    {2000, 2010},
+    {2000, 2010},
+    {1987, 1999},
+    {2001, 2015},
+    {1979, 1997},
+    {1977, 1996},
+    {2005, 2016},
+    {2009, 2019},
+    {2011, 2020},
+    {2001, 2010},
+    {2001, 2013},
+    {1994, 2010},
+    {1990, 2000},
+    {1989, 2009},
+    {1971, 1996},
+    {1988, 2004},
+    {1987, 2007},
+    {1980, 1997}
+  };
+
+  std::vector<std::vector<uint64_t>> uint64_props_iu_2 = {
+    {962072874067, 933},
+    {1374389534791, 4398046516514},
+    {2061584699910, 30786325582603},
+    {1511828886129, 24189255818939},
+    {687195169734, 30786325585585},
+    {1924145751643, 8735},
+    {824634129681, 24189255820909},
+    {412317270574, 32985348834100},
+    {412317270523, 28587302324474},
+    {274878318222, 30786325579940},
+    {274878318393, 32985348839609},
+    {1786706808159, 933},
+    {549756226945, 4398046521458},
+    {274878320024, 6597069774386},
+    {1236950997907, 28587302326516},
+    {549756231266, 4398046519071},
+    {687195185090, 1050},
+    {549756233724, 4008},
+    {1374389955160, 2199023260990},
+    {1236951003301, 4398046521879}
+  };
+
+  std::vector<std::vector<std::string>> str_props_iu_2 = {
+    {"2012-04-14T01:51:21.746+0000"}, {"2014-02-14T01:51:21.746+0000"}, {"2000-02-14T01:51:21.746+0000"},
+    {"2012-02-14T01:51:21.746+0000"}, {"2016-02-14T01:51:21.746+0000"}, {"1999-02-14T01:51:21.746+0000"},
+    {"1989-02-14T01:51:21.746+0000"}, {"1981-02-14T01:51:21.746+0000"}, {"1983-02-14T01:51:21.746+0000"},
+    {"1993-02-14T01:51:21.746+0000"}, {"1995-02-14T01:51:21.746+0000"}, {"1996-02-14T01:51:21.746+0000"},
+    {"1999-02-14T01:51:21.746+0000"}, {"2010-02-14T01:51:21.746+0000"}, {"2010-02-14T01:51:21.746+0000"},
+    {"2014-02-14T01:51:21.746+0000"}, {"2013-02-14T01:51:21.746+0000"}, {"2011-02-14T01:51:21.746+0000"},
+    {"2013-02-14T01:51:21.746+0000"}, {"2000-02-14T01:51:21.746+0000"}
+  };
+
+  std::vector<std::vector<int>> int_props_iu_2 = {};
+
+  std::vector<std::vector<uint64_t>> uint64_props_iu_3 = {
+    {1236950871584, 8796093026886},
+    {2061584593803, 10995116283227},
+    {1786706688521, 19791209308983},
+    {1649267736072, 13194139540404},
+    {1649267736843, 512},
+    {2061584599603, 35184372093792},
+    {1099511928595, 15393162795008},
+    {412317165378, 3325},
+    {2061584610800, 933},
+    {1649267752192, 19791209310439},
+    {1649267753602, 30786325584319},
+    {824634033764, 6597069777216},
+    {962072988978, 32985348841418},
+    {824634036612, 21990232564124},
+    {1374389852068, 4398046514155},
+    {1786706713284, 13194139535993},
+    {1236950900888, 28587302323441},
+    {1511828809498, 8796093030808},
+    {1924145672762, 32985348843050},
+    {1374389860075, 9616}
+  };
+
+  std::vector<std::vector<std::string>> str_props_iu_3 = {
+    {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"},
+    {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"},
+    {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"},
+    {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"},
+    {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"},
+    {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"},
+    {"2012-04-14T01:51:21.746+0000"}, {"2012-04-14T01:51:21.746+0000"}
+  };
+
+  std::vector<std::vector<int>> int_props_iu_3 = {};
+
+  std::vector<std::vector<uint64_t>> uint64_props_iu_4 = {
+    {8796093026886, 7164, 9999999999},
+    {4001, 6, 9998888999},
+    {24189255816341, 12992, 9990009999},
+    {32985348837988, 15672, 9993339999},
+    {4398046512636, 1895, 99334569999},
+    {8796093032603, 9769, 9677799999},
+    {8796093029724, 12700, 87654567999},
+    {10995116287090, 16079, 99967654999},
+    {2199023256684, 0, 1111111111},
+    {32985348840140, 14348, 2345676543},
+    {28587302330205, 16028, 8746364784},
+    {32985348844015, 6797, 5674337488},
+    {19791209300787, 14624, 7583536876},
+    {19791209309916, 8615, 57447677474},
+    {19791209306932, 4500, 637475895858},
+    {35184372093792, 2964, 748473647636},
+    {1129, 1014, 84736345757},
+    {24189255818615, 12182, 73564747477},
+    {10995116282209, 14693, 477574364574},
+    {2199023265882, 15987, 9991100009}
+  };
+
+  std::vector<std::vector<std::string>> str_props_iu_4 = {
+    {"Album 112 of Peter Jones", "2015-12-21T12:50:35.556+0100"}, {"Album 2222 of abcde", "2015-10-29T12:50:35.556+0660"},
+    {"Album 22 of fefdsfasdas", "2015-011-15T12:50:35.556+0160"}, {"Album 66 of john", "2015-01-24T12:50:66.556+0100"},
+    {"Album 55 of willaims", "2015-06-124T12:50:66.556+0100"}, {"Album 75 of Elizibeth", "2015-06-24T12:50:88.556+0100"},
+    {"Album 75 of Samuel", "2015-06-24T12:45:35.556+0100"}, {"Album 89 of Micheal", "2015-05-24T12:50:35.556+0100"},
+    {"Album 109 of Mary", "2007-06-22T12:10:35.556+0100"}, {"Album 99 of Silva", "2017-12-24T12:50:35.666+0100"},
+    {"Album 12 of Paul john adams", "2001-11-17T12:50:35.576+0100"}, {"Album 33 of Paul", "2016-10-24T12:50:35.556+0600"},
+    {"Album 1 of Albert", "1998-06-20T12:50:35.56+0100"}, {"Album 33 of samuel", "1999-07-19T12:60:65.556+0100"},
+    {"Album 12 of Alejandro Araya", "2000-05-24T12:50:35.566+0100"}, {"Album 78371 of xyz", "2001-06-24T12:50:65.556+0160"},
+    {"Album 1 of Peter Jones", "2011-06-24T12:50:35.556+0100"}, {"Album 56 of Peter Jones", "2012-05-22T12:50:35.556+0100"},
+    {"Album 45 of Peter Jones", "2013-03-21T12:50:65.556+0100"}, {"Album 111 of Peter Jones", "2013-02-20T12:50:35.666+0100"}
+  };
+
+  std::vector<std::vector<int>> int_props_iu_4 = {};
+
+  std::vector<std::vector<uint64_t>> uint64_props_iu_5 = {
+    {4194, 1786706395137},
+    {6597069777454, 1099511698394},
+    {28587302324814, 1236950666805},
+    {28587302326940, 1236950681265},
+    {10995116283196, 1786706430791},
+    {2199023258871, 1649267452668},
+    {6597069766938, 962072719206},
+    {6597069773271, 687194836136},
+    {32985348838262, 1924145436065},
+    {13194139543446, 1236951634156},
+    {32985348843050, 1374389560523},
+    {30786325588321, 1924145358674},
+    {24189255812103, 2061584348659},
+    {28587302323229, 824633807283},
+    {2199023255685, 1099511714359},
+    {8824, 962072697006},
+    {7763, 1786706442735},
+    {8796093024822, 1374389623873},
+    {10995116285557, 1511829542447},
+    {933, 2061585359993}
+  };
+
+  std::vector<std::vector<std::string>> str_props_iu_5 = {
+    {"2011-01-02T06:43:51.955+0000"}, {"2012-03-24T16:37:35.817+0000"}, {"2012-01-17T20:19:22.276+0000"},
+    {"2012-01-14T11:14:07.725+0000"}, {"2011-01-02T06:43:51.955+0000"}, {"2011-10-24T06:18:38.139+0000"},
+    {"2012-04-09T16:44:42.685+0000"}, {"2011-01-02T06:43:51.955+0000"}, {"2011-01-02T06:43:51.955+0000"},
+    {"2012-06-13T03:32:42.855+0000"}, {"2011-01-02T06:43:51.955+0000"}, {"2011-01-02T06:43:51.955+0000"},
+    {"2011-01-02T06:43:51.955+0000"}, {"2011-01-02T06:43:51.955+0000"}, {"2011-01-02T06:43:51.955+0000"},
+    {"2011-01-02T06:43:51.955+0000"}, {"2011-01-02T06:43:51.955+0000"}, {"2012-06-13T03:32:42.855+0000"},
+    {"2011-01-02T06:43:51.955+0000"}, {"2011-07-16T18:37:42.578+0000"}
+  };
+
+  std::vector<std::vector<int>> int_props_iu_5 = {};
+
+  std::vector<std::vector<uint64_t>> uint64_props_iu_6 = {
+    {10027, 2199024313492, 50, 1679, 999634181970},
+    {30786325585301, 2061584333411, 1434, 7513, 9996543581970},
+    {10995116279657, 1511828582893, 220, 11072, 999657774570},
+    {17592186052886, 412316920493, 1015, 14805, 999664566470},
+    {4398046515029, 824633820143, 1315, 6329, 9996561970},
+    {32985348834655, 962072743523, 273, 0, 9966664181970},
+    {2199023256530, 1099512681152, 991, 16079, 994396660},
+    {4398046515173, 412316908754, 1267, 6560, 9994578970},
+    {24189255817322, 274877930860, 585, 1100, 999637777970},
+    {30786325587134, 2061584395107, 1122, 13489, 999633666970},
+    {32985348842038, 47780, 1459, 2214, 999634181970},
+    {26388279076840, 1099511715698, 0, 5836, 999466181970},
+    {8796093024736, 1786706434469, 919, 15329, 976584181970},
+    {21990232556886, 2061584390250, 180, 5081, 999687881970},
+    {26388279068827, 962072688578, 1192, 971, 999634181970},
+    {6597069774626, 16, 232, 10, 9996341888870},
+    {15393162793237, 1099511682067, 767, 7959, 999675474770},
+    {6597069777240, 1786706434469, 1216, 13491, 9123456970},
+    {30786325580042, 549756869111, 1417, 6361, 9996341234986},
+    {13194139535252, 0, 634, 14277, 6576575745}
+  };
+
+  std::vector<std::vector<std::string>> str_props_iu_6 = {
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "english", "About Alexander I of Russia"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "Spanish", "About Adolf Hitler, tler's "
+    "political views. His writings and meAbout John Milton, eved international renown within his lifetiAbout "
+    "Robert Fripp, , a technique often associated with the banAbout Marilyn Monroe"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "german", "bout Aurangzeb, ries in the south "
+    "expanded the MAbout Peter Hain, ed to his resignation in 2008. HAbout Clement Attlee, came Prime Minister "
+    "in 1979. HisAbout Francis Ford Coppola, sese, Terrence Malick, Robert AlAbout Fai|"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "Urdu", "About Jim Carrey, ic, slapstick "
+    "performaAbout Ludacris,  (2004), Release TheraAbout "},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "tamil", "About Evo Morales, ma "
+    "(born October 26, 1959), popularly known as Evo, is a Bolivian politician and activist, serving as "
+    "the 80th President of Bolivia, a position that he has held since 2006. He is also the "},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "hindi", "About abc def ghi jkl mno pqrs "
+    "tuv wxyz ABC DEF GHI JKL MNO PQRS TUV WXYZ !About abc def ghi jkl mno pqrs tuv wxyz ABC DEF GHI JKL MNO "
+    "PQRS TUV WXYZ ,About abc def ghi jkl mno pqrs tuv wxyz ABC DEF GHI JKL MNO PQRS TUV WXYZ About abc def "
+    "ghi jkl mno pqrs tuv wxyz ABC DEF GHI JKL MNO PQRS TUV WXYZ About abc def ghi jkl mno pqrs tuv wxyz ABC "
+    "DEF GHI JKL MNO PQRS TUV WXYZ About abc def ghi jkl mno pqrs tuv wxyz ABC DEF GHI JKL MNO PQRS TUV WXYZ "
+    "About abc def ghi jkl mno pqrs tuv wxyz ABC DEF GHI JKL MNO PQRS TUV WXYZ  "},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "korean", "About Evo Morales, on measures. "
+    "Born into a working class Aymara family in Isallawi, Orinoca Canton, Evo grew up aiding hi"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "german", "About Lachlan Macquarie, s, "
+    "Australia from 1810 to 1821 and had a leading role in the social, economic and architectural "
+    "development of the colony. He is c"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "english", "About Karl Marx,  where he "
+    "became interested in the philosophical ideas of the Young Hegelians. In 1836, he became engaged to "
+    "Jenny von Westphalen, marrying her in 1843. After his studies, he wrote for a radical newspaper in "
+    "Cologne, and began to w"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "arabic", "About Karl Marx, for such goods. "
+    "Heavily critical of the current socio-economic form of society, capitalism, he called it the dictatorship "
+    "of the bourgeoisie, believing it t"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "arabic", "About Brian Mulroney, es Tax, and "
+    "the rejection of constitutional reforms such as the ids tht is the again"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "english", "About Ivan Ljubičić, s. Ljubičić "
+    "used the Head Youtek Extreme Pro Racquet, after using the Babolat Pure DrAbout Dangerous and Moving, "
+    "released on October 5, 2005 in Japan"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "german", "red Croatian tennis player. "
+    "His career-high ATP ranking was no. 3. Tall and powerfully built, he was notedAbout The Rubberband Man,  "
+    "100, and topped the U.S. R&B chart at the end of 1976. It"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "french", "About Arnold Schwarzenegger, "
+    "Governor and Terminator). As a Republican, he was first elected on October 7, 2003, in a special recall "
+    "election to replace then-Governor Gray Davis. Schwarzenegger was sworn in"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "german", "About Sammy Sosa, Sosa has long been "
+    "thAbout William Penn, f William Penn, foundAbout Magical Mystery Tour,  of the record"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "malayalam", "About Alexander Downer, s also the "
+    "Leader of the Opposition for eight months frAbout Bourbon Restoration, eon (1804–1814/1815) – when a "
+    "coalition of European powAbo"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "kannada", "About Napoleon, continuation of "
+    "the wars sparked by the French Revolution of 1789, they revolAbout Jamie Foxx, n December 13, 1967), "
+    "professionally know"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "french", "About Augustine of Hippo,  "
+    "theology, accommodating a variety of methods and different pers"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "telugu", "Francis of Assisi, went to "
+    "Egypt in anAbout John Stuart Mill, onception of libertAbout Robert Fripp, p"},
+    
+    {"", "2011-04-07T14:52:27.809+0000", "46.19.159.176", "Firefox", "japanese", "About Camille Saint-Saëns, "
+    "16 December 1921) was About David Hume, lly on utilitariani"},
+  };
+
+  std::vector<std::vector<int>> int_props_iu_6 = {
+    {123},
+    {424},
+    {443},
+    {434},
+    {98},
+    {777},
+    {234},
+    {789},
+    {907},
+    {445},
+    {23},
+    {434},
+    {244},
+    {45},
+    {55},
+    {987},
+    {12},
+    {24},
+    {443},
+    {989}
+  };
+
+  std::vector<std::vector<uint64_t>> uint64_props_iu_7 = {
+    {19791209305763, 1786707069811, 1459, 1426, 10997654432472},
+    {24189255819940, 412316984810, 805, 9, 12343452472},
+    {24189255818806, 1649267467066, 1235, 8808, 765456776543},
+    {15393162791859, 1374390139472, 20, 7237, 2893289859202},
+    {19791209302403, 412319660593, 796, 13525, 95572870933},
+    {13194139538552, 1236950581248, 315, 7380, 95957502},
+    {8796093026304, 1786708729389, 53, 7534, 95959342},
+    {26388279077346, 962073135697, 959, 2493, 6602232},
+    {4398046517791, 2176481, 1309, 13150, 8765432456},
+    {6597069773790, 2061586938095, 1434, 6452, 4009491401},
+    {345, 2199024637094, 585, 1808, 929848909740},
+    {8796093029498, 3, 180, 10432, 10432},
+    {28587302329250, 412323272449, 1241, 14790, 75891334},
+    {8796093028204, 549758755972, 1111, 4939, 589254324982},
+    {26388279072962, 1511828865755, 605, 1236, 9570000042325},
+    {94, 1924145860444, 30, 8341, 8505838595953},
+    {19791209303234, 1374390532480, 215, 12325, 574394839},
+    {8796093025123, 824635868714, 1130, 7066, 987503453},
+    {6597069773503, 1924149676560, 449, 11251, 86099534},
+    {21990232559210, 1786712995900, 50, 0, 100918497450}
+  };
+
+  std::vector<std::vector<std::string>> str_props_iu_7 = {
+    {"2012-01-09T11:49:15.991+0000", "91.145.169.27", "safari", "About Chen Shui-bian, e Legislative "
+    "YuanAbout Éamon de Valera, Pat Coogan sees hiAbout"},
+    
+    {"2012-07-20T04:51:23.927+0000", "204.79.193.83", "explorer", "About Love to Love You Baby, irst "
+    "to be released internationally and in the United Sta"},
+    
+    {"2011-10-07T04:46:03.896+0000", "91.14.169.237", "safari", "About Ashoka, oka, his legend is "
+    "relateAbout Theodore Roosevelt, he Russo-Japanese War, foAbout Ma"},
+    
+    {"2012-01-09T11:49:15.991+0000", "91.159.169.22", "chrome", "About Edgar Allan Poe, is father "
+    "abandoned the family. Poe was tAbout Khanate of"},
+    
+    {"2010-11-02T01:06:54.399+0000", "91.1467.169.207", "safari", "About Elena Likhovtseva, "
+    "rter-finals at the Sony Ericsson Open in MiaAbout Please Come|"},
+    
+    {"2012-01-09T11:49:15.991+0000", "91.33.169.255", "firefox", "About Charles V, Holy "
+    "Roman Emperor, the New WorlAbout Freddie Mercury, ock star. InAbout Al Gore, 0. Victory iAbout"},
+    
+    {"2012-01-09T11:49:15.991+0000", "91.149.11.27", "safari", "About Imelda Marcos, ected as "
+    "membAbout Dead Leaves and the Dirty Ground, e UK Albums"},
+    
+    {"2012-01-09T11:49:15.991+0000", "91.149.169.2237", "safari", "About John Howard, died in "
+    "combaAbout Isabella I of Castile, r right to thAbo"},
+    
+    {"2012-01-09T11:49:15.991+0000", "91.149.169.27", "netscape", "About Imelda Marcos, tatives "
+    "to represent Ilocos Norte's seAbout Sultanate"},
+    
+    {"2012-01-09T11:49:15.991+0000", "204.79.194.82", "safari", "About Germany, hird largest "
+    "importer of goods. The country has developedAbout Kingdom of Kandy, kept European col"},
+    
+    {"2012-01-09T11:49:15.991+0000", "202.719.194.222", "firefox", "Internet Explorer|About "
+    "Jorge Luis Borges, by the LatinAbout Arnold Schoenberg, uermann, and About"},
+    
+    {"2012-01-09T11:49:15.991+0000", "41.149.119.247", "safari", "About Georg Wilhelm "
+    "Friedrich Hegel, that mind or spirit manifested itself in Ab"},
+    
+    {"2012-01-09T11:49:15.991+0000", "41.149.169.27", "safari", "About Hey Sexy Lady, "
+    "the title of a song recorded by Jamacian-American reggae artist ShaggAbout Brown "
+    "Album, nder; as such, this is their"},
+    
+    {"2012-01-09T11:49:15.991+0000", "91.149.169.27", "mozilla", "About George Frideric "
+    "Handel, s oratorios is an ethical one. They aAbout Jay-Z, ey Carter (born December "
+    "4, 1969), beAbout Garth Brooks, ted int"},
+    
+    {"2012-01-09T11:49:15.991+0000", "88.19.169.217", "safari", "About Bruce Lee,  "
+    "Hong Kong martial arts filmAbout Greece, irthplace of democracy"},
+    
+    {"2012-01-09T11:49:15.991+0000", "294.34.294.10", "safari", "About Nero, t. "
+    "The study of NeroAbout Eleanor Rigby, ing quartet arrangemAbout New Zealand,  the New Zealand ArmAbou"},
+    
+    {"2011-10-08T14:00:21.609+0000", "91.149.129.237", "safari", "bout Amy Winehouse,  Love Is a Losing "
+    "Game. Winehouse died of alcAbout Where Is the Love"},
+    
+    {"2012-05-13T13:41:59.023+0000", "234.22.194.42", "chrome", "About William IV of the United "
+    "Kingdom, ribbean, but saw little actual fighting. SA"},
+    
+    {"2011-10-18T10:27:27.756+0000", "91.149.169.27", "safari", "About Carl Jung, while still "
+    "mAbout Katy Perry, five number oAbout Brian W"},
+    
+    {"2011-06-29T00:05:26.944+0000", "266.79.14.02", "Opera", "|About Marcelo Melo, he "
+    "seventh BrazilianAbout Pope Pius XI, e Mystici Corpori"}
+  };
+
+  std::vector<std::vector<int>> int_props_iu_7 = {
+    {54}, {78},
+    {75}, {543},
+    {343}, {99},
+    {31}, {89},
+    {90}, {353},
+    {233}, {89},
+    {67}, {67},
+    {33}, {123},
+    {689}, {77},
+    {12}, {79}
+  };
+
+  std::vector<std::vector<uint64_t>> uint64_props_iu_8 = {
+    {24189255811086, 555},
+    {24189255814147, 15393162793955},
+    {21990232556891, 4398046522002},
+    {933, 35184372093792},
+    {8796093030323, 9005},
+    {8649, 4398046521818},
+    {15393162796413, 15393162794170},
+    {28587302324497, 15393162797671},
+    {8796093030039, 24189255819297},
+    {30786325581382, 28587302328644},
+    {30786325578904, 30786325588071},
+    {35184372097876, 10027},
+    {13194139535717, 17592186044551},
+    {2199023261114, 933},
+    {2199023266429, 32985348835435},
+    {24189255819114, 32985348838898},
+    {6478, 28587302322743},
+    {30786325580396, 2862},
+    {15393162799139, 17592186051428},
+    {4398046514193, 32985348838643},
+  };
+
+  std::vector<std::vector<std::string>> str_props_iu_8 = {
+    {"2011-11-21T02:27:05.636+0000"}, {"2010-03-12T17:28:43.563+0000"}, {"2011-12-10T17:41:10.929+0000"},
+    {"1999-02-26T21:37:35.528+0000"}, {"2012-07-20T16:42:08.327+0000"}, {"2010-12-09T18:13:19.867+000"},
+    {"2011-05-03T18:56:54.450+0000"}, {"2011-03-19T05:23:21.691+0000"}, {"2011-01-30T00:44:45.595+0000"},
+    {"2010-12-15T23:27:00.248+0000"}, {"2010-04-13T16:23:31.692+0000"}, {"2010-07-15T04:56:46.299+0000"},
+    {"2012-07-11T03:57:44.959+0000"}, {"2012-02-01T03:30:59.228+0001"}, {"2010-07-16T03:52:16.375+0000"},
+    {"2010-06-08T07:34:47.276+0000"}, {"2002-03-03T19:22:42.796+0000"}, {"2011-12-05T07:04:55.336+0000"},
+    {"2010-07-08T13:44:13.873+0000"}, {"2019-06-03T06:17:49.321+0000"}
+  };
+
+  std::vector<std::vector<int>> int_props_iu_8 = {};
+
+  load_snb_data(graph, node_files, rship_files);
+  std::cout << "\n\n";
+
+  auto i = 0;
+  for (auto ids : uint64_props_iu_1){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_1(graph, rs_is_1[i++], id);
+    ldbc_iu_query_1(graph, ids, str_props_iu_1[i], int_props_iu_1[i]);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_iu_query_1 executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  for (auto ids : uint64_props_iu_2){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_1(graph, rs_is_1[i++], id);
+    ldbc_iu_query_2(graph, ids, str_props_iu_2[i], int_props_iu_2[i]);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_iu_query_2 executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  for (auto ids : uint64_props_iu_3){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_1(graph, rs_is_1[i++], id);
+    ldbc_iu_query_3(graph, ids, str_props_iu_3[i], int_props_iu_3[i]);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_iu_query_3 executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  for (auto ids : uint64_props_iu_4){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_1(graph, rs_is_1[i++], id);
+    ldbc_iu_query_4(graph, ids, str_props_iu_4[i], int_props_iu_4[i]);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_iu_query_4 executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  for (auto ids : uint64_props_iu_5){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_1(graph, rs_is_1[i++], id);
+    ldbc_iu_query_5(graph, ids, str_props_iu_5[i], int_props_iu_5[i]);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_iu_query_5 executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  for (auto ids : uint64_props_iu_6){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_1(graph, rs_is_1[i++], id);
+    ldbc_iu_query_6(graph, ids, str_props_iu_6[i], int_props_iu_6[i]);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_iu_query_6 executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  for (auto ids : uint64_props_iu_7){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_1(graph, rs_is_1[i++], id);
+    ldbc_iu_query_7(graph, ids, str_props_iu_7[i], int_props_iu_7[i]);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_iu_query_7 executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+
+  i = 0;
+  for (auto ids : uint64_props_iu_8){
+    auto start_qp = std::chrono::steady_clock::now();
+    //ldbc_is_query_1(graph, rs_is_1[i++], id);
+    ldbc_iu_query_8(graph, ids, str_props_iu_8[i], int_props_iu_8[i]);
+    auto end_qp = std::chrono::steady_clock::now();
+    std::cout << "ldbc_iu_query_8 executed in "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
+                << " μs" << std::endl;
+    i++;
+  }
+  std::cout << "\n\n";
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}
+
+/*TEST_CASE("ldbc_is_query_1", "[ldbc]") {
 #ifdef USE_PMDK
   if (access(test_path.c_str(), F_OK) == 0)
     remove(test_path.c_str());
@@ -2331,23 +3199,28 @@ TEST_CASE("ldbc_is_query_4", "[ldbc]") {
 #endif
 
   std::vector<std::string> node_files = {snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
-                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv"};
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv",
+                                          snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                          snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
 
   std::vector<std::string> rship_files = {};
 
   std::vector<uint64_t> PostIds = {1374389534801, 687194926510, 1236950581577, 824633724379, 687194903818,
                                       549755930326, 1649267546616, 1649267453265, 1924145376549, 1099511719169};
+
+  std::vector<uint64_t> CommentIds = {1236950581249, 1374389535139, 687194767797, 962072674365, 274877974096,
+                                      1374389620660, 1374389535186, 2061584302604, 1099511678319, 1099511755889};
   
   load_snb_data(graph, node_files, rship_files);
   std::cout << "\n\n";
   auto i = 0;
   result_set rs[10];
   
-  for (auto id : PostIds){
+  for (auto id : CommentIds){
     auto start_qp = std::chrono::steady_clock::now();
     ldbc_is_query_4(graph, rs[i++], id);
     auto end_qp = std::chrono::steady_clock::now();
-    std::cout << "ldbc_is_query_4 with PostId " << id << " executed in "
+    std::cout << "ldbc_is_query_4 with CommentId " << id << " executed in "
                 << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
                 << " μs" << std::endl;
   }
@@ -2382,13 +3255,22 @@ TEST_CASE("ldbc_is_query_5", "[ldbc]") {
 
   std::vector<std::string> node_files = {snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
                                           snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                          snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                          snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv",
                                           snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
                                           snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv"};
 
-  std::vector<std::string> rship_files = {snb_dyn + "comment_hasCreator_person_0_0.csv",
+  std::vector<std::string> rship_files = {snb_dyn + "post_hasCreator_person_0_0.csv",
+                                          snb_dyn + "post_hasCreator_person_1_0.csv",
+                                          snb_dyn + "post_hasCreator_person_2_0.csv",
+                                          snb_dyn + "post_hasCreator_person_3_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_0_0.csv",
                                           snb_dyn + "comment_hasCreator_person_1_0.csv",
                                           snb_dyn + "comment_hasCreator_person_2_0.csv",
                                           snb_dyn + "comment_hasCreator_person_3_0.csv"};
+
+  std::vector<uint64_t> PostIds = {1649267611029, 1649267641500, 1649267717129, 549756117312, 962073027971,
+                                      1924145709571, 1786706759766, 137439322338, 962073047211, 1786706792809};
 
   std::vector<uint64_t> commentIds = {2061584429975, 1099511764068, 1511828638961, 1099511794459, 1924145529653,
                                       137439153914, 1374389758562, 687194998602, 1099511869402, 1649267722310};
@@ -2475,11 +3357,11 @@ TEST_CASE("ldbc_is_query_6", "[ldbc]") {
   auto i = 0;
   result_set rs[20];
   
-  for (auto id : PostIds){
+  for (auto id : commentIds){
     auto start_qp = std::chrono::steady_clock::now();
-    ldbc_is_query_6(graph, rs[i], id, commentIds[i]);
+    ldbc_is_query_6(graph, rs[i], id);
     auto end_qp = std::chrono::steady_clock::now();
-    std::cout << "ldbc_is_query_6 with PostId " << id << " and commentId " << commentIds[i] << " executed in "
+    std::cout << "ldbc_is_query_6 with commentId " << id << " executed in "
                 << std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp).count()
                 << " μs" << std::endl;
     i++;

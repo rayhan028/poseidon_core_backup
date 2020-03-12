@@ -149,7 +149,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_1)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_1(graph, rs, 28587302330379);
+    //ldbc_is_query_1(graph, rs, 28587302330379);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -200,7 +200,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_2)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_2(graph, rs, 65);
+    //ldbc_is_query_2(graph, rs, 65);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -234,7 +234,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_3)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_3(graph, rs, 933);
+    //ldbc_is_query_3(graph, rs, 933);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -265,7 +265,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_4)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_4(graph, rs, 1374389534791);
+    //ldbc_is_query_4(graph, rs, 1374389534791);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -301,7 +301,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_5)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_5(graph, rs, 1099511854641);
+    //ldbc_is_query_5(graph, rs, 1099511854641);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -353,7 +353,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_6)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_6(graph, rs, 1649267442210, 1649267442213);
+    //ldbc_is_query_6(graph, rs, 1649267442210);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -393,7 +393,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_7)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_is_query_7(graph, rs, 1649267442212);
+    //ldbc_is_query_7(graph, rs, 1649267442212);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -445,7 +445,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_1)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_iu_query_1(graph, rs);
+    //ldbc_iu_query_1(graph, rs);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -481,7 +481,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_2)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_iu_query_2(graph, rs);
+    //ldbc_iu_query_2(graph, rs);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -517,7 +517,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_3)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_iu_query_3(graph, rs);
+    //ldbc_iu_query_3(graph, rs);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -549,6 +549,8 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_4)(benchmark::State &state) {
     auto tx = graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
+  std::vector<uint64_t> uint64_props = {1564, 206, 53975}; 
+  std::vector<std::string> str_props = {"Wall of Emperor of Brazil Silva", "2010-01-02T06:05:05.320+0000"};
   result_set rs;
 #ifdef USE_TX
     graph->commit_transaction();
@@ -559,7 +561,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_4)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_iu_query_4(graph, rs);
+    //ldbc_iu_query_4(graph, rs, uint64_props, str_props);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -586,6 +588,8 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_5)(benchmark::State &state) {
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
+  std::vector<uint64_t> uint64_props = {1564, 37};
+  std::vector<std::string> str_props = {"2010-02-23T09:10:25.466+0000"};
 #ifdef USE_TX
     graph->commit_transaction();
 #endif
@@ -595,7 +599,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_5)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_iu_query_5(graph, rs);
+    //ldbc_iu_query_5(graph, rs, uint64_props, str_props);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -640,6 +644,11 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_6)(benchmark::State &state) {
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
+  std::vector<uint64_t> uint64_props = {6597069777240, 2748782215183, 50, 1679};
+  std::vector<std::string> str_props = {"", "2011-09-07T14:52:27.809+0000", "46.19.159.176", "Safari", "\"uz\"",
+                            "About Alexander I of Russia,  (23 December  1777 – 1 December  1825), (Russian: "
+                            "Александр Благословенный, Aleksandr Blagoslovennyi, meaning Alexander the Bless"};
+  std::vector<int> int_props = {159};
 #ifdef USE_TX
     graph->commit_transaction();
 #endif
@@ -649,7 +658,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_6)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_iu_query_6(graph, rs);
+    //ldbc_iu_query_6(graph, rs, uint64_props, str_props, int_props);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -703,7 +712,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_7)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_iu_query_7(graph, rs);
+    //ldbc_iu_query_7(graph, rs);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -737,7 +746,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_8)(benchmark::State &state) {
 #ifdef USE_TX
     auto tx = graph->begin_transaction();
 #endif
-    ldbc_iu_query_8(graph, rs);
+    //ldbc_iu_query_8(graph, rs);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
