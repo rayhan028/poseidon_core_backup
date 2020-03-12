@@ -61,7 +61,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/storage)
 include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
-include_directories(${PROJECT_SOURCE_DIR}/src/ir)
+include_directories(${PROJECT_SOURCE_DIR}/src/ldbc)
 #---------------------------------------------------------------------------
 
 set(THIRD_PARTY_DIR "${PROJECT_BINARY_DIR}/_deps")
@@ -259,7 +259,7 @@ set(src_files ${dict_src}
   src/qop/query.cpp
   src/qop/thread_pool.cpp
   src/tx/transaction.cpp
-  src/ldbc.cpp
+  src/ldbc/ldbc.cpp
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -303,6 +303,46 @@ target_link_libraries(poseidon
 set_target_properties(poseidon PROPERTIES PREFIX "" SUFFIX ".so")
 endif()
 
+#-----------------------------------------------------------------------------------------
+#
+# Some programs for LDBC benchmarking.
+#
+
+# The program for loading CSV files into PMem.
+#
+add_executable(ldbc_loader
+  src/ldbc/loader.cpp
+ )
+
+target_link_libraries(ldbc_loader
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
+# The program for executing short read queries.
+#
+add_executable(run_ldbc_reads
+  src/ldbc/ldbc_reads.cpp
+ )
+
+target_link_libraries(run_ldbc_reads
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
+# The program for executing interactive update queries.
+#
+add_executable(run_ldbc_updates
+  src/ldbc/ldbc_updates.cpp
+ )
+
+target_link_libraries(run_ldbc_updates
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
 #-----------------------------------------------------------------------------------------
 #
 # Unit tests using Catch
