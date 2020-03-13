@@ -19,19 +19,7 @@ void ldbc_is_query_6_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_6_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t commentId);
 
-/*
-void ldbc_is_query_1(graph_db_ptr &gdb, uint64_t personId);
-void ldbc_is_query_2_p(graph_db_ptr &gdb, uint64_t personId);
-void ldbc_is_query_2_c(graph_db_ptr &gdb, uint64_t personId);
-void ldbc_is_query_3(graph_db_ptr &gdb, uint64_t personId);
-void ldbc_is_query_4_p(graph_db_ptr &gdb, uint64_t messageId);
-void ldbc_is_query_4_c(graph_db_ptr &gdb, uint64_t messageId);
-void ldbc_is_query_5_p(graph_db_ptr &gdb, uint64_t messageId);
-void ldbc_is_query_5_c(graph_db_ptr &gdb, uint64_t messageId);
-void ldbc_is_query_6_p(graph_db_ptr &gdb, uint64_t messageId);
-void ldbc_is_query_6_c(graph_db_ptr &gdb, uint64_t messageId);
-void ldbc_is_query_7(graph_db_ptr &gdb, uint64_t commentId);
-*/
+
 
 /* interactive update queries */
 /*void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs);

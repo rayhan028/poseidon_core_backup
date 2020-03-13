@@ -1152,6 +1152,8 @@ void run_ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs);
 
 TEST_CASE("Testing LDBC interactive short queries", "[ldbc]") {
 #ifdef USE_PMDK
+  if (access(test_path.c_str(), F_OK) == 0)
+    remove(test_path.c_str());
   auto pop = prepare_pool();
   auto graph = create_graph1(pop);
   auto graph2 = create_graph2(pop);
@@ -1344,6 +1346,8 @@ TEST_CASE("Testing LDBC interactive short queries", "[ldbc]") {
 
 TEST_CASE("Testing LDBC interactive update queries", "[ldbc]") {
 #ifdef USE_PMDK
+  if (access(test_path.c_str(), F_OK) == 0)
+    remove(test_path.c_str());
   auto pop = prepare_pool();
   auto graph = create_graph1(pop);
 #else

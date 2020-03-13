@@ -781,7 +781,6 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
   const int nchunks = 100;
   spdlog::debug("Start parallel query with {} threads",
                 nodes_->num_chunks() / nchunks + 1);
-  std::cout << " nodes_->num_chunks()" <<  nodes_->num_chunks() << "\n";
 
   std::vector<std::future<void>> res;
   res.reserve(nodes_->num_chunks() / nchunks + 1);

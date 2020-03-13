@@ -67,8 +67,7 @@ void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   rs.wait();
 }
 
-//void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
-void ldbc_is_query_2_c(graph_db_ptr &gdb, uint64_t personId) {
+void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   auto maxHops = 100; 
   
   auto q = query(gdb)
@@ -99,16 +98,13 @@ void ldbc_is_query_2_c(graph_db_ptr &gdb, uint64_t personId) {
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
                         return boost::get<boost::posix_time::ptime>(qr1[2]) > boost::get<boost::posix_time::ptime>(qr2[2]); })
                .limit(10)
-               .print();
-               //.collect(rs);
+               .collect(rs);
 
-  //query::start({&q1, &q2});
   q.start();
-  //rs.wait();
+  rs.wait();
 }
 
-//void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
-void ldbc_is_query_3(graph_db_ptr &gdb, uint64_t personId) {
+void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 
   auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -130,15 +126,13 @@ void ldbc_is_query_3(graph_db_ptr &gdb, uint64_t personId) {
                           if (boost::get<boost::posix_time::ptime>(qr1[3]) == boost::get<boost::posix_time::ptime>(qr2[3]))
                             return boost::get<uint64_t>(qr1[0]) < boost::get<uint64_t>(qr2[0]);
                           return boost::get<boost::posix_time::ptime>(qr1[3]) > boost::get<boost::posix_time::ptime>(qr2[3]); })
-                .print();
-                //.collect(rs);
+                .collect(rs);
   
   q.start();
-  //rs.wait();
+  rs.wait();
 }
 
-//void ldbc_is_query_4_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
-void ldbc_is_query_4_p(graph_db_ptr &gdb, uint64_t messageId) {
+void ldbc_is_query_4_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 
 	auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -153,15 +147,13 @@ void ldbc_is_query_4_p(graph_db_ptr &gdb, uint64_t messageId) {
                 .project({PExpr_(0, pj::ptime_property(res, "creationDate")),
                           PExpr_(0, !pj::string_property(res, "content").empty() ? 
                             pj::string_property(res, "content") : pj::string_property(res, "imageFile")) })
-                .print();
-                //.collect(rs);
+                .collect(rs);
 				
 	q.start();
-	//rs.wait();
+	rs.wait();
 }
 
-//void ldbc_is_query_4_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
-void ldbc_is_query_4_c(graph_db_ptr &gdb, uint64_t messageId) {
+void ldbc_is_query_4_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 
   auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -175,15 +167,13 @@ void ldbc_is_query_4_c(graph_db_ptr &gdb, uint64_t messageId) {
 #endif
                 .project({PExpr_(0, pj::ptime_property(res, "creationDate")),
                           PExpr_(0, pj::string_property(res, "content")) })
-                .print();
-                //.collect(rs);
+                .collect(rs);
 				
 	q.start();
-	//rs.wait();
+	rs.wait();
 }
 
-//void ldbc_is_query_5_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
-void ldbc_is_query_5_p(graph_db_ptr &gdb, uint64_t messageId) {
+void ldbc_is_query_5_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 
 	auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -200,15 +190,13 @@ void ldbc_is_query_5_p(graph_db_ptr &gdb, uint64_t messageId) {
                 .project({PExpr_(2, pj::uint64_property(res, "id")),
                           PExpr_(2, pj::string_property(res, "firstName")),
                           PExpr_(2, pj::string_property(res, "lastName")) })
-                .print();
-                //.collect(rs);
+                .collect(rs);
 
 	q.start();
-	//rs.wait();
+	rs.wait();
 }
 
-//void ldbc_is_query_5_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
-void ldbc_is_query_5_c(graph_db_ptr &gdb, uint64_t messageId) {
+void ldbc_is_query_5_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 
   auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -225,15 +213,13 @@ void ldbc_is_query_5_c(graph_db_ptr &gdb, uint64_t messageId) {
                 .project({PExpr_(2, pj::uint64_property(res, "id")),
                           PExpr_(2, pj::string_property(res, "firstName")),
                           PExpr_(2, pj::string_property(res, "lastName")) })
-                .print();
-                //.collect(rs);
+                .collect(rs);
 
 	q.start();
-	//rs.wait();
+	rs.wait();
 }
 
-//void ldbc_is_query_6_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
-void ldbc_is_query_6_p(graph_db_ptr &gdb, uint64_t messageId) {
+void ldbc_is_query_6_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
   auto maxHops = 100;
     
   auto q = query(gdb)
@@ -255,15 +241,13 @@ void ldbc_is_query_6_p(graph_db_ptr &gdb, uint64_t messageId) {
                           PExpr_(4, pj::uint64_property(res, "id")),
                           PExpr_(4, pj::string_property(res, "firstName")),
                           PExpr_(4, pj::string_property(res, "lastName")) })
-                .print();
-                //.collect(rs);
+                .collect(rs);
 	
   q.start();
-	//rs.wait(); 
+	rs.wait(); 
 }
 
-//void ldbc_is_query_6_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
-void ldbc_is_query_6_c(graph_db_ptr &gdb, uint64_t messageId) {
+void ldbc_is_query_6_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
   auto maxHops = 100;
   
   auto q = query(gdb)
@@ -287,15 +271,13 @@ void ldbc_is_query_6_c(graph_db_ptr &gdb, uint64_t messageId) {
                           PExpr_(6, pj::uint64_property(res, "id")),
                           PExpr_(6, pj::string_property(res, "firstName")),
                           PExpr_(6, pj::string_property(res, "lastName")) })
-                .print();
-                //.collect(rs);
+                .collect(rs);
 	
   q.start();
-	//rs.wait(); 
+	rs.wait(); 
 }
 
-//void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t commentId) {
-void ldbc_is_query_7(graph_db_ptr &gdb, uint64_t commentId) {
+void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t commentId) {
      
   auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -337,11 +319,10 @@ void ldbc_is_query_7(graph_db_ptr &gdb, uint64_t commentId) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
                         return boost::get<boost::posix_time::ptime>(qr1[2]) < boost::get<boost::posix_time::ptime>(qr2[2]); })
-                .print();
-                //.collect(rs);
+                .collect(rs);
 
   query::start({&q1, &q2});
-	//rs.wait();
+	rs.wait();
 }
 
 //void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs) {
