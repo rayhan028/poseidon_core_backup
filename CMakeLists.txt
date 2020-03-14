@@ -61,7 +61,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/storage)
 include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
-include_directories(${PROJECT_SOURCE_DIR}/src/ir)
+include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 #---------------------------------------------------------------------------
 
 set(THIRD_PARTY_DIR "${PROJECT_BINARY_DIR}/_deps")

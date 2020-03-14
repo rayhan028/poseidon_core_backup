@@ -31,6 +31,19 @@
 #include "properties.hpp"
 #include "relationships.hpp"
 #include "transaction.hpp"
+#include "btree.hpp"
+
+#ifdef USE_PMDK
+
+#include <libpmemobj++/container/vector.hpp>
+using idx_vector_type = pmem::obj::vector<btree_ptr>;
+
+#else
+
+#include <vector>
+using idx_vector_type = std::vector<btree_ptr>;
+
+#endif
 
 /**
  * graph_db represents a graph consisting of nodes and relationships with
@@ -210,6 +223,14 @@ public:
    * Print the amount of allocated memory for debugging purpose.
    */
   void print_mem_usage();
+
+  /* ---------------- index management ---------------- */
+  
+  index_id create_index(const std::string& node_label, const std::string& prop_name);
+
+  bool drop_index(index_id idx);
+
+  void index_lookup(index_id idx, uint64_t key, node_consumer_func consumer);
 
   /* ---------------- query support ---------------- */
 
@@ -391,6 +412,8 @@ private:
   p_ptr<property_list>
       properties_;   // the list of all properties of nodes and relationships
   p_ptr<dict> dict_; // the dictionary used for string compression
+
+  p_ptr<idx_vector_type> indexes_; 
 
   /**
    * These member variables are volatile and have to be reinitialized

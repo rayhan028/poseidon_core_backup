@@ -95,6 +95,8 @@ struct p_item {
 
   const char *key(dict_ptr &dct) { return dct->lookup_code(key_); }
 
+  uint64_t get_raw() const;
+  
   template <typename T> T get() const;
   template <typename T> void set(T v);
 

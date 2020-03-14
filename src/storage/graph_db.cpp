@@ -61,10 +61,13 @@ struct scan_task {
 };
 
 graph_db::graph_db(const std::string &db_name) {
+  // TODO: this should be done inside a transaction!
   nodes_ = p_make_ptr<node_list>();
   rships_ = p_make_ptr<relationship_list>();
   properties_ = p_make_ptr<property_list>();
   dict_ = p_make_ptr<dict>();
+  indexes_ = p_make_ptr<idx_vector_type>();
+
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   m_ = new std::mutex();
 }
@@ -752,6 +755,37 @@ dcode_t graph_db::get_code(const std::string &s) {
 void graph_db::dump() {
   nodes_->dump();
   rships_->dump();
+}
+
+
+index_id graph_db::create_index(const std::string& node_label, const std::string& prop_name) {
+  // spdlog::info("create_index...");
+  auto new_idx = p_make_btree();
+  auto pc = dict_->lookup_string(prop_name);
+
+  // spdlog::info("create_index: fill index: {} => {}", prop_name, pc);
+  nodes_by_label(node_label, [this, &new_idx, &pc](auto& n) {
+    // spdlog::info("get property value for node #{}...", n.id());
+    auto val = properties_->property_value(n.property_list, pc);
+    if (!val.empty()) {
+      // because we don't distinguish differently typed indexes we use the raw value here
+      auto v = val.get_raw(); // val.template get<int>();
+      // spdlog::info("create_index: {} -> {}", v, n.id());
+      new_idx->insert(v, n.id());
+    }
+  });
+  indexes_->push_back(new_idx);
+  return indexes_->size();
+}
+
+void graph_db::index_lookup(index_id idx, uint64_t key, node_consumer_func consumer) {
+  assert(idx <= indexes_->size());
+  auto& idx_ptr = (*indexes_)[idx-1];
+  offset_t val = 0;
+  if (idx_ptr->lookup(key, &val)) {
+    auto& n = node_by_id(val);
+    consumer(n);
+  }
 }
 
 void graph_db::nodes_by_label(const std::string &label,
