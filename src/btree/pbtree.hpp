@@ -28,19 +28,68 @@
 #include <libpmemobj++/transaction.hpp>
 #include <libpmemobj++/utils.hpp>
 
-// #include "config.h"
-// #include "utils/SearchFunctions.hpp"
-
 namespace pbtree {
 
-using pmem::obj::allocation_flag;
 using pmem::obj::delete_persistent;
 using pmem::obj::make_persistent;
 using pmem::obj::p;
 using pmem::obj::persistent_ptr;
 using pmem::obj::transaction;
+
 template <typename Object>
 using pptr = persistent_ptr<Object>;
+
+/**
+ * Does a binary searches for key @key in a sorted array of keys.
+ *
+ * @param keys array of sorted keys
+ * @param l left fence of considered range
+ * @param r right fence of considered range
+ * @param key the searched key
+ * @return position of the key
+ */
+template<bool isBranch, typename KeyType, size_t N>
+static inline unsigned int binarySearch(const std::array<KeyType, N> &keys, int l, int r,
+                                        const KeyType &key) {
+  auto pos = 0u;
+  while (l <= r) {
+    pos = (l + r) / 2;
+    if (keys[pos] == key) {
+      if constexpr (isBranch) return ++pos;
+      else return pos;
+    }
+    if (keys[pos] < key) l = ++pos;
+    else r = pos - 1;
+  }
+  return pos;
+}
+
+/**
+ * Does a binary searches for key @key in an array of keys with sorted indirection slots.
+ *
+ * @param keys array of keys
+ * @param slots array of sorted slots pointing to key
+ * @param l left fence of considered range
+ * @param r right fence of considered range
+ * @param key the searched key
+ * @return position of the key
+ */
+template<bool isBranch, typename KeyType, size_t N>
+static inline unsigned int binarySearch(const std::array<KeyType, N> &keys,
+                                        const std::array<uint8_t, N+1> &slots, int l, int r,
+                                        const KeyType &key) {
+  auto pos = 1u;
+  while (l <= r) {
+    pos = (l + r) / 2;
+    if (keys[slots[pos]] == key) {
+      if constexpr (isBranch) return ++pos;
+      else return pos;
+    }
+    if (keys[slots[pos]] < key) l = ++pos;
+    else r = pos - 1;
+  }
+  return pos;
+}
 
 /**
  * A persistent memory implementation of a B+ tree.
@@ -112,7 +161,6 @@ class PBPTree {
     Node rightChild; ///< the resulting rhs child node
   };
 
-  pobj_alloc_class_desc alloc_class;
   p<unsigned int> depth; /**< the depth of the tree, i.e. the number of levels
                               (0 => rootNode is LeafNode) */
   Node rootNode;         /**< pointer to the root node (an instance of @c LeafNode or
@@ -185,11 +233,8 @@ class PBPTree {
   /**
    * Constructor for creating a new B+ tree.
    */
-  explicit PBPTree(struct pobj_alloc_class_desc _alloc) : depth(0), alloc_class(_alloc) {
-  //PBPTree() : depth(0) {
+  explicit PBPTree() : depth(0) {
     rootNode = newLeafNode();
-    LOG("created new tree with sizeof(BranchNode) = " << sizeof(BranchNode) <<
-        ", sizeof(LeafNode) = " << sizeof(LeafNode));
   }
 
   /**
@@ -386,8 +431,6 @@ class PBPTree {
         nodeValues[i] = nodeValues[i + 1];
       }
       --numKeys;
-      PersistEmulation::writeBytes((numKeys - pos) * (sizeof(KeyType) + sizeof(ValueType)) +
-                                     sizeof(size_t));
       return true;
     }
     return false;
@@ -486,13 +529,8 @@ class PBPTree {
     // n2NumKeys = 0; ///< node2 is deleted anyway
     if (node2Ref.nextLeaf != nullptr) {
       node2Ref.nextLeaf->prevLeaf = node1;
-      PersistEmulation::writeBytes<16>();
     }
 
-    PersistEmulation::writeBytes(
-        n2NumKeys * (sizeof(KeyType) + sizeof(ValueType)) +  ///< moved keys, vals
-        sizeof(unsigned int) + 16                            ///< numKeys + nextpointer
-    );
     return node1;
   }
 
@@ -533,9 +571,6 @@ class PBPTree {
         receiverValues[j] = donorValues[i];
         ++rNumKeys;
       }
-      PersistEmulation::writeBytes((rNumKeys + dNumKeys - balancedNum) *
-                                       (sizeof(KeyType) + sizeof(ValueType)) +
-                                   sizeof(unsigned int));
     } else {
       /// move from one node to a node with smaller keys
       unsigned int i = 0;
@@ -552,11 +587,8 @@ class PBPTree {
         donorKeysW[i] = donorKeys[toMove + i];
         donorValuesW[i] = donorValues[toMove + i];
       }
-      PersistEmulation::writeBytes(dNumKeys * (sizeof(KeyType) + sizeof(ValueType)) +
-                                   sizeof(unsigned int));
     }
     dNumKeys -= toMove;
-    PersistEmulation::writeBytes<sizeof(unsigned int)>();
   }
 
   /* -------------------------------------------------------------------------------------------- */
@@ -937,12 +969,10 @@ class PBPTree {
     if(nodeRef.nextLeaf != nullptr) {
       sibRef.nextLeaf = nodeRef.nextLeaf;
       nodeRef.nextLeaf->prevLeaf = sibling;
-      PersistEmulation::writeBytes<2*16>();
     }
     nodeRef.nextLeaf = sibling;
     sibRef.prevLeaf = node;
     /// 2 numKeys + half entries + pointers
-    PersistEmulation::writeBytes(2*8 + sNumKeys*(sizeof(KeyType) + sizeof(ValueType)) + 2*16);
 
     auto &splitInfoRef = *splitInfo;
     splitInfoRef.leftChild = node;
@@ -981,8 +1011,6 @@ class PBPTree {
     keysRef[pos] = key;
     valuesRef[pos] = val;
     ++numKeys;
-    PersistEmulation::writeBytes((numKeys-pos)*(sizeof(KeyType) + sizeof(ValueType)) +
-                                                  sizeof(size_t));
   }
 
   /**
@@ -1149,7 +1177,7 @@ class PBPTree {
     auto pop = pmem::obj::pool_by_vptr(this);
     pptr<LeafNode> newNode = nullptr;
     transaction::run(pop, [&] {
-      newNode = make_persistent<LeafNode>(allocation_flag::class_id(alloc_class.class_id));
+      newNode = make_persistent<LeafNode>();
     });
     return newNode;
   }
@@ -1158,7 +1186,7 @@ class PBPTree {
     auto pop = pmem::obj::pool_by_vptr(this);
     pptr<LeafNode> newNode = nullptr;
     transaction::run(pop, [&] {
-      newNode = make_persistent<LeafNode>(allocation_flag::class_id(alloc_class.class_id), *other);
+      newNode = make_persistent<LeafNode>();
     });
     return newNode;
   }
@@ -1181,10 +1209,10 @@ class PBPTree {
     pptr<BranchNode> newNode = nullptr;
     if (pmemobj_tx_stage() == TX_STAGE_NONE) {
       transaction::run(pop, [&] {
-        newNode = make_persistent<BranchNode>(allocation_flag::class_id(alloc_class.class_id));
+        newNode = make_persistent<BranchNode>();
       });
     } else {
-        newNode = make_persistent<BranchNode>(allocation_flag::class_id(alloc_class.class_id));
+        newNode = make_persistent<BranchNode>();
     }
     return newNode;
   }

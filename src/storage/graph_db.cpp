@@ -61,7 +61,6 @@ struct scan_task {
 };
 
 graph_db::graph_db(const std::string &db_name) {
-  // TODO: this should be done inside a transaction!
   nodes_ = p_make_ptr<node_list>();
   rships_ = p_make_ptr<relationship_list>();
   properties_ = p_make_ptr<property_list>();
@@ -760,7 +759,15 @@ void graph_db::dump() {
 
 index_id graph_db::create_index(const std::string& node_label, const std::string& prop_name) {
   // spdlog::info("create_index...");
+  #if USE_PMDK
+    auto pop = pmem::obj::pool_by_vptr(this);
+    btree_ptr new_idx;
+      pmem::obj::transaction::run(pop, [&] {
+        new_idx = p_make_btree();
+      });
+#else
   auto new_idx = p_make_btree();
+#endif
   auto pc = dict_->lookup_string(prop_name);
 
   // spdlog::info("create_index: fill index: {} => {}", prop_name, pc);
@@ -770,7 +777,7 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
     if (!val.empty()) {
       // because we don't distinguish differently typed indexes we use the raw value here
       auto v = val.get_raw(); // val.template get<int>();
-      // spdlog::info("create_index: {} -> {}", v, n.id());
+      // spdlog::info("create_index: {} -> {}", v, n.id());      
       new_idx->insert(v, n.id());
     }
   });
