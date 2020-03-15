@@ -54,7 +54,7 @@ void index_scan::start(graph_db_ptr &gdb) {
 }
 
 void index_scan::dump(std::ostream &os) const {
-  os << "index_scan([" << idx << "," << key << "])=>";
+  os << "index_scan([" << key << "])=>";
   if (subscriber_)
     subscriber_->dump(os);
 }

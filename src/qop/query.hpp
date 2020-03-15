@@ -64,9 +64,8 @@ public:
 
   /**
    * Add an index scan over nodes where the key is equal to the given value. 
-   * TODO: We should hide the index_id - it should be retrieved internally via label/property.
    */
-  query &nodes_where_indexed(index_id idx, uint64_t key);
+  query &nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val);
 
   /**
    * Add an operator that scans all incoming relationships of the last node in

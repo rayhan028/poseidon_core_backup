@@ -32,18 +32,7 @@
 #include "relationships.hpp"
 #include "transaction.hpp"
 #include "btree.hpp"
-
-#ifdef USE_PMDK
-
-#include <libpmemobj++/container/vector.hpp>
-using idx_vector_type = pmem::obj::vector<btree_ptr>;
-
-#else
-
-#include <vector>
-using idx_vector_type = std::vector<btree_ptr>;
-
-#endif
+#include "index_map.hpp"
 
 /**
  * graph_db represents a graph consisting of nodes and relationships with
@@ -234,9 +223,15 @@ public:
   index_id create_index(const std::string& node_label, const std::string& prop_name);
 
   /**
-   * Delete the index with the given id.
+   * Return the id of the index for the given label/property combination. Raises an
+   * exception of no corresponding index exists.
    */
-  bool drop_index(index_id idx);
+  index_id get_index(const std::string& node_label, const std::string& prop_name);
+
+  /**
+   * Delete the given index.
+   */
+  void drop_index(const std::string& node_label, const std::string& prop_name);
 
   /**
    * Perform an index lookup on the given index for the given property value key. 
@@ -425,7 +420,7 @@ private:
       properties_;   // the list of all properties of nodes and relationships
   p_ptr<dict> dict_; // the dictionary used for string compression
 
-  p_ptr<idx_vector_type> indexes_; 
+  p_ptr<index_map> index_map_;
 
   /**
    * These member variables are volatile and have to be reinitialized

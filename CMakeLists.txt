@@ -253,6 +253,7 @@ set(src_files ${dict_src}
   src/storage/relationships.cpp
   src/storage/properties.cpp
   src/storage/graph_db.cpp
+  src/btree/index_map.cpp
   src/qop/qop.cpp
   src/qop/update.cpp
   src/qop/join.cpp

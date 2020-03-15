@@ -65,7 +65,7 @@ graph_db::graph_db(const std::string &db_name) {
   rships_ = p_make_ptr<relationship_list>();
   properties_ = p_make_ptr<property_list>();
   dict_ = p_make_ptr<dict>();
-  indexes_ = p_make_ptr<idx_vector_type>();
+  index_map_ = p_make_ptr<index_map>();
 
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   m_ = new std::mutex();
@@ -785,18 +785,23 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
   });
 
   // (3) and register the index
-  indexes_->push_back(new_idx);
-  return indexes_->size();
+  index_map_->register_index(node_label + ":" + prop_name, new_idx);
+
+  return new_idx;
 }
 
-bool graph_db::drop_index(index_id idx) {
-  // TODO
-  return false;
+index_id graph_db::get_index(const std::string& node_label, const std::string& prop_name) {
+  return index_map_->get_index(node_label + ":" + prop_name);
 }
 
-void graph_db::index_lookup(index_id idx, uint64_t key, node_consumer_func consumer) {
-  assert(idx <= indexes_->size());
-  auto& idx_ptr = (*indexes_)[idx-1];
+void graph_db::drop_index(const std::string& node_label, const std::string& prop_name) {
+  auto idx_name = node_label + ":" + prop_name;
+  auto idx = index_map_->get_index(idx_name);
+  // TODO: delete idx
+  index_map_->unregister_index(idx_name);
+}
+
+void graph_db::index_lookup(index_id idx_ptr, uint64_t key, node_consumer_func consumer) {
   offset_t val = 0;
   if (idx_ptr->lookup(key, &val)) {
     auto& n = node_by_id(val);

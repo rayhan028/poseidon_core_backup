@@ -42,4 +42,9 @@ inline btree_ptr p_make_btree() { return std::make_shared<btree_impl>(); }
 
 #endif
 
+/**
+ * Typedef used for index identifiers.
+ */
+using index_id = btree_ptr;
+
 #endif

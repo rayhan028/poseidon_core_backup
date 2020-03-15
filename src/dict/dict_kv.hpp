@@ -79,15 +79,6 @@ public:
   std::size_t size();
 
 private:
-  /*
-    class key_equal {
-    public:
-      template <typename M, typename U>
-      bool operator()(const M &lhs, const U &rhs) const {
-        return lhs == rhs;
-      }
-    };
-    */
   class string_hasher {
     /* hash multiplier used by fibonacci hashing */
     static const size_t hash_multiplier = 11400714819323198485ULL;
@@ -113,8 +104,8 @@ private:
   using str_code_hashmap_t =
       pmem::obj::concurrent_hash_map<string_t, dcode_t, string_hasher>;
 
-  pmem::obj::persistent_ptr<code_str_hashmap_t> code_str_map_;
-  pmem::obj::persistent_ptr<str_code_hashmap_t> str_code_map_;
+  p_ptr<code_str_hashmap_t> code_str_map_;
+  p_ptr<str_code_hashmap_t> str_code_map_;
   p<dcode_t> last_code_;
 };
 

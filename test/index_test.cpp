@@ -68,7 +68,6 @@ TEST_CASE("Creating an index on nodes", "[index]") {
 #endif
 
   auto idx = graph->create_index("Person", "id");
-  REQUIRE(idx > 0);
 
 #ifdef USE_TX
   graph->commit_transaction();
