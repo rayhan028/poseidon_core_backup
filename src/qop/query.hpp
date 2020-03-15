@@ -61,6 +61,13 @@ public:
    */
   query &nodes_where(const std::string &label, const std::string &key,
                      std::function<bool(const p_item &)> pred);
+
+  /**
+   * Add an index scan over nodes where the key is equal to the given value. 
+   * TODO: We should hide the index_id - it should be retrieved internally via label/property.
+   */
+  query &nodes_where_indexed(index_id idx, uint64_t key);
+
   /**
    * Add an operator that scans all incoming relationships of the last node in
    * the query result. Optionally, the given label of the relationship is

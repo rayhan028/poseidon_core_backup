@@ -42,6 +42,4 @@ inline btree_ptr p_make_btree() { return std::make_shared<btree_impl>(); }
 
 #endif
 
-using index_id = std::size_t;
-
 #endif

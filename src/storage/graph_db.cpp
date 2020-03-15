@@ -759,6 +759,7 @@ void graph_db::dump() {
 
 index_id graph_db::create_index(const std::string& node_label, const std::string& prop_name) {
   // spdlog::info("create_index...");
+  // (1) we create a new b+tree
   #if USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
     btree_ptr new_idx;
@@ -770,6 +771,7 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
 #endif
   auto pc = dict_->lookup_string(prop_name);
 
+  // (2) we fill the index with (property value, node-id) pairs
   // spdlog::info("create_index: fill index: {} => {}", prop_name, pc);
   nodes_by_label(node_label, [this, &new_idx, &pc](auto& n) {
     // spdlog::info("get property value for node #{}...", n.id());
@@ -781,8 +783,15 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
       new_idx->insert(v, n.id());
     }
   });
+
+  // (3) and register the index
   indexes_->push_back(new_idx);
   return indexes_->size();
+}
+
+bool graph_db::drop_index(index_id idx) {
+  // TODO
+  return false;
 }
 
 void graph_db::index_lookup(index_id idx, uint64_t key, node_consumer_func consumer) {

@@ -57,6 +57,11 @@ query &query::nodes_where(const std::string &label, const std::string &key,
                    std::bind(&is_property::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::nodes_where_indexed(index_id idx, uint64_t key) {
+  plan_head_ = plan_tail_ = std::make_shared<index_scan>(idx, key);
+  return *this;
+}
+
 query &query::to_relationships(const std::string &label) {
   auto op = std::make_shared<foreach_to_relationship>(label);
   return append_op(op, std::bind(&foreach_to_relationship::process, op.get(),

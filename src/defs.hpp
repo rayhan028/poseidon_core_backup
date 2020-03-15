@@ -53,6 +53,11 @@ using ptr_t = uint8_t *;
  */
 constexpr uint64_t UNKNOWN = std::numeric_limits<uint64_t>::max();
 
+/**
+ * Typedef used for index identifiers.
+ */
+using index_id = std::size_t;
+
 struct node;
 struct relationship;
 
