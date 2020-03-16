@@ -277,17 +277,65 @@ void ldbc_is_query_6_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 	rs.wait(); 
 }
 
-void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t commentId) {
+void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
+     
+  auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+                .all_nodes()
+               .has_label("Post")
+               .property( "id",
+                           [&](auto &p) { return p.equal(messageId); })
+#else
+                .nodes_where("Post", "id",
+                            [&](auto &p) { return p.equal(messageId); })
+#endif
+                .from_relationships(":hasCreator")
+                .to_node("Person");
+  
+  auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Post")
+               .property( "id",
+                           [&](auto &p) { return p.equal(messageId); })
+#else
+                .nodes_where("Post", "id",
+                            [&](auto &p) { return p.equal(messageId); })
+#endif
+                .to_relationships(":replyOf")    
+                .from_node("Comment")
+                .from_relationships(":hasCreator")
+                .to_node("Person")
+                .outerjoin({4, 2}, q1)
+                .project({PExpr_(2, pj::uint64_property(res, "id")),
+                          PExpr_(2, pj::string_property(res, "content")),
+                          PExpr_(2, pj::ptime_property(res, "creationDate")),
+                          PExpr_(4, pj::uint64_property(res, "id")),
+                          PExpr_(4, pj::string_property(res, "firstName")),
+                          PExpr_(4, pj::string_property(res, "lastName")),
+                          PExpr_(8, pj::string_rep(res) == "[0]{}" ?
+                                      std::string("false") : std::string("true")) })
+                .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                        if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
+                          return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
+                        return boost::get<boost::posix_time::ptime>(qr1[2]) < boost::get<boost::posix_time::ptime>(qr2[2]); })
+                .collect(rs);
+
+  query::start({&q1, &q2});
+	rs.wait();
+}
+
+void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
      
   auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
                 .all_nodes()
                .has_label("Comment")
                .property( "id",
-                           [&](auto &p) { return p.equal(commentId); })
+                           [&](auto &p) { return p.equal(messageId); })
 #else
                 .nodes_where("Comment", "id",
-                            [&](auto &p) { return p.equal(commentId); })
+                            [&](auto &p) { return p.equal(messageId); })
 #endif
                 .from_relationships(":hasCreator")
                 .to_node("Person");
@@ -297,10 +345,10 @@ void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t commentId) {
                .all_nodes()
                .has_label("Comment")
                .property( "id",
-                           [&](auto &p) { return p.equal(commentId); })
+                           [&](auto &p) { return p.equal(messageId); })
 #else
                 .nodes_where("Comment", "id",
-                            [&](auto &p) { return p.equal(commentId); })
+                            [&](auto &p) { return p.equal(messageId); })
 #endif
                 .to_relationships(":replyOf")    
                 .from_node("Comment")
@@ -393,14 +441,9 @@ void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                       .collect(rs);
 
   query::start({&q1, &q2, &q3, &q4, &q5});
-  //std::cout << rs;
 }
 
 void ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
-  
-  /*uint64_t postId = 7696582443305;
-  uint64_t personId = 933; 
-  auto creationDate = std::string("2010-02-14T15:32:10.447+0000");*/
 
   auto q1 = query(gdb)
 #ifdef RUN_PARALLEL

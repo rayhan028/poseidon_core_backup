@@ -18,7 +18,8 @@ void ldbc_is_query_5_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_5_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_6_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_6_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
-void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t commentId);
+void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
+void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 
 /* interactive update queries */
 void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
