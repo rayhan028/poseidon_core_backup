@@ -471,6 +471,19 @@ property_set::id_t property_list::update_properties(offset_t nid, offset_t id,
   return next_id;
 }
 
+property_set &property_list::get(property_set::id_t id){
+  if (properties_.capacity() <= id)
+    throw unknown_id();
+  auto &pset = properties_.at(id);
+  return pset;
+}
+
+void property_list::remove(property_set::id_t id) {
+  if (properties_.capacity() <= id)
+    throw unknown_id();
+  properties_.erase(id);
+}
+
 std::list<p_item>
 property_list::build_dirty_property_list(const properties_t &props,
                                          dict_ptr &dct) {

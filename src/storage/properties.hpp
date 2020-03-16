@@ -300,6 +300,21 @@ public:
                                    dict_ptr &dct, bool is_node = true);
 
   /**
+   * Get a property set via its identifier.
+   */
+  property_set &get(property_set::id_t id);
+
+  /**
+   * Remove a certain property set specified by its identifier.
+   */
+  void remove(property_set::id_t id);
+
+  /**
+   * Returns the underlying vector of the property set list.
+   */
+  chunked_vec<property_set> &as_vec() { return properties_; }
+
+  /**
    * Build a list of p_items from the list of properties represented by props.
    * This method is used to handle transactional inserts.
    */

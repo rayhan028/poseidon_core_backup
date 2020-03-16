@@ -362,6 +362,20 @@ class chunked_vec {
   }
 
   /**
+   * Returns true if the slot at position i is used by a record.
+   * The position is a global offset in the chunked_vec.
+   */
+  inline bool is_used(std::size_t i) const {
+    auto ch = find_chunk(i);
+    offset_t pos = i % elems_per_chunk_;
+#ifdef USE_PMDK
+    return ch->slots_.get_ro().test(pos);
+#else
+    return ch->slots_.test(pos);
+#endif
+  }
+
+  /**
    * Return a const ref to the element stored at the given position (index) or
    * raises an exception if the index is invalid (or the slot is not used). The
    * offset is relative to the begining of the chunked_vec. The first element of

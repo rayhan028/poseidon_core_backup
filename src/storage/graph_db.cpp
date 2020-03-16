@@ -600,6 +600,97 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
 #endif
 }
 
+void graph_db::delete_node(node::id_t id){
+  auto &n = this->node_by_id(id);
+  auto cur_from_rship_id = n.from_rship_list;
+  auto cur_to_rship_id = n.to_rship_list;
+  
+  // delete the node properties
+  auto cur_pset_id = n.property_list;
+  while (cur_pset_id != UNKNOWN){
+    auto tmp_pset_id = cur_pset_id;
+    
+    auto &cur_pset = properties_->get(cur_pset_id);
+    cur_pset_id = cur_pset.next;
+    properties_->remove(tmp_pset_id);
+  }
+
+  // delete all "from" relationships of the node
+  while (cur_from_rship_id != UNKNOWN){
+    auto &r = this->rship_by_id(cur_from_rship_id);
+    //std::cout << "r = this->rship_by_id => id: " << cur_from_rship_id << "\n";
+    //std::cout << "r.id() " << r.id() << "\n";
+    cur_from_rship_id = r.next_src_rship;
+    delete_relationship(r.id());
+  }
+  
+  // delete all "to" relationships of the node
+  while (cur_to_rship_id != UNKNOWN){
+    auto tmp_to_rship_id = cur_to_rship_id;
+    auto &r = this->rship_by_id(cur_to_rship_id);
+    //std::cout << "r = this->rship_by_id => id: " << cur_to_rship_id << "\n";
+    //std::cout << "r.id() " << r.id() << "\n";
+    cur_to_rship_id = r.next_dest_rship;
+    delete_relationship(r.id());
+  }
+
+  // delete the node object
+  nodes_->remove(id);
+}
+
+void graph_db::delete_relationship(relationship::id_t id){
+  auto &r = this->rship_by_id(id);
+  auto &from_node = this->node_by_id(r.from_node_id()); 
+  auto &to_node = this->node_by_id(r.to_node_id());
+  
+  // delete the relationship properties
+  auto cur_pset_id = r.property_list;
+  while (cur_pset_id != UNKNOWN){
+    auto tmp_pset_id = cur_pset_id;
+    
+    auto &cur_pset = properties_->get(cur_pset_id);
+    cur_pset_id = cur_pset.next;
+    properties_->remove(tmp_pset_id);
+  }
+  
+  // remove the relationship id from the "from_rship" list of its source node
+  if (from_node.from_rship_list == id){
+    from_node.from_rship_list = r.next_src_rship;
+  }
+  else{
+    auto cur_id = from_node.from_rship_list;
+    auto &cur_rship = this->rship_by_id(cur_id);
+    while (cur_rship.next_src_rship != UNKNOWN){
+      if (cur_rship.next_src_rship == id){
+        cur_rship.next_src_rship = r.next_src_rship;
+        break;
+      }
+      cur_id = cur_rship.next_src_rship;
+      cur_rship = this->rship_by_id(cur_id);
+    }
+  }
+
+  // remove the relationship from the "to_rship" list of its destination node
+  if (to_node.to_rship_list == id){
+    to_node.to_rship_list = r.next_dest_rship;
+  }
+  else{
+    auto cur_id = to_node.to_rship_list;
+    auto &cur_rship = this->rship_by_id(cur_id);
+    while (cur_rship.next_dest_rship != UNKNOWN){
+      if (cur_rship.next_dest_rship == id){
+        cur_rship.next_dest_rship = r.next_dest_rship;
+        break;
+      }
+      cur_id = cur_rship.next_dest_rship;
+      cur_rship = this->rship_by_id(cur_id);
+    }
+  }
+
+  // delete the relationship object
+  rships_->remove(id);
+}
+
 std::size_t graph_db::import_nodes_from_csv(const std::string &label,
                                             const std::string &filename,
                                             char delim, mapping_t &m) {
