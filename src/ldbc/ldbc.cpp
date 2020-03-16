@@ -325,301 +325,373 @@ void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t commentId) {
 	rs.wait();
 }
 
-//void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs) {
-void ldbc_iu_query_1(graph_db_ptr &gdb, std::vector<uint64_t>& uint64_props,
-                      std::vector<std::string>& str_props, std::vector<int>& int_props) {
-  /*uint64_t personId = 9999999999999;
-  auto fName = std::string("New");
-  auto lName = std::string("Person");
-  auto gender = std::string("female"); 
-  auto birthday = std::string("1981-01-21");
-  auto creationDate = std::string("2011-01-11T01:51:21.746+0000");
-  auto locationIP = std::string("1.183.127.173"); 
-  auto browser = std::string("Safari");
-  auto language = std::string("\"zh\", \"en\""); 
-  auto email = std::string("\"new1@email1.com\", \"new@email2.com\"");
-  uint64_t cityId = 505;
-  uint64_t tagId = 61;
-  uint64_t uniId = 2213;
-  uint64_t companyId = 915;
-  auto classYear = 2001;
-  auto workFrom = 2001;*/
+void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
+  
+  auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Place")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#else
+                .nodes_where("Place", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#endif
 
-  auto q1 = query(gdb).nodes_where("Place", "id",
-                            [&](auto &p) { return p.equal(uint64_props[1]); });
+  auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Tag")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); });
+#else
+                .nodes_where("Tag", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); });
+#endif
 
-  auto q2 = query(gdb).nodes_where("Tag", "id",
-                            [&](auto &p) { return p.equal(uint64_props[2]); });
+  auto q3 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Organisation")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[2])); });
+#else
+                .nodes_where("Organisation", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[2])); });
+#endif
 
-  auto q3 = query(gdb).nodes_where("Organisation", "id",
-                            [&](auto &p) { return p.equal(uint64_props[3]); });
-
-  auto q4 = query(gdb).nodes_where("Organisation", "id",
-                            [&](auto &p) { return p.equal(uint64_props[4]); });
+  auto q4 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Organisation")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[3])); });
+#else
+                .nodes_where("Organisation", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[3])); });
+#endif
 
   auto q5 = query(gdb).create("Person",
-                              {{"id", boost::any(uint64_props[0])},
-                              {"firstName", boost::any(str_props[0])},
-                              {"lastName", boost::any(str_props[1])},
-                              {"gender", boost::any(str_props[2])},
-                              {"birthday", boost::any(str_props[3])},
-                              {"creationDate", boost::any(str_props[4])},
-                              {"locationIP", boost::any(str_props[5])},
-                              {"browserUsed", boost::any(str_props[6])},
-                              {"language", boost::any(str_props[7])},
-                              {"email", boost::any(str_props[8])}})
+                              {{"id", boost::any(boost::get<uint64_t>(params[4]))},
+                              {"firstName", boost::any(boost::get<std::string &>(params[5]))},
+                              {"lastName", boost::any(boost::get<std::string &>(params[6]))},
+                              {"gender", boost::any(boost::get<std::string &>(params[7]))},
+                              {"birthday", boost::any(boost::get<std::string &>(params[8]))},
+                              {"creationDate", boost::any(boost::get<std::string &>(params[9]))},
+                              {"locationIP", boost::any(boost::get<std::string &>(params[10]))},
+                              {"browserUsed", boost::any(boost::get<std::string &>(params[11]))},
+                              {"language", boost::any(boost::get<std::string &>(params[12]))},
+                              {"email", boost::any(boost::get<std::string &>(params[13]))}})
                       .crossjoin(q1)
                       .create_rship({0, 1}, ":isLocatedIn", {})
                       .crossjoin(q2)
                       .create_rship({0, 3}, ":hasInterest", {})
                       .crossjoin(q3)
-                      .create_rship({0, 5}, ":studyAt", {{"classYear", boost::any(int_props[0])}})
+                      .create_rship({0, 5}, ":studyAt", {{"classYear", boost::any(boost::get<int>(params[14]))}})
                       .crossjoin(q4)
-                      .create_rship({0, 7}, ":workAt", {{"workFrom", boost::any(int_props[1])}});
-                      //.collect(rs);
+                      .create_rship({0, 7}, ":workAt", {{"workFrom", boost::any(boost::get<int>(params[15]))}})
+                      .collect(rs);
 
   query::start({&q1, &q2, &q3, &q4, &q5});
+  //std::cout << rs;
 }
 
-//void ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs) {
-void ldbc_iu_query_2(graph_db_ptr &gdb, std::vector<uint64_t>& uint64_props,
-                      std::vector<std::string>& str_props, std::vector<int>& int_props) {
+void ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
   
   /*uint64_t postId = 7696582443305;
   uint64_t personId = 933; 
   auto creationDate = std::string("2010-02-14T15:32:10.447+0000");*/
 
-  auto q1 = query(gdb).nodes_where("Post", "id",
-                            [&](auto &p) { return p.equal(uint64_props[0]); });
+  auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Post")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#else
+                .nodes_where("Post", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#endif
 
-  auto q2 =
-      query(gdb)
-          .nodes_where("Person", "id",
-                            [&](auto &p) { return p.equal(uint64_props[1]); })
-          .crossjoin(q1)
-          .create_rship({0, 1}, ":likes", {{"creationDate", boost::any(str_props[0])}});
-          //.collect(rs);
-
-  query::start({&q1, &q2});
-}
-
-//void ldbc_iu_query_3(graph_db_ptr &gdb, result_set &rs) {
-void ldbc_iu_query_3(graph_db_ptr &gdb, std::vector<uint64_t>& uint64_props,
-                      std::vector<std::string>& str_props, std::vector<int>& int_props) {
-  
-  /*uint64_t commentId = 2199026401296;
-  uint64_t personId = 1564;
-  auto creationDate = std::string("2012-01-23T08:56:30.617+0000");*/
-
-  auto q1 = query(gdb).nodes_where("Comment", "id",
-                            [&](auto &p) { return p.equal(uint64_props[0]); });
-  auto q2 =
-      query(gdb)
-          .nodes_where("Person", "id",
-                            [&](auto &p) { return p.equal(uint64_props[1]); })
-          .crossjoin(q1)
-          .create_rship({0, 1}, ":likes", {{"creationDate", boost::any(str_props[0])}});
-          //.collect(rs);
+  auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Person")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
+#else
+                .nodes_where("Person", "id",
+                                  [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
+#endif
+                .crossjoin(q1)
+                .create_rship({0, 1}, ":likes", {{"creationDate", boost::any(boost::get<std::string &>(params[2]))}})
+                .collect(rs);
 
   query::start({&q1, &q2});
 }
 
-//void ldbc_iu_query_4(graph_db_ptr &gdb, result_set &rs) {
-void ldbc_iu_query_4(graph_db_ptr &gdb, std::vector<uint64_t>& uint64_props,
-                      std::vector<std::string>& str_props, std::vector<int>& int_props) {
-  /*uint64_t personId = 1564;
-  uint64_t tagId = 206;
-  uint64_t forumId = 53975;
-  auto title = std::string("Wall of Emperor of Brazil Silva");
-  auto creationDate = std::string("2010-01-02T06:05:05.320+0000");*/
+void ldbc_iu_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
 
-  auto q1 = query(gdb).nodes_where("Person", "id",
-                            [&](auto &p) { return p.equal(uint64_props[0]); });
+  auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Person")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#else
+                .nodes_where("Comment", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#endif
 
-  auto q2 = query(gdb).nodes_where("Tag", "id",
-                            [&](auto &p) { return p.equal(uint64_props[1]); });
+  auto q2 =
+      query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Person")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
+#else
+          .nodes_where("Person", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
+#endif
+          .crossjoin(q1)
+          .create_rship({0, 1}, ":likes", {{"creationDate", boost::any(boost::get<std::string &>(params[2]))}})
+          .collect(rs);
+
+  query::start({&q1, &q2});
+}
+
+void ldbc_iu_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
+
+  auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Person")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#else
+                .nodes_where("Person", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#endif
+
+  auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Tag")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); });
+#else
+                .nodes_where("Tag", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); });
+#endif
 
   auto q3 = query(gdb).create("Forum",
-                              {{"id", boost::any(uint64_props[2])},
-                              {"title", boost::any(str_props[0])},
-                              {"creationDate", boost::any(str_props[1])} })
+                              {{"id", boost::any(boost::get<uint64_t>(params[2]))},
+                              {"title", boost::any(boost::get<std::string &>(params[3]))},
+                              {"creationDate", boost::any(boost::get<std::string &>(params[4]))} })
                       .crossjoin(q1)
                       .create_rship({0, 1}, ":hasModerator", {})
                       .crossjoin(q2)
-                      .create_rship({0, 3}, ":hasTag", {});
-                      //.collect(rs);
+                      .create_rship({0, 3}, ":hasTag", {})
+                      .collect(rs);
 
   query::start({&q1, &q2, &q3});
 }
 
-//void ldbc_iu_query_5(graph_db_ptr &gdb, result_set &rs) {
-void ldbc_iu_query_5(graph_db_ptr &gdb, std::vector<uint64_t>& uint64_props,
-                      std::vector<std::string>& str_props, std::vector<int>& int_props) {
-  /*uint64_t personId = 1564;
-  uint64_t forumId = 37;
-  auto joinDate = std::string("2010-02-23T09:10:25.466+0000");*/
+void ldbc_iu_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
 
   auto q1 = 
       query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Person")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#else
           .nodes_where("Person", "id",
-                            [&](auto &p) { return p.equal(uint64_props[0]); });
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#endif
 
   auto q2 =
       query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Forum")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
+#else
           .nodes_where("Forum", "id",
-                            [&](auto &p) { return p.equal(uint64_props[1]); })
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
+#endif
           .crossjoin(q1)
-          .create_rship({0, 1}, ":hasMember", {{"creationDate", boost::any(str_props[0])}});
-          //.collect(rs);
+          .create_rship({0, 1}, ":hasMember", {{"creationDate", boost::any(boost::get<std::string &>(params[2]))}})
+          .collect(rs);
 
   query::start({&q1, &q2});
 }
 
-//void ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs) {
-void ldbc_iu_query_6(graph_db_ptr &gdb, std::vector<uint64_t>& uint64_props,
-                      std::vector<std::string>& str_props, std::vector<int>& int_props) {
-  /*uint64_t postId = 13439;  
-  auto imageFile = std::string("");
-  auto creationDate = std::string("2011-09-07T14:52:27.809+0000");
-  auto locationIP = std::string("46.19.159.176"); 
-  auto browser = std::string("Safari");
-  auto language = std::string("\"uz\""); 
-  auto content = std::string("About Alexander I of Russia,  (23 December  1777 – 1 December  1825), (Russian: "
-                            "Александр Благословенный, Aleksandr Blagoslovennyi, meaning Alexander the Bless"); 
-  auto length = 159;
-  uint64_t personId = 6597069777240;
-  uint64_t forumId = 2748782215183; 
-  uint64_t countryId = 50;
-  uint64_t tagId = 1679;*/
+void ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
 
   auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Person")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#else
                 .nodes_where("Person", "id",
-                            [&](auto &p) { return p.equal(uint64_props[0]); });
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#endif
 
-  auto q2 = query(gdb).nodes_where("Forum", "id",
-                            [&](auto &p) { return p.equal(uint64_props[1]); });
+  auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Forum")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); });
+#else
+                .nodes_where("Forum", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); });
+#endif
 
-  auto q3 = query(gdb).nodes_where("Place", "id",
-                            [&](auto &p) { return p.equal(uint64_props[2]); });
+  auto q3 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Place")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[2])); });
+#else
+                .nodes_where("Place", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[2])); });
+#endif
 
-  auto q4 = query(gdb).nodes_where("Tag", "id",
-                            [&](auto &p) { return p.equal(uint64_props[3]); });
+  auto q4 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Tag")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[3])); });
+#else
+                .nodes_where("Tag", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[3])); });
+#endif
 
   auto q5 = query(gdb).create("Post",
-                            {{"id", boost::any(uint64_props[4])}, 
-                              {"imageFile", boost::any(str_props[0])},
-                              {"creationDate", boost::any(str_props[1])},
-                              {"locationIP", boost::any(str_props[2])},
-                              {"browserUsed", boost::any(str_props[3])},
-                              {"language", boost::any(str_props[4])}, 
-                              {"content", boost::any(str_props[5])},
-                              {"length", boost::any(int_props[0])} })
+                            {{"id", boost::any(boost::get<uint64_t>(params[4]))}, 
+                              {"imageFile", boost::any(boost::get<std::string &>(params[5]))},
+                              {"creationDate", boost::any(boost::get<std::string &>(params[6]))},
+                              {"locationIP", boost::any(boost::get<std::string &>(params[7]))},
+                              {"browserUsed", boost::any(boost::get<std::string &>(params[8]))},
+                              {"language", boost::any(boost::get<std::string &>(params[9]))}, 
+                              {"content", boost::any(boost::get<std::string &>(params[10]))},
+                              {"length", boost::any(boost::get<int>(params[11]))} })
                       .crossjoin(q1)
                       .create_rship({0, 1}, ":hasCreator", {})
                       .crossjoin(q2)
                       .create_rship({3, 0}, ":containerOf", {})
                       .crossjoin(q3)
-                      .create_rship({0, 5}, ":isLocatedn", {})
+                      .create_rship({0, 5}, ":isLocatedIn", {})
                       .crossjoin(q4)
-                      .create_rship({0, 7}, ":hasTag", {});
-                      //.collect(rs);
+                      .create_rship({0, 7}, ":hasTag", {})
+                      .collect(rs);
 
   query::start({&q1, &q2, &q3, &q4, &q5});
 }
 
-//void ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs, std::vector<uint64_t>& uint64_props,
-  //                    std::vector<std::string>& str_props, std::vector<int>& int_props) {
-void ldbc_iu_query_7(graph_db_ptr &gdb, std::vector<uint64_t>& uint64_props,
-                      std::vector<std::string>& str_props, std::vector<int>& int_props) {
-  /*uint64_t commentId = 442214; 
-  auto creationDate = std::string("2012-01-09T11:49:15.991+0000");
-  auto locationIP = std::string("91.149.169.27"); 
-  auto browser = std::string("Chrome");
-  auto content = std::string("fine"); 
-  auto length = 4;
-  uint64_t personId = 10995116283243;
-  uint64_t postId = 1649267442210; 
-  uint64_t countryId = 63;
-  uint64_t tagId = 1679;*/
+void ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
 
-  auto q1 = query(gdb).nodes_where("Person", "id",
-                            [&](auto &p) { return p.equal(uint64_props[0]); });
+  auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Person")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#else
+                .nodes_where("Person", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#endif
 
-  auto q2 = query(gdb).nodes_where("Post", "id",
-                            [&](auto &p) { return p.equal(uint64_props[1]); });
+  auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Post")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); });
+#else
+                .nodes_where("Post", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); });
+#endif
 
-  auto q3 = query(gdb).nodes_where("Place", "id",
-                            [&](auto &p) { return p.equal(uint64_props[2]); });
+  auto q3 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Place")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[2])); });
+#else
+                .nodes_where("Place", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[2])); });
+#endif
 
-  auto q4 = query(gdb).nodes_where("Tag", "id",
-                            [&](auto &p) { return p.equal(uint64_props[3]); });
+  auto q4 = query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Tag")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[3])); });
+#else
+                .nodes_where("Tag", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[3])); });
+#endif
 
   auto q5 = query(gdb).create("Comment",
-                              {{"id", boost::any(uint64_props[4])},
-                              {"creationDate", boost::any(str_props[0])},
-                              {"locationIP", boost::any(str_props[1])},
-                              {"browserUsed", boost::any(str_props[2])},
-                              {"content", boost::any(str_props[3])},
-                              {"length", boost::any(int_props[0])} })
+                              {{"id", boost::any(boost::get<uint64_t>(params[4]))},
+                              {"creationDate", boost::any(boost::get<std::string &>(params[5]))},
+                              {"locationIP", boost::any(boost::get<std::string &>(params[6]))},
+                              {"browserUsed", boost::any(boost::get<std::string &>(params[7]))},
+                              {"content", boost::any(boost::get<std::string &>(params[8]))},
+                              {"length", boost::any(boost::get<int>(params[9]))} })
                       .crossjoin(q1)
                       .create_rship({0, 1}, ":hasCreator", {})
                       .crossjoin(q2)
                       .create_rship({0, 3}, ":replyOf", {})
                       .crossjoin(q3)
-                      .create_rship({0, 5}, ":isLocatedn", {})
+                      .create_rship({0, 5}, ":isLocatedIn", {})
                       .crossjoin(q4)
-                      .create_rship({0, 7}, ":hasTag", {});
-                      //.collect(rs);
+                      .create_rship({0, 7}, ":hasTag", {})
+                      .collect(rs);
 
   query::start({&q1, &q2, &q3, &q4, &q5});
 }
 
-//void ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs) {
-void ldbc_iu_query_8(graph_db_ptr &gdb, std::vector<uint64_t>& uint64_props,
-                      std::vector<std::string>& str_props, std::vector<int>& int_props) {
-  /*uint64_t personId_1 = 4194;
-  uint64_t personId_2 = 1564;
-  auto creationDate = std::string("2010-02-23T09:10:15.466+0000");*/
+void ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
 
   auto q1 = 
       query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Person")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#else
           .nodes_where("Person", "id",
-                            [&](auto &p) { return p.equal(uint64_props[1]); });
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
+#endif
+
   auto q2 =
       query(gdb)
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Person")
+               .property( "id",
+                           [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
+#else
           .nodes_where("Person", "id",
-                            [&](auto &p) { return p.equal(uint64_props[0]); })
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
+#endif
           .crossjoin(q1)
-          .create_rship({0, 1}, ":KNOWS", {{"creationDate", boost::any(str_props[0])}});
-          //.collect(rs);
+          .create_rship({0, 1}, ":knows", {{"creationDate", boost::any(boost::get<std::string &>(params[2]))}})
+          .collect(rs);
 
   query::start({&q1, &q2});
-}
-
-void run_ldbc_queries(graph_db_ptr &gdb) {
-  // the query set
-  /*std::function<void(graph_db_ptr &, result_set &)> query_set[] = {
-      ldbc_is_query_1, ldbc_is_query_2, ldbc_is_query_3, 
-      ldbc_is_query_4, ldbc_is_query_5, ldbc_is_query_6, ldbc_is_query_7,
-      ldbc_iu_query_1, ldbc_iu_query_2, ldbc_iu_query_3, ldbc_iu_query_4,
-      ldbc_iu_query_5, ldbc_iu_query_6, ldbc_iu_query_7, ldbc_iu_query_8};
-    
-  std::size_t qnum = 1;
-
-  // for each query we measure the time and run it in a transaction
-  for (auto f : query_set) {
-    result_set rs;
-    auto start_qp = std::chrono::steady_clock::now();
-
-    auto tx = gdb->begin_transaction();
-    f(gdb, rs);
-    gdb->commit_transaction();
-
-    auto end_qp = std::chrono::steady_clock::now();
-    std::cout << "Query #" << qnum++ << " executed in "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
-                                                                       start_qp)
-                     .count()
-              << " ms" << std::endl;
-  }*/
 }
