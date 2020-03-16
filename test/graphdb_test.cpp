@@ -1091,7 +1091,7 @@ TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
 #endif
 } 
 
-TEST_CASE("Deleting nodes and relationships", "[graph_db]") {
+TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
   graph_db_ptr graph;
@@ -1165,8 +1165,6 @@ TEST_CASE("Deleting nodes and relationships", "[graph_db]") {
   
   next_node = graph->get_nodes()->as_vec().first_available();
   next_rship = graph->get_relationships()->as_vec().first_available();
-  std::cout << "next_node: " << next_node << "\n";
-  std::cout << "next_rship: " << next_rship << "\n";
   REQUIRE(next_node == 0);
   REQUIRE(next_rship == 0);
 
@@ -1180,3 +1178,55 @@ TEST_CASE("Deleting nodes and relationships", "[graph_db]") {
   remove(test_path.c_str());
 #endif
 } 
+
+TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  graph_db_ptr graph;
+  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
+#else
+  auto graph = p_make_ptr<graph_db>();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+  
+  auto i = 1;
+  
+  auto p1 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
+  auto p2 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
+  auto b1 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
+  auto b2 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
+  auto b3 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
+
+  graph->add_relationship(p1, b1, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b2, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  
+#ifdef USE_TX
+  graph->commit_transaction();
+  tx = graph->begin_transaction();
+#endif
+  
+  node::id_t next_node = graph->get_nodes()->as_vec().first_available();
+  for (node::id_t i = 1; i < next_node; i++)
+    graph->delete_node(i); 
+  
+  next_node = graph->get_nodes()->as_vec().first_available();
+  relationship::id_t next_rship = graph->get_relationships()->as_vec().first_available();
+  REQUIRE(next_node == 1);
+  REQUIRE(next_rship == 0);
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}
