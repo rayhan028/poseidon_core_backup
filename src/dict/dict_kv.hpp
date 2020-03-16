@@ -79,27 +79,6 @@ public:
   std::size_t size();
 
 private:
-  class string_hasher {
-    /* hash multiplier used by fibonacci hashing */
-    static const size_t hash_multiplier = 11400714819323198485ULL;
-
-  public:
-    // using transparent_key_equal = key_equal;
-
-    size_t operator()(const string_t &str) const {
-      return hash(str.c_str(), str.size());
-    }
-
-  private:
-    size_t hash(const char *str, size_t size) const {
-      size_t h = 0;
-      for (size_t i = 0; i < size; ++i) {
-        h = static_cast<size_t>(str[i]) ^ (h * hash_multiplier);
-      }
-      return h;
-    }
-  };
-
   using code_str_hashmap_t = pmem::obj::concurrent_hash_map<dcode_t, string_t>;
   using str_code_hashmap_t =
       pmem::obj::concurrent_hash_map<string_t, dcode_t, string_hasher>;
