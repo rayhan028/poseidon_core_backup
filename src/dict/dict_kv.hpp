@@ -28,8 +28,6 @@
 
 #include <string>
 
-using string_t = polymorphic_string;
-
 /**
  * dict is a class for mapping strings to integer codes. Its main purpose is
  * to implement string dictionaries for dictionary compression as well as type

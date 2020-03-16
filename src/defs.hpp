@@ -78,6 +78,7 @@ using qr_tuple = std::vector<query_result>;
 #include <libpmemobj++/make_persistent.hpp>
 #include <libpmemobj++/p.hpp>
 #include <libpmemobj++/persistent_ptr.hpp>
+#include "polymorphic_string.hpp"
 
 template <typename T> using p_ptr = pmem::obj::persistent_ptr<T>;
 
@@ -87,6 +88,8 @@ template <typename T, typename... Args>
 inline p_ptr<T> p_make_ptr(Args &&... args) {
   return pmem::obj::make_persistent<T>(std::forward<Args>(args)...);
 }
+
+using string_t = polymorphic_string;
 
 /**
  * Helper class for persistent concurrent hashmap.
