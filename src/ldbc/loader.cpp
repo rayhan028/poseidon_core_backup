@@ -16,7 +16,7 @@
 
 #define POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
 
-const std::string test_path = poseidon::gPmemPath + "ldbc";
+const std::string test_path = poseidon::gPmemPath + "sf1";
 
 struct root {
   graph_db_ptr graph;
@@ -80,7 +80,7 @@ using namespace boost::program_options;
 
 int main(int argc, char **argv) {
   std::string db_name;
-  std::string snb_home = "/home/data/SNB_SF_1/";
+  std::string snb_home = "/home/data/SNB_SF_10/";
 
  try {
     options_description desc{"Options"};
@@ -135,30 +135,99 @@ int main(int argc, char **argv) {
   std::string snb_sta = snb_home + "/static/";
   std::string snb_dyn = snb_home + "/dynamic/";
 
- std::vector<std::string> node_files = {snb_sta + "place_0_0.csv", snb_sta + "organisation_0_0.csv",
-                                         snb_sta + "tagclass_0_0.csv", snb_sta + "tag_0_0.csv",
-                                         snb_dyn + "comment_0_0.csv", snb_dyn + "forum_0_0.csv",
-                                         snb_dyn + "person_0_0.csv", snb_dyn + "post_0_0.csv"};
+ std::vector<std::string> node_files = {snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
+                                         snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv",
+                                         snb_sta + "organisation_0_0.csv", snb_sta + "organisation_1_0.csv",
+                                         snb_sta + "organisation_2_0.csv", snb_sta + "organisation_3_0.csv",
+                                         snb_sta + "tagclass_0_0.csv", snb_sta + "tagclass_1_0.csv",
+                                         snb_sta + "tagclass_2_0.csv", snb_sta + "tagclass_3_0.csv",
+                                         snb_sta + "tag_0_0.csv", snb_sta + "tag_1_0.csv",
+                                         snb_sta + "tag_2_0.csv", snb_sta + "tag_3_0.csv",
+                                         snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+                                         snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv",
+                                         snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
+                                         snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv",
+                                         snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+                                         snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+                                         snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+                                         snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv"};
 
   std::vector<std::string> rship_files = {snb_dyn + "comment_hasCreator_person_0_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_1_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_2_0.csv",
+                                          snb_dyn + "comment_hasCreator_person_3_0.csv",
                                           snb_dyn + "comment_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "comment_isLocatedIn_place_1_0.csv",
+                                          snb_dyn + "comment_isLocatedIn_place_2_0.csv",
+                                          snb_dyn + "comment_isLocatedIn_place_3_0.csv",
                                           snb_dyn + "comment_replyOf_comment_0_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_1_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_2_0.csv",
+                                          snb_dyn + "comment_replyOf_comment_3_0.csv",
                                           snb_dyn + "comment_replyOf_post_0_0.csv",
+                                          snb_dyn + "comment_replyOf_post_1_0.csv",
+                                          snb_dyn + "comment_replyOf_post_2_0.csv",
+                                          snb_dyn + "comment_replyOf_post_3_0.csv",
                                           snb_dyn + "forum_containerOf_post_0_0.csv",
+                                          snb_dyn + "forum_containerOf_post_1_0.csv",
+                                          snb_dyn + "forum_containerOf_post_2_0.csv",
+                                          snb_dyn + "forum_containerOf_post_3_0.csv",
                                           snb_dyn + "forum_hasMember_person_0_0.csv",
+                                          snb_dyn + "forum_hasMember_person_1_0.csv",
+                                          snb_dyn + "forum_hasMember_person_2_0.csv",
+                                          snb_dyn + "forum_hasMember_person_3_0.csv",
                                           snb_dyn + "forum_hasModerator_person_0_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_1_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_2_0.csv",
+                                          snb_dyn + "forum_hasModerator_person_3_0.csv",
                                           snb_dyn + "forum_hasTag_tag_0_0.csv",
+                                          snb_dyn + "forum_hasTag_tag_1_0.csv",
+                                          snb_dyn + "forum_hasTag_tag_2_0.csv",
+                                          snb_dyn + "forum_hasTag_tag_3_0.csv",
                                           snb_dyn + "person_hasInterest_tag_0_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_1_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_2_0.csv",
+                                          snb_dyn + "person_hasInterest_tag_3_0.csv",
                                           snb_dyn + "person_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_1_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_2_0.csv",
+                                          snb_dyn + "person_isLocatedIn_place_3_0.csv",
                                           snb_dyn + "person_knows_person_0_0.csv",
+                                          snb_dyn + "person_knows_person_1_0.csv",
+                                          snb_dyn + "person_knows_person_2_0.csv",
+                                          snb_dyn + "person_knows_person_3_0.csv",
                                           snb_dyn + "person_likes_comment_0_0.csv",
+                                          snb_dyn + "person_likes_comment_1_0.csv",
+                                          snb_dyn + "person_likes_comment_2_0.csv",
+                                          snb_dyn + "person_likes_comment_3_0.csv",
                                           snb_dyn + "person_likes_post_0_0.csv",
+                                          snb_dyn + "person_likes_post_1_0.csv",
+                                          snb_dyn + "person_likes_post_2_0.csv",
+                                          snb_dyn + "person_likes_post_3_0.csv",
                                           snb_dyn + "post_hasCreator_person_0_0.csv",
+                                          snb_dyn + "post_hasCreator_person_1_0.csv",
+                                          snb_dyn + "post_hasCreator_person_2_0.csv",
+                                          snb_dyn + "post_hasCreator_person_3_0.csv",
                                           snb_dyn + "comment_hasTag_tag_0_0.csv",
+                                          snb_dyn + "comment_hasTag_tag_1_0.csv",
+                                          snb_dyn + "comment_hasTag_tag_2_0.csv",
+                                          snb_dyn + "comment_hasTag_tag_3_0.csv",
                                           snb_dyn + "post_hasTag_tag_0_0.csv",
+                                          snb_dyn + "post_hasTag_tag_1_0.csv",
+                                          snb_dyn + "post_hasTag_tag_2_0.csv",
+                                          snb_dyn + "post_hasTag_tag_3_0.csv",
                                           snb_dyn + "post_isLocatedIn_place_0_0.csv",
+                                          snb_dyn + "post_isLocatedIn_place_1_0.csv",
+                                          snb_dyn + "post_isLocatedIn_place_2_0.csv",
+                                          snb_dyn + "post_isLocatedIn_place_3_0.csv",
                                           snb_dyn + "person_studyAt_organisation_0_0.csv",
-                                          snb_dyn + "person_workAt_organisation_0_0.csv"};
+                                          snb_dyn + "person_studyAt_organisation_1_0.csv",
+                                          snb_dyn + "person_studyAt_organisation_2_0.csv",
+                                          snb_dyn + "person_studyAt_organisation_3_0.csv",
+                                          snb_dyn + "person_workAt_organisation_0_0.csv",
+                                          snb_dyn + "person_workAt_organisation_1_0.csv",
+                                          snb_dyn + "person_workAt_organisation_2_0.csv",
+                                          snb_dyn + "person_workAt_organisation_3_0.csv"};
 
   spdlog::info("trying to load data from {} and {}", snb_sta, snb_dyn);
   load_snb_data(graph, node_files, rship_files);
