@@ -6,6 +6,8 @@
 
 
 #ifdef USE_PMDK
+#include "polymorphic_string.hpp"
+#include <libpmemobj++/container/concurrent_hash_map.hpp>
 #else
 #include <unordered_map>
 #endif
@@ -21,6 +23,8 @@ public:
 
 private:
 #ifdef USE_PMDK
+    using hashmap = pmem::obj::concurrent_hash_map<string_t, index_id, string_hasher>;
+    p_ptr<hashmap> indexes_;
 #else
     std::unordered_map<std::string, index_id> indexes_;
 #endif
