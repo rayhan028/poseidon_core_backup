@@ -1160,8 +1160,8 @@ TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
     graph->delete_node(i);
   
   // deleting a node deletes all relationships associated with the node
-  /*for (relationship::id_t i = 0; i < next_rship; i++)
-    graph->delete_relationship(i);*/
+  for (relationship::id_t i = 0; i < next_rship; i++)
+    graph->delete_relationship(i);
   
   next_node = graph->get_nodes()->as_vec().first_available();
   next_rship = graph->get_relationships()->as_vec().first_available();
@@ -1214,11 +1214,14 @@ TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
   node::id_t next_node = graph->get_nodes()->as_vec().first_available();
   for (node::id_t i = 1; i < next_node; i++)
     graph->delete_node(i); 
+  relationship::id_t next_rship = graph->get_relationships()->as_vec().first_available();
+  for (node::id_t i = 1; i < next_rship; i++)
+    graph->delete_relationship(i); 
   
   next_node = graph->get_nodes()->as_vec().first_available();
-  relationship::id_t next_rship = graph->get_relationships()->as_vec().first_available();
+  next_rship = graph->get_relationships()->as_vec().first_available();
   REQUIRE(next_node == 1);
-  REQUIRE(next_rship == 0);
+  REQUIRE(next_rship == 1);
 
 #ifdef USE_TX
   graph->commit_transaction();

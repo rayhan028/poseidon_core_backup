@@ -484,6 +484,19 @@ void property_list::remove(property_set::id_t id) {
   properties_.erase(id);
 }
 
+void property_list::remove_properties(property_set::id_t id) {
+  if (properties_.capacity() <= id)
+    throw unknown_id();
+
+  auto pset_id = id;
+  while (pset_id != UNKNOWN) {
+    auto pid = pset_id;
+    auto &p = properties_.at(pset_id);
+    pset_id = p.next;
+    properties_.erase(pid);
+  }
+}
+
 std::list<p_item>
 property_list::build_dirty_property_list(const properties_t &props,
                                          dict_ptr &dct) {
