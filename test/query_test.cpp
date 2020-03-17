@@ -165,6 +165,27 @@ TEST_CASE("Testing query operators", "[qop]") {
     expected.append({query_result(std::to_string(4)), query_result("aaa4")});
     REQUIRE(rs == expected);
   }
+
+  SECTION("use index") {
+#ifdef USE_TX
+    graph->commit_transaction();
+    tx = graph->begin_transaction();
+#endif
+    // TODO: create index
+    auto idx = graph->create_index("Node", "id");
+ 
+    result_set rs, expected;
+    auto q = query(graph)
+              .nodes_where_indexed("Node", "id", 3)
+              .project({PExpr_(0, pj::int_property(res, "id")),
+                        PExpr_(0, pj::string_property(res, "name"))})
+              .collect(rs);
+    q.start();
+
+    rs.wait();
+    expected.append({query_result(std::to_string(3)), query_result("aaa3")});
+    REQUIRE(rs == expected);
+  }
 #ifdef USE_TX
   graph->abort_transaction();
 #endif

@@ -89,21 +89,25 @@ template <> void p_item::set<double>(double v) {
 
 template <> void p_item::set<int>(int v) {
   P_SET_VAL(flags_, p_int);
+  memset(&value_, 0, 8);
   memcpy(&value_, &v, sizeof(int));
 }
 
 template <> void p_item::set<dcode_t>(dcode_t v) {
   P_SET_VAL(flags_, p_dcode);
+  memset(&value_, 0, 8);
   memcpy(&value_, &v, sizeof(dcode_t));
 }
 
 template <> void p_item::set<uint64_t>(uint64_t v) {
   P_SET_VAL(flags_, p_uint64);
+  memset(&value_, 0, 8);
   memcpy(&value_, &v, sizeof(uint64_t));
 }
 
 template <> void p_item::set<ptime>(ptime v) {
   P_SET_VAL(flags_, p_ptime);
+  memset(&value_, 0, 8);
   memcpy(&value_, &v, sizeof(ptime));
 }
 
@@ -203,6 +207,10 @@ bool p_item::equal(boost::posix_time::ptime dt) const {
   throw invalid_typecast();
 }
 
+uint64_t p_item::get_raw() const {
+  return *(reinterpret_cast<const uint64_t *>(value_));
+}
+  
 /* --------------------------------------------------------------------- */
 
 property_set::id_t property_list::add_node_properties(offset_t nid,

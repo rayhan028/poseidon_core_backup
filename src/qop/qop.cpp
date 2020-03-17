@@ -48,6 +48,19 @@ void scan_nodes::dump(std::ostream &os) const {
 
 /* ------------------------------------------------------------------------ */
 
+void index_scan::start(graph_db_ptr &gdb) {
+  gdb->index_lookup(idx, key, [&](node &n) { consume_(gdb, {&n}); });
+  qop::default_finish(gdb);
+}
+
+void index_scan::dump(std::ostream &os) const {
+  os << "index_scan([" << key << "])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+/* ------------------------------------------------------------------------ */
+
 void foreach_from_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
   auto n = boost::get<node *>(v.back());
   if (lcode == 0)

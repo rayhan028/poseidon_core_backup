@@ -12,7 +12,7 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK       "Use Intel PMDK"                      ON)
-option(USE_PMDK_TX_FA "Use Intel PMDK Transactions for FA"  ON) #Without turning ON USE_PMDK ON, "USE_PMDK_TX_FA" cannot be used.
+option(USE_PMDK_TX_FA "Use Intel PMDK Transactions for FA"  OFF) #Without turning ON USE_PMDK ON, "USE_PMDK_TX_FA" cannot be used.
 option(USE_TX         "Provide Transaction Support"         ON)
 option(BUILD_PYTHON   "Build python interface for poseidon" ON)
 #-------------------------------------------------------------------------------
@@ -61,7 +61,11 @@ include_directories(${PROJECT_SOURCE_DIR}/src/storage)
 include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
+<<<<<<< HEAD
 include_directories(${PROJECT_SOURCE_DIR}/src/ldbc)
+=======
+include_directories(${PROJECT_SOURCE_DIR}/src/btree)
+>>>>>>> 797a518f2e217dd2a48e033b1d63562f759a1573
 #---------------------------------------------------------------------------
 
 set(THIRD_PARTY_DIR "${PROJECT_BINARY_DIR}/_deps")
@@ -253,6 +257,7 @@ set(src_files ${dict_src}
   src/storage/relationships.cpp
   src/storage/properties.cpp
   src/storage/graph_db.cpp
+  src/btree/index_map.cpp
   src/qop/qop.cpp
   src/qop/update.cpp
   src/qop/join.cpp

@@ -31,6 +31,8 @@
 #include "properties.hpp"
 #include "relationships.hpp"
 #include "transaction.hpp"
+#include "btree.hpp"
+#include "index_map.hpp"
 
 /**
  * graph_db represents a graph consisting of nodes and relationships with
@@ -234,6 +236,32 @@ public:
    */
   void print_mem_usage();
 
+  /* ---------------- index management ---------------- */
+  
+  /**
+   * Create an index on the nodes table for all nodes with the given label and
+   * the property. The resulting index allows lookup and range scans on values 
+   * of this property.
+   */
+  index_id create_index(const std::string& node_label, const std::string& prop_name);
+
+  /**
+   * Return the id of the index for the given label/property combination. Raises an
+   * exception of no corresponding index exists.
+   */
+  index_id get_index(const std::string& node_label, const std::string& prop_name);
+
+  /**
+   * Delete the given index.
+   */
+  void drop_index(const std::string& node_label, const std::string& prop_name);
+
+  /**
+   * Perform an index lookup on the given index for the given property value key. 
+   * For each matching node the consumer function is called.
+   */
+  void index_lookup(index_id idx, uint64_t key, node_consumer_func consumer);
+
   /* ---------------- query support ---------------- */
 
   /**
@@ -414,6 +442,8 @@ private:
   p_ptr<property_list>
       properties_;   // the list of all properties of nodes and relationships
   p_ptr<dict> dict_; // the dictionary used for string compression
+
+  p_ptr<index_map> index_map_;
 
   /**
    * These member variables are volatile and have to be reinitialized

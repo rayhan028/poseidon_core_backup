@@ -65,6 +65,8 @@ graph_db::graph_db(const std::string &db_name) {
   rships_ = p_make_ptr<relationship_list>();
   properties_ = p_make_ptr<property_list>();
   dict_ = p_make_ptr<dict>();
+  index_map_ = p_make_ptr<index_map>();
+
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   m_ = new std::mutex();
 }
@@ -843,6 +845,59 @@ dcode_t graph_db::get_code(const std::string &s) {
 void graph_db::dump() {
   nodes_->dump();
   rships_->dump();
+}
+
+
+index_id graph_db::create_index(const std::string& node_label, const std::string& prop_name) {
+  // spdlog::info("create_index...");
+  // (1) we create a new b+tree
+  #if USE_PMDK
+    auto pop = pmem::obj::pool_by_vptr(this);
+    btree_ptr new_idx;
+      pmem::obj::transaction::run(pop, [&] {
+        new_idx = p_make_btree();
+      });
+#else
+  auto new_idx = p_make_btree();
+#endif
+  auto pc = dict_->lookup_string(prop_name);
+
+  // (2) we fill the index with (property value, node-id) pairs
+  // spdlog::info("create_index: fill index: {} => {}", prop_name, pc);
+  nodes_by_label(node_label, [this, &new_idx, &pc](auto& n) {
+    // spdlog::info("get property value for node #{}...", n.id());
+    auto val = properties_->property_value(n.property_list, pc);
+    if (!val.empty()) {
+      // because we don't distinguish differently typed indexes we use the raw value here
+      auto v = val.get_raw(); // val.template get<int>();
+      // spdlog::info("create_index: {} -> {}", v, n.id());      
+      new_idx->insert(v, n.id());
+    }
+  });
+
+  // (3) and register the index
+  index_map_->register_index(node_label + ":" + prop_name, new_idx);
+
+  return new_idx;
+}
+
+index_id graph_db::get_index(const std::string& node_label, const std::string& prop_name) {
+  return index_map_->get_index(node_label + ":" + prop_name);
+}
+
+void graph_db::drop_index(const std::string& node_label, const std::string& prop_name) {
+  auto idx_name = node_label + ":" + prop_name;
+  auto idx = index_map_->get_index(idx_name);
+  // TODO: delete idx
+  index_map_->unregister_index(idx_name);
+}
+
+void graph_db::index_lookup(index_id idx_ptr, uint64_t key, node_consumer_func consumer) {
+  offset_t val = 0;
+  if (idx_ptr->lookup(key, &val)) {
+    auto& n = node_by_id(val);
+    consumer(n);
+  }
 }
 
 void graph_db::nodes_by_label(const std::string &label,

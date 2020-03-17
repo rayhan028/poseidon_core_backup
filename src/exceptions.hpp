@@ -28,6 +28,12 @@ class unknown_id : public std::exception {
   }
 };
 
+class unknown_index : public std::exception {
+  const char *what() const noexcept override {
+    return "Index does not exist.";
+  }
+};
+
 class index_out_of_range : public std::exception {
   const char *what() const noexcept override {
     return "Index out of range in vector.";
