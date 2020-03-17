@@ -15,9 +15,7 @@
 
 #ifdef USE_PMDK
 
-#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
-
-const std::string test_path = poseidon::gPmemPath + "snb_sf_1";
+const std::string test_path = poseidon::gPmemPath + "sf10";
 
 struct root {
   graph_db_ptr graph;
@@ -28,8 +26,10 @@ struct root {
 double calc_avg_time(const std::vector<double>& vec) {
     double d = 0.0;
     for (auto v : vec) {
+        std::cout << v << ", ";
         d += v;
     }
+    std::cout << "\n";
     return d / (double)vec.size();
 }
 
@@ -703,15 +703,25 @@ int main(int argc, char **argv) {
 #endif
 
   node::id_t first_insert_node = graph->get_relationships()->as_vec().first_available();
+  relationship::id_t first_insert_rship = graph->get_relationships()->as_vec().first_available();
 
   run_benchmark(graph);
-
-  // delete all created nodes and relationships
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+  //delete all created nodes and relationships
   node::id_t last_insert_node = graph->get_relationships()->as_vec().first_available();
-  for (node::id_t i = last_insert_node; i < last_insert_node; i++)
+  relationship::id_t last_insert_rship = graph->get_relationships()->as_vec().first_available();
+  for (node::id_t i = first_insert_node; i < last_insert_node; i++)
     graph->delete_node(i);
+  for (relationship::id_t i = first_insert_rship; i < last_insert_rship; i++)
+    graph->delete_relationship(i);
 
-  // assert all created nodes and relationships have been delete
+  // assert all created nodes and relationships have been deleted
   node::id_t next_insert_node = graph->get_relationships()->as_vec().first_available();
-  assert(first_insert_node == next_insert_node);
+  relationship::id_t next_insert_rship = graph->get_relationships()->as_vec().first_available();
+  //assert(first_insert_node == next_insert_node);
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
 }
