@@ -602,8 +602,8 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
 
 void graph_db::delete_node(node::id_t id){
   auto &n = this->node_by_id(id);
-  auto cur_from_rship_id = n.from_rship_list;
-  auto cur_to_rship_id = n.to_rship_list;
+  //auto cur_from_rship_id = n.from_rship_list;
+  //auto cur_to_rship_id = n.to_rship_list;
   
   // delete the node properties
   auto cur_pset_id = n.property_list;
@@ -615,7 +615,7 @@ void graph_db::delete_node(node::id_t id){
     properties_->remove(tmp_pset_id);
   }
 
-  // delete all "from" relationships of the node
+  /*// delete all "from" relationships of the node
   while (cur_from_rship_id != UNKNOWN){
     auto &r = this->rship_by_id(cur_from_rship_id);
     //std::cout << "r = this->rship_by_id => id: " << cur_from_rship_id << "\n";
@@ -632,7 +632,7 @@ void graph_db::delete_node(node::id_t id){
     //std::cout << "r.id() " << r.id() << "\n";
     cur_to_rship_id = r.next_dest_rship;
     delete_relationship(r.id());
-  }
+  }*/
 
   // delete the node object
   nodes_->remove(id);
@@ -640,8 +640,8 @@ void graph_db::delete_node(node::id_t id){
 
 void graph_db::delete_relationship(relationship::id_t id){
   auto &r = this->rship_by_id(id);
-  auto &from_node = this->node_by_id(r.from_node_id()); 
-  auto &to_node = this->node_by_id(r.to_node_id());
+  //auto &from_node = this->node_by_id(r.from_node_id()); 
+  //auto &to_node = this->node_by_id(r.to_node_id());
   
   // delete the relationship properties
   auto cur_pset_id = r.property_list;
@@ -654,7 +654,7 @@ void graph_db::delete_relationship(relationship::id_t id){
   }
   
   // remove the relationship id from the "from_rship" list of its source node
-  if (from_node.from_rship_list == id){
+  /*if (from_node.from_rship_list == id){
     from_node.from_rship_list = r.next_src_rship;
   }
   else{
@@ -685,7 +685,7 @@ void graph_db::delete_relationship(relationship::id_t id){
       cur_id = cur_rship.next_dest_rship;
       cur_rship = this->rship_by_id(cur_id);
     }
-  }
+  }*/
 
   // delete the relationship object
   rships_->remove(id);
