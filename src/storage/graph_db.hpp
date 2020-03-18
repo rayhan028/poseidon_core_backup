@@ -165,12 +165,17 @@ public:
 
 
   /**
-   * Deletes the node identified by the given id.
+   * Deletes the node and its properties identified by the given id.
    */
   void delete_node(node::id_t id);
 
   /**
-   * Deletes the relationship identified by the given id.
+   * Delets the node identified by the given id, its properties and all the relationships of this node.
+   */
+  void detach_delete_node(node::id_t id);
+  
+  /**
+   * Deletes the relationship and its properties identified by the given id.
    */
   void delete_relationship(relationship::id_t id);
 

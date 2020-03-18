@@ -307,9 +307,14 @@ public:
   property_set &get(property_set::id_t id);
 
   /**
-   * Remove a certain property set specified by its identifier.
+   * Removes a certain property set specified by its identifier.
    */
   void remove(property_set::id_t id);
+
+  /**
+   * Removes all properties belonging to a node/relationship starting at the given property id.
+   */
+  void remove_properties(property_set::id_t id);
 
   /**
    * Returns the underlying vector of the property set list.
