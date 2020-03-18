@@ -12,11 +12,20 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
+#define SF_10
+
+
 #ifdef USE_PMDK
 
-#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 160000ull)) // 16000 MiB
+const std::string test_path = poseidon::gPmemPath +
 
-const std::string test_path = poseidon::gPmemPath + "sf10";
+#ifdef SF_10
+"sf10";
+#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 160000ull)) // 16000 MiB
+#else
+"sf1";
+#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
+#endif
 
 struct root {
   graph_db_ptr graph;
@@ -80,7 +89,12 @@ using namespace boost::program_options;
 
 int main(int argc, char **argv) {
   std::string db_name;
-  std::string snb_home = "/home/data/SNB_SF_10/";
+  std::string snb_home =
+#ifdef SF_10
+"/home/data/SNB_SF_10/";
+#else
+"/home/data/SNB_SF_1/";
+#endif
 
  try {
     options_description desc{"Options"};
