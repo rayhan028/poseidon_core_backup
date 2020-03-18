@@ -989,14 +989,11 @@ void graph_db::foreach_variable_from_relationship_of_node(
   auto n_hop_rship_cnt = 0;
   auto n_hop_rship_id = n.from_rship_list; 
   while (n_hop_rship_id != UNKNOWN){
-    auto &n_hop_rship = rship_by_id(n_hop_rship_id);
     n_hop_rship_cnt++;
-
-    n_hop_rship_id = n_hop_rship.next_src_rship;
+    n_hop_rship_id = rship_by_id(n_hop_rship_id).next_src_rship;
   }
   std::size_t mr_n_hop = 1;
   auto mr_n_hop_rship_id = n.from_rship_list;
-  auto &mr_n_hop_rship = rship_by_id(mr_n_hop_rship_id);
   
   while (!rship_queue.empty()) {
     auto p = rship_queue.front();
@@ -1019,8 +1016,8 @@ void graph_db::foreach_variable_from_relationship_of_node(
     if (rship_queue.empty() && (relship.rship_label != lcode)){
       // check if any potential n-hop rship match still exists 
       if (n_hop_rship_cnt > 0){
-        mr_n_hop_rship = rship_by_id(mr_n_hop_rship_id);
-        rship_queue.push_back(std::make_pair(mr_n_hop_rship.next_src_rship, mr_n_hop));
+        mr_n_hop_rship_id = rship_by_id(mr_n_hop_rship_id).next_src_rship;
+        rship_queue.push_back(std::make_pair(mr_n_hop_rship_id, mr_n_hop));
         continue;
       } 
       // recursively check if any potential (n+1)-hop rship exists
@@ -1033,14 +1030,11 @@ void graph_db::foreach_variable_from_relationship_of_node(
         n_hop_rship_cnt = 0;
         n_hop_rship_id = relship.next_src_rship;
         while (n_hop_rship_id != UNKNOWN){
-          auto &n_hop_rship = rship_by_id(n_hop_rship_id);
           n_hop_rship_cnt++;
-
-          n_hop_rship_id = n_hop_rship.next_src_rship;
+          n_hop_rship_id = rship_by_id(n_hop_rship_id).next_src_rship;
         }
         mr_n_hop = hops;
         mr_n_hop_rship_id = relship.next_src_rship;
-        mr_n_hop_rship = rship_by_id(mr_n_hop_rship_id);
         continue;
       }
       // finally exit the while loop if no potential rship exists
