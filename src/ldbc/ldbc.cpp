@@ -2,13 +2,19 @@
 #include "qop.hpp"
 #include "query.hpp"
 
+#define RUN_INDEXED
 #define RUN_PARALLEL
 
 namespace pj = builtin;
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   
   auto q = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", personId)
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Person")
@@ -17,6 +23,7 @@ void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 #else
                .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(personId); })
+#endif
 #endif
                .from_relationships(":isLocatedIn")
                .to_node("Place")
@@ -33,10 +40,15 @@ void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   rs.wait();
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   auto maxHops = 100; 
 
   auto q = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", personId)
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Person")
@@ -45,6 +57,7 @@ void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 #else
                .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(personId); })
+#endif
 #endif
                .to_relationships(":hasCreator")
                .from_node("Post")
@@ -67,10 +80,15 @@ void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   rs.wait();
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   auto maxHops = 100; 
   
   auto q = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", personId)
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Person")
@@ -79,6 +97,7 @@ void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 #else
                .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(personId); })
+#endif
 #endif
                .to_relationships(":hasCreator")
                .from_node("Comment")
@@ -104,9 +123,14 @@ void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   rs.wait();
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 
   auto q = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", personId)
+#else
 #ifdef RUN_PARALLEL
                 .all_nodes()
                .has_label("Person")
@@ -115,6 +139,7 @@ void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 #else
                 .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(personId); })
+#endif
 #endif
                 .from_relationships(":knows")
                 .to_node("Person")
@@ -132,9 +157,14 @@ void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   rs.wait();
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_is_query_4_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 
 	auto q = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Post", "id", messageId)
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Post")
@@ -143,6 +173,7 @@ void ldbc_is_query_4_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 #else
                 .nodes_where("Post", "id",
                             [&](auto &p) { return p.equal(messageId); })
+#endif
 #endif
                 .project({PExpr_(0, pj::ptime_property(res, "creationDate")),
                           PExpr_(0, !pj::string_property(res, "content").empty() ? 
@@ -153,9 +184,14 @@ void ldbc_is_query_4_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 	rs.wait();
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_is_query_4_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 
   auto q = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Comment", "id", messageId)
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Comment")
@@ -165,6 +201,7 @@ void ldbc_is_query_4_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .nodes_where("Comment", "id",
                             [&](auto &p) { return p.equal(messageId); })
 #endif
+#endif
                 .project({PExpr_(0, pj::ptime_property(res, "creationDate")),
                           PExpr_(0, pj::string_property(res, "content")) })
                 .collect(rs);
@@ -173,9 +210,14 @@ void ldbc_is_query_4_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 	rs.wait();
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_is_query_5_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 
 	auto q = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Post", "id", messageId)
+#else
 #ifdef RUN_PARALLEL
                 .all_nodes()
                .has_label("Post")
@@ -184,6 +226,7 @@ void ldbc_is_query_5_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 #else
                 .nodes_where("Post", "id",
                             [&](auto &p) { return p.equal(messageId); })
+#endif
 #endif
                 .from_relationships(":hasCreator")
                 .to_node("Person")
@@ -196,9 +239,14 @@ void ldbc_is_query_5_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 	rs.wait();
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_is_query_5_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 
   auto q = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Comment", "id", messageId)
+#else
 #ifdef RUN_PARALLEL
                 .all_nodes()
                .has_label("Comment")
@@ -208,6 +256,7 @@ void ldbc_is_query_5_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .nodes_where("Comment", "id",
                             [&](auto &p) { return p.equal(messageId); })
 #endif
+#endif
                 .from_relationships(":hasCreator")
                 .to_node("Person")
                 .project({PExpr_(2, pj::uint64_property(res, "id")),
@@ -219,10 +268,15 @@ void ldbc_is_query_5_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 	rs.wait();
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_is_query_6_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
   auto maxHops = 100;
     
   auto q = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Post", "id", messageId)
+#else
 #ifdef RUN_PARALLEL
                 .all_nodes()
                .has_label("Post")
@@ -231,6 +285,7 @@ void ldbc_is_query_6_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 #else
                 .nodes_where("Post", "id",
                             [&](auto &p) { return p.equal(messageId); })
+#endif
 #endif
                 .to_relationships(":containerOf")
                 .from_node("Forum")
@@ -247,10 +302,15 @@ void ldbc_is_query_6_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 	rs.wait(); 
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_is_query_6_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
   auto maxHops = 100;
   
   auto q = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Comment", "id", messageId)
+#else
 #ifdef RUN_PARALLEL
                 .all_nodes()
                .has_label("Comment")
@@ -259,6 +319,7 @@ void ldbc_is_query_6_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 #else
                 .nodes_where("Comment", "id",
                             [&](auto &p) { return p.equal(messageId); })
+#endif
 #endif
                 .from_relationships({1, maxHops}, ":replyOf") 
                 .to_node("Post")
@@ -277,9 +338,14 @@ void ldbc_is_query_6_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 	rs.wait(); 
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
      
   auto q1 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Post", "id", messageId)
+#else
 #ifdef RUN_PARALLEL
                 .all_nodes()
                .has_label("Post")
@@ -289,10 +355,14 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .nodes_where("Post", "id",
                             [&](auto &p) { return p.equal(messageId); })
 #endif
+#endif
                 .from_relationships(":hasCreator")
                 .to_node("Person");
   
   auto q2 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Post", "id", messageId)
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Post")
@@ -301,6 +371,7 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 #else
                 .nodes_where("Post", "id",
                             [&](auto &p) { return p.equal(messageId); })
+#endif
 #endif
                 .to_relationships(":replyOf")    
                 .from_node("Comment")
@@ -324,10 +395,15 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
   query::start({&q1, &q2});
 	rs.wait();
 }
+
+// ------------------------------------------------------------------------------------------------------------------------
 
 void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
      
   auto q1 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Comment", "id", messageId)
+#else
 #ifdef RUN_PARALLEL
                 .all_nodes()
                .has_label("Comment")
@@ -337,10 +413,14 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .nodes_where("Comment", "id",
                             [&](auto &p) { return p.equal(messageId); })
 #endif
+#endif
                 .from_relationships(":hasCreator")
                 .to_node("Person");
   
   auto q2 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Comment", "id", messageId)
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Comment")
@@ -349,6 +429,7 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 #else
                 .nodes_where("Comment", "id",
                             [&](auto &p) { return p.equal(messageId); })
+#endif
 #endif
                 .to_relationships(":replyOf")    
                 .from_node("Comment")
@@ -373,9 +454,14 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 	rs.wait();
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
   
   auto q1 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Place", "id", boost::get<uint64_t>(params[0]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Place")
@@ -385,8 +471,12 @@ void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 .nodes_where("Place", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
 #endif
+#endif
 
   auto q2 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Tag", "id", boost::get<uint64_t>(params[1]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Tag")
@@ -396,8 +486,12 @@ void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 .nodes_where("Tag", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); });
 #endif
+#endif
 
   auto q3 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Organisation", "id", boost::get<uint64_t>(params[2]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Organisation")
@@ -407,8 +501,12 @@ void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 .nodes_where("Organisation", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[2])); });
 #endif
+#endif
 
   auto q4 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Organisation", "id", boost::get<uint64_t>(params[3]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Organisation")
@@ -417,6 +515,7 @@ void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #else
                 .nodes_where("Organisation", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[3])); });
+#endif
 #endif
 
   auto q5 = query(gdb).create("Person",
@@ -443,9 +542,14 @@ void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
   query::start({&q1, &q2, &q3, &q4, &q5});
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
 
   auto q1 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Post", "id", boost::get<uint64_t>(params[0]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Post")
@@ -455,8 +559,12 @@ void ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 .nodes_where("Post", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
 #endif
+#endif
 
   auto q2 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", boost::get<uint64_t>(params[1]))
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Person")
@@ -466,6 +574,7 @@ void ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 .nodes_where("Person", "id",
                                   [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
 #endif
+#endif
                 .crossjoin(q1)
                 .create_rship({0, 1}, ":likes", {{"creationDate", boost::any(boost::get<std::string &>(params[2]))}})
                 .collect(rs);
@@ -473,21 +582,30 @@ void ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
   query::start({&q1, &q2});
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_iu_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
 
   auto q1 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Comment", "id", boost::get<uint64_t>(params[0]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
-               .has_label("Person")
+               .has_label("Comment")
                .property( "id",
                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
 #else
                 .nodes_where("Comment", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
 #endif
+#endif
 
   auto q2 =
       query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", boost::get<uint64_t>(params[1]))
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Person")
@@ -497,6 +615,7 @@ void ldbc_iu_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
           .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
 #endif
+#endif
           .crossjoin(q1)
           .create_rship({0, 1}, ":likes", {{"creationDate", boost::any(boost::get<std::string &>(params[2]))}})
           .collect(rs);
@@ -504,9 +623,14 @@ void ldbc_iu_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
   query::start({&q1, &q2});
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_iu_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
 
   auto q1 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", boost::get<uint64_t>(params[0]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Person")
@@ -516,8 +640,12 @@ void ldbc_iu_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
 #endif
+#endif
 
   auto q2 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Tag", "id", boost::get<uint64_t>(params[1]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Tag")
@@ -526,6 +654,7 @@ void ldbc_iu_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #else
                 .nodes_where("Tag", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); });
+#endif
 #endif
 
   auto q3 = query(gdb).create("Forum",
@@ -541,10 +670,15 @@ void ldbc_iu_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
   query::start({&q1, &q2, &q3});
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_iu_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
 
   auto q1 = 
       query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", boost::get<uint64_t>(params[0]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Person")
@@ -554,9 +688,13 @@ void ldbc_iu_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
           .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
 #endif
+#endif
 
   auto q2 =
       query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Forum", "id", boost::get<uint64_t>(params[1]))
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Forum")
@@ -566,6 +704,7 @@ void ldbc_iu_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
           .nodes_where("Forum", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
 #endif
+#endif
           .crossjoin(q1)
           .create_rship({0, 1}, ":hasMember", {{"creationDate", boost::any(boost::get<std::string &>(params[2]))}})
           .collect(rs);
@@ -573,9 +712,14 @@ void ldbc_iu_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
   query::start({&q1, &q2});
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
 
   auto q1 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", boost::get<uint64_t>(params[0]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Person")
@@ -585,8 +729,12 @@ void ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
 #endif
+#endif
 
   auto q2 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Forum", "id", boost::get<uint64_t>(params[1]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Forum")
@@ -596,8 +744,12 @@ void ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 .nodes_where("Forum", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); });
 #endif
+#endif
 
   auto q3 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Place", "id", boost::get<uint64_t>(params[2]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Place")
@@ -607,8 +759,12 @@ void ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 .nodes_where("Place", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[2])); });
 #endif
+#endif
 
   auto q4 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Tag", "id", boost::get<uint64_t>(params[3]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Tag")
@@ -617,6 +773,7 @@ void ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #else
                 .nodes_where("Tag", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[3])); });
+#endif
 #endif
 
   auto q5 = query(gdb).create("Post",
@@ -641,9 +798,14 @@ void ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
   query::start({&q1, &q2, &q3, &q4, &q5});
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
 
   auto q1 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", boost::get<uint64_t>(params[0]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Person")
@@ -653,8 +815,12 @@ void ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
 #endif
+#endif
 
   auto q2 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Post", "id", boost::get<uint64_t>(params[1]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Post")
@@ -664,8 +830,12 @@ void ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 .nodes_where("Post", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); });
 #endif
+#endif
 
   auto q3 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Place", "id", boost::get<uint64_t>(params[2]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Place")
@@ -675,8 +845,12 @@ void ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 .nodes_where("Place", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[2])); });
 #endif
+#endif
 
   auto q4 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Tag", "id", boost::get<uint64_t>(params[3]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Tag")
@@ -685,6 +859,7 @@ void ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #else
                 .nodes_where("Tag", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[3])); });
+#endif
 #endif
 
   auto q5 = query(gdb).create("Comment",
@@ -707,10 +882,15 @@ void ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
   query::start({&q1, &q2, &q3, &q4, &q5});
 }
 
+// ------------------------------------------------------------------------------------------------------------------------
+
 void ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
 
   auto q1 = 
       query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", boost::get<uint64_t>(params[0]));
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Person")
@@ -720,9 +900,13 @@ void ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
           .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); });
 #endif
+#endif
 
   auto q2 =
       query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", boost::get<uint64_t>(params[1]))
+#else
 #ifdef RUN_PARALLEL
                .all_nodes()
                .has_label("Person")
@@ -731,6 +915,7 @@ void ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #else
           .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
+#endif
 #endif
           .crossjoin(q1)
           .create_rship({0, 1}, ":knows", {{"creationDate", boost::any(boost::get<std::string &>(params[2]))}})

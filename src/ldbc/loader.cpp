@@ -14,9 +14,9 @@
 
 #ifdef USE_PMDK
 
-#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
+#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 160000ull)) // 16000 MiB
 
-const std::string test_path = poseidon::gPmemPath + "sf1";
+const std::string test_path = poseidon::gPmemPath + "sf10";
 
 struct root {
   graph_db_ptr graph;
@@ -231,4 +231,14 @@ int main(int argc, char **argv) {
 
   spdlog::info("trying to load data from {} and {}", snb_sta, snb_dyn);
   load_snb_data(graph, node_files, rship_files);
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+  auto idx_1 = graph->create_index("Person", "id");
+  auto idx_2 = graph->create_index("Post", "id");
+  auto idx_3 = graph->create_index("Comment", "id");
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
 }
