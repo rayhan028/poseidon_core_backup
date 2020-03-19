@@ -11,7 +11,7 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK       "Use Intel PMDK"                      OFF)
+option(USE_PMDK       "Use Intel PMDK"                      ON)
 option(USE_PMDK_TX_FA "Use Intel PMDK Transactions for FA"  OFF) #Without turning ON USE_PMDK ON, "USE_PMDK_TX_FA" cannot be used.
 option(USE_TX         "Provide Transaction Support"         ON)
 option(BUILD_PYTHON   "Build python interface for poseidon" ON)
@@ -61,7 +61,8 @@ include_directories(${PROJECT_SOURCE_DIR}/src/storage)
 include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
-include_directories(${PROJECT_SOURCE_DIR}/src/ir)
+include_directories(${PROJECT_SOURCE_DIR}/src/ldbc)
+include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 #---------------------------------------------------------------------------
 
 set(THIRD_PARTY_DIR "${PROJECT_BINARY_DIR}/_deps")
@@ -253,13 +254,14 @@ set(src_files ${dict_src}
   src/storage/relationships.cpp
   src/storage/properties.cpp
   src/storage/graph_db.cpp
+  src/btree/index_map.cpp
   src/qop/qop.cpp
   src/qop/update.cpp
   src/qop/join.cpp
   src/qop/query.cpp
   src/qop/thread_pool.cpp
   src/tx/transaction.cpp
-  src/ldbc.cpp
+  src/ldbc/ldbc.cpp
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -303,6 +305,46 @@ target_link_libraries(poseidon
 set_target_properties(poseidon PROPERTIES PREFIX "" SUFFIX ".so")
 endif()
 
+#-----------------------------------------------------------------------------------------
+#
+# Some programs for LDBC benchmarking.
+#
+
+# The program for loading CSV files into PMem.
+#
+add_executable(ldbc_loader
+  src/ldbc/loader.cpp
+ )
+
+target_link_libraries(ldbc_loader
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
+# The program for executing short read queries.
+#
+add_executable(run_ldbc_reads
+  src/ldbc/ldbc_reads.cpp
+ )
+
+target_link_libraries(run_ldbc_reads
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
+# The program for executing interactive update queries.
+#
+add_executable(run_ldbc_updates
+  src/ldbc/ldbc_updates.cpp
+ )
+
+target_link_libraries(run_ldbc_updates
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
 #-----------------------------------------------------------------------------------------
 #
 # Unit tests using Catch

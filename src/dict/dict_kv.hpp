@@ -28,8 +28,6 @@
 
 #include <string>
 
-using string_t = polymorphic_string;
-
 /**
  * dict is a class for mapping strings to integer codes. Its main purpose is
  * to implement string dictionaries for dictionary compression as well as type
@@ -79,42 +77,12 @@ public:
   std::size_t size();
 
 private:
-  /*
-    class key_equal {
-    public:
-      template <typename M, typename U>
-      bool operator()(const M &lhs, const U &rhs) const {
-        return lhs == rhs;
-      }
-    };
-    */
-  class string_hasher {
-    /* hash multiplier used by fibonacci hashing */
-    static const size_t hash_multiplier = 11400714819323198485ULL;
-
-  public:
-    // using transparent_key_equal = key_equal;
-
-    size_t operator()(const string_t &str) const {
-      return hash(str.c_str(), str.size());
-    }
-
-  private:
-    size_t hash(const char *str, size_t size) const {
-      size_t h = 0;
-      for (size_t i = 0; i < size; ++i) {
-        h = static_cast<size_t>(str[i]) ^ (h * hash_multiplier);
-      }
-      return h;
-    }
-  };
-
   using code_str_hashmap_t = pmem::obj::concurrent_hash_map<dcode_t, string_t>;
   using str_code_hashmap_t =
       pmem::obj::concurrent_hash_map<string_t, dcode_t, string_hasher>;
 
-  pmem::obj::persistent_ptr<code_str_hashmap_t> code_str_map_;
-  pmem::obj::persistent_ptr<str_code_hashmap_t> str_code_map_;
+  p_ptr<code_str_hashmap_t> code_str_map_;
+  p_ptr<str_code_hashmap_t> str_code_map_;
   p<dcode_t> last_code_;
 };
 

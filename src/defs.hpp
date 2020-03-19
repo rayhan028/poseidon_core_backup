@@ -78,6 +78,7 @@ using qr_tuple = std::vector<query_result>;
 #include <libpmemobj++/make_persistent.hpp>
 #include <libpmemobj++/p.hpp>
 #include <libpmemobj++/persistent_ptr.hpp>
+#include "polymorphic_string.hpp"
 
 template <typename T> using p_ptr = pmem::obj::persistent_ptr<T>;
 
@@ -87,6 +88,30 @@ template <typename T, typename... Args>
 inline p_ptr<T> p_make_ptr(Args &&... args) {
   return pmem::obj::make_persistent<T>(std::forward<Args>(args)...);
 }
+
+using string_t = polymorphic_string;
+
+/**
+ * Helper class for persistent concurrent hashmap.
+ */
+class string_hasher {
+  /* hash multiplier used by fibonacci hashing */
+  static const size_t hash_multiplier = 11400714819323198485ULL;
+
+public:
+  size_t operator()(const string_t &str) const {
+    return hash(str.c_str(), str.size());
+  }
+
+private:
+  size_t hash(const char *str, size_t size) const {
+    size_t h = 0;
+    for (size_t i = 0; i < size; ++i) {
+      h = static_cast<size_t>(str[i]) ^ (h * hash_multiplier);
+    }
+    return h;
+  }
+};
 
 #else
 

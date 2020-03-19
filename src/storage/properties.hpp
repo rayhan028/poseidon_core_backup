@@ -95,6 +95,8 @@ struct p_item {
 
   const char *key(dict_ptr &dct) { return dct->lookup_code(key_); }
 
+  uint64_t get_raw() const;
+  
   template <typename T> T get() const;
   template <typename T> void set(T v);
 
@@ -298,6 +300,26 @@ public:
   property_set::id_t update_pitems(offset_t nid, offset_t id,
                                    const std::list<p_item> &props,
                                    dict_ptr &dct, bool is_node = true);
+
+  /**
+   * Get a property set via its identifier.
+   */
+  property_set &get(property_set::id_t id);
+
+  /**
+   * Removes a certain property set specified by its identifier.
+   */
+  void remove(property_set::id_t id);
+
+  /**
+   * Removes all properties belonging to a node/relationship starting at the given property id.
+   */
+  void remove_properties(property_set::id_t id);
+
+  /**
+   * Returns the underlying vector of the property set list.
+   */
+  chunked_vec<property_set> &as_vec() { return properties_; }
 
   /**
    * Build a list of p_items from the list of properties represented by props.

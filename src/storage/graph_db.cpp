@@ -65,6 +65,8 @@ graph_db::graph_db(const std::string &db_name) {
   rships_ = p_make_ptr<relationship_list>();
   properties_ = p_make_ptr<property_list>();
   dict_ = p_make_ptr<dict>();
+  index_map_ = p_make_ptr<index_map>();
+
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   m_ = new std::mutex();
 }
@@ -600,6 +602,48 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
 #endif
 }
 
+void graph_db::delete_node(node::id_t id) {
+  auto &n = this->node_by_id(id);
+  
+  // delete the node properties
+  properties_->remove_properties(n.property_list);
+  /*
+  auto cur_pset_id = n.property_list;
+  while (cur_pset_id != UNKNOWN){
+    auto tmp_pset_id = cur_pset_id;
+    
+    auto &cur_pset = properties_->get(cur_pset_id);
+    cur_pset_id = cur_pset.next;
+    properties_->remove(tmp_pset_id);
+  }
+*/
+  // delete the node object
+  nodes_->remove(id);
+}
+
+void graph_db::detach_delete_node(node::id_t id) {
+  // TODO
+}
+
+void graph_db::delete_relationship(relationship::id_t id) {
+  auto &r = this->rship_by_id(id);
+
+  // delete the relationship properties
+  properties_->remove_properties(r.property_list);
+  /*
+  auto cur_pset_id = r.property_list;
+  while (cur_pset_id != UNKNOWN){
+    auto tmp_pset_id = cur_pset_id;
+    
+    auto &cur_pset = properties_->get(cur_pset_id);
+    cur_pset_id = cur_pset.next;
+    properties_->remove(tmp_pset_id);
+  }
+*/
+  // delete the relationship object
+  rships_->remove(id);
+}
+
 std::size_t graph_db::import_nodes_from_csv(const std::string &label,
                                             const std::string &filename,
                                             char delim, mapping_t &m) {
@@ -754,6 +798,59 @@ void graph_db::dump() {
   rships_->dump();
 }
 
+
+index_id graph_db::create_index(const std::string& node_label, const std::string& prop_name) {
+  // spdlog::info("create_index...");
+  // (1) we create a new b+tree
+  #if USE_PMDK
+    auto pop = pmem::obj::pool_by_vptr(this);
+    btree_ptr new_idx;
+      pmem::obj::transaction::run(pop, [&] {
+        new_idx = p_make_btree();
+      });
+#else
+  auto new_idx = p_make_btree();
+#endif
+  auto pc = dict_->lookup_string(prop_name);
+
+  // (2) we fill the index with (property value, node-id) pairs
+  // spdlog::info("create_index: fill index: {} => {}", prop_name, pc);
+  nodes_by_label(node_label, [this, &new_idx, &pc](auto& n) {
+    // spdlog::info("get property value for node #{}...", n.id());
+    auto val = properties_->property_value(n.property_list, pc);
+    if (!val.empty()) {
+      // because we don't distinguish differently typed indexes we use the raw value here
+      auto v = val.get_raw(); // val.template get<int>();
+      // spdlog::info("create_index: {} -> {}", v, n.id());      
+      new_idx->insert(v, n.id());
+    }
+  });
+
+  // (3) and register the index
+  index_map_->register_index(node_label + ":" + prop_name, new_idx);
+
+  return new_idx;
+}
+
+index_id graph_db::get_index(const std::string& node_label, const std::string& prop_name) {
+  return index_map_->get_index(node_label + ":" + prop_name);
+}
+
+void graph_db::drop_index(const std::string& node_label, const std::string& prop_name) {
+  auto idx_name = node_label + ":" + prop_name;
+  auto idx = index_map_->get_index(idx_name);
+  // TODO: delete idx
+  index_map_->unregister_index(idx_name);
+}
+
+void graph_db::index_lookup(index_id idx_ptr, uint64_t key, node_consumer_func consumer) {
+  offset_t val = 0;
+  if (idx_ptr->lookup(key, &val)) {
+    auto& n = node_by_id(val);
+    consumer(n);
+  }
+}
+
 void graph_db::nodes_by_label(const std::string &label,
                               node_consumer_func consumer) {
 #ifdef USE_TX
@@ -892,14 +989,11 @@ void graph_db::foreach_variable_from_relationship_of_node(
   auto n_hop_rship_cnt = 0;
   auto n_hop_rship_id = n.from_rship_list; 
   while (n_hop_rship_id != UNKNOWN){
-    auto &n_hop_rship = rship_by_id(n_hop_rship_id);
     n_hop_rship_cnt++;
-
-    n_hop_rship_id = n_hop_rship.next_src_rship;
+    n_hop_rship_id = rship_by_id(n_hop_rship_id).next_src_rship;
   }
   std::size_t mr_n_hop = 1;
   auto mr_n_hop_rship_id = n.from_rship_list;
-  auto &mr_n_hop_rship = rship_by_id(mr_n_hop_rship_id);
   
   while (!rship_queue.empty()) {
     auto p = rship_queue.front();
@@ -922,8 +1016,8 @@ void graph_db::foreach_variable_from_relationship_of_node(
     if (rship_queue.empty() && (relship.rship_label != lcode)){
       // check if any potential n-hop rship match still exists 
       if (n_hop_rship_cnt > 0){
-        mr_n_hop_rship = rship_by_id(mr_n_hop_rship_id);
-        rship_queue.push_back(std::make_pair(mr_n_hop_rship.next_src_rship, mr_n_hop));
+        mr_n_hop_rship_id = rship_by_id(mr_n_hop_rship_id).next_src_rship;
+        rship_queue.push_back(std::make_pair(mr_n_hop_rship_id, mr_n_hop));
         continue;
       } 
       // recursively check if any potential (n+1)-hop rship exists
@@ -936,14 +1030,11 @@ void graph_db::foreach_variable_from_relationship_of_node(
         n_hop_rship_cnt = 0;
         n_hop_rship_id = relship.next_src_rship;
         while (n_hop_rship_id != UNKNOWN){
-          auto &n_hop_rship = rship_by_id(n_hop_rship_id);
           n_hop_rship_cnt++;
-
-          n_hop_rship_id = n_hop_rship.next_src_rship;
+          n_hop_rship_id = rship_by_id(n_hop_rship_id).next_src_rship;
         }
         mr_n_hop = hops;
         mr_n_hop_rship_id = relship.next_src_rship;
-        mr_n_hop_rship = rship_by_id(mr_n_hop_rship_id);
         continue;
       }
       // finally exit the while loop if no potential rship exists

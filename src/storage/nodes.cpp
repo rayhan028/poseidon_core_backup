@@ -92,6 +92,16 @@ std::string node_description::to_string() const {
 
 /* ------------------------------------------------------------------------ */
 
+node_list::~node_list() {
+	// Since dirty_list is not a smart pointer, clear all resources used for dirty list.
+	for (auto &n : nodes_) {
+		if(n.dirty_list) {
+			delete n.dirty_list;
+			n.dirty_list = nullptr;
+		}
+	}
+}
+
 void node_list::runtime_initialize() {
   // make sure that all locks are released and no dirty objects exist
   for (auto &n : nodes_) {
@@ -142,16 +152,6 @@ void node_list::remove(node::id_t id) {
   nodes_.erase(id);
 }
 
-
-node_list::~node_list(){
-	// Since dirty_list is not a smart pointer, clear all resources used for dirty list.
-	for (auto &n : nodes_) {
-		if(n.dirty_list) {
-			delete n.dirty_list;
-			n.dirty_list = nullptr;
-		}
-	}
-}
 
 void node_list::dump() {
   std::cout << "----------- NODES -----------\n";

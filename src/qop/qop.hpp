@@ -166,6 +166,23 @@ struct scan_nodes : public qop {
 };
 
 /**
+ * index_scan represents a query operator for scanning an index on nodes for
+ * a given property key/value. All the matching nodes are then forwarded to the
+ * subscriber.
+ */
+struct index_scan : public qop {
+  index_scan(index_id ix, uint64_t k) : idx(ix), key(k) {}
+  ~index_scan() = default;
+
+  void dump(std::ostream &os) const override;
+
+  virtual void start(graph_db_ptr &gdb) override;
+
+  index_id idx;
+  uint64_t key;
+};
+
+/**
  * foreach_from_relationship is a query operator that scans all outgoing
  * relationships of a given node. This node is the last elment in the vector v
  * of the consume method.

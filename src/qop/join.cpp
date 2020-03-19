@@ -60,7 +60,7 @@ void left_outerjoin::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
       }
     });
     if (dangling_tuple){
-      auto res = append(concat(v, inp), query_result(std::string("NULL")));
+      auto res = append(concat(v, inp), query_result(std::string("[0]{}")));
       consume_(gdb, res);
     }
   }

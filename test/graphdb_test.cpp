@@ -1090,3 +1090,146 @@ TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
   remove(test_path.c_str());
 #endif
 } 
+
+TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  graph_db_ptr graph;
+  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
+#else
+  auto graph = p_make_ptr<graph_db>();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+  
+  auto i = 1;
+  
+  auto p1 = graph->add_node(":Person", 
+                              {{"name", boost::any(std::string("John"))},
+                               {"age", boost::any(42)},
+                               {"number", boost::any(i++)},
+                               {"dummy1", boost::any(std::string("Dummy"))},
+                               {"dummy2", boost::any(1.2345)}}, true);
+
+  auto p2 = graph->add_node(":Person", 
+                              {{"name", boost::any(std::string("Doe"))},
+                               {"age", boost::any(42)},
+                               {"number", boost::any(i++)},
+                               {"dummy1", boost::any(std::string("Dummy"))},
+                               {"dummy2", boost::any(1.2345)}}, true);
+
+  auto b1 = graph->add_node(":Book", 
+                              {{"name", boost::any(std::string("Text Book"))},
+                               {"ISBN", boost::any(i++)},
+                               {"dummy1", boost::any(std::string("Dummy"))},
+                               {"dummy2", boost::any(1.2345)}}, true);
+
+  auto b2 = graph->add_node(":Book", 
+                              {{"name", boost::any(std::string("e-Book"))},
+                               {"age", boost::any(42)},
+                               {"ISBN", boost::any(i++)},
+                               {"dummy1", boost::any(std::string("Dummy"))},
+                               {"dummy2", boost::any(1.2345)}}, true);
+
+  auto b3 = graph->add_node(":Book", 
+                              {{"name", boost::any(std::string("Manuscript"))},
+                               {"ISBN", boost::any(i++)},
+                               {"dummy1", boost::any(std::string("Dummy"))},
+                               {"dummy2", boost::any(1.2345)}}, true);
+
+  graph->add_relationship(p1, b1, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b2, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  
+#ifdef USE_TX
+  graph->commit_transaction();
+  tx = graph->begin_transaction();
+#endif
+  
+  node::id_t next_node = graph->get_nodes()->as_vec().first_available();
+  relationship::id_t next_rship = graph->get_relationships()->as_vec().first_available();
+  REQUIRE(next_node == 5);
+  REQUIRE(next_rship == 5);  
+
+  // delete all nodes and relationships
+  for (node::id_t i = 0; i < next_node; i++)
+    graph->delete_node(i);
+  
+  // deleting a node deletes all relationships associated with the node
+  for (relationship::id_t i = 0; i < next_rship; i++)
+    graph->delete_relationship(i);
+  
+  next_node = graph->get_nodes()->as_vec().first_available();
+  next_rship = graph->get_relationships()->as_vec().first_available();
+  REQUIRE(next_node == 0);
+  REQUIRE(next_rship == 0);
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+} 
+
+TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  graph_db_ptr graph;
+  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
+#else
+  auto graph = p_make_ptr<graph_db>();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+  
+  auto i = 1;
+  
+  auto p1 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
+  auto p2 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
+  auto b1 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
+  auto b2 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
+  auto b3 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
+
+  graph->add_relationship(p1, b1, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b2, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  
+#ifdef USE_TX
+  graph->commit_transaction();
+  tx = graph->begin_transaction();
+#endif
+  
+  node::id_t next_node = graph->get_nodes()->as_vec().first_available();
+  for (node::id_t i = 1; i < next_node; i++)
+    graph->delete_node(i); 
+  relationship::id_t next_rship = graph->get_relationships()->as_vec().first_available();
+  for (node::id_t i = 1; i < next_rship; i++)
+    graph->delete_relationship(i); 
+  
+  next_node = graph->get_nodes()->as_vec().first_available();
+  next_rship = graph->get_relationships()->as_vec().first_available();
+  REQUIRE(next_node == 1);
+  REQUIRE(next_rship == 1);
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}
