@@ -89,6 +89,20 @@ Poseidon stores nodes and relationships in separate persistent vectors where eac
 
 ![Storage structure](docs/poseidon.png)
 
+In addition to these plain table-based storage, Poseidon also supports indexing using B+trees. These B+trees are also stored in PMem and can be built per node label and property. As an example the following C++ statement builds an index on the `id` property for all nodes with the label `Person`:
+
+```
+gdb->create_index("Person", "id");
+```
+
+Indexes can be utilized in query processing via a special index lookup/scan operator `nodes_where_indexed`. The following example illustrates this: 
+
+```
+  auto q = query(gdb)
+              .nodes_where_indexed("Person", "id", 933)
+              ...
+```
+  
 ## Transaction Processing
 
 For transaction processing Poseidon implements a multiversion timestamp ordering (MVTO) protocol. Here, the most recent committed version is always kept in persistent memory while dirty versions (nodes/relationships which are currently inserted or updated) as well as outdated versions are stored in a dirty list in volatile memory.
