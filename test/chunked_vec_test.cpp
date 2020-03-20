@@ -77,6 +77,8 @@ TEST_CASE("Testing chunked_vec", "[chunked_vec]") {
     // make sure we have enough space for 1000 records
     REQUIRE(vec.capacity() > 1000);
 
+    CHECK_THROWS_AS(vec.at(10000), index_out_of_range);
+
     // store 1000 records in the array
     for (offset_t i = 0; i < 1000; i++) {
       record rec;

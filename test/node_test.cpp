@@ -73,6 +73,13 @@ TEST_CASE("Creating a few nodes in the node list", "[nodes]") {
   REQUIRE(nlist.get(n3).id() == n3);
   REQUIRE(nlist.get(n3).node_label == 64);
 
+  REQUIRE(nlist.num_chunks() == 1);
+
+  CHECK_THROWS_AS(nlist.get(47), unknown_id);
+
+  nlist.remove(n3);
+  CHECK_THROWS_AS(nlist.get(n3), unknown_id);
+
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
