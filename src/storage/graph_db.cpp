@@ -606,7 +606,8 @@ void graph_db::delete_node(node::id_t id) {
   auto &n = this->node_by_id(id);
   
   // delete the node properties
-  properties_->remove_properties(n.property_list);
+  if (n.property_list != UNKNOWN)
+    properties_->remove_properties(n.property_list);
   /*
   auto cur_pset_id = n.property_list;
   while (cur_pset_id != UNKNOWN){
@@ -629,7 +630,8 @@ void graph_db::delete_relationship(relationship::id_t id) {
   auto &r = this->rship_by_id(id);
 
   // delete the relationship properties
-  properties_->remove_properties(r.property_list);
+  if (r.property_list != UNKNOWN)
+    properties_->remove_properties(r.property_list);
   /*
   auto cur_pset_id = r.property_list;
   while (cur_pset_id != UNKNOWN){
