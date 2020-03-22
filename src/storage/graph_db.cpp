@@ -422,7 +422,7 @@ node &graph_db::get_valid_node_version(node &n, xid_t xid) {
     return n.is_valid(xid) ? n : n.find_valid_version(xid)->elem_;
   }
 
-  // TODO: node is locked by another transaction?!
+  // TODO: node is locked by another transaction -> abort!!!
   throw unknown_id();
 }
 
@@ -440,7 +440,7 @@ relationship &graph_db::get_valid_rship_version(relationship &r, xid_t xid) {
     return r.is_valid(xid) ? r : r.find_valid_version(xid)->elem_;
   }
 
-  // TODO: relationship is locked by another transaction?!
+  // TODO: relationship is locked by another transaction -> abort!!
   throw unknown_id();
 }
 

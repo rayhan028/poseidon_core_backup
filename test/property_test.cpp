@@ -88,6 +88,11 @@ TEST_CASE("Testing p_item", "[properties]") {
     REQUIRE(items[0].key() == 22);
 }
 
-TEST_CASE("Testing property_set", "[properties]") {
-  // TODO
+TEST_CASE("Testing get_property", "[properties]") {
+  properties_t props = { {"skey", boost::any(std::string("string"))},
+                               {"ikey", boost::any(42)}};
+
+  REQUIRE(get_property<int>(props, "ikey") == 42);
+  REQUIRE(get_property<std::string>(props, "skey") == "string");
+  CHECK_THROWS_AS(get_property<int>(props, "unknown"), unknown_property);
 }

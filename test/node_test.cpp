@@ -24,6 +24,8 @@
 #include "config.h"
 #include "nodes.hpp"
 
+#include <sstream>
+
 #ifdef USE_PMDK
 #define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
 
@@ -35,6 +37,41 @@ struct root {
 };
 
 #endif
+
+TEST_CASE("Testing output functions", "[nodes]") {
+  {
+    std::ostringstream os;
+    boost::any v(12);
+    os << v;
+    REQUIRE(os.str() == "12");
+  }
+  {
+    std::ostringstream os;
+    boost::any v(12.34);
+    os << v;
+    REQUIRE(os.str() == "12.34");
+  }
+  {
+    std::ostringstream os;
+    boost::any v(true);
+    os << v;
+    REQUIRE(os.str() == "1");
+  }
+  {
+    std::ostringstream os;
+    boost::any v((uint64_t)1234);
+    os << v;
+    REQUIRE(os.str() == "1234");
+  }
+  {
+    std::ostringstream os;
+    boost::posix_time::ptime pt{ boost::gregorian::date{2014, 5, 12}, 
+      boost::posix_time::time_duration{12, 0, 0}};
+    boost::any v(pt);
+    os << v;
+    REQUIRE(os.str() == "2014-May-12 12:00:00");
+  }
+}
 
 TEST_CASE("Creating a node", "[nodes]") {
   node n(42);
@@ -76,9 +113,11 @@ TEST_CASE("Creating a few nodes in the node list", "[nodes]") {
   REQUIRE(nlist.num_chunks() == 1);
 
   CHECK_THROWS_AS(nlist.get(47), unknown_id);
+  CHECK_THROWS_AS(nlist.get(10000), unknown_id);
 
   nlist.remove(n3);
   CHECK_THROWS_AS(nlist.get(n3), unknown_id);
+  CHECK_THROWS_AS(nlist.remove(10000), unknown_id);
 
 #ifdef USE_PMDK
   pop.close();
