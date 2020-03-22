@@ -456,7 +456,7 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 
 // ------------------------------------------------------------------------------------------------------------------------
 
-void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) { 
+void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
   
   auto q1 = query(gdb)
 #ifdef RUN_INDEXED
