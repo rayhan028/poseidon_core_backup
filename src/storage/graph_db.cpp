@@ -230,7 +230,7 @@ bool graph_db::abort_transaction() {
     active_tx_->erase(xid);
     oldest_xid_ = !active_tx_->empty() ? active_tx_->begin()->first : xid;
   }
-  // TODO: if we have added a node or relationship then
+  // if we have added a node or relationship then
   // we have to delete it again from the nodes_ or rships_ tables.
    for (auto node_id  : tx->dirty_nodes()) {
     /// spdlog::info("remove dirty node for tx {} and node #{}", xid,
@@ -422,7 +422,10 @@ node &graph_db::get_valid_node_version(node &n, xid_t xid) {
     return n.is_valid(xid) ? n : n.find_valid_version(xid)->elem_;
   }
 
-  // TODO: node is locked by another transaction -> abort!!!
+  // node is locked by another transaction -> abort!!!
+  if (n.is_locked()) 
+    throw transaction_abort();
+
   throw unknown_id();
 }
 
@@ -440,7 +443,10 @@ relationship &graph_db::get_valid_rship_version(relationship &r, xid_t xid) {
     return r.is_valid(xid) ? r : r.find_valid_version(xid)->elem_;
   }
 
-  // TODO: relationship is locked by another transaction -> abort!!
+  // relationship is locked by another transaction -> abort!!
+  if (r.is_locked()) 
+    throw transaction_abort();
+
   throw unknown_id();
 }
 

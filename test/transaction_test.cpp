@@ -111,7 +111,7 @@ TEST_CASE("Checking that a newly inserted record is not visible in a second "
       std::unique_lock<std::mutex> lock(m);
       cond_var1.wait(lock, [&] { return ready1.load(); });
     }
-    REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
+    REQUIRE_THROWS_AS(gdb->node_by_id(nid), transaction_abort);
     gdb->commit_transaction();
 
     {
