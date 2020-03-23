@@ -456,6 +456,7 @@ node &graph_db::node_by_id(node::id_t id) {
   auto xid = current_transaction()->xid();
   /// spdlog::info("[{}] try to fetch node #{}", xid, id);
   auto &n = nodes_->get(id);
+  n.set_rts(xid);
   return get_valid_node_version(n, xid);
 #else
   return nodes_->get(id);
@@ -467,6 +468,7 @@ relationship &graph_db::rship_by_id(relationship::id_t id) {
   check_tx_context();
   auto xid = current_transaction()->xid();
   auto &r = rships_->get(id);
+  r.set_rts(xid);
   return get_valid_rship_version(r, xid);
 #else
   return rships_->get(id);
@@ -534,8 +536,14 @@ void graph_db::update_node(node &n, const properties_t &props,
   check_tx_context();
   xid_t txid = current_transaction()->xid();
 
+  // if we cannot acquire a lock, we have to abort
   if (!n.try_lock(txid))
     throw transaction_abort();
+
+  // make sure we don't overwrite an object that was written by 
+  // a more recent transaction
+  if (n.rts > txid)
+   throw transaction_abort();
 
   // first, we make a copy of the original node which is stored in
   // the dirty list
@@ -575,8 +583,14 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
   check_tx_context();
   xid_t txid = current_transaction()->xid();
 
+  // if we cannot acquire a lock, we have to abort
   if (!r.try_lock(txid))
     throw transaction_abort();
+
+  // make sure we don't overwrite an object that was written by 
+  // a more recent transaction
+  if (r.rts > txid)
+   throw transaction_abort();
 
   // first, we make a copy of the original node which is stored in
   // the dirty list

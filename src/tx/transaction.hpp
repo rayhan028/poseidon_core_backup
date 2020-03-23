@@ -116,7 +116,7 @@ transaction_ptr current_transaction();
  * used for multiversion transaction processing;
  */
 template <typename T> struct txn {
-  timestamp_t bts, cts;      // begin timestamp, commit timestamp
+  timestamp_t bts, cts, rts; // begin timestamp, commit timestamp, read timestamp
   std::atomic<xid_t> txn_id; // transaction id if locked, 0 otherwise
   bool is_dirty_;            // true if the object represents a dirty object
 
@@ -128,13 +128,13 @@ template <typename T> struct txn {
   /**
    * Default constructor.
    */
-  txn() : bts(0), cts(INF), txn_id(0), is_dirty_(false), dirty_list(nullptr) {}
+  txn() : bts(0), cts(INF), rts(0), txn_id(0), is_dirty_(false), dirty_list(nullptr) {}
 
   /**
    * Copy constructor.
    */
   txn(const txn &n)
-      : bts(n.bts), cts(n.cts), txn_id(n.txn_id.load()), is_dirty_(n.is_dirty_),
+      : bts(n.bts), cts(n.cts), rts(n.rts), txn_id(n.txn_id.load()), is_dirty_(n.is_dirty_),
         dirty_list(n.dirty_list) {}
 
   /**
@@ -143,6 +143,7 @@ template <typename T> struct txn {
   txn &operator=(const txn &t) {
     bts = t.bts;
     cts = t.cts;
+    rts = t.rts;
     txn_id = t.txn_id.load();
     is_dirty_ = t.is_dirty_;
     dirty_list = t.dirty_list;
@@ -155,6 +156,7 @@ template <typename T> struct txn {
   txn &operator=( txn &&t) {
     bts = t.bts;
     cts = t.cts;
+    rts = t.rts;
     txn_id = t.txn_id.load();
     is_dirty_ = t.is_dirty_;
     dirty_list = t.dirty_list;
@@ -172,9 +174,14 @@ template <typename T> struct txn {
   }
 
   /**
-   * Set the commit timestamps.
+   * Set the commit timestamp.
    */
   void set_cts(xid_t end) { cts = end; }
+
+  /**
+   * Set the read timestamp.
+   */
+  void set_rts(xid_t end) { rts = end; }
 
   /**
    * Return true if the node is locked by a transaction.
