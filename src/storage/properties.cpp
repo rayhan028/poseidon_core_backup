@@ -493,6 +493,9 @@ void property_list::remove(property_set::id_t id) {
 }
 
 void property_list::remove_properties(property_set::id_t id) {
+  if (id == UNKNOWN)
+    return;
+    
   if (properties_.capacity() <= id)
     throw unknown_property();
 
