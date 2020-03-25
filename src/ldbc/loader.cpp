@@ -13,6 +13,7 @@
 #include "spdlog/spdlog.h"
 
 #define SF_10
+#define INDEX
 
 
 #ifdef USE_PMDK
@@ -246,13 +247,19 @@ int main(int argc, char **argv) {
   spdlog::info("trying to load data from {} and {}", snb_sta, snb_dyn);
   load_snb_data(graph, node_files, rship_files);
 
+#ifdef INDEX
 #ifdef USE_TX
   auto tx = graph->begin_transaction();
 #endif
   auto idx_1 = graph->create_index("Person", "id");
   auto idx_2 = graph->create_index("Post", "id");
   auto idx_3 = graph->create_index("Comment", "id");
+  auto idx_4 = graph->create_index("Place", "id");
+  auto idx_5 = graph->create_index("Tag", "id");
+  auto idx_6 = graph->create_index("Organisation", "id");
+  auto idx_7 = graph->create_index("Forum", "id");
 #ifdef USE_TX
   graph->commit_transaction();
+#endif
 #endif
 }
