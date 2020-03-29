@@ -141,6 +141,11 @@ public:
   query &collect(result_set &rs);
 
   /**
+   * Ends a query pipeline.
+   */
+  query &finish();
+
+  /**
    * TODO
    */
   query &crossjoin(query &other);
@@ -172,7 +177,18 @@ public:
    * Add an operator for creating a relationship that connects two nodes 
    * at any given positions in the result.
    */
-  query &create_rship(std::pair<int, int> src_des, const std::string &label, const properties_t &props);
+  query &create_rship(std::pair<int, int> src_des, const std::string &label,
+                        const properties_t &props);
+
+  /**
+   * Add an operator for creating a relationship that connects two nodes 
+   * from two different queries: One of the nodes (the source node by default) 
+   * is at a given position in the left query and the other (the destination 
+   * node by default) is at the last position in the right query. The default 
+   * relationship direction can be changed via a flag..
+   */
+  query &create_rship(query &other, int l_node_pos, const std::string &label,
+                        const properties_t &props, bool src_to_des = true);
 
   /**
    *  Add an operator for updating a node.

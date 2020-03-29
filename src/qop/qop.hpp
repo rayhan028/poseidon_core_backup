@@ -439,6 +439,17 @@ struct collect_result : public qop {
 };
 
 /**
+ * end_pipeline is a query operator to end a query pipeline.
+ */
+struct end_pipeline : public qop {
+  end_pipeline() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process();
+};
+
+/**
  * Macro to simplify definition of arguments in project etc.
  * Usage: Instead of requiring to define a lambda expression
  *        we simply use PExpr_(my_func(res, ...))
