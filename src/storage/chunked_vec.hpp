@@ -316,9 +316,11 @@ class chunked_vec {
    * pointer(!) to the record as a pair.
    */
   std::pair<offset_t, T *> append(T &&o) {
-    if (is_full())
-      resize(1);
     auto tail = chunk_list_.back();
+    if (tail->is_full()){
+      resize(1);
+      tail = chunk_list_.back();
+    }
     auto pos = tail->first_available();
     assert(pos != SIZE_MAX);
     available_slots_--;
