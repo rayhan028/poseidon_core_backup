@@ -47,7 +47,8 @@ struct create_node : public qop {
  */
 struct create_relationship : public qop {
   create_relationship(const std::string &l) : label(l) {}
-  create_relationship(const std::string &l, const properties_t &p, std::pair<int, int> src_des)
+  create_relationship(const std::string &l, const properties_t &p,
+                      std::pair<int, int> src_des)
       : label(l), props(p), src_des_nodes_(src_des) {}
   ~create_relationship() = default;
 
@@ -58,6 +59,35 @@ struct create_relationship : public qop {
   std::string label;
   properties_t props;
   std::pair<int, int> src_des_nodes_;
+};
+
+/**
+ * create_rship_on_join implements a binary operator for creating a new
+ * relationship. The operator connects two nodes from two different queries:
+ * One of the nodes (the source node by default) is at a given position in 
+ * the left query and the other (the destination node by default) is at the 
+ * last position in the right query. The default relationship direction can be
+ * changed via a flag.
+ */
+struct create_rship_on_join : public qop {
+  create_rship_on_join(const std::string &l) : label(l) {}
+  create_rship_on_join(const std::string &l, const properties_t &p,
+                      int pos, bool dir_flag)
+      : label(l), props(p), l_node_pos(pos), src_to_des(dir_flag) {}
+  ~create_rship_on_join() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  std::string label;
+  properties_t props;
+  int l_node_pos;
+  bool src_to_des;
+  node *r_node_; 
 };
 
 /**
