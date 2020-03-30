@@ -319,6 +319,11 @@ class chunked_vec {
     if (is_full())
       resize(1);
     auto tail = chunk_list_.back();
+    // chunked_vec can contain empty slots but tail is full 
+    if (tail->is_full()){
+      resize(1);
+      tail = chunk_list_.back();
+    }
     auto pos = tail->first_available();
     assert(pos != SIZE_MAX);
     available_slots_--;

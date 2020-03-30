@@ -38,12 +38,12 @@ void create_node::dump(std::ostream &os) const {
 }
 
 void create_node::start(graph_db_ptr &gdb) { 
-  auto &n = gdb->node_by_id(gdb->add_node(label, props));
+  auto &n = gdb->node_by_id(gdb->add_node(label, props, true));
   consume_(gdb, {&n});
 }
 
 void create_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
-  auto &n = gdb->node_by_id(gdb->add_node(label, props));
+  auto &n = gdb->node_by_id(gdb->add_node(label, props, true));
   auto v2 = append(v, query_result(&n));
   consume_(gdb, v2);
 }
@@ -69,12 +69,48 @@ void create_relationship::dump(std::ostream &os) const {
 void create_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
   auto n1 = boost::get<node *>(v[src_des_nodes_.first]);
   auto n2 = boost::get<node *>(v[src_des_nodes_.second]);
-  auto rid = gdb->add_relationship(n1->id(), n2->id(), label, props);
+  auto rid = gdb->add_relationship(n1->id(), n2->id(), label, props, true);
   auto& r = gdb->rship_by_id(rid);
   auto v2 = append(v, query_result(&r));
   
   consume_(gdb, v2);
 }
+
+/* ------------------------------------------------------------------------ */
+
+void create_rship_on_join::dump(std::ostream &os) const {
+  os << "create_relationship([" << label << "]";
+  if (!props.empty()) {
+    os << ", {";
+    bool first = true;
+    for (auto &p : props) {
+      if (!first)
+        os << ", ";
+      os << p.first << ": " << p.second;
+      first = false;
+    }
+    os << "}";
+  }
+  os << ")";
+}
+
+void create_rship_on_join::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto n = boost::get<node *>(v[l_node_pos]);
+  if (src_to_des){
+    auto rid = gdb->add_relationship(n->id(), r_node_->id(), label, props, true);
+    consume_(gdb, v);
+  }
+  else{
+    auto rid = gdb->add_relationship(r_node_->id(), n->id(), label, props, true);
+    consume_(gdb, v);
+  }
+}
+
+void create_rship_on_join::process_right(graph_db_ptr &gdb, const qr_tuple &v) {
+  r_node_ = boost::get<node *>(v.back());
+}
+
+void create_rship_on_join::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
 
 /* ------------------------------------------------------------------------ */
 

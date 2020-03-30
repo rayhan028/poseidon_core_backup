@@ -144,6 +144,11 @@ query &query::collect(result_set &rs) {
       std::bind(&collect_result::finish, op.get(), ph::_1));
 }
 
+query &query::finish() {
+  auto op = std::make_shared<end_pipeline>();
+  return append_op(op, std::bind(&end_pipeline::process, op.get()));
+}
+
 query &query::project(const projection::expr_list &exprs) {
   auto op = std::make_shared<projection>(exprs);
   return append_op(op,
@@ -195,6 +200,16 @@ query &query::create_rship(std::pair<int, int> src_des, const std::string &label
   auto op = std::make_shared<create_relationship>(label, props, src_des);
   return append_op(
       op, std::bind(&create_relationship::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::create_rship(query &other, int l_node_pos, const std::string &label,
+                        const properties_t &props, bool src_to_des) {
+  auto op = std::make_shared<create_rship_on_join>(label, props, l_node_pos, src_to_des);
+  other.append_op(
+      op, std::bind(&create_rship_on_join::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&create_rship_on_join::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&create_rship_on_join::finish, op.get(), ph::_1));
 }
 
 query &query::update(std::size_t var, properties_t &props) {

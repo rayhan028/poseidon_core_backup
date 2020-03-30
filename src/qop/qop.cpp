@@ -353,6 +353,12 @@ void collect_result::finish(graph_db_ptr &gdb) { results_.notify(); }
 
 /* ------------------------------------------------------------------------ */
 
+void end_pipeline::dump(std::ostream &os) const { os << "end_pipeline()"; }
+
+void end_pipeline::process() { return; }
+
+/* ------------------------------------------------------------------------ */
+
 projection::projection(const expr_list &exprs) : exprs_(exprs) {
   // we build a mapping table where for each expression variable refering to a
   // property a new index is created
