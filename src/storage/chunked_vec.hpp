@@ -316,7 +316,10 @@ class chunked_vec {
    * pointer(!) to the record as a pair.
    */
   std::pair<offset_t, T *> append(T &&o) {
+    if (is_full())
+      resize(1);
     auto tail = chunk_list_.back();
+    // chunked_vec can contain empty slots but tail is full 
     if (tail->is_full()){
       resize(1);
       tail = chunk_list_.back();
