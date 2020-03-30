@@ -20,7 +20,7 @@ struct root {
 nvm::pool<root> pop;
 #endif
 
-void create_data(node_list *nlist) {
+void create_data(p_ptr<node_list> nlist) {
   // 45 nodes per chunk
   for (auto i = 0lu; i < 100'000; i++) {
     nlist->append(node(i));
@@ -47,8 +47,8 @@ void create_data(node_list *nlist) {
 
 #ifdef USE_PMDK
 
-node_list *prepare_table() {
-  pop = nvm::pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
+p_ptr<node_list> prepare_table() {
+  pop = nvm::pool<root>::create(bench_path, "", PMEMOBJ_POOL_SIZE);
   auto root_obj = pop.root();
 
   nvm::transaction::run(
@@ -59,18 +59,19 @@ node_list *prepare_table() {
   return nlist;
 }
 
-void drop_table(node_list *nlist) {
+void drop_table(p_ptr<node_list> nlist) {
   unsigned long num = 0;
   for (auto &n : nlist->as_vec()) {
     num++;
   }
   std::cout << num << " records found (expected: 109'000)" << std::endl;
 
-  nvm::transaction::run(
-      pop, [&] { nvm::delete_persistent<node_list>(pop.root()->nlist_p); });
+  //nvm::transaction::run(
+  //    pop, [&] { nvm::delete_persistent<node_list>(pop.root()->nlist_p); });
 
   pop.close();
-  remove(test_path.c_str());
+  remove(bench_path.c_str());
+  std::cout << "table dropped." << std::endl;
 }
 #else
 node_list *prepare_table() {
@@ -133,8 +134,6 @@ int main(int argc, char **argv) {
     auto start_qp = std::chrono::steady_clock::now();
 
     for (auto i = 0lu; i < 10'000; i++) {
-      if (i == 998)
-        std::cout << i << std::endl;
       nlist->insert(node(i));
     }
 
