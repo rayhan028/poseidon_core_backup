@@ -74,20 +74,20 @@ void drop_table(p_ptr<node_list> nlist) {
   std::cout << "table dropped." << std::endl;
 }
 #else
-node_list *prepare_table() {
-  auto nlist = new node_list();
+p_ptr<node_list> prepare_table() {
+  auto nlist = p_make_ptr<node_list>();
   create_data(nlist);
   return nlist;
 }
 
-void drop_table(node_list *nlist) {
+void drop_table(p_ptr<node_list> nlist) {
   unsigned long num = 0;
   for (auto &n : nlist->as_vec()) {
     num++;
   }
   std::cout << num << " records found (expected: 109'000)" << std::endl;
 
-  delete nlist;
+  // delete nlist;
 }
 #endif
 
