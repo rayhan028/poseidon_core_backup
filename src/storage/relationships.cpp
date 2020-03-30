@@ -62,6 +62,16 @@ relationship::id_t relationship_list::append(relationship &&r, xid_t owner) {
   return p.first;
 }
 
+relationship::id_t relationship_list::insert(relationship &&r, xid_t owner) {
+  auto p = rships_.store(std::move(r));
+  p.second->id_ = p.first;
+  if (owner != 0) {
+    /// spdlog::info("lock relationship #{} by {}", p.first, owner);
+    p.second->lock(owner);
+  }
+  return p.first;
+}
+
 relationship::id_t relationship_list::add(relationship &&r, xid_t owner) {
   if (rships_.is_full())
     rships_.resize(1);

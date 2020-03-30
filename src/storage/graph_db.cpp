@@ -272,7 +272,7 @@ node::id_t graph_db::add_node(const std::string &label,
 #endif
   auto type_code = dict_->insert(label);
   auto node_id = append_only ? nodes_->append(node(type_code), txid)
-                             : nodes_->add(node(type_code), txid);
+                             : nodes_->insert(node(type_code), txid);
 
   // we need the node object not only the id
   auto &n = nodes_->get(node_id);
@@ -333,8 +333,7 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
   auto rid =
       append_only
           ? rships_->append(relationship(type_code, from_id, to_id), txid)
-          : rships_->add(relationship(type_code, from_id, to_id), txid);
-
+          : rships_->insert(relationship(type_code, from_id, to_id), txid);
   auto &r = rships_->get(rid);
 
 #ifdef USE_TX

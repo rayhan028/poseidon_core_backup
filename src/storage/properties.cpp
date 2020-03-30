@@ -247,6 +247,7 @@ property_set::id_t property_list::add_pitems(offset_t nid,
   for (auto &pi : props) {
     pil[pidx++] = pi;
     if (++n == props.size() || pidx == pil.max_size()) {
+#if 0
       if (properties_.is_full())
         properties_.resize(1);
       auto id = properties_.first_available();
@@ -254,8 +255,11 @@ property_set::id_t property_list::add_pitems(offset_t nid,
 
       properties_.store_at(id,
                            property_set(nid, std::move(pil), next_id, is_node));
-
       next_id = id;
+#else
+      auto pr = properties_.store(property_set(nid, std::move(pil), next_id, is_node));
+      next_id = pr.first;
+#endif
       pidx = 0;
       pil.fill(p_item());
     }

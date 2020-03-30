@@ -150,6 +150,7 @@ TEST_CASE("Checking FROM relationships", "[graph_db]") {
   auto b2 = graph->add_node(":Book", {});
   auto b3 = graph->add_node(":Book", {});
 
+  std::cout << "p1=" << p1 << ", p2=" << p2 << ",b1=" << b1 << ", b2=" << b2 << ", b3=" << b3 << std::endl;
   graph->add_relationship(p1, b1, ":HAS_READ", {});
   graph->add_relationship(p1, b2, ":HAS_READ", {});
   graph->add_relationship(p1, b3, ":HAS_READ", {});

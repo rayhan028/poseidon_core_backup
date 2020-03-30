@@ -368,7 +368,7 @@ class chunked_vec {
     if (ch->is_full()) {
       remove_from_free_list(idx);
     }
-    return std::make_pair(idx, &ch->data_[pos]);
+    return std::make_pair(idx + pos, &ch->data_[pos]);
   }
 
   /**
@@ -473,6 +473,7 @@ class chunked_vec {
       chunk_list_.push_back(ptr);
       available_slots_ = capacity_ = elems_per_chunk_;
       num--;
+      add_to_free_list(0);
     } else {
       // initialize ptr
       ptr = chunk_list_.back();
@@ -533,6 +534,7 @@ private:
 
   offset_t find_in_free_list() {
     // spdlog::info("find_in_free_list: {} ({})", free_list_.front(), free_list_.size());
+    // assert(!free_list_.empty());
     return free_list_.front();
   }
 
