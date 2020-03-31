@@ -13,7 +13,7 @@
 #include "spdlog/spdlog.h"
 
 #define SF_10
-#define INDEX
+#define BUILD_INDEX
 
 
 #ifdef USE_PMDK
@@ -92,9 +92,9 @@ int main(int argc, char **argv) {
   std::string db_name;
   std::string snb_home =
 #ifdef SF_10
-"/home/data/SNB_SF_10/";
+    "/home/data/SNB_SF_10/";
 #else
-"/home/data/SNB_SF_1/";
+    "/home/data/SNB_SF_1/";
 #endif
 
  try {
@@ -247,7 +247,7 @@ int main(int argc, char **argv) {
   spdlog::info("trying to load data from {} and {}", snb_sta, snb_dyn);
   load_snb_data(graph, node_files, rship_files);
 
-#ifdef INDEX
+#ifdef BUILD_INDEX
 #ifdef USE_TX
   auto tx = graph->begin_transaction();
 #endif

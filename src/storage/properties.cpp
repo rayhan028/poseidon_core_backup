@@ -249,13 +249,18 @@ property_set::id_t property_list::add_pitems(offset_t nid,
     if (++n == props.size() || pidx == pil.max_size()) {
       if (properties_.is_full())
         properties_.resize(1);
-      auto id = properties_.first_available();
+      
+      /*auto id = properties_.first_available();
       assert(id != UNKNOWN);
 
       properties_.store_at(id,
                            property_set(nid, std::move(pil), next_id, is_node));
+      next_id = id;*/
+      
+      auto p =
+          properties_.append(property_set(nid, std::move(pil), next_id, is_node));
 
-      next_id = id;
+      next_id = p.first;
       pidx = 0;
       pil.fill(p_item());
     }
