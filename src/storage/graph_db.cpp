@@ -233,20 +233,27 @@ bool graph_db::abort_transaction() {
   // if we have added a node or relationship then
   // we have to delete it again from the nodes_ or rships_ tables.
    for (auto node_id  : tx->dirty_nodes()) {
-    /// spdlog::info("remove dirty node for tx {} and node #{}", xid,
-    /// nptr->id());
     auto &n = nodes_->get(node_id);
+    bool was_updated = n.updated_in_version(xid);
     n.remove_dirty_version(xid);
     n.unlock();
-    nodes_->remove(node_id);
+    // remove the node only if it was added but not updated!
+    if (!was_updated) {
+      // spdlog::info("remove dirty node for tx {} and node #{}", xid, node_id);
+      nodes_->remove(node_id);
+    }
   }
 
   for (auto rel_id  : tx->dirty_relationships()) {
     /// spdlog::info("remove dirty relationship for tx {}", xid);
     auto &r = rships_->get(rel_id );
+    bool was_updated = r.updated_in_version(xid);
     r.remove_dirty_version(xid);
     r.unlock();
-    rships_->remove(rel_id);
+    // remove the relationship only if it was added but not updated!
+    if (!was_updated) {
+      rships_->remove(rel_id);
+    }
   }
 
   // std::lock_guard<std::mutex> guard(*m_);
@@ -414,17 +421,22 @@ node &graph_db::get_valid_node_version(node &n, xid_t xid) {
     assert(n.has_dirty_versions());
     return n.find_valid_version(xid)->elem_;
   }
-  // or (2) is unlocked and xid is in [bts,cts]
+  // or (2) is not locked and xid is in [bts,cts]
   if (!n.is_locked()) {
     // spdlog::info("node_by_id: node #{} is unlocked: [{}, {}] <=> {}", n.id(),
     //             n.bts, n.cts, xid);
     return n.is_valid(xid) ? n : n.find_valid_version(xid)->elem_;
   }
 
-  // node is locked by another transaction -> abort!!!
-  if (n.is_locked()) 
+  // or (3) node is locked by another transaction
+  if (n.is_locked()) {
+    // try to find a valid version which is not locked
+    auto &nv = n.find_valid_version(xid)->elem_;
+    if (!nv.is_locked() || nv.is_locked_by(xid))
+      return nv;
+    // spdlog::info("node #{} is locked by another tx", n.id());
     throw transaction_abort();
-
+  }
   throw unknown_id();
 }
 
@@ -443,9 +455,14 @@ relationship &graph_db::get_valid_rship_version(relationship &r, xid_t xid) {
   }
 
   // relationship is locked by another transaction -> abort!!
-  if (r.is_locked()) 
+  if (r.is_locked())  {
+    // try to find a valid version which is not locked
+    auto &rv = r.find_valid_version(xid)->elem_;
+    if (!rv.is_locked() || rv.is_locked_by(xid))
+      return rv;
+    // spdlog::info("relationship #{} is locked by another tx", n.id());
     throw transaction_abort();
-
+  }
   throw unknown_id();
 }
 
@@ -539,7 +556,7 @@ void graph_db::update_node(node &n, const properties_t &props,
   if (!n.try_lock(txid))
     throw transaction_abort();
 
-  // make sure we don't overwrite an object that was written by 
+  // make sure we don't overwrite an object that was read by 
   // a more recent transaction
   if (n.rts > txid)
    throw transaction_abort();
@@ -562,6 +579,9 @@ void graph_db::update_node(node &n, const properties_t &props,
     newv->elem_.node_label = lc;
 
   current_transaction()->add_dirty_node(n.id());
+
+  // unlock the persistent node - only the dirty version is still locked
+  n.unlock();
 #else
   if (lc > 0)
     n.node_label = lc;
@@ -586,7 +606,7 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
   if (!r.try_lock(txid))
     throw transaction_abort();
 
-  // make sure we don't overwrite an object that was written by 
+  // make sure we don't overwrite an object that was read by 
   // a more recent transaction
   if (r.rts > txid)
    throw transaction_abort();
@@ -609,6 +629,10 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
     newv->elem_.rship_label = lc;
 
   current_transaction()->add_dirty_relationship(r.id());
+
+  // unlock the persistent relationship - only the dirty version is still locked
+  r.unlock();
+
 #else
   if (lc > 0)
     r.rship_label = lc;
@@ -626,16 +650,7 @@ void graph_db::delete_node(node::id_t id) {
   
   // delete the node properties
   properties_->remove_properties(n.property_list);
-  /*
-  auto cur_pset_id = n.property_list;
-  while (cur_pset_id != UNKNOWN){
-    auto tmp_pset_id = cur_pset_id;
-    
-    auto &cur_pset = properties_->get(cur_pset_id);
-    cur_pset_id = cur_pset.next;
-    properties_->remove(tmp_pset_id);
-  }
-*/
+  
   // delete the node object
   nodes_->remove(id);
 }
@@ -649,16 +664,7 @@ void graph_db::delete_relationship(relationship::id_t id) {
 
   // delete the relationship properties
   properties_->remove_properties(r.property_list);
-  /*
-  auto cur_pset_id = r.property_list;
-  while (cur_pset_id != UNKNOWN){
-    auto tmp_pset_id = cur_pset_id;
-    
-    auto &cur_pset = properties_->get(cur_pset_id);
-    cur_pset_id = cur_pset.next;
-    properties_->remove(tmp_pset_id);
-  }
-*/
+
   // delete the relationship object
   rships_->remove(id);
 }

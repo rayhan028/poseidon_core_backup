@@ -49,7 +49,7 @@ struct relationship;
  */
 class transaction {
 public:
-  /**
+/**
    * Default constructor. Shouldn't be used directly, because transactions are
    * created only via the begin_transaction() method of the class graph_db.
    */
@@ -68,7 +68,7 @@ public:
   /**
    * Add the given node to the vector of dirty node objects.
    */
-  void add_dirty_node(offset_t id);
+  void add_dirty_node(offset_t idr);
 
   /**
    * Add the given relationship to the vector of dirty relationships objects.
@@ -88,8 +88,8 @@ public:
 private:
   xid_t xid_; // transaction identifier
   std::vector<offset_t>
-      dirty_nodes_; // the vector  of node ids of nodes which were modified by this transaction
-  std::vector<offset_t> dirty_rships_; // the vector of relationship ids or relationships which
+      dirty_nodes_; // the vector of ids of nodes which were modified by this transaction
+  std::vector<offset_t> dirty_rships_; // the vector of ids of relationships which
                                        // were modified by this transaction
 };
 
@@ -181,7 +181,11 @@ template <typename T> struct txn {
   /**
    * Set the read timestamp.
    */
-  void set_rts(xid_t end) { rts = end; }
+  void set_rts(xid_t end) { 
+    // update only if rts < end
+    if (rts < end) 
+      rts = end; 
+  }
 
   /**
    * Return true if the node is locked by a transaction.
@@ -275,7 +279,9 @@ template <typename T> struct txn {
    */
   decltype(auto) get_dirty_objects() const {
     using dirty_list_ptr = const std::list<T>*;
-    return has_dirty_versions()?  std::optional<dirty_list_ptr>(dirty_list) : std::optional<dirty_list_ptr>{};
+    return has_dirty_versions() 
+      ? std::optional<dirty_list_ptr>(dirty_list) 
+      : std::optional<dirty_list_ptr>{};
   }
 
   /**
@@ -304,6 +310,19 @@ template <typename T> struct txn {
     dirty_list->push_front(std::move(tptr));
 
     return dirty_list->front();
+  }
+
+  /**
+   * Check if the version belonging to transaction given by xid was updated. In this case
+   * return true. Otherwise, the object was added and return false.
+   */
+  bool updated_in_version(xid_t xid) {
+    if (!dirty_list) return false;
+    for (const auto& dn : *dirty_list) {
+        if (dn->elem_.txn_id == xid) 
+          return dn->updated();
+    }
+    return false;
   }
 
   /**
