@@ -206,11 +206,6 @@ bool graph_db::commit_transaction() {
 	  r.unlock();
 	  r.gc(oldest_xid_);
   }
-
-  // remove transaction from the active transaction set
-  // std::lock_guard<std::mutex> guard(*m_);
-  // active_tx_->erase(tx->xid());
-
 #ifdef USE_PMDK_TXN_FA
   });
 #endif
@@ -429,14 +424,16 @@ node &graph_db::get_valid_node_version(node &n, xid_t xid) {
   }
 
   // or (3) node is locked by another transaction
-  if (n.is_locked()) {
+  else {
+    // spdlog::info("node #{} is locked by another tx in {}", n.id(), xid);
+    // dump();
     // try to find a valid version which is not locked
     auto &nv = n.find_valid_version(xid)->elem_;
     if (!nv.is_locked() || nv.is_locked_by(xid))
       return nv;
-    // spdlog::info("node #{} is locked by another tx", n.id());
     throw transaction_abort();
   }
+  spdlog::info("get_valid_node_version -> unknown_id");
   throw unknown_id();
 }
 
@@ -492,52 +489,78 @@ relationship &graph_db::rship_by_id(relationship::id_t id) {
 }
 
 node_description graph_db::get_node_description(const node &n) {
-  auto label = dict_->lookup_code(n.node_label);
+  std::string label; 
   properties_t props;
 #ifdef USE_TX
   check_tx_context();
   auto xid = current_transaction()->xid();
   // spdlog::info("get_node_description @{}", (unsigned long)&n);
-  if (n.is_dirty()) {
-    // spdlog::info(
-    //    "get_node_description - is_dirty tx = {} -- has_dirty_versions = {}",
-    //    xid, n.has_dirty_versions());
-    // if n is a dirty node then we get the property values directly from the
-    // p_item list
-    const auto& dn = n.find_valid_version(xid);
-    // spdlog::info("got dirty version!!");
-    props = properties_->build_properties_from_pitems(dn->properties_, dict_);
-  } else {
-    // spdlog::info("get_node_description - not dirty");
-    // otherwise from the properties_ table
+  if (!n.has_dirty_versions()) {
+    // the simple case: no concurrent transactions are active and
+    // we can get the properties from the properties_ table
+     // spdlog::info("get_node_description - not dirty");
     props = properties_->all_properties(n.property_list, dict_);
+    label = dict_->lookup_code(n.node_label);
+  }
+  else {
+    //spdlog::info("tx #{}: get_node_description - is_dirty={} - is_valid={}", 
+    //  xid, n.is_dirty(), n.is_valid(xid));
+    // dump();
+    // otherwise there are two options:
+    // (1) we still can get the data from the properties_ table
+    if (!n.is_dirty() && n.is_valid(xid)) {
+      props = properties_->all_properties(n.property_list, dict_);
+      label = dict_->lookup_code(n.node_label);
+    }
+    else {
+      // (2) we get the property values directly from the p_item list
+      const auto& dn = n.find_valid_version(xid);
+      // spdlog::info("got dirty version: @{}", (unsigned long)&(dn->elem_));
+      // dump();
+      props = properties_->build_properties_from_pitems(dn->properties_, dict_);
+      label = dict_->lookup_code(dn->elem_.node_label);
+    }
   }
 #else
   props = properties_->all_properties(n.property_list, dict_);
 #endif
-  return node_description{n.id(), std::string(label), props};
+  return node_description{n.id(), label, props};
 }
 
 rship_description graph_db::get_rship_description(const relationship &r) {
-  auto label = dict_->lookup_code(r.rship_label);
+  std::string label;
   properties_t props;
 #ifdef USE_TX
   check_tx_context();
   auto xid = current_transaction()->xid();
-  if (r.is_dirty()) {
-    // if n is a dirty relationship then we get the property values directly
-    // from the p_item list
-    const auto& dr = r.find_valid_version(xid);
-    props = properties_->build_properties_from_pitems(dr->properties_, dict_);
-  } else {
-    // otherwise from the properties_ table
+  if (!r.has_dirty_versions()) {
+   // the simple case: no concurrent transactions are active and
+    // we can get the properties from the properties_ table
+     // spdlog::info("get_node_description - not dirty");
     props = properties_->all_properties(r.property_list, dict_);
+    label = dict_->lookup_code(r.rship_label);
+  }
+  else {
+    // otherwise there are two options:
+    // (1) we still can get the data from the properties_ table
+    if (!r.is_dirty() && r.is_valid(xid)) {
+      props = properties_->all_properties(r.property_list, dict_);
+      label = dict_->lookup_code(r.rship_label);
+    }
+    else {
+      // (2) we get the property values directly from the p_item list
+      const auto& dr = r.find_valid_version(xid);
+      // spdlog::info("got dirty version: @{}", (unsigned long)&(dn->elem_));
+      // dump();
+      props = properties_->build_properties_from_pitems(dr->properties_, dict_);
+      label = dict_->lookup_code(dr->elem_.rship_label);
+    }
   }
 #else
   props = properties_->all_properties(r.property_list, dict_);
 #endif
   return rship_description{r.id(), r.from_node_id(), r.to_node_id(),
-                           std::string(label), props};
+                           label, props};
 }
 
 const char *graph_db::get_relationship_label(const relationship &r) {
@@ -569,6 +592,8 @@ void graph_db::update_node(node &n, const properties_t &props,
   const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
   oldv->elem_.set_timestamps(n.bts, txid);
   oldv->elem_.set_dirty();
+  // but unlock it for readers
+  oldv->elem_.unlock();
 
   // ... and create another copy as the new version
   pitems = properties_->apply_updates(pitems, props, dict_);
@@ -580,8 +605,6 @@ void graph_db::update_node(node &n, const properties_t &props,
 
   current_transaction()->add_dirty_node(n.id());
 
-  // unlock the persistent node - only the dirty version is still locked
-  n.unlock();
 #else
   if (lc > 0)
     n.node_label = lc;
@@ -619,6 +642,8 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
   const auto& oldv = r.add_dirty_version(std::make_unique<dirty_rship>(r, pitems));
   oldv->elem_.set_timestamps(r.bts, txid);
   oldv->elem_.set_dirty();
+  // but unlock it for readers
+  oldv->elem_.unlock();
 
   // ... and create another copy as the new version
   pitems = properties_->apply_updates(pitems, props, dict_);
@@ -629,9 +654,6 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
     newv->elem_.rship_label = lc;
 
   current_transaction()->add_dirty_relationship(r.id());
-
-  // unlock the persistent relationship - only the dirty version is still locked
-  r.unlock();
 
 #else
   if (lc > 0)

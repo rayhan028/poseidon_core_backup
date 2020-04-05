@@ -211,6 +211,11 @@ uint64_t p_item::get_raw() const {
   return *(reinterpret_cast<const uint64_t *>(value_));
 }
   
+std::ostream& operator<< (std::ostream& os, const p_item& pi) {
+  os << "(" << static_cast<unsigned int>(pi.flags_) << "|" << pi.key_ << "|" << pi.get_raw() << ")";
+  return os;
+}
+
 /* --------------------------------------------------------------------- */
 
 property_set::id_t property_list::add_node_properties(offset_t nid,

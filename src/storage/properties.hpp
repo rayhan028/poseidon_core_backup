@@ -117,6 +117,8 @@ struct p_item {
   uint8_t value_[8]; // placeholder for storing int, double or dcode_t values
 };
 
+std::ostream& operator<< (std::ostream& os, const p_item& pi);
+
 /* ------------------------------------------------------------------------ */
 
 /**

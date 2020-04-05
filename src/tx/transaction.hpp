@@ -41,6 +41,13 @@ using timestamp_t = unsigned long;
  */
 constexpr unsigned long INF = std::numeric_limits<unsigned long>::max();
 
+/**
+ * A helper function for debugging to return a shortened version of the timestamps.
+ */
+inline int short_ts(timestamp_t ts) {
+  return (ts == INF) ? : static_cast<int>(ts & 0xffff);
+}
+
 struct node;
 struct relationship;
 
@@ -249,12 +256,22 @@ template <typename T> struct txn {
    */
   const T& find_valid_version(xid_t xid) const {
     if (has_dirty_versions()) {
+      bool abort = false;
       for (const auto& dn : *dirty_list) {
-        if (dn->elem_.is_valid(xid) &&
-            (!dn->elem_.is_locked() || dn->elem_.is_locked_by(xid))) {
+       if (!dn->elem_.is_locked() || dn->elem_.is_locked_by(xid)) {
+         if (dn->elem_.is_valid(xid))
           return dn;
+        else {
+          // if the object is not locked but we cannot find a valid version
+          // then we probably should abort the transaction instead of
+          // throw unknown_id: but let's first check all versions
+          abort = true;
         }
+       } 
       }
+      if (abort)
+        // no valid version found -> abort the transaction
+        throw transaction_abort();
     }
     throw unknown_id();
   }
