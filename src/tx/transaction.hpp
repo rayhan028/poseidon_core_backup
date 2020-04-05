@@ -45,7 +45,7 @@ constexpr unsigned long INF = std::numeric_limits<unsigned long>::max();
  * A helper function for debugging to return a shortened version of the timestamps.
  */
 inline int short_ts(timestamp_t ts) {
-  return (ts == INF) ? : static_cast<int>(ts & 0xffff);
+  return (ts == INF) ? -1 : static_cast<int>(ts & 0xffff);
 }
 
 struct node;

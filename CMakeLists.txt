@@ -12,7 +12,7 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK       "Use Intel PMDK"                      ON)
-option(USE_PMDK_TX_FA "Use Intel PMDK Transactions for FA"  OFF) #Without turning ON USE_PMDK ON, "USE_PMDK_TX_FA" cannot be used.
+option(USE_PMDK_TX_FA "Use Intel PMDK Transactions for FA"  ON) #Without turning ON USE_PMDK ON, "USE_PMDK_TX_FA" cannot be used.
 option(USE_TX         "Provide Transaction Support"         ON)
 option(BUILD_PYTHON   "Build python interface for poseidon" ON)
 #-------------------------------------------------------------------------------

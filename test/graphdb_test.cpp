@@ -639,7 +639,8 @@ TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
 #ifdef USE_TX
   auto tx = graph->begin_transaction();
 #endif
-  for (int i = 0u; i < 10000; i++) {
+  // TODO: see https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core/-/issues/7
+  for (int i = 0u; i < 1000; i++) {
     auto p1 = graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},

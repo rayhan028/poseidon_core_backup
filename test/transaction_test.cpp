@@ -237,7 +237,7 @@ TEST_CASE("Checking that a newly inserted record becomes visible after commit",
           "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
-  auto gdb = create_graph_db(pool);
+  auto gdb = create_graph_db(pop);
 #else
   auto gdb = create_graph_db();
 #endif
