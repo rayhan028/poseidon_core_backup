@@ -254,6 +254,9 @@ set(src_files ${dict_src}
   src/storage/relationships.cpp
   src/storage/properties.cpp
   src/storage/graph_db.cpp
+  src/storage/graph_db_import.cpp
+  src/storage/graph_db_index.cpp
+  src/storage/graph_db_query.cpp
   src/btree/index_map.cpp
   src/qop/qop.cpp
   src/qop/update.cpp
