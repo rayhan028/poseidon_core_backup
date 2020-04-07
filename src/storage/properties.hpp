@@ -78,6 +78,7 @@ struct p_item {
 
   p_item(const p_item &) = default;
 
+  p_item(dcode_t k, p_typecode tc, const boost::any &v);
   p_item(dcode_t k, double v);
   p_item(dcode_t k, int v);
   p_item(dcode_t k, dcode_t v);
@@ -242,6 +243,11 @@ public:
   property_set::id_t append_node_properties(offset_t nid,
                                             const properties_t &props,
                                             dict_ptr &dct);
+
+  property_set::id_t append_typed_node_properties(offset_t nid, 
+                              const std::vector<dcode_t> &keys,
+                              const std::vector<p_item::p_typecode>& typelist, 
+                              const std::vector<boost::any>& values);
 
   /**
    * Inserts the properties from the given list and assign them to the

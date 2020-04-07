@@ -48,11 +48,30 @@ node::id_t graph_db::import_node(const std::string &label,
   return node_id;
 }
 
+node::id_t graph_db::import_typed_node(const std::string &label, 
+                              const std::vector<dcode_t> &keys,
+                              const std::vector<p_item::p_typecode>& typelist, 
+                              const std::vector<boost::any>& values) {
+  auto type_code = dict_->insert(label);
+  auto node_id = nodes_->append(node(type_code), 0);
+                            
+  // we need the node object not only the id
+  auto &n = nodes_->get(node_id);
+
+  // save properties
+  if (!keys.empty()) {
+    property_set::id_t pid =
+        properties_->append_typed_node_properties(node_id, keys, typelist, values);
+    n.property_list = pid;
+  }
+
+  return node_id;
+}
+
 relationship::id_t graph_db::import_relationship(node::id_t from_id,
                                                  node::id_t to_id,
                                                  const std::string &label,
                                                  const properties_t &props) {
-
   auto &from_node = nodes_->get(from_id);
   auto &to_node = nodes_->get(to_id);
   auto type_code = dict_->insert(label);
@@ -81,6 +100,44 @@ relationship::id_t graph_db::import_relationship(node::id_t from_id,
     to_node.to_rship_list = rid;
   }
   return rid;
+}
+
+relationship::id_t graph_db::import_typed_relationship(node::id_t from_id,
+                                         node::id_t to_id,
+                                         const std::string &label, 
+                                         const std::vector<dcode_t> &keys,
+                                         const std::vector<p_item::p_typecode>& typelist, 
+                                         const std::vector<boost::any>& values) {
+  auto &from_node = nodes_->get(from_id);
+  auto &to_node = nodes_->get(to_id);
+  auto type_code = dict_->insert(label);
+  auto rid = rships_->append(relationship(type_code, from_id, to_id), 0);
+
+  auto &r = rships_->get(rid);
+
+  // save properties
+  if (!keys.empty()) {
+    property_set::id_t pid =
+        properties_->append_typed_node_properties(rid, keys, typelist, values);
+    r.property_list = pid;
+  }
+
+  // update the list of relationships for each of both nodes
+  if (from_node.from_rship_list == UNKNOWN)
+    from_node.from_rship_list = rid;
+  else {
+    r.next_src_rship = from_node.from_rship_list;
+    from_node.from_rship_list = rid;
+  }
+
+  if (to_node.to_rship_list == UNKNOWN)
+    to_node.to_rship_list = rid;
+  else {
+    r.next_dest_rship = to_node.to_rship_list;
+    to_node.to_rship_list = rid;
+  }
+  return rid;
+
 }
 
 std::size_t graph_db::import_nodes_from_csv(const std::string &label,

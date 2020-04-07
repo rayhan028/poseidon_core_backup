@@ -102,6 +102,10 @@ public:
    */
   node::id_t import_node(const std::string &label, const properties_t &props);
 
+  node::id_t import_typed_node(const std::string &label, const std::vector<dcode_t> &keys,
+                              const std::vector<p_item::p_typecode>& typelist, 
+                              const std::vector<boost::any>& values);
+
   /**
    * Add a new relationship to the graph that connects from_node and to_node.
    * This relationship has initialized with the given label and properties.
@@ -120,6 +124,15 @@ public:
                                          node::id_t to_node,
                                          const std::string &label,
                                          const properties_t &props);
+
+  relationship::id_t import_typed_relationship(node::id_t from_node,
+                                         node::id_t to_node,
+                                         const std::string &label, 
+                                         const std::vector<dcode_t> &keys,
+                                         const std::vector<p_item::p_typecode>& typelist, 
+                                         const std::vector<boost::any>& values);
+
+  /* --------------- node/relationship information --------------- */
 
   /**
    * Returns a description of the node, i.e. with all decoded labels and
