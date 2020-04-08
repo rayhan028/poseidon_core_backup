@@ -12,7 +12,7 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
-#define SF_10
+// #define SF_10
 #define INDEX
 
 
@@ -55,7 +55,7 @@ void load_snb_data(graph_db_ptr &graph,
       if (label[0] >= 'a' && label[0] <= 'z')
         label[0] -= 32;
 
-      num_nodes[i] = graph->import_nodes_from_csv(label, file, delim, mapping);
+      num_nodes[i] = graph->import_typed_nodes_from_csv(label, file, delim, mapping);
       spdlog::info("{} '{}' node objects imported", num_nodes[i], label);
       if (num_nodes[i] > 0)
         nodes_imported = true;
@@ -76,7 +76,7 @@ void load_snb_data(graph_db_ptr &graph,
       boost::split(fn, fp.back(), boost::is_any_of("_"));
       auto label = ":" + fn[1];
 
-      num_rships[i] = graph->import_relationships_from_csv(file, delim, mapping);
+      num_rships[i] = graph->import_typed_relationships_from_csv(file, delim, mapping);
       spdlog::info("{} ({})-[{}]-({}) relationship objects imported", 
         num_rships[i], fn[0], label, fn[2]);
       if (num_rships[i] > 0)

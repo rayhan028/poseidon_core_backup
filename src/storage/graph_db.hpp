@@ -213,6 +213,9 @@ public:
   std::size_t import_relationships_from_csv(const std::string &filename,
                                             char delim, const mapping_t &m);
 
+  std::size_t import_typed_relationships_from_csv(const std::string &filename,
+                                            char delim, const mapping_t &m);
+
   /* ---------------- helper ---------------- */
 
   /**
