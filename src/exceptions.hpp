@@ -21,6 +21,7 @@
 #define graph_exceptions_hpp_
 
 #include <exception>
+#include <string>
 
 class unknown_id : public std::exception {
   const char *what() const noexcept override {
@@ -68,4 +69,15 @@ class invalid_nested_transaction : public std::exception {
   }
 };
 
+class file_not_found : public std::exception {
+public:
+  file_not_found() : msg_("Cannot open file.") {}
+  file_not_found(const std::string& fname) : msg_("Cannot open file'" + fname + "'.") {}
+  const char *what() const noexcept override {
+    return msg_.c_str();
+  }
+
+private:
+  std::string msg_;
+};
 #endif

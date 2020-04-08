@@ -102,7 +102,7 @@ public:
    */
   node::id_t import_node(const std::string &label, const properties_t &props);
 
-  node::id_t import_typed_node(const std::string &label, const std::vector<dcode_t> &keys,
+  node::id_t import_typed_node(dcode_t label, const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist, 
                               const std::vector<boost::any>& values);
 
@@ -127,7 +127,7 @@ public:
 
   relationship::id_t import_typed_relationship(node::id_t from_node,
                                          node::id_t to_node,
-                                         const std::string &label, 
+                                         dcode_t label, 
                                          const std::vector<dcode_t> &keys,
                                          const std::vector<p_item::p_typecode>& typelist, 
                                          const std::vector<boost::any>& values);
@@ -192,13 +192,17 @@ public:
    */
   void delete_relationship(relationship::id_t id);
 
-  /* ---------------- data import ---------------- */
+  /* ---------------- CSV data import ---------------- */
 
   /**
    * Read the list of nodes from the given CSV file. The file is in ldbc
    * format with the given delimiter.
    */
   std::size_t import_nodes_from_csv(const std::string &label,
+                                    const std::string &filename, char delim,
+                                    mapping_t &m);
+
+  std::size_t import_typed_nodes_from_csv(const std::string &label,
                                     const std::string &filename, char delim,
                                     mapping_t &m);
 

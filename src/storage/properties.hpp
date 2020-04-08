@@ -35,6 +35,12 @@
 
 #include "spdlog/spdlog.h"
 
+bool is_quoted_string(const std::string &s);
+bool is_float(const std::string &s);
+bool is_int(const std::string &s);
+bool is_date(const std::string &s);
+bool is_dtime(const std::string &s);
+
 /* ------------------------------------------------------------------------ */
 
 /**

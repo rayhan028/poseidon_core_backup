@@ -9,7 +9,6 @@ macro( build_executable arg )
     target_link_libraries( ${arg}
       poseidon_core
       ${BENCHMARK_LIB}
-      ${LUA_LIBRARIES}
       ${PMDK_LIBRARIES}
       ${MALLOC_LIB}
     )
@@ -26,8 +25,12 @@ macro (do_test arg)
         COMMAND "${CMAKE_CURRENT_BINARY_DIR}/${arg}"
     )
     build_executable( ${arg} )
+    set_tests_properties(${arg} PROPERTIES
+      ENVIRONMENT TEST_HOME=${PROJECT_SOURCE_DIR})
 endmacro(do_test)
 
 set (CTEST_ENVIRONMENT
   "DYLD_FALLBACK_LIBRARY_PATH=${DYLD_LIBRARY_PATH}"
+  "TEST_HOME=${PROJECT_SOURCE_DIR}"
 )
+
