@@ -206,7 +206,3 @@ TEST_CASE("Deleting a node", "[nodes]") {
 TEST_CASE("Checking reuse of space in node list", "[nodes]") {
   // TODO
 }
-
-TEST_CASE("Checking nodes with properties", "[nodes]") {
-  // TODO
-}

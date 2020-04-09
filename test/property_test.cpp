@@ -86,6 +86,10 @@ TEST_CASE("Testing p_item", "[properties]") {
     items[0] = pi1;
     REQUIRE(items[0].get<double>() == 66.67);
     REQUIRE(items[0].key() == 22);
+
+    p_item pi6((dcode_t)22, p_item::p_int, boost::any(42));
+    REQUIRE(pi6.get<int>() == 42);
+    REQUIRE(items[0].key() == 22);
 }
 
 TEST_CASE("Testing get_property", "[properties]") {
