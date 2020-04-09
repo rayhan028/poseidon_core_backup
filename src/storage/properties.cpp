@@ -117,7 +117,8 @@ p_item::p_item(dcode_t k, p_item::p_typecode tc, const boost::any &v) : flags_(0
     case p_double: set<double>(boost::any_cast<double>(v)); break;
     case p_dcode: set<dcode_t>(boost::any_cast<dcode_t>(v)); break;
     case p_uint64: set<uint64_t>(boost::any_cast<uint64_t>(v)); break;
-    case p_ptime: set<ptime>(boost::any_cast<ptime>(v)); break;
+    case p_ptime: 
+    case p_date: set<ptime>(boost::any_cast<ptime>(v)); break;
     default: break;
   }  
 }

@@ -36,17 +36,18 @@ boost::any string_to_any(p_item::p_typecode tc, const std::string& s, dict_ptr &
     case p_item::p_int: return boost::any((int)std::stoi(s));
     case p_item::p_uint64: return boost::any((uint64_t)std::stoll(s));
     case p_item::p_double: return boost::any((double)std::stod(s));
-    case p_item::p_ptime: 
-      if (is_date(s)) {
+    case p_item::p_date:
+    {
         boost::gregorian::date dt = boost::gregorian::from_simple_string(s);
         return boost::any(boost::posix_time::ptime(dt, boost::posix_time::seconds(0)));
-      }
-      else if (is_dtime(s)){
+    }
+    case p_item::p_ptime: 
+    {
         std::string s2 = s;
         s2[s.find("T")] = ' ';
         auto dts = s2.substr(0, s2.find("+"));
         return boost::any(boost::posix_time::time_from_string(dts));
-      }
+    }
       default: return boost::any();
   }
 }
@@ -61,7 +62,7 @@ infer_datatype(const std::string& s, dict_ptr &dict) {
     return std::make_pair(p_item::p_double, boost::any((double)std::stod(s)));
   else if (is_date(s)) {
     boost::gregorian::date dt = boost::gregorian::from_simple_string(s);
-    return std::make_pair(p_item::p_ptime, boost::any(boost::posix_time::ptime(dt, boost::posix_time::seconds(0))));
+    return std::make_pair(p_item::p_date, boost::any(boost::posix_time::ptime(dt, boost::posix_time::seconds(0))));
   }
   else if (is_dtime(s)) {
     std::string s2 = s;
@@ -69,7 +70,7 @@ infer_datatype(const std::string& s, dict_ptr &dict) {
     auto dts = s2.substr(0, s2.find("+"));
     return std::make_pair(p_item::p_ptime, boost::any(boost::posix_time::time_from_string(dts)));
   }
-  return std::make_pair<p_item::p_typecode, boost::any>(p_item::p_dcode, boost::any(dict->insert(s)));
+  return std::make_pair(p_item::p_dcode, boost::any(dict->insert(s)));
 }
 
 node::id_t graph_db::import_node(const std::string &label,

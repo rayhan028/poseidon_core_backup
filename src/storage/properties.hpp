@@ -73,11 +73,13 @@ struct p_item {
    */
   enum p_typecode {
     p_unused = 0b11100000, // unused
-    p_int = 0b00100000,    // integer
+    p_int =    0b00100000, // integer
     p_double = 0b01000000, // double
-    p_dcode = 0b01100000,   // dictionary codes stored as integer values
+    p_dcode =  0b01100000, // dictionary codes stored as integer values
     p_uint64 = 0b10000000, // unsigned 64-bit integer
-    p_ptime = 0b10100000     // datetime
+    p_ptime =  0b10100000, // datetime
+    p_date =   0b11100000, // date - used only during import not for
+                           // storing the value (use ptime instead) 
   };
 
   p_item() : flags_(0), key_(0) { P_SET_VAL(flags_, p_unused); }
