@@ -23,42 +23,11 @@
 #include "chunked_vec.hpp"
 #include "parser.hpp"
 #include "spdlog/spdlog.h"
-#include "thread_pool.hpp"
 #include <iostream>
+
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
 #endif
-struct scan_task {
-  using range = std::pair<std::size_t, std::size_t>;
-  scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last,
-            graph_db::node_consumer_func c, transaction_ptr tp = nullptr)
-      : graph_db_(gdb), nodes_(n), range_(first, last), consumer_(c), tx_(tp) {}
-
-  void operator()() {
-    xid_t xid = 0;
-    if (tx_) { // we need the transaction pointer in thread-local storage
-      current_transaction_ = tx_;
-      xid = tx_->xid();
-    }
-    auto iter = nodes_.range(range_.first, range_.second);
-    while (iter) {
-#ifdef USE_TX
-      auto &n = *iter;
-      auto &nv = graph_db_->get_valid_node_version(n, xid);
-      consumer_(nv);
-#else
-      consumer_(*iter);
-#endif
-      ++iter;
-    }
-  }
-
-  graph_db *graph_db_;
-  node_list &nodes_;
-  range range_;
-  graph_db::node_consumer_func consumer_;
-  transaction_ptr tx_;
-};
 
 graph_db::graph_db(const std::string &db_name) {
   nodes_ = p_make_ptr<node_list>();
@@ -522,8 +491,8 @@ void graph_db::update_node(node &n, const properties_t &props,
   check_tx_context();
   xid_t txid = current_transaction()->xid();
 
-  // if we cannot acquire a lock, we have to abort
-  if (!n.try_lock(txid))
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!n.is_locked_by(txid) && !n.try_lock(txid))
     throw transaction_abort();
 
   // make sure we don't overwrite an object that was read by 
@@ -586,8 +555,8 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
   check_tx_context();
   xid_t txid = current_transaction()->xid();
 
-  // if we cannot acquire a lock, we have to abort
-  if (!r.try_lock(txid))
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!r.is_locked_by(txid) && !r.try_lock(txid))
     throw transaction_abort();
 
   // make sure we don't overwrite an object that was read by 
@@ -595,6 +564,20 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
   if (r.rts > txid)
    throw transaction_abort();
 
+  bool first_update = true;
+  if (r.has_dirty_versions()) {
+    // let's look for a version which we already have created in this transaction
+    try {
+      auto& dr = r.get_dirty_version(txid);
+      // apply update to dn
+      properties_->apply_updates(dr->properties_, props, dict_);
+      if (lc > 0)
+        dr->elem_.rship_label = lc;
+      first_update = false;
+    } catch (unknown_id& exc) { /* do nothing */ }
+  }
+
+  if (first_update) {
   // first, we make a copy of the original node which is stored in
   // the dirty list
   std::list<p_item> pitems =
@@ -615,7 +598,7 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
     newv->elem_.rship_label = lc;
 
   current_transaction()->add_dirty_relationship(r.id());
-
+  }
 #else
   if (lc > 0)
     r.rship_label = lc;

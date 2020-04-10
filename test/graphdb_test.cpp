@@ -492,7 +492,6 @@ TEST_CASE("Checking a node update", "[graph_db]") {
     // and check whether the updates are available within the transaction
     auto &n2 = graph->node_by_id(p1);
     auto ndescr = graph->get_node_description(n2);
-    std::cout << "updated node -=-> " << ndescr << std::endl;
 
     REQUIRE(ndescr.id == p1);
     REQUIRE(ndescr.label == ":Person");
@@ -526,6 +525,114 @@ TEST_CASE("Checking a node update", "[graph_db]") {
             get_property<const std::string &>(ndescr.properties, "city"));
     REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
     REQUIRE(get_property<int>(ndescr.properties, "zipcode") == 12345);
+
+    graph->commit_transaction();
+  }
+#endif
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}
+
+TEST_CASE("Checking multiple node updates", "[graph_db]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  graph_db_ptr graph;
+  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
+#else
+  auto graph = p_make_ptr<graph_db>();
+#endif
+  node::id_t p1;
+
+#ifdef USE_TX
+  {
+    // add a new node
+    auto tx = graph->begin_transaction();
+#endif
+
+    p1 = graph->add_node(":Person",
+                         {{"name", boost::any(std::string("John"))},
+                          {"age", boost::any(42)},
+                          {"dummy1", boost::any(10)},
+                          {"dummy2", boost::any(11)},
+                          {"dummy3", boost::any(12)},
+                          {"city", boost::any(std::string("Berlin"))}});
+#ifdef USE_TX
+    graph->commit_transaction();
+  }
+  {
+    REQUIRE_THROWS(check_tx_context());
+    // perform an update
+    auto tx = graph->begin_transaction();
+#endif
+
+    auto &n1 = graph->node_by_id(p1);
+    graph->update_node(n1, {{"name", boost::any(std::string("Anne"))},
+                            {"age", boost::any(43)},
+                            {"city", boost::any(std::string("Munich"))},
+                            {"zipcode", boost::any(12345)}});
+    // and check whether the updates are available within the transaction
+    {
+    auto &n2 = graph->node_by_id(p1);
+    auto ndescr = graph->get_node_description(n2);
+
+    REQUIRE(ndescr.id == p1);
+    REQUIRE(ndescr.label == ":Person");
+
+    REQUIRE(std::string("Anne") ==
+            get_property<const std::string &>(ndescr.properties, "name"));
+    REQUIRE(get_property<int>(ndescr.properties, "age") == 43);
+    REQUIRE(std::string("Munich") ==
+            get_property<const std::string &>(ndescr.properties, "city"));
+    REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
+    REQUIRE(get_property<int>(ndescr.properties, "zipcode") == 12345);
+    }
+
+    // second update
+    graph->update_node(n1, {{"age", boost::any(46)},
+                            {"city", boost::any(std::string("Munich"))},
+                            {"zipcode", boost::any(12346)}}, ":Actor");
+    // and check whether the updates are available within the transaction
+    {
+    auto &n2 = graph->node_by_id(p1);
+    auto ndescr = graph->get_node_description(n2);
+
+    REQUIRE(ndescr.id == p1);
+    REQUIRE(ndescr.label == ":Actor");
+
+    REQUIRE(std::string("Anne") ==
+            get_property<const std::string &>(ndescr.properties, "name"));
+    REQUIRE(get_property<int>(ndescr.properties, "age") == 46);
+    REQUIRE(std::string("Munich") ==
+            get_property<const std::string &>(ndescr.properties, "city"));
+    REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
+    REQUIRE(get_property<int>(ndescr.properties, "zipcode") == 12346);
+    }
+#ifdef USE_TX
+    graph->commit_transaction();
+  }
+  {
+    // now we check whether the updates are available also outside the
+    // transaction
+    REQUIRE_THROWS(check_tx_context());
+    auto tx = graph->begin_transaction();
+
+    auto &n2 = graph->node_by_id(p1);
+    auto ndescr = graph->get_node_description(n2);
+
+    REQUIRE(ndescr.id == p1);
+    REQUIRE(ndescr.label == ":Actor");
+
+    REQUIRE(std::string("Anne") ==
+            get_property<const std::string &>(ndescr.properties, "name"));
+    REQUIRE(get_property<int>(ndescr.properties, "age") == 46);
+    REQUIRE(std::string("Munich") ==
+            get_property<const std::string &>(ndescr.properties, "city"));
+    REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
+    REQUIRE(get_property<int>(ndescr.properties, "zipcode") == 12346);
 
     graph->commit_transaction();
   }

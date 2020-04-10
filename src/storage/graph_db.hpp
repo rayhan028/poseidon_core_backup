@@ -162,6 +162,7 @@ public:
   relationship &rship_by_id(relationship::id_t id);
 
   /* --------------- graph updates --------------- */
+ 
   /**
    * Updates the given node by changing the given
    * properties and replacing the label with the given one.

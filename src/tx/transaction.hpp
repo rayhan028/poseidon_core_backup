@@ -75,7 +75,7 @@ public:
   /**
    * Add the given node to the vector of dirty node objects.
    */
-  void add_dirty_node(offset_t idr);
+  void add_dirty_node(offset_t id);
 
   /**
    * Add the given relationship to the vector of dirty relationships objects.
