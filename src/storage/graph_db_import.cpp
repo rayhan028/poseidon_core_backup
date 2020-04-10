@@ -311,11 +311,11 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
           }
         }       
         i++;
-        auto id = import_typed_node(label_code, prop_names, prop_types, prop_values);
-        // fill mapping table
-        auto id_label_s = id_label + "_" + label;
-        m.insert({id_label_s, id});
       }
+      auto id = import_typed_node(label_code, prop_names, prop_types, prop_values);
+      // fill mapping table
+      auto id_label_s = id_label + "_" + label;
+      m.insert({id_label_s, id});
     } else {
       auto i = 0;
       std::string id_label;

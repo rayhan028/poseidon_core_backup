@@ -531,6 +531,20 @@ void graph_db::update_node(node &n, const properties_t &props,
   if (n.rts > txid)
    throw transaction_abort();
 
+  bool first_update = true;
+  if (n.has_dirty_versions()) {
+    // let's look for a version which we already have created in this transaction
+    try {
+      auto& dn = n.get_dirty_version(txid);
+      // apply update to dn
+      properties_->apply_updates(dn->properties_, props, dict_);
+      if (lc > 0)
+        dn->elem_.node_label = lc;
+      first_update = false;
+    } catch (unknown_id& exc) { /* do nothing */ }
+  }
+
+  if (first_update) {
   // first, we make a copy of the original node which is stored in
   // the dirty list
   std::list<p_item> pitems =
@@ -551,7 +565,7 @@ void graph_db::update_node(node &n, const properties_t &props,
     newv->elem_.node_label = lc;
 
   current_transaction()->add_dirty_node(n.id());
-
+  }
 #else
   if (lc > 0)
     n.node_label = lc;
