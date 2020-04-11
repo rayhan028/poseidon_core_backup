@@ -22,19 +22,20 @@ public:
     graph_db_ptr create_graph(const std::string& name);
     graph_db_ptr open_graph(const std::string& name);
 
+    void close();
+
 private:
     graph_pool();
 
 #ifdef USE_PMDK
-    namespace nvm = pmem::obj;
-    using hashmap = nvm::concurrent_hash_map<string_t, graph_db_ptr, string_hasher>;
+    using hashmap = pmem::obj::concurrent_hash_map<string_t, graph_db_ptr, string_hasher>;
     p_ptr<hashmap> indexes_;
 
     struct root {
-        p_ptr<hashmap> graph_;
+        p_ptr<hashmap> graphs_;
     };
 
-    nvm::pool<root> pop_;
+    pmem::obj::pool<root> pop_;
     std::string path_;
 #else
     std::unordered_map<std::string, graph_db_ptr> graphs_;

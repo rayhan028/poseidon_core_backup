@@ -8,11 +8,11 @@ graph_pool_ptr graph_pool::create(const std::string& path, unsigned long long po
     struct enabler : public graph_pool { using graph_pool::graph_pool; };
     auto self = std::make_unique<enabler>();
   
-    self->pop_ = nvm::pool_base::create(path, "", pool_size);
+    self->pop_ = nvm::pool<root>::create(path, "", pool_size);
     self->path_ = path;
 
     nvm::transaction::run(self->pop_, [&] {
-        self->graphs_ = nvm::make_persistent<hashmap>();
+        self->pop_.root()->graphs_ = nvm::make_persistent<hashmap>();
     });
     return self;
 }
@@ -26,16 +26,19 @@ graph_pool_ptr graph_pool::open(const std::string& path) {
     return self;
 }
 
-void graph_pool::destroy(graph_pool_ptr p) {
-  p.get()->close();
-  remove(path_.c_str());
+void graph_pool::destroy(graph_pool_ptr& p) {
+  p->pop_.close();
+  remove(p->path_.c_str());
+}
+
+void graph_pool::close() {
+    pop_.close();
 }
 
 graph_pool::graph_pool() {
 }
 
 graph_pool::~graph_pool() {
-    pop_->close();
 }
 
 graph_db_ptr graph_pool::create_graph(const std::string& name) {
@@ -45,7 +48,7 @@ graph_db_ptr graph_pool::create_graph(const std::string& name) {
 
     string_t str(name);
     hashmap::accessor ac;
-    pop_->graphs_->insert(ac, str);
+    pop_.root()->graphs_->insert(ac, str);
     ac->second = graph;
     ac.release();
     return graph;
@@ -53,7 +56,7 @@ graph_db_ptr graph_pool::create_graph(const std::string& name) {
 
 graph_db_ptr graph_pool::open_graph(const std::string& name) {
    hashmap::const_accessor ac;
-    if (pop_->graphs_->find(ac, string_t(name)))
+    if (pop_.root()->graphs_->find(ac, string_t(name)))
         return ac->second;
     else
         throw unknown_db();
