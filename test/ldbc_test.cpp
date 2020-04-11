@@ -41,9 +41,7 @@ graph_db_ptr create_graph1(
   auto graph = p_make_ptr<graph_db>();
 #endif
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
   // TODO: create LDBC SNB data
     auto mahinda = graph->add_node(
@@ -618,9 +616,7 @@ graph_db_ptr create_graph1(
   1564|4194|2010-02-23T09:10:15.466+0000
    */
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
   return graph;
 }
@@ -639,9 +635,7 @@ graph_db_ptr create_graph2(
   auto graph = p_make_ptr<graph_db>();
 #endif
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
   auto ravalomanana = graph->add_node(
       // 65|Marc|Ravalomanana|female|1989-06-15|2010-02-26T23:17:18.465+0000|41.204.119.20|Firefox
@@ -1113,9 +1107,7 @@ graph_db_ptr create_graph2(
   graph->add_relationship(post2_8, person2_7, ":hasCreator", {});
   graph->add_relationship(post2_9, person2_7, ":hasCreator", {});
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
   return graph;
 }
@@ -1162,11 +1154,8 @@ TEST_CASE("Testing LDBC interactive short queries", "[ldbc]") {
   auto graph2 = create_graph2();
 #endif
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
-  
   SECTION("query interactive short #1") {
     result_set rs, expected;
 
@@ -1331,9 +1320,7 @@ TEST_CASE("Testing LDBC interactive short queries", "[ldbc]") {
   }
 
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
 #ifdef USE_PMDK
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
@@ -1354,10 +1341,7 @@ TEST_CASE("Testing LDBC interactive update queries", "[ldbc]") {
   auto graph = create_graph1();
 #endif
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
-
 
   SECTION("query update #1") {
     result_set rs, expected;
@@ -1531,10 +1515,7 @@ TEST_CASE("Testing LDBC interactive update queries", "[ldbc]") {
     REQUIRE(rs == expected);
   }
 
-
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
 #ifdef USE_PMDK
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });

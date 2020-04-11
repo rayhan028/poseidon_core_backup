@@ -39,9 +39,7 @@ nvm::pool_base prepare_pool() {
 #endif
 
 void create_data(graph_db_ptr graph) {
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
   auto n7 =
       graph->add_node("Node", {{"id", boost::any(7)},
@@ -72,24 +70,18 @@ void create_data(graph_db_ptr graph) {
                                {"name", boost::any(std::string("aaa1"))},
                                {"other", boost::any(std::string("BBB1"))}});
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 }
 
 void create_join_data(graph_db_ptr graph) {
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
   auto n1 = graph->add_node("Node1", {{"id", boost::any(1)}});
   auto n2 = graph->add_node("Node1", {{"id", boost::any(2)}});
   auto n3 = graph->add_node("Node2", {{"id", boost::any(3)}});
   auto n4 = graph->add_node("Node2", {{"id", boost::any(4)}});
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 }
 
 graph_db_ptr create_graph(
@@ -115,9 +107,7 @@ TEST_CASE("Testing query operators", "[qop]") {
 #endif
   create_data(graph);
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
   namespace pj = builtin;
 
@@ -167,11 +157,10 @@ TEST_CASE("Testing query operators", "[qop]") {
   }
 
   SECTION("use index") {
-#ifdef USE_TX
     graph->commit_transaction();
     tx = graph->begin_transaction();
-#endif
-    // TODO: create index
+
+    // create index
     auto idx = graph->create_index("Node", "id");
  
     result_set rs, expected;
@@ -186,9 +175,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     expected.append({query_result(std::to_string(3)), query_result("aaa3")});
     REQUIRE(rs == expected);
   }
-#ifdef USE_TX
   graph->abort_transaction();
-#endif
 
 #ifdef USE_PMDK
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
@@ -207,9 +194,7 @@ TEST_CASE("Testing join operators", "[qop]") {
 #endif
   create_join_data(graph);
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
   namespace pj = builtin;
 
@@ -233,9 +218,7 @@ TEST_CASE("Testing join operators", "[qop]") {
     REQUIRE(rs == expected);
   }
 
-#ifdef USE_TX
   graph->abort_transaction();
-#endif
 
 #ifdef USE_PMDK
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
@@ -255,9 +238,7 @@ TEST_CASE("Projecting dtimestring property of node", "[graph_db]") {
   auto graph = p_make_ptr<graph_db>();
 #endif
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
 auto post_id = graph->add_node(
     "Post",
@@ -266,10 +247,8 @@ auto post_id = graph->add_node(
         {"creationDate",
           boost::any(builtin::dtimestring_to_int("2011-Oct-05 14:38:36.019"))}});
 
-#ifdef USE_TX
   graph->commit_transaction();
   tx = graph->begin_transaction();
-#endif
 
   auto &post = graph->node_by_id(post_id);
   auto post_descr = graph->get_node_description(post);
@@ -282,9 +261,7 @@ auto post_id = graph->add_node(
   REQUIRE(sec == 1317825516);
   REQUIRE(date == "2011-Oct-05 14:38:36");
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
 #ifdef USE_PMDK
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
@@ -303,9 +280,7 @@ TEST_CASE("Projecting only PExpr_ of higher indexes", "[graph_db]") {
   auto graph = p_make_ptr<graph_db>();
 #endif
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
   auto hoChi_id = graph->add_node(
       "Person",
@@ -338,10 +313,8 @@ TEST_CASE("Projecting only PExpr_ of higher indexes", "[graph_db]") {
   graph->add_relationship(comment2_id, comment1_id, ":replyOf", {});
   graph->add_relationship(comment3_id, comment2_id, ":replyOf", {});
 
-#ifdef USE_TX
   graph->commit_transaction();
   tx = graph->begin_transaction();
-#endif
 
   std::set<int> qr_result_f_id;
   std::set<int> qr_result_modrt_id;
@@ -409,9 +382,7 @@ TEST_CASE("Projecting only PExpr_ of higher indexes", "[graph_db]") {
   REQUIRE(qr_result_modrt_fName == std::set<std::string>({"Hồ Chí"}));
   REQUIRE(qr_result_modrt_lName == std::set<std::string>({"Do"}));
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
 #ifdef USE_PMDK
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
@@ -429,9 +400,7 @@ TEST_CASE("Projecting PExpr_", "[graph_db]") {
   auto graph = p_make_ptr<graph_db>();
 #endif
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
 auto lomana_id = graph->add_node(
     "Person",
@@ -492,10 +461,8 @@ graph->add_relationship(comment3_id, comment1_id, ":replyOf", {});
 graph->add_relationship(comment2_id, lomana_id, ":hasCreator", {});
 graph->add_relationship(comment3_id, amin_id, ":hasCreator", {});
 
-#ifdef USE_TX
   graph->commit_transaction();
   tx = graph->begin_transaction();
-#endif
 
   std::set<int> qr_result_cmnt_id;
   std::set<int> qr_result_author_id;
@@ -551,9 +518,7 @@ graph->add_relationship(comment3_id, amin_id, ":hasCreator", {});
   REQUIRE(qr_result_author_fName == std::set<std::string>({"Amin", "Lomana Trésor"}));
   REQUIRE(qr_result_author_lName == std::set<std::string>({"Kamkar", "Kanam"}));
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
 #ifdef USE_PMDK
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });

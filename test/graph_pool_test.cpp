@@ -35,43 +35,34 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
     auto graph = pool->create_graph("my_graph");
     // add a node
     {
-#ifdef USE_TX
-    auto tx = graph->begin_transaction();
-#endif
-    nid = graph->add_node(":Person", {{"name", boost::any(std::string("Anne"))},
+        auto tx = graph->begin_transaction();
+
+        nid = graph->add_node(":Person", {{"name", boost::any(std::string("Anne"))},
                                   {"age", boost::any(28)}});
-#ifdef USE_TX
-  graph->commit_transaction();
-#endif
+        graph->commit_transaction();
     }
     // check that the node exists
     {
-#ifdef USE_TX
-    auto tx = graph->begin_transaction();
-#endif
-    auto& n = graph->node_by_id(nid);
-    auto nd = graph->get_node_description(n);
-    REQUIRE(nd.id == nid);
-    REQUIRE(nd.label == ":Person");
+        auto tx = graph->begin_transaction();
 
-#ifdef USE_TX
-  graph->commit_transaction();
-#endif
+        auto& n = graph->node_by_id(nid);
+        auto nd = graph->get_node_description(n);
+        REQUIRE(nd.id == nid);
+        REQUIRE(nd.label == ":Person");
+
+        graph->commit_transaction();
     }
     auto graph2 = pool->open_graph("my_graph");
     // check the node
     {
-#ifdef USE_TX
-    auto tx = graph->begin_transaction();
-#endif
-    auto& n = graph->node_by_id(nid);
-    auto nd = graph->get_node_description(n);
-    REQUIRE(nd.id == nid);
-    REQUIRE(nd.label == ":Person");
+        auto tx = graph->begin_transaction();
 
-#ifdef USE_TX
-  graph->commit_transaction();
-#endif
+        auto& n = graph->node_by_id(nid);
+        auto nd = graph->get_node_description(n);
+        REQUIRE(nd.id == nid);
+        REQUIRE(nd.label == ":Person");
+
+        graph->commit_transaction();
     }
     REQUIRE_THROWS_AS(pool->open_graph("your_graph"), unknown_db);
 

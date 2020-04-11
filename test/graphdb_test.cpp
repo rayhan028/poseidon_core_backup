@@ -34,9 +34,7 @@ TEST_CASE("Creating nodes", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
   // TODO
   for (int i = 0; i < 100; i++) {
@@ -48,9 +46,7 @@ TEST_CASE("Creating nodes", "[graph_db]") {
                                {"dummy2", boost::any(1.2345)}},
                               true);
   }
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
   graph_pool::destroy(pool);
 }
@@ -59,9 +55,8 @@ TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
+
   auto p1 = graph->add_node(":Person", {});
   auto p2 = graph->add_node(":Person", {});
   auto b1 = graph->add_node(":Book", {});
@@ -98,9 +93,7 @@ TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
     REQUIRE(n5.label == ":Book");
     REQUIRE(n5.id == b3);
   }
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
   graph_pool::destroy(pool);
 }
@@ -109,26 +102,23 @@ TEST_CASE("Checking FROM relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
+
   auto p1 = graph->add_node(":Person", {});
   auto p2 = graph->add_node(":Person", {});
   auto b1 = graph->add_node(":Book", {});
   auto b2 = graph->add_node(":Book", {});
   auto b3 = graph->add_node(":Book", {});
 
-  std::cout << "p1=" << p1 << ", p2=" << p2 << ",b1=" << b1 << ", b2=" << b2 << ", b3=" << b3 << std::endl;
   graph->add_relationship(p1, b1, ":HAS_READ", {});
   graph->add_relationship(p1, b2, ":HAS_READ", {});
   graph->add_relationship(p1, b3, ":HAS_READ", {});
   graph->add_relationship(p2, b3, ":HAS_READ", {});
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {});
 
-#ifdef USE_TX
   graph->commit_transaction();
   tx = graph->begin_transaction();
-#endif
+
   // check if we have all relationships for each node
   {
     int hasReadCnt = 0;
@@ -147,9 +137,7 @@ TEST_CASE("Checking FROM relationships", "[graph_db]") {
     REQUIRE(isFriendsCnt == 1);
   }
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
   graph_pool::destroy(pool);
 }
@@ -158,9 +146,7 @@ TEST_CASE("Checking TO relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
   auto p1 = graph->add_node(":Person", {});
   auto p2 = graph->add_node(":Person", {});
@@ -174,10 +160,8 @@ TEST_CASE("Checking TO relationships", "[graph_db]") {
   graph->add_relationship(p2, b3, ":HAS_READ", {});
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {});
 
-#ifdef USE_TX
   graph->commit_transaction();
   tx = graph->begin_transaction();
-#endif
 
   {
     int hasReadCnt = 0;
@@ -190,9 +174,7 @@ TEST_CASE("Checking TO relationships", "[graph_db]") {
     });
     REQUIRE(hasReadCnt == 2);
   }
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
   graph_pool::destroy(pool);
 }
@@ -201,9 +183,7 @@ TEST_CASE("Checking recursive FROM relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
   /*
     p1[0]-->p2[1]-->p3[2]-->p4[3]-->p5[4]
@@ -239,10 +219,9 @@ TEST_CASE("Checking recursive FROM relationships", "[graph_db]") {
   graph->add_relationship(p1, p6, ":KNOWS", {});
   graph->add_relationship(p6, p11, ":KNOWS", {});
 
-#ifdef USE_TX
   graph->commit_transaction();
   tx = graph->begin_transaction();
-#endif
+
   std::set<node::id_t> reachable_nodes;
   auto &n1 = graph->node_by_id(p1);
   graph->foreach_variable_from_relationship_of_node(n1, 1, 3, [&](auto &r) {
@@ -262,9 +241,7 @@ TEST_CASE("Checking recursive FROM relationships", "[graph_db]") {
 
   REQUIRE(reachable_nodes == std::set<node::id_t>({2, 3, 4, 6, 7, 8, 9}));
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
   graph_pool::destroy(pool);
 }
@@ -273,9 +250,7 @@ TEST_CASE("Checking adding a node with properties", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
   auto p1 =
       graph->add_node(":Person", {{"name", boost::any(std::string("John"))},
@@ -294,9 +269,7 @@ TEST_CASE("Checking adding a node with properties", "[graph_db]") {
           get_property<const std::string &>(ndescr.properties, "name"));
   REQUIRE(get_property<int>(ndescr.properties, "age") == 42);
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
   graph_pool::destroy(pool);
 }
@@ -305,25 +278,18 @@ TEST_CASE("Checking node with properties", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
-#ifdef USE_TX
-  std::cout << "TX #1" << std::endl;
   auto tx = graph->begin_transaction();
-#endif
 
   auto p1 =
       graph->add_node(":Person", {{"name", boost::any(std::string("John"))},
                                   {"age", boost::any(42)}});
 
-#ifdef USE_TX
   graph->commit_transaction();
-  std::cout << "TX #2" << std::endl;
   tx = graph->begin_transaction();
-#endif
 
   auto &n1 = graph->node_by_id(p1);
   auto ndescr = graph->get_node_description(n1);
 
-  std::cout << "---> " << ndescr << std::endl;
   REQUIRE(ndescr.id == p1);
   REQUIRE(ndescr.label == ":Person");
   REQUIRE(ndescr.properties.find("name") != ndescr.properties.end());
@@ -333,9 +299,7 @@ TEST_CASE("Checking node with properties", "[graph_db]") {
           get_property<const std::string &>(ndescr.properties, "name"));
   REQUIRE(get_property<int>(ndescr.properties, "age") == 42);
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
   graph_pool::destroy(pool);
 }
@@ -344,9 +308,7 @@ TEST_CASE("Checking a dirty node with properties", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
 
   auto p1 =
       graph->add_node(":Person", {{"name", boost::any(std::string("John"))},
@@ -364,9 +326,8 @@ TEST_CASE("Checking a dirty node with properties", "[graph_db]") {
   REQUIRE(std::string("John") ==
           get_property<const std::string &>(ndescr.properties, "name"));
   REQUIRE(get_property<int>(ndescr.properties, "age") == 42);
-#ifdef USE_TX
+
   graph->commit_transaction();
-#endif
 
   graph_pool::destroy(pool);
 }
