@@ -13,8 +13,8 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
-// #define SF_10
-// #define CREATE_INDEX
+#define SF_10
+#define CREATE_INDEX
 #define PARALLEL_LOAD
 
 #ifdef USE_PMDK
