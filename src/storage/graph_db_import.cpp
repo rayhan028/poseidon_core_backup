@@ -183,7 +183,7 @@ relationship::id_t graph_db::import_typed_relationship(node::id_t from_id,
 
 std::size_t graph_db::import_nodes_from_csv(const std::string &label,
                                             const std::string &filename,
-                                            char delim, mapping_t &m) {
+                                            char delim, mapping_t &m, std::mutex *mtx) {
   using namespace aria::csv;
 
   std::ifstream f(filename);
@@ -238,13 +238,12 @@ std::size_t graph_db::import_nodes_from_csv(const std::string &label,
     }
     num++;
   }
-
   return num-1;
 }
 
 std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
                                             const std::string &filename,
-                                            char delim, mapping_t &m) {
+                                            char delim, mapping_t &m, std::mutex *mtx) {
   using namespace aria::csv;
 
   std::ifstream f(filename);
@@ -312,10 +311,14 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
         }       
         i++;
       }
+      if (mtx != nullptr) 
+        mtx->lock();
       auto id = import_typed_node(label_code, prop_names, prop_types, prop_values);
       // fill mapping table
       auto id_label_s = id_label + "_" + label;
       m.insert({id_label_s, id});
+      if (mtx != nullptr) 
+        mtx->unlock();
     } else {
       auto i = 0;
       std::string id_label;
@@ -331,13 +334,16 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
         }
         i++;
       }
+      if (mtx != nullptr) 
+        mtx->lock();
       auto id = import_typed_node(label_code, prop_names, prop_types, prop_values);
       auto id_label_s = id_label + "_" + label;
       m.insert({id_label_s, id});
+      if (mtx != nullptr) 
+        mtx->unlock();
     }
   num++;
   }
-
   return num-1;
 }
 
@@ -352,7 +358,7 @@ graph_db::mapping_t::const_iterator node_id_from_field(const graph_db::mapping_t
 
 std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
                                                     char delim,
-                                                    const mapping_t &m) {
+                                                    const mapping_t &m, std::mutex *mtx) {
   using namespace aria::csv;
 
   std::ifstream f(filename);
@@ -448,7 +454,7 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
 
 std::size_t graph_db::import_typed_relationships_from_csv(const std::string &filename,
                                                     char delim,
-                                                    const mapping_t &m) {
+                                                    const mapping_t &m, std::mutex *mtx) {
   using namespace aria::csv;
 
   std::ifstream f(filename);
@@ -513,8 +519,12 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
         }
         i++;
       }
+      if (mtx != nullptr)
+        mtx->lock();
       import_typed_relationship(from_node, to_node, label_code, prop_names, 
                                 prop_types, prop_values);
+      if (mtx != nullptr)
+        mtx->unlock();
     } else {
       mapping_t::const_iterator it = node_id_from_field(m, src_node, row[start_col]);
       if (it == m.end())
@@ -534,8 +544,12 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
         }
         i++;
       }
+      if (mtx != nullptr)
+        mtx->lock();
       import_typed_relationship(from_node, to_node, label_code, prop_names, 
                                 prop_types, prop_values);
+      if (mtx != nullptr)
+        mtx->unlock();
     }
     num++;
   }

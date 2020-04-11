@@ -201,21 +201,21 @@ public:
    */
   std::size_t import_nodes_from_csv(const std::string &label,
                                     const std::string &filename, char delim,
-                                    mapping_t &m);
+                                    mapping_t &m, std::mutex *mtx = nullptr);
 
   std::size_t import_typed_nodes_from_csv(const std::string &label,
                                     const std::string &filename, char delim,
-                                    mapping_t &m);
+                                    mapping_t &m, std::mutex *mtx = nullptr);
 
   /**
    * Read the list of relationships from the given CSV file. The file is in
    * ldbc format with the given delimiter.
    */
   std::size_t import_relationships_from_csv(const std::string &filename,
-                                            char delim, const mapping_t &m);
+                                            char delim, const mapping_t &m, std::mutex *mtx = nullptr);
 
   std::size_t import_typed_relationships_from_csv(const std::string &filename,
-                                            char delim, const mapping_t &m);
+                                            char delim, const mapping_t &m, std::mutex *mtx = nullptr);
 
   /* ---------------- helper ---------------- */
 
