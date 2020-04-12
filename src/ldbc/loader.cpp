@@ -96,7 +96,7 @@ void load_snb_data(graph_db_ptr &graph,
     
 #ifdef PARALLEL_LOAD
     std::vector<std::future<std::pair<std::string, std::size_t>>> res;
-    res.reserve(node_files.size());
+    res.reserve(rship_files.size());
     thread_pool pool;
 
     for (auto &file : rship_files) {
