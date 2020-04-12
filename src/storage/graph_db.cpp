@@ -68,13 +68,16 @@ transaction_ptr graph_db::begin_transaction() {
     throw invalid_nested_transaction();
   auto tx = std::make_shared<transaction>();
   current_transaction_ = tx;
+#ifdef USE_TX
   std::lock_guard<std::mutex> guard(*m_);
   active_tx_->insert({tx->xid(), tx});
   // spdlog::info("begin transaction {}", tx->xid());
+#endif
   return tx;
 }
 
 bool graph_db::commit_transaction() {
+#ifdef USE_TX
   check_tx_context();
   auto tx = current_transaction();
   auto xid = tx->xid();
@@ -178,12 +181,13 @@ bool graph_db::commit_transaction() {
 #ifdef USE_PMDK_TXN_FA
   });
 #endif
-
+#endif
   current_transaction_.reset();
   return true;
 }
 
 bool graph_db::abort_transaction() {
+#ifdef USE_TX
   check_tx_context();
   auto tx = current_transaction();
   auto xid = tx->xid();
@@ -222,6 +226,7 @@ bool graph_db::abort_transaction() {
 
   // std::lock_guard<std::mutex> guard(*m_);
   // active_tx_->erase(xid);
+#endif
   current_transaction_.reset();
   return true;
 }
@@ -439,6 +444,7 @@ node_description graph_db::get_node_description(const node &n) {
   }
 #else
   props = properties_->all_properties(n.property_list, dict_);
+  label = dict_->lookup_code(n.node_label);
 #endif
   return node_description{n.id(), label, props};
 }
@@ -474,6 +480,7 @@ rship_description graph_db::get_rship_description(const relationship &r) {
   }
 #else
   props = properties_->all_properties(r.property_list, dict_);
+  label = dict_->lookup_code(r.rship_label);
 #endif
   return rship_description{r.id(), r.from_node_id(), r.to_node_id(),
                            label, props};

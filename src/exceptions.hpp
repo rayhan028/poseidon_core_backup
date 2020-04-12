@@ -47,6 +47,11 @@ class unknown_property : public std::exception {
   }
 };
 
+class unknown_db : public std::exception {
+  const char *what() const noexcept override {
+    return "Graph database does not exist.";
+  }
+};
 class invalid_typecast : public std::exception {
   const char *what() const noexcept override {
     return "Invalid typecast for property value.";
