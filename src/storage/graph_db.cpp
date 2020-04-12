@@ -444,8 +444,8 @@ node_description graph_db::get_node_description(const node &n) {
   }
 #else
   props = properties_->all_properties(n.property_list, dict_);
-#endif
   label = dict_->lookup_code(n.node_label);
+#endif
   return node_description{n.id(), label, props};
 }
 
@@ -480,8 +480,8 @@ rship_description graph_db::get_rship_description(const relationship &r) {
   }
 #else
   props = properties_->all_properties(r.property_list, dict_);
-#endif
   label = dict_->lookup_code(r.rship_label);
+#endif
   return rship_description{r.id(), r.from_node_id(), r.to_node_id(),
                            label, props};
 }
