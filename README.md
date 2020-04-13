@@ -22,9 +22,40 @@ Make sure you have the Intel PMDK installed. If PMDK is not installed, Poseidon 
 
 Poseidon is implemented as a C++ library `libposeidon_core` which can be used to implement applications for accessing the graph data stored in persistent memory and executing queries such as Poseidon CLI provided in a separate module.
 
+In order to use a persistent graph we have to create a persistent memory pool and a graph first:
+
+```c++
+auto pool = graph_pool::create(pool_path);
+auto graph = pool->create_graph("my_graph");
+```
+
+Note that the pool path must point to the memory mapped file representing the persistent memory which is usually something like `/mnt/pmem0/...`. Once you have created a graph you can later just open it:
+
+```c++
+auto pool = graph_pool::open(pool_path);
+auto graph = pool->open_graph("my_graph");
+ 
+```
+
+Using a graph object we can add nodes and relationships. All these operations have to performed in the context of a transaction:
+
+```c++
+auto tx = graph->begin_transaction();
+auto p1 = graph->add_node(":Person",
+                              {{"name", boost::any(std::string("John Doe"))},
+                               {"age", boost::any(42)}});
+auto p2 = graph->add_node(":Person",
+                              {{"name", boost::any(std::string("Sarah Jones"))},
+                               {"age", boost::any(38)}});
+graph->add_relationship(p1, p2, ":KNOWS", {});
+graph->commit_transaction();
+```
+
+As shown in the example, properties are passed as `boost::any` types. However, internally property values are always typed. Thus, make sure that you always use the correct type when you create the `any` values.
+ 
 ## Querying Poseidon database
 
-Queries - or better query plans - are directly implemented in C++ by using the `query` class. This class provides methods to construct a query plan from a set of separate operators. Poseidon provides a push-based query engine, i.e. the query plan starts with scans. The following example shows an implementation of LDBC interactive short query #1:
+Queries - or better query plans - are directly implemented in C++ by using the `query` class. This class provides methods to construct a query plan from a set of separate operators. Poseidon provides a push-based query engine, i.e. the query plan starts with scans. The following example shows an implementation of LDBC interactive short query 1:
 
 ```c++
 namespace pj = builtin;
