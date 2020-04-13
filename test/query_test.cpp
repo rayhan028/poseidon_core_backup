@@ -24,48 +24,37 @@
 #include "config.h"
 #include "qop.hpp"
 #include "query.hpp"
+#include "graph_pool.hpp"
 
-#ifdef USE_PMDK
-#define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
-
-namespace nvm = pmem::obj;
 const std::string test_path = poseidon::gPmemPath + "query_test";
-
-nvm::pool_base prepare_pool() {
-  auto pop = nvm::pool_base::create(test_path, "",
-                                    PMEMOBJ_POOL_SIZE);
-  return pop;
-}
-#endif
 
 void create_data(graph_db_ptr graph) {
   auto tx = graph->begin_transaction();
 
-  auto n7 =
       graph->add_node("Node", {{"id", boost::any(7)},
                                {"name", boost::any(std::string("aaa7"))},
                                {"other", boost::any(std::string("BBB7"))}});
-  auto n6 =
+
       graph->add_node("Node", {{"id", boost::any(6)},
                                {"name", boost::any(std::string("aaa6"))},
                                {"other", boost::any(std::string("BBB6"))}});
-  auto n5 =
+
       graph->add_node("Node", {{"id", boost::any(5)},
                                {"name", boost::any(std::string("aaa5"))},
                                {"other", boost::any(std::string("BBB5"))}});
-  auto n4 =
+
       graph->add_node("Node", {{"id", boost::any(4)},
                                {"name", boost::any(std::string("aaa4"))},
                                {"other", boost::any(std::string("BBB4"))}});
-  auto n3 =
+
       graph->add_node("Node", {{"id", boost::any(3)},
                                {"name", boost::any(std::string("aaa3"))},
                                {"other", boost::any(std::string("BBB3"))}});
-  auto n2 =
+
       graph->add_node("Node", {{"id", boost::any(2)},
                                {"name", boost::any(std::string("aaa2"))},
                                {"other", boost::any(std::string("BBB2"))}});
-  auto n1 =
+
       graph->add_node("Node", {{"id", boost::any(1)},
                                {"name", boost::any(std::string("aaa1"))},
                                {"other", boost::any(std::string("BBB1"))}});
@@ -76,35 +65,19 @@ void create_data(graph_db_ptr graph) {
 void create_join_data(graph_db_ptr graph) {
   auto tx = graph->begin_transaction();
 
-  auto n1 = graph->add_node("Node1", {{"id", boost::any(1)}});
-  auto n2 = graph->add_node("Node1", {{"id", boost::any(2)}});
-  auto n3 = graph->add_node("Node2", {{"id", boost::any(3)}});
-  auto n4 = graph->add_node("Node2", {{"id", boost::any(4)}});
+  graph->add_node("Node1", {{"id", boost::any(1)}});
+  graph->add_node("Node1", {{"id", boost::any(2)}});
+  graph->add_node("Node2", {{"id", boost::any(3)}});
+  graph->add_node("Node2", {{"id", boost::any(4)}});
 
   graph->commit_transaction();
 }
 
-graph_db_ptr create_graph(
-#ifdef USE_PMDK
-    nvm::pool_base &pop
-#endif
-) {
-#ifdef USE_PMDK
-  graph_db_ptr graph;
-  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
-#else
-  auto graph = p_make_ptr<graph_db>();
-#endif
-  return graph;
-}
 
 TEST_CASE("Testing query operators", "[qop]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto graph = create_graph(pop);
-#else
-  auto graph = create_graph();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
   create_data(graph);
 
   auto tx = graph->begin_transaction();
@@ -177,21 +150,14 @@ TEST_CASE("Testing query operators", "[qop]") {
   }
   graph->abort_transaction();
 
-#ifdef USE_PMDK
-  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-  pop.close();
-  remove(test_path.c_str());
-#endif
+  graph_pool::destroy(pool);
 }
 
 TEST_CASE("Testing join operators", "[qop]") {
-  // TODO: prepare some data
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto graph = create_graph(pop);
-#else
-  auto graph = create_graph();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  // prepare some data
   create_join_data(graph);
 
   auto tx = graph->begin_transaction();
@@ -220,23 +186,14 @@ TEST_CASE("Testing join operators", "[qop]") {
 
   graph->abort_transaction();
 
-#ifdef USE_PMDK
-  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-  pop.close();
-  remove(test_path.c_str());
-#endif
+  graph_pool::destroy(pool);
 }
 
 // -------
 
 TEST_CASE("Projecting dtimestring property of node", "[graph_db]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  graph_db_ptr graph;
-  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
-#else
-  auto graph = p_make_ptr<graph_db>();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
 
   auto tx = graph->begin_transaction();
 
@@ -263,22 +220,13 @@ auto post_id = graph->add_node(
 
   graph->commit_transaction();
 
-#ifdef USE_PMDK
-  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-  pop.close();
-  remove(test_path.c_str());
-#endif
+  graph_pool::destroy(pool);
 }
 
 
 TEST_CASE("Projecting only PExpr_ of higher indexes", "[graph_db]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  graph_db_ptr graph;
-  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
-#else
-  auto graph = p_make_ptr<graph_db>();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
 
   auto tx = graph->begin_transaction();
 
@@ -384,21 +332,12 @@ TEST_CASE("Projecting only PExpr_ of higher indexes", "[graph_db]") {
 
   graph->commit_transaction();
 
-#ifdef USE_PMDK
-  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-  pop.close();
-  remove(test_path.c_str());
-#endif
+  graph_pool::destroy(pool);
 }
 
 TEST_CASE("Projecting PExpr_", "[graph_db]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  graph_db_ptr graph;
-  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
-#else
-  auto graph = p_make_ptr<graph_db>();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
 
   auto tx = graph->begin_transaction();
 
@@ -520,10 +459,6 @@ graph->add_relationship(comment3_id, amin_id, ":hasCreator", {});
 
   graph->commit_transaction();
 
-#ifdef USE_PMDK
-  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-  pop.close();
-  remove(test_path.c_str());
-#endif
+  graph_pool::destroy(pool);
 } 
 

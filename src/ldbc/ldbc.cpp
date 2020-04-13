@@ -43,8 +43,6 @@ void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 // ------------------------------------------------------------------------------------------------------------------------
 
 void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
-  auto maxHops = 100; 
-
   auto q = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Person", "id", personId)
@@ -271,8 +269,6 @@ void ldbc_is_query_5_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 // ------------------------------------------------------------------------------------------------------------------------
 
 void ldbc_is_query_6_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
-  auto maxHops = 100;
-    
   auto q = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Post", "id", messageId)
