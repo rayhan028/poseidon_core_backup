@@ -8,14 +8,12 @@
 struct log_ins_record {
     uint8_t log_type : 3; // log_entry_type
     uint8_t obj_type : 2; // log_object_type
-    uint8_t unused : 3;
     offset_t oid;
 };
 
 struct log_upd_node_record {
     uint8_t log_type : 3; // log_entry_type
     uint8_t obj_type : 2; // log_object_type
-    uint8_t unused : 3;
     offset_t oid;
     dcode_t label;
     offset_t from_rship_list, to_rship_list, property_list;

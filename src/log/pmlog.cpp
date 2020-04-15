@@ -35,10 +35,10 @@ void pmlog::transaction_end(pmlog::id_t log_id) {
 void pmlog::append(id_t log_id, uint8_t *log_entry, int lsize) {
     auto& entry = ulog_[log_id];
     auto pop = pmem::obj::pool_by_vptr(this);
-    if (4076 - entry.used > lsize) {
-        entry.used -= lsize;
-        pop.persist(entry.used);
-        pop.memcpy_persist(&entry + used, log_entry, lsize);
+    if (4076 - entry.used_ > lsize) {
+        entry.used_ -= lsize;
+        pop.persist(entry.used)_;
+        pop.memcpy_persist(&entry + entry.used_, log_entry, lsize);
     }
     else {
         // TODO
