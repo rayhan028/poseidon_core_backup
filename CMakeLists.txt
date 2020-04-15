@@ -64,6 +64,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/dict)
 include_directories(${PROJECT_SOURCE_DIR}/src/ldbc)
 include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 include_directories(${PROJECT_SOURCE_DIR}/src/pool)
+include_directories(${PROJECT_SOURCE_DIR}/src/log)
 #---------------------------------------------------------------------------
 
 set(THIRD_PARTY_DIR "${PROJECT_BINARY_DIR}/_deps")
@@ -246,11 +247,15 @@ include_directories("${PROJECT_SOURCE_DIR}/src")
 
 if(USE_PMDK MATCHES ON)
   set(dict_src src/dict/dict_kv.cpp)
+  set(log_src src/log/pmlog.cpp)
 else()
   set(dict_src src/dict/dict_bimap.cpp)
+  set(log_src "")
 endif()
 
-set(src_files ${dict_src}
+set(src_files 
+  ${dict_src} 
+  ${log_src}
   src/storage/nodes.cpp
   src/storage/relationships.cpp
   src/storage/properties.cpp
