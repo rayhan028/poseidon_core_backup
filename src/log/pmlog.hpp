@@ -23,9 +23,9 @@ class pmlog {
     using id_t = std::size_t;
 
     struct log_chunk {
-        uint8_t data_[4076];
-        xid_t txid_;
-        uint32_t used_;
+        p<uint8_t> data_[4076];
+        p<xid_t> txid_;
+        p<uint32_t> used_;
         p_ptr<log_chunk> next_;
     };
 
@@ -50,7 +50,7 @@ enum log_object_type {
     id_t transaction_begin(xid_t txid);
     void transaction_end(id_t log_id);
 
-    void append(id_t log_id, uint8_t *log_entry, int lsize);
+    void append(id_t log_id, void *log_entry, uint32_t lsize);
  
 private:
     p_ptr<log_chunk[]> ulog_; 

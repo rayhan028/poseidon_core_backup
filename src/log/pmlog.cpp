@@ -10,12 +10,13 @@ pmlog::~pmlog() {
 }
     
 pmlog::id_t pmlog::transaction_begin(xid_t txid) {
+    auto pop = pmem::obj::pool_by_vptr(this);
     // find the first empty slot in ulog_ and return its index as log_id
     for (std::size_t i = 0; i < nlogs_; i++)
         if (ulog_[i].txid_ == 0) {
             // TODO: use mutex!!
             ulog_[i].txid_ = txid;
-            pop.persist(ulog_[i].txid_);
+            pop.persist(&(ulog_[i].txid_), sizeof(xid_t));
             return i;
         }
     // TODO: handle the case of more than 50 active transactions
@@ -32,13 +33,15 @@ void pmlog::transaction_end(pmlog::id_t log_id) {
     pop.memset_persist(&ulog_[log_id], 0, 4096);
 }
 
-void pmlog::append(id_t log_id, uint8_t *log_entry, int lsize) {
-    auto& entry = ulog_[log_id];
+void pmlog::append(id_t log_id, void *log_entry, uint32_t lsize) {
+    auto entry = &(ulog_[log_id]);
     auto pop = pmem::obj::pool_by_vptr(this);
-    if (4076 - entry.used_ > lsize) {
-        entry.used_ -= lsize;
-        pop.persist(entry.used)_;
-        pop.memcpy_persist(&entry + entry.used_, log_entry, lsize);
+    std::cout << "lid = " << log_id << ", entry: " << std::hex << (unsigned long)entry 
+		<< " ## " << (unsigned long)(entry) + entry->used_ << std::endl;
+    if (4076 - entry->used_ > lsize) {
+        pop.memcpy_persist(entry + entry->used_, log_entry, lsize);
+        entry->used_ += lsize;
+        pop.persist(&(entry->used_), sizeof(int));
     }
     else {
         // TODO

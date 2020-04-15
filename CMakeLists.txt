@@ -70,7 +70,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/log)
 set(THIRD_PARTY_DIR "${PROJECT_BINARY_DIR}/_deps")
 
 # C++ compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated -O3 -Wsign-compare")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated -O0 -g -Wsign-compare")
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-local-typedefs -Wno-#pragma-messages")
 elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")

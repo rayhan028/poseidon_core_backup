@@ -51,19 +51,19 @@ TEST_CASE("creating a log and appending some entreis", "[pmlog]") {
     auto lid2 = ulog.transaction_begin(44);
 
     log_ins_record r1{ pmlog::log_insert, pmlog::log_node, 1234ul };
-    ulog.append(lid1, &r1, sizeof(r1));
+    ulog.append(lid1, static_cast<void *>(&r1), sizeof(r1));
  
     log_upd_node_record r2{ pmlog::log_update, pmlog::log_node, 1236ul, 42, 101ul, 102ul, 103ul };
-    ulog.append(lid1, &r2, sizeof(r2));
+    ulog.append(lid1, static_cast<void *>(&r2), sizeof(r2));
 
     log_ins_record r3{ pmlog::log_insert, pmlog::log_node, 1235ul };
-    ulog.append(lid2, &r3, size(r3));
+    ulog.append(lid2, static_cast<void *>(&r3), sizeof(r3));
 
     ulog.transaction_end(lid2);
 
     auto lid3 = ulog.transaction_begin(46);
     log_upd_node_record r4{ pmlog::log_update, pmlog::log_node, 1237ul, 44, 201ul, 202ul, 203ul };
-    ulog.append(lid3, &r4, sizeof(r4));
+    ulog.append(lid3, static_cast<void *>(&r4), sizeof(r4));
 
     pop.close();
 
