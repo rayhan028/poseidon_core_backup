@@ -38,7 +38,7 @@ struct root {
   nvm::persistent_ptr<pmlog> log_p;
 };
 
-TEST_CASE("creating a log and appending some entreis", "[pmlog]") {
+TEST_CASE("creating a log and appending some entries", "[pmlog]") {
     auto pop = nvm::pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
     auto root_obj = pop.root();
 
@@ -67,11 +67,13 @@ TEST_CASE("creating a log and appending some entreis", "[pmlog]") {
 
     pop.close();
 
+    std::cout << "reopen pool ..." << std::endl;
     auto pop2 = nvm::pool<root>::open(test_path, "");
     auto root_obj2 = pop2.root();
     REQUIRE(root_obj2 != nullptr);
 
     pmlog &ulog2 = *(root_obj2->log_p);
+    std::cout << "dump log ..." << std::endl;
     ulog2.dump();
     /*
     for(auto li = ulog2.log_begin(); li != ulog2.log_end(); li++) {

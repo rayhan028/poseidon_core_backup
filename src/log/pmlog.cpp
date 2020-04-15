@@ -2,7 +2,7 @@
 #include "pmlog.hpp"
 
 pmlog::pmlog() {
-    nlogs_ = 0;
+    nlogs_ = 50;
     ulog_ = pmem::obj::make_persistent<log_chunk[]>(nlogs_);
 }
 
@@ -52,21 +52,23 @@ void pmlog::dump_chunk(log_chunk& log) {
     std::cout << "log for tx #" << log.txid_ << ", " << log.used_ << " bytes used." << std::endl;
     uint32_t pos = 0;
     while (pos < log.used_) {
-        auto rec_ptr = static_cast<log_dummy *>(&(log.data_[pos]));
+        auto rec_ptr = (log_dummy *)(&(log.data_[pos]));
         if (rec_ptr->log_type == pmlog::log_insert) {
-            auto ins_rec_ptr = static_cast<log_ins_record *>(&(log.data_[pos]))
+            auto ins_rec_ptr = (log_ins_record *)(&(log.data_[pos]));
             std::cout << "INSERT #" << ins_rec_ptr->oid << std::endl;
             pos += sizeof(log_ins_record);
         }
         else if (rec_ptr->log_type == pmlog::log_update) {
             if (rec_ptr->obj_type == pmlog::log_node) {
-                auto upd_rec_ptr = static_cast<log_upd_node_record *>(&(log.data_[pos]))
+                auto upd_rec_ptr = (log_upd_node_record *)(&(log.data_[pos]));
                 std::cout << "UPDATE #" << upd_rec_ptr->oid 
                             << ", UNDO={" << upd_rec_ptr->label  
                             << "}" << std::endl;
                 pos += sizeof(log_upd_node_record);
             }
         }
+	else 
+		return;
     }
 }
 
