@@ -3,13 +3,21 @@
 
 pmlog::pmlog() {
     nlogs_ = 50;
+#ifdef USE_PMDK
     ulog_ = pmem::obj::make_persistent<log_chunk[]>(nlogs_);
+#else
+    ulog_ = new log_chunk[nlogs_];
+#endif
 }
 
 pmlog::~pmlog() {
+#ifndef USE_PMDK
+    delete [] ulog_;
+#endif
 }
     
 pmlog::id_t pmlog::transaction_begin(xid_t txid) {
+#ifdef USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
     // find the first empty slot in ulog_ and return its index as log_id
     for (std::size_t i = 0; i < nlogs_; i++)
@@ -20,28 +28,49 @@ pmlog::id_t pmlog::transaction_begin(xid_t txid) {
             return i;
         }
     // TODO: handle the case of more than 50 active transactions
+#else
+    for (std::size_t i = 0; i < nlogs_; i++)
+        if (ulog_[i].txid_ == 0) {
+            // TODO: use mutex!!
+            ulog_[i].txid_ = txid;
+            return i;
+        }
+    // TODO: handle the case of more than 50 active transactions
+#endif
     return std::numeric_limits<std::size_t>::max();
 }
 
 void pmlog::transaction_end(pmlog::id_t log_id) {
+#ifdef USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
+#endif
     // delete all additional log_chunks in ulog_[log_id]
     // TODO
 
     // finally, mark the slot as available
     // TODO: use mutex!!
+#ifdef USE_PMDK
     pop.memset_persist(&ulog_[log_id], 0, 4096);
+#else
+    memset(&(ulog_[log_id]), 0, 4096);
+#endif
 }
 
 void pmlog::append(id_t log_id, void *log_entry, uint32_t lsize) {
     auto entry = &(ulog_[log_id]);
+#ifdef USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
-    std::cout << "lid = " << log_id << ", entry: " << std::hex << (unsigned long)entry 
-		<< " ## " << (unsigned long)(entry) + entry->used_ << std::endl;
+#endif
     if (4076 - entry->used_ > lsize) {
+#ifdef USE_PMDK
         pop.memcpy_persist(entry + entry->used_, log_entry, lsize);
+#else
+        memcpy(entry + entry->used_, log_entry, lsize);
+#endif
         entry->used_ += lsize;
+#ifdef USE_PMDK
         pop.persist(&(entry->used_), sizeof(int));
+#endif
     }
     else {
         // TODO

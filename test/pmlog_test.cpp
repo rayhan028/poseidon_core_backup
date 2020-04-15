@@ -24,10 +24,9 @@
 #include "config.h"
 #include "defs.hpp"
 
+#include "pmlog.hpp"
 
 #ifdef USE_PMDK
-
-#include "pmlog.hpp"
 
 #define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
 
@@ -38,7 +37,10 @@ struct root {
   nvm::persistent_ptr<pmlog> log_p;
 };
 
+#endif
+
 TEST_CASE("creating a log and appending some entries", "[pmlog]") {
+#ifdef USE_PMDK
     auto pop = nvm::pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
     auto root_obj = pop.root();
 
@@ -46,6 +48,9 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
         pop, [&] { root_obj->log_p = nvm::make_persistent<pmlog>(); });
 
     pmlog &ulog = *(root_obj->log_p);
+#else
+    pmlog ulog;
+#endif
 
     auto lid1 = ulog.transaction_begin(42);
     auto lid2 = ulog.transaction_begin(44);
@@ -65,6 +70,7 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
     log_upd_node_record r4{ pmlog::log_update, pmlog::log_node, 1237ul, 44, 201ul, 202ul, 203ul };
     ulog.append(lid3, static_cast<void *>(&r4), sizeof(r4));
 
+#ifdef USE_PMDK
     pop.close();
 
     std::cout << "reopen pool ..." << std::endl;
@@ -73,22 +79,38 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
     REQUIRE(root_obj2 != nullptr);
 
     pmlog &ulog2 = *(root_obj2->log_p);
+#else
+    pmlog &ulog2 = ulog;
+#endif
+
     std::cout << "dump log ..." << std::endl;
     ulog2.dump();
-    /*
-    for(auto li = ulog2.log_begin(); li != ulog2.log_end(); li++) {
-        if (li->valid()) {
-            std::cout << "log for tx #" << li->txid() << std::endl;
+    
+    int nlogs = 0;
+    for(auto li = ulog2.log_begin(); li != ulog2.log_end(); ++li) {
+        if (li.valid()) {
+            std::cout << "log for tx #" << li.txid() << std::endl;
+            nlogs++;
+            /*
             for (auto l = li->begin(); l != li->end(); l++) {
-                if (l->log_type() == pmlog::insert) {
-                    // TODO    
+                if (l->log_type() == pmlog::log_insert) {
+                    auto& rec = l->get<log_ins_record>(); 
+                }
+                else if (l->log_type() == pmlog::log_update) {
+                    if (l->obj_type() == pmlog::log_node) {
+                        auto& rec = l->get<log_upd_node_record>();
+                    }
                 }
             }
+            */
         }
     }
-    */
+    REQUIRE(nlogs == 2);
+    
+#ifdef USE_PMDK
     pop2.close();
     remove(test_path.c_str());
+#endif
 }
 
-#endif
+

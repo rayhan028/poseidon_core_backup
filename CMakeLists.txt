@@ -247,15 +247,12 @@ include_directories("${PROJECT_SOURCE_DIR}/src")
 
 if(USE_PMDK MATCHES ON)
   set(dict_src src/dict/dict_kv.cpp)
-  set(log_src src/log/pmlog.cpp)
 else()
   set(dict_src src/dict/dict_bimap.cpp)
-  set(log_src "")
 endif()
 
 set(src_files 
   ${dict_src} 
-  ${log_src}
   src/storage/nodes.cpp
   src/storage/relationships.cpp
   src/storage/properties.cpp
@@ -271,6 +268,7 @@ set(src_files
   src/qop/thread_pool.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
+  src/log/pmlog.cpp
   src/ldbc/ldbc.cpp
 )
 
