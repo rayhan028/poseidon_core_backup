@@ -67,6 +67,11 @@ TEST_CASE("creating a log and appending some entreis", "[pmlog]") {
 
     pop.close();
 
+    auto pop2 = nvm::pool<root>::open(test_path, "");
+    auto root_obj2 = pop2.root();
+    REQUIRE(root_obj2 != nullptr);
+
+    pmlog &ulog2 = *(root_obj2->log_p);
 
     remove(test_path.c_str());
 }

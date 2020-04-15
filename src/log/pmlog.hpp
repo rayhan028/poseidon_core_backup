@@ -23,9 +23,9 @@ class pmlog {
     using id_t = std::size_t;
 
     struct log_chunk {
-        p<uint8_t> data_[4076];
-        p<xid_t> txid_;
-        p<uint32_t> used_;
+        uint8_t data_[4076];
+        xid_t txid_;
+        uint32_t used_;
         p_ptr<log_chunk> next_;
     };
 
