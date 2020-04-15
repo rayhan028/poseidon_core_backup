@@ -72,7 +72,20 @@ TEST_CASE("creating a log and appending some entreis", "[pmlog]") {
     REQUIRE(root_obj2 != nullptr);
 
     pmlog &ulog2 = *(root_obj2->log_p);
-
+    ulog2.dump();
+    /*
+    for(auto li = ulog2.log_begin(); li != ulog2.log_end(); li++) {
+        if (li->valid()) {
+            std::cout << "log for tx #" << li->txid() << std::endl;
+            for (auto l = li->begin(); l != li->end(); l++) {
+                if (l->log_type() == pmlog::insert) {
+                    // TODO    
+                }
+            }
+        }
+    }
+    */
+    pop2.close();
     remove(test_path.c_str());
 }
 

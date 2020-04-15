@@ -5,6 +5,11 @@
 #include "transaction.hpp"
 
 
+struct log_dummy {
+    uint8_t log_type : 3; // log_entry_type
+    uint8_t obj_type : 2; // log_object_type
+};
+
 struct log_ins_record {
     uint8_t log_type : 3; // log_entry_type
     uint8_t obj_type : 2; // log_object_type
@@ -52,7 +57,11 @@ enum log_object_type {
 
     void append(id_t log_id, void *log_entry, uint32_t lsize);
  
+    void dump();
+
 private:
+    void dump_chunk(log_chunk& log);
+    
     p_ptr<log_chunk[]> ulog_; 
     p<std::size_t> nlogs_;
 };
