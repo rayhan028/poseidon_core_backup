@@ -52,17 +52,22 @@ enum log_object_type {
 
 struct log_rec_iter {
 #ifdef USE_PMDK
-    log_rec_iter(p_ptr<log_chunk> ptr = nullptr) : chunk_(ptr), pos_(0) {}
+    log_rec_iter(p_ptr<log_chunk> ptr, std::size_t p = 0) : 
+        chunk_(ptr), pos_(0) {}
 #else
-    log_rec_iter(log_chunk* ptr = nullptr) : chunk_(ptr), pos_(0) {}
+    log_rec_iter(log_chunk* ptr, std::size_t p = 0) : 
+        chunk_(ptr), pos_(p) {}
 #endif
-    bool operator!= (const log_rec_iter& other) const { return chunk_ != other.chunk_ || pos_ != other.pos_; }
-    log_rec_iter& operator++() { /* TODO */ return *this; }
+    bool operator!= (const log_rec_iter& other) const { 
+        return chunk_ != other.chunk_ || pos_ != other.pos_; 
+    }
+
+    log_rec_iter& operator++();
 
     log_entry_type log_type() const;
     log_object_type obj_type() const;
 
-    template <typename T> T& get();
+    template <typename T> T* get() { return (T *)(&(chunk_->data_[pos_])); }
 
 #ifdef USE_PMDK
     p_ptr<log_chunk> chunk_;
@@ -86,7 +91,7 @@ public:
     xid_t txid() const { return log_[cpos_].txid_; }
 
     log_rec_iter begin() { return log_rec_iter(&(log_[cpos_])); }
-    log_rec_iter end() { return log_rec_iter(); }
+    log_rec_iter end() { return log_rec_iter(&(log_[cpos_]), std::numeric_limits<std::size_t>::max()); }
 
 private:
 #ifdef USE_PMDK

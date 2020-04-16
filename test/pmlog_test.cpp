@@ -83,28 +83,36 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
     pmlog &ulog2 = ulog;
 #endif
 
-    std::cout << "dump log ..." << std::endl;
-    ulog2.dump();
+    //std::cout << "dump log ..." << std::endl;
+    // ulog2.dump();
     
     int nlogs = 0;
+    int ninserts = 0, nupdates = 0;
     for(auto li = ulog2.log_begin(); li != ulog2.log_end(); ++li) {
         if (li.valid()) {
-            std::cout << "log for tx #" << li.txid() << std::endl;
             nlogs++;
-            /*
-            for (auto l = li->begin(); l != li->end(); l++) {
-                if (l->log_type() == pmlog::log_insert) {
-                    auto& rec = l->get<log_ins_record>(); 
+            
+            for (auto l = li.begin(); l != li.end(); ++l) {
+                if (l.log_type() == pmlog::log_insert) {
+                    auto rec = l.get<log_ins_record>(); 
+                    REQUIRE(rec->oid == 1234);
+                    ninserts++;
                 }
-                else if (l->log_type() == pmlog::log_update) {
-                    if (l->obj_type() == pmlog::log_node) {
-                        auto& rec = l->get<log_upd_node_record>();
+
+                else if (l.log_type() == pmlog::log_update) {
+                    if (l.obj_type() == pmlog::log_node) {
+                        auto rec = l.get<log_upd_node_record>();
+                        REQUIRE(rec->oid == 1237);
+                        REQUIRE(rec->label == 44);
+                        nupdates++;
                     }
                 }
             }
-            */
+            
         }
     }
+    REQUIRE(ninserts == 1);
+    REQUIRE(nupdates == 1);
     REQUIRE(nlogs == 2);
     
 #ifdef USE_PMDK

@@ -1,6 +1,45 @@
 #include <limits>
 #include "pmlog.hpp"
 
+pmlog::log_rec_iter& pmlog::log_rec_iter::operator++() {
+    auto old = pos_;
+    auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
+    switch (rec_ptr->log_type) {
+        case pmlog::log_insert:
+            pos_ += sizeof(log_ins_record);
+            break;
+        case pmlog::log_update:
+            switch (rec_ptr->obj_type) {
+                case pmlog::log_node:
+                    pos_ += sizeof(log_upd_node_record);
+                    break;
+                case pmlog::log_rship:
+                    // TODO
+                    break;
+                case pmlog::log_property:
+                    // TODO
+                    break;
+            }
+            break;
+        case pmlog::log_delete:
+            // TODO
+            break;
+    }
+    // if we cannot advance we arrived on the end
+    if (old == pos_) pos_ = std::numeric_limits<std::size_t>::max();
+    return *this;
+}
+
+pmlog::log_entry_type pmlog::log_rec_iter::log_type() const {
+    auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
+    return (pmlog::log_entry_type)rec_ptr->log_type;
+}
+
+pmlog::log_object_type pmlog::log_rec_iter::obj_type() const {
+    auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
+    return (pmlog::log_object_type)rec_ptr->obj_type;
+}
+
 pmlog::pmlog() {
     nlogs_ = 50;
 #ifdef USE_PMDK
