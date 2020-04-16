@@ -53,7 +53,7 @@ enum log_object_type {
 struct log_rec_iter {
 #ifdef USE_PMDK
     log_rec_iter(p_ptr<log_chunk> ptr, std::size_t p = 0) : 
-        chunk_(ptr), pos_(0) {}
+        chunk_(ptr), pos_(p) {}
 #else
     log_rec_iter(log_chunk* ptr, std::size_t p = 0) : 
         chunk_(ptr), pos_(p) {}
