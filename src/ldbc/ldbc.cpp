@@ -3,7 +3,8 @@
 #include "query.hpp"
 
 #define RUN_INDEXED
-#define RUN_PARALLEL
+#define IU_RESULT
+//#define RUN_PARALLEL
 
 namespace pj = builtin;
 
@@ -533,7 +534,11 @@ void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                       .create_rship({0, 5}, ":studyAt", {{"classYear", boost::any(boost::get<int>(params[14]))}})
                       .crossjoin(q4)
                       .create_rship({0, 7}, ":workAt", {{"workFrom", boost::any(boost::get<int>(params[15]))}})
+#ifdef IU_RESULT
                       .collect(rs);
+#else
+                      .finish();
+#endif
 
   query::start({&q1, &q2, &q3, &q4, &q5});
 }
@@ -573,7 +578,11 @@ void ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #endif
                 .crossjoin(q1)
                 .create_rship({0, 1}, ":likes", {{"creationDate", boost::any(boost::get<std::string &>(params[2]))}})
+#ifdef IU_RESULT
                 .collect(rs);
+#else
+                .finish();
+#endif
 
   query::start({&q1, &q2});
 }
@@ -614,7 +623,11 @@ void ldbc_iu_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #endif
           .crossjoin(q1)
           .create_rship({0, 1}, ":likes", {{"creationDate", boost::any(boost::get<std::string &>(params[2]))}})
+#ifdef IU_RESULT
           .collect(rs);
+#else
+          .finish();
+#endif
 
   query::start({&q1, &q2});
 }
@@ -661,7 +674,11 @@ void ldbc_iu_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                       .create_rship({0, 1}, ":hasModerator", {})
                       .crossjoin(q2)
                       .create_rship({0, 3}, ":hasTag", {})
+#ifdef IU_RESULT
                       .collect(rs);
+#else
+                      .finish();
+#endif
 
   query::start({&q1, &q2, &q3});
 }
@@ -703,7 +720,11 @@ void ldbc_iu_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #endif
           .crossjoin(q1)
           .create_rship({0, 1}, ":hasMember", {{"creationDate", boost::any(boost::get<std::string &>(params[2]))}})
+#ifdef IU_RESULT
           .collect(rs);
+#else
+          .finish();
+#endif
 
   query::start({&q1, &q2});
 }
@@ -789,7 +810,11 @@ void ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                       .create_rship({0, 5}, ":isLocatedIn", {})
                       .crossjoin(q4)
                       .create_rship({0, 7}, ":hasTag", {})
+#ifdef IU_RESULT
                       .collect(rs);
+#else
+                      .finish();
+#endif
 
   query::start({&q1, &q2, &q3, &q4, &q5});
 }
@@ -873,7 +898,11 @@ void ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                       .create_rship({0, 5}, ":isLocatedIn", {})
                       .crossjoin(q4)
                       .create_rship({0, 7}, ":hasTag", {})
+#ifdef IU_RESULT
                       .collect(rs);
+#else
+                      .finish();
+#endif
 
   query::start({&q1, &q2, &q3, &q4, &q5});
 }
@@ -915,7 +944,11 @@ void ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #endif
           .crossjoin(q1)
           .create_rship({0, 1}, ":knows", {{"creationDate", boost::any(boost::get<std::string &>(params[2]))}})
+#ifdef IU_RESULT
           .collect(rs);
+#else
+          .finish();
+#endif
 
   query::start({&q1, &q2});
 }
