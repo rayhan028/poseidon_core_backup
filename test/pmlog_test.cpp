@@ -83,7 +83,7 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
     pmlog &ulog2 = ulog;
 #endif
 
-    //std::cout << "dump log ..." << std::endl;
+    // std::cout << "dump log ..." << std::endl;
     // ulog2.dump();
     
     int nlogs = 0;
