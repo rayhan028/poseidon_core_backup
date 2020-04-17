@@ -35,7 +35,7 @@ graph_db::graph_db(const std::string &db_name) {
   properties_ = p_make_ptr<property_list>();
   dict_ = p_make_ptr<dict>();
   index_map_ = p_make_ptr<index_map>();
-
+  ulog_ = p_make_ptr<pmlog>();
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   m_ = new std::mutex();
 }
@@ -57,6 +57,8 @@ void graph_db::runtime_initialize() {
   rships_->runtime_initialize();
   // make sure the dictionary is initialized
   dict_->initialize();
+  // TODO: perform recovery using the undo log!!
+
   // recreate volatile objects: active_tx_ table and mutex
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   oldest_xid_ = 0;
@@ -68,6 +70,9 @@ transaction_ptr graph_db::begin_transaction() {
     throw invalid_nested_transaction();
   auto tx = std::make_shared<transaction>();
   current_transaction_ = tx;
+#ifdef USE_LOGGING
+  tx->set_logid(ulog_->transaction_begin(tx->xid()));
+#endif
 #ifdef USE_TX
   std::lock_guard<std::mutex> guard(*m_);
   active_tx_->insert({tx->xid(), tx});
@@ -103,6 +108,7 @@ bool graph_db::commit_transaction() {
 	   */
 
 	  if (!n.has_dirty_versions()) {
+      // TODO: undo using the log
 		  throw transaction_abort();
 	  }
 	  // get the version of dirty object.
@@ -123,6 +129,9 @@ bool graph_db::commit_transaction() {
 		  // and node version to the main tables
 		  /// spdlog::info("commit UPDATE transaction {}: copy properties", xid);
 		  // update node (label)
+#ifdef USE_LOGGING
+      // TODO: create and append a log_upd_node_record BEFORE we copy the properties and override the label
+#endif
 		  n.node_label = dn->elem_.node_label;
 		  copy_properties(n, dn);
 		  /// spdlog::info("COMMIT UPDATE: set new={},{} @{}", xid, INF,
@@ -144,9 +153,10 @@ bool graph_db::commit_transaction() {
  for  ( auto rel_id : tx->dirty_relationships())  {
 	auto& r = rships_->get(rel_id);
 	  /* A dirty object was just inserted, when add_relation() or update_relation() was executed.
-	   * So there must be atleast one dirty version.
+	   * So there must be at least one dirty version.
 	   */
 	  if (!r.has_dirty_versions()) {
+      // TODO: undo using the log
 		  throw transaction_abort();
 	  }
 	  // get the version of dirty object.
@@ -165,6 +175,9 @@ bool graph_db::commit_transaction() {
 		  // case #2: we have updated a relationship, thus copy both properties
 		  // and relationship version to the main tables
 		  // update relationship (label)
+#ifdef USE_LOGGING
+      // TODO: create and append a log_upd_rship_record BEFORE we copy the properties and override the label
+#endif
 		  r.rship_label = dr->elem_.rship_label;
 		  copy_properties(r, dr);
 		  r.set_timestamps(xid, INF);
@@ -181,6 +194,9 @@ bool graph_db::commit_transaction() {
 #ifdef USE_PMDK_TXN_FA
   });
 #endif
+#endif
+#ifdef USE_LOGGING
+  ulog_->transaction_end(current_transaction_->logid());
 #endif
   current_transaction_.reset();
   return true;
@@ -227,6 +243,9 @@ bool graph_db::abort_transaction() {
   // std::lock_guard<std::mutex> guard(*m_);
   // active_tx_->erase(xid);
 #endif
+#ifdef USE_LOGGING
+  ulog_->transaction_end(current_transaction_->logid());
+#endif
   current_transaction_.reset();
   return true;
 }
@@ -247,9 +266,19 @@ node::id_t graph_db::add_node(const std::string &label,
   xid_t txid = 0;
 #endif
   auto type_code = dict_->insert(label);
+#ifdef USE_LOGGING
+  // TODO: create and append a log_ins_record BEFORE the node table is modified
+  auto log_id = current_transaction_->logid(); 
+  auto cb = [log_id, this](offset_t n_id) {
+    log_ins_record rec{ pmlog::log_insert, pmlog::log_node, n_id};
+    ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
+  };
+  auto node_id = append_only ? nodes_->append(node(type_code), txid, cb)
+                             : nodes_->insert(node(type_code), txid, cb);
+#else
   auto node_id = append_only ? nodes_->append(node(type_code), txid)
                              : nodes_->insert(node(type_code), txid);
-
+#endif
   // we need the node object not only the id
   auto &n = nodes_->get(node_id);
 

@@ -121,10 +121,11 @@ void pmlog::append(id_t log_id, void *log_entry, uint32_t lsize) {
   auto pop = pmem::obj::pool_by_vptr(this);
 #endif
   if (4076 - entry->used_ > lsize) {
+    auto addr = (void *)((uint8_t *)entry + entry->used_);
 #ifdef USE_PMDK
-    pop.memcpy_persist(entry + entry->used_, log_entry, lsize);
+    pop.memcpy_persist(addr, log_entry, lsize);
 #else
-    memcpy(entry + entry->used_, log_entry, lsize);
+    memcpy(addr, log_entry, lsize);
 #endif
     entry->used_ += lsize;
 #ifdef USE_PMDK

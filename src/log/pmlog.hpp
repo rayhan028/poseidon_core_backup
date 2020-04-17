@@ -47,8 +47,6 @@ struct log_upd_node_record {
  * be traversed during recovery.
  */
 class pmlog {
-  using id_t = std::size_t;
-
   struct log_chunk {
     uint8_t data_[4076];
     xid_t txid_;
@@ -59,6 +57,8 @@ class pmlog {
   using chunk_ptr = p_ptr<log_chunk>;
 
 public:
+  using id_t = std::size_t;
+
   /**
    * The different kinds of log entries: insert, update, delete.
    */

@@ -33,6 +33,7 @@
 #include "transaction.hpp"
 #include "btree.hpp"
 #include "index_map.hpp"
+#include "pmlog.hpp"
 
 /**
  * graph_db represents a graph consisting of nodes and relationships with
@@ -469,7 +470,8 @@ private:
       properties_;   // the list of all properties of nodes and relationships
   p_ptr<dict> dict_; // the dictionary used for string compression
 
-  p_ptr<index_map> index_map_;
+  p_ptr<index_map> index_map_; // the list of all exisiting indexes
+  p_ptr<pmlog> ulog_; // the undo log 
 
   /**
    * These member variables are volatile and have to be reinitialized
