@@ -175,6 +175,7 @@ public:
    * transaction.
    */
   node::id_t add(node &&n, xid_t owner = 0);
+  node::id_t insert(node &&n, xid_t owner = 0);
 
   /**
    * Append a new node to the list and return its identifier. In contrast to add

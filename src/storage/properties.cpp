@@ -111,6 +111,18 @@ template <> void p_item::set<ptime>(ptime v) {
   memcpy(&value_, &v, sizeof(ptime));
 }
 
+p_item::p_item(dcode_t k, p_item::p_typecode tc, const boost::any &v) : flags_(0), key_(k) {
+  switch(tc) {
+    case p_int: set<int>(boost::any_cast<int>(v)); break;
+    case p_double: set<double>(boost::any_cast<double>(v)); break;
+    case p_dcode: set<dcode_t>(boost::any_cast<dcode_t>(v)); break;
+    case p_uint64: set<uint64_t>(boost::any_cast<uint64_t>(v)); break;
+    case p_ptime: 
+    case p_date: set<ptime>(boost::any_cast<ptime>(v)); break;
+    default: break;
+  }  
+}
+
 p_item::p_item(dcode_t k, double v) : flags_(0), key_(k) { set<double>(v); }
 p_item::p_item(dcode_t k, int v) : flags_(0), key_(k) { set<int>(v); }
 p_item::p_item(dcode_t k, dcode_t v) : flags_(0), key_(k) { set<dcode_t>(v); }
@@ -211,6 +223,11 @@ uint64_t p_item::get_raw() const {
   return *(reinterpret_cast<const uint64_t *>(value_));
 }
   
+std::ostream& operator<< (std::ostream& os, const p_item& pi) {
+  os << "(" << static_cast<unsigned int>(pi.flags_) << "|" << pi.key_ << "|" << pi.get_raw() << ")";
+  return os;
+}
+
 /* --------------------------------------------------------------------- */
 
 property_set::id_t property_list::add_node_properties(offset_t nid,
@@ -247,20 +264,8 @@ property_set::id_t property_list::add_pitems(offset_t nid,
   for (auto &pi : props) {
     pil[pidx++] = pi;
     if (++n == props.size() || pidx == pil.max_size()) {
-      if (properties_.is_full())
-        properties_.resize(1);
-      
-      /*auto id = properties_.first_available();
-      assert(id != UNKNOWN);
-
-      properties_.store_at(id,
-                           property_set(nid, std::move(pil), next_id, is_node));
-      next_id = id;*/
-      
-      auto p =
-          properties_.append(property_set(nid, std::move(pil), next_id, is_node));
-
-      next_id = p.first;
+      auto pr = properties_.store(property_set(nid, std::move(pil), next_id, is_node));
+      next_id = pr.first;
       pidx = 0;
       pil.fill(p_item());
     }
@@ -315,6 +320,26 @@ property_list::append_node_properties(offset_t nid, const properties_t &props,
   for (auto &kv : props) {
     pil[pidx++] = p_item(kv.first, kv.second, dct);
     if (++n == props.size() || pidx == pil.max_size()) {
+      auto p =
+          properties_.append(property_set(nid, std::move(pil), next_id, true));
+      next_id = p.first;
+      pidx = 0;
+      pil.fill(p_item());
+    }
+  }
+  return next_id;
+}
+
+property_set::id_t property_list::append_typed_node_properties(offset_t nid, 
+                              const std::vector<dcode_t> &keys,
+                              const std::vector<p_item::p_typecode>& typelist, 
+                              const std::vector<boost::any>& values) {
+  property_set::id_t next_id = UNKNOWN;
+  property_set::p_item_list pil;
+  std::size_t pidx = 0;
+  for (auto i = 0u; i < keys.size(); i++) {
+    pil[pidx++] = p_item(keys[i], typelist[i], values[i]);
+    if (i == keys.size() - 1 || pidx == pil.max_size()) {
       auto p =
           properties_.append(property_set(nid, std::move(pil), next_id, true));
       next_id = p.first;

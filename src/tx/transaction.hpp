@@ -41,6 +41,13 @@ using timestamp_t = unsigned long;
  */
 constexpr unsigned long INF = std::numeric_limits<unsigned long>::max();
 
+/**
+ * A helper function for debugging to return a shortened version of the timestamps.
+ */
+inline int short_ts(timestamp_t ts) {
+  return (ts == INF) ? -1 : static_cast<int>(ts & 0xffff);
+}
+
 struct node;
 struct relationship;
 
@@ -49,7 +56,7 @@ struct relationship;
  */
 class transaction {
 public:
-  /**
+/**
    * Default constructor. Shouldn't be used directly, because transactions are
    * created only via the begin_transaction() method of the class graph_db.
    */
@@ -88,8 +95,8 @@ public:
 private:
   xid_t xid_; // transaction identifier
   std::vector<offset_t>
-      dirty_nodes_; // the vector  of node ids of nodes which were modified by this transaction
-  std::vector<offset_t> dirty_rships_; // the vector of relationship ids or relationships which
+      dirty_nodes_; // the vector of ids of nodes which were modified by this transaction
+  std::vector<offset_t> dirty_rships_; // the vector of ids of relationships which
                                        // were modified by this transaction
 };
 
@@ -116,7 +123,7 @@ transaction_ptr current_transaction();
  * used for multiversion transaction processing;
  */
 template <typename T> struct txn {
-  timestamp_t bts, cts;      // begin timestamp, commit timestamp
+  timestamp_t bts, cts, rts; // begin timestamp, commit timestamp, read timestamp
   std::atomic<xid_t> txn_id; // transaction id if locked, 0 otherwise
   bool is_dirty_;            // true if the object represents a dirty object
 
@@ -128,13 +135,13 @@ template <typename T> struct txn {
   /**
    * Default constructor.
    */
-  txn() : bts(0), cts(INF), txn_id(0), is_dirty_(false), dirty_list(nullptr) {}
+  txn() : bts(0), cts(INF), rts(0), txn_id(0), is_dirty_(false), dirty_list(nullptr) {}
 
   /**
    * Copy constructor.
    */
   txn(const txn &n)
-      : bts(n.bts), cts(n.cts), txn_id(n.txn_id.load()), is_dirty_(n.is_dirty_),
+      : bts(n.bts), cts(n.cts), rts(n.rts), txn_id(n.txn_id.load()), is_dirty_(n.is_dirty_),
         dirty_list(n.dirty_list) {}
 
   /**
@@ -143,6 +150,7 @@ template <typename T> struct txn {
   txn &operator=(const txn &t) {
     bts = t.bts;
     cts = t.cts;
+    rts = t.rts;
     txn_id = t.txn_id.load();
     is_dirty_ = t.is_dirty_;
     dirty_list = t.dirty_list;
@@ -155,6 +163,7 @@ template <typename T> struct txn {
   txn &operator=( txn &&t) {
     bts = t.bts;
     cts = t.cts;
+    rts = t.rts;
     txn_id = t.txn_id.load();
     is_dirty_ = t.is_dirty_;
     dirty_list = t.dirty_list;
@@ -172,9 +181,18 @@ template <typename T> struct txn {
   }
 
   /**
-   * Set the commit timestamps.
+   * Set the commit timestamp.
    */
   void set_cts(xid_t end) { cts = end; }
+
+  /**
+   * Set the read timestamp.
+   */
+  void set_rts(xid_t end) { 
+    // update only if rts < end
+    if (rts < end) 
+      rts = end; 
+  }
 
   /**
    * Return true if the node is locked by a transaction.
@@ -238,12 +256,22 @@ template <typename T> struct txn {
    */
   const T& find_valid_version(xid_t xid) const {
     if (has_dirty_versions()) {
+      bool abort = false;
       for (const auto& dn : *dirty_list) {
-        if (dn->elem_.is_valid(xid) &&
-            (!dn->elem_.is_locked() || dn->elem_.is_locked_by(xid))) {
+       if (!dn->elem_.is_locked() || dn->elem_.is_locked_by(xid)) {
+         if (dn->elem_.is_valid(xid))
           return dn;
+        else {
+          // if the object is not locked but we cannot find a valid version
+          // then we probably should abort the transaction instead of
+          // throw unknown_id: but let's first check all versions
+          abort = true;
         }
+       } 
       }
+      if (abort)
+        // no valid version found -> abort the transaction
+        throw transaction_abort();
     }
     throw unknown_id();
   }
@@ -268,7 +296,9 @@ template <typename T> struct txn {
    */
   decltype(auto) get_dirty_objects() const {
     using dirty_list_ptr = const std::list<T>*;
-    return has_dirty_versions()?  std::optional<dirty_list_ptr>(dirty_list) : std::optional<dirty_list_ptr>{};
+    return has_dirty_versions() 
+      ? std::optional<dirty_list_ptr>(dirty_list) 
+      : std::optional<dirty_list_ptr>{};
   }
 
   /**
@@ -297,6 +327,19 @@ template <typename T> struct txn {
     dirty_list->push_front(std::move(tptr));
 
     return dirty_list->front();
+  }
+
+  /**
+   * Check if the version belonging to transaction given by xid was updated. In this case
+   * return true. Otherwise, the object was added and return false.
+   */
+  bool updated_in_version(xid_t xid) {
+    if (!dirty_list) return false;
+    for (const auto& dn : *dirty_list) {
+        if (dn->elem_.txn_id == xid) 
+          return dn->updated();
+    }
+    return false;
   }
 
   /**

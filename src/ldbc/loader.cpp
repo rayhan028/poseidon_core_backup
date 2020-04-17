@@ -36,7 +36,7 @@ struct root {
 
 void load_snb_data(graph_db_ptr &graph, 
                     std::vector<std::string> &node_files,
-                    std::vector<std::string> &rship_files){
+                    std::vector<std::string> &rship_files, bool strict = true) {
   auto delim = '|';
   graph_db::mapping_t mapping;
   bool nodes_imported = false, rships_imported = false;
@@ -55,7 +55,9 @@ void load_snb_data(graph_db_ptr &graph,
       if (label[0] >= 'a' && label[0] <= 'z')
         label[0] -= 32;
 
-      num_nodes[i] = graph->import_nodes_from_csv(label, file, delim, mapping);
+      num_nodes[i] = strict 
+        ? graph->import_typed_nodes_from_csv(label, file, delim, mapping)
+        : graph->import_nodes_from_csv(label, file, delim, mapping);
       spdlog::info("{} '{}' node objects imported", num_nodes[i], label);
       if (num_nodes[i] > 0)
         nodes_imported = true;
@@ -76,7 +78,9 @@ void load_snb_data(graph_db_ptr &graph,
       boost::split(fn, fp.back(), boost::is_any_of("_"));
       auto label = ":" + fn[1];
 
-      num_rships[i] = graph->import_relationships_from_csv(file, delim, mapping);
+      num_rships[i] = strict 
+      ? graph->import_typed_relationships_from_csv(file, delim, mapping)
+      : graph->import_relationships_from_csv(file, delim, mapping);
       spdlog::info("{} ({})-[{}]-({}) relationship objects imported", 
         num_rships[i], fn[0], label, fn[2]);
       if (num_rships[i] > 0)
@@ -89,6 +93,7 @@ void load_snb_data(graph_db_ptr &graph,
 using namespace boost::program_options;
 
 int main(int argc, char **argv) {
+  bool strict = false;
   std::string db_name;
   std::string snb_home =
 #ifdef SF_10
@@ -102,6 +107,7 @@ int main(int argc, char **argv) {
     desc.add_options()
         ("help,h", "Help")
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
+        ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
         ("import,i", value<std::string>(&snb_home), "Path to directories containing SNB CSV files")
         ("db,d", value<std::string>(&db_name)->required(),"Database name (required)");
 
@@ -117,6 +123,9 @@ int main(int argc, char **argv) {
     if (vm.count("import"))
       db_name = vm["import"].as<std::string>();
 
+    if (vm.count("strict"))
+      strict = vm["strict"].as<bool>();
+
 
     notify(vm);
 
@@ -125,6 +134,11 @@ int main(int argc, char **argv) {
     return -1;
   }
 
+  if (strict)
+    spdlog::info("Using strict mode");
+  else
+    spdlog::info("Using non-strict mode");
+  
   #ifdef USE_PMDK
   namespace nvm = pmem::obj;
 
@@ -245,7 +259,7 @@ int main(int argc, char **argv) {
                                           snb_dyn + "person_workAt_organisation_3_0.csv"};
 
   spdlog::info("trying to load data from {} and {}", snb_sta, snb_dyn);
-  load_snb_data(graph, node_files, rship_files);
+  load_snb_data(graph, node_files, rship_files, strict);
 
 #ifdef BUILD_INDEX
 #ifdef USE_TX

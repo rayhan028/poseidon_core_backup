@@ -135,6 +135,7 @@ public:
    * transaction.
    */
   relationship::id_t add(relationship &&r, xid_t owner = 0);
+  relationship::id_t insert(relationship &&r, xid_t owner = 0);
 
   /**
    * Append a new relationship to the list and return its identifier. In

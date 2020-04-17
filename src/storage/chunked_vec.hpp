@@ -36,6 +36,8 @@
 #include "defs.hpp"
 #include "exceptions.hpp"
 
+#include "spdlog/spdlog.h"
+
 #define DEFAULT_CHUNK_SIZE 4096 // 1048576
 
 /**
@@ -309,6 +311,9 @@ class chunked_vec {
     ch->set(pos, true);
     if (!is_used)
       available_slots_--;
+    if (ch->is_full()) {
+      remove_from_free_list(idx);
+    }
   }
 
   /**
@@ -319,8 +324,7 @@ class chunked_vec {
     if (is_full())
       resize(1);
     auto tail = chunk_list_.back();
-    // chunked_vec can contain empty slots but tail is full 
-    if (tail->is_full()){
+    if (tail->is_full()) {
       resize(1);
       tail = chunk_list_.back();
     }
@@ -330,7 +334,41 @@ class chunked_vec {
     tail->set(pos, true);
     tail->data_[pos] = o;
     auto offs = (chunk_list_.size() - 1) * elems_per_chunk_;
+    if (tail->is_full()) {
+      remove_from_free_list(offs);
+    }
     return std::make_pair(offs + pos, &tail->data_[pos]);
+  }
+
+  /**
+   * Store the record at the first available slot and return its position and a
+   * pointer(!) to the record as a pair.
+   */
+  std::pair<offset_t, T *> store(T &&o) {
+    chunk_ptr ch;
+    offset_t idx = 0;
+    if (free_list_.empty()) {
+      // if we don't have anything in the freelist, we have to resize
+      resize(1);
+      // the new chunk is at the end of the chunklist
+      ch = chunk_list_.back();
+      // and we find its idx in the freelist
+      idx = find_in_free_list();
+    }
+    else {
+      // otherwise we find the next available chunk in the freelist
+      idx = find_in_free_list();
+      ch = find_chunk(idx);
+    }
+    offset_t pos = ch->first_available();
+    assert(pos != SIZE_MAX);
+    available_slots_--;
+    ch->set(pos, true);
+    ch->data_[pos] = o;
+    if (ch->is_full()) {
+      remove_from_free_list(idx);
+    }
+    return std::make_pair(idx + pos, &ch->data_[pos]);
   }
 
   /**
@@ -338,11 +376,16 @@ class chunked_vec {
    */
   void erase(offset_t idx) {
     auto ch = find_chunk(idx);
+    bool was_full = ch->is_full();
     offset_t pos = idx % elems_per_chunk_;
     if (ch->is_used(pos))
       available_slots_++;
     ch->set(pos, false);
     // TODO: if (ch->empty()) delete ch;
+    // if this was the first slot on this chunk which is now empty, 
+    // add this chunk to the free list
+    if (was_full)
+      add_to_free_list(idx);
   }
 
   /**
@@ -430,6 +473,7 @@ class chunked_vec {
       chunk_list_.push_back(ptr);
       available_slots_ = capacity_ = elems_per_chunk_;
       num--;
+      add_to_free_list(0);
     } else {
       // initialize ptr
       ptr = chunk_list_.back();
@@ -448,6 +492,7 @@ class chunked_vec {
       chunk_list_.push_back(ptr);
       capacity_ += elems_per_chunk_;
       available_slots_ += elems_per_chunk_;
+      add_to_free_list((chunk_list_.size() - 1) * elems_per_chunk_);
     }
   }
 
@@ -474,6 +519,25 @@ class chunked_vec {
   uint32_t elements_per_chunk() const { return elems_per_chunk_; }
 
 private:
+  void add_to_free_list(offset_t idx) {
+    // spdlog::info("add_to_free_list: {}", idx);
+    free_list_.push_back(idx);
+  }
+
+  void remove_from_free_list(offset_t idx) {
+    // spdlog::info("remove_from_free_list: {}", idx);
+    free_list_.erase(std::remove_if(std::begin(free_list_), std::end(free_list_), 
+      [idx](auto i) { return i == idx; }), 
+      std::end(free_list_));
+
+  }
+
+  offset_t find_in_free_list() {
+    // spdlog::info("find_in_free_list: {} ({})", free_list_.front(), free_list_.size());
+    // assert(!free_list_.empty());
+    return free_list_.front();
+  }
+
   /**
    * Finds the chunk that stores the record at the given index or raises
    * an exception if the index is out of range.
@@ -492,8 +556,10 @@ private:
 #ifdef USE_PMDK
   pmem::obj::vector<chunk_ptr>
       chunk_list_; // the persistent list of pointers to all chunks
+  pmem::obj::vector<offset_t> free_list_;   // the list of chunks with empty slots (described by their indexes)
 #else
   std::vector<chunk_ptr> chunk_list_; // the list of pointers to all chunks
+  std::vector<offset_t> free_list_;   // the list of chunks with empty slots (described by their indexes)
 #endif
 };
 

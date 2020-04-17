@@ -73,6 +73,8 @@ TEST_CASE("Creating an index on nodes", "[index]") {
   graph->commit_transaction();
   tx = graph->begin_transaction();
 #endif
+  REQUIRE(graph->get_index("Person", "id"));
+  CHECK_THROWS_AS(graph->get_index("Actor", "id"), unknown_index);
 
   bool found = false;
   graph->index_lookup(idx, 55u, [&found](auto& n) {
