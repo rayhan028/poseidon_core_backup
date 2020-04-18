@@ -213,6 +213,7 @@ struct property_set {
  */
 class property_list {
 public:
+  using foreach_cb_func = std::function<void(offset_t oid, property_set::p_item_list& items, offset_t next)>; 
   /**
    * Constructor
    */
@@ -236,10 +237,12 @@ public:
   /**
    * Inserts the p_items from the given list and assign them to the
    * node/relationship with the given id. This method assumes that no properties
-   * are associated yet with this node/relationship.
+   * are associated yet with this node/relationship. If a callback is given this 
+   * function is called before the slot is reserved (used for undo logging).
    */
   property_set::id_t add_pitems(offset_t nid, const std::list<p_item> &props,
-                                dict_ptr &dct, bool is_node = true);
+                                dict_ptr &dct, bool is_node = true, 
+                                std::function<void(offset_t)> callback = nullptr);
 
   /**
    * Appends the properties from the given list and assign them to the node with
@@ -298,6 +301,13 @@ public:
    * given dictionary.
    */
   properties_t all_properties(offset_t id, dict_ptr &dct);
+
+  /**
+   * Traverses the properties of a node/relationship where the list
+   * starts at the given id and calls the callback function for each entry.
+   * This method is used e.g. for undo logging.
+   */
+  void foreach_property_set(offset_t id, foreach_cb_func cb);
 
   /**
    * Updates the values of the given properties of a node where the list

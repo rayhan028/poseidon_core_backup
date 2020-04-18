@@ -175,15 +175,24 @@ public:
    * transaction.
    */
   node::id_t add(node &&n, xid_t owner = 0);
-  node::id_t insert(node &&n, xid_t owner = 0);
+
+  /**
+   * Add a new node to the list and return its identifier. The node is inserted
+   * into the first available slot, i.e. to reuse space of deleted records.
+   * If owner != 0 then the newly created node is locked by this owner
+   * transaction. If a callback is given this function is called before the slot 
+   * is reserved (used for undo logging).
+   */
+  node::id_t insert(node &&n, xid_t owner = 0, std::function<void(offset_t)> callback = nullptr);
 
   /**
    * Append a new node to the list and return its identifier. In contrast to add
    * the node is appended at the end of the list without checking for available
    * slots. If owner == 0 then the newly created node is locked by this owner
-   * transaction.
+   * transaction. If a callback is given this function is called before the slot 
+   * is reserved (used for undo logging).
    */
-  node::id_t append(node &&n, xid_t owner = 0);
+  node::id_t append(node &&n, xid_t owner = 0, std::function<void(offset_t)> callback = nullptr);
 
   /**
    * Get a node via its identifier.

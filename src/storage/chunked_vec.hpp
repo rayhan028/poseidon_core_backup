@@ -320,7 +320,7 @@ class chunked_vec {
    * Store the record at the end of the vector and return its position and a
    * pointer(!) to the record as a pair.
    */
-  std::pair<offset_t, T *> append(T &&o) {
+  std::pair<offset_t, T *> append(T &&o, std::function<void(offset_t)> callback = nullptr) {
     if (is_full())
       resize(1);
     auto tail = chunk_list_.back();
@@ -330,10 +330,11 @@ class chunked_vec {
     }
     auto pos = tail->first_available();
     assert(pos != SIZE_MAX);
+    auto offs = (chunk_list_.size() - 1) * elems_per_chunk_;
+    if (callback) callback(offs + pos);
     available_slots_--;
     tail->set(pos, true);
     tail->data_[pos] = o;
-    auto offs = (chunk_list_.size() - 1) * elems_per_chunk_;
     if (tail->is_full()) {
       remove_from_free_list(offs);
     }
@@ -344,7 +345,7 @@ class chunked_vec {
    * Store the record at the first available slot and return its position and a
    * pointer(!) to the record as a pair.
    */
-  std::pair<offset_t, T *> store(T &&o) {
+  std::pair<offset_t, T *> store(T &&o, std::function<void(offset_t)> callback = nullptr) {
     chunk_ptr ch;
     offset_t idx = 0;
     if (free_list_.empty()) {
@@ -362,6 +363,7 @@ class chunked_vec {
     }
     offset_t pos = ch->first_available();
     assert(pos != SIZE_MAX);
+    if (callback) callback(idx + pos);
     available_slots_--;
     ch->set(pos, true);
     ch->data_[pos] = o;

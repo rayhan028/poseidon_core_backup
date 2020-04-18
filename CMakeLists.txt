@@ -11,10 +11,11 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK       "Use Intel PMDK"                      ON)
-option(USE_PMDK_TX_FA "Use Intel PMDK Transactions for FA"  OFF) #Without turning ON USE_PMDK ON, "USE_PMDK_TX_FA" cannot be used.
-option(USE_TX         "Provide Transaction Support"         ON)
-option(BUILD_PYTHON   "Build python interface for poseidon" ON)
+option(USE_PMDK       "Use Intel PMDK"                         ON)
+option(USE_PMDK_TX_FA "Use Intel PMDK Transactions for FA"     OFF) 
+option(USE_TX         "Provide Transaction Support"            ON)
+option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
+option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -47,6 +48,10 @@ if(USE_TX MATCHES ON)
   add_definitions( "-DUSE_TX" )
 endif()
 
+if(USE_LOGGING MATCHES ON)
+  add_definitions( "-DUSE_LOGGING" )
+endif()
+
 configure_file(
   ${PROJECT_SOURCE_DIR}/src/config.h.in
   ${PROJECT_BINARY_DIR}/generated/config.h
@@ -64,12 +69,13 @@ include_directories(${PROJECT_SOURCE_DIR}/src/dict)
 include_directories(${PROJECT_SOURCE_DIR}/src/ldbc)
 include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 include_directories(${PROJECT_SOURCE_DIR}/src/pool)
+include_directories(${PROJECT_SOURCE_DIR}/src/log)
 #---------------------------------------------------------------------------
 
 set(THIRD_PARTY_DIR "${PROJECT_BINARY_DIR}/_deps")
 
 # C++ compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated -O3 -Wsign-compare")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated -O0 -g -Wsign-compare")
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-local-typedefs -Wno-#pragma-messages")
 elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
@@ -250,7 +256,8 @@ else()
   set(dict_src src/dict/dict_bimap.cpp)
 endif()
 
-set(src_files ${dict_src}
+set(src_files 
+  ${dict_src} 
   src/storage/nodes.cpp
   src/storage/relationships.cpp
   src/storage/properties.cpp
@@ -266,6 +273,7 @@ set(src_files ${dict_src}
   src/qop/thread_pool.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
+  src/log/pmlog.cpp
   src/ldbc/ldbc.cpp
 )
 

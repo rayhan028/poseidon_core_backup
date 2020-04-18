@@ -92,8 +92,19 @@ public:
    */
    std::vector<offset_t>& dirty_relationships() { return dirty_rships_; }
 
+  /**
+   * Store the id of the log associated with this transaction.
+   */
+  void set_logid(std::size_t lid) { logid_ = lid; }
+
+  /**
+   * Return the id of the log associated with this transaction.
+   */
+  std::size_t logid() const { return logid_; }
+
 private:
   xid_t xid_; // transaction identifier
+  std::size_t logid_; // log identifier
   std::vector<offset_t>
       dirty_nodes_; // the vector of ids of nodes which were modified by this transaction
   std::vector<offset_t> dirty_rships_; // the vector of ids of relationships which
