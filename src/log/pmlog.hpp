@@ -21,24 +21,52 @@
 
 #include "defs.hpp"
 #include "transaction.hpp"
+#include "properties.hpp"
 
 struct log_dummy {
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
 };
 
+/**
+ * A log record for inserting objects.
+ */
 struct log_ins_record {
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
-  offset_t oid;
+  offset_t oid;         // the id (node_id, rship_id) of the object
 };
 
+/**
+ * A log record for updating nodes.
+ */
 struct log_upd_node_record {
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
-  offset_t oid;
-  dcode_t label;
+  offset_t oid;         // the node id
+  dcode_t label;        // the node label
   offset_t from_rship_list, to_rship_list, property_list;
+};
+
+/**
+ * A log record for updating relationships.
+ */
+struct log_upd_rship_record {
+  uint8_t log_type : 3; // log_entry_type
+  uint8_t obj_type : 2; // log_object_type
+  offset_t oid;         // the relationship id
+  dcode_t label;        // the relationship label
+  offset_t src_node, dest_node, next_src_rship, next_dest_rship;
+};
+
+struct log_upd_property_record {
+  uint8_t log_type : 3; // log_entry_type
+  uint8_t obj_type : 2; // log_object_type
+
+  offset_t oid;
+  uint8_t flags;
+  property_set::p_item_list items; // we are storing 5 property items per set
+  offset_t next, owner;
 };
 
 /**

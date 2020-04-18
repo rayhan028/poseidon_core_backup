@@ -108,7 +108,7 @@ bool graph_db::commit_transaction() {
 	   */
 
 	  if (!n.has_dirty_versions()) {
-      // TODO: undo using the log
+      // TODO: in case of inserts perform undo using the log
 		  throw transaction_abort();
 	  }
 	  // get the version of dirty object.
@@ -130,7 +130,12 @@ bool graph_db::commit_transaction() {
 		  /// spdlog::info("commit UPDATE transaction {}: copy properties", xid);
 		  // update node (label)
 #ifdef USE_LOGGING
-      // TODO: create and append a log_upd_node_record BEFORE we copy the properties and override the label
+      // create and append a log_upd_node_record BEFORE we copy the properties and override the label
+      auto log_id = current_transaction_->logid(); 
+ 
+      log_upd_node_record rec{ pmlog::log_update, pmlog::log_node, node_id, 
+          n.node_label, n.from_rship_list, n.to_rship_list, n.property_list};
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_upd_node_record));
 #endif
 		  n.node_label = dn->elem_.node_label;
 		  copy_properties(n, dn);
@@ -156,7 +161,7 @@ bool graph_db::commit_transaction() {
 	   * So there must be at least one dirty version.
 	   */
 	  if (!r.has_dirty_versions()) {
-      // TODO: undo using the log
+      // TODO: in case of inserts perform undo using the log
 		  throw transaction_abort();
 	  }
 	  // get the version of dirty object.
@@ -176,7 +181,13 @@ bool graph_db::commit_transaction() {
 		  // and relationship version to the main tables
 		  // update relationship (label)
 #ifdef USE_LOGGING
-      // TODO: create and append a log_upd_rship_record BEFORE we copy the properties and override the label
+      // create and append a log_upd_rship_record BEFORE we copy the properties and override the label
+      auto log_id = current_transaction_->logid(); 
+ 
+      log_upd_rship_record rec{ pmlog::log_update, pmlog::log_rship, rel_id, 
+          r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
+
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_upd_rship_record));
 #endif
 		  r.rship_label = dr->elem_.rship_label;
 		  copy_properties(r, dr);
@@ -317,10 +328,23 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
   auto &from_node = nodes_->get(from_id);
   auto &to_node = nodes_->get(to_id);
   auto type_code = dict_->insert(label);
+#ifdef USE_LOGGING
+  // create and append a log_ins_record BEFORE the rship table is modified
+  auto log_id = current_transaction_->logid(); 
+  auto cb = [log_id, this](offset_t r_id) {
+    log_ins_record rec{ pmlog::log_insert, pmlog::log_rship, r_id};
+    ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
+  };
+  auto rid =
+      append_only
+          ? rships_->append(relationship(type_code, from_id, to_id), txid, cb)
+          : rships_->insert(relationship(type_code, from_id, to_id), txid, cb);
+#else
   auto rid =
       append_only
           ? rships_->append(relationship(type_code, from_id, to_id), txid)
           : rships_->insert(relationship(type_code, from_id, to_id), txid);
+#endif
   auto &r = rships_->get(rid);
 
 #ifdef USE_TX
@@ -688,14 +712,32 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
 
   property_set::id_t pid;
   if (dn->updated()) {
+#ifdef USE_LOGGING
+    // create and append a log_upd_property_record
+    auto log_id = current_transaction_->logid();
+    auto node_id = n.id(); 
+    auto cb = [log_id, node_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
+      log_upd_property_record rec{ pmlog::log_update, pmlog::log_property,
+            oid, 0, items, next, node_id };
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_upd_property_record));
+    };
+    properties_->foreach_property_set(n.id(), cb);
+#endif
     // we have to update the properties
     pid = properties_->update_pitems(n.id(), n.property_list, dn->properties_,
                                      dict_, true /* Node */);
   } else {
     // the node was newly added - we have to add the properties
     // to the properties_ table
+    // But we should log this. Otherwise, the slot might get be lost in
+    // case of system failure.
+    auto log_id = current_transaction_->logid(); 
+    auto cb = [log_id, this](offset_t p_id) {
+      log_ins_record rec{ pmlog::log_insert, pmlog::log_property, p_id};
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
+    };
     pid = properties_->add_pitems(n.id(), dn->properties_, dict_,
-                                  true /* Node */);
+                                  true /* Node */, cb);
   }
   n.property_list = pid;
 }
@@ -706,6 +748,17 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
 
   property_set::id_t pid;
   if (dr->updated()) {
+#ifdef USE_LOGGING
+    // create and append a log_upd_property_record
+    auto log_id = current_transaction_->logid();
+    auto rship_id = r.id(); 
+    auto cb = [log_id, rship_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
+      log_upd_property_record rec{ pmlog::log_update, pmlog::log_property,
+            oid, 0, items, next, rship_id };
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_upd_property_record));
+    };
+    properties_->foreach_property_set(r.id(), cb);
+#endif
     // we have to update the properties
     pid = properties_->update_pitems(r.id(), r.property_list, dr->properties_,
                                      dict_, false /* Relationship */);
@@ -713,8 +766,15 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
   } else {
     // the relationship was newly added - we have to add the properties
     // to the properties_ table
+    // But we should log this. Otherwise, the slot might get be lost in
+    // case of system failure.
+    auto log_id = current_transaction_->logid(); 
+    auto cb = [log_id, this](offset_t p_id) {
+      log_ins_record rec{ pmlog::log_insert, pmlog::log_property, p_id};
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
+    };
     pid = properties_->add_pitems(r.id(), dr->properties_, dict_,
-                                  false /* Relationship */);
+                                  false /* Relationship */, cb);
   }
   r.property_list = pid;
 }

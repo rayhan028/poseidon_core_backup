@@ -132,19 +132,21 @@ public:
    * relationship is inserted into the first available slot, i.e. to reuse space
    * of deleted records.
    * If owner != 0 then the newly created relationship is locked by this owner
-   * transaction.
+   * transaction. If a callback is given this function is called before the slot 
+   * is reserved (used for undo logging).
    */
   relationship::id_t add(relationship &&r, xid_t owner = 0);
-  relationship::id_t insert(relationship &&r, xid_t owner = 0);
+  relationship::id_t insert(relationship &&r, xid_t owner = 0, std::function<void(offset_t)> callback = nullptr);
 
   /**
    * Append a new relationship to the list and return its identifier. In
    * contrast to add the relationship is appended at the end of the list without
    * checking for available slots.
    * If owner != 0 then the newly created relationship is locked by this owner
-   * transaction.
+   * transaction. If a callback is given this function is called before the slot 
+   * is reserved (used for undo logging).
    */
-  relationship::id_t append(relationship &&r, xid_t owner = 0);
+  relationship::id_t append(relationship &&r, xid_t owner = 0, std::function<void(offset_t)> callback = nullptr);
 
   /**
    * Get a relationship via its identifier.
