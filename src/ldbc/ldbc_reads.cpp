@@ -1,5 +1,6 @@
 #include <iostream>
 #include <boost/program_options.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include "defs.hpp"
 #include "graph_db.hpp"
@@ -12,7 +13,8 @@
 #include "spdlog/spdlog.h"
 
 #define SF_10
-//#define PRINT_RS
+#define BUILD_INDEX
+#define PRINT_RESULT
 
 #ifdef USE_PMDK
 
@@ -34,7 +36,9 @@ double calc_avg_time(const std::vector<double>& vec) {
     double d = 0.0;
     for (auto v : vec) {
         d += v;
+        std::cout << v << " ";
     }
+    std::cout << "\n";
     return d / (double)(vec.size() * 1000);
 }
 
@@ -72,7 +76,7 @@ double run_query_1(graph_db_ptr gdb) {
         auto end_qp = std::chrono::steady_clock::now();
         runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                        start_qp).count();
-#ifdef PRINT_RS
+#ifdef PRINT_RESULT
         std::cout << rs << "\n";
 #endif
     }
@@ -112,7 +116,7 @@ double run_query_2_p(graph_db_ptr gdb) {
         auto end_qp = std::chrono::steady_clock::now();
         runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                        start_qp).count();
-#ifdef PRINT_RS
+#ifdef PRINT_RESULT
         std::cout << rs << "\n";
 #endif
     }
@@ -152,7 +156,7 @@ double run_query_2_c(graph_db_ptr gdb) {
         auto end_qp = std::chrono::steady_clock::now();
         runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                        start_qp).count();
-#ifdef PRINT_RS
+#ifdef PRINT_RESULT
         std::cout << rs << "\n";
 #endif
     }
@@ -192,7 +196,7 @@ double run_query_3(graph_db_ptr gdb) {
       auto end_qp = std::chrono::steady_clock::now();
       runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                        start_qp).count();
-#ifdef PRINT_RS
+#ifdef PRINT_RESULT
       std::cout << rs << "\n";
 #endif
     }
@@ -231,7 +235,7 @@ double run_query_4_p(graph_db_ptr gdb) {
       auto end_qp = std::chrono::steady_clock::now();
       runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                        start_qp).count();
-#ifdef PRINT_RS
+#ifdef PRINT_RESULT
       std::cout << rs << "\n";
 #endif
     }
@@ -270,7 +274,7 @@ double run_query_4_c(graph_db_ptr gdb) {
       auto end_qp = std::chrono::steady_clock::now();
       runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                        start_qp).count();
-#ifdef PRINT_RS
+#ifdef PRINT_RESULT
       std::cout << rs << "\n";
 #endif
     }
@@ -309,7 +313,7 @@ double run_query_5_p(graph_db_ptr gdb) {
       auto end_qp = std::chrono::steady_clock::now();
       runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                        start_qp).count();
-#ifdef PRINT_RS
+#ifdef PRINT_RESULT
       std::cout << rs << "\n";
 #endif
     }
@@ -348,7 +352,7 @@ double run_query_5_c(graph_db_ptr gdb) {
       auto end_qp = std::chrono::steady_clock::now();
       runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                        start_qp).count();
-#ifdef PRINT_RS
+#ifdef PRINT_RESULT
       std::cout << rs << "\n";
 #endif
     }
@@ -389,7 +393,7 @@ double run_query_6_p(graph_db_ptr gdb) {
       auto end_qp = std::chrono::steady_clock::now();
       runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                        start_qp).count();
-#ifdef PRINT_RS
+#ifdef PRINT_RESULT
       std::cout << rs << "\n";
 #endif
     }
@@ -430,7 +434,7 @@ double run_query_6_c(graph_db_ptr gdb) {
       auto end_qp = std::chrono::steady_clock::now();
       runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                        start_qp).count();
-#ifdef PRINT_RS
+#ifdef PRINT_RESULT
       std::cout << rs << "\n";
 #endif
     }
@@ -471,7 +475,7 @@ double run_query_7_p(graph_db_ptr gdb) {
       auto end_qp = std::chrono::steady_clock::now();
       runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                        start_qp).count();
-#ifdef PRINT_RS
+#ifdef PRINT_RESULT
       std::cout << rs << "\n";
 #endif
     }
@@ -512,11 +516,190 @@ double run_query_7_c(graph_db_ptr gdb) {
       auto end_qp = std::chrono::steady_clock::now();
       runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                        start_qp).count();
-#ifdef PRINT_RS
+#ifdef PRINT_RESULT
       std::cout << rs << "\n";
 #endif
     }
     return calc_avg_time(runtimes);
+}
+
+void load_snb_data(graph_db_ptr &graph, 
+                    std::vector<std::string> &node_files,
+                    std::vector<std::string> &rship_files){
+  auto delim = '|';
+  graph_db::mapping_t mapping;
+  bool nodes_imported = false, rships_imported = false;
+  
+  if (!node_files.empty()){
+    spdlog::info("######## NODES ########");
+
+    std::vector<std::size_t> num_nodes(node_files.size());
+    auto i = 0;
+    for (auto &file : node_files){
+      std::vector<std::string> fp;
+      boost::split(fp, file, boost::is_any_of("/"));
+      assert(fp.back().find(".csv") != std::string::npos);
+      auto pos = fp.back().find("_");
+      auto label = fp.back().substr(0, pos);
+      if (label[0] >= 'a' && label[0] <= 'z')
+        label[0] -= 32;
+
+      num_nodes[i] = graph->import_nodes_from_csv(label, file, delim, mapping);
+      spdlog::info("{} '{}' node objects imported", num_nodes[i], label);
+      if (num_nodes[i] > 0)
+        nodes_imported = true;
+      i++;
+    }
+  }
+
+  if (!rship_files.empty()){
+    spdlog::info("################ RELATIONSHIPS ################");
+    
+    std::vector<std::size_t> num_rships(rship_files.size());
+    auto i = 0;
+    for (auto &file : rship_files){
+      std::vector<std::string> fp;
+      boost::split(fp, file, boost::is_any_of("/"));
+      assert(fp.back().find(".csv") != std::string::npos);
+      std::vector<std::string> fn;
+      boost::split(fn, fp.back(), boost::is_any_of("_"));
+      auto label = ":" + fn[1];
+
+      num_rships[i] = graph->import_relationships_from_csv(file, delim, mapping);
+      spdlog::info("{} ({})-[{}]-({}) relationship objects imported", 
+        num_rships[i], fn[0], label, fn[2]);
+      if (num_rships[i] > 0)
+        rships_imported = true;
+      i++;
+    }
+  }
+}
+
+void load_in_memory(graph_db_ptr &graph){
+  std::string snb_home = 
+#ifdef SF_10
+    "/home/data/SNB_SF_10/";
+#else
+    "/home/data/SNB_SF_1/";
+#endif
+
+  std::string snb_sta = snb_home + "/static/";
+  std::string snb_dyn = snb_home + "/dynamic/";
+
+  std::vector<std::string> node_files = 
+    {snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
+    snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv",
+    snb_sta + "organisation_0_0.csv", snb_sta + "organisation_1_0.csv",
+    snb_sta + "organisation_2_0.csv", snb_sta + "organisation_3_0.csv",
+    snb_sta + "tagclass_0_0.csv", snb_sta + "tagclass_1_0.csv",
+    snb_sta + "tagclass_2_0.csv", snb_sta + "tagclass_3_0.csv",
+    snb_sta + "tag_0_0.csv", snb_sta + "tag_1_0.csv",
+    snb_sta + "tag_2_0.csv", snb_sta + "tag_3_0.csv",
+    snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
+    snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv",
+    snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
+    snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv",
+    snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
+    snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
+    snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
+    snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv"};
+
+  std::vector<std::string> rship_files = 
+    {snb_dyn + "comment_hasCreator_person_0_0.csv",
+    snb_dyn + "comment_hasCreator_person_1_0.csv",
+    snb_dyn + "comment_hasCreator_person_2_0.csv",
+    snb_dyn + "comment_hasCreator_person_3_0.csv",
+    snb_dyn + "comment_isLocatedIn_place_0_0.csv",
+    snb_dyn + "comment_isLocatedIn_place_1_0.csv",
+    snb_dyn + "comment_isLocatedIn_place_2_0.csv",
+    snb_dyn + "comment_isLocatedIn_place_3_0.csv",
+    snb_dyn + "comment_replyOf_comment_0_0.csv",
+    snb_dyn + "comment_replyOf_comment_1_0.csv",
+    snb_dyn + "comment_replyOf_comment_2_0.csv",
+    snb_dyn + "comment_replyOf_comment_3_0.csv",
+    snb_dyn + "comment_replyOf_post_0_0.csv",
+    snb_dyn + "comment_replyOf_post_1_0.csv",
+    snb_dyn + "comment_replyOf_post_2_0.csv",
+    snb_dyn + "comment_replyOf_post_3_0.csv",
+    snb_dyn + "forum_containerOf_post_0_0.csv",
+    snb_dyn + "forum_containerOf_post_1_0.csv",
+    snb_dyn + "forum_containerOf_post_2_0.csv",
+    snb_dyn + "forum_containerOf_post_3_0.csv",
+    snb_dyn + "forum_hasMember_person_0_0.csv",
+    snb_dyn + "forum_hasMember_person_1_0.csv",
+    snb_dyn + "forum_hasMember_person_2_0.csv",
+    snb_dyn + "forum_hasMember_person_3_0.csv",
+    snb_dyn + "forum_hasModerator_person_0_0.csv",
+    snb_dyn + "forum_hasModerator_person_1_0.csv",
+    snb_dyn + "forum_hasModerator_person_2_0.csv",
+    snb_dyn + "forum_hasModerator_person_3_0.csv",
+    snb_dyn + "forum_hasTag_tag_0_0.csv",
+    snb_dyn + "forum_hasTag_tag_1_0.csv",
+    snb_dyn + "forum_hasTag_tag_2_0.csv",
+    snb_dyn + "forum_hasTag_tag_3_0.csv",
+    snb_dyn + "person_hasInterest_tag_0_0.csv",
+    snb_dyn + "person_hasInterest_tag_1_0.csv",
+    snb_dyn + "person_hasInterest_tag_2_0.csv",
+    snb_dyn + "person_hasInterest_tag_3_0.csv",
+    snb_dyn + "person_isLocatedIn_place_0_0.csv",
+    snb_dyn + "person_isLocatedIn_place_1_0.csv",
+    snb_dyn + "person_isLocatedIn_place_2_0.csv",
+    snb_dyn + "person_isLocatedIn_place_3_0.csv",
+    snb_dyn + "person_knows_person_0_0.csv",
+    snb_dyn + "person_knows_person_1_0.csv",
+    snb_dyn + "person_knows_person_2_0.csv",
+    snb_dyn + "person_knows_person_3_0.csv",
+    snb_dyn + "person_likes_comment_0_0.csv",
+    snb_dyn + "person_likes_comment_1_0.csv",
+    snb_dyn + "person_likes_comment_2_0.csv",
+    snb_dyn + "person_likes_comment_3_0.csv",
+    snb_dyn + "person_likes_post_0_0.csv",
+    snb_dyn + "person_likes_post_1_0.csv",
+    snb_dyn + "person_likes_post_2_0.csv",
+    snb_dyn + "person_likes_post_3_0.csv",
+    snb_dyn + "post_hasCreator_person_0_0.csv",
+    snb_dyn + "post_hasCreator_person_1_0.csv",
+    snb_dyn + "post_hasCreator_person_2_0.csv",
+    snb_dyn + "post_hasCreator_person_3_0.csv",
+    snb_dyn + "comment_hasTag_tag_0_0.csv",
+    snb_dyn + "comment_hasTag_tag_1_0.csv",
+    snb_dyn + "comment_hasTag_tag_2_0.csv",
+    snb_dyn + "comment_hasTag_tag_3_0.csv",
+    snb_dyn + "post_hasTag_tag_0_0.csv",
+    snb_dyn + "post_hasTag_tag_1_0.csv",
+    snb_dyn + "post_hasTag_tag_2_0.csv",
+    snb_dyn + "post_hasTag_tag_3_0.csv",
+    snb_dyn + "post_isLocatedIn_place_0_0.csv",
+    snb_dyn + "post_isLocatedIn_place_1_0.csv",
+    snb_dyn + "post_isLocatedIn_place_2_0.csv",
+    snb_dyn + "post_isLocatedIn_place_3_0.csv",
+    snb_dyn + "person_studyAt_organisation_0_0.csv",
+    snb_dyn + "person_studyAt_organisation_1_0.csv",
+    snb_dyn + "person_studyAt_organisation_2_0.csv",
+    snb_dyn + "person_studyAt_organisation_3_0.csv",
+    snb_dyn + "person_workAt_organisation_0_0.csv",
+    snb_dyn + "person_workAt_organisation_1_0.csv",
+    snb_dyn + "person_workAt_organisation_2_0.csv",
+    snb_dyn + "person_workAt_organisation_3_0.csv"};
+
+  spdlog::info("trying to load data from {} and {}", snb_sta, snb_dyn);
+  load_snb_data(graph, node_files, rship_files);
+
+#ifdef BUILD_INDEX
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+  auto idx_1 = graph->create_index("Person", "id");
+  auto idx_2 = graph->create_index("Post", "id");
+  auto idx_3 = graph->create_index("Comment", "id");
+  auto idx_4 = graph->create_index("Place", "id");
+  auto idx_5 = graph->create_index("Tag", "id");
+  auto idx_6 = graph->create_index("Organisation", "id");
+  auto idx_7 = graph->create_index("Forum", "id");
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+#endif
 }
 
 void run_benchmark(graph_db_ptr gdb) {
@@ -599,6 +782,7 @@ int main(int argc, char **argv) {
   graph->runtime_initialize();
 #else
   auto graph = p_make_ptr<graph_db>(db_name);
+  load_in_memory(graph);
 #endif
 
   run_benchmark(graph);

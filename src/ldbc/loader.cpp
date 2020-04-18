@@ -16,6 +16,7 @@
 #define SF_10
 #define CREATE_INDEX
 #define PARALLEL_LOAD
+// #define PARALLEL_RSHIP_LOAD
 
 #ifdef USE_PMDK
 
@@ -94,7 +95,7 @@ void load_snb_data(graph_db_ptr &graph,
   if (!rship_files.empty()) {
     spdlog::info("--------- Importing relationships ...");
     
-#ifdef PARALLEL_LOAD
+#ifdef PARALLEL_RSHIP_LOAD
     std::vector<std::future<std::pair<std::string, std::size_t>>> res;
     res.reserve(rship_files.size());
     thread_pool pool;
@@ -146,9 +147,9 @@ int main(int argc, char **argv) {
   std::string db_name;
   std::string snb_home =
 #ifdef SF_10
-"/home/data/SNB_SF_10/";
+    "/home/data/SNB_SF_10/";
 #else
-"/home/data/SNB_SF_1/";
+    "/home/data/SNB_SF_1/";
 #endif
 
  try {
@@ -311,9 +312,7 @@ int main(int argc, char **argv) {
   load_snb_data(graph, node_files, rship_files, strict);
 
 #ifdef CREATE_INDEX
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
   auto idx_1 = graph->create_index("Person", "id");
   auto idx_2 = graph->create_index("Post", "id");
   auto idx_3 = graph->create_index("Comment", "id");
@@ -321,8 +320,6 @@ int main(int argc, char **argv) {
   auto idx_5 = graph->create_index("Tag", "id");
   auto idx_6 = graph->create_index("Organisation", "id");
   auto idx_7 = graph->create_index("Forum", "id");
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 #endif
 }

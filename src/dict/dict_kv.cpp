@@ -38,8 +38,6 @@ dict::~dict() {
 }
 
 void dict::initialize() {
-  //code_str_map_->runtime_initialize(true);
-  //str_code_map_->runtime_initialize(true);
   code_str_map_->runtime_initialize();
   str_code_map_->runtime_initialize();
 }
@@ -54,16 +52,19 @@ dcode_t dict::insert(const std::string &s) {
   auto dcode = last_code_;
   last_code_ = last_code_ + 1;
 
+  p_ptr<string_t> str_ptr;
+
   {
     str_code_hashmap_t::accessor ac;
     str_code_map_->insert(ac, str);
     ac->second = dcode;
+    str_ptr = pmem::obj::persistent_ptr<string_t>(&ac->first);
     ac.release();
   }
   {
     code_str_hashmap_t::accessor ac;
     code_str_map_->insert(ac, dcode);
-    ac->second = str;
+    ac->second = str_ptr;
     ac.release();
   }
   return dcode;
@@ -80,7 +81,7 @@ dcode_t dict::lookup_string(const std::string &s) {
 const char *dict::lookup_code(dcode_t c) {
   code_str_hashmap_t::const_accessor ac;
   if (code_str_map_->find(ac, c))
-    return ac->second.c_str();
+    return ac->second->c_str();
   else
     return nullptr;
 }

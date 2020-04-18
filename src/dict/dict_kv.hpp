@@ -77,7 +77,7 @@ public:
   std::size_t size();
 
 private:
-  using code_str_hashmap_t = pmem::obj::concurrent_hash_map<dcode_t, string_t>;
+  using code_str_hashmap_t = pmem::obj::concurrent_hash_map<dcode_t, p_ptr<string_t>>;
   using str_code_hashmap_t =
       pmem::obj::concurrent_hash_map<string_t, dcode_t, string_hasher>;
 
