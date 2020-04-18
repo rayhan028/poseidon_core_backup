@@ -183,6 +183,38 @@ TEST_CASE("Looking up some non-existing strings", "[dict]") {
 #endif
 }
 
+#ifdef USE_PMDK
+TEST_CASE("Test persistency of dict", "[dict]") {
+  auto pop = nvm::pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
+  auto root_obj = pop.root();
+
+  nvm::transaction::run(
+      pop, [&] { root_obj->dict_p = nvm::make_persistent<dict>(); });
+
+  dict &d = *(root_obj->dict_p);
+  d.initialize();
+
+  d.insert("String #1");
+  d.insert("String #2");
+  d.insert("String #3");
+  auto c = d.insert("String #4");
+  d.insert("String #5");
+
+  pop.close();
+
+  pop = nvm::pool<root>::open(test_path, "");
+  root_obj = pop.root();
+
+  dict &d2 = *(root_obj->dict_p);
+  d2.initialize();
+
+  REQUIRE(d2.lookup_string("String #4") == c);
+
+  pop.close();
+  remove(test_path.c_str());
+}
+#endif
+
 // TODO
 // * test with a large set of strings
 // * test persistent dictionary
