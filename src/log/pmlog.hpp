@@ -205,6 +205,9 @@ public:
   log_iter log_begin() { return log_iter(ulog_, nlogs_); }
   log_iter log_end() { return log_iter(ulog_, nlogs_, nlogs_); }
 
+  /**
+   * Print the content of the log for debugging purposes.
+   */
   void dump();
 
 private:

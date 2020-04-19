@@ -12,7 +12,6 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK       "Use Intel PMDK"                         ON)
-option(USE_PMDK_TX_FA "Use Intel PMDK Transactions for FA"     OFF) 
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
 option(BUILD_PYTHON   "Build python interface for poseidon"    ON)

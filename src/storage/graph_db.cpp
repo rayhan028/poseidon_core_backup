@@ -94,12 +94,6 @@ bool graph_db::commit_transaction() {
     oldest_xid_ = !active_tx_->empty() ? active_tx_->begin()->first : xid;
   }
 
-#ifdef USE_PMDK_TXN_FA
-   auto pop = pmem::obj::pool_by_vptr(this);
-   // Any writes to nodes/relationship on the Pmem will be added into the PMDK transaction for FA.
-   nvm::transaction::run(pop, [&] {
-#endif
-
   // process dirty_nodes list
   for  (auto node_id : tx->dirty_nodes()) {
  	   auto &n = nodes_->get(node_id);
@@ -202,9 +196,6 @@ bool graph_db::commit_transaction() {
 	  r.unlock();
 	  r.gc(oldest_xid_);
   }
-#ifdef USE_PMDK_TXN_FA
-  });
-#endif
 #endif
 #ifdef USE_LOGGING
   ulog_->transaction_end(current_transaction_->logid());
