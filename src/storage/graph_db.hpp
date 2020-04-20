@@ -439,8 +439,14 @@ public:
 private:
   friend struct scan_task;
 
+  /**
+   * Handle the commit of a node from the dirty list.
+   */
   void commit_dirty_node(transaction_ptr tx, node::id_t node_id);
 
+  /**
+   * Handle the commit of a relationship from the dirty list.
+   */
   void commit_dirty_relationship(transaction_ptr tx, relationship::id_t rship_id);
 
   /**

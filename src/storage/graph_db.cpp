@@ -118,8 +118,9 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         // CASE #2 = DELETE
         // spdlog::info("COMMIT DELETE: [{},{}]", short_ts(dn->elem_.bts), short_ts(dn->elem_.cts));
 #ifdef USE_LOGGING
-        log_del_record rec { pmlog::log_delete, pmlog::log_node, node_id };
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_del_record));       
+        log_node_record rec { pmlog::log_delete, pmlog::log_node, node_id, 
+              n.node_label, n.from_rship_list, n.to_rship_list, n.property_list };
+        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));       
         // TODO: log property delete
 #endif
         // Because there might be an active transaction which still needs the object
@@ -136,10 +137,10 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
       else {
         // CASE #3 = UPDATE
 #ifdef USE_LOGGING
-        // create and append a log_upd_node_record BEFORE we copy the properties and override the label
-        log_upd_node_record rec{ pmlog::log_update, pmlog::log_node, node_id, 
+        // create and append a log_node_record BEFORE we copy the properties and override the label
+        log_node_record rec{ pmlog::log_update, pmlog::log_node, node_id, 
           n.node_label, n.from_rship_list, n.to_rship_list, n.property_list};
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_upd_node_record));
+        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));
 #endif
 		    n.node_label = dn->elem_.node_label;
 		    copy_properties(n, dn);
@@ -192,8 +193,9 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
         // CASE #2 = DELETE
         // spdlog::info("COMMIT DELETE: {}, {}", dr->elem_.bts, dr->elem_.cts);
 #ifdef USE_LOGGING
-        log_del_record rec { pmlog::log_delete, pmlog::log_rship, rel_id };
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_del_record));       
+        log_rship_record rec { pmlog::log_delete, pmlog::log_rship, rel_id,
+          r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
+        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));       
         // TODO: log property delete
 #endif
         // Because there might be an active transaction which still needs the object
@@ -210,13 +212,13 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
       else {
         // CASE #3 = UPDATE
 #ifdef USE_LOGGING
-      // create and append a log_upd_rship_record BEFORE we copy the properties and override the label
+      // create and append a log_rship_record BEFORE we copy the properties and override the label
       auto log_id = current_transaction_->logid(); 
  
-      log_upd_rship_record rec{ pmlog::log_update, pmlog::log_rship, rel_id, 
+      log_rship_record rec{ pmlog::log_update, pmlog::log_rship, rel_id, 
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
 
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_upd_rship_record));
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));
 #endif
 		  r.rship_label = dr->elem_.rship_label;
 		  copy_properties(r, dr);
@@ -298,10 +300,10 @@ bool graph_db::commit_transaction() {
       }
       else {
 #ifdef USE_LOGGING
-        // create and append a log_upd_node_record BEFORE we copy the properties and override the label
-        log_upd_node_record rec{ pmlog::log_update, pmlog::log_node, node_id, 
+        // create and append a log_node_record BEFORE we copy the properties and override the label
+        log_node_record rec{ pmlog::log_update, pmlog::log_node, node_id, 
           n.node_label, n.from_rship_list, n.to_rship_list, n.property_list};
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_upd_node_record));
+        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));
 #endif
 		    n.node_label = dn->elem_.node_label;
 		    copy_properties(n, dn);
@@ -351,13 +353,13 @@ bool graph_db::commit_transaction() {
 		  // and relationship version to the main tables
 		  // update relationship (label)
 #ifdef USE_LOGGING
-      // create and append a log_upd_rship_record BEFORE we copy the properties and override the label
+      // create and append a log_rship_record BEFORE we copy the properties and override the label
       auto log_id = current_transaction_->logid(); 
  
-      log_upd_rship_record rec{ pmlog::log_update, pmlog::log_rship, rel_id, 
+      log_rship_record rec{ pmlog::log_update, pmlog::log_rship, rel_id, 
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
 
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_upd_rship_record));
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));
 #endif
 		  r.rship_label = dr->elem_.rship_label;
 		  copy_properties(r, dr);
@@ -913,13 +915,13 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
   property_set::id_t pid;
   if (dn->updated()) {
 #ifdef USE_LOGGING
-    // create and append a log_upd_property_record
+    // create and append a log_property_record
     auto log_id = current_transaction_->logid();
     auto node_id = n.id(); 
     auto cb = [log_id, node_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
-      log_upd_property_record rec{ pmlog::log_update, pmlog::log_property,
+      log_property_record rec{ pmlog::log_update, pmlog::log_property,
             oid, 0, items, next, node_id };
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_upd_property_record));
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
     };
     properties_->foreach_property_set(n.id(), cb);
 #endif
@@ -949,13 +951,13 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
   property_set::id_t pid;
   if (dr->updated()) {
 #ifdef USE_LOGGING
-    // create and append a log_upd_property_record
+    // create and append a log_property_record
     auto log_id = current_transaction_->logid();
     auto rship_id = r.id(); 
     auto cb = [log_id, rship_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
-      log_upd_property_record rec{ pmlog::log_update, pmlog::log_property,
+      log_property_record rec{ pmlog::log_update, pmlog::log_property,
             oid, 0, items, next, rship_id };
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_upd_property_record));
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
     };
     properties_->foreach_property_set(r.id(), cb);
 #endif

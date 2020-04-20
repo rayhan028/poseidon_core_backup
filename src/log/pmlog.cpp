@@ -30,7 +30,7 @@ pmlog::log_rec_iter &pmlog::log_rec_iter::operator++() {
   case pmlog::log_update:
     switch (rec_ptr->obj_type) {
     case pmlog::log_node:
-      pos_ += sizeof(log_upd_node_record);
+      pos_ += sizeof(log_node_record);
       break;
     case pmlog::log_rship:
       // TODO
@@ -148,10 +148,10 @@ void pmlog::dump_chunk(log_chunk &log) {
       pos += sizeof(log_ins_record);
     } else if (rec_ptr->log_type == pmlog::log_update) {
       if (rec_ptr->obj_type == pmlog::log_node) {
-        auto upd_rec_ptr = (log_upd_node_record *)(&(log.data_[pos]));
+        auto upd_rec_ptr = (log_node_record *)(&(log.data_[pos]));
         std::cout << "UPDATE #" << upd_rec_ptr->oid << ", UNDO={"
                   << upd_rec_ptr->label << "}" << std::endl;
-        pos += sizeof(log_upd_node_record);
+        pos += sizeof(log_node_record);
       }
     } else
       return;
