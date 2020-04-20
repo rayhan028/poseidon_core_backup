@@ -247,6 +247,9 @@ template <typename T> struct txn {
    */
   void set_dirty() { is_dirty_ = true; }
 
+  /**
+   * Check of the dirty flag is set. In this case the object is stored in volatile memory.
+   */
   bool is_dirty() const { return is_dirty_; }
 
   /**
@@ -270,9 +273,14 @@ template <typename T> struct txn {
       bool abort = false;
       for (const auto& dn : *dirty_list) {
        if (!dn->elem_.is_locked() || dn->elem_.is_locked_by(xid)) {
-         if (dn->elem_.is_valid(xid))
+        if (dn->elem_.is_valid(xid))
           return dn;
         else {
+          // if the object is locked by us but not valid, then we have it 
+          // already deleted!
+          if (dn->elem_.is_locked_by(xid) && (dn->elem_.bts == dn->elem_.bts))
+            throw unknown_id();
+
           // if the object is not locked but we cannot find a valid version
           // then we probably should abort the transaction instead of
           // throw unknown_id: but let's first check all versions
@@ -322,7 +330,7 @@ template <typename T> struct txn {
           std::remove_if(dirty_list->begin(), dirty_list->end(), [&](const T& dn) {
             return dn->elem_.txn_id == xid && dn->elem_.cts == INF;
           });
-      assert(iter != dirty_list->end());
+      // assert(iter != dirty_list->end());
       dirty_list->erase(iter, dirty_list->end());
     }
   }

@@ -96,12 +96,12 @@ void create_rship_on_join::dump(std::ostream &os) const {
 
 void create_rship_on_join::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
   auto n = boost::get<node *>(v[l_node_pos]);
-  if (src_to_des){
-    auto rid = gdb->add_relationship(n->id(), r_node_->id(), label, props, true);
+  if (src_to_des) {
+    gdb->add_relationship(n->id(), r_node_->id(), label, props, true);
     consume_(gdb, v);
   }
-  else{
-    auto rid = gdb->add_relationship(r_node_->id(), n->id(), label, props, true);
+  else {
+    gdb->add_relationship(r_node_->id(), n->id(), label, props, true);
     consume_(gdb, v);
   }
 }

@@ -38,6 +38,15 @@ struct log_ins_record {
 };
 
 /**
+ * A log record for deleting objects.
+ */
+struct log_del_record {
+  uint8_t log_type : 3; // log_entry_type
+  uint8_t obj_type : 2; // log_object_type
+  offset_t oid;         // the id (node_id, rship_id, property_set) of the object
+};
+
+/**
  * A log record for updating nodes.
  */
 struct log_upd_node_record {

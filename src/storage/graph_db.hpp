@@ -439,6 +439,10 @@ public:
 private:
   friend struct scan_task;
 
+  void commit_dirty_node(transaction_ptr tx, node::id_t node_id);
+
+  void commit_dirty_relationship(transaction_ptr tx, relationship::id_t rship_id);
+
   /**
    * Return the node version from the dirty list that is valid for the
    * transaction identified by xid.

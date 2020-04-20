@@ -173,7 +173,7 @@ void node_list::dump() {
               << n.from_rship_list << ", " << n.to_rship_list << ", "
               << n.property_list*/;
     if (n.has_dirty_versions()) {
-      // TODO: print dirty list
+      // print dirty list
       std::cout << " {\n";
       for (const auto& dn : *n.dirty_list) {
         std::cout << "\t( @" << (unsigned long)&(dn->elem_)

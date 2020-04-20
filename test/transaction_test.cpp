@@ -553,6 +553,128 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
   drop_graph_db(pop, gdb);
 #endif
 }
+
+TEST_CASE("Checking that deleting a node works", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t nid;
+  {
+    // add a few nodes
+    auto tx = gdb->begin_transaction();
+      gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
+                                  {"age", boost::any(42)}});
+     nid = gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                  {"age", boost::any(36)}});
+      gdb->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
+                                  {"age", boost::any(58)}});
+
+    gdb->commit_transaction();
+  }
+  {
+    // delete the node
+    auto tx = gdb->begin_transaction();
+    gdb->delete_node(nid);
+    gdb->commit_transaction();
+  }
+
+  {
+    // check that the node doesn't exist anymore
+    auto tx = gdb->begin_transaction();
+    REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
+    gdb->abort_transaction();
+  }
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+TEST_CASE("Checking that deleting a node works also within a transaction", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t nid;
+  {
+    // add a few nodes
+    auto tx = gdb->begin_transaction();
+    gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
+                                  {"age", boost::any(42)}});
+    nid =
+      gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                  {"age", boost::any(36)}});
+    gdb->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
+                                  {"age", boost::any(58)}});
+
+    gdb->commit_transaction();
+  }
+  {
+    // delete the node
+    auto tx = gdb->begin_transaction();
+    gdb->delete_node(nid);
+    REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
+    gdb->commit_transaction();
+  }
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+
+TEST_CASE("Checking that aborting a delete transaction works", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t nid;
+  {
+    auto tx = gdb->begin_transaction();
+    gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
+                                  {"age", boost::any(42)}});
+    nid =
+      gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                  {"age", boost::any(36)}});
+    gdb->commit_transaction();
+  }
+  {
+    auto tx = gdb->begin_transaction();
+    gdb->delete_node(nid);
+    gdb->abort_transaction();
+  }
+  {
+    auto tx = gdb->begin_transaction();
+    REQUIRE_NOTHROW(gdb->node_by_id(nid));
+    gdb->abort_transaction();
+  }
+  
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+TEST_CASE("Checking that a delete transaction does not interfer with another transaction", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+
+  // TODO
+  
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
 /* -------------------------------------------------------------------------------- */
 
 #if TEST_INCORRECT

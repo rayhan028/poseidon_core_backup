@@ -38,7 +38,7 @@ TEST_CASE("Creating nodes", "[graph_db]") {
 
   // TODO
   for (int i = 0; i < 100; i++) {
-    auto p1 = graph->add_node("Person",
+    graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
                                {"number", boost::any(i)},
@@ -547,7 +547,7 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
 
     // and check whether the updates are available within the transaction
     auto &n2 = graph->node_by_id(p1);
-    graph->foreach_from_relationship_of_node(n1, [&](relationship &rel) {
+    graph->foreach_from_relationship_of_node(n2, [&](relationship &rel) {
       auto reldesc = graph->get_rship_description(rel);
       std::cout << reldesc << std::endl;
 
@@ -595,9 +595,8 @@ TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
   auto graph = pool->create_graph("my_graph");
 
   auto tx = graph->begin_transaction();
-  // TODO: see https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core/-/issues/7
   for (int i = 0u; i < 10000; i++) {
-    auto p1 = graph->add_node("Person",
+    graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
                                {"number", boost::any(i)},
@@ -614,9 +613,7 @@ TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
   
   auto i = 1;
   
@@ -659,10 +656,8 @@ TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
   graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
   
-#ifdef USE_TX
   graph->commit_transaction();
   tx = graph->begin_transaction();
-#endif
   
   node::id_t next_node = graph->get_nodes()->as_vec().first_available();
   relationship::id_t next_rship = graph->get_relationships()->as_vec().first_available();
@@ -677,14 +672,24 @@ TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
   for (relationship::id_t i = 0; i < next_rship; i++)
     graph->delete_relationship(i);
   
-  next_node = graph->get_nodes()->as_vec().first_available();
-  next_rship = graph->get_relationships()->as_vec().first_available();
-  REQUIRE(next_node == 0);
-  REQUIRE(next_rship == 0);
-
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
+
+  tx = graph->begin_transaction();
+
+  int num = 0;
+  graph->nodes([&num](node& n) {
+    num++;
+  });
+  REQUIRE(num == 0);
+  /*
+  num = 0;
+  graph->relationships([&num](relationship& r) {
+    spdlog::info("---> {}", r.id());
+    num++;
+  });
+  REQUIRE(num == 0);
+  */
+  graph->commit_transaction();
 
   graph_pool::destroy(pool);
 } 
@@ -693,10 +698,7 @@ TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
-#ifdef USE_TX
-  auto tx = graph->begin_transaction();
-#endif
-  
+  auto tx = graph->begin_transaction();  
   auto i = 1;
   
   auto p1 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
@@ -711,10 +713,8 @@ TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
   graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
   
-#ifdef USE_TX
   graph->commit_transaction();
   tx = graph->begin_transaction();
-#endif
   
   node::id_t next_node = graph->get_nodes()->as_vec().first_available();
   for (node::id_t i = 1; i < next_node; i++)
@@ -723,14 +723,19 @@ TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
   for (node::id_t i = 1; i < next_rship; i++)
     graph->delete_relationship(i); 
   
+  int num = 0;
+  graph->nodes([&num](node& n) {
+    num++;
+  });
+  REQUIRE(num == 1);
+  /*
   next_node = graph->get_nodes()->as_vec().first_available();
   next_rship = graph->get_relationships()->as_vec().first_available();
   REQUIRE(next_node == 1);
   REQUIRE(next_rship == 1);
+  */
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
   graph_pool::destroy(pool);
 }

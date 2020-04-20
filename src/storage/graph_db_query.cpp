@@ -45,8 +45,10 @@ struct scan_task {
     while (iter) {
 #ifdef USE_TX
       auto &n = *iter;
-      auto &nv = graph_db_->get_valid_node_version(n, xid);
-      consumer_(nv);
+      if (n.cts == INF) {
+        auto &nv = graph_db_->get_valid_node_version(n, xid);
+        consumer_(nv);
+      }
 #else
       consumer_(*iter);
 #endif
@@ -70,9 +72,11 @@ void graph_db::nodes_by_label(const std::string &label,
   auto lc = dict_->lookup_string(label);
   for (auto &n : nodes_->as_vec()) {
 #ifdef USE_TX
-    auto &nv = get_valid_node_version(n, txid);
-    if (nv.node_label == lc) {
-      consumer(nv);
+    if (n.cts == INF) {
+      auto &nv = get_valid_node_version(n, txid);
+      if (nv.node_label == lc) {
+        consumer(nv);
+      }
     }
 #else
     if (n.node_label == lc)
@@ -112,8 +116,13 @@ void graph_db::nodes(node_consumer_func consumer) {
 
   for (auto &n : nodes_->as_vec()) {
 #ifdef USE_TX
-    auto &nv = get_valid_node_version(n, txid);
-    consumer(nv);
+    spdlog::info("#{} ===> {},{} | {}", n.id(), short_ts(n.bts), short_ts(n.cts), short_ts(txid));
+    if (n.cts == INF) {
+      try {
+        auto &nv = get_valid_node_version(n, txid);
+        consumer(nv);
+      } catch (unknown_id& exc) { /* ignore */ }
+    }
 #else
     consumer(n);
 #endif

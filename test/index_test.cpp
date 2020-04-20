@@ -53,7 +53,7 @@ TEST_CASE("Creating an index on nodes", "[index]") {
 #endif
 
   for (int i = 0; i < 100; i++) {
-    auto p1 = graph->add_node("Person",
+    graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
                                {"id", boost::any(i)},

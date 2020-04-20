@@ -41,7 +41,6 @@ void load_snb_data(graph_db_ptr &graph,
                     std::vector<std::string> &rship_files, bool strict = true) {
   auto delim = '|';
   graph_db::mapping_t mapping;
-  bool nodes_imported = false, rships_imported = false;
   std::mutex imtx;
 
   if (!node_files.empty()) {
