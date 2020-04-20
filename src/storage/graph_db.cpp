@@ -121,7 +121,13 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         log_node_record rec { pmlog::log_delete, pmlog::log_node, node_id, 
               n.node_label, n.from_rship_list, n.to_rship_list, n.property_list };
         ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));       
-        // TODO: log property delete
+        // log property delete
+        auto cb = [log_id, node_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
+          log_property_record rec{ pmlog::log_delete, pmlog::log_property,
+              oid, 0, items, next, node_id };
+          ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
+        };
+        properties_->foreach_property_set(node_id, cb);
 #endif
         // Because there might be an active transaction which still needs the object
         // we cannot delete the node, yet. However, we set the bts and cts accordingly.
@@ -197,6 +203,13 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
         ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));       
         // TODO: log property delete
+        auto cb = [log_id, rel_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
+          log_property_record rec{ pmlog::log_update, pmlog::log_property,
+              oid, 0, items, next, rel_id };
+          ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
+        };
+        properties_->foreach_property_set(rel_id, cb);
+
 #endif
         // Because there might be an active transaction which still needs the object
         // we cannot delete the relationship, yet. However, we set the cts accordingly.
