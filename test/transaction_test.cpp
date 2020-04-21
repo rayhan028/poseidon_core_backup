@@ -90,7 +90,9 @@ graph_db_ptr create_graph_db() { return p_make_ptr<graph_db>(); }
 
 #endif
 
-TEST_CASE("Checking that a newly inserted record exist in the transaction",
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a newly inserted node exist in the transaction",
           "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -109,7 +111,33 @@ TEST_CASE("Checking that a newly inserted record exist in the transaction",
 #endif
 }
 
-TEST_CASE("Checking that a update is undone after abort", "[transaction]") {
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a newly inserted relationship exist in the transaction",
+          "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  auto tx = gdb->begin_transaction();
+  auto m = gdb->add_node("Movie", {});
+  auto a = gdb->add_node("Actor", {});
+  auto rid = gdb->add_relationship(a, m, ":PLAYED_IN", {});
+ 
+  auto &my_rship = gdb->rship_by_id(rid);
+  REQUIRE(my_rship.id() == rid);
+  gdb->commit_transaction();
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a node update is undone after abort", "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
   auto gdb = create_graph_db(pop);
@@ -156,6 +184,58 @@ TEST_CASE("Checking that a update is undone after abort", "[transaction]") {
 #endif
 }
 
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a relationship update is undone after abort", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+
+  relationship::id_t rid = 0;
+  {
+    // create node
+    auto tx = gdb->begin_transaction();
+    auto m = gdb->add_node("Movie", {});
+    auto a = gdb->add_node("Actor", {});
+    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
+
+    gdb->commit_transaction();
+  }
+
+  {
+    // update relationship
+    auto tx = gdb->begin_transaction();
+    auto &r = gdb->rship_by_id(rid);
+    gdb->update_relationship(r,
+                     {{
+                         "role",
+                         boost::any(std::string("Cop")),
+                     }},
+                     ":PLAYED_AS");
+    // but abort
+    gdb->abort_transaction();
+  }
+
+  {
+    // check the node
+    auto tx = gdb->begin_transaction();
+    auto &r = gdb->rship_by_id(rid);
+    auto rd = gdb->get_rship_description(r);
+    REQUIRE(rd.label == ":PLAYED_IN");
+    REQUIRE(get_property<std::string>(rd.properties, "role") == "Killer");
+    gdb->abort_transaction();
+  }
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
 TEST_CASE("Checking that an insert is undone after abort", "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -180,6 +260,8 @@ TEST_CASE("Checking that an insert is undone after abort", "[transaction]") {
   drop_graph_db(pop, gdb);
 #endif
 }
+
+/* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a newly inserted record is not visible in another "
           "transaction",
@@ -233,6 +315,8 @@ TEST_CASE("Checking that a newly inserted record is not visible in another "
 #endif
 }
 
+/* ----------------------------------------------------------------------- */
+
 TEST_CASE("Checking that a newly inserted record becomes visible after commit",
           "[transaction]") {
 #ifdef USE_PMDK
@@ -265,6 +349,8 @@ TEST_CASE("Checking that a newly inserted record becomes visible after commit",
   drop_graph_db(pop, gdb);
 #endif
 }
+
+/* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a read transaction reads the correct version of a "
           "updated node",
@@ -357,6 +443,8 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
 #endif
 }
 
+/* ----------------------------------------------------------------------- */
+
 TEST_CASE("Checking that a update transaction is aborted if the object is "
           "already locked by another transaction",
           "[transaction]") {
@@ -424,6 +512,8 @@ barrier b1, b2, b3;
 #endif
 }
 
+/* ----------------------------------------------------------------------- */
+
 TEST_CASE("Checking basic transaction level GC", "[transaction][gc]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -453,6 +543,8 @@ TEST_CASE("Checking basic transaction level GC", "[transaction][gc]") {
   drop_graph_db(pop, gdb);
 #endif
 }
+
+/* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
 #ifdef USE_PMDK
@@ -554,6 +646,8 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
 #endif
 }
 
+/* ----------------------------------------------------------------------- */
+
 TEST_CASE("Checking that deleting a node works", "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -592,6 +686,8 @@ TEST_CASE("Checking that deleting a node works", "[transaction]") {
 #endif
 }
 
+/* ----------------------------------------------------------------------- */
+
 TEST_CASE("Checking that deleting a node works also within a transaction", "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -626,6 +722,7 @@ TEST_CASE("Checking that deleting a node works also within a transaction", "[tra
 #endif
 }
 
+/* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that aborting a delete transaction works", "[transaction]") {
 #ifdef USE_PMDK
@@ -660,6 +757,8 @@ TEST_CASE("Checking that aborting a delete transaction works", "[transaction]") 
 #endif
 }
 
+/* ----------------------------------------------------------------------- */
+
 TEST_CASE("Checking that a delete transaction does not interfer with another transaction", "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -670,7 +769,7 @@ TEST_CASE("Checking that a delete transaction does not interfer with another tra
 
   barrier b1, b2, b3;
   node::id_t nid;
-  
+
  {
     auto tx = gdb->begin_transaction();
     gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
