@@ -57,8 +57,8 @@ void graph_db::runtime_initialize() {
   rships_->runtime_initialize();
   // make sure the dictionary is initialized
   dict_->initialize();
-  // TODO: perform recovery using the undo log!!
-
+  // perform recovery using the undo log
+  apply_undo_log();
   // recreate volatile objects: active_tx_ table and mutex
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   oldest_xid_ = 0;
@@ -202,7 +202,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
         log_rship_record rec { pmlog::log_delete, pmlog::log_rship, rel_id,
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
         ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));       
-        // TODO: log property delete
+        // log property delete
         auto cb = [log_id, rel_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
           log_property_record rec{ pmlog::log_update, pmlog::log_property,
               oid, 0, items, next, rel_id };
@@ -262,131 +262,13 @@ bool graph_db::commit_transaction() {
   }
 
   // process dirty_nodes list
-  for  (auto node_id : tx->dirty_nodes()) {
+  for (auto node_id : tx->dirty_nodes()) {
     commit_dirty_node(tx, node_id);
-#if 0
- 	   auto &n = nodes_->get(node_id);
-	  /* A dirty object was just inserted, when add_node() or update_node() was executed.
-	   * So there must be atleast one dirty version.
-	   */
-
-	  if (!n.has_dirty_versions()) {
-      // TODO: in case of inserts perform undo using the log
-		  throw transaction_abort();
-	  }
-	  // get the version of dirty object.
-	  // Note: Dirty version are always put in front of the list.
-	  // If that order is changed, then same order must be used during access.
-	  if(const auto& dn {n.dirty_list->front()}; !dn->updated()) {
-		  // case #1: we have added a new node to node_list, but its properties
-		  // are stored in a dirty_node object in this case, we simply copy the
-		  // properties to property_list and release the lock
-		  // spdlog::info("commit INSERT transaction {}: copy properties", xid);
-		  copy_properties(n, dn);
-		  // set bts/cts
-		  n.set_timestamps(xid, INF);
-		  // we can already delete the object from the dirty version list
-		  n.dirty_list->pop_front();
-	  } else {
-		  // case #2: we have updated a node, thus copy both properties
-		  // and node version to the main tables
-		  /// spdlog::info("commit UPDATE transaction {}: copy properties", xid);
-		  // update node (label)
-#ifdef USE_LOGGING
-      auto log_id = current_transaction_->logid(); 
-#endif 
-
-      if (dn->elem_.bts == dn->elem_.cts) {
-        // spdlog::info("COMMIT DELETE: {}, {}", dn->elem_.bts, dn->elem_.cts);
-#ifdef USE_LOGGING
-        log_del_record rec { pmlog::log_delete, pmlog::log_node, node_id };
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_del_record));       
-        // TODO: log property delete
-#endif
-        // Because there might be an active transaction which still needs the object
-        // we cannot delete the node, yet. However, we set the cts accordingly.
-		    n.set_cts(xid);
-		    // we can already delete the object from the dirty version list
-		    n.dirty_list->pop_front();
-		    // release the lock of the old version.
-		    n.dirty_list->front()->elem_.unlock();
-      }
-      else {
-#ifdef USE_LOGGING
-        // create and append a log_node_record BEFORE we copy the properties and override the label
-        log_node_record rec{ pmlog::log_update, pmlog::log_node, node_id, 
-          n.node_label, n.from_rship_list, n.to_rship_list, n.property_list};
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));
-#endif
-		    n.node_label = dn->elem_.node_label;
-		    copy_properties(n, dn);
-		    /// spdlog::info("COMMIT UPDATE: set new={},{} @{}", xid, INF,
-		    ///             (unsigned long)nptr);
-		    n.set_timestamps(xid, INF);
-		    /// spdlog::info("COMMIT UPDATE: set old.cts={} @{}", xid,
-		    ///             (unsigned long)&(dn->node_));
-		    // we can already delete the object from the dirty version list
-		    n.dirty_list->pop_front();
-		    // release the lock of the old version.
-		    n.dirty_list->front()->elem_.unlock();
-	    }
-    }
-	  // finally, release the lock of the persistent object and initiate the
-	  // garbage collection
-	  n.unlock();
-	  n.gc(oldest_xid_);
-  #endif 
   }
-  // process dirty_rships list
- for  (auto rel_id : tx->dirty_relationships())  {
-    commit_dirty_relationship(tx, rel_id);
-#if 0
-	auto& r = rships_->get(rel_id);
-	  /* A dirty object was just inserted, when add_relation() or update_relation() was executed.
-	   * So there must be at least one dirty version.
-	   */
-	  if (!r.has_dirty_versions()) {
-      // TODO: in case of inserts perform undo using the log
-		  throw transaction_abort();
-	  }
-	  // get the version of dirty object.
-      // Note: Dirty versions are always put in front of the list.
-      // If that order is changed, then same order must be used during access.
-	  if(const auto& dr {r.dirty_list->front()}; !dr->updated()) {
-		  // case #1: we have added a new relationship to relationship_list, but
-		  // its properties are stored in a dirty_rship object in this case, we
-		  // simply copy the properties to property_list and release the lock
-		  copy_properties(r, dr);
-		  // set bts/cts
-		  r.set_timestamps(xid, INF);
-		  // we can already delete the object from the dirty version list
-		  r.dirty_list->pop_front();
-	  } else {
-		  // case #2: we have updated a relationship, thus copy both properties
-		  // and relationship version to the main tables
-		  // update relationship (label)
-#ifdef USE_LOGGING
-      // create and append a log_rship_record BEFORE we copy the properties and override the label
-      auto log_id = current_transaction_->logid(); 
- 
-      log_rship_record rec{ pmlog::log_update, pmlog::log_rship, rel_id, 
-          r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
 
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));
-#endif
-		  r.rship_label = dr->elem_.rship_label;
-		  copy_properties(r, dr);
-		  r.set_timestamps(xid, INF);
-		  // we can already delete the dirty object from the dirty version list
-		  r.dirty_list->pop_front();
-		  // release the lock of the older version.
-		  r.dirty_list->front()->elem_.unlock();
-	  }
-	  // finally, release the lock of the persistent object and initiate the
-	  // garbage collection
-	  r.unlock();
-	  r.gc(oldest_xid_);
-#endif
+  // process dirty_rships list
+ for (auto rel_id : tx->dirty_relationships())  {
+    commit_dirty_relationship(tx, rel_id);
   }
 
 #ifdef USE_LOGGING
@@ -459,7 +341,7 @@ node::id_t graph_db::add_node(const std::string &label,
 #endif
   auto type_code = dict_->insert(label);
 #ifdef USE_LOGGING
-  // TODO: create and append a log_ins_record BEFORE the node table is modified
+  // create and append a log_ins_record BEFORE the node table is modified
   auto log_id = current_transaction_->logid(); 
   auto cb = [log_id, this](offset_t n_id) {
     log_ins_record rec{ pmlog::log_insert, pmlog::log_node, n_id};
@@ -569,7 +451,6 @@ node &graph_db::get_valid_node_version(node &n, xid_t xid) {
     // because the node is locked we know that it was already updated by us
     // and we should look for the dirty object containing the new values
     assert(n.has_dirty_versions());
-    // TODO: check if we have deleted it 
     return n.find_valid_version(xid)->elem_;
   }
   // or (2) is not locked and xid is in [bts,cts]
@@ -886,7 +767,7 @@ void graph_db::delete_node(node::id_t id) {
   newv->elem_.set_dirty();
 
   current_transaction()->add_dirty_node(n.id());
-  spdlog::info("delete_node: {}", n.id());
+  // spdlog::info("delete_node: {}", n.id());
 #else 
   auto &n = this->node_by_id(id);
   // delete the node properties

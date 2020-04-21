@@ -668,8 +668,58 @@ TEST_CASE("Checking that a delete transaction does not interfer with another tra
   auto gdb = create_graph_db();
 #endif
 
-  // TODO
+  barrier b1, b2, b3;
+  node::id_t nid;
   
+ {
+    auto tx = gdb->begin_transaction();
+    gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
+                                  {"age", boost::any(42)}});
+    nid =
+      gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                  {"age", boost::any(36)}});
+    gdb->commit_transaction();
+  }
+
+  // we create a thread that tries to read "Ann"
+  auto t1 = std::thread([&]() {
+    auto tx = gdb->begin_transaction();
+
+    // inform tx #2 that we have started the transaction
+    b1.notify();
+
+    // wait until tx #2 has deleted the node.
+    b2.wait();
+
+    auto &n = gdb->node_by_id(nid);
+    // spdlog::info("read node @{}", (unsigned long)&n);
+    auto nd = gdb->get_node_description(n);
+    REQUIRE(nd.label == ":Person");
+    REQUIRE(get_property<int>(nd.properties, "age") == 36);
+
+    // now, tx #2 can commit
+    b3.notify();
+    gdb->commit_transaction();
+  });
+
+ // we create another thread that tries to delete "Ann"
+  auto t2 = std::thread([&]() {
+    // make sure that tx #1 has already started 
+    b1.wait();
+
+    auto tx = gdb->begin_transaction();
+    gdb->delete_node(nid);
+    
+    // inform tx #1 that we have deleted the node
+    b2.notify();
+
+    // wait until tx #1 has read the node
+    b3.wait();
+    gdb->commit_transaction();
+  });
+  t1.join();
+  t2.join();
+
 #ifdef USE_PMDK
   drop_graph_db(pop, gdb);
 #endif

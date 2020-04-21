@@ -263,6 +263,11 @@ public:
    */
   void print_mem_usage();
 
+  /**
+   * Perform recovery using the undo log.
+   */ 
+  void apply_undo_log();
+
   /* ---------------- index management ---------------- */
   
   /**

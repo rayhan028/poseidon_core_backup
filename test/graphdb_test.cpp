@@ -36,7 +36,6 @@ TEST_CASE("Creating nodes", "[graph_db]") {
 
   auto tx = graph->begin_transaction();
 
-  // TODO
   for (int i = 0; i < 100; i++) {
     graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
