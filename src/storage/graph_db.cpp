@@ -95,12 +95,15 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 	  // get the version of dirty object.
 	  // Note: Dirty version are always put in front of the list.
 	  // If that order is changed, then same order must be used during access.
-	  if(const auto& dn {n.dirty_list->front()}; !dn->updated()) {
+	  if (const auto& dn {n.dirty_list->front()}; !dn->updated()) {
 		  // CASE #1 = INSERT: we have added a new node to node_list, but its properties
 		  // are stored in a dirty_node object in this case, we simply copy the
 		  // properties to property_list and release the lock
 		  // spdlog::info("commit INSERT transaction {}: copy properties", xid);
 		  copy_properties(n, dn);
+      n.node_label = dn->elem_.node_label;
+      n.from_rship_list = dn->elem_.from_rship_list;
+      n.to_rship_list = dn->elem_.to_rship_list;
 		  // set bts/cts
 		  n.set_timestamps(xid, INF);
 		  // we can already delete the object from the dirty version list
@@ -149,6 +152,8 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));
 #endif
 		    n.node_label = dn->elem_.node_label;
+        n.from_rship_list = dn->elem_.from_rship_list;
+        n.to_rship_list = dn->elem_.to_rship_list;
 		    copy_properties(n, dn);
 		    // spdlog::info("COMMIT UPDATE: set new={},{} @{}", xid, INF, n.id());
 		    n.set_timestamps(xid, INF);
@@ -385,15 +390,17 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
 #ifdef USE_TX
   check_tx_context();
   xid_t txid = current_transaction()->xid();
+  auto &from_node = node_by_id(from_id);
+  auto &to_node = node_by_id(to_id);
 #else
   xid_t txid = 0;
-#endif
   auto &from_node = nodes_->get(from_id);
   auto &to_node = nodes_->get(to_id);
+#endif
   auto type_code = dict_->insert(label);
 #ifdef USE_LOGGING
   // create and append a log_ins_record BEFORE the rship table is modified
-  auto log_id = current_transaction_->logid(); 
+  auto log_id = current_transaction()->logid(); 
   auto cb = [log_id, this](offset_t r_id) {
     log_ins_record rec{ pmlog::log_insert, pmlog::log_rship, r_id};
     ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
@@ -428,6 +435,11 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
     r.property_list = pid;
   }
 #endif
+#ifdef USE_TX
+  // TODO
+  update_from_node(current_transaction(), from_node, r);
+  update_to_node(current_transaction(), to_node, r);
+#else
   // update the list of relationships for each of both nodes
   if (from_node.from_rship_list == UNKNOWN)
     from_node.from_rship_list = rid;
@@ -442,6 +454,7 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
     r.next_dest_rship = to_node.to_rship_list;
     to_node.to_rship_list = rid;
   }
+#endif
   return rid;
 }
 
@@ -636,26 +649,26 @@ void graph_db::update_node(node &n, const properties_t &props,
   }
 
   if (first_update) {
-  // first, we make a copy of the original node which is stored in
-  // the dirty list
-  std::list<p_item> pitems =
+    // first, we make a copy of the original node which is stored in
+    // the dirty list
+    std::list<p_item> pitems =
       properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
-  // cts is set to txid
-  const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
-  oldv->elem_.set_timestamps(n.bts, txid);
-  oldv->elem_.set_dirty();
-  // but unlock it for readers
-  oldv->elem_.unlock();
+    // cts is set to txid
+    const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
+    oldv->elem_.set_timestamps(n.bts, txid);
+    oldv->elem_.set_dirty();
+    // but unlock it for readers
+    oldv->elem_.unlock();
 
-  // ... and create another copy as the new version
-  pitems = properties_->apply_updates(pitems, props, dict_);
-  const auto &newv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
-  newv->elem_.set_timestamps(txid, INF);
-  newv->elem_.set_dirty();
-  if (lc > 0)
-    newv->elem_.node_label = lc;
+    // ... and create another copy as the new version
+    pitems = properties_->apply_updates(pitems, props, dict_);
+    const auto &newv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
+    newv->elem_.set_timestamps(txid, INF);
+    newv->elem_.set_dirty();
+    if (lc > 0)
+      newv->elem_.node_label = lc;
 
-  current_transaction()->add_dirty_node(n.id());
+    current_transaction()->add_dirty_node(n.id());
   }
 #else
   if (lc > 0)
@@ -667,6 +680,116 @@ void graph_db::update_node(node &n, const properties_t &props,
     n2.property_list = rid;
   }
 #endif
+}
+
+void graph_db::update_from_node(transaction_ptr tx, node &n, relationship& r) {
+  xid_t txid = tx->xid();
+
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!n.is_locked_by(txid) && !n.try_lock(txid))
+    throw transaction_abort();
+
+  // make sure we don't overwrite an object that was read by 
+  // a more recent transaction
+  if (n.rts > txid)
+   throw transaction_abort();
+
+  bool first_update = true;
+  if (n.has_dirty_versions()) {
+    // let's look for a version which we already have created in this transaction
+    try {
+      auto& dn = n.get_dirty_version(txid)->elem_;
+      // apply update to dn
+      if (dn.from_rship_list == UNKNOWN)
+        dn.from_rship_list = r.id();
+      else {
+        r.next_src_rship = dn.from_rship_list;
+        dn.from_rship_list = r.id();
+      }
+      first_update = false;
+    } catch (unknown_id& exc) { /* do nothing */ }
+  }
+
+  if (first_update) {
+    // first, we make a copy of the original node which is stored in
+    // the dirty list
+    std::list<p_item> pitems =
+      properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
+    // cts is set to txid
+    const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
+    oldv->elem_.set_timestamps(n.bts, txid);
+    oldv->elem_.set_dirty();
+    // but unlock it for readers
+    oldv->elem_.unlock();
+
+    // ... and create another copy as the new version
+    const auto &newv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
+    newv->elem_.set_timestamps(txid, INF);
+    newv->elem_.set_dirty();
+    
+    if (newv->elem_.from_rship_list == UNKNOWN)
+        newv->elem_.from_rship_list = r.id();
+    else {
+        r.next_src_rship = newv->elem_.from_rship_list;
+        newv->elem_.from_rship_list = r.id();
+    }
+    current_transaction()->add_dirty_node(n.id());
+  }
+}
+
+void graph_db::update_to_node(transaction_ptr tx, node &n, relationship& r) {
+ xid_t txid = tx->xid();
+
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!n.is_locked_by(txid) && !n.try_lock(txid))
+    throw transaction_abort();
+
+  // make sure we don't overwrite an object that was read by 
+  // a more recent transaction
+  if (n.rts > txid)
+   throw transaction_abort();
+
+  bool first_update = true;
+  if (n.has_dirty_versions()) {
+    // let's look for a version which we already have created in this transaction
+    try {
+      auto& dn = n.get_dirty_version(txid)->elem_;
+      // apply update to dn
+      if (dn.to_rship_list == UNKNOWN)
+        dn.to_rship_list = r.id();
+      else {
+        r.next_dest_rship = dn.to_rship_list;
+        dn.to_rship_list = r.id();
+      }
+      first_update = false;
+    } catch (unknown_id& exc) { /* do nothing */ }
+  }
+
+  if (first_update) {
+    // first, we make a copy of the original node which is stored in
+    // the dirty list
+    std::list<p_item> pitems =
+      properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
+    // cts is set to txid
+    const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
+    oldv->elem_.set_timestamps(n.bts, txid);
+    oldv->elem_.set_dirty();
+    // but unlock it for readers
+    oldv->elem_.unlock();
+
+    // ... and create another copy as the new version
+    const auto &newv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
+    newv->elem_.set_timestamps(txid, INF);
+    newv->elem_.set_dirty();
+    
+    if (newv->elem_.from_rship_list == UNKNOWN)
+        newv->elem_.from_rship_list = r.id();
+    else {
+        r.next_src_rship = newv->elem_.from_rship_list;
+        newv->elem_.from_rship_list = r.id();
+    }
+    current_transaction()->add_dirty_node(n.id());
+  }
 }
 
 void graph_db::update_relationship(relationship &r, const properties_t &props,

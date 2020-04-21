@@ -116,7 +116,7 @@ void graph_db::nodes(node_consumer_func consumer) {
 
   for (auto &n : nodes_->as_vec()) {
 #ifdef USE_TX
-    spdlog::info("#{} ===> {},{} | {}", n.id(), short_ts(n.bts), short_ts(n.cts), short_ts(txid));
+    // spdlog::info("#{} ===> {},{} | {}", n.id(), short_ts(n.bts), short_ts(n.cts), short_ts(txid));
     if (n.cts == INF) {
       try {
         auto &nv = get_valid_node_version(n, txid);
@@ -163,7 +163,8 @@ void graph_db::foreach_from_relationship_of_node(const node &n,
   auto relship_id = n.from_rship_list;
   while (relship_id != UNKNOWN) {
     auto &relship = rship_by_id(relship_id);
-    consumer(relship);
+    if (relship.cts == INF)
+      consumer(relship);
     relship_id = relship.next_src_rship;
   }
 }
@@ -363,7 +364,8 @@ void graph_db::foreach_to_relationship_of_node(const node &n,
   auto relship_id = n.to_rship_list;
   while (relship_id != UNKNOWN) {
     auto &relship = rship_by_id(relship_id);
-    consumer(relship);
+    if (relship.cts == INF)
+      consumer(relship);
     relship_id = relship.next_dest_rship;
   }
 }

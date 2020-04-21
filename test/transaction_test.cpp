@@ -236,7 +236,7 @@ TEST_CASE("Checking that a relationship update is undone after abort", "[transac
 
 /* ----------------------------------------------------------------------- */
 
-TEST_CASE("Checking that an insert is undone after abort", "[transaction]") {
+TEST_CASE("Checking that a node insert is undone after abort", "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
   auto gdb = create_graph_db(pop);
@@ -263,7 +263,59 @@ TEST_CASE("Checking that an insert is undone after abort", "[transaction]") {
 
 /* ----------------------------------------------------------------------- */
 
-TEST_CASE("Checking that a newly inserted record is not visible in another "
+TEST_CASE("Checking that a relationship insert is undone after abort", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+
+  node::id_t m, a;
+  relationship::id_t rid;
+
+  {
+    auto tx = gdb->begin_transaction();
+    m = gdb->add_node("Movie", {});
+    a = gdb->add_node("Actor", {});
+    gdb->commit_transaction();
+  }
+
+  { 
+    auto tx = gdb->begin_transaction();
+    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
+    gdb->abort_transaction();
+  }
+
+  {
+    // try to access via rid
+    auto tx = gdb->begin_transaction();
+
+    REQUIRE_THROWS_AS(gdb->rship_by_id(rid), unknown_id);
+
+    // try to access via node
+    auto& n = gdb->node_by_id(a);
+    
+    bool found = false;
+    gdb->foreach_from_relationship_of_node(n, [&found](auto& rship) {
+      found = true;
+    });
+    
+    REQUIRE(!found);
+    gdb->foreach_to_relationship_of_node(n, [&found](auto& rship) {
+      found = true;
+    });
+    REQUIRE(!found);
+  }
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a newly inserted node is not visible in another "
           "transaction",
           "[transaction]") {
 #ifdef USE_PMDK
@@ -315,6 +367,24 @@ TEST_CASE("Checking that a newly inserted record is not visible in another "
 #endif
 }
 
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a newly inserted relationship is not visible in another "
+          "transaction",
+          "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+
+  // TODO
+  
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a newly inserted record becomes visible after commit",

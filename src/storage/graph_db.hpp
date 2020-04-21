@@ -445,6 +445,18 @@ private:
   friend struct scan_task;
 
   /**
+   * Update the given node as the FROM node of the relationship. The relationship was already
+   * created in the same transaction.
+   */
+  void update_from_node(transaction_ptr tx, node &n, relationship& r);
+
+  /**
+   * Update the given node as the TO node of the relationship. The relationship was already
+   * created in the same transaction.
+   */
+  void update_to_node(transaction_ptr tx, node &n, relationship& r);
+
+  /**
    * Handle the commit of a node from the dirty list.
    */
   void commit_dirty_node(transaction_ptr tx, node::id_t node_id);
