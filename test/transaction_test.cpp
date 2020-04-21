@@ -378,16 +378,59 @@ TEST_CASE("Checking that a newly inserted relationship is not visible in another
 #else
   auto gdb = create_graph_db();
 #endif
+  node::id_t m, a;
+  {
+    auto tx = gdb->begin_transaction();
+    m = gdb->add_node("Movie", {});
+    a = gdb->add_node("Actor", {});
+    gdb->commit_transaction();
+  }
 
-  // TODO
-  
+  barrier b1, b2;
+  relationship::id_t rid;
+
+  /*
+   * Thread #1: create a new relationship
+   */
+  auto t1 = std::thread([&]() {
+    auto tx = gdb->begin_transaction();
+    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
+
+    // inform thread #2 that we have created a new node
+    b1.notify();
+    // but wait until thread #2 had a chance to try to read it..
+    b2.wait();
+
+    // now we can commit
+    gdb->commit_transaction();
+  });
+
+  /*
+   * Thread #2: try to read this relationship (should fail)
+   */
+  auto t2 = std::thread([&]() {
+    auto tx = gdb->begin_transaction();
+    // wait for thread #1
+    b1.wait();
+    // std::cout << "-------------------1---------------\n";
+    // gdb->dump();
+    REQUIRE_THROWS_AS(gdb->rship_by_id(rid), unknown_id);
+    gdb->commit_transaction();
+
+    // inform thread #1 that we are finished
+    b2.notify();
+  });
+
+  t1.join();
+  t2.join();
+
 #ifdef USE_PMDK
   drop_graph_db(pop, gdb);
 #endif
 }
 /* ----------------------------------------------------------------------- */
 
-TEST_CASE("Checking that a newly inserted record becomes visible after commit",
+TEST_CASE("Checking that a newly inserted node becomes visible after commit",
           "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -422,6 +465,46 @@ TEST_CASE("Checking that a newly inserted record becomes visible after commit",
 
 /* ----------------------------------------------------------------------- */
 
+TEST_CASE("Checking that a newly inserted relationship becomes visible after commit",
+          "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t m, a;
+  {
+    auto tx = gdb->begin_transaction();
+    m = gdb->add_node("Movie", {});
+    a = gdb->add_node("Actor", {});
+    gdb->commit_transaction();
+  }
+
+  relationship::id_t rid = 0;
+  {
+    auto tx = gdb->begin_transaction();
+    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
+    gdb->commit_transaction();
+  }
+
+  REQUIRE_THROWS(check_tx_context());
+
+  {
+    auto tx = gdb->begin_transaction();
+    auto &my_rship = gdb->rship_by_id(rid);
+    auto descr = gdb->get_rship_description(my_rship);
+    REQUIRE(descr.id == rid);
+    REQUIRE(descr.label == ":PLAYED_IN");
+    gdb->commit_transaction();
+  }
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
 TEST_CASE("Checking that a read transaction reads the correct version of a "
           "updated node",
           "[transaction]") {
