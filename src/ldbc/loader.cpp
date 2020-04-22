@@ -188,7 +188,7 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  std::shared_ptr<logger> file_logger;
+  std::shared_ptr<spdlog::logger> file_logger;
   if (!log_file.empty()) {
     file_logger = spdlog::basic_logger_mt("basic_logger", log_file);
     spdlog::set_default_logger(file_logger);  
