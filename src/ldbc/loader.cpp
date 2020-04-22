@@ -144,7 +144,7 @@ using namespace boost::program_options;
 
 int main(int argc, char **argv) {
   bool strict = false;
-  std::string db_name;
+  std::string db_name, log_file;
   std::string snb_home =
 #ifdef SF_10
     "/home/data/SNB_SF_10/";
@@ -159,6 +159,7 @@ int main(int argc, char **argv) {
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
         ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
         ("import,i", value<std::string>(&snb_home), "Path to directories containing SNB CSV files")
+        ("log,l", value<std::string>(&log_file), "Write log messages to the given file")
         ("db,d", value<std::string>(&db_name)->required(),"Database name (required)");
 
     variables_map vm;
@@ -173,6 +174,9 @@ int main(int argc, char **argv) {
     if (vm.count("import"))
       db_name = vm["import"].as<std::string>();
 
+    if (vm.count("log"))
+      log_file = vm["log"].as<std::string>();
+
     if (vm.count("strict"))
       strict = vm["strict"].as<bool>();
 
@@ -184,6 +188,11 @@ int main(int argc, char **argv) {
     return -1;
   }
 
+  std::shared_ptr<logger> file_logger;
+  if (!log_file.empty()) {
+    file_logger = spdlog::basic_logger_mt("basic_logger", log_file);
+    spdlog::set_default_logger(file_logger);  
+  }
   if (strict)
     spdlog::info("Using strict mode");
   else
