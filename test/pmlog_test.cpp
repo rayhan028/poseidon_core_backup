@@ -102,8 +102,10 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
                 else if (l.log_type() == pmlog::log_update) {
                     if (l.obj_type() == pmlog::log_node) {
                         auto rec = l.get<log_upd_node_record>();
-                        REQUIRE(rec->oid == 1237);
-                        REQUIRE(rec->label == 44);
+                        if (rec->oid == 1236)
+                            REQUIRE(rec->label == 42);
+                        if (rec->oid == 1237)
+                            REQUIRE(rec->label == 44);
                         nupdates++;
                     }
                 }
@@ -112,7 +114,7 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
         }
     }
     REQUIRE(ninserts == 1);
-    REQUIRE(nupdates == 1);
+    REQUIRE(nupdates == 2);
     REQUIRE(nlogs == 2);
     
 #ifdef USE_PMDK

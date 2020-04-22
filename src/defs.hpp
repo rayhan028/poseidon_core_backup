@@ -30,7 +30,7 @@
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-#define POSEIDON_VERSION "0.0.3"
+#define POSEIDON_VERSION "0.0.4"
 
 /**
  * Typedef used for codes in string dictionaries and type tables.

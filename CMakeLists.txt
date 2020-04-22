@@ -11,10 +11,10 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK       "Use Intel PMDK"                      ON)
-option(USE_PMDK_TX_FA "Use Intel PMDK Transactions for FA"  OFF) #Without turning ON USE_PMDK ON, "USE_PMDK_TX_FA" cannot be used.
-option(USE_TX         "Provide Transaction Support"         ON)
-option(BUILD_PYTHON   "Build python interface for poseidon" ON)
+option(USE_PMDK       "Use Intel PMDK"                         ON)
+option(USE_TX         "Provide Transaction Support"            ON)
+option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
+option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -45,6 +45,10 @@ include(pmdk)
 # Transaction support
 if(USE_TX MATCHES ON)
   add_definitions( "-DUSE_TX" )
+endif()
+
+if(USE_LOGGING MATCHES ON)
+  add_definitions( "-DUSE_LOGGING" )
 endif()
 
 configure_file(

@@ -257,14 +257,15 @@ property_set::id_t property_list::add_node_properties(offset_t nid,
 
 property_set::id_t property_list::add_pitems(offset_t nid,
                                              const std::list<p_item> &props,
-                                             dict_ptr &dct, bool is_node) {
+                                             dict_ptr &dct, bool is_node, 
+                                             std::function<void(offset_t)> callback) {
   property_set::id_t next_id = UNKNOWN;
   property_set::p_item_list pil;
   std::size_t pidx = 0, n = 0;
   for (auto &pi : props) {
     pil[pidx++] = pi;
     if (++n == props.size() || pidx == pil.max_size()) {
-      auto pr = properties_.store(property_set(nid, std::move(pil), next_id, is_node));
+      auto pr = properties_.store(property_set(nid, std::move(pil), next_id, is_node), callback);
       next_id = pr.first;
       pidx = 0;
       pil.fill(p_item());
@@ -452,6 +453,15 @@ properties_t property_list::all_properties(offset_t id, dict_ptr &dct) {
     pset_id = p.next;
   }
   return pmap;
+}
+
+void property_list::foreach_property_set(offset_t id, property_list::foreach_cb_func cb) {
+  offset_t pset_id = id;
+  while (pset_id != UNKNOWN) {
+    auto &p = properties_.at(pset_id);
+    cb(pset_id, p.items, p.next);
+    pset_id = p.next;
+  }
 }
 
 property_set::id_t property_list::update_properties(offset_t nid, offset_t id,

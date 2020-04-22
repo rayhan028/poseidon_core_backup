@@ -1,20 +1,22 @@
 #include <iostream>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 
 #include "defs.hpp"
 #include "graph_db.hpp"
 #include "ldbc.hpp"
 #include "config.h"
 
-#include "threadsafe_queue.hpp"
+#include "thread_pool.hpp"
 
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
 #define SF_10
-#define BUILD_INDEX
-
+#define CREATE_INDEX
+#define PARALLEL_LOAD
+// #define PARALLEL_RSHIP_LOAD
 
 #ifdef USE_PMDK
 
@@ -40,13 +42,40 @@ void load_snb_data(graph_db_ptr &graph,
   auto delim = '|';
   graph_db::mapping_t mapping;
   bool nodes_imported = false, rships_imported = false;
-  
-  if (!node_files.empty()){
-    spdlog::info("######## NODES ########");
+  std::mutex imtx;
 
-    std::vector<std::size_t> num_nodes(node_files.size());
-    auto i = 0;
-    for (auto &file : node_files){
+  if (!node_files.empty()) {
+    spdlog::info("--------- Importing nodes...");
+
+#ifdef PARALLEL_LOAD
+    std::vector<std::future<std::pair<std::string, std::size_t>>> res;
+    res.reserve(node_files.size());
+    thread_pool pool;
+
+    for (auto &file : node_files) {
+      res.push_back(pool.submit([&](){
+        std::vector<std::string> fp;
+        boost::split(fp, file, boost::is_any_of("/"));
+        assert(fp.back().find(".csv") != std::string::npos);
+        auto pos = fp.back().find("_");
+        auto label = fp.back().substr(0, pos);
+        if (label[0] >= 'a' && label[0] <= 'z')
+          label[0] -= 32;
+
+        // spdlog::info("processing file '{}'...", file);
+        auto num_nodes = strict 
+          ? graph->import_typed_nodes_from_csv(label, file, delim, mapping, &imtx)
+          : graph->import_nodes_from_csv(label, file, delim, mapping, &imtx);   
+        // spdlog::info("file '{}' finished.", file);
+        return std::make_pair(label, num_nodes);     
+      }));
+    }
+    for (auto &f : res) {
+      auto resp = f.get();
+      spdlog::info("{} '{}' node objects imported", resp.second, resp.first);
+    }
+#else
+    for (auto &file : node_files) {
       std::vector<std::string> fp;
       boost::split(fp, file, boost::is_any_of("/"));
       assert(fp.back().find(".csv") != std::string::npos);
@@ -55,22 +84,45 @@ void load_snb_data(graph_db_ptr &graph,
       if (label[0] >= 'a' && label[0] <= 'z')
         label[0] -= 32;
 
-      num_nodes[i] = strict 
+      auto num_nodes = strict 
         ? graph->import_typed_nodes_from_csv(label, file, delim, mapping)
         : graph->import_nodes_from_csv(label, file, delim, mapping);
-      spdlog::info("{} '{}' node objects imported", num_nodes[i], label);
-      if (num_nodes[i] > 0)
-        nodes_imported = true;
-      i++;
+      spdlog::info("{} '{}' node objects imported", num_nodes, label);
     }
+#endif
   }
 
-  if (!rship_files.empty()){
-    spdlog::info("################ RELATIONSHIPS ################");
+  if (!rship_files.empty()) {
+    spdlog::info("--------- Importing relationships ...");
     
-    std::vector<std::size_t> num_rships(rship_files.size());
-    auto i = 0;
-    for (auto &file : rship_files){
+#ifdef PARALLEL_RSHIP_LOAD
+    std::vector<std::future<std::pair<std::string, std::size_t>>> res;
+    res.reserve(rship_files.size());
+    thread_pool pool;
+
+    for (auto &file : rship_files) {
+      res.push_back(pool.submit([&](){
+        std::vector<std::string> fp;
+        boost::split(fp, file, boost::is_any_of("/"));
+        assert(fp.back().find(".csv") != std::string::npos);
+        std::vector<std::string> fn;
+        boost::split(fn, fp.back(), boost::is_any_of("_"));
+        auto label = ":" + fn[1];
+
+        auto num_rships = strict 
+          ? graph->import_typed_relationships_from_csv(file, delim, mapping, &imtx)
+          : graph->import_relationships_from_csv(file, delim, mapping, &imtx);
+        char buf[100];
+        sprintf(buf, "(%s)-[%s]-(%s)", fn[0].c_str(), label.c_str(), fn[2].c_str());
+        return std::make_pair(std::string(buf), num_rships);     
+      }));
+    }
+    for (auto &f : res) {
+      auto resp = f.get();
+      spdlog::info("{} '{}' relationship objects imported", resp.second, resp.first);
+    }
+#else
+    for (auto &file : rship_files) {
       std::vector<std::string> fp;
       boost::split(fp, file, boost::is_any_of("/"));
       assert(fp.back().find(".csv") != std::string::npos);
@@ -78,15 +130,13 @@ void load_snb_data(graph_db_ptr &graph,
       boost::split(fn, fp.back(), boost::is_any_of("_"));
       auto label = ":" + fn[1];
 
-      num_rships[i] = strict 
+      auto num_rships = strict 
       ? graph->import_typed_relationships_from_csv(file, delim, mapping)
       : graph->import_relationships_from_csv(file, delim, mapping);
       spdlog::info("{} ({})-[{}]-({}) relationship objects imported", 
-        num_rships[i], fn[0], label, fn[2]);
-      if (num_rships[i] > 0)
-        rships_imported = true;
-      i++;
+        num_rships, fn[0], label, fn[2]);
     }
+    #endif
   }
 }
 
@@ -261,10 +311,8 @@ int main(int argc, char **argv) {
   spdlog::info("trying to load data from {} and {}", snb_sta, snb_dyn);
   load_snb_data(graph, node_files, rship_files, strict);
 
-#ifdef BUILD_INDEX
-#ifdef USE_TX
+#ifdef CREATE_INDEX
   auto tx = graph->begin_transaction();
-#endif
   auto idx_1 = graph->create_index("Person", "id");
   auto idx_2 = graph->create_index("Post", "id");
   auto idx_3 = graph->create_index("Comment", "id");
@@ -272,8 +320,6 @@ int main(int argc, char **argv) {
   auto idx_5 = graph->create_index("Tag", "id");
   auto idx_6 = graph->create_index("Organisation", "id");
   auto idx_7 = graph->create_index("Forum", "id");
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 #endif
 }

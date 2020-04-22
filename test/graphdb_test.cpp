@@ -594,11 +594,9 @@ TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
   // TODO: see https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core/-/issues/7
-  for (int i = 0u; i < 1000; i++) {
+  for (int i = 0u; i < 10000; i++) {
     auto p1 = graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
@@ -607,9 +605,7 @@ TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
                                {"dummy2", boost::any(1.2345)}},
                               true);
   }
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 
   graph_pool::destroy(pool);
 } 

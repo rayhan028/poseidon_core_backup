@@ -110,8 +110,8 @@ void node_list::runtime_initialize() {
   }
 }
 
-node::id_t node_list::append(node &&n, xid_t owner) {
-  auto p = nodes_.append(std::move(n));
+node::id_t node_list::append(node &&n, xid_t owner, std::function<void(offset_t)> callback) {
+  auto p = nodes_.append(std::move(n), callback);
   p.second->id_ = p.first;
   if (owner != 0) {
     /// spdlog::info("lock node #{} by {}", p.first, owner);
@@ -121,8 +121,8 @@ node::id_t node_list::append(node &&n, xid_t owner) {
   return p.first;
 }
 
-node::id_t node_list::insert(node &&n, xid_t owner) {
-  auto p = nodes_.store(std::move(n));
+node::id_t node_list::insert(node &&n, xid_t owner, std::function<void(offset_t)> callback) {
+  auto p = nodes_.store(std::move(n), callback);
   p.second->id_ = p.first;
   if (owner != 0) {
     /// spdlog::info("lock node #{} by {}", p.first, owner);
@@ -131,6 +131,7 @@ node::id_t node_list::insert(node &&n, xid_t owner) {
 
   return p.first;
 }
+
 node::id_t node_list::add(node &&n, xid_t owner) {
   if (nodes_.is_full())
     nodes_.resize(1);

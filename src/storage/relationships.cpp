@@ -52,8 +52,8 @@ void relationship_list::runtime_initialize() {
   }
 }
 
-relationship::id_t relationship_list::append(relationship &&r, xid_t owner) {
-  auto p = rships_.append(std::move(r));
+relationship::id_t relationship_list::append(relationship &&r, xid_t owner, std::function<void(offset_t)> callback) {
+  auto p = rships_.append(std::move(r), callback);
   p.second->id_ = p.first;
   if (owner != 0) {
     /// spdlog::info("lock relationship #{} by {}", p.first, owner);
@@ -62,8 +62,8 @@ relationship::id_t relationship_list::append(relationship &&r, xid_t owner) {
   return p.first;
 }
 
-relationship::id_t relationship_list::insert(relationship &&r, xid_t owner) {
-  auto p = rships_.store(std::move(r));
+relationship::id_t relationship_list::insert(relationship &&r, xid_t owner, std::function<void(offset_t)> callback) {
+  auto p = rships_.store(std::move(r), callback);
   p.second->id_ = p.first;
   if (owner != 0) {
     /// spdlog::info("lock relationship #{} by {}", p.first, owner);

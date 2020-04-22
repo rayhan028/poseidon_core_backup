@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2017-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
- * This file is part of our NVM-based Data Structures repository.
+ * This file is part of the Poseidon package.
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the
  * GNU General Public License as published by the Free Software Foundation, either version 3 of the
