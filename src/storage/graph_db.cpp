@@ -219,7 +219,6 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
         // Because there might be an active transaction which still needs the object
         // we cannot delete the relationship, yet. However, we set the cts accordingly.
 		    r.set_cts(xid);
-        // TODO: how to handle corresponding node entry, i.e. the from/to_rship_list ????
 
 		    // we can already delete the object from the dirty version list
 		    r.dirty_list->pop_front();
@@ -436,7 +435,6 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
   }
 #endif
 #ifdef USE_TX
-  // TODO
   update_from_node(current_transaction(), from_node, r);
   update_to_node(current_transaction(), to_node, r);
 #else
