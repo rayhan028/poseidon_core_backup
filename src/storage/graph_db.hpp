@@ -259,9 +259,9 @@ public:
   void dump();
 
   /**
-   * Print the amount of allocated memory for debugging purpose.
+   * Print some stats about memory usage.
    */
-  void print_mem_usage();
+  void print_stats();
 
   /* ---------------- index management ---------------- */
   

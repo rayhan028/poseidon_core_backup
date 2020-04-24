@@ -252,11 +252,30 @@ bool graph_db::abort_transaction() {
   return true;
 }
 
-void graph_db::print_mem_usage() {
-  std::size_t nchunks =
-      nodes_->num_chunks() + rships_->num_chunks() + properties_->num_chunks();
-  std::cout << "Memory usage: " << nchunks * DEFAULT_CHUNK_SIZE / 1024 << " KiB"
-            << std::endl;
+void graph_db::print_stats() {
+  std::cout << "nodes: " << nodes_->num_chunks() << " chunks, "
+            << "chunk_size = " << nodes_->as_vec().real_chunk_size() << " Bytes, "
+            << "node_size = " << sizeof(node) << " Bytes, "
+            << "capacity = " << nodes_->as_vec().capacity() << std::endl;
+  std::cout << "relationships: " << rships_->num_chunks() << " chunks, "
+            << "chunk_size = " << rships_->as_vec().real_chunk_size() << " Bytes, "
+            << "rship_size = " << sizeof(relationship) << " Bytes, "
+            << "capacity = " << rships_->as_vec().capacity() << std::endl;
+  std::cout << "properties: " << properties_->num_chunks() << " chunks, "
+            << "chunk_size = " << properties_->as_vec().real_chunk_size() << " Bytes, "
+            << "property_set_size = " << sizeof(property_set) << " Bytes, "
+            << "capacity = " << properties_->as_vec().capacity() << std::endl;
+
+  uint64_t mem = 0;
+  mem += nodes_->num_chunks() * nodes_->as_vec().real_chunk_size();
+  mem += rships_->num_chunks() * rships_->as_vec().real_chunk_size();
+  std::cout << mem / 1024;
+  mem += properties_->num_chunks() * properties_->as_vec().real_chunk_size();
+  std::cout << " (" << mem / 1024 << ") KiB total" << std::endl; 
+
+  uint64_t nprops = 0;
+  properties_->foreach_property([&nprops](auto pi) { nprops++; });
+  std::cout << nprops << " properties total." << std::endl;
 }
 
 node::id_t graph_db::add_node(const std::string &label,

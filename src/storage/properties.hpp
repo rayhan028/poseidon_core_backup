@@ -295,6 +295,8 @@ public:
   void foreach_node(dcode_t pkey, p_item::predicate_func pred,
                     std::function<void(offset_t)> f);
 
+  void foreach_property(std::function<void(const p_item& pi)> f);
+
   /**
    * Returns a list of all properties of a node/relationship where the list
    * starts at the given id. The keys of the properties are decoded via the

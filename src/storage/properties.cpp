@@ -339,6 +339,8 @@ property_set::id_t property_list::append_typed_node_properties(offset_t nid,
   property_set::p_item_list pil;
   std::size_t pidx = 0;
   for (auto i = 0u; i < keys.size(); i++) {
+    if (values[i].empty()) // we don't add empty properties
+      continue;
     pil[pidx++] = p_item(keys[i], typelist[i], values[i]);
     if (i == keys.size() - 1 || pidx == pil.max_size()) {
       auto p =
@@ -461,6 +463,15 @@ void property_list::foreach_property_set(offset_t id, property_list::foreach_cb_
     auto &p = properties_.at(pset_id);
     cb(pset_id, p.items, p.next);
     pset_id = p.next;
+  }
+}
+
+void property_list::foreach_property(std::function<void(const p_item& pi)> f) {
+  for (const auto& ps : properties_) {
+    for (const auto& p : ps.items) {
+      if (!P_UNUSED(p.flags_))
+        f(p);
+    }
   }
 }
 

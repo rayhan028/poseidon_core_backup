@@ -487,7 +487,9 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
       auto i = 0;
       // process header
       for (auto &field : row) {
-        columns.push_back(field);
+        // ignore the src und dest id fields
+        if (i != start_col && i != end_col)
+          columns.push_back(field);
         i++;
       }
       prop_names.resize(columns.size());
@@ -508,13 +510,14 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
       node::id_t to_node = it->second;      
 
       // TODO
-      auto i = 0;
+      auto i = 0, j = 0;
       for (auto &field : row) {
         if (i != start_col && i != end_col) {
           if (!field.empty()) {
             auto p2 = infer_datatype(field, dict_);
-            prop_types[i] = p2.first;
-            prop_values[i] = p2.second;
+            prop_types[j] = p2.first;
+            prop_values[j] = p2.second;
+            j++;
           }
         }
         i++;
@@ -536,11 +539,12 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
         continue;
       node::id_t to_node = it->second;      
 
-      auto i = 0;
+      auto i = 0, j = 0;
       for (auto &field : row) {
         if (i != start_col && i != end_col) {
           if (!field.empty())
-            prop_values[i] = string_to_any(prop_types[i], field, dict_);
+            prop_values[j] = string_to_any(prop_types[j], field, dict_);
+          j++;
         }
         i++;
       }

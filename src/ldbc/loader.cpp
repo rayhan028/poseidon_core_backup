@@ -15,7 +15,7 @@
 
 #define SF_10
 #define CREATE_INDEX
-#define PARALLEL_LOAD
+// #define PARALLEL_LOAD
 // #define PARALLEL_RSHIP_LOAD
 
 #ifdef USE_PMDK
@@ -41,7 +41,7 @@ void load_snb_data(graph_db_ptr &graph,
                     std::vector<std::string> &rship_files, bool strict = true) {
   auto delim = '|';
   graph_db::mapping_t mapping;
-  bool nodes_imported = false, rships_imported = false;
+  // bool nodes_imported = false, rships_imported = false;
   std::mutex imtx;
 
   if (!node_files.empty()) {
@@ -72,7 +72,8 @@ void load_snb_data(graph_db_ptr &graph,
     }
     for (auto &f : res) {
       auto resp = f.get();
-      spdlog::info("{} '{}' node objects imported", resp.second, resp.first);
+      if (resp.second > 0)
+        spdlog::info("{} '{}' node objects imported", resp.second, resp.first);
     }
 #else
     for (auto &file : node_files) {
@@ -87,7 +88,10 @@ void load_snb_data(graph_db_ptr &graph,
       auto num_nodes = strict 
         ? graph->import_typed_nodes_from_csv(label, file, delim, mapping)
         : graph->import_nodes_from_csv(label, file, delim, mapping);
-      spdlog::info("{} '{}' node objects imported", num_nodes, label);
+      if (num_nodes > 0) {
+        spdlog::info("{} '{}' node objects imported", num_nodes, label);
+        // graph->print_stats();
+      }
     }
 #endif
   }
@@ -119,7 +123,8 @@ void load_snb_data(graph_db_ptr &graph,
     }
     for (auto &f : res) {
       auto resp = f.get();
-      spdlog::info("{} '{}' relationship objects imported", resp.second, resp.first);
+      if (resp.second > 0)
+        spdlog::info("{} '{}' relationship objects imported", resp.second, resp.first);
     }
 #else
     for (auto &file : rship_files) {
@@ -133,8 +138,11 @@ void load_snb_data(graph_db_ptr &graph,
       auto num_rships = strict 
       ? graph->import_typed_relationships_from_csv(file, delim, mapping)
       : graph->import_relationships_from_csv(file, delim, mapping);
-      spdlog::info("{} ({})-[{}]-({}) relationship objects imported", 
-        num_rships, fn[0], label, fn[2]);
+      if (num_rships > 0) {
+        spdlog::info("{} ({})-[{}]-({}) relationship objects imported", 
+          num_rships, fn[0], label, fn[2]);
+        // graph->print_stats();
+      }
     }
     #endif
   }
@@ -319,6 +327,8 @@ int main(int argc, char **argv) {
 
   spdlog::info("trying to load data from {} and {}", snb_sta, snb_dyn);
   load_snb_data(graph, node_files, rship_files, strict);
+
+  graph->print_stats();
 
 #ifdef CREATE_INDEX
   auto tx = graph->begin_transaction();

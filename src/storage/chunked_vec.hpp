@@ -38,7 +38,7 @@
 
 #include "spdlog/spdlog.h"
 
-#define DEFAULT_CHUNK_SIZE 4096 // 1048576
+#define DEFAULT_CHUNK_SIZE 4096 // 65536
 
 /**
  * chunk is a contiguous buffer of a fixed size which stores records (byte
@@ -519,6 +519,8 @@ class chunked_vec {
    * Return the number of records stored per chunk.
    */
   uint32_t elements_per_chunk() const { return elems_per_chunk_; }
+
+  uint32_t real_chunk_size() const { return sizeof(chunk<T, num_entries>); }
 
 private:
   void add_to_free_list(offset_t idx) {
