@@ -58,7 +58,7 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
     log_ins_record r1{ pmlog::log_insert, pmlog::log_node, 1234ul };
     ulog.append(lid1, static_cast<void *>(&r1), sizeof(r1));
  
-    log_upd_node_record r2{ pmlog::log_update, pmlog::log_node, 1236ul, 42, 101ul, 102ul, 103ul };
+    log_node_record r2{ pmlog::log_update, pmlog::log_node, 1236ul, 42, 101ul, 102ul, 103ul };
     ulog.append(lid1, static_cast<void *>(&r2), sizeof(r2));
 
     log_ins_record r3{ pmlog::log_insert, pmlog::log_node, 1235ul };
@@ -67,7 +67,7 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
     ulog.transaction_end(lid2);
 
     auto lid3 = ulog.transaction_begin(46);
-    log_upd_node_record r4{ pmlog::log_update, pmlog::log_node, 1237ul, 44, 201ul, 202ul, 203ul };
+    log_node_record r4{ pmlog::log_update, pmlog::log_node, 1237ul, 44, 201ul, 202ul, 203ul };
     ulog.append(lid3, static_cast<void *>(&r4), sizeof(r4));
 
 #ifdef USE_PMDK
@@ -101,7 +101,7 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
 
                 else if (l.log_type() == pmlog::log_update) {
                     if (l.obj_type() == pmlog::log_node) {
-                        auto rec = l.get<log_upd_node_record>();
+                        auto rec = l.get<log_node_record>();
                         if (rec->oid == 1236)
                             REQUIRE(rec->label == 42);
                         if (rec->oid == 1237)

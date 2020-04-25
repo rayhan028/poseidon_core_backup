@@ -100,7 +100,7 @@ void create_rship_on_join::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
     gdb->add_relationship(n->id(), r_node_->id(), label, props, true);
     consume_(gdb, v);
   }
-  else{
+  else {
     gdb->add_relationship(r_node_->id(), n->id(), label, props, true);
     consume_(gdb, v);
   }

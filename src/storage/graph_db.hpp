@@ -265,6 +265,11 @@ public:
    */
   void print_stats();
 
+  /**
+   * Perform recovery using the undo log.
+   */ 
+  void apply_undo_log();
+
   /* ---------------- index management ---------------- */
   
   /**
@@ -440,6 +445,28 @@ public:
 
 private:
   friend struct scan_task;
+
+  /**
+   * Update the given node as the FROM node of the relationship. The relationship was already
+   * created in the same transaction.
+   */
+  void update_from_node(transaction_ptr tx, node &n, relationship& r);
+
+  /**
+   * Update the given node as the TO node of the relationship. The relationship was already
+   * created in the same transaction.
+   */
+  void update_to_node(transaction_ptr tx, node &n, relationship& r);
+
+  /**
+   * Handle the commit of a node from the dirty list.
+   */
+  void commit_dirty_node(transaction_ptr tx, node::id_t node_id);
+
+  /**
+   * Handle the commit of a relationship from the dirty list.
+   */
+  void commit_dirty_relationship(transaction_ptr tx, relationship::id_t rship_id);
 
   /**
    * Return the node version from the dirty list that is valid for the

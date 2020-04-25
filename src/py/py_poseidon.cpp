@@ -56,7 +56,6 @@ bool py_graph::open(const std::string &db_name) {
   gdb_ = q->graph;
   gdb_->runtime_initialize();
 #else
-  // TODO: open pmem
   gdb_ = p_make_ptr<graph_db>();
 #endif
   return true;
@@ -71,7 +70,6 @@ bool py_graph::create(const std::string &db_name) {
   gdb_ = q->graph;
   gdb_->runtime_initialize();
 #else
-  // TODO: create pmem
   gdb_ = p_make_ptr<graph_db>();
 #endif
   return true;

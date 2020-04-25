@@ -90,7 +90,9 @@ graph_db_ptr create_graph_db() { return p_make_ptr<graph_db>(); }
 
 #endif
 
-TEST_CASE("Checking that a newly inserted record exist in the transaction",
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a newly inserted node exist in the transaction",
           "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -109,7 +111,33 @@ TEST_CASE("Checking that a newly inserted record exist in the transaction",
 #endif
 }
 
-TEST_CASE("Checking that a update is undone after abort", "[transaction]") {
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a newly inserted relationship exist in the transaction",
+          "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  auto tx = gdb->begin_transaction();
+  auto m = gdb->add_node("Movie", {});
+  auto a = gdb->add_node("Actor", {});
+  auto rid = gdb->add_relationship(a, m, ":PLAYED_IN", {});
+ 
+  auto &my_rship = gdb->rship_by_id(rid);
+  REQUIRE(my_rship.id() == rid);
+  gdb->commit_transaction();
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a node update is undone after abort", "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
   auto gdb = create_graph_db(pop);
@@ -156,7 +184,59 @@ TEST_CASE("Checking that a update is undone after abort", "[transaction]") {
 #endif
 }
 
-TEST_CASE("Checking that an insert is undone after abort", "[transaction]") {
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a relationship update is undone after abort", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+
+  relationship::id_t rid = 0;
+  {
+    // create node
+    auto tx = gdb->begin_transaction();
+    auto m = gdb->add_node("Movie", {});
+    auto a = gdb->add_node("Actor", {});
+    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
+
+    gdb->commit_transaction();
+  }
+
+  {
+    // update relationship
+    auto tx = gdb->begin_transaction();
+    auto &r = gdb->rship_by_id(rid);
+    gdb->update_relationship(r,
+                     {{
+                         "role",
+                         boost::any(std::string("Cop")),
+                     }},
+                     ":PLAYED_AS");
+    // but abort
+    gdb->abort_transaction();
+  }
+
+  {
+    // check the node
+    auto tx = gdb->begin_transaction();
+    auto &r = gdb->rship_by_id(rid);
+    auto rd = gdb->get_rship_description(r);
+    REQUIRE(rd.label == ":PLAYED_IN");
+    REQUIRE(get_property<std::string>(rd.properties, "role") == "Killer");
+    gdb->abort_transaction();
+  }
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a node insert is undone after abort", "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
   auto gdb = create_graph_db(pop);
@@ -181,7 +261,61 @@ TEST_CASE("Checking that an insert is undone after abort", "[transaction]") {
 #endif
 }
 
-TEST_CASE("Checking that a newly inserted record is not visible in another "
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a relationship insert is undone after abort", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+
+  node::id_t m, a;
+  relationship::id_t rid;
+
+  {
+    auto tx = gdb->begin_transaction();
+    m = gdb->add_node("Movie", {});
+    a = gdb->add_node("Actor", {});
+    gdb->commit_transaction();
+  }
+
+  { 
+    auto tx = gdb->begin_transaction();
+    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
+    gdb->abort_transaction();
+  }
+
+  {
+    // try to access via rid
+    auto tx = gdb->begin_transaction();
+
+    REQUIRE_THROWS_AS(gdb->rship_by_id(rid), unknown_id);
+
+    // try to access via node
+    auto& n = gdb->node_by_id(a);
+    
+    bool found = false;
+    gdb->foreach_from_relationship_of_node(n, [&found](auto& rship) {
+      found = true;
+    });
+    
+    REQUIRE(!found);
+    gdb->foreach_to_relationship_of_node(n, [&found](auto& rship) {
+      found = true;
+    });
+    REQUIRE(!found);
+  }
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a newly inserted node is not visible in another "
           "transaction",
           "[transaction]") {
 #ifdef USE_PMDK
@@ -233,7 +367,70 @@ TEST_CASE("Checking that a newly inserted record is not visible in another "
 #endif
 }
 
-TEST_CASE("Checking that a newly inserted record becomes visible after commit",
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a newly inserted relationship is not visible in another "
+          "transaction",
+          "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t m, a;
+  {
+    auto tx = gdb->begin_transaction();
+    m = gdb->add_node("Movie", {});
+    a = gdb->add_node("Actor", {});
+    gdb->commit_transaction();
+  }
+
+  barrier b1, b2;
+  relationship::id_t rid;
+
+  /*
+   * Thread #1: create a new relationship
+   */
+  auto t1 = std::thread([&]() {
+    auto tx = gdb->begin_transaction();
+    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
+
+    // inform thread #2 that we have created a new node
+    b1.notify();
+    // but wait until thread #2 had a chance to try to read it..
+    b2.wait();
+
+    // now we can commit
+    gdb->commit_transaction();
+  });
+
+  /*
+   * Thread #2: try to read this relationship (should fail)
+   */
+  auto t2 = std::thread([&]() {
+    auto tx = gdb->begin_transaction();
+    // wait for thread #1
+    b1.wait();
+    // std::cout << "-------------------1---------------\n";
+    // gdb->dump();
+    REQUIRE_THROWS_AS(gdb->rship_by_id(rid), unknown_id);
+    gdb->commit_transaction();
+
+    // inform thread #1 that we are finished
+    b2.notify();
+  });
+
+  t1.join();
+  t2.join();
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a newly inserted node becomes visible after commit",
           "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -266,6 +463,48 @@ TEST_CASE("Checking that a newly inserted record becomes visible after commit",
 #endif
 }
 
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a newly inserted relationship becomes visible after commit",
+          "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t m, a;
+  {
+    auto tx = gdb->begin_transaction();
+    m = gdb->add_node("Movie", {});
+    a = gdb->add_node("Actor", {});
+    gdb->commit_transaction();
+  }
+
+  relationship::id_t rid = 0;
+  {
+    auto tx = gdb->begin_transaction();
+    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
+    gdb->commit_transaction();
+  }
+
+  REQUIRE_THROWS(check_tx_context());
+
+  {
+    auto tx = gdb->begin_transaction();
+    auto &my_rship = gdb->rship_by_id(rid);
+    auto descr = gdb->get_rship_description(my_rship);
+    REQUIRE(descr.id == rid);
+    REQUIRE(descr.label == ":PLAYED_IN");
+    gdb->commit_transaction();
+  }
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
 TEST_CASE("Checking that a read transaction reads the correct version of a "
           "updated node",
           "[transaction]") {
@@ -357,6 +596,8 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
 #endif
 }
 
+/* ----------------------------------------------------------------------- */
+
 TEST_CASE("Checking that a update transaction is aborted if the object is "
           "already locked by another transaction",
           "[transaction]") {
@@ -424,6 +665,8 @@ barrier b1, b2, b3;
 #endif
 }
 
+/* ----------------------------------------------------------------------- */
+
 TEST_CASE("Checking basic transaction level GC", "[transaction][gc]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -453,6 +696,8 @@ TEST_CASE("Checking basic transaction level GC", "[transaction][gc]") {
   drop_graph_db(pop, gdb);
 #endif
 }
+
+/* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
 #ifdef USE_PMDK
@@ -553,6 +798,185 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
   drop_graph_db(pop, gdb);
 #endif
 }
+
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that deleting a node works", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t nid;
+  {
+    // add a few nodes
+    auto tx = gdb->begin_transaction();
+      gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
+                                  {"age", boost::any(42)}});
+     nid = gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                  {"age", boost::any(36)}});
+      gdb->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
+                                  {"age", boost::any(58)}});
+
+    gdb->commit_transaction();
+  }
+  {
+    // delete the node
+    auto tx = gdb->begin_transaction();
+    gdb->delete_node(nid);
+    gdb->commit_transaction();
+  }
+
+  {
+    // check that the node doesn't exist anymore
+    auto tx = gdb->begin_transaction();
+    REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
+    gdb->abort_transaction();
+  }
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that deleting a node works also within a transaction", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t nid;
+  {
+    // add a few nodes
+    auto tx = gdb->begin_transaction();
+    gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
+                                  {"age", boost::any(42)}});
+    nid =
+      gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                  {"age", boost::any(36)}});
+    gdb->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
+                                  {"age", boost::any(58)}});
+
+    gdb->commit_transaction();
+  }
+  {
+    // delete the node
+    auto tx = gdb->begin_transaction();
+    gdb->delete_node(nid);
+    REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
+    gdb->commit_transaction();
+  }
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that aborting a delete transaction works", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t nid;
+  {
+    auto tx = gdb->begin_transaction();
+    gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
+                                  {"age", boost::any(42)}});
+    nid =
+      gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                  {"age", boost::any(36)}});
+    gdb->commit_transaction();
+  }
+  {
+    auto tx = gdb->begin_transaction();
+    gdb->delete_node(nid);
+    gdb->abort_transaction();
+  }
+  {
+    auto tx = gdb->begin_transaction();
+    REQUIRE_NOTHROW(gdb->node_by_id(nid));
+    gdb->abort_transaction();
+  }
+  
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that a delete transaction does not interfer with another transaction", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+
+  barrier b1, b2, b3;
+  node::id_t nid;
+
+ {
+    auto tx = gdb->begin_transaction();
+    gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
+                                  {"age", boost::any(42)}});
+    nid =
+      gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                  {"age", boost::any(36)}});
+    gdb->commit_transaction();
+  }
+
+  // we create a thread that tries to read "Ann"
+  auto t1 = std::thread([&]() {
+    auto tx = gdb->begin_transaction();
+
+    // inform tx #2 that we have started the transaction
+    b1.notify();
+
+    // wait until tx #2 has deleted the node.
+    b2.wait();
+
+    auto &n = gdb->node_by_id(nid);
+    // spdlog::info("read node @{}", (unsigned long)&n);
+    auto nd = gdb->get_node_description(n);
+    REQUIRE(nd.label == ":Person");
+    REQUIRE(get_property<int>(nd.properties, "age") == 36);
+
+    // now, tx #2 can commit
+    b3.notify();
+    gdb->commit_transaction();
+  });
+
+ // we create another thread that tries to delete "Ann"
+  auto t2 = std::thread([&]() {
+    // make sure that tx #1 has already started 
+    b1.wait();
+
+    auto tx = gdb->begin_transaction();
+    gdb->delete_node(nid);
+    
+    // inform tx #1 that we have deleted the node
+    b2.notify();
+
+    // wait until tx #1 has read the node
+    b3.wait();
+    gdb->commit_transaction();
+  });
+  t1.join();
+  t2.join();
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
 /* -------------------------------------------------------------------------------- */
 
 #if TEST_INCORRECT

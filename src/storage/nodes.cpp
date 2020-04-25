@@ -169,18 +169,21 @@ void node_list::dump() {
     std::cout << "#" << n.id() << ", @" << (unsigned long)&n
               << " [ txn-id=" << short_ts(n.txn_id.load()) << ", bts=" << short_ts(n.bts)
               << ", cts=" << short_ts(n.cts) << ", dirty=" << n.is_dirty_ 
-              << " ], label=" << n.node_label /*<< ", "
-              << n.from_rship_list << ", " << n.to_rship_list << ", "
-              << n.property_list*/;
+              << " ], label=" << n.node_label << ", from="
+              << n.from_rship_list << ", to=" << n.to_rship_list << ", props="
+              << n.property_list;
     if (n.has_dirty_versions()) {
-      // TODO: print dirty list
+      // print dirty list
       std::cout << " {\n";
       for (const auto& dn : *n.dirty_list) {
         std::cout << "\t( @" << (unsigned long)&(dn->elem_)
                   << ", txn-id=" << short_ts(dn->elem_.txn_id.load())
                   << ", bts=" << short_ts(dn->elem_.bts) << ", cts=" << short_ts(dn->elem_.cts)
                   << ", label=" << dn->elem_.node_label
-                  << ", dirty=" << dn->elem_.is_dirty_ << ", [";
+                  << ", dirty=" << dn->elem_.is_dirty_ 
+                  << ", from=" << dn->elem_.from_rship_list
+                  << ", to=" << dn->elem_.to_rship_list
+                  << ", [";
         for (const auto& pi : dn->properties_) {
           std::cout << " " << pi;
         }

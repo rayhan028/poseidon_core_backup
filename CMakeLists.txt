@@ -265,6 +265,7 @@ set(src_files
   src/storage/graph_db_import.cpp
   src/storage/graph_db_index.cpp
   src/storage/graph_db_query.cpp
+  src/storage/graph_db_recovery.cpp
   src/btree/index_map.cpp
   src/qop/qop.cpp
   src/qop/update.cpp

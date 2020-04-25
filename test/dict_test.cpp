@@ -217,4 +217,3 @@ TEST_CASE("Test persistency of dict", "[dict]") {
 
 // TODO
 // * test with a large set of strings
-// * test persistent dictionary

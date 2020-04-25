@@ -38,28 +38,31 @@ struct log_ins_record {
 };
 
 /**
- * A log record for updating nodes.
+ * A log record for deleting and updating nodes.
  */
-struct log_upd_node_record {
+struct log_node_record {
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
-  offset_t oid;         // the node id
+  offset_t oid;         // the id (node_id, rship_id, property_set) of the object
   dcode_t label;        // the node label
   offset_t from_rship_list, to_rship_list, property_list;
 };
 
 /**
- * A log record for updating relationships.
+ * A log record for deleting and updating relationships.
  */
-struct log_upd_rship_record {
+struct log_rship_record {
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
-  offset_t oid;         // the relationship id
+  offset_t oid;         // the id (node_id, rship_id, property_set) of the object
   dcode_t label;        // the relationship label
   offset_t src_node, dest_node, next_src_rship, next_dest_rship;
 };
 
-struct log_upd_property_record {
+/**
+ * A log record for deleting and updating property sets.
+ */
+struct log_property_record {
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
 

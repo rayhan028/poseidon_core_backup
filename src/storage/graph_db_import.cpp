@@ -490,7 +490,6 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
         continue;
       node::id_t to_node = it->second;      
 
-      // TODO
       auto i = 0, j = 0;
       for (auto &field : row) {
         if (i != start_col && i != end_col) {
