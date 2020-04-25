@@ -111,7 +111,7 @@ template <> void p_item::set<ptime>(ptime v) {
   memcpy(&value_, &v, sizeof(ptime));
 }
 
-p_item::p_item(dcode_t k, p_item::p_typecode tc, const boost::any &v) : flags_(0), key_(k) {
+p_item::p_item(dcode_t k, p_item::p_typecode tc, const boost::any &v) : key_(k), flags_(0) {
   switch(tc) {
     case p_int: set<int>(boost::any_cast<int>(v)); break;
     case p_double: set<double>(boost::any_cast<double>(v)); break;
@@ -123,11 +123,11 @@ p_item::p_item(dcode_t k, p_item::p_typecode tc, const boost::any &v) : flags_(0
   }  
 }
 
-p_item::p_item(dcode_t k, double v) : flags_(0), key_(k) { set<double>(v); }
-p_item::p_item(dcode_t k, int v) : flags_(0), key_(k) { set<int>(v); }
-p_item::p_item(dcode_t k, dcode_t v) : flags_(0), key_(k) { set<dcode_t>(v); }
-p_item::p_item(dcode_t k, uint64_t v) : flags_(0), key_(k) { set<uint64_t>(v); }
-p_item::p_item(dcode_t k, boost::posix_time::ptime v) : flags_(0), key_(k) { set<ptime>(v); }
+p_item::p_item(dcode_t k, double v) : key_(k), flags_(0) { set<double>(v); }
+p_item::p_item(dcode_t k, int v) : key_(k), flags_(0) { set<int>(v); }
+p_item::p_item(dcode_t k, dcode_t v) : key_(k), flags_(0) { set<dcode_t>(v); }
+p_item::p_item(dcode_t k, uint64_t v) : key_(k), flags_(0) { set<uint64_t>(v); }
+p_item::p_item(dcode_t k, boost::posix_time::ptime v) : key_(k), flags_(0) { set<ptime>(v); }
 
 p_item::p_item(const std::string &k, const boost::any &v, dict_ptr &dct)
     : p_item(v, dct) {
@@ -138,7 +138,7 @@ p_item::p_item(dcode_t k, const boost::any &v, dict_ptr &dct) : p_item(v, dct) {
   key_ = k;
 }
 
-p_item::p_item(const boost::any &v, dict_ptr &dct) : flags_(0), key_(0) {
+p_item::p_item(const boost::any &v, dict_ptr &dct) : key_(0), flags_(0) {
   P_SET_VAL(flags_, p_unused);
 
   if (v.type() == typeid(uint64_t)){

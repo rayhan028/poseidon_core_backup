@@ -136,24 +136,24 @@ transaction_ptr current_transaction();
 template <typename T> struct txn {
   timestamp_t bts, cts, rts; // begin timestamp, commit timestamp, read timestamp
   std::atomic<xid_t> txn_id; // transaction id if locked, 0 otherwise
-  bool is_dirty_;            // true if the object represents a dirty object
-
   using dirty_list_ptr =
       std::list<T> *;        // typedef for the list of dirty objects from
                              // currently active transactions
   dirty_list_ptr dirty_list; // the list of dirty objects
+  bool is_dirty_;            // true if the object represents a dirty object
+
 
   /**
    * Default constructor.
    */
-  txn() : bts(0), cts(INF), rts(0), txn_id(0), is_dirty_(false), dirty_list(nullptr) {}
+  txn() : bts(0), cts(INF), rts(0), txn_id(0), dirty_list(nullptr), is_dirty_(false) {}
 
   /**
    * Copy constructor.
    */
   txn(const txn &n)
-      : bts(n.bts), cts(n.cts), rts(n.rts), txn_id(n.txn_id.load()), is_dirty_(n.is_dirty_),
-        dirty_list(n.dirty_list) {}
+      : bts(n.bts), cts(n.cts), rts(n.rts), txn_id(n.txn_id.load()), 
+        dirty_list(n.dirty_list), is_dirty_(n.is_dirty_) {}
 
   /**
    * Copy assignment operator.

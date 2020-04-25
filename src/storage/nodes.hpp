@@ -48,13 +48,15 @@ struct node : public txn<dirty_node_ptr> {
   friend class node_list;
   using id_t =
       offset_t; // typedef for node identifier (used as offset in node list)
-
-  dcode_t node_label;       // dictionary code for node label
+private:
+  id_t id_;
+public:
   offset_t from_rship_list; // index in relationship list of first relationship
                             // where this node acts as from node
   offset_t to_rship_list;   // index of relationship list of first relationship
                             // where this node acts as to node
   offset_t property_list;   // index in property list
+  dcode_t node_label;       // dictionary code for node label
 
   /**
    * Default constructor.
@@ -67,16 +69,16 @@ struct node : public txn<dirty_node_ptr> {
   node(const node &) = delete;
 
   node(node &&n)
-      : txn(n), node_label(n.node_label), from_rship_list(n.from_rship_list),
+      : txn(n), id_(n.id_), from_rship_list(n.from_rship_list),
         to_rship_list(n.to_rship_list), property_list(n.property_list),
-        id_(n.id_) {}
+        node_label(n.node_label) {}
 
   /**
    * Constructor for creating a node with the given label code.
    */
   node(dcode_t label)
-      : node_label(label), from_rship_list(UNKNOWN), to_rship_list(UNKNOWN),
-        property_list(UNKNOWN), id_(UNKNOWN) {}
+      : id_(UNKNOWN), from_rship_list(UNKNOWN), to_rship_list(UNKNOWN),
+        property_list(UNKNOWN), node_label(label) {}
 
   /**
    * Copy assignment operator. This implementation is needed because of atomic
@@ -113,9 +115,6 @@ struct node : public txn<dirty_node_ptr> {
    * Returns the node identifier.
    */
   id_t id() const { return id_; }
-
-private:
-  id_t id_;
 };
 
 /**

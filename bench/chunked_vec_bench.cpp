@@ -92,6 +92,7 @@ void drop_table(p_ptr<node_list> nlist) {
 #endif
 
 int main(int argc, char **argv) {
+  std::cout << "sizeof = " << sizeof(txn<dirty_node_ptr>) << std::endl;
   // add node
   {
     auto nlist = prepare_table();

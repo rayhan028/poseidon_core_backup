@@ -330,7 +330,7 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
         if (!col.empty() && !(field.empty() && col != "content")) {
           prop_values[i] = (col == "id") 
           ? boost::any((uint64_t)std::stoll(field))
-          : prop_values[i] = string_to_any(prop_types[i], field, dict_);
+          : string_to_any(prop_types[i], field, dict_);
         }
         i++;
       }
@@ -404,30 +404,12 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
       mapping_t::const_iterator it = node_id_from_field(m, src_node, row[start_col]);
       if (it == m.end())
         continue;
-      node::id_t from_node = it->second;      
-      /*
-      if (src_node[0] >= 'a' && src_node[0] <= 'z')
-        src_node[0] -= 32;
-      auto src_id_s = row[start_col] + "_" + src_node;
-      mapping_t::const_iterator it = m.find(src_id_s);
-      if (it == m.end())
-        continue;
       node::id_t from_node = it->second;
-      */
       
       it = node_id_from_field(m, des_node, row[end_col]);
       if (it == m.end())
         continue;
       node::id_t to_node = it->second;      
-      /*
-      if (des_node[0] >= 'a' && des_node[0] <= 'z')
-        des_node[0] -= 32;
-      auto des_id_s = row[end_col] + "_" + des_node;
-      it = m.find(des_id_s);
-      if (it == m.end())
-        continue;
-      node::id_t to_node = it->second;
-      */
       //auto &label = row[type_col]; // neo4j
 
       properties_t props;

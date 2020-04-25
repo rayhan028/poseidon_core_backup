@@ -43,7 +43,10 @@ struct relationship : public txn<dirty_rship_ptr> {
 
   using id_t = offset_t;
 
-  dcode_t rship_label;     // dictionary code for relationship type
+private:
+  id_t id_;
+
+public:
   offset_t src_node;       // from-node of the relationship (index in node list)
   offset_t dest_node;      // to-node of the relationship (index in node list)
   offset_t next_src_rship; // next relationship of the from-node (index in
@@ -51,6 +54,7 @@ struct relationship : public txn<dirty_rship_ptr> {
   offset_t next_dest_rship; // next relationship of the to-node (index in
                             // relationship list)
   offset_t property_list;   // index in property list
+  dcode_t rship_label;     // dictionary code for relationship type
 
   /**
    * Default constructor.
@@ -62,9 +66,9 @@ struct relationship : public txn<dirty_rship_ptr> {
    * the given two nodes.
    */
   relationship(dcode_t rlabel, offset_t src, offset_t dest)
-      : rship_label(rlabel), src_node(src), dest_node(dest),
+      : id_(UNKNOWN), src_node(src), dest_node(dest),
         next_src_rship(UNKNOWN), next_dest_rship(UNKNOWN),
-        property_list(UNKNOWN) {}
+        property_list(UNKNOWN), rship_label(rlabel) {}
 
   relationship::id_t id() const { return id_; }
 
@@ -77,9 +81,6 @@ struct relationship : public txn<dirty_rship_ptr> {
    * Returns the node identifier of the from-node.
    */
   node::id_t from_node_id() const { return src_node; }
-
-private:
-  id_t id_;
 };
 
 /**

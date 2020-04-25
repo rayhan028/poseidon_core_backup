@@ -82,7 +82,7 @@ struct p_item {
                            // storing the value (use ptime instead) 
   };
 
-  p_item() : flags_(0), key_(0) { P_SET_VAL(flags_, p_unused); }
+  p_item() : key_(0), flags_(0) { P_SET_VAL(flags_, p_unused); }
 
   p_item(const p_item &) = default;
 
@@ -121,9 +121,9 @@ struct p_item {
 
   bool empty() const { return P_UNUSED(flags_); }
 
-  uint8_t flags_; // Bit 0-2 used for representing the typecode (see p_typecode)
-  dcode_t key_;   // dictionary code for property name
   uint8_t value_[8]; // placeholder for storing int, double or dcode_t values
+  dcode_t key_;   // dictionary code for property name
+  uint8_t flags_; // Bit 0-2 used for representing the typecode (see p_typecode)
 };
 
 std::ostream& operator<< (std::ostream& os, const p_item& pi);
@@ -184,12 +184,12 @@ T get_property(const properties_t &p, const std::string &key) {
 struct property_set {
   using id_t = offset_t; // typedef for property identifier (used as offset in
                          // property list)
-  using p_item_list = std::array<p_item, 5>;
+  using p_item_list = std::array<p_item, 3>;
 
-  uint8_t flags;     // Bit 0 = owner: 0 for node, 1 for relationship
-  p_item_list items; // we are storing 5 property items per set
   offset_t next;     // index of next property item
   offset_t owner;    // node id or relationship id owning the property
+  p_item_list items; // we are storing 5 property items per set
+  uint8_t flags;     // Bit 0 = owner: 0 for node, 1 for relationship
 
   /**
    * Default constructor.
@@ -198,7 +198,7 @@ struct property_set {
 
   property_set(offset_t o, const p_item_list &pil, offset_t n,
                bool is_node = true)
-      : flags(0), items(pil), next(n), owner(o) {
+      : next(n), owner(o), items(pil), flags(0) {
     if (!is_node)
       SET_RELATIONSHIP_TYPE(flags);
   }
