@@ -24,8 +24,8 @@ const std::string test_path = poseidon::gPmemPath +
 
 #ifdef SF_100
 "sf100";
-#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 1024 * 6000ull)) // 600 GiB
-#elif SF_10
+#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 1024 * 600ull)) // 600 GiB
+#elif defined(SF_10)
 "sf10";
 #define POOL_SIZE ((unsigned long long)(1024 * 1024 * 160000ull)) // 16000 MiB
 #else
