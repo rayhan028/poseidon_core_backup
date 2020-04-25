@@ -21,7 +21,7 @@
 #define graph_db_hpp_
 
 #include <boost/any.hpp>
-#include <map>
+// #include <map>
 #include <mutex>
 #include <string>
 
@@ -34,6 +34,7 @@
 #include "btree.hpp"
 #include "index_map.hpp"
 #include "pmlog.hpp"
+#include "robin_hood.h"
 
 /**
  * graph_db represents a graph consisting of nodes and relationships with
@@ -46,7 +47,8 @@ public:
    * mapping_t is used during importing data from CSV files to map node names to
    * internal ids which are required for creating relationships.
    */
-  using mapping_t = std::unordered_map<std::string, node::id_t>;
+  // using mapping_t = std::unordered_map<std::string, node::id_t>;
+  using mapping_t = robin_hood::unordered_map<std::string, node::id_t>;
 
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;

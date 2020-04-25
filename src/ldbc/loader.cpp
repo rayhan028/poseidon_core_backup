@@ -22,7 +22,10 @@
 
 const std::string test_path = poseidon::gPmemPath +
 
-#ifdef SF_10
+#ifdef SF_100
+"sf100";
+#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 1024 * 6000ull)) // 600 GiB
+#elif SF_10
 "sf10";
 #define POOL_SIZE ((unsigned long long)(1024 * 1024 * 160000ull)) // 16000 MiB
 #else
@@ -41,7 +44,6 @@ void load_snb_data(graph_db_ptr &graph,
                     std::vector<std::string> &rship_files, bool strict = true) {
   auto delim = '|';
   graph_db::mapping_t mapping;
-  // bool nodes_imported = false, rships_imported = false;
   std::mutex imtx;
 
   if (!node_files.empty()) {

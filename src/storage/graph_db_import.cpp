@@ -399,8 +399,7 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
       /*assert(start_col >= 0); // neo4j
       assert(end_col >= 0);
       assert(type_col >= 0);*/
-    } else {
-      
+    } else {     
       mapping_t::const_iterator it = node_id_from_field(m, src_node, row[start_col]);
       if (it == m.end())
         continue;
