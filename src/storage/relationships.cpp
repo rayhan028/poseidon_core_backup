@@ -47,8 +47,7 @@ std::string rship_description::to_string() const {
 void relationship_list::runtime_initialize() {
   // make sure that all locks are released and no dirty objects exist
   for (auto &r : rships_) {
-    r.txn_id = 0;
-    r.dirty_list = nullptr;
+    r.d_.runtime_initialize();
   }
 }
 
@@ -97,23 +96,12 @@ relationship &relationship_list::get(relationship::id_t id) {
 void relationship_list::remove(relationship::id_t id) {
   if (rships_.capacity() <= id)
     throw unknown_id();
-  auto &r = rships_.at(id);
-  if (r.dirty_list) //Cannot use: if(r.has_dirty_versions()) because if dirty_list is empty, then resource not deleted.
-    delete r.dirty_list;
   rships_.erase(id);
 }
 
 
 
-relationship_list::~relationship_list(){
-	// Since dirty_list is not a smart pointer, clear all resources used for dirty list.
-	for (auto &r : rships_) {
-		if(r.dirty_list) {			 
-			delete r.dirty_list;
-			r.dirty_list = nullptr;
-		}
-	}
-}
+relationship_list::~relationship_list() {}
 
 relationship &
 relationship_list::last_in_from_list(relationship::id_t id) {

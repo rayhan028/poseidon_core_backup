@@ -95,7 +95,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 	  // get the version of dirty object.
 	  // Note: Dirty version are always put in front of the list.
 	  // If that order is changed, then same order must be used during access.
-	  if (const auto& dn {n.dirty_list->front()}; !dn->updated()) {
+	  if (const auto& dn {n.dirty_list()->front()}; !dn->updated()) {
 		  // CASE #1 = INSERT: we have added a new node to node_list, but its properties
 		  // are stored in a dirty_node object in this case, we simply copy the
 		  // properties to property_list and release the lock
@@ -107,7 +107,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		  // set bts/cts
 		  n.set_timestamps(xid, INF);
 		  // we can already delete the object from the dirty version list
-		  n.dirty_list->pop_front();
+		  n.dirty_list()->pop_front();
 	  } else {
 		  // case #2: we have updated a node, thus copy both properties
 		  // and node version to the main tables
@@ -117,7 +117,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
       auto log_id = current_transaction_->logid(); 
 #endif 
 
-      if (dn->elem_.bts == dn->elem_.cts) {
+      if (dn->elem_.bts() == dn->elem_.cts()) {
         // CASE #2 = DELETE
         // spdlog::info("COMMIT DELETE: [{},{}]", short_ts(dn->elem_.bts), short_ts(dn->elem_.cts));
 #ifdef USE_LOGGING
@@ -137,9 +137,9 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		    n.set_cts(xid);
         // spdlog::info("===> COMMIT DELETE: #{}: [{},{}]", n.id(), short_ts(n.bts),short_ts(n.cts));
 		    // we can already delete the object from the dirty version list
-		    n.dirty_list->pop_front();
+		    n.dirty_list()->pop_front();
 		    // release the lock of the old version.
-		    n.dirty_list->front()->elem_.unlock();
+		    n.dirty_list()->front()->elem_.unlock();
         // we can delete properties because the old values are still in the dirty list
         properties_->remove_properties(n.property_list);
       }
@@ -160,9 +160,9 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		    /// spdlog::info("COMMIT UPDATE: set old.cts={} @{}", xid,
 		    ///             (unsigned long)&(dn->node_));
 		    // we can already delete the object from the dirty version list
-		    n.dirty_list->pop_front();
+		    n.dirty_list()->pop_front();
 		    // release the lock of the old version.
-		    n.dirty_list->front()->elem_.unlock();
+		    n.dirty_list()->front()->elem_.unlock();
 	    }
     }
 	  // finally, release the lock of the persistent object and initiate the
@@ -184,7 +184,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 	  // get the version of dirty object.
       // Note: Dirty versions are always put in front of the list.
       // If that order is changed, then same order must be used during access.
-	  if(const auto& dr {r.dirty_list->front()}; !dr->updated()) {
+	  if(const auto& dr {r.dirty_list()->front()}; !dr->updated()) {
 		  // CASE #1 = INSERT: we have added a new relationship to relationship_list, but
 		  // its properties are stored in a dirty_rship object in this case, we
 		  // simply copy the properties to property_list and release the lock
@@ -192,7 +192,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		  // set bts/cts
 		  r.set_timestamps(xid, INF);
 		  // we can already delete the object from the dirty version list
-		  r.dirty_list->pop_front();
+		  r.dirty_list()->pop_front();
 	  } else {
 		  // case #2: we have updated a relationship, thus copy both properties
 		  // and relationship version to the main tables
@@ -200,7 +200,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 #ifdef USE_LOGGING
       auto log_id = current_transaction_->logid(); 
 #endif 
-      if (dr->elem_.bts == dr->elem_.cts) {
+      if (dr->elem_.bts() == dr->elem_.cts()) {
         // CASE #2 = DELETE
         // spdlog::info("COMMIT DELETE: {}, {}", dr->elem_.bts, dr->elem_.cts);
 #ifdef USE_LOGGING
@@ -221,9 +221,9 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		    r.set_cts(xid);
 
 		    // we can already delete the object from the dirty version list
-		    r.dirty_list->pop_front();
+		    r.dirty_list()->pop_front();
 		    // release the lock of the old version.
-		    r.dirty_list->front()->elem_.unlock();
+		    r.dirty_list()->front()->elem_.unlock();
         properties_->remove_properties(r.property_list);
       }
       else {
@@ -241,9 +241,9 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		  copy_properties(r, dr);
 		  r.set_timestamps(xid, INF);
 		  // we can already delete the dirty object from the dirty version list
-		  r.dirty_list->pop_front();
+		  r.dirty_list()->pop_front();
 		  // release the lock of the older version.
-		  r.dirty_list->front()->elem_.unlock();
+		  r.dirty_list()->front()->elem_.unlock();
 	  }
   }
   // finally, release the lock of the persistent object and initiate the
@@ -649,7 +649,7 @@ void graph_db::update_node(node &n, const properties_t &props,
 
   // make sure we don't overwrite an object that was read by 
   // a more recent transaction
-  if (n.rts > txid)
+  if (n.rts() > txid)
    throw transaction_abort();
 
   bool first_update = true;
@@ -672,7 +672,7 @@ void graph_db::update_node(node &n, const properties_t &props,
       properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
     // cts is set to txid
     const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
-    oldv->elem_.set_timestamps(n.bts, txid);
+    oldv->elem_.set_timestamps(n.bts(), txid);
     oldv->elem_.set_dirty();
     // but unlock it for readers
     oldv->elem_.unlock();
@@ -708,7 +708,7 @@ void graph_db::update_from_node(transaction_ptr tx, node &n, relationship& r) {
 
   // make sure we don't overwrite an object that was read by 
   // a more recent transaction
-  if (n.rts > txid)
+  if (n.rts() > txid)
    throw transaction_abort();
 
   bool first_update = true;
@@ -734,7 +734,7 @@ void graph_db::update_from_node(transaction_ptr tx, node &n, relationship& r) {
       properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
     // cts is set to txid
     const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
-    oldv->elem_.set_timestamps(n.bts, txid);
+    oldv->elem_.set_timestamps(n.bts(), txid);
     oldv->elem_.set_dirty();
     // but unlock it for readers
     oldv->elem_.unlock();
@@ -763,7 +763,7 @@ void graph_db::update_to_node(transaction_ptr tx, node &n, relationship& r) {
 
   // make sure we don't overwrite an object that was read by 
   // a more recent transaction
-  if (n.rts > txid)
+  if (n.rts() > txid)
    throw transaction_abort();
 
   bool first_update = true;
@@ -789,7 +789,7 @@ void graph_db::update_to_node(transaction_ptr tx, node &n, relationship& r) {
       properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
     // cts is set to txid
     const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
-    oldv->elem_.set_timestamps(n.bts, txid);
+    oldv->elem_.set_timestamps(n.bts(), txid);
     oldv->elem_.set_dirty();
     // but unlock it for readers
     oldv->elem_.unlock();
@@ -823,7 +823,7 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
 
   // make sure we don't overwrite an object that was read by 
   // a more recent transaction
-  if (r.rts > txid)
+  if (r.rts() > txid)
    throw transaction_abort();
 
   bool first_update = true;
@@ -846,7 +846,7 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
       properties_->build_dirty_property_list(/*r.id(),*/ r.property_list);
   // cts is set to txid
   const auto& oldv = r.add_dirty_version(std::make_unique<dirty_rship>(r, pitems));
-  oldv->elem_.set_timestamps(r.bts, txid);
+  oldv->elem_.set_timestamps(r.bts(), txid);
   oldv->elem_.set_dirty();
   // but unlock it for readers
   oldv->elem_.unlock();
@@ -887,7 +887,7 @@ void graph_db::delete_node(node::id_t id) {
 
   // make sure we don't overwrite an object that was read by 
   // a more recent transaction
-  if (n.rts > txid)
+  if (n.rts() > txid)
    throw transaction_abort();
 
   // first, we make a copy of the original node which is stored in
@@ -896,7 +896,7 @@ void graph_db::delete_node(node::id_t id) {
       properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
   // cts is set to txid
   const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
-  oldv->elem_.set_timestamps(n.bts, txid);
+  oldv->elem_.set_timestamps(n.bts(), txid);
   oldv->elem_.set_dirty();
   // but unlock it for readers
   oldv->elem_.unlock();

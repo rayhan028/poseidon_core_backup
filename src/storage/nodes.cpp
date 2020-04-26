@@ -93,20 +93,12 @@ std::string node_description::to_string() const {
 /* ------------------------------------------------------------------------ */
 
 node_list::~node_list() {
-	// Since dirty_list is not a smart pointer, clear all resources used for dirty list.
-	for (auto &n : nodes_) {
-		if(n.dirty_list) {
-			delete n.dirty_list;
-			n.dirty_list = nullptr;
-		}
-	}
 }
 
 void node_list::runtime_initialize() {
   // make sure that all locks are released and no dirty objects exist
   for (auto &n : nodes_) {
-    n.txn_id = 0;
-    n.dirty_list = nullptr;
+    n.d_.runtime_initialize();
   }
 }
 
@@ -157,30 +149,27 @@ node &node_list::get(node::id_t id) {
 void node_list::remove(node::id_t id) {
   if (nodes_.capacity() <= id)
     throw unknown_id();
-  auto &n = nodes_.at(id);
-  if (n.dirty_list) //Cannot use: if(n.has_dirty_versions()) because if dirty_list is empty, then resource not deleted.
-    delete n.dirty_list;
   nodes_.erase(id);
 }
 
 void node_list::dump() {
   std::cout << "----------- NODES -----------\n";
-  for (const auto& n : nodes_) {
+  for (auto& n : nodes_) {
     std::cout << "#" << n.id() << ", @" << (unsigned long)&n
-              << " [ txn-id=" << short_ts(n.txn_id.load()) << ", bts=" << short_ts(n.bts)
-              << ", cts=" << short_ts(n.cts) << ", dirty=" << n.is_dirty_ 
+              << " [ txn-id=" << short_ts(n.txn_id()) << ", bts=" << short_ts(n.bts())
+              << ", cts=" << short_ts(n.cts()) << ", dirty=" << n.d_.is_dirty_ 
               << " ], label=" << n.node_label << ", from="
               << n.from_rship_list << ", to=" << n.to_rship_list << ", props="
               << n.property_list;
     if (n.has_dirty_versions()) {
       // print dirty list
       std::cout << " {\n";
-      for (const auto& dn : *n.dirty_list) {
+      for (const auto& dn : *(n.dirty_list())) {
         std::cout << "\t( @" << (unsigned long)&(dn->elem_)
-                  << ", txn-id=" << short_ts(dn->elem_.txn_id.load())
-                  << ", bts=" << short_ts(dn->elem_.bts) << ", cts=" << short_ts(dn->elem_.cts)
+                  << ", txn-id=" << short_ts(dn->elem_.txn_id())
+                  << ", bts=" << short_ts(dn->elem_.bts()) << ", cts=" << short_ts(dn->elem_.cts())
                   << ", label=" << dn->elem_.node_label
-                  << ", dirty=" << dn->elem_.is_dirty_ 
+                  << ", dirty=" << dn->elem_.is_dirty()
                   << ", from=" << dn->elem_.from_rship_list
                   << ", to=" << dn->elem_.to_rship_list
                   << ", [";
