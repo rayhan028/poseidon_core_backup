@@ -1,4 +1,5 @@
 #include <iostream>
+#include <chrono>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
@@ -79,6 +80,8 @@ void load_snb_data(graph_db_ptr &graph,
     }
 #else
     for (auto &file : node_files) {
+      auto start_tm = std::chrono::steady_clock::now();
+
       std::vector<std::string> fp;
       boost::split(fp, file, boost::is_any_of("/"));
       assert(fp.back().find(".csv") != std::string::npos);
@@ -90,8 +93,12 @@ void load_snb_data(graph_db_ptr &graph,
       auto num_nodes = strict 
         ? graph->import_typed_nodes_from_csv(label, file, delim, mapping)
         : graph->import_nodes_from_csv(label, file, delim, mapping);
+      auto end_tm = std::chrono::steady_clock::now();
+      auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(end_tm -
+                                                                       start_tm).count();
+
       if (num_nodes > 0) {
-        spdlog::info("{} '{}' node objects imported", num_nodes, label);
+        spdlog::info("{} '{}' nodes imported in {} secs", num_nodes, label, runtime / 1000.0);
         // graph->print_stats();
       }
     }
@@ -126,10 +133,12 @@ void load_snb_data(graph_db_ptr &graph,
     for (auto &f : res) {
       auto resp = f.get();
       if (resp.second > 0)
-        spdlog::info("{} '{}' relationship objects imported", resp.second, resp.first);
+        spdlog::info("{} '{}' relationships imported", resp.second, resp.first);
     }
 #else
     for (auto &file : rship_files) {
+      auto start_tm = std::chrono::steady_clock::now();
+
       std::vector<std::string> fp;
       boost::split(fp, file, boost::is_any_of("/"));
       assert(fp.back().find(".csv") != std::string::npos);
@@ -140,9 +149,12 @@ void load_snb_data(graph_db_ptr &graph,
       auto num_rships = strict 
       ? graph->import_typed_relationships_from_csv(file, delim, mapping)
       : graph->import_relationships_from_csv(file, delim, mapping);
+      auto end_tm = std::chrono::steady_clock::now();
+      auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(end_tm -
+                                                                       start_tm).count();
       if (num_rships > 0) {
-        spdlog::info("{} ({})-[{}]-({}) relationship objects imported", 
-          num_rships, fn[0], label, fn[2]);
+        spdlog::info("{} ({})-[{}]-({}) relationships imported in {} msecs", 
+          num_rships, fn[0], label, fn[2], runtime / 1000.0);
         // graph->print_stats();
       }
     }
@@ -197,7 +209,7 @@ int main(int argc, char **argv) {
     std::cerr << ex.what() << '\n';
     return -1;
   }
-
+  
   std::shared_ptr<spdlog::logger> file_logger;
   if (!log_file.empty()) {
     file_logger = spdlog::basic_logger_mt("basic_logger", log_file);
