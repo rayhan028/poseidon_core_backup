@@ -157,7 +157,7 @@ void node_list::dump() {
   for (auto& n : nodes_) {
     std::cout << "#" << n.id() << ", @" << (unsigned long)&n
               << " [ txn-id=" << short_ts(n.txn_id()) << ", bts=" << short_ts(n.bts())
-              << ", cts=" << short_ts(n.cts()) << ", dirty=" << n.d_.is_dirty_ 
+              << ", cts=" << short_ts(n.cts()) << ", dirty=" << n.d().is_dirty_ 
               << " ], label=" << n.node_label << ", from="
               << n.from_rship_list << ", to=" << n.to_rship_list << ", props="
               << n.property_list;

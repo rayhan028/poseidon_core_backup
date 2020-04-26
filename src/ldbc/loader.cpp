@@ -13,7 +13,7 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
-#define SF_10
+#define SF_100
 #define CREATE_INDEX
 // #define PARALLEL_LOAD
 // #define PARALLEL_RSHIP_LOAD
@@ -24,7 +24,7 @@ const std::string test_path = poseidon::gPmemPath +
 
 #ifdef SF_100
 "sf100";
-#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 1024 * 600ull)) // 600 GiB
+#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 1024 * 650ull)) // 600 GiB
 #elif defined(SF_10)
 "sf10";
 #define POOL_SIZE ((unsigned long long)(1024 * 1024 * 160000ull)) // 16000 MiB
