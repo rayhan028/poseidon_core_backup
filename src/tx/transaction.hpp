@@ -202,6 +202,10 @@ template <typename T> struct txn {
   bool is_dirty_;            // true if the object represents a dirty object
 #endif
 
+  /**
+   * A method to hide the difference in accessing the d_ struct when 
+   * used with and without PMDK.
+   */
   const txn_data<T>& d() const { 
 #ifdef USE_PMDK
     return d_.get(); 
