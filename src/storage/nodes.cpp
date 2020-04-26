@@ -98,7 +98,7 @@ node_list::~node_list() {
 void node_list::runtime_initialize() {
   // make sure that all locks are released and no dirty objects exist
   for (auto &n : nodes_) {
-    n.d_.runtime_initialize();
+    n.d().runtime_initialize();
   }
 }
 

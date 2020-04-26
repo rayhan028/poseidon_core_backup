@@ -47,7 +47,7 @@ std::string rship_description::to_string() const {
 void relationship_list::runtime_initialize() {
   // make sure that all locks are released and no dirty objects exist
   for (auto &r : rships_) {
-    r.d_.runtime_initialize();
+    r.d().runtime_initialize();
   }
 }
 
