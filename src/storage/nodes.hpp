@@ -34,7 +34,7 @@
 #include "properties.hpp"
 #include "transaction.hpp"
 
-#define NODE_CHUNK_SIZE 4040
+#define NODE_CHUNK_SIZE 4040 // ensures chunk_size of 4096 Bytes
 
 struct node;
 using dirty_node = dirty_object<node>;
