@@ -141,13 +141,11 @@ template <typename T> struct txn_data {
   bool is_dirty_;                       // true if the object represents a dirty object
 
   txn_data() : bts_(0), cts_(INF), rts_(0), dirty_list_(nullptr), is_dirty_(false) {
-    spdlog::info("txn_data: {}", (void *)dirty_list_);
 }
 
   txn_data(const txn_data &n)
       : bts_(n.bts_), cts_(n.cts_), rts_(n.rts_),  
         dirty_list_(n.dirty_list_), is_dirty_(n.is_dirty_) {
-    spdlog::info("txn_data(txn_data&)");
 }
 
   ~txn_data() { /* don't delete dirty_list_ here - it will be deleted at other places! */ }
@@ -156,7 +154,6 @@ template <typename T> struct txn_data {
    * Copy assignment operator.
    */
   txn_data &operator=(const txn_data &t) {
-    spdlog::info("txn_data=&");
     bts_ = t.bts_;
     cts_ = t.cts_;
     rts_ = t.rts_;
@@ -169,7 +166,6 @@ template <typename T> struct txn_data {
    * Move assignment operator to move resources.
    */
   txn_data &operator=(txn_data &&t) {
-    spdlog::info("txn_data=&&");
     bts_ = t.bts_;
     cts_ = t.cts_;
     rts_ = t.rts_;
@@ -428,14 +424,10 @@ template <typename T> struct txn {
    * of the newly inserted object.
    */
   T& add_dirty_version(T&& tptr) {
-    spdlog::info("add_dirty_version: {}", (void *)d_->dirty_list_);
     if (!dirty_list()) {
       d_->dirty_list_ = new std::list<T>;
-      spdlog::info("create dirty_list");
     }
-    else
-      spdlog::info("dirty_list exists");
-
+ 
     tptr->elem_.d_->dirty_list_ = this->dirty_list();
     d_->dirty_list_->push_front(std::move(tptr));
 
