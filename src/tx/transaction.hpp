@@ -161,6 +161,7 @@ template <typename T> struct txn_data {
    * Copy assignment operator.
    */
   txn_data &operator=(const txn_data &t) {
+    spdlog::info("txn_data=&");
     bts_ = t.bts_;
     cts_ = t.cts_;
     rts_ = t.rts_;
@@ -174,6 +175,7 @@ template <typename T> struct txn_data {
    * Move assignment operator to move resources.
    */
   txn_data &operator=(txn_data &&t) {
+    spdlog::info("txn_data=&&");
     bts_ = t.bts_;
     cts_ = t.cts_;
     rts_ = t.rts_;
@@ -191,17 +193,17 @@ template <typename T> struct txn_data {
 };
 
 template <typename T> struct txn {
+  using txn_data_t = txn_data<T>;
+  using dirty_list_ptr = std::list<T> *;  // typedef for the list of dirty objects from
+                                          // currently active transactions
 #ifdef USE_PMDK
-  pmem::obj::experimental::v<txn_data<T>> d_;
+  pmem::obj::experimental::v<txn_data_t> d_;
 #else
-  txn_data<T> d_;
+  txn_data_t d_;
 #endif
 #if 0
   timestamp_t bts_, cts_, rts_; // begin timestamp, commit timestamp, read timestamp
   std::atomic<xid_t> txn_id; // transaction id if locked, 0 otherwise
-  using dirty_list_ptr =
-      std::list<T> *;        // typedef for the list of dirty objects from
-                             // currently active transactions
   dirty_list_ptr dirty_list; // the list of dirty objects
   bool is_dirty_;            // true if the object represents a dirty object
 #endif
@@ -210,15 +212,15 @@ template <typename T> struct txn {
    * A method to hide the difference in accessing the d_ struct when 
    * used with and without PMDK.
    */
-  const txn_data<T>& d() const { 
+  const txn_data_t& d() const { 
 #ifdef USE_PMDK
-    return const_cast<pmem::obj::experimental::v<txn_data<T>>&>(d_).unsafe_get(); 
+    return const_cast<pmem::obj::experimental::v<txn_data_t>&>(d_).unsafe_get(); 
 #else
     return d_;
 #endif
   }
 
-  txn_data<T>& d() { 
+  txn_data_t& d() { 
 #ifdef USE_PMDK
     return d_.unsafe_get(); 
 #else
@@ -345,6 +347,11 @@ template <typename T> struct txn {
 
   decltype(auto) dirty_list() { return d().dirty_list_; }
 
+  void delete_dirty_list() { 
+    delete d().dirty_list_; 
+    d().dirty_list_ = nullptr;
+  }
+
   /**
    * Return true if dirty copies of this node exist, i.e. if
    * other active transactions working on it.
@@ -415,11 +422,11 @@ template <typename T> struct txn {
   void remove_dirty_version(xid_t xid) {
     if (has_dirty_versions()) {
       auto iter =
-          std::remove_if(d().dirty_list_->begin(), d().dirty_list_->end(), [&](const T& dn) {
+          std::remove_if(dirty_list()->begin(), dirty_list()->end(), [&](const T& dn) {
             return dn->elem_.d().txn_id_ == xid && dn->elem_.cts() == INF;
           });
       // assert(iter != dirty_list->end());
-      d().dirty_list_->erase(iter, d().dirty_list_->end());
+      dirty_list()->erase(iter, dirty_list()->end());
     }
   }
 
@@ -428,18 +435,18 @@ template <typename T> struct txn {
    * of the newly inserted object.
    */
   T& add_dirty_version(T&& tptr) {
-    spdlog::info("add_dirty_version: {}", (void *)d_.unsafe_get().dirty_list_);
-    if (!dirty_list()) {//Cannot use  if(!has_dirty_versions()) as it will leak memory on heap
-      d().dirty_list_ = new std::list<T>;
+    spdlog::info("add_dirty_version: {}", (void *)d().dirty_list_);
+    if (!dirty_list()) {
+      dirty_list() = new std::list<T>;
       spdlog::info("create dirty_list");
     }
     else
       spdlog::info("dirty_list exists");
 
-    tptr->elem_.d().dirty_list_ = d().dirty_list_;
-    d().dirty_list_->push_front(std::move(tptr));
+    tptr->elem_.dirty_list() = this->dirty_list();
+    dirty_list()->push_front(std::move(tptr));
 
-    return d().dirty_list_->front();
+    return dirty_list()->front();
   }
 
   /**
@@ -447,7 +454,7 @@ template <typename T> struct txn {
    * return true. Otherwise, the object was added and return false.
    */
   bool updated_in_version(xid_t xid) {
-    if (!d().dirty_list_) return false;
+    if (!dirty_list()) return false;
     for (const auto& dn : *(d().dirty_list_)) {
         if (dn->elem_.d().txn_id_ == xid) 
           return dn->updated();
@@ -465,14 +472,13 @@ template <typename T> struct txn {
     if (has_dirty_versions()) {
       // spdlog::info("GC: remove everything smaller than {}: #{} elements",
       //             oldest, dirty_list->size());
-      d().dirty_list_->remove_if([oldest](const T& dn) { return dn->elem_.cts() <= oldest; });
+      dirty_list()->remove_if([oldest](const T& dn) { return dn->elem_.cts() <= oldest; });
       // spdlog::info("GC done: #{} elements", dirty_list->size());
     }
     //Optional: After garbage collection, if there are no more versions, then we can delete the list.
     if (!has_dirty_versions()) {
       spdlog::info("delete dirty_list");
-     delete d().dirty_list_;
-     d().dirty_list_ = nullptr;
+     delete_dirty_list();
     }
   }
 };

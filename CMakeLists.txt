@@ -18,6 +18,10 @@ option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
 #-------------------------------------------------------------------------------
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+option(USE_PMDK       "Use Intel PMDK"                         OFF)
+endif()
+
 # Don't try to contact github everytime.
 set (FETCHCONTENT_FULLY_DISCONNECTED "OFF")
 
