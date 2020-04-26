@@ -278,7 +278,7 @@ template <typename T> struct txn {
         else {
           // if the object is locked by us but not valid, then we have it 
           // already deleted!
-          if (dn->elem_.is_locked_by(xid) && (dn->elem_.bts == dn->elem_.bts))
+          if (dn->elem_.is_locked_by(xid) && (dn->elem_.bts == dn->elem_.cts))
             throw unknown_id();
 
           // if the object is not locked but we cannot find a valid version

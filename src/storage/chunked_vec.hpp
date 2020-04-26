@@ -48,7 +48,7 @@
  * @tparam num_records number of records to store per chunk
  */
 template <typename T, int num_records>
-struct chunk {
+struct alignas(64) chunk {
   p<std::bitset<num_records>>
       slots_; // bitstring representing empty slots (0), used slots (1)
 #ifdef USE_PMDK
