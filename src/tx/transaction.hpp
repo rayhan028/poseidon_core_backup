@@ -437,14 +437,14 @@ template <typename T> struct txn {
   T& add_dirty_version(T&& tptr) {
     spdlog::info("add_dirty_version: {}", (void *)d().dirty_list_);
     if (!dirty_list()) {
-      dirty_list() = new std::list<T>;
+      d().dirty_list_ = new std::list<T>;
       spdlog::info("create dirty_list");
     }
     else
       spdlog::info("dirty_list exists");
 
-    tptr->elem_.dirty_list() = this->dirty_list();
-    dirty_list()->push_front(std::move(tptr));
+    tptr->elem_.d().dirty_list_ = this->dirty_list();
+    d().dirty_list_->push_front(std::move(tptr));
 
     return dirty_list()->front();
   }
