@@ -487,7 +487,7 @@ node &graph_db::get_valid_node_version(node &n, xid_t xid) {
   if (!n.is_locked()) {
     // spdlog::info("node_by_id: node #{} is unlocked: [{}, {}] <=> {}", n.id(),
     //             n.bts, n.cts, xid);
-    return n.is_valid(xid) ? n : n.find_valid_version(xid)->elem_;
+    return n.is_valid_for(xid) ? n : n.find_valid_version(xid)->elem_;
   }
 
   // or (3) node is locked by another transaction
@@ -514,7 +514,7 @@ relationship &graph_db::get_valid_rship_version(relationship &r, xid_t xid) {
   }
   // or (2) is unlocked and xid is in [bts,cts]
   if (!r.is_locked()) {
-    return r.is_valid(xid) ? r : r.find_valid_version(xid)->elem_;
+    return r.is_valid_for(xid) ? r : r.find_valid_version(xid)->elem_;
   }
 
   // relationship is locked by another transaction -> abort!!
@@ -535,6 +535,7 @@ node &graph_db::node_by_id(node::id_t id) {
   auto xid = current_transaction()->xid();
   /// spdlog::info("[{}] try to fetch node #{}", xid, id);
   auto &n = nodes_->get(id);
+  n.prepare();
   n.set_rts(xid);
   return get_valid_node_version(n, xid);
 #else
@@ -547,6 +548,7 @@ relationship &graph_db::rship_by_id(relationship::id_t id) {
   check_tx_context();
   auto xid = current_transaction()->xid();
   auto &r = rships_->get(id);
+  r.prepare();
   r.set_rts(xid);
   return get_valid_rship_version(r, xid);
 #else
@@ -574,7 +576,7 @@ node_description graph_db::get_node_description(const node &n) {
     // dump();
     // otherwise there are two options:
     // (1) we still can get the data from the properties_ table
-    if (!n.is_dirty() && n.is_valid(xid)) {
+    if (!n.is_dirty() && n.is_valid_for(xid)) {
       props = properties_->all_properties(n.property_list, dict_);
       label = dict_->lookup_code(n.node_label);
     }
@@ -610,7 +612,7 @@ rship_description graph_db::get_rship_description(const relationship &r) {
   else {
     // otherwise there are two options:
     // (1) we still can get the data from the properties_ table
-    if (!r.is_dirty() && r.is_valid(xid)) {
+    if (!r.is_dirty() && r.is_valid_for(xid)) {
       props = properties_->all_properties(r.property_list, dict_);
       label = dict_->lookup_code(r.rship_label);
     }

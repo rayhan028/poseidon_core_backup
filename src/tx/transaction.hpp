@@ -26,10 +26,6 @@
 #include <atomic>
 #include <list>
 
-#ifdef USE_PMDK
-#include <libpmemobj++/experimental/v.hpp>
-#endif
-
 /**
  * Typedef for transaction ids.
  */
@@ -141,16 +137,15 @@ template <typename T> struct txn_data {
   using dirty_list_ptr = std::list<T>*; // typedef for the list of dirty objects from
                                         // currently active transactions
   timestamp_t bts_, cts_, rts_;         // begin timestamp, commit timestamp, read timestamp
-  std::atomic<xid_t> txn_id_;           // transaction id if locked, 0 otherwise
   dirty_list_ptr dirty_list_;           // the list of dirty objects
   bool is_dirty_;                       // true if the object represents a dirty object
 
-  txn_data() : bts_(0), cts_(INF), rts_(0), txn_id_(0), dirty_list_(nullptr), is_dirty_(false) {
+  txn_data() : bts_(0), cts_(INF), rts_(0), dirty_list_(nullptr), is_dirty_(false) {
     spdlog::info("txn_data: {}", (void *)dirty_list_);
 }
 
   txn_data(const txn_data &n)
-      : bts_(n.bts_), cts_(n.cts_), rts_(n.rts_), txn_id_(n.txn_id_.load()), 
+      : bts_(n.bts_), cts_(n.cts_), rts_(n.rts_),  
         dirty_list_(n.dirty_list_), is_dirty_(n.is_dirty_) {
     spdlog::info("txn_data(txn_data&)");
 }
@@ -165,7 +160,6 @@ template <typename T> struct txn_data {
     bts_ = t.bts_;
     cts_ = t.cts_;
     rts_ = t.rts_;
-    txn_id_ = t.txn_id_.load();
     is_dirty_ = t.is_dirty_;
     dirty_list_ = t.dirty_list_;
     return *this;
@@ -179,69 +173,55 @@ template <typename T> struct txn_data {
     bts_ = t.bts_;
     cts_ = t.cts_;
     rts_ = t.rts_;
-    txn_id_ = t.txn_id_.load();
     is_dirty_ = t.is_dirty_;
     dirty_list_ = t.dirty_list_;
     t.dirty_list_ = nullptr; //After moving resource from source, reset its pointer.
     return *this;
   }
 
-  void runtime_initialize() { 
-    txn_id_ = 0;
-    dirty_list_ = nullptr;
-  }
 };
 
 template <typename T> struct txn {
   using txn_data_t = txn_data<T>;
-  using dirty_list_ptr = std::list<T> *;  // typedef for the list of dirty objects from
-                                          // currently active transactions
-#ifdef USE_PMDK
-  pmem::obj::experimental::v<txn_data_t> d_;
-#else
-  txn_data_t d_;
-#endif
-#if 0
-  timestamp_t bts_, cts_, rts_; // begin timestamp, commit timestamp, read timestamp
-  std::atomic<xid_t> txn_id; // transaction id if locked, 0 otherwise
-  dirty_list_ptr dirty_list; // the list of dirty objects
-  bool is_dirty_;            // true if the object represents a dirty object
-#endif
+  using txn_data_ptr = txn_data_t *;
 
-  /**
-   * A method to hide the difference in accessing the d_ struct when 
-   * used with and without PMDK.
-   */
-  const txn_data_t& d() const { 
-#ifdef USE_PMDK
-    return const_cast<pmem::obj::experimental::v<txn_data_t>&>(d_).unsafe_get(); 
-#else
-    return d_;
-#endif
-  }
+  std::atomic<xid_t> txn_id_; // transaction id if locked, 0 otherwise
+  txn_data_ptr d_;            // pointer to volatile data!!
 
-  txn_data_t& d() { 
-#ifdef USE_PMDK
-    return d_.unsafe_get(); 
-#else
-    return d_;
-#endif
-  }
   /**
    * Default constructor.
    */
-  txn() {}
+  txn() : txn_id_(0) { d_ = new txn_data_t(); }
 
   /**
    * Copy constructor.
    */
-  txn(const txn &t) { d_ = t.d(); }
+  txn(const txn &t) : txn_id_(t.txn_id_.load()) { d_ = new txn_data_t(*t.d_); }
+
+  /**
+   * Destructor
+   */
+  ~txn() { if (d_) delete d_; }
+
+  void runtime_initialize() { 
+    txn_id_ = 0;
+    d_ = nullptr;
+  }
+
+  /**
+   * Prepare the volatile part of an object, i.e. create the volatile
+   * txn_data structure with timestamps and dirty_list.
+   */
+  void prepare() {
+    if (!d_) d_ = new txn_data_t(); 
+  }
 
   /**
    * Copy assignment operator.
    */
   txn &operator=(const txn &t) {
-    d_ = t.d();
+    d_ = new txn_data_t(*t.d_);
+    txn_id_ = t.txn_id_.load();
     return *this;
   }
 
@@ -249,73 +229,75 @@ template <typename T> struct txn {
    * Move assignment operator to move resources.
    */
   txn &operator=(txn &&t) {
-    d_ = t.d();
+    d_ = t.d_;
+    t.d_ = nullptr;
+    txn_id_ = t.txn_id_.load();
     return *this;
   }
 
   /* ---------------- concurrency control ---------------- */
 
-  inline xid_t txn_id() const { return d().txn_id_.load(); }
+  inline xid_t txn_id() const { return txn_id_.load(); }
   /**
    * Return the value of the begin timestamp.
    */
-  inline timestamp_t bts() const { return d().bts_; }
+  inline timestamp_t bts() const { return d_->bts_; }
 
   /**
    * Return the value of the commit timestamp.
    */
-  inline timestamp_t cts() const { return d().cts_; }
+  inline timestamp_t cts() const { return d_->cts_; }
 
   /**
    * Return the value of the read timestamp.
    */
-  inline timestamp_t rts() const { return d().rts_; }
+  inline timestamp_t rts() const { return d_->rts_; }
 
   /**
    * Set the begin and commit timestamps.
    */
   void set_timestamps(xid_t beg, xid_t end) {
-    d().bts_ = beg;
-    d().cts_ = end;
+    d_->bts_ = beg;
+    d_->cts_ = end;
   }
 
   /**
    * Set the commit timestamp.
    */
-  void set_cts(xid_t end) { d().cts_ = end; }
+  void set_cts(xid_t end) { d_->cts_ = end; }
 
   /**
    * Set the read timestamp.
    */
   void set_rts(xid_t end) { 
     // update only if rts < end
-    if (d().rts_ < end) 
-      d().rts_ = end; 
+    if (d_->rts_ < end) 
+      d_->rts_ = end; 
   }
 
   /**
    * Return true if the node is locked by a transaction.
    */
-  bool is_locked() const { return d().txn_id_ != 0; }
+  bool is_locked() const { return txn_id_ != 0; }
 
   /**
    * Checks if the node is already locked by a transaction with the given xid.
    */
-  bool is_locked_by(xid_t xid) const { return d().txn_id_ == xid; }
+  bool is_locked_by(xid_t xid) const { return txn_id_ == xid; }
 
   /**
    * Locks the object. xid is the id of the owner transaction.
    */
   void lock(xid_t xid) {
     xid_t expected = 0;
-    while (!d().txn_id_.compare_exchange_weak(expected, xid) && expected != xid)
+    while (!txn_id_.compare_exchange_weak(expected, xid) && expected != xid)
       ;
   }
 
   /**
    * Release the lock.
    */
-  void unlock() { d().txn_id_ = 0; }
+  void unlock() { txn_id_ = 0; }
 
   /**
    * Try to lock the object and return true if successful. Otherwise,
@@ -323,7 +305,7 @@ template <typename T> struct txn {
    */
   bool try_lock(xid_t xid) {
     xid_t expected = 0;
-    return d().txn_id_.compare_exchange_strong(expected, xid);
+    return txn_id_.compare_exchange_strong(expected, xid);
   }
 
   /* ---------------- dirty object handling ---------------- */
@@ -333,30 +315,41 @@ template <typename T> struct txn {
    * (node/relationship) is a dirty object where properties are kept separately
    * from the properties_ table.
    */
-  void set_dirty() { d().is_dirty_ = true; }
+  void set_dirty() { d_->is_dirty_ = true; }
 
   /**
    * Check of the dirty flag is set. In this case the object is stored in volatile memory.
    */
-  bool is_dirty() const { return d().is_dirty_; }
+  bool is_dirty() const { return d_->is_dirty_; }
 
   /**
    * Check if the node is valid for the transaction with the give xid.
    */
-  bool is_valid(xid_t xid) const { return d().bts_ <= xid && xid < d().cts_; }
+  bool is_valid_for(xid_t xid) const { return d_->bts_ <= xid && xid < d_->cts_; }
 
-  decltype(auto) dirty_list() { return d().dirty_list_; }
+  /**
+   * TODO
+   */
+  bool is_valid() const { return d_ == nullptr || d_->cts_ == INF; }
 
+  /**
+   * TODO
+   */
+  decltype(auto) dirty_list() { return d_->dirty_list_; }
+
+  /**
+   * TODO
+   */
   void delete_dirty_list() { 
-    delete d().dirty_list_; 
-    d().dirty_list_ = nullptr;
+    delete d_->dirty_list_; 
+    d_->dirty_list_ = nullptr;
   }
 
   /**
    * Return true if dirty copies of this node exist, i.e. if
    * other active transactions working on it.
    */
-  bool has_dirty_versions() const { return d().dirty_list_ != nullptr && !d().dirty_list_->empty(); }
+  bool has_dirty_versions() const { return d_->dirty_list_ != nullptr && !d_->dirty_list_->empty(); }
 
   /**
    * Find a valid version from the list of objects (stored in the dirty list)
@@ -366,9 +359,9 @@ template <typename T> struct txn {
   const T& find_valid_version(xid_t xid) const {
     if (has_dirty_versions()) {
       bool abort = false;
-      for (const auto& dn : *(d().dirty_list_)) {
+      for (const auto& dn : *(d_->dirty_list_)) {
        if (!dn->elem_.is_locked() || dn->elem_.is_locked_by(xid)) {
-        if (dn->elem_.is_valid(xid))
+        if (dn->elem_.is_valid_for(xid))
           return dn;
         else {
           // if the object is locked by us but not valid, then we have it 
@@ -396,7 +389,7 @@ template <typename T> struct txn {
    */
   const T& get_dirty_version(xid_t xid) {
     if (has_dirty_versions()) {
-      for (const auto& dn : *(d().dirty_list_)) {
+      for (const auto& dn : *(d_->dirty_list_)) {
         if (dn->elem_.txn_id() == xid) // TODO: !!!!
           return dn;
       }
@@ -411,7 +404,7 @@ template <typename T> struct txn {
   decltype(auto) get_dirty_objects() const {
     using dirty_list_ptr = const std::list<T>*;
     return has_dirty_versions() 
-      ? std::optional<dirty_list_ptr>(d().dirty_list_) 
+      ? std::optional<dirty_list_ptr>(d_->dirty_list_) 
       : std::optional<dirty_list_ptr>{};
   }
 
@@ -423,7 +416,7 @@ template <typename T> struct txn {
     if (has_dirty_versions()) {
       auto iter =
           std::remove_if(dirty_list()->begin(), dirty_list()->end(), [&](const T& dn) {
-            return dn->elem_.d().txn_id_ == xid && dn->elem_.cts() == INF;
+            return dn->elem_.txn_id_ == xid && dn->elem_.cts() == INF;
           });
       // assert(iter != dirty_list->end());
       dirty_list()->erase(iter, dirty_list()->end());
@@ -435,16 +428,16 @@ template <typename T> struct txn {
    * of the newly inserted object.
    */
   T& add_dirty_version(T&& tptr) {
-    spdlog::info("add_dirty_version: {}", (void *)d().dirty_list_);
+    spdlog::info("add_dirty_version: {}", (void *)d_->dirty_list_);
     if (!dirty_list()) {
-      d().dirty_list_ = new std::list<T>;
+      d_->dirty_list_ = new std::list<T>;
       spdlog::info("create dirty_list");
     }
     else
       spdlog::info("dirty_list exists");
 
-    tptr->elem_.d().dirty_list_ = this->dirty_list();
-    d().dirty_list_->push_front(std::move(tptr));
+    tptr->elem_.d_->dirty_list_ = this->dirty_list();
+    d_->dirty_list_->push_front(std::move(tptr));
 
     return dirty_list()->front();
   }
@@ -455,8 +448,8 @@ template <typename T> struct txn {
    */
   bool updated_in_version(xid_t xid) {
     if (!dirty_list()) return false;
-    for (const auto& dn : *(d().dirty_list_)) {
-        if (dn->elem_.d().txn_id_ == xid) 
+    for (const auto& dn : *(d_->dirty_list_)) {
+        if (dn->elem_.txn_id_ == xid) 
           return dn->updated();
     }
     return false;

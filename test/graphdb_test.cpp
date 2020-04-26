@@ -671,7 +671,7 @@ TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
   for (relationship::id_t i = 0; i < next_rship; i++)
     graph->delete_relationship(i);
 
-    graph->commit_transaction();
+  graph->commit_transaction();
 
   tx = graph->begin_transaction();
 
