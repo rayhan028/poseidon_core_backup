@@ -145,11 +145,15 @@ template <typename T> struct txn_data {
   dirty_list_ptr dirty_list_;           // the list of dirty objects
   bool is_dirty_;                       // true if the object represents a dirty object
 
-  txn_data() : bts_(0), cts_(INF), rts_(0), txn_id_(0), dirty_list_(nullptr), is_dirty_(false) {}
+  txn_data() : bts_(0), cts_(INF), rts_(0), txn_id_(0), dirty_list_(nullptr), is_dirty_(false) {
+    spdlog::info("txn_data: {}", (void *)dirty_list_);
+}
 
   txn_data(const txn_data &n)
       : bts_(n.bts_), cts_(n.cts_), rts_(n.rts_), txn_id_(n.txn_id_.load()), 
-        dirty_list_(n.dirty_list_), is_dirty_(n.is_dirty_) {}
+        dirty_list_(n.dirty_list_), is_dirty_(n.is_dirty_) {
+    spdlog::info("txn_data(txn_data&)");
+}
 
   ~txn_data() { /* don't delete dirty_list_ here - it will be deleted at other places! */ }
 
@@ -204,7 +208,7 @@ template <typename T> struct txn {
 
   const txn_data<T>& d() const { 
 #ifdef USE_PMDK
-    return d_.get(); 
+    return const_cast<pmem::obj::experimental::v<txn_data<T>>&>(d_).unsafe_get(); 
 #else
     return d_;
 #endif
@@ -212,7 +216,7 @@ template <typename T> struct txn {
 
   txn_data<T>& d() { 
 #ifdef USE_PMDK
-    return d_.get(); 
+    return d_.unsafe_get(); 
 #else
     return d_;
 #endif
@@ -225,7 +229,7 @@ template <typename T> struct txn {
   /**
    * Copy constructor.
    */
-  txn(const txn &n) : d_(n.d()) {}
+  txn(const txn &t) { d_ = t.d(); }
 
   /**
    * Copy assignment operator.
@@ -411,7 +415,7 @@ template <typename T> struct txn {
             return dn->elem_.d().txn_id_ == xid && dn->elem_.cts() == INF;
           });
       // assert(iter != dirty_list->end());
-      d_.dirty_list_->erase(iter, d().dirty_list_->end());
+      d().dirty_list_->erase(iter, d().dirty_list_->end());
     }
   }
 
@@ -420,11 +424,15 @@ template <typename T> struct txn {
    * of the newly inserted object.
    */
   T& add_dirty_version(T&& tptr) {
-    if (!d().dirty_list_) {//Cannot use  if(!has_dirty_versions()) as it will leak memory on heap
+    spdlog::info("add_dirty_version: {}", (void *)d_.unsafe_get().dirty_list_);
+    if (!dirty_list()) {//Cannot use  if(!has_dirty_versions()) as it will leak memory on heap
       d().dirty_list_ = new std::list<T>;
       spdlog::info("create dirty_list");
     }
-    tptr->elem_.d_.dirty_list_ = d().dirty_list_;
+    else
+      spdlog::info("dirty_list exists");
+
+    tptr->elem_.d().dirty_list_ = d().dirty_list_;
     d().dirty_list_->push_front(std::move(tptr));
 
     return d().dirty_list_->front();
