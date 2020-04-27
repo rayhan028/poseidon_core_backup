@@ -242,6 +242,8 @@ int main(int argc, char **argv) {
   auto graph = p_make_ptr<graph_db>(db_name);
 #endif
 
+  graph->print_stats();
+  
   std::string snb_sta = snb_home + "/static/";
   std::string snb_dyn = snb_home + "/dynamic/";
 
