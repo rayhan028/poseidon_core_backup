@@ -35,6 +35,8 @@
 
 #include "spdlog/spdlog.h"
 
+#define PROP_CHUNK_SIZE 4040 // ensures chunk_size of 4096 Bytes
+
 bool is_quoted_string(const std::string &s);
 bool is_float(const std::string &s);
 bool is_int(const std::string &s);
@@ -171,10 +173,6 @@ T get_property(const properties_t &p, const std::string &key) {
   return boost::any_cast<T>(it->second);
 }
 
-#define SET_NODE_TYPE(f) (f &= 0x7f)
-#define SET_RELATIONSHIP_TYPE(f) (f |= 0x80)
-#define IS_NODE_TYPE(f) !(f & 0x80)
-
 /**
  * property_set represents a set of key-value pairs describing  attributes of a
  * node or relationship. A property_set is stored as a single record in the
@@ -189,21 +187,15 @@ struct property_set {
   offset_t next;     // index of next property item
   offset_t owner;    // node id or relationship id owning the property
   p_item_list items; // we are storing 5 property items per set
-  uint8_t flags;     // Bit 0 = owner: 0 for node, 1 for relationship
 
   /**
    * Default constructor.
    */
   property_set() = default;
 
-  property_set(offset_t o, const p_item_list &pil, offset_t n,
-               bool is_node = true)
-      : next(n), owner(o), items(pil), flags(0) {
-    if (!is_node)
-      SET_RELATIONSHIP_TYPE(flags);
+  property_set(offset_t o, const p_item_list &pil, offset_t n)
+      : next(n), owner(o), items(pil) {
   }
-
-  bool is_node_owner() const { return IS_NODE_TYPE(flags); }
 };
 
 /**
@@ -241,7 +233,7 @@ public:
    * function is called before the slot is reserved (used for undo logging).
    */
   property_set::id_t add_pitems(offset_t nid, const std::list<p_item> &props,
-                                dict_ptr &dct, bool is_node = true, 
+                                dict_ptr &dct, 
                                 std::function<void(offset_t)> callback = nullptr);
 
   /**
@@ -289,10 +281,10 @@ public:
   p_item property_value(offset_t id, dcode_t pkey);
 
   /**
-   * Scans all node properties with the name represented by the encoded key and
+   * Scans all properties with the name represented by the encoded key and
    * for all properties satisfying the predicate, the function f is invoked.
    */
-  void foreach_node(dcode_t pkey, p_item::predicate_func pred,
+  void foreach(dcode_t pkey, p_item::predicate_func pred,
                     std::function<void(offset_t)> f);
 
   void foreach_property(std::function<void(const p_item& pi)> f);
@@ -327,7 +319,7 @@ public:
    */
   property_set::id_t update_pitems(offset_t nid, offset_t id,
                                    const std::list<p_item> &props,
-                                   dict_ptr &dct, bool is_node = true);
+                                   dict_ptr &dct);
 
   /**
    * Get a property set via its identifier.
@@ -347,7 +339,7 @@ public:
   /**
    * Returns the underlying vector of the property set list.
    */
-  chunked_vec<property_set> &as_vec() { return properties_; }
+  chunked_vec<property_set, PROP_CHUNK_SIZE> &as_vec() { return properties_; }
 
   /**
    * Build a list of p_items from the list of properties represented by props.
@@ -384,7 +376,7 @@ public:
   std::size_t num_chunks() const { return properties_.num_chunks(); }
 
 private:
-  chunked_vec<property_set> properties_; // the actual list of properties
+  chunked_vec<property_set, PROP_CHUNK_SIZE> properties_; // the actual list of properties
 };
 
 #endif

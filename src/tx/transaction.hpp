@@ -140,14 +140,21 @@ template <typename T> struct txn_data {
   dirty_list_ptr dirty_list_;           // the list of dirty objects
   bool is_dirty_;                       // true if the object represents a dirty object
 
-  txn_data() : bts_(0), cts_(INF), rts_(0), dirty_list_(nullptr), is_dirty_(false) {
-}
+  /**
+   * Constructor
+   */
+  txn_data() : bts_(0), cts_(INF), rts_(0), dirty_list_(nullptr), is_dirty_(false) {}
 
+  /**
+   * Copy Constructor
+   */
   txn_data(const txn_data &n)
       : bts_(n.bts_), cts_(n.cts_), rts_(n.rts_),  
-        dirty_list_(n.dirty_list_), is_dirty_(n.is_dirty_) {
-}
+        dirty_list_(n.dirty_list_), is_dirty_(n.is_dirty_) {}
 
+  /**
+   * Destructor
+   */
   ~txn_data() { /* don't delete dirty_list_ here - it will be deleted at other places! */ }
 
  /**
@@ -177,6 +184,10 @@ template <typename T> struct txn_data {
 
 };
 
+/**
+ * Base structure for transactional objects. It stores the transaction_id as lock 
+ * and the txn_data structure as a volatile pointer.
+ */ 
 template <typename T> struct txn {
   using txn_data_t = txn_data<T>;
   using txn_data_ptr = txn_data_t *;

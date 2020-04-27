@@ -84,7 +84,7 @@ node::id_t graph_db::import_node(const std::string &label,
   // save properties
   if (!props.empty()) {
     property_set::id_t pid =
-        properties_->append_node_properties(node_id, props, dict_);
+        node_properties_->append_node_properties(node_id, props, dict_);
     n.property_list = pid;
   }
 
@@ -103,7 +103,7 @@ node::id_t graph_db::import_typed_node(dcode_t label,
   // save properties
   if (!keys.empty()) {
     property_set::id_t pid =
-        properties_->append_typed_node_properties(node_id, keys, typelist, values);
+        node_properties_->append_typed_node_properties(node_id, keys, typelist, values);
     n.property_list = pid;
   }
 
@@ -124,7 +124,7 @@ relationship::id_t graph_db::import_relationship(node::id_t from_id,
   // save properties
   if (!props.empty()) {
     property_set::id_t pid =
-        properties_->append_relationship_properties(rid, props, dict_);
+        rship_properties_->append_relationship_properties(rid, props, dict_);
     r.property_list = pid;
   }
   // update the list of relationships for each of both nodes
@@ -159,7 +159,7 @@ relationship::id_t graph_db::import_typed_relationship(node::id_t from_id,
   // save properties
   if (!keys.empty()) {
     property_set::id_t pid =
-        properties_->append_typed_node_properties(rid, keys, typelist, values);
+        rship_properties_->append_typed_node_properties(rid, keys, typelist, values);
     r.property_list = pid;
   }
 

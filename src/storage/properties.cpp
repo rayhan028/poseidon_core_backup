@@ -245,7 +245,7 @@ property_set::id_t property_list::add_node_properties(offset_t nid,
       assert(id != UNKNOWN);
 
       properties_.store_at(id,
-                           property_set(nid, std::move(pil), next_id, true));
+                           property_set(nid, std::move(pil), next_id));
 
       next_id = id;
       pidx = 0;
@@ -257,7 +257,7 @@ property_set::id_t property_list::add_node_properties(offset_t nid,
 
 property_set::id_t property_list::add_pitems(offset_t nid,
                                              const std::list<p_item> &props,
-                                             dict_ptr &dct, bool is_node, 
+                                             dict_ptr &dct, 
                                              std::function<void(offset_t)> callback) {
   property_set::id_t next_id = UNKNOWN;
   property_set::p_item_list pil;
@@ -265,7 +265,7 @@ property_set::id_t property_list::add_pitems(offset_t nid,
   for (auto &pi : props) {
     pil[pidx++] = pi;
     if (++n == props.size() || pidx == pil.max_size()) {
-      auto pr = properties_.store(property_set(nid, std::move(pil), next_id, is_node), callback);
+      auto pr = properties_.store(property_set(nid, std::move(pil), next_id), callback);
       next_id = pr.first;
       pidx = 0;
       pil.fill(p_item());
@@ -276,7 +276,7 @@ property_set::id_t property_list::add_pitems(offset_t nid,
 
 property_set::id_t property_list::update_pitems(offset_t nid, offset_t id,
                                                 const std::list<p_item> &props,
-                                                dict_ptr &dct, bool is_node) {
+                                                dict_ptr &dct) {
   // we know that props contains all previous properties
   // thus, we can overwrite all existing property_sets starting with id
   property_set::id_t head_id = id;
@@ -301,7 +301,7 @@ property_set::id_t property_list::update_pitems(offset_t nid, offset_t id,
         assert(new_id != UNKNOWN);
 
         properties_.store_at(new_id,
-                             property_set(nid, std::move(pil), head_id, is_node));
+                             property_set(nid, std::move(pil), head_id));
 
         head_id = new_id;
         pidx = 0;
@@ -322,7 +322,7 @@ property_list::append_node_properties(offset_t nid, const properties_t &props,
     pil[pidx++] = p_item(kv.first, kv.second, dct);
     if (++n == props.size() || pidx == pil.max_size()) {
       auto p =
-          properties_.append(property_set(nid, std::move(pil), next_id, true));
+          properties_.append(property_set(nid, std::move(pil), next_id));
       next_id = p.first;
       pidx = 0;
       pil.fill(p_item());
@@ -344,7 +344,7 @@ property_set::id_t property_list::append_typed_node_properties(offset_t nid,
     pil[pidx++] = p_item(keys[i], typelist[i], values[i]);
     if (i == keys.size() - 1 || pidx == pil.max_size()) {
       auto p =
-          properties_.append(property_set(nid, std::move(pil), next_id, true));
+          properties_.append(property_set(nid, std::move(pil), next_id));
       next_id = p.first;
       pidx = 0;
       pil.fill(p_item());
@@ -367,7 +367,7 @@ property_set::id_t property_list::add_relationship_properties(
       assert(id != UNKNOWN);
 
       properties_.store_at(id,
-                           property_set(rid, std::move(pil), next_id, false));
+                           property_set(rid, std::move(pil), next_id));
 
       next_id = id;
       pidx = 0;
@@ -386,7 +386,7 @@ property_set::id_t property_list::append_relationship_properties(
     pil[pidx++] = p_item(kv.first, kv.second, dct);
     if (++n == props.size() || pidx == pil.max_size()) {
       auto p =
-          properties_.append(property_set(rid, std::move(pil), next_id, false));
+          properties_.append(property_set(rid, std::move(pil), next_id));
       next_id = p.first;
       pidx = 0;
       pil.fill(p_item());
@@ -408,15 +408,13 @@ p_item property_list::property_value(offset_t id, dcode_t pkey) {
   return p_item();
 }
 
-void property_list::foreach_node(dcode_t pkey, p_item::predicate_func pred,
+void property_list::foreach(dcode_t pkey, p_item::predicate_func pred,
                                  std::function<void(offset_t)> f) {
   for (auto &p : properties_) {
-    if (p.is_node_owner()) {
       for (auto &item : p.items) {
         if (item.key() == pkey && pred(item))
           f(p.owner);
       }
-    }
   }
 }
 
@@ -519,7 +517,7 @@ property_set::id_t property_list::update_properties(offset_t nid, offset_t id,
       pil[pidx++] = p_item(kv.first, kv.second, dct);
       if (++n == todo_list.size() || pidx == pil.max_size()) {
         auto p = properties_.append(
-            property_set(nid, std::move(pil), next_id, true));
+            property_set(nid, std::move(pil), next_id));
         next_id = p.first;
         pidx = 0;
         pil.fill(p_item());

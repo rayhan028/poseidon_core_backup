@@ -228,10 +228,14 @@ public:
   p_ptr<dict> &get_dictionary() { return dict_; }
 
   /**
-   * Returns a reference to the property list of this graph.
+   * Returns a reference to the node property list of this graph.
    */
+  const p_ptr<property_list>& get_node_properties() { return node_properties_; }
 
-  const p_ptr<property_list>& get_properties() { return properties_; }
+  /**
+   * Returns a reference to the relationship property list of this graph.
+   */
+  const p_ptr<property_list>& get_rship_properties() { return rship_properties_; }
 
   /**
    * Returns a reference to the node list of this graph.
@@ -242,7 +246,6 @@ public:
   /**
    * Returns a reference to the relationship list of this graph.
    */
-
   const p_ptr<relationship_list>& get_relationships() { return rships_; }
 
   /**
@@ -496,7 +499,9 @@ private:
   p_ptr<relationship_list>
       rships_; // the list of all relationships of the graph
   p_ptr<property_list>
-      properties_;   // the list of all properties of nodes and relationships
+      node_properties_;   // the list of all properties of nodes 
+  p_ptr<property_list>
+      rship_properties_;   // the list of all properties of relationships
   p_ptr<dict> dict_; // the dictionary used for string compression
 
   p_ptr<index_map> index_map_; // the list of all exisiting indexes

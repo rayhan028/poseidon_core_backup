@@ -1959,7 +1959,8 @@ int main(int argc, char **argv) {
 
   node::id_t first_insert_node = graph->get_nodes()->as_vec().first_available();
   relationship::id_t first_insert_rship = graph->get_relationships()->as_vec().first_available();
-  property_set::id_t first_insert_prop = graph->get_properties()->as_vec().first_available();
+  property_set::id_t first_insert_nprop = graph->get_node_properties()->as_vec().first_available();
+  property_set::id_t first_insert_rprop = graph->get_rship_properties()->as_vec().first_available();
 
   run_benchmark(graph);
 
@@ -1968,7 +1969,8 @@ int main(int argc, char **argv) {
 #endif
   node::id_t last_insert_node = graph->get_nodes()->as_vec().first_available();
   relationship::id_t last_insert_rship = graph->get_relationships()->as_vec().first_available();
-  property_set::id_t last_insert_prop = graph->get_properties()->as_vec().first_available();
+  // property_set::id_t last_insert_nprop = graph->get_node_properties()->as_vec().first_available();
+  // property_set::id_t last_insert_rprop = graph->get_rship_properties()->as_vec().first_available();
   
   //delete all created nodes and relationships
   for (node::id_t i = first_insert_node; i < last_insert_node; i++)
@@ -1978,16 +1980,19 @@ int main(int argc, char **argv) {
 
   node::id_t next_insert_node = graph->get_nodes()->as_vec().first_available();
   relationship::id_t next_insert_rship = graph->get_relationships()->as_vec().first_available();
-  property_set::id_t next_insert_prop = graph->get_properties()->as_vec().first_available();
+  property_set::id_t next_insert_nprop = graph->get_node_properties()->as_vec().first_available();
+  property_set::id_t next_insert_rprop = graph->get_rship_properties()->as_vec().first_available();
   
   std::cout << first_insert_node << " == " << next_insert_node << "\n";
   std::cout << first_insert_rship << " == " << next_insert_rship << "\n";
-  std::cout << first_insert_prop << " == " << next_insert_prop << "\n";
+  std::cout << first_insert_nprop << " == " << next_insert_nprop << "\n";
+  std::cout << first_insert_rprop << " == " << next_insert_rprop << "\n";
   
   // assert all created nodes and relationships have been deleted
   assert(first_insert_node == next_insert_node);
   assert(first_insert_rship == next_insert_rship);
-  assert(first_insert_prop == next_insert_prop);
+  assert(first_insert_nprop == next_insert_nprop);
+  assert(first_insert_rprop == next_insert_rprop);
 #ifdef USE_TX
   graph->commit_transaction();
 #endif

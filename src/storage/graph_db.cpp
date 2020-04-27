@@ -32,7 +32,8 @@ namespace nvm = pmem::obj;
 graph_db::graph_db(const std::string &db_name) {
   nodes_ = p_make_ptr<node_list>();
   rships_ = p_make_ptr<relationship_list>();
-  properties_ = p_make_ptr<property_list>();
+  node_properties_ = p_make_ptr<property_list>();
+  rship_properties_ = p_make_ptr<property_list>();
   dict_ = p_make_ptr<dict>();
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
@@ -130,7 +131,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
               oid, 0, items, next, node_id };
           ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
         };
-        properties_->foreach_property_set(n.property_list, cb);
+        node_properties_->foreach_property_set(n.property_list, cb);
 #endif
         // Because there might be an active transaction which still needs the object
         // we cannot delete the node, yet. However, we set the bts and cts accordingly.
@@ -141,7 +142,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		    // release the lock of the old version.
 		    n.dirty_list()->front()->elem_.unlock();
         // we can delete properties because the old values are still in the dirty list
-        properties_->remove_properties(n.property_list);
+        node_properties_->remove_properties(n.property_list);
       }
       else {
         // CASE #3 = UPDATE
@@ -213,7 +214,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
               oid, 0, items, next, rel_id };
           ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
         };
-        properties_->foreach_property_set(r.property_list, cb);
+        rship_properties_->foreach_property_set(r.property_list, cb);
 
 #endif
         // Because there might be an active transaction which still needs the object
@@ -224,7 +225,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		    r.dirty_list()->pop_front();
 		    // release the lock of the old version.
 		    r.dirty_list()->front()->elem_.unlock();
-        properties_->remove_properties(r.property_list);
+        rship_properties_->remove_properties(r.property_list);
       }
       else {
         // CASE #3 = UPDATE
@@ -337,21 +338,29 @@ void graph_db::print_stats() {
             << "chunk_size = " << rships_->as_vec().real_chunk_size() << " Bytes, "
             << "rship_size = " << sizeof(relationship) << " Bytes, "
             << "capacity = " << rships_->as_vec().capacity() << std::endl;
-  std::cout << "properties: " << properties_->num_chunks() << " chunks, "
-            << "chunk_size = " << properties_->as_vec().real_chunk_size() << " Bytes, "
+  std::cout << "node properties: " << node_properties_->num_chunks() << " chunks, "
+            << "chunk_size = " << node_properties_->as_vec().real_chunk_size() << " Bytes, "
             << "property_set_size = " << sizeof(property_set) << " Bytes, "
-            << "capacity = " << properties_->as_vec().capacity() << std::endl;
+            << "capacity = " << node_properties_->as_vec().capacity() << std::endl;
+  std::cout << "rship properties: " << rship_properties_->num_chunks() << " chunks, "
+            << "chunk_size = " << rship_properties_->as_vec().real_chunk_size() << " Bytes, "
+            << "property_set_size = " << sizeof(property_set) << " Bytes, "
+            << "capacity = " << rship_properties_->as_vec().capacity() << std::endl;
 
   uint64_t mem = 0;
   mem += nodes_->num_chunks() * nodes_->as_vec().real_chunk_size();
   mem += rships_->num_chunks() * rships_->as_vec().real_chunk_size();
   std::cout << mem / 1024;
-  mem += properties_->num_chunks() * properties_->as_vec().real_chunk_size();
+  mem += node_properties_->num_chunks() * node_properties_->as_vec().real_chunk_size();
+  mem += rship_properties_->num_chunks() * rship_properties_->as_vec().real_chunk_size();
   std::cout << " (" << mem / 1024 << ") KiB total" << std::endl; 
 
   uint64_t nprops = 0;
-  properties_->foreach_property([&nprops](auto pi) { nprops++; });
-  std::cout << nprops << " properties total." << std::endl;
+  node_properties_->foreach_property([&nprops](auto pi) { nprops++; });
+  std::cout << nprops << " node properties total." << std::endl;
+  uint64_t rprops = 0;
+  rship_properties_->foreach_property([&rprops](auto pi) { rprops++; });
+  std::cout << rprops << " relationship properties total." << std::endl;
 }
 
 node::id_t graph_db::add_node(const std::string &label,
@@ -381,7 +390,7 @@ node::id_t graph_db::add_node(const std::string &label,
 
 #ifdef USE_TX
   // handle properties
-  const auto dirty_list = properties_->build_dirty_property_list(props, dict_);
+  const auto dirty_list = node_properties_->build_dirty_property_list(props, dict_);
   const auto &dv = n.add_dirty_version(
       std::make_unique<dirty_node>(n, dirty_list, false /* insert */));
   dv->elem_.set_dirty();
@@ -391,8 +400,8 @@ node::id_t graph_db::add_node(const std::string &label,
   // save properties
   if (!props.empty()) {
     property_set::id_t pid =
-        append_only ? properties_->append_node_properties(node_id, props, dict_)
-                    : properties_->add_node_properties(node_id, props, dict_);
+        append_only ? node_properties_->append_node_properties(node_id, props, dict_)
+                    : node_properties_->add_node_properties(node_id, props, dict_);
     n.property_list = pid;
   }
 #endif
@@ -436,7 +445,7 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
   auto &r = rships_->get(rid);
 
 #ifdef USE_TX
-  const auto dirty_list = properties_->build_dirty_property_list(props, dict_);
+  const auto dirty_list = rship_properties_->build_dirty_property_list(props, dict_);
   const auto &rv = r.add_dirty_version(
       std::make_unique<dirty_rship>(r, dirty_list, false /* insert */));
   rv->elem_.set_dirty();
@@ -448,8 +457,8 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
   if (!props.empty()) {
     property_set::id_t pid =
         append_only
-            ? properties_->append_relationship_properties(rid, props, dict_)
-            : properties_->add_relationship_properties(rid, props, dict_);
+            ? rship_properties_->append_relationship_properties(rid, props, dict_)
+            : rship_properties_->add_relationship_properties(rid, props, dict_);
     r.property_list = pid;
   }
 #endif
@@ -567,7 +576,7 @@ node_description graph_db::get_node_description(const node &n) {
     // the simple case: no concurrent transactions are active and
     // we can get the properties from the properties_ table
      // spdlog::info("get_node_description - not dirty");
-    props = properties_->all_properties(n.property_list, dict_);
+    props = node_properties_->all_properties(n.property_list, dict_);
     label = dict_->lookup_code(n.node_label);
   }
   else {
@@ -577,7 +586,7 @@ node_description graph_db::get_node_description(const node &n) {
     // otherwise there are two options:
     // (1) we still can get the data from the properties_ table
     if (!n.is_dirty() && n.is_valid_for(xid)) {
-      props = properties_->all_properties(n.property_list, dict_);
+      props = node_properties_->all_properties(n.property_list, dict_);
       label = dict_->lookup_code(n.node_label);
     }
     else {
@@ -585,12 +594,12 @@ node_description graph_db::get_node_description(const node &n) {
       const auto& dn = n.find_valid_version(xid);
       // spdlog::info("got dirty version: @{}", (unsigned long)&(dn->elem_));
       // dump();
-      props = properties_->build_properties_from_pitems(dn->properties_, dict_);
+      props = node_properties_->build_properties_from_pitems(dn->properties_, dict_);
       label = dict_->lookup_code(dn->elem_.node_label);
     }
   }
 #else
-  props = properties_->all_properties(n.property_list, dict_);
+  props = node_properties_->all_properties(n.property_list, dict_);
   label = dict_->lookup_code(n.node_label);
 #endif
   return node_description{n.id(), label, props};
@@ -606,14 +615,14 @@ rship_description graph_db::get_rship_description(const relationship &r) {
    // the simple case: no concurrent transactions are active and
     // we can get the properties from the properties_ table
      // spdlog::info("get_node_description - not dirty");
-    props = properties_->all_properties(r.property_list, dict_);
+    props = rship_properties_->all_properties(r.property_list, dict_);
     label = dict_->lookup_code(r.rship_label);
   }
   else {
     // otherwise there are two options:
     // (1) we still can get the data from the properties_ table
     if (!r.is_dirty() && r.is_valid_for(xid)) {
-      props = properties_->all_properties(r.property_list, dict_);
+      props = rship_properties_->all_properties(r.property_list, dict_);
       label = dict_->lookup_code(r.rship_label);
     }
     else {
@@ -621,12 +630,12 @@ rship_description graph_db::get_rship_description(const relationship &r) {
       const auto& dr = r.find_valid_version(xid);
       // spdlog::info("got dirty version: @{}", (unsigned long)&(dn->elem_));
       // dump();
-      props = properties_->build_properties_from_pitems(dr->properties_, dict_);
+      props = rship_properties_->build_properties_from_pitems(dr->properties_, dict_);
       label = dict_->lookup_code(dr->elem_.rship_label);
     }
   }
 #else
-  props = properties_->all_properties(r.property_list, dict_);
+  props = rship_properties_->all_properties(r.property_list, dict_);
   label = dict_->lookup_code(r.rship_label);
 #endif
   return rship_description{r.id(), r.from_node_id(), r.to_node_id(),
@@ -660,7 +669,7 @@ void graph_db::update_node(node &n, const properties_t &props,
     try {
       auto& dn = n.get_dirty_version(txid);
       // apply update to dn
-      properties_->apply_updates(dn->properties_, props, dict_);
+      node_properties_->apply_updates(dn->properties_, props, dict_);
       if (lc > 0)
         dn->elem_.node_label = lc;
       first_update = false;
@@ -671,7 +680,7 @@ void graph_db::update_node(node &n, const properties_t &props,
     // first, we make a copy of the original node which is stored in
     // the dirty list
     std::list<p_item> pitems =
-      properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
+      node_properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
     // cts is set to txid
     const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
     oldv->elem_.set_timestamps(n.bts(), txid);
@@ -680,7 +689,7 @@ void graph_db::update_node(node &n, const properties_t &props,
     oldv->elem_.unlock();
 
     // ... and create another copy as the new version
-    pitems = properties_->apply_updates(pitems, props, dict_);
+    pitems = node_properties_->apply_updates(pitems, props, dict_);
     const auto &newv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
     newv->elem_.set_timestamps(txid, INF);
     newv->elem_.set_dirty();
@@ -693,7 +702,7 @@ void graph_db::update_node(node &n, const properties_t &props,
   if (lc > 0)
     n.node_label = lc;
   auto rid =
-      properties_->update_properties(n.id(), n.property_list, props, dict_);
+      node_properties_->update_properties(n.id(), n.property_list, props, dict_);
   if (rid != n.property_list) {
     auto &n2 = nodes_->get(n.id());
     n2.property_list = rid;
@@ -733,7 +742,7 @@ void graph_db::update_from_node(transaction_ptr tx, node &n, relationship& r) {
     // first, we make a copy of the original node which is stored in
     // the dirty list
     std::list<p_item> pitems =
-      properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
+      node_properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
     // cts is set to txid
     const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
     oldv->elem_.set_timestamps(n.bts(), txid);
@@ -788,7 +797,7 @@ void graph_db::update_to_node(transaction_ptr tx, node &n, relationship& r) {
     // first, we make a copy of the original node which is stored in
     // the dirty list
     std::list<p_item> pitems =
-      properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
+      node_properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
     // cts is set to txid
     const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
     oldv->elem_.set_timestamps(n.bts(), txid);
@@ -834,7 +843,7 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
     try {
       auto& dr = r.get_dirty_version(txid);
       // apply update to dn
-      properties_->apply_updates(dr->properties_, props, dict_);
+      rship_properties_->apply_updates(dr->properties_, props, dict_);
       if (lc > 0)
         dr->elem_.rship_label = lc;
       first_update = false;
@@ -845,7 +854,7 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
   // first, we make a copy of the original node which is stored in
   // the dirty list
   std::list<p_item> pitems =
-      properties_->build_dirty_property_list(/*r.id(),*/ r.property_list);
+      rship_properties_->build_dirty_property_list(/*r.id(),*/ r.property_list);
   // cts is set to txid
   const auto& oldv = r.add_dirty_version(std::make_unique<dirty_rship>(r, pitems));
   oldv->elem_.set_timestamps(r.bts(), txid);
@@ -854,7 +863,7 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
   oldv->elem_.unlock();
 
   // ... and create another copy as the new version
-  pitems = properties_->apply_updates(pitems, props, dict_);
+  pitems = rship_properties_->apply_updates(pitems, props, dict_);
   const auto& newv = r.add_dirty_version(std::make_unique<dirty_rship>(r, pitems));
   newv->elem_.set_timestamps(txid, INF);
   newv->elem_.set_dirty();
@@ -867,7 +876,7 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
   if (lc > 0)
     r.rship_label = lc;
   auto rid =
-      properties_->update_properties(r.id(), r.property_list, props, dict_);
+      rship_properties_->update_properties(r.id(), r.property_list, props, dict_);
   if (rid != r.property_list) {
     auto &r2 = rships_->get(r.id());
     r2.property_list = rid;
@@ -895,7 +904,7 @@ void graph_db::delete_node(node::id_t id) {
   // first, we make a copy of the original node which is stored in
   // the dirty list
   std::list<p_item> pitems =
-      properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
+      node_properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
   // cts is set to txid
   const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
   oldv->elem_.set_timestamps(n.bts(), txid);
@@ -913,7 +922,7 @@ void graph_db::delete_node(node::id_t id) {
 #else 
   auto &n = this->node_by_id(id);
   // delete the node properties
-  properties_->remove_properties(n.property_list);
+  node_properties_->remove_properties(n.property_list);
   // delete the node object
   nodes_->remove(id);
 #endif
@@ -927,7 +936,7 @@ void graph_db::delete_relationship(relationship::id_t id) {
   auto &r = this->rship_by_id(id);
 
   // delete the relationship properties
-  properties_->remove_properties(r.property_list);
+  rship_properties_->remove_properties(r.property_list);
 
   // delete the relationship object
   rships_->remove(id);
@@ -959,11 +968,11 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
             oid, 0, items, next, node_id };
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
     };
-    properties_->foreach_property_set(n.id(), cb);
+    node_properties_->foreach_property_set(n.id(), cb);
 #endif
     // we have to update the properties
-    pid = properties_->update_pitems(n.id(), n.property_list, dn->properties_,
-                                     dict_, true /* Node */);
+    pid = node_properties_->update_pitems(n.id(), n.property_list, dn->properties_,
+                                     dict_);
   } else {
     // the node was newly added - we have to add the properties
     // to the properties_ table
@@ -974,8 +983,7 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
       log_ins_record rec{ pmlog::log_insert, pmlog::log_property, p_id};
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
     };
-    pid = properties_->add_pitems(n.id(), dn->properties_, dict_,
-                                  true /* Node */, cb);
+    pid = node_properties_->add_pitems(n.id(), dn->properties_, dict_, cb);
   }
   n.property_list = pid;
 }
@@ -995,11 +1003,11 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
             oid, 0, items, next, rship_id };
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
     };
-    properties_->foreach_property_set(r.id(), cb);
+    rship_properties_->foreach_property_set(r.id(), cb);
 #endif
     // we have to update the properties
-    pid = properties_->update_pitems(r.id(), r.property_list, dr->properties_,
-                                     dict_, false /* Relationship */);
+    pid = rship_properties_->update_pitems(r.id(), r.property_list, dr->properties_,
+                                     dict_);
     /// spdlog::info("update node -> set properties to {}", pid);
   } else {
     // the relationship was newly added - we have to add the properties
@@ -1011,8 +1019,7 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
       log_ins_record rec{ pmlog::log_insert, pmlog::log_property, p_id};
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
     };
-    pid = properties_->add_pitems(r.id(), dr->properties_, dict_,
-                                  false /* Relationship */, cb);
+    pid = rship_properties_->add_pitems(r.id(), dr->properties_, dict_, cb);
   }
   r.property_list = pid;
 }

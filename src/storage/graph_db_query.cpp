@@ -132,7 +132,7 @@ void graph_db::nodes(node_consumer_func consumer) {
 void graph_db::nodes_where(const std::string &pkey, p_item::predicate_func pred,
                            node_consumer_func consumer) {
   auto pc = dict_->lookup_string(pkey);
-  properties_->foreach_node(pc, pred, [&](offset_t nid) {
+  node_properties_->foreach(pc, pred, [&](offset_t nid) {
     auto &n = this->node_by_id(nid);
     consumer(n);
   });
@@ -396,7 +396,7 @@ bool graph_db::is_node_property(const node &n, const std::string &pkey,
 
 bool graph_db::is_node_property(const node &n, dcode_t pcode,
                                 p_item::predicate_func pred) {
-  auto val = properties_->property_value(n.property_list, pcode);
+  auto val = node_properties_->property_value(n.property_list, pcode);
   return val.empty() ? false : pred(val);
 }
 
@@ -409,6 +409,6 @@ bool graph_db::is_relationship_property(const relationship &r,
 
 bool graph_db::is_relationship_property(const relationship &r, dcode_t pcode,
                                         p_item::predicate_func pred) {
-  auto val = properties_->property_value(r.id(), pcode);
+  auto val = rship_properties_->property_value(r.id(), pcode);
   return val.empty() ? false : pred(val);
 }

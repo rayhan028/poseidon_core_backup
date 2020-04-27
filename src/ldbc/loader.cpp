@@ -153,7 +153,7 @@ void load_snb_data(graph_db_ptr &graph,
       auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(end_tm -
                                                                        start_tm).count();
       if (num_rships > 0) {
-        spdlog::info("{} ({})-[{}]-({}) relationships imported in {} msecs", 
+        spdlog::info("{} ({})-[{}]-({}) relationships imported in {} secs", 
           num_rships, fn[0], label, fn[2], runtime / 1000.0);
         // graph->print_stats();
       }
