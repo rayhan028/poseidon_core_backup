@@ -473,7 +473,6 @@ template <typename T> struct txn {
     }
     //Optional: After garbage collection, if there are no more versions, then we can delete the list.
     if (!has_dirty_versions()) {
-      spdlog::info("delete dirty_list");
      delete_dirty_list();
     }
   }
