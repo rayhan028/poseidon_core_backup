@@ -35,8 +35,6 @@
 
 #include "spdlog/spdlog.h"
 
-#define PROP_CHUNK_SIZE 4040 // ensures chunk_size of 4096 Bytes
-
 bool is_quoted_string(const std::string &s);
 bool is_float(const std::string &s);
 bool is_int(const std::string &s);

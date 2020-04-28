@@ -174,7 +174,7 @@ public:
   /**
    * Returns the underlying vector of the relationship list.
    */
-  chunked_vec<relationship> &as_vec() { return rships_; }
+  chunked_vec<relationship, RSHIP_CHUNK_SIZE> &as_vec() { return rships_; }
 
   /**
    * Output the content of the relationship vector.
@@ -187,6 +187,6 @@ public:
   std::size_t num_chunks() const { return rships_.num_chunks(); }
 
 private:
-  chunked_vec<relationship> rships_; // the actual list of relationships
+  chunked_vec<relationship, RSHIP_CHUNK_SIZE> rships_; // the actual list of relationships
 };
 #endif

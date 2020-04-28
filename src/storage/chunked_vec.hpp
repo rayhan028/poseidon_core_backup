@@ -49,20 +49,21 @@
  */
 template <typename T, int num_records>
 struct alignas(64) chunk {
-  p<std::bitset<num_records>>
-      slots_; // bitstring representing empty slots (0), used slots (1)
 #ifdef USE_PMDK
   pmem::obj::array<T, num_records> data_;
   pmem::obj::persistent_ptr<chunk<T, num_records>> next_;
 #else
   std::array<T, num_records> data_; // the array of data
   chunk<T, num_records> *next_;     // pointer to the successor chunk
+  p<std::bitset<num_records>>
+      slots_; // bitstring representing empty slots (0), used slots (1)
+  p<uint32_t> first_;              // the index of the first available slot
 #endif
 
   /**
    * Create a new chunk, allocate and initialize the memory.
    */
-  chunk() : next_(nullptr) {}
+  chunk() : next_(nullptr), first_(0) {}
 
   /**
    * Deallocate the memory.
@@ -89,6 +90,25 @@ struct alignas(64) chunk {
 #else
     slots_.set(i, b);
 #endif
+    if (!b && i < first_) {
+      // the record was deleted - update first_
+      first_ = i;   
+      return;
+    }
+    if (b && i == first_) {
+      // we have to find the next available slot starting from first_
+      for (auto j = first_; j < num_records; j++) {
+#ifdef USE_PMDK
+        if (!slots_.get_ro().test(j)) {
+#else
+        if (!slots_.test(j)) {
+#endif
+          first_ = j;
+          return;
+        }
+      }
+      if (first_ == i) first_ = num_records;
+    }
   }
 
   /**
@@ -102,7 +122,8 @@ struct alignas(64) chunk {
     if (slots_.all())
 #endif
       return SIZE_MAX;
-    for (auto i = 0u; i < num_records; i++)
+
+    for (auto i = first_; i < num_records; i++)
 #ifdef USE_PMDK
       if (!slots_.get_ro().test(i))
 #else

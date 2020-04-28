@@ -126,4 +126,20 @@ inline p_ptr<T> p_make_ptr(Args &&... args) {
 
 #endif
 
+// #define SMALL_CHUNKS
+
+#ifdef SMALL_CHUNKS
+
+#define PROP_CHUNK_SIZE  4040 // ensures chunk_size of 4096 Bytes
+#define NODE_CHUNK_SIZE  4040 // ensures chunk_size of 4096 Bytes
+#define RSHIP_CHUNK_SIZE 4096 // ensures chunk_size of 4096 Bytes
+
+#else
+
+#define PROP_CHUNK_SIZE  1048576 // ensures chunk_size of 64 MB
+#define NODE_CHUNK_SIZE  1048576 // ensures chunk_size of 64 MB
+#define RSHIP_CHUNK_SIZE 1048576 // ensures chunk_size of 64 MB
+
+#endif
+
 #endif
