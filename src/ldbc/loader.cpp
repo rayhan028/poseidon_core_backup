@@ -21,7 +21,9 @@
 
 #ifdef USE_PMDK
 
-const std::string test_path = poseidon::gPmemPath +
+const std::string test_path = "/home/ksattler/ldbc-sf100.set";
+
+const std::string default_test_path = poseidon::gPmemPath +
 
 #ifdef SF_100
 "sf100";
@@ -33,6 +35,7 @@ const std::string test_path = poseidon::gPmemPath +
 "sf1";
 #define POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
 #endif
+
 
 struct root {
   graph_db_ptr graph;
@@ -230,6 +233,8 @@ int main(int argc, char **argv) {
   } else {
     pop = nvm::pool<root>::open(test_path, db_name);
   }
+
+  spdlog::info("open poolset {}", test_path);
 
   auto q = pop.root();
   if (!q->graph) {

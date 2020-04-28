@@ -55,10 +55,10 @@ struct alignas(64) chunk {
 #else
   std::array<T, num_records> data_; // the array of data
   chunk<T, num_records> *next_;     // pointer to the successor chunk
+#endif
   p<std::bitset<num_records>>
       slots_; // bitstring representing empty slots (0), used slots (1)
   p<uint32_t> first_;              // the index of the first available slot
-#endif
 
   /**
    * Create a new chunk, allocate and initialize the memory.
