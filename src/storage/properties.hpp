@@ -216,13 +216,13 @@ public:
   ~property_list() = default;
 
   /**
-   * Inserts the properties from the given list and assign them to the node with
-   * the given id. The keys (names) of these properties are encoded via the
+   * Inserts the properties from the given list and assign them to the node/relationship 
+   * with the given id. The keys (names) of these properties are encoded via the
    * dictionary. This method assumes that no properties are associated yet with
-   * this node.
+   * this node/relationship.
    */
   property_set::id_t
-  add_node_properties(offset_t nid, const properties_t &props, dict_ptr &dct);
+  add_properties(offset_t nid, const properties_t &props, dict_ptr &dct);
 
   /**
    * Inserts the p_items from the given list and assign them to the
@@ -235,42 +235,22 @@ public:
                                 std::function<void(offset_t)> callback = nullptr);
 
   /**
-   * Appends the properties from the given list and assign them to the node with
-   * the given id. The keys (names) of these properties are encoded via the
-   * dictionary. This method assumes that no properties are associated yet with
-   * this node. Note, that this is an append-only method - it doesn't reuse
-   * available slots from previously deleted properties.
+   * Appends the properties from the given list and assign them to the 
+   * node/relationship with the given id. The keys (names) of these properties 
+   * are encoded via the dictionary. This method assumes that no properties are 
+   * associated yet with this node/rship. Note, that this is an append-only method 
+   * - it doesn't reuse available slots from previously deleted properties.
    */
-  property_set::id_t append_node_properties(offset_t nid,
+  property_set::id_t append_properties(offset_t nid,
                                             const properties_t &props,
                                             dict_ptr &dct);
 
-  property_set::id_t append_typed_node_properties(offset_t nid, 
+  property_set::id_t append_typed_properties(offset_t nid, 
                               const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist, 
                               const std::vector<boost::any>& values);
 
-  /**
-   * Inserts the properties from the given list and assign them to the
-   * relationship with the given id. The keys (names) of these properties
-   * are encoded via the dictionary. This method assumes that no properties
-   * are associated yet with this node.
-   */
-  property_set::id_t add_relationship_properties(offset_t rid,
-                                                 const properties_t &props,
-                                                 dict_ptr &dct);
-
-  /**
-   * Appends the properties from the given list and assign them to the
-   * relationship with the given id. The keys (names) of these properties are
-   * encoded via the dictionary. This method assumes that no properties are
-   * associated yet with this node. Note, that this is an append-only method -
-   * it doesn't reuse available slots from previously deleted properties.
-   */
-  property_set::id_t append_relationship_properties(offset_t rid,
-                                                    const properties_t &props,
-                                                    dict_ptr &dct);
-
+ 
   /**
    * Returns the value of the property of a node/relationship in the
    * corresponding property list at offset id. If the property doesn't exist

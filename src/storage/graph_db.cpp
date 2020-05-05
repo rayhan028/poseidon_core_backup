@@ -400,8 +400,8 @@ node::id_t graph_db::add_node(const std::string &label,
   // save properties
   if (!props.empty()) {
     property_set::id_t pid =
-        append_only ? node_properties_->append_node_properties(node_id, props, dict_)
-                    : node_properties_->add_node_properties(node_id, props, dict_);
+        append_only ? node_properties_->append_properties(node_id, props, dict_)
+                    : node_properties_->add_properties(node_id, props, dict_);
     n.property_list = pid;
   }
 #endif
@@ -457,8 +457,8 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
   if (!props.empty()) {
     property_set::id_t pid =
         append_only
-            ? rship_properties_->append_relationship_properties(rid, props, dict_)
-            : rship_properties_->add_relationship_properties(rid, props, dict_);
+            ? rship_properties_->append_properties(rid, props, dict_)
+            : rship_properties_->add_properties(rid, props, dict_);
     r.property_list = pid;
   }
 #endif
@@ -904,7 +904,7 @@ void graph_db::delete_node(node::id_t id) {
   // first, we make a copy of the original node which is stored in
   // the dirty list
   std::list<p_item> pitems =
-      node_properties_->build_dirty_property_list( /* n.id(),*/ n.property_list);
+      node_properties_->build_dirty_property_list(n.property_list);
   // cts is set to txid
   const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
   oldv->elem_.set_timestamps(n.bts(), txid);
@@ -933,6 +933,40 @@ void graph_db::detach_delete_node(node::id_t id) {
 }
 
 void graph_db::delete_relationship(relationship::id_t id) {
+ #ifdef USE_TX
+  // acquire lock and create a dirty object
+  check_tx_context();
+  xid_t txid = current_transaction()->xid();
+
+  auto &r = this->rship_by_id(id);
+
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!r.is_locked_by(txid) && !r.try_lock(txid))
+    throw transaction_abort();
+
+  // make sure we don't overwrite an object that was read by 
+  // a more recent transaction
+  if (r.rts() > txid)
+   throw transaction_abort();
+
+  // first, we make a copy of the original relationship which is stored in
+  // the dirty list
+  std::list<p_item> pitems =
+      rship_properties_->build_dirty_property_list(r.property_list);
+  // cts is set to txid
+  const auto& oldv = r.add_dirty_version(std::make_unique<dirty_rship>(r, pitems));
+  oldv->elem_.set_timestamps(r.bts(), txid);
+  oldv->elem_.set_dirty();
+  // but unlock it for readers
+  oldv->elem_.unlock();
+
+  // ... and create another copy as the new deleted version
+  const auto &newv = r.add_dirty_version(std::make_unique<dirty_rship>(r, std::list<p_item>(), true /* updated */));
+  newv->elem_.set_timestamps(txid, txid);
+  newv->elem_.set_dirty();
+
+  current_transaction()->add_dirty_relationship(r.id());
+#else 
   auto &r = this->rship_by_id(id);
 
   // delete the relationship properties
@@ -940,6 +974,7 @@ void graph_db::delete_relationship(relationship::id_t id) {
 
   // delete the relationship object
   rships_->remove(id);
+#endif
 }
 
 const char *graph_db::get_string(dcode_t c) { return dict_->lookup_code(c); }

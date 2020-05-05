@@ -230,7 +230,7 @@ std::ostream& operator<< (std::ostream& os, const p_item& pi) {
 
 /* --------------------------------------------------------------------- */
 
-property_set::id_t property_list::add_node_properties(offset_t nid,
+property_set::id_t property_list::add_properties(offset_t nid,
                                                       const properties_t &props,
                                                       dict_ptr &dct) {
   property_set::id_t next_id = UNKNOWN;
@@ -313,7 +313,7 @@ property_set::id_t property_list::update_pitems(offset_t nid, offset_t id,
 }
 
 property_set::id_t
-property_list::append_node_properties(offset_t nid, const properties_t &props,
+property_list::append_properties(offset_t nid, const properties_t &props,
                                       dict_ptr &dct) {
   property_set::id_t next_id = UNKNOWN;
   property_set::p_item_list pil;
@@ -331,7 +331,7 @@ property_list::append_node_properties(offset_t nid, const properties_t &props,
   return next_id;
 }
 
-property_set::id_t property_list::append_typed_node_properties(offset_t nid, 
+property_set::id_t property_list::append_typed_properties(offset_t nid, 
                               const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist, 
                               const std::vector<boost::any>& values) {
@@ -353,47 +353,7 @@ property_set::id_t property_list::append_typed_node_properties(offset_t nid,
   return next_id;
 }
 
-property_set::id_t property_list::add_relationship_properties(
-    offset_t rid, const properties_t &props, dict_ptr &dct) {
-  property_set::id_t next_id = UNKNOWN;
-  property_set::p_item_list pil;
-  std::size_t pidx = 0, n = 0;
-  for (auto &kv : props) {
-    pil[pidx++] = p_item(kv.first, kv.second, dct);
-    if (++n == props.size() || pidx == pil.max_size()) {
-      if (properties_.is_full())
-        properties_.resize(1);
-      auto id = properties_.first_available();
-      assert(id != UNKNOWN);
 
-      properties_.store_at(id,
-                           property_set(rid, std::move(pil), next_id));
-
-      next_id = id;
-      pidx = 0;
-      pil.fill(p_item());
-    }
-  }
-  return next_id;
-}
-
-property_set::id_t property_list::append_relationship_properties(
-    offset_t rid, const properties_t &props, dict_ptr &dct) {
-  property_set::id_t next_id = UNKNOWN;
-  property_set::p_item_list pil;
-  std::size_t pidx = 0, n = 0;
-  for (auto &kv : props) {
-    pil[pidx++] = p_item(kv.first, kv.second, dct);
-    if (++n == props.size() || pidx == pil.max_size()) {
-      auto p =
-          properties_.append(property_set(rid, std::move(pil), next_id));
-      next_id = p.first;
-      pidx = 0;
-      pil.fill(p_item());
-    }
-  }
-  return next_id;
-}
 
 p_item property_list::property_value(offset_t id, dcode_t pkey) {
   offset_t pset_id = id;
@@ -582,25 +542,6 @@ std::list<p_item> property_list::build_dirty_property_list(
     }
     pset_id = p.next;
   }
-#if 0
-  // update p_item_list with properties
-  std::list<p_item> todo_list;
-  for (auto &kv : props) {
-    p_item pnew(kv.first, kv.second, dct);
-    bool updated = false;
-    for (auto &pi : p_item_list) {
-      if (pi.key() == pnew.key()) {
-        pi = pnew;
-        updated = true;
-        break;
-      }
-    }
-    if (!updated)
-      todo_list.push_back(pnew);
-  }
-  // append the elements from todo_list
-  p_item_list.splice(p_item_list.end(), todo_list);
-#endif
   return p_item_list;
 }
 
