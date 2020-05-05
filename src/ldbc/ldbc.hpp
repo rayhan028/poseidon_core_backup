@@ -4,6 +4,10 @@
 #include "graph_db.hpp"
 #include "qop.hpp"
 
+#define SF_1
+// #define SF_10
+#define CREATE_INDEX
+
 using param_val = boost::variant<uint64_t, std::string, int>;
 using params_tuple = std::vector<param_val>;
 
@@ -31,4 +35,9 @@ void ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 void ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 void ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 
+void load_snb_data(graph_db_ptr &graph, const std::string& path, bool strict = true);
+
+void load_snb_data(graph_db_ptr &graph, 
+                    std::vector<std::string> &node_files,
+                    std::vector<std::string> &rship_files, bool strict = true);
 #endif

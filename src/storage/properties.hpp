@@ -162,13 +162,13 @@ bool is_dtime(const std::string &s);
 using properties_t = std::map<std::string, boost::any>;
 
 template <typename T>
-T get_property(const properties_t &p, const std::string &key) {
+std::optional<T> get_property(const properties_t &p, const std::string &key) {
   auto it = p.find(key);
   if (it == p.end()) {
-    spdlog::info("unknown property: {}", key);
-    throw unknown_property();
+    spdlog::warn("unknown property: {}", key);
+    return std::nullopt;
   }
-  return boost::any_cast<T>(it->second);
+  return std::optional<T> { boost::any_cast<T>(it->second) };
 }
 
 /**

@@ -265,8 +265,8 @@ TEST_CASE("Checking adding a node with properties", "[graph_db]") {
   REQUIRE(ndescr.properties.find("age") != ndescr.properties.end());
 
   REQUIRE(std::string("John") ==
-          get_property<const std::string &>(ndescr.properties, "name"));
-  REQUIRE(get_property<int>(ndescr.properties, "age") == 42);
+          get_property<const std::string>(ndescr.properties, "name").value());
+  REQUIRE(get_property<int>(ndescr.properties, "age").value() == 42);
 
   graph->commit_transaction();
 
@@ -295,8 +295,8 @@ TEST_CASE("Checking node with properties", "[graph_db]") {
   REQUIRE(ndescr.properties.find("age") != ndescr.properties.end());
 
   REQUIRE(std::string("John") ==
-          get_property<const std::string &>(ndescr.properties, "name"));
-  REQUIRE(get_property<int>(ndescr.properties, "age") == 42);
+          get_property<const std::string>(ndescr.properties, "name").value());
+  REQUIRE(get_property<int>(ndescr.properties, "age").value() == 42);
 
   graph->commit_transaction();
 
@@ -323,8 +323,8 @@ TEST_CASE("Checking a dirty node with properties", "[graph_db]") {
   REQUIRE(ndescr.properties.find("age") != ndescr.properties.end());
 
   REQUIRE(std::string("John") ==
-          get_property<const std::string &>(ndescr.properties, "name"));
-  REQUIRE(get_property<int>(ndescr.properties, "age") == 42);
+          get_property<const std::string>(ndescr.properties, "name").value());
+  REQUIRE(get_property<int>(ndescr.properties, "age").value() == 42);
 
   graph->commit_transaction();
 
@@ -372,12 +372,12 @@ TEST_CASE("Checking a node update", "[graph_db]") {
     REQUIRE(ndescr.label == ":Person");
 
     REQUIRE(std::string("Anne") ==
-            get_property<const std::string &>(ndescr.properties, "name"));
-    REQUIRE(get_property<int>(ndescr.properties, "age") == 43);
+            get_property<const std::string>(ndescr.properties, "name").value());
+    REQUIRE(get_property<int>(ndescr.properties, "age").value() == 43);
     REQUIRE(std::string("Munich") ==
-            get_property<const std::string &>(ndescr.properties, "city"));
+            get_property<const std::string>(ndescr.properties, "city").value());
     REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
-    REQUIRE(get_property<int>(ndescr.properties, "zipcode") == 12345);
+    REQUIRE(get_property<int>(ndescr.properties, "zipcode").value() == 12345);
 #ifdef USE_TX
     graph->commit_transaction();
   }
@@ -394,10 +394,10 @@ TEST_CASE("Checking a node update", "[graph_db]") {
     REQUIRE(ndescr.label == ":Person");
 
     REQUIRE(std::string("Anne") ==
-            get_property<const std::string &>(ndescr.properties, "name"));
+            get_property<const std::string>(ndescr.properties, "name").value());
     REQUIRE(get_property<int>(ndescr.properties, "age") == 43);
     REQUIRE(std::string("Munich") ==
-            get_property<const std::string &>(ndescr.properties, "city"));
+            get_property<const std::string>(ndescr.properties, "city").value());
     REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
     REQUIRE(get_property<int>(ndescr.properties, "zipcode") == 12345);
 
@@ -450,12 +450,12 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
     REQUIRE(ndescr.label == ":Person");
 
     REQUIRE(std::string("Anne") ==
-            get_property<const std::string &>(ndescr.properties, "name"));
-    REQUIRE(get_property<int>(ndescr.properties, "age") == 43);
+            get_property<const std::string>(ndescr.properties, "name").value());
+    REQUIRE(get_property<int>(ndescr.properties, "age").value() == 43);
     REQUIRE(std::string("Munich") ==
-            get_property<const std::string &>(ndescr.properties, "city"));
+            get_property<const std::string>(ndescr.properties, "city").value());
     REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
-    REQUIRE(get_property<int>(ndescr.properties, "zipcode") == 12345);
+    REQUIRE(get_property<int>(ndescr.properties, "zipcode").value() == 12345);
     }
 
     // second update
@@ -471,12 +471,12 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
     REQUIRE(ndescr.label == ":Actor");
 
     REQUIRE(std::string("Anne") ==
-            get_property<const std::string &>(ndescr.properties, "name"));
-    REQUIRE(get_property<int>(ndescr.properties, "age") == 46);
+            get_property<const std::string>(ndescr.properties, "name").value());
+    REQUIRE(get_property<int>(ndescr.properties, "age").value() == 46);
     REQUIRE(std::string("Munich") ==
-            get_property<const std::string &>(ndescr.properties, "city"));
+            get_property<const std::string>(ndescr.properties, "city").value());
     REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
-    REQUIRE(get_property<int>(ndescr.properties, "zipcode") == 12346);
+    REQUIRE(get_property<int>(ndescr.properties, "zipcode").value() == 12346);
     }
 #ifdef USE_TX
     graph->commit_transaction();
@@ -494,12 +494,12 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
     REQUIRE(ndescr.label == ":Actor");
 
     REQUIRE(std::string("Anne") ==
-            get_property<const std::string &>(ndescr.properties, "name"));
-    REQUIRE(get_property<int>(ndescr.properties, "age") == 46);
+            get_property<const std::string>(ndescr.properties, "name").value());
+    REQUIRE(get_property<int>(ndescr.properties, "age").value() == 46);
     REQUIRE(std::string("Munich") ==
-            get_property<const std::string &>(ndescr.properties, "city"));
+            get_property<const std::string>(ndescr.properties, "city").value());
     REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
-    REQUIRE(get_property<int>(ndescr.properties, "zipcode") == 12346);
+    REQUIRE(get_property<int>(ndescr.properties, "zipcode").value() == 12346);
 
     graph->commit_transaction();
   }
@@ -554,9 +554,9 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
       REQUIRE(reldesc.label == "KNOWS");
 
       REQUIRE(std::string("val2") ==
-              get_property<const std::string &>(reldesc.properties, "p1"));
-      REQUIRE(get_property<int>(reldesc.properties, "p2") == 20);
-      REQUIRE(get_property<int>(reldesc.properties, "p3") == 30);
+              get_property<const std::string>(reldesc.properties, "p1").value());
+      REQUIRE(get_property<int>(reldesc.properties, "p2").value() == 20);
+      REQUIRE(get_property<int>(reldesc.properties, "p3").value() == 30);
     });
 
 #ifdef USE_TX
@@ -577,9 +577,9 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
       REQUIRE(reldesc.label == "KNOWS");
 
       REQUIRE(std::string("val2") ==
-              get_property<const std::string &>(reldesc.properties, "p1"));
-      REQUIRE(get_property<int>(reldesc.properties, "p2") == 20);
-      REQUIRE(get_property<int>(reldesc.properties, "p3") == 30);
+              get_property<const std::string>(reldesc.properties, "p1").value());
+      REQUIRE(get_property<int>(reldesc.properties, "p2").value() == 20);
+      REQUIRE(get_property<int>(reldesc.properties, "p3").value() == 30);
     });
 
     graph->commit_transaction();

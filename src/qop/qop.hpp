@@ -469,7 +469,7 @@ struct end_pipeline : public qop {
 struct projection : public qop {
   using pr_result = boost::variant<node_description, node *, rship_description,
                                    relationship *, int, double, 
-                                   std::string, uint64_t, boost::posix_time::ptime>;
+                                   std::string, uint64_t, boost::posix_time::ptime, null_t>;
 
   struct expr {
     std::size_t vidx;
@@ -497,53 +497,60 @@ namespace builtin {
 
 query_result forward(projection::pr_result &res);
 
+
+/**
+ * Returns true if the node/relationship has the property specified by
+ * the key. Otherwise, return false.
+ */	
+bool has_property(projection::pr_result &pv, const std::string &key);
+	
 /**
  * Return the integer value of the property of a node/relationship stored in
  * projection_result res and identified by the given key.
  */
-int int_property(projection::pr_result &res, /* std::size_t vidx, */
+query_result int_property(projection::pr_result &res, 
                  const std::string &key);
 
 /**
  * Return the double value of the property of a node/relationship stored in
  * projection_result res and identified by the given key.
  */
-double double_property(projection::pr_result &res, /* std::size_t vidx, */
+query_result double_property(projection::pr_result &res, 
                        const std::string &key);
 
 /**
  * Return the string value of the property of a node/relationship stored in
  * projection_result res and identified by the given key.
  */
-std::string string_property(projection::pr_result &res, /*std::size_t vidx, */
+query_result string_property(projection::pr_result &res, 
                             const std::string &key);
 
 /**
  * Return the unsigned 64-bit integer value of the property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-uint64_t uint64_property(projection::pr_result &res, /* std::size_t vidx, */
+query_result uint64_property(projection::pr_result &res, 
                  const std::string &key);
 
 /**
  * Return the ptime value of the property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-boost::posix_time::ptime ptime_property(projection::pr_result &res, /* std::size_t vidx, */
+query_result ptime_property(projection::pr_result &res, 
                  const std::string &key);
 
 /**
  * Return the string representation of the date property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-std::string pr_date(projection::pr_result &pv, /* std::size_t vidx, */
+query_result pr_date(projection::pr_result &pv, 
                  const std::string &key);
 
 /**
  * Return the string representation of a node/relationship stored in
  * projection_result res.
  */
-std::string string_rep(projection::pr_result &res /*, std::size_t vidx*/);
+std::string string_rep(projection::pr_result &res);
 
 /**
  * Convert the given string value into an integer.
@@ -554,6 +561,7 @@ int to_int(const std::string &s);
  * Convert the given date value into its string representation.
  */
 std::string int_to_datestring(int v);
+std::string int_to_datestring(const query_result& v);
 
 /**
  * Convert the given date string (2019-02-12) into an int value (posix time).
@@ -564,6 +572,8 @@ int datestring_to_int(const std::string &d);
  * Convert the given datetime value into its string representation.
  */
 std::string int_to_dtimestring(int v);
+
+std::string int_to_dtimestring(const query_result& v);
 
 /**
  * Convert the given date+time string (2019-01-22T19:59:59.221+0000) into an int

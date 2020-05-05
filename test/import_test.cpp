@@ -49,32 +49,24 @@ TEST_CASE("Importing a node", "[graph_db]") {
 #endif
 
 {
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
-    graph->add_node(":Person", {{"name", boost::any(std::string("Anne"))},
+  graph->add_node(":Person", {{"name", boost::any(std::string("Anne"))},
                                   {"age", boost::any(28)}});
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 }
   auto nid = graph->import_node(":Actor", {{"name", boost::any(std::string("John"))},
                                   {"age", boost::any(42)}});
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
   auto& n = graph->node_by_id(nid);
   auto nd = graph->get_node_description(n);
     REQUIRE(nd.label == ":Actor");
     REQUIRE(nd.id == nid);
   REQUIRE(std::string("John") ==
-          get_property<const std::string &>(nd.properties, "name"));
-  REQUIRE(get_property<int>(nd.properties, "age") == 42);
+          get_property<const std::string>(nd.properties, "name").value());
+  REQUIRE(get_property<int>(nd.properties, "age").value() == 42);
 
-#ifdef USE_TX
   graph->abort_transaction();
-#endif
 
 #ifdef USE_PMDK
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
@@ -93,14 +85,10 @@ TEST_CASE("Importing a typed node", "[graph_db]") {
 #endif
 
 {
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
-    graph->add_node(":Person", {{"name", boost::any(std::string("Anne"))},
+  graph->add_node(":Person", {{"name", boost::any(std::string("Anne"))},
                                   {"age", boost::any(28)}});
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
 }
 
   auto dict = graph->get_dictionary();
@@ -113,20 +101,16 @@ TEST_CASE("Importing a typed node", "[graph_db]") {
     { p_item::p_typecode::p_dcode, p_item::p_typecode::p_int}, 
     { boost::any(val), boost::any(42)});
 
-#ifdef USE_TX
   auto tx = graph->begin_transaction();
-#endif
   auto& n = graph->node_by_id(nid);
   auto nd = graph->get_node_description(n);
     REQUIRE(nd.label == "Actor");
     REQUIRE(nd.id == nid);
   REQUIRE(std::string("John") ==
-          get_property<const std::string &>(nd.properties, "name"));
-  REQUIRE(get_property<int>(nd.properties, "age") == 42);
+          get_property<const std::string>(nd.properties, "name").value());
+  REQUIRE(get_property<int>(nd.properties, "age").value() == 42);
 
-#ifdef USE_TX
   graph->abort_transaction();
-#endif
 
 #ifdef USE_PMDK
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
@@ -159,6 +143,7 @@ TEST_CASE("Importing nodes from CSV (old version)", "[graph_db]") {
 #endif
 }
 
+#if 0
 TEST_CASE("Importing nodes from CSV", "[graph_db]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -176,6 +161,41 @@ TEST_CASE("Importing nodes from CSV", "[graph_db]") {
   graph_db::mapping_t id_map;
   auto num = graph->import_typed_nodes_from_csv("Place", home + "/test/places.csv", '|', id_map);
   REQUIRE(num == 1460);
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}
+
+#endif
+
+TEST_CASE("Importing nodes with many properties from CSV", "[graph_db]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  graph_db_ptr graph;
+  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
+#else
+  auto graph = p_make_ptr<graph_db>();
+#endif
+
+  std::string home(".");
+  auto h = getenv("TEST_HOME");
+  if (h != nullptr)
+    home = h;
+
+  graph_db::mapping_t id_map;
+  auto num = graph->import_typed_nodes_from_csv("Post", home + "/test/post.csv", '|', id_map);
+  REQUIRE(num == 19);
+
+  auto tx = graph->begin_transaction();
+  graph->nodes([&graph](auto &n) {
+    auto nd = graph->get_node_description(n);
+    std::cout << nd << " ===> " << nd.properties.size() << std::endl;
+    // REQUIRE(nd.properties.size() == 8);
+  });
+  graph->commit_transaction();
+
 #ifdef USE_PMDK
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
   pop.close();

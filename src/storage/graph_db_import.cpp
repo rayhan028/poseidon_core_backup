@@ -247,8 +247,10 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
   using namespace aria::csv;
 
   std::ifstream f(filename);
-  if (!f.is_open())
+  if (!f.is_open()) {
+    spdlog::warn("cannot find node file '{}'", filename);
     return 0;
+  }
     // throw file_not_found(filename);
 
   std::string id_label;
@@ -297,8 +299,10 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
         if (i == id_column)
           id_label = field;
 
+        // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
+
         auto &col = columns[i];
-        if (!col.empty() && !(field.empty() && col != "content")) {
+        if (!col.empty() && !(field.empty()/* && col != "content"*/)) {
           if (col == "id") {
             prop_types[i] = p_item::p_uint64;
             prop_values[i] = boost::any((uint64_t)std::stoll(field));
@@ -308,7 +312,12 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
             prop_types[i] = p2.first;
             prop_values[i] = p2.second;
           }
-        }       
+        }  
+        else {
+          // the field is empty, let's assume a string value
+           // spdlog::info("empty field #{} at record #{}", i, num-1);
+          prop_types[i] = p_item::p_dcode;
+        }     
         i++;
       }
       if (mtx != nullptr) 
@@ -326,16 +335,22 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
         if (i == id_column)
           id_label = field;
 
+        // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
         auto &col = columns[i];
-        if (!col.empty() && !(field.empty() && col != "content")) {
+        if (!col.empty() && !(field.empty()/* && col != "content"*/)) {
           prop_values[i] = (col == "id") 
           ? boost::any((uint64_t)std::stoll(field))
           : string_to_any(prop_types[i], field, dict_);
+        }
+        else {
+           // spdlog::info("\t==> empty field #{} at record #{}", i, num-1);
+           prop_values[i] = boost::any();
         }
         i++;
       }
       if (mtx != nullptr) 
         mtx->lock();
+      // spdlog::info("import line #{}: ncolumns = {}", i, prop_values.size());
       auto id = import_typed_node(label_code, prop_names, prop_types, prop_values);
       auto id_label_s = id_label + "_" + label;
       m.insert({id_label_s, id});
@@ -439,10 +454,11 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
   using namespace aria::csv;
 
   std::ifstream f(filename);
-  if (!f.is_open())
+  if (!f.is_open()) {
+    spdlog::warn("cannot find relationship file '{}'", filename);
     return 0;
     // throw file_not_found(filename);
-
+  }
   CsvParser parser = CsvParser(f).delimiter(delim);
   std::size_t num = 0;
 

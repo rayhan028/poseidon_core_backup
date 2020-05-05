@@ -90,6 +90,10 @@ std::string node_description::to_string() const {
   return os.str();
 }
 
+bool node_description::has_property(const std::string& pname) const {
+  return properties.find(pname) != properties.end();
+}
+
 /* ------------------------------------------------------------------------ */
 
 node_list::~node_list() {

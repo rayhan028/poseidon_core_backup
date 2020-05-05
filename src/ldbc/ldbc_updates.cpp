@@ -14,7 +14,6 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
-#define SF_10
 #define BUILD_INDEX
 #define PRINT_RESULT
 
@@ -1703,185 +1702,6 @@ double run_query_8(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
-void load_snb_data(graph_db_ptr &graph, 
-                    std::vector<std::string> &node_files,
-                    std::vector<std::string> &rship_files){
-  auto delim = '|';
-  graph_db::mapping_t mapping;
-  bool nodes_imported = false, rships_imported = false;
-  
-  if (!node_files.empty()){
-    spdlog::info("######## NODES ########");
-
-    std::vector<std::size_t> num_nodes(node_files.size());
-    auto i = 0;
-    for (auto &file : node_files){
-      std::vector<std::string> fp;
-      boost::split(fp, file, boost::is_any_of("/"));
-      assert(fp.back().find(".csv") != std::string::npos);
-      auto pos = fp.back().find("_");
-      auto label = fp.back().substr(0, pos);
-      if (label[0] >= 'a' && label[0] <= 'z')
-        label[0] -= 32;
-
-      num_nodes[i] = graph->import_nodes_from_csv(label, file, delim, mapping);
-      spdlog::info("{} '{}' node objects imported", num_nodes[i], label);
-      if (num_nodes[i] > 0)
-        nodes_imported = true;
-      i++;
-    }
-  }
-
-  if (!rship_files.empty()){
-    spdlog::info("################ RELATIONSHIPS ################");
-    
-    std::vector<std::size_t> num_rships(rship_files.size());
-    auto i = 0;
-    for (auto &file : rship_files){
-      std::vector<std::string> fp;
-      boost::split(fp, file, boost::is_any_of("/"));
-      assert(fp.back().find(".csv") != std::string::npos);
-      std::vector<std::string> fn;
-      boost::split(fn, fp.back(), boost::is_any_of("_"));
-      auto label = ":" + fn[1];
-
-      num_rships[i] = graph->import_relationships_from_csv(file, delim, mapping);
-      spdlog::info("{} ({})-[{}]-({}) relationship objects imported", 
-        num_rships[i], fn[0], label, fn[2]);
-      if (num_rships[i] > 0)
-        rships_imported = true;
-      i++;
-    }
-  }
-}
-
-void load_in_memory(graph_db_ptr &graph){
-  std::string snb_home = 
-#ifdef SF_10
-    "/home/data/SNB_SF_10/";
-#else
-    "/home/data/SNB_SF_1/";
-#endif
-
-  std::string snb_sta = snb_home + "/static/";
-  std::string snb_dyn = snb_home + "/dynamic/";
-
-  std::vector<std::string> node_files = 
-    {snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
-    snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv",
-    snb_sta + "organisation_0_0.csv", snb_sta + "organisation_1_0.csv",
-    snb_sta + "organisation_2_0.csv", snb_sta + "organisation_3_0.csv",
-    snb_sta + "tagclass_0_0.csv", snb_sta + "tagclass_1_0.csv",
-    snb_sta + "tagclass_2_0.csv", snb_sta + "tagclass_3_0.csv",
-    snb_sta + "tag_0_0.csv", snb_sta + "tag_1_0.csv",
-    snb_sta + "tag_2_0.csv", snb_sta + "tag_3_0.csv",
-    snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
-    snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv",
-    snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
-    snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv",
-    snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
-    snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
-    snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
-    snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv"};
-
-  std::vector<std::string> rship_files = 
-    {snb_dyn + "comment_hasCreator_person_0_0.csv",
-    snb_dyn + "comment_hasCreator_person_1_0.csv",
-    snb_dyn + "comment_hasCreator_person_2_0.csv",
-    snb_dyn + "comment_hasCreator_person_3_0.csv",
-    snb_dyn + "comment_isLocatedIn_place_0_0.csv",
-    snb_dyn + "comment_isLocatedIn_place_1_0.csv",
-    snb_dyn + "comment_isLocatedIn_place_2_0.csv",
-    snb_dyn + "comment_isLocatedIn_place_3_0.csv",
-    snb_dyn + "comment_replyOf_comment_0_0.csv",
-    snb_dyn + "comment_replyOf_comment_1_0.csv",
-    snb_dyn + "comment_replyOf_comment_2_0.csv",
-    snb_dyn + "comment_replyOf_comment_3_0.csv",
-    snb_dyn + "comment_replyOf_post_0_0.csv",
-    snb_dyn + "comment_replyOf_post_1_0.csv",
-    snb_dyn + "comment_replyOf_post_2_0.csv",
-    snb_dyn + "comment_replyOf_post_3_0.csv",
-    snb_dyn + "forum_containerOf_post_0_0.csv",
-    snb_dyn + "forum_containerOf_post_1_0.csv",
-    snb_dyn + "forum_containerOf_post_2_0.csv",
-    snb_dyn + "forum_containerOf_post_3_0.csv",
-    snb_dyn + "forum_hasMember_person_0_0.csv",
-    snb_dyn + "forum_hasMember_person_1_0.csv",
-    snb_dyn + "forum_hasMember_person_2_0.csv",
-    snb_dyn + "forum_hasMember_person_3_0.csv",
-    snb_dyn + "forum_hasModerator_person_0_0.csv",
-    snb_dyn + "forum_hasModerator_person_1_0.csv",
-    snb_dyn + "forum_hasModerator_person_2_0.csv",
-    snb_dyn + "forum_hasModerator_person_3_0.csv",
-    snb_dyn + "forum_hasTag_tag_0_0.csv",
-    snb_dyn + "forum_hasTag_tag_1_0.csv",
-    snb_dyn + "forum_hasTag_tag_2_0.csv",
-    snb_dyn + "forum_hasTag_tag_3_0.csv",
-    snb_dyn + "person_hasInterest_tag_0_0.csv",
-    snb_dyn + "person_hasInterest_tag_1_0.csv",
-    snb_dyn + "person_hasInterest_tag_2_0.csv",
-    snb_dyn + "person_hasInterest_tag_3_0.csv",
-    snb_dyn + "person_isLocatedIn_place_0_0.csv",
-    snb_dyn + "person_isLocatedIn_place_1_0.csv",
-    snb_dyn + "person_isLocatedIn_place_2_0.csv",
-    snb_dyn + "person_isLocatedIn_place_3_0.csv",
-    snb_dyn + "person_knows_person_0_0.csv",
-    snb_dyn + "person_knows_person_1_0.csv",
-    snb_dyn + "person_knows_person_2_0.csv",
-    snb_dyn + "person_knows_person_3_0.csv",
-    snb_dyn + "person_likes_comment_0_0.csv",
-    snb_dyn + "person_likes_comment_1_0.csv",
-    snb_dyn + "person_likes_comment_2_0.csv",
-    snb_dyn + "person_likes_comment_3_0.csv",
-    snb_dyn + "person_likes_post_0_0.csv",
-    snb_dyn + "person_likes_post_1_0.csv",
-    snb_dyn + "person_likes_post_2_0.csv",
-    snb_dyn + "person_likes_post_3_0.csv",
-    snb_dyn + "post_hasCreator_person_0_0.csv",
-    snb_dyn + "post_hasCreator_person_1_0.csv",
-    snb_dyn + "post_hasCreator_person_2_0.csv",
-    snb_dyn + "post_hasCreator_person_3_0.csv",
-    snb_dyn + "comment_hasTag_tag_0_0.csv",
-    snb_dyn + "comment_hasTag_tag_1_0.csv",
-    snb_dyn + "comment_hasTag_tag_2_0.csv",
-    snb_dyn + "comment_hasTag_tag_3_0.csv",
-    snb_dyn + "post_hasTag_tag_0_0.csv",
-    snb_dyn + "post_hasTag_tag_1_0.csv",
-    snb_dyn + "post_hasTag_tag_2_0.csv",
-    snb_dyn + "post_hasTag_tag_3_0.csv",
-    snb_dyn + "post_isLocatedIn_place_0_0.csv",
-    snb_dyn + "post_isLocatedIn_place_1_0.csv",
-    snb_dyn + "post_isLocatedIn_place_2_0.csv",
-    snb_dyn + "post_isLocatedIn_place_3_0.csv",
-    snb_dyn + "person_studyAt_organisation_0_0.csv",
-    snb_dyn + "person_studyAt_organisation_1_0.csv",
-    snb_dyn + "person_studyAt_organisation_2_0.csv",
-    snb_dyn + "person_studyAt_organisation_3_0.csv",
-    snb_dyn + "person_workAt_organisation_0_0.csv",
-    snb_dyn + "person_workAt_organisation_1_0.csv",
-    snb_dyn + "person_workAt_organisation_2_0.csv",
-    snb_dyn + "person_workAt_organisation_3_0.csv"};
-
-  spdlog::info("trying to load data from {} and {}", snb_sta, snb_dyn);
-  load_snb_data(graph, node_files, rship_files);
-
-#ifdef BUILD_INDEX
-#ifdef USE_TX
-  auto tx = graph->begin_transaction();
-#endif
-  auto idx_1 = graph->create_index("Person", "id");
-  auto idx_2 = graph->create_index("Post", "id");
-  auto idx_3 = graph->create_index("Comment", "id");
-  auto idx_4 = graph->create_index("Place", "id");
-  auto idx_5 = graph->create_index("Tag", "id");
-  auto idx_6 = graph->create_index("Organisation", "id");
-  auto idx_7 = graph->create_index("Forum", "id");
-#ifdef USE_TX
-  graph->commit_transaction();
-#endif
-#endif
-}
-
 void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
     t = run_query_1(gdb);
@@ -1907,13 +1727,22 @@ void run_benchmark(graph_db_ptr gdb) {
 using namespace boost::program_options;
 
 int main(int argc, char **argv) {
+  bool strict = false;
   std::string db_name;
+  std::string snb_home =
+#ifdef SF_10
+    "/home/data/SNB_SF_10/";
+#else
+    "/home/data/SNB_SF_1/";
+#endif
 
  try {
     options_description desc{"Options"};
     desc.add_options()
         ("help,h", "Help")
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
+        ("import,i", value<std::string>(&snb_home), "Path to directories containing SNB CSV files")
+        ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
         ("db,d", value<std::string>(&db_name)->required(),"Database name (required)");
 
     variables_map vm;
@@ -1925,6 +1754,11 @@ int main(int argc, char **argv) {
                 << desc << '\n';
       return -1;
     }
+    if (vm.count("import"))
+      snb_home = vm["import"].as<std::string>();
+
+    if (vm.count("strict"))
+      strict = vm["strict"].as<bool>();
 
     notify(vm);
 
@@ -1954,7 +1788,7 @@ int main(int argc, char **argv) {
   graph->runtime_initialize();
 #else
   auto graph = p_make_ptr<graph_db>(db_name);
-  load_in_memory(graph);
+  load_snb_data(graph, snb_home, strict);
 #endif
 
   node::id_t first_insert_node = graph->get_nodes()->as_vec().first_available();

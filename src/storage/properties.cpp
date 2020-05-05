@@ -338,9 +338,11 @@ property_set::id_t property_list::append_typed_properties(offset_t nid,
   property_set::id_t next_id = UNKNOWN;
   property_set::p_item_list pil;
   std::size_t pidx = 0;
+  // spdlog::info("append_typed_properties: {}, {}", values.size(), keys.size());
   for (auto i = 0u; i < keys.size(); i++) {
     if (values[i].empty()) // we don't add empty properties
       continue;
+    // spdlog::info("property @{} <- {}, type={}", pidx, i, typelist[i]);
     pil[pidx++] = p_item(keys[i], typelist[i], values[i]);
     if (i == keys.size() - 1 || pidx == pil.max_size()) {
       auto p =
@@ -388,6 +390,7 @@ properties_t property_list::all_properties(offset_t id, dict_ptr &dct) {
     auto &p = properties_.at(pset_id);
     for (auto &item : p.items) {
       auto s = dct->lookup_code(item.key());
+      // spdlog::info("property: {} - {}", s, item.typecode());
       switch (item.typecode()) {
       case p_item::p_int:
         pmap.insert({s, item.get<int>()});
@@ -407,6 +410,7 @@ properties_t property_list::all_properties(offset_t id, dict_ptr &dct) {
         pmap.insert({s, item.get<ptime>()});
         break;
       case p_item::p_unused:
+        // spdlog::info("{} -> p_unused", s);
         break;
       }
     }

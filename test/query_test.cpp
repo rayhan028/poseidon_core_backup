@@ -210,7 +210,7 @@ auto post_id = graph->add_node(
   auto &post = graph->node_by_id(post_id);
   auto post_descr = graph->get_node_description(post);
   auto pr_property = std::string("creationDate");
-  auto sec = get_property<int>(post_descr.properties, pr_property);
+  auto sec = get_property<int>(post_descr.properties, pr_property).value();
   assert(std::floor(sec) == sec);
   auto date = builtin::int_to_dtimestring(sec); // this works here -  but it does NOT work in the test below (relationsip)
   //auto test_date = builtin::int_to_dtimestring(1317825516); // this does not work here - but it works in the test below (relationsip)
@@ -298,15 +298,15 @@ TEST_CASE("Projecting only PExpr_ of higher indexes", "[graph_db]") {
                     auto forum_descr = graph->get_node_description(forum);
                     auto modrt_descr = graph->get_node_description(modrt);
                     auto f_id = get_property<int>(forum_descr.properties, 
-                                                  std::string("id"));
+                                                  std::string("id")).value();
                     auto f_title = get_property<std::string>(forum_descr.properties, 
-                                                  std::string("title"));
+                                                  std::string("title")).value();
                     auto modrt_id = get_property<int>(modrt_descr.properties, 
-                                                  std::string("id"));
+                                                  std::string("id")).value();
                     auto modrt_fName = get_property<std::string>(modrt_descr.properties, 
-                                                  std::string("firstName"));
+                                                  std::string("firstName")).value();
                     auto modrt_lName = get_property<std::string>(modrt_descr.properties, 
-                                                  std::string("lastName"));
+                                                  std::string("lastName")).value();
                     
                     qr_result_f_id.insert(f_id);
                     qr_result_modrt_id.insert(modrt_id);
@@ -429,15 +429,15 @@ graph->add_relationship(comment3_id, amin_id, ":hasCreator", {});
               auto msg_descr = graph->get_node_description(msg);
               auto creator_descr = graph->get_node_description(creator);
               auto cmnt_id = get_property<int>(msg_descr.properties, 
-                                            std::string("id"));
+                                            std::string("id")).value();
               auto cmnt_content = get_property<std::string>(msg_descr.properties, 
-                                            std::string("content"));
+                                            std::string("content")).value();
               auto author_id = get_property<int>(creator_descr.properties, 
-                                            std::string("id"));
+                                            std::string("id")).value();
               auto author_fName = get_property<std::string>(creator_descr.properties, 
-                                            std::string("firstName"));
+                                            std::string("firstName")).value();
               auto author_lName = get_property<std::string>(creator_descr.properties, 
-                                            std::string("lastName"));
+                                            std::string("lastName")).value();
               
               qr_result_cmnt_id.insert(cmnt_id);
               qr_result_author_id.insert(author_id);

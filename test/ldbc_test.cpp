@@ -1664,7 +1664,7 @@ void run_ldbc_is_query_4(graph_db_ptr &gdb, result_set &rs) {
                 .nodes_where("Post", "id",
                               [&](auto &p) { return p.equal(postId); })
                 .project({PExpr_(0, pj::int_to_dtimestring(pj::int_property(res, "creationDate"))),
-                          PExpr_(0, !pj::string_property(res, "content").empty() ? 
+                          PExpr_(0, !pj::has_property(res, "content") ? 
                             pj::string_property(res, "content") : pj::string_property(res, "imageFile")) })
                 .collect(rs);
 				

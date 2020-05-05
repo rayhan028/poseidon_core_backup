@@ -97,6 +97,11 @@ struct rship_description {
    * Return a string representation of the node_description object.
    */
   std::string to_string() const;
+
+  /**
+   * Return true if a property with the given name exists.
+   */
+  bool has_property(const std::string& pname) const;
 };
 
 /**

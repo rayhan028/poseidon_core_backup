@@ -42,6 +42,10 @@ std::string rship_description::to_string() const {
   return os.str();
 }
 
+bool rship_description::has_property(const std::string& pname) const {
+  return properties.find(pname) != properties.end();
+}
+
 /* ------------------------------------------------------------------------ */
 
 void relationship_list::runtime_initialize() {
