@@ -262,6 +262,7 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
   std::vector<dcode_t> prop_names;
   std::vector<p_item::p_typecode> prop_types; 
   std::vector<boost::any> prop_values;
+  std::vector<bool> inferred;
 
   for (auto &row : parser) {
     if (num == 0) {
@@ -285,12 +286,14 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
       prop_names.resize(columns.size());
       prop_types.resize(columns.size());
       prop_values.resize(columns.size());
+      inferred.resize(columns.size(), false);
       for (auto j = 0u; j < columns.size(); j++) {
         prop_names[j] = dict_->insert(columns[j]);
       }
     } else if (num == 1) {
       /*
        * process the first row: infer the data types
+       * Not all data types are inferred from first row
        */
       auto i = 0;
       for (auto &field : row) {
@@ -298,7 +301,7 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
           id_label = field;
 
         auto &col = columns[i];
-        if (!col.empty() && !(field.empty() && col != "content")) {
+        if (!col.empty() && !field.empty()) {
           if (col == "id") {
             prop_types[i] = p_item::p_uint64;
             prop_values[i] = boost::any((uint64_t)std::stoll(field));
@@ -307,6 +310,7 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
             auto p2 = infer_datatype(field, dict_);
             prop_types[i] = p2.first;
             prop_values[i] = p2.second;
+            inferred[i] = true;
           }
         }       
         i++;
@@ -327,10 +331,17 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
           id_label = field;
 
         auto &col = columns[i];
-        if (!col.empty() && !(field.empty() && col != "content")) {
-          prop_values[i] = (col == "id") 
-          ? boost::any((uint64_t)std::stoll(field))
-          : string_to_any(prop_types[i], field, dict_);
+        if (!col.empty() && !field.empty()) {
+          if (col == "id")
+            prop_values[i] = boost::any((uint64_t)std::stoll(field));
+          else if (inferred[i])
+            prop_values[i] = string_to_any(prop_types[i], field, dict_);
+          else { // columns whose datatypes we have not yet inferred
+            auto p2 = infer_datatype(field, dict_);
+            prop_types[i] = p2.first;
+            prop_values[i] = p2.second;
+            inferred[i] = true;
+          }
         }
         i++;
       }

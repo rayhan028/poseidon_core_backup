@@ -542,6 +542,20 @@ std::string pr_date(projection::pr_result &pv, /* std::size_t vidx, */
   return ""; 
 }
 
+int has_property(projection::pr_result &pv,
+                 const std::string &key){
+  if (pv.type() == typeid(node_description &)) {
+    auto nd = boost::get<node_description &>(pv);
+    if (nd.properties.find(key) != nd.properties.end())
+      return 1;
+  } else if (pv.type() == typeid(rship_description &)) {
+    auto rd = boost::get<rship_description &>(pv);
+    if (rd.properties.find(key) != rd.properties.end())
+      return 1;
+  }
+  return -1; 
+}
+
 std::string string_rep(projection::pr_result &res /*, std::size_t vidx*/) {
   auto my_visitor =
       boost::hana::overload([&](node_description &n) { return n.to_string(); },

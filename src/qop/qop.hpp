@@ -540,6 +540,13 @@ std::string pr_date(projection::pr_result &pv, /* std::size_t vidx, */
                  const std::string &key);
 
 /**
+ * Returns 1 if the node/relationship has the property specified by
+ * the key. Returns -1 otherwise 
+ */
+int has_property(projection::pr_result &pv, /* std::size_t vidx, */
+                 const std::string &key);
+
+/**
  * Return the string representation of a node/relationship stored in
  * projection_result res.
  */
