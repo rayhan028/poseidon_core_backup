@@ -65,7 +65,7 @@ void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
                .to_relationships(":hasCreator")
                .from_node("Post")
                .project({PExpr_(2, pj::uint64_property(res, "id")),
-                        PExpr_(2, !pj::string_property(res, "content").empty() ? 
+                        PExpr_(2, pj::has_property(res, "imageFile") < 0 ?
                             pj::string_property(res, "content") : pj::string_property(res, "imageFile")),
                         PExpr_(2, pj::ptime_property(res, "creationDate")),
                         PExpr_(2, pj::uint64_property(res, "id")),
@@ -179,7 +179,7 @@ void ldbc_is_query_4_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 #endif
 #endif
                 .project({PExpr_(0, pj::ptime_property(res, "creationDate")),
-                          PExpr_(0, !pj::string_property(res, "content").empty() ? 
+                          PExpr_(0, pj::has_property(res, "imageFile") < 0 ?
                             pj::string_property(res, "content") : pj::string_property(res, "imageFile")) })
                 .collect(rs);
 				
