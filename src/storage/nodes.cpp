@@ -127,17 +127,17 @@ void node_list::runtime_initialize() {
   const int nchunks = 100;
   std::vector<std::future<void>> res;
   res.reserve(num_chunks() / nchunks + 1);
-  spdlog::info("starting {} init node tasks...", num_chunks() / nchunks + 1);
+  // spdlog::info("starting {} init node tasks...", num_chunks() / nchunks + 1);
   thread_pool pool;
   std::size_t start = 0, end = nchunks - 1;
   while (start < num_chunks()) {
     res.push_back(pool.submit(
         init_node_task(*this, start, end)));
-    spdlog::info("starting: {}, {}", start, end);
+    // spdlog::info("starting: {}, {}", start, end);
     start = end + 1;
     end += nchunks;
   }
- std::cout << "waiting ..." << std::endl;
+ // std::cout << "waiting ..." << std::endl;
   for (auto &f : res)
     f.get();
 #else
