@@ -18,8 +18,11 @@
  */
 
 #include "relationships.hpp"
+#include "thread_pool.hpp"
 #include <iostream>
 #include <sstream>
+
+#define PARALLEL_INIT
 
 std::ostream &operator<<(std::ostream &os, const rship_description &rdescr) {
   os << ":" << rdescr.label << "[" << rdescr.id << "]{"; // OpenCypher 9.0
@@ -48,11 +51,49 @@ bool rship_description::has_property(const std::string& pname) const {
 
 /* ------------------------------------------------------------------------ */
 
+
+struct init_rship_task {
+  using range = std::pair<std::size_t, std::size_t>;
+  init_rship_task(relationship_list &r, std::size_t first, std::size_t last)
+      : rships_(r), range_(first, last) {}
+
+  void operator()() {
+    auto iter = rships_.range(range_.first, range_.second);
+    while (iter) {
+      auto &r = *iter;
+      r.runtime_initialize();
+     ++iter;
+    }
+  }
+
+  relationship_list &rships_;
+  range range_;
+};
+
 void relationship_list::runtime_initialize() {
   // make sure that all locks are released and no dirty objects exist
+#ifdef PARALLEL_INIT
+  const int nchunks = 100;
+  std::vector<std::future<void>> res;
+  res.reserve(num_chunks() / nchunks + 1);
+  spdlog::info("starting {} init tasks for rships...", num_chunks() / nchunks + 1);
+  thread_pool pool;
+  std::size_t start = 0, end = nchunks - 1;
+  while (start < num_chunks()) {
+    res.push_back(pool.submit(
+        init_rship_task(*this, start, end)));
+    spdlog::info("starting: {}, {}", start, end);
+    start = end + 1;
+    end += nchunks;
+  }
+ std::cout << "waiting ..." << std::endl;
+  for (auto &f : res)
+    f.get();
+#else
   for (auto &r : rships_) {
     r.runtime_initialize();
   }
+#endif
 }
 
 relationship::id_t relationship_list::append(relationship &&r, xid_t owner, std::function<void(offset_t)> callback) {

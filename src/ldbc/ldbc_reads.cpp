@@ -617,6 +617,8 @@ int main(int argc, char **argv) {
 #else
   auto graph = p_make_ptr<graph_db>(db_name);
   load_snb_data(graph, snb_home, strict);
+  graph->print_stats();
+  graph->runtime_initialize();
 #endif
 
   run_benchmark(graph);

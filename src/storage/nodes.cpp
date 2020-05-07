@@ -17,10 +17,13 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 #include "nodes.hpp"
+#include "thread_pool.hpp"
 #include <iostream>
 #include <sstream>
 
 #include "spdlog/spdlog.h"
+
+#define PARALLEL_INIT
 
 template <class T>
 bool output_any(std::ostream &os, const boost::any &any_value) {
@@ -96,14 +99,52 @@ bool node_description::has_property(const std::string& pname) const {
 
 /* ------------------------------------------------------------------------ */
 
+
+struct init_node_task {
+  using range = std::pair<std::size_t, std::size_t>;
+  init_node_task(node_list &n, std::size_t first, std::size_t last)
+      : nodes_(n), range_(first, last) {}
+
+  void operator()() {
+    auto iter = nodes_.range(range_.first, range_.second);
+    while (iter) {
+      auto &n = *iter;
+      n.runtime_initialize();
+     ++iter;
+    }
+  }
+
+  node_list &nodes_;
+  range range_;
+};
+
 node_list::~node_list() {
 }
 
 void node_list::runtime_initialize() {
   // make sure that all locks are released and no dirty objects exist
+#ifdef PARALLEL_INIT
+  const int nchunks = 100;
+  std::vector<std::future<void>> res;
+  res.reserve(num_chunks() / nchunks + 1);
+  spdlog::info("starting {} init node tasks...", num_chunks() / nchunks + 1);
+  thread_pool pool;
+  std::size_t start = 0, end = nchunks - 1;
+  while (start < num_chunks()) {
+    res.push_back(pool.submit(
+        init_node_task(*this, start, end)));
+    spdlog::info("starting: {}, {}", start, end);
+    start = end + 1;
+    end += nchunks;
+  }
+ std::cout << "waiting ..." << std::endl;
+  for (auto &f : res)
+    f.get();
+#else
   for (auto &n : nodes_) {
     n.runtime_initialize();
   }
+#endif
 }
 
 node::id_t node_list::append(node &&n, xid_t owner, std::function<void(offset_t)> callback) {
