@@ -32,8 +32,9 @@ using graph_pool_ptr = std::unique_ptr<graph_pool>;
 class graph_pool {
 
 public:
-    static graph_pool_ptr create(const std::string& path, unsigned long long pool_size = 1024*1024*40000ull);
-    static graph_pool_ptr open(const std::string& path);
+    static graph_pool_ptr create(const std::string& path, const std::string& layout, 
+	unsigned long long pool_size = 1024*1024*40000ull);
+    static graph_pool_ptr open(const std::string& path, const std::string& layout);
     static void destroy(graph_pool_ptr& p);
 
     ~graph_pool();

@@ -41,9 +41,11 @@ int main(int argc, char **argv) {
     return -1;
   }
  
+    spdlog::info("try to open {} with layout '{}'", pool_path, graph_name);
+
     auto start_qp = std::chrono::steady_clock::now();
 
-    auto pool = graph_pool::open(pool_path);
+    auto pool = graph_pool::open(pool_path, graph_name);
     auto graph = pool->open_graph(graph_name);
  
     auto end_qp = std::chrono::steady_clock::now();
