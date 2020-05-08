@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
  
     auto end_qp = std::chrono::steady_clock::now();
     auto tm =
-        std::chrono::duration_cast<std::chrono::microseconds>(end_qp - start_qp)
+        std::chrono::duration_cast<std::chrono::milliseconds>(end_qp - start_qp)
             .count();
-    std::cout << "startup: " << tm << " microseconds." << std::endl;
+    std::cout << "startup: " << tm << " milliseconds." << std::endl;
 }
