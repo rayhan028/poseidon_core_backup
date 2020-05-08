@@ -22,11 +22,12 @@
 
 namespace nvm = pmem::obj;
 
-graph_pool_ptr graph_pool::create(const std::string& path, unsigned long long pool_size) {
+graph_pool_ptr graph_pool::create(const std::string& path, 
+    unsigned long long pool_size) {
     struct enabler : public graph_pool { using graph_pool::graph_pool; };
     auto self = std::make_unique<enabler>();
   
-    self->pop_ = nvm::pool<root>::create(path, "", pool_size);
+    self->pop_ = nvm::pool<root>::create(path, "poseidon", pool_size);
     self->path_ = path;
 
     nvm::transaction::run(self->pop_, [&] {
@@ -35,12 +36,20 @@ graph_pool_ptr graph_pool::create(const std::string& path, unsigned long long po
     return self;
 }
 
-graph_pool_ptr graph_pool::open(const std::string& path) {
+graph_pool_ptr graph_pool::open(const std::string& path, bool init) {
     struct enabler : public graph_pool { using graph_pool::graph_pool; };
     auto self = std::make_unique<enabler>();
   
-    self->pop_ = nvm::pool<root>::open(path, "");
+    self->pop_ = nvm::pool<root>::open(path, "poseidon");
     self->path_ = path;
+    if (init) {
+	spdlog::info("Initializing pool...");
+        nvm::transaction::run(self->pop_, [&] {
+        	self->pop_.root()->graphs_ = nvm::make_persistent<hashmap>();
+    	});
+    }
+    else
+       self->pop_.root()->graphs_->runtime_initialize();
     return self;
 }
 
@@ -74,8 +83,11 @@ graph_db_ptr graph_pool::create_graph(const std::string& name) {
 
 graph_db_ptr graph_pool::open_graph(const std::string& name) {
    hashmap::const_accessor ac;
-    if (pop_.root()->graphs_->find(ac, string_t(name)))
-        return ac->second;
+    if (pop_.root()->graphs_->find(ac, string_t(name))) {
+        auto gdb = ac->second;
+        gdb->runtime_initialize();
+        return gdb;
+    }
     else
         throw unknown_db();
 }
@@ -87,7 +99,7 @@ graph_pool_ptr graph_pool::create(const std::string& path, unsigned long long po
     return std::make_unique<enabler>();
 }
 
-graph_pool_ptr graph_pool::open(const std::string& path) {
+graph_pool_ptr graph_pool::open(const std::string& path, bool init) {
     struct enabler : public graph_pool { using graph_pool::graph_pool; };
     return std::make_unique<enabler>();
 }

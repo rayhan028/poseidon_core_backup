@@ -4,6 +4,7 @@
 
 #include "defs.hpp"
 #include "graph_db.hpp"
+#include "graph_pool.hpp"
 #include "ldbc.hpp"
 #include "config.h"
 
@@ -14,22 +15,6 @@
 
 #define BUILD_INDEX
 #define PRINT_RESULT
-
-#ifdef USE_PMDK
-
-const std::string test_path = poseidon::gPmemPath +
-
-#ifdef SF_10
-"sf10";
-#else
-"sf1";
-#endif
-
-struct root {
-  graph_db_ptr graph;
-};
-
-#endif
 
 double calc_avg_time(const std::vector<double>& vec) {
     double d = 0.0;
@@ -556,7 +541,7 @@ using namespace boost::program_options;
 
 int main(int argc, char **argv) {
   bool strict = false;
-  std::string db_name;
+  std::string pool_path, db_name;
   std::string snb_home =
 #ifdef SF_10
     "/home/data/SNB_SF_10/";
@@ -570,6 +555,7 @@ int main(int argc, char **argv) {
         ("help,h", "Help")
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
         ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
+        ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem pool")
         ("import,i", value<std::string>(&snb_home), "Path to directories containing SNB CSV files")
         ("db,d", value<std::string>(&db_name)->required(),"Database name (required)");
 
@@ -588,6 +574,12 @@ int main(int argc, char **argv) {
     if (vm.count("strict"))
       strict = vm["strict"].as<bool>();
 
+    if (vm.count("db_name"))
+      db_name = vm["db_name"].as<std::string>();
+
+    if (vm.count("pool"))
+      pool_path = vm["pool"].as<std::string>();
+
     notify(vm);
 
       } catch (const error &ex) {
@@ -596,30 +588,15 @@ int main(int argc, char **argv) {
   }
 
   #ifdef USE_PMDK
-  namespace nvm = pmem::obj;
+    auto pool = graph_pool::open(pool_path);
+    auto graph = pool->open_graph(db_name);
+ #else
+  auto pool = graph_pool::create(pool_path);
+  auto graph = pool->create_graph(db_name);
 
-  nvm::pool<root> pop;
-
-  if (access(test_path.c_str(), F_OK) != 0) {
-      std::cerr << "Cannot find pmem path '" << test_path << "'" << std::endl;
-      return -1;
-  } else {
-    pop = nvm::pool<root>::open(test_path, db_name);
-  }
-
-  auto q = pop.root();
-  if (!q->graph) {
-      std::cerr << "Cannot open database '" << db_name << "'" << std::endl;
-      return -1;
-  }
-  auto &graph = q->graph;
-  graph->runtime_initialize();
-#else
-  auto graph = p_make_ptr<graph_db>(db_name);
   load_snb_data(graph, snb_home, strict);
-  graph->print_stats();
-  graph->runtime_initialize();
 #endif
+  graph->print_stats();
 
   run_benchmark(graph);
 }

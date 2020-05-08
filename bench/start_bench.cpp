@@ -41,6 +41,8 @@ int main(int argc, char **argv) {
     return -1;
   }
  
+    spdlog::info("try to open {}", pool_path);
+
     auto start_qp = std::chrono::steady_clock::now();
 
     auto pool = graph_pool::open(pool_path);
