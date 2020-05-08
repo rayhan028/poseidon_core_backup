@@ -74,10 +74,10 @@ int main(int argc, char **argv) {
   graph_pool_ptr pool;
 
   #ifdef USE_PMDK
-  if (access(test_path.c_str(), F_OK) != 0) {
+  if (access(pool_path.c_str(), F_OK) != 0) {
     pool = graph_pool::create(pool_path);
   } else {
-    pool = graph_pool::open(pool_path);
+    pool = graph_pool::open(pool_path, true);
   }
   spdlog::info("open poolset {}", pool_path);
  #else

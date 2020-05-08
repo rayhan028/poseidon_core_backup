@@ -36,12 +36,20 @@ graph_pool_ptr graph_pool::create(const std::string& path,
     return self;
 }
 
-graph_pool_ptr graph_pool::open(const std::string& path) {
+graph_pool_ptr graph_pool::open(const std::string& path, bool init) {
     struct enabler : public graph_pool { using graph_pool::graph_pool; };
     auto self = std::make_unique<enabler>();
   
-    self->pop_ = nvm::pool<root>::open(path, "psoeidon");
+    self->pop_ = nvm::pool<root>::open(path, "poseidon");
     self->path_ = path;
+    if (init) {
+	spdlog::info("Initializing pool...");
+        nvm::transaction::run(self->pop_, [&] {
+        	self->pop_.root()->graphs_ = nvm::make_persistent<hashmap>();
+    	});
+    }
+    else
+       self->pop_.root()->graphs_->runtime_initialize();
     return self;
 }
 
@@ -91,7 +99,7 @@ graph_pool_ptr graph_pool::create(const std::string& path, unsigned long long po
     return std::make_unique<enabler>();
 }
 
-graph_pool_ptr graph_pool::open(const std::string& path) {
+graph_pool_ptr graph_pool::open(const std::string& path, bool init) {
     struct enabler : public graph_pool { using graph_pool::graph_pool; };
     return std::make_unique<enabler>();
 }
