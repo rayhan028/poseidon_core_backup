@@ -15,30 +15,12 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
-#define SF_100
-// #define CREATE_INDEX
-// #define PARALLEL_LOAD
-// #define PARALLEL_RSHIP_LOAD
-
-#ifdef SF_100
-#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 1024 * 650ull)) // 600 GiB
-#elif defined(SF_10)
-#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 160000ull)) // 16000 MiB
-#else
-#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
-#endif
-
 using namespace boost::program_options;
 
 int main(int argc, char **argv) {
   bool strict = false;
   std::string pool_path, db_name, log_file;
-  std::string snb_home =
-#ifdef SF_10
-    "/home/data/SNB_SF_10/";
-#else
-    "/home/data/SNB_SF_1/";
-#endif
+  std::string snb_home = ".";
 
  try {
     options_description desc{"Options"};
