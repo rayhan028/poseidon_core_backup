@@ -22,11 +22,12 @@
 
 namespace nvm = pmem::obj;
 
-graph_pool_ptr graph_pool::create(const std::string& path, const std::string& layout, unsigned long long pool_size) {
+graph_pool_ptr graph_pool::create(const std::string& path, 
+    unsigned long long pool_size) {
     struct enabler : public graph_pool { using graph_pool::graph_pool; };
     auto self = std::make_unique<enabler>();
   
-    self->pop_ = nvm::pool<root>::create(path, layout, pool_size);
+    self->pop_ = nvm::pool<root>::create(path, "poseidon", pool_size);
     self->path_ = path;
 
     nvm::transaction::run(self->pop_, [&] {
@@ -35,11 +36,11 @@ graph_pool_ptr graph_pool::create(const std::string& path, const std::string& la
     return self;
 }
 
-graph_pool_ptr graph_pool::open(const std::string& path, const std::string& layout) {
+graph_pool_ptr graph_pool::open(const std::string& path) {
     struct enabler : public graph_pool { using graph_pool::graph_pool; };
     auto self = std::make_unique<enabler>();
   
-    self->pop_ = nvm::pool<root>::open(path, layout);
+    self->pop_ = nvm::pool<root>::open(path, "psoeidon");
     self->path_ = path;
     return self;
 }
@@ -74,8 +75,11 @@ graph_db_ptr graph_pool::create_graph(const std::string& name) {
 
 graph_db_ptr graph_pool::open_graph(const std::string& name) {
    hashmap::const_accessor ac;
-    if (pop_.root()->graphs_->find(ac, string_t(name)))
-        return ac->second;
+    if (pop_.root()->graphs_->find(ac, string_t(name))) {
+        auto gdb = ac->second;
+        gdb->runtime_initialize();
+        return gdb;
+    }
     else
         throw unknown_db();
 }

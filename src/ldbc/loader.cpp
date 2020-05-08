@@ -6,6 +6,7 @@
 
 #include "defs.hpp"
 #include "graph_db.hpp"
+#include "graph_pool.hpp"
 #include "ldbc.hpp"
 #include "config.h"
 
@@ -19,35 +20,19 @@
 // #define PARALLEL_LOAD
 // #define PARALLEL_RSHIP_LOAD
 
-#ifdef USE_PMDK
-
-const std::string test_path = "/home/ksattler/ldbc-sf100.set";
-
-const std::string default_test_path = poseidon::gPmemPath +
-
 #ifdef SF_100
-"sf100";
 #define POOL_SIZE ((unsigned long long)(1024 * 1024 * 1024 * 650ull)) // 600 GiB
 #elif defined(SF_10)
-"sf10";
 #define POOL_SIZE ((unsigned long long)(1024 * 1024 * 160000ull)) // 16000 MiB
 #else
-"sf1";
 #define POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
-#endif
-
-
-struct root {
-  graph_db_ptr graph;
-};
-
 #endif
 
 using namespace boost::program_options;
 
 int main(int argc, char **argv) {
   bool strict = false;
-  std::string db_name, log_file;
+  std::string pool_path, db_name, log_file;
   std::string snb_home =
 #ifdef SF_10
     "/home/data/SNB_SF_10/";
@@ -61,6 +46,7 @@ int main(int argc, char **argv) {
         ("help,h", "Help")
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
         ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
+        ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem pool")
         ("import,i", value<std::string>(&snb_home), "Path to directories containing SNB CSV files")
         ("log,l", value<std::string>(&log_file), "Write log messages to the given file")
         ("db,d", value<std::string>(&db_name)->required(),"Database name (required)");
@@ -83,6 +69,8 @@ int main(int argc, char **argv) {
     if (vm.count("strict"))
       strict = vm["strict"].as<bool>();
 
+    if (vm.count("pool"))
+      pool_path = vm["pool"].as<std::string>();
 
     notify(vm);
 
@@ -101,30 +89,20 @@ int main(int argc, char **argv) {
   else
     spdlog::info("Using non-strict mode");
   
+  graph_pool_ptr pool;
+
   #ifdef USE_PMDK
-  namespace nvm = pmem::obj;
-
-  nvm::pool<root> pop;
-
   if (access(test_path.c_str(), F_OK) != 0) {
-    pop = nvm::pool<root>::create(test_path, db_name, POOL_SIZE);
+    pool = graph_pool::create(pool_path);
   } else {
-    pop = nvm::pool<root>::open(test_path, db_name);
+    pool = graph_pool::open(pool_path);
   }
-
-  spdlog::info("open poolset {}", test_path);
-
-  auto q = pop.root();
-  if (!q->graph) {
-    // create a new persistent graph_db object
-    nvm::transaction::run(pop, [&] { q->graph = p_make_ptr<graph_db>(); });
-  }
-  auto &graph = q->graph;
-  graph->runtime_initialize();
-#else
-  auto graph = p_make_ptr<graph_db>(db_name);
+  spdlog::info("open poolset {}", pool_path);
+ #else
+  pool = graph_pool::create(pool_path);
 #endif
-
+  auto graph = pool->create_graph(db_name);
+ 
   graph->print_stats();
   
   load_snb_data(graph, snb_home);

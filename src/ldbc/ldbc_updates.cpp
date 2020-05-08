@@ -5,6 +5,7 @@
 
 #include "defs.hpp"
 #include "graph_db.hpp"
+#include "graph_pool.hpp"
 #include "ldbc.hpp"
 #include "config.h"
 
@@ -1728,7 +1729,7 @@ using namespace boost::program_options;
 
 int main(int argc, char **argv) {
   bool strict = false;
-  std::string db_name;
+  std::string pool_path, db_name;
   std::string snb_home =
 #ifdef SF_10
     "/home/data/SNB_SF_10/";
@@ -1743,6 +1744,7 @@ int main(int argc, char **argv) {
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
         ("import,i", value<std::string>(&snb_home), "Path to directories containing SNB CSV files")
         ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
+        ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem pool")
         ("db,d", value<std::string>(&db_name)->required(),"Database name (required)");
 
     variables_map vm;
@@ -1759,6 +1761,12 @@ int main(int argc, char **argv) {
 
     if (vm.count("strict"))
       strict = vm["strict"].as<bool>();
+    
+    if (vm.count("db_name"))
+      db_name = vm["db_name"].as<std::string>();
+
+    if (vm.count("pool"))
+      pool_path = vm["pool"].as<std::string>();
 
     notify(vm);
 
@@ -1767,29 +1775,16 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  #ifdef USE_PMDK
-  namespace nvm = pmem::obj;
+#ifdef USE_PMDK
+    auto pool = graph_pool::open(pool_path);
+    auto graph = pool->open_graph(db_name);
+ #else
+  auto pool = graph_pool::create(pool_path);
+  auto graph = pool->create_graph(db_name);
 
-  nvm::pool<root> pop;
-
-  if (access(test_path.c_str(), F_OK) != 0) {
-      std::cerr << "Cannot find pmem path '" << test_path << "'" << std::endl;
-      return -1;
-  } else {
-    pop = nvm::pool<root>::open(test_path, db_name);
-  }
-
-  auto q = pop.root();
-  if (!q->graph) {
-      std::cerr << "Cannot open database '" << db_name << "'" << std::endl;
-      return -1;
-  }
-  auto &graph = q->graph;
-  graph->runtime_initialize();
-#else
-  auto graph = p_make_ptr<graph_db>(db_name);
   load_snb_data(graph, snb_home, strict);
 #endif
+  graph->print_stats();
 
   node::id_t first_insert_node = graph->get_nodes()->as_vec().first_available();
   relationship::id_t first_insert_rship = graph->get_relationships()->as_vec().first_available();
