@@ -332,7 +332,9 @@ template <typename T> struct txn {
   /**
    * Check if the node is valid for the transaction with the give xid.
    */
-  bool is_valid_for(xid_t xid) const { return d_->bts_ <= xid && xid < d_->cts_; }
+  bool is_valid_for(xid_t xid) const { 
+	return d_ == nullptr || (d_->bts_ <= xid && xid < d_->cts_); 
+  }
 
   /**
    * TODO
@@ -356,7 +358,7 @@ template <typename T> struct txn {
    * Return true if dirty copies of this node exist, i.e. if
    * other active transactions working on it.
    */
-  bool has_dirty_versions() const { return d_->dirty_list_ != nullptr && !d_->dirty_list_->empty(); }
+  bool has_dirty_versions() const { return d_ != nullptr && d_->dirty_list_ != nullptr && !d_->dirty_list_->empty(); }
 
   /**
    * Find a valid version from the list of objects (stored in the dirty list)

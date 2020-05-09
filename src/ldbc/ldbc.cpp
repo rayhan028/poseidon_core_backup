@@ -6,9 +6,9 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 
-#define RUN_INDEXED
+// #define RUN_INDEXED
 #define IU_RESULT
-//#define RUN_PARALLEL
+#define RUN_PARALLEL
 
 namespace pj = builtin;
 
