@@ -22,6 +22,7 @@
 
 #include "defs.hpp"
 #include "graph_db.hpp"
+#include "graph_pool.hpp"
 #include "query.hpp"
 
 #include <boost/python.hpp>
@@ -48,10 +49,12 @@ struct py_mapping {
 
 struct py_graph {
   /**
-   * Constructors and detructors.
+   * Constructors and destructors.
    */
   py_graph();
   py_graph(const py_graph &pg);
+  py_graph(graph_db_ptr gdb);
+
   ~py_graph();
 
   bool open(const std::string &db_name);
@@ -83,6 +86,20 @@ struct py_graph {
   dcode_t dict_code(const std::string &s) { return gdb_->get_code(s); }
   graph_db_ptr gdb_;
 };
+
+struct py_graph_pool {
+  py_graph_pool(graph_pool_ptr p);
+  py_graph_pool(const py_graph_pool& p) : pool_(p.pool_) {}
+ 
+  py_graph open_graph(const std::string& name);
+  py_graph create_graph(const std::string& name);
+
+  std::shared_ptr<graph_pool> pool_;
+};
+
+py_graph_pool open_pool(const std::string& path);
+py_graph_pool create_pool(const std::string& path, unsigned long size);
+
 
 /**
  * py_query encapsulates a Poseidon query object. See the documentation
