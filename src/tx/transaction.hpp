@@ -333,21 +333,21 @@ template <typename T> struct txn {
    * Check if the node is valid for the transaction with the give xid.
    */
   bool is_valid_for(xid_t xid) const { 
-	return d_ == nullptr || (d_->bts_ <= xid && xid < d_->cts_); 
+	  return d_ == nullptr || (d_->bts_ <= xid && xid < d_->cts_); 
   }
 
   /**
-   * TODO
+   * Check whether the object is valid, i.e. not modified by an active transaction.
    */
   bool is_valid() const { return d_ == nullptr || d_->cts_ == INF; }
 
   /**
-   * TODO
+   * Return the dirty list.
    */
   decltype(auto) dirty_list() { return d_->dirty_list_; }
 
   /**
-   * TODO
+   * Delete the dirty list and sets it back to nullptr.
    */
   void delete_dirty_list() { 
     delete d_->dirty_list_; 

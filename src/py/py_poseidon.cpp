@@ -42,11 +42,36 @@ void py_mapping::reset() { id_map->clear(); }
 
 /* -------------------------------------------------------------------- */
 
+py_graph_pool::py_graph_pool(graph_pool_ptr p) : pool_(std::move(p)) {
+}
+
+py_graph_pool open_pool(const std::string& path) {
+  return py_graph_pool(graph_pool::open(path));
+}
+
+py_graph_pool create_pool(const std::string& path, unsigned long size) {
+  return py_graph_pool(graph_pool::create(path));
+}
+
+py_graph py_graph_pool::open_graph(const std::string& name) {
+  auto gdb = pool_->open_graph(name);
+  return py_graph(gdb);
+}
+
+py_graph py_graph_pool::create_graph(const std::string& name) {
+  auto gdb = pool_->create_graph(name);
+  return py_graph(gdb);
+}
+
+/* -------------------------------------------------------------------- */
+
 py_graph::py_graph() {}
 
 py_graph::~py_graph() {}
 
 py_graph::py_graph(const py_graph &pg) { gdb_ = pg.gdb_; }
+
+py_graph::py_graph(graph_db_ptr gdb) : gdb_(gdb) {}
 
 bool py_graph::open(const std::string &db_name) {
 #ifdef USE_PMDK
@@ -86,13 +111,26 @@ void py_graph::abort_transaction() { gdb_->abort_transaction(); }
 
 int py_graph::import_nodes(const std::string &nlabel, const std::string &fname,
                            py_mapping &pm) {
-  auto num = gdb_->import_nodes_from_csv(nlabel, fname, ',', *pm.id_map);
+  auto num = gdb_->import_typed_nodes_from_csv(nlabel, fname, ',', *pm.id_map);
   return num;
 }
 
 int py_graph::import_relationships(const std::string &fname, py_mapping &pm) {
-  auto num = gdb_->import_relationships_from_csv(fname, ',', *pm.id_map);
+  auto num = gdb_->import_typed_relationships_from_csv(fname, ',', *pm.id_map);
   return num;
+}
+
+
+void py_graph::print_node(offset_t nid) {
+  auto& n = gdb_->node_by_id(nid);
+  auto descr = gdb_->get_node_description(n);
+  std::cout << descr << std::endl;
+}
+
+void py_graph::print_relationship(offset_t rid) {
+  auto& r = gdb_->rship_by_id(rid);
+  auto descr = gdb_->get_rship_description(r);
+  std::cout << descr << std::endl;
 }
 
 /* -------------------------------------------------------------------- */
@@ -198,6 +236,9 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(from_node_overloads, from_node, 0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(to_node_overloads, to_node, 0, 1)
 
 BOOST_PYTHON_MODULE(poseidon) {
+  boost::python::def("create_pool", create_pool);
+  boost::python::def("open_pool", open_pool);
+
   bp::class_<p_item>("p_item", bp::no_init)
       .def("dict_eq",
            static_cast<bool (p_item::*)(dcode_t) const>(&p_item::equal))
@@ -206,6 +247,12 @@ BOOST_PYTHON_MODULE(poseidon) {
 
   bp::class_<py_mapping>("id_map", bp::no_init)
       .def("reset", &py_mapping::reset);
+
+
+  bp::class_<py_graph_pool>("graph_pool", bp::no_init)
+      .def("open_graph", &py_graph_pool::open_graph)
+      .def("create_graph", &py_graph_pool::create_graph);
+      // .staticmethod("open");
 
   bp::class_<py_graph>("graph_db")
       .def("open", &py_graph::open)
@@ -216,7 +263,9 @@ BOOST_PYTHON_MODULE(poseidon) {
       .def("dict_code", &py_graph::dict_code)
       .def("begin", &py_graph::begin_transaction)
       .def("commit", &py_graph::commit_transaction)
-      .def("abort", &py_graph::abort_transaction);
+      .def("abort", &py_graph::abort_transaction)
+      .def("node", &py_graph::print_node)
+      .def("rship", &py_graph::print_relationship);
 
   bp::class_<py_query>("query", bp::init<py_graph>())
       .def("all_nodes", &py_query::all_nodes, all_nodes_overloads())
