@@ -120,6 +120,19 @@ int py_graph::import_relationships(const std::string &fname, py_mapping &pm) {
   return num;
 }
 
+
+void py_graph::print_node(offset_t nid) {
+  auto& n = gdb_->node_by_id(nid);
+  auto descr = gdb_->get_node_description(n);
+  std::cout << descr << std::endl;
+}
+
+void py_graph::print_relationship(offset_t rid) {
+  auto& r = gdb_->rship_by_id(rid);
+  auto descr = gdb_->get_rship_description(r);
+  std::cout << descr << std::endl;
+}
+
 /* -------------------------------------------------------------------- */
 
 py_query::py_query(py_graph pg) { query_ = std::make_shared<query>(pg.gdb_); }
@@ -250,7 +263,9 @@ BOOST_PYTHON_MODULE(poseidon) {
       .def("dict_code", &py_graph::dict_code)
       .def("begin", &py_graph::begin_transaction)
       .def("commit", &py_graph::commit_transaction)
-      .def("abort", &py_graph::abort_transaction);
+      .def("abort", &py_graph::abort_transaction)
+      .def("node", &py_graph::print_node)
+      .def("rship", &py_graph::print_relationship);
 
   bp::class_<py_query>("query", bp::init<py_graph>())
       .def("all_nodes", &py_query::all_nodes, all_nodes_overloads())

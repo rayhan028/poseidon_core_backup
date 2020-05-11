@@ -83,7 +83,22 @@ struct py_graph {
    */
   int import_relationships(const std::string &fname, py_mapping &pm);
 
+  /**
+   * TODO
+   */  
   dcode_t dict_code(const std::string &s) { return gdb_->get_code(s); }
+
+  /**
+   * TODO
+   */  
+  void print_node(offset_t nid);
+
+  /**
+   * TODO
+   */  
+  void print_relationship(offset_t rid);
+
+
   graph_db_ptr gdb_;
 };
 
