@@ -31,7 +31,7 @@
 #define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
 
 namespace nvm = pmem::obj;
-const std::string test_path = poseidon::gPmemPath + "graphdb_test";
+const std::string test_path = poseidon::gPmemPath + "index_test";
 
 nvm::pool_base prepare_pool() {
   auto pop = nvm::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);

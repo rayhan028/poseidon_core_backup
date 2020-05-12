@@ -31,9 +31,12 @@
 #define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
 
 namespace nvm = pmem::obj;
-const std::string test_path = poseidon::gPmemPath + "graphdb_test";
+const std::string test_path = poseidon::gPmemPath + "import_test";
 
 nvm::pool_base prepare_pool() {
+	  if (access(test_path.c_str(), F_OK) == 0) {
+		  remove(test_path.c_str());
+	  }
   auto pop = nvm::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
   return pop;
 }
@@ -150,7 +153,7 @@ TEST_CASE("Importing nodes from CSV (old version)", "[graph_db]") {
     home = h;
 
   graph_db::mapping_t id_map;
-  auto num = graph->import_nodes_from_csv("Place", home + "/test/places.csv", '|', id_map);
+  auto num = graph->import_nodes_from_csv("Place", home + "/../../test/places.csv", '|', id_map);
   REQUIRE(num == 1460);
 #ifdef USE_PMDK
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
@@ -174,7 +177,7 @@ TEST_CASE("Importing nodes from CSV", "[graph_db]") {
     home = h;
 
   graph_db::mapping_t id_map;
-  auto num = graph->import_typed_nodes_from_csv("Place", home + "/test/places.csv", '|', id_map);
+  auto num = graph->import_typed_nodes_from_csv("Place", home + "/../../test/places.csv", '|', id_map);
   REQUIRE(num == 1460);
 #ifdef USE_PMDK
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
