@@ -85,7 +85,7 @@ struct py_graph {
 
   /**
    * TODO
-   */  
+   */
   dcode_t dict_code(const std::string &s) { return gdb_->get_code(s); }
 
   /**
@@ -97,7 +97,6 @@ struct py_graph {
    * TODO
    */  
   void print_relationship(offset_t rid);
-
 
   graph_db_ptr gdb_;
 };

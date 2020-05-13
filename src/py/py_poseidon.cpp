@@ -120,7 +120,6 @@ int py_graph::import_relationships(const std::string &fname, py_mapping &pm) {
   return num;
 }
 
-
 void py_graph::print_node(offset_t nid) {
   auto& n = gdb_->node_by_id(nid);
   auto descr = gdb_->get_node_description(n);
