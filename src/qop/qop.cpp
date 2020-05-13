@@ -429,10 +429,12 @@ void projection::process(graph_db_ptr &gdb, const qr_tuple &v) {
     // spdlog::info("projection::process: pv={}, i={}", pv.size(), i);
     auto &ex = exprs_[i];
     try {
-    if (ex.func != nullptr)
-      res[i] = ex.func(pv[var_map_[ex.vidx]]);
-    else
-      res[i] = builtin::forward(pv[var_map_[ex.vidx] - num_accessed_vars]);
+      if (ex.func != nullptr)
+        res[i] = ex.func(pv[var_map_[ex.vidx]]);
+      else{
+        pr_result fwd = v[ex.vidx];
+        res[i] = builtin::forward(fwd);
+      }
     } catch (unknown_property& exc) { }
   }
 

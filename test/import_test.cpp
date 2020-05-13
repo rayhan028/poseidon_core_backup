@@ -34,6 +34,9 @@ namespace nvm = pmem::obj;
 const std::string test_path = poseidon::gPmemPath + "import_test";
 
 nvm::pool_base prepare_pool() {
+	  if (access(test_path.c_str(), F_OK) == 0) {
+		  remove(test_path.c_str());
+	  }
   auto pop = nvm::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
   return pop;
 }

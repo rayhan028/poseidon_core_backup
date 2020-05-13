@@ -22,11 +22,21 @@
 
 #include "defs.hpp"
 
+//#define FPTree
+
 #ifdef USE_PMDK
 
+#ifdef FPTree
+#include "fptree.hpp"
+
+using btree_impl = fptree::FPBPTree<uint64_t, offset_t, 50, 50>;
+
+#else
 #include "pbtree.hpp"
 
 using btree_impl = pbtree::PBPTree<uint64_t, offset_t, 50, 50>;
+
+#endif
 using btree_ptr = p_ptr<btree_impl>;
 
 inline btree_ptr p_make_btree() { return pmem::obj::make_persistent<btree_impl>(); }
