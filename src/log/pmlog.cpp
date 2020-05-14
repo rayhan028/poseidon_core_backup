@@ -60,9 +60,15 @@ pmem_log::log_object_type pmlog::log_rec_iter::obj_type() const {
   return (pmem_log::log_object_type)rec_ptr->obj_type;
 }
 
-void pmlog::log_rec_iter::set_invalid() {}
+void pmlog::log_rec_iter::set_invalid() {
+  auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
+  rec_ptr->valid_flag = false;
+}
 
-bool pmlog::log_rec_iter::valid() const { return true; }
+bool pmlog::log_rec_iter::valid() const { 
+  auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
+  return rec_ptr->valid_flag;
+}
 
 /* -------------------------------------------------------------------------- */
 

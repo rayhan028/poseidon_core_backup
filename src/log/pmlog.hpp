@@ -39,6 +39,7 @@ enum log_object_type { log_node = 1, log_rship = 2, log_property = 3 };
 struct log_dummy {
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
+  bool valid_flag;
 };
 
 /**
@@ -46,10 +47,11 @@ struct log_dummy {
  */
 struct log_ins_record {
   log_ins_record(pmem_log::log_entry_type le, pmem_log::log_object_type lo, offset_t o) : 
-    log_type(le), obj_type(lo), oid(o) {}
+    log_type(le), obj_type(lo), valid_flag(true), oid(o) {}
  
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
+  bool valid_flag;
   offset_t oid;         // the id (node_id, rship_id) of the object
 };
 
@@ -59,10 +61,11 @@ struct log_ins_record {
 struct log_node_record {
   log_node_record(pmem_log::log_entry_type le, pmem_log::log_object_type lo, 
                   offset_t o, dcode_t l, offset_t f, offset_t t, offset_t p) : 
-    log_type(le), obj_type(lo), oid(o), label(l), from_rship_list(f), to_rship_list(t), property_list(p) {}
+    log_type(le), obj_type(lo), valid_flag(true), oid(o), label(l), from_rship_list(f), to_rship_list(t), property_list(p) {}
 
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
+  bool valid_flag;
   offset_t oid;         // the id (node_id, rship_id, property_set) of the object
   dcode_t label;        // the node label
   offset_t from_rship_list, to_rship_list, property_list;
@@ -74,11 +77,12 @@ struct log_node_record {
 struct log_rship_record {
   log_rship_record(pmem_log::log_entry_type le, pmem_log::log_object_type lo, 
                   offset_t o, dcode_t l, offset_t s, offset_t d, offset_t ns, offset_t nd) : 
-    log_type(le), obj_type(lo), oid(o), label(l), src_node(s), dest_node(d), 
+    log_type(le), obj_type(lo), valid_flag(true), oid(o), label(l), src_node(s), dest_node(d), 
     next_src_rship(ns), next_dest_rship(nd) {}
 
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
+  bool valid_flag;
   offset_t oid;         // the id (node_id, rship_id, property_set) of the object
   dcode_t label;        // the relationship label
   offset_t src_node, dest_node, next_src_rship, next_dest_rship;
@@ -90,10 +94,11 @@ struct log_rship_record {
 struct log_property_record {
   log_property_record(pmem_log::log_entry_type le, pmem_log::log_object_type lo, 
                   offset_t o, uint8_t f, property_set::p_item_list& pi, offset_t n, offset_t ow) : 
-      log_type(le), obj_type(lo), oid(o), flags(f), items(pi), next(n), owner(ow) {}
+      log_type(le), obj_type(lo), valid_flag(true), oid(o), flags(f), items(pi), next(n), owner(ow) {}
 
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
+  bool valid_flag;
 
   offset_t oid;
   uint8_t flags;
