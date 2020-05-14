@@ -116,6 +116,7 @@ void pmlog::transaction_end(pmlog::id_t log_id) {
 }
 
 void pmlog::append(id_t log_id, void *log_entry, uint32_t lsize) {
+#ifdef USE_LOGGING
   auto entry = &(ulog_[log_id]);
 #ifdef USE_PMDK
   auto pop = pmem::obj::pool_by_vptr(this);
@@ -134,6 +135,7 @@ void pmlog::append(id_t log_id, void *log_entry, uint32_t lsize) {
   } else {
     // TODO
   }
+#endif
 }
 
 void pmlog::dump_chunk(log_chunk &log) {

@@ -71,9 +71,7 @@ transaction_ptr graph_db::begin_transaction() {
     throw invalid_nested_transaction();
   auto tx = std::make_shared<transaction>();
   current_transaction_ = tx;
-#ifdef USE_LOGGING
   tx->set_logid(ulog_->transaction_begin(tx->xid()));
-#endif
 #ifdef USE_TX
   std::lock_guard<std::mutex> guard(*m_);
   active_tx_->insert({tx->xid(), tx});
@@ -114,14 +112,11 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		  // and node version to the main tables
 		  // spdlog::info("commit UPDATE transaction {}: copy properties", xid);
 		  // update node (label)
-#ifdef USE_LOGGING
       auto log_id = current_transaction_->logid(); 
-#endif 
 
       if (dn->elem_.bts() == dn->elem_.cts()) {
         // CASE #2 = DELETE
         // spdlog::info("COMMIT DELETE: [{},{}]", short_ts(dn->elem_.bts), short_ts(dn->elem_.cts));
-#ifdef USE_LOGGING
         log_node_record rec { pmlog::log_delete, pmlog::log_node, node_id, 
               n.node_label, n.from_rship_list, n.to_rship_list, n.property_list };
         ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));       
@@ -132,7 +127,6 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
           ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
         };
         node_properties_->foreach_property_set(n.property_list, cb);
-#endif
         // Because there might be an active transaction which still needs the object
         // we cannot delete the node, yet. However, we set the bts and cts accordingly.
 		    n.set_cts(xid);
@@ -146,12 +140,10 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
       }
       else {
         // CASE #3 = UPDATE
-#ifdef USE_LOGGING
         // create and append a log_node_record BEFORE we copy the properties and override the label
         log_node_record rec{ pmlog::log_update, pmlog::log_node, node_id, 
           n.node_label, n.from_rship_list, n.to_rship_list, n.property_list};
         ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));
-#endif
 		    n.node_label = dn->elem_.node_label;
         n.from_rship_list = dn->elem_.from_rship_list;
         n.to_rship_list = dn->elem_.to_rship_list;
@@ -198,13 +190,10 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		  // case #2: we have updated a relationship, thus copy both properties
 		  // and relationship version to the main tables
 		  // update relationship (label)
-#ifdef USE_LOGGING
       auto log_id = current_transaction_->logid(); 
-#endif 
       if (dr->elem_.bts() == dr->elem_.cts()) {
         // CASE #2 = DELETE
         // spdlog::info("COMMIT DELETE: {}, {}", dr->elem_.bts, dr->elem_.cts);
-#ifdef USE_LOGGING
         log_rship_record rec { pmlog::log_delete, pmlog::log_rship, rel_id,
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
         ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));       
@@ -216,7 +205,6 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
         };
         rship_properties_->foreach_property_set(r.property_list, cb);
 
-#endif
         // Because there might be an active transaction which still needs the object
         // we cannot delete the relationship, yet. However, we set the cts accordingly.
 		    r.set_cts(xid);
@@ -229,7 +217,6 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
       }
       else {
         // CASE #3 = UPDATE
-#ifdef USE_LOGGING
       // create and append a log_rship_record BEFORE we copy the properties and override the label
       auto log_id = current_transaction_->logid(); 
  
@@ -237,7 +224,6 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
 
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));
-#endif
 		  r.rship_label = dr->elem_.rship_label;
 		  copy_properties(r, dr);
 		  r.set_timestamps(xid, INF);
@@ -276,9 +262,7 @@ bool graph_db::commit_transaction() {
     commit_dirty_relationship(tx, rel_id);
   }
 
-#ifdef USE_LOGGING
   ulog_->transaction_end(current_transaction_->logid());
-#endif
   current_transaction_.reset();
 #endif
   return true;
@@ -322,9 +306,7 @@ bool graph_db::abort_transaction() {
     }
   }
 #endif
-#ifdef USE_LOGGING
   ulog_->transaction_end(current_transaction_->logid());
-#endif
   current_transaction_.reset();
   return true;
 }
@@ -372,7 +354,6 @@ node::id_t graph_db::add_node(const std::string &label,
   xid_t txid = 0;
 #endif
   auto type_code = dict_->insert(label);
-#ifdef USE_LOGGING
   // create and append a log_ins_record BEFORE the node table is modified
   auto log_id = current_transaction_->logid(); 
   auto cb = [log_id, this](offset_t n_id) {
@@ -381,10 +362,6 @@ node::id_t graph_db::add_node(const std::string &label,
   };
   auto node_id = append_only ? nodes_->append(node(type_code), txid, cb)
                              : nodes_->insert(node(type_code), txid, cb);
-#else
-  auto node_id = append_only ? nodes_->append(node(type_code), txid)
-                             : nodes_->insert(node(type_code), txid);
-#endif
   // we need the node object not only the id
   auto &n = nodes_->get(node_id);
 
@@ -425,7 +402,6 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
   auto &to_node = nodes_->get(to_id);
 #endif
   auto type_code = dict_->insert(label);
-#ifdef USE_LOGGING
   // create and append a log_ins_record BEFORE the rship table is modified
   auto log_id = current_transaction()->logid(); 
   auto cb = [log_id, this](offset_t r_id) {
@@ -436,12 +412,6 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
       append_only
           ? rships_->append(relationship(type_code, from_id, to_id), txid, cb)
           : rships_->insert(relationship(type_code, from_id, to_id), txid, cb);
-#else
-  auto rid =
-      append_only
-          ? rships_->append(relationship(type_code, from_id, to_id), txid)
-          : rships_->insert(relationship(type_code, from_id, to_id), txid);
-#endif
   auto &r = rships_->get(rid);
 
 #ifdef USE_TX
@@ -994,7 +964,6 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
 
   property_set::id_t pid;
   if (dn->updated()) {
-#ifdef USE_LOGGING
     // create and append a log_property_record
     auto log_id = current_transaction_->logid();
     auto node_id = n.id(); 
@@ -1004,7 +973,6 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
     };
     node_properties_->foreach_property_set(n.id(), cb);
-#endif
     // we have to update the properties
     pid = node_properties_->update_pitems(n.id(), n.property_list, dn->properties_,
                                      dict_);
@@ -1029,7 +997,6 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
 
   property_set::id_t pid;
   if (dr->updated()) {
-#ifdef USE_LOGGING
     // create and append a log_property_record
     auto log_id = current_transaction_->logid();
     auto rship_id = r.id(); 
@@ -1039,7 +1006,6 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
     };
     rship_properties_->foreach_property_set(r.id(), cb);
-#endif
     // we have to update the properties
     pid = rship_properties_->update_pitems(r.id(), r.property_list, dr->properties_,
                                      dict_);

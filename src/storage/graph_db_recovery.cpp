@@ -20,10 +20,12 @@
 #include "graph_db.hpp"
 
 void graph_db::apply_undo_log() {
+#ifdef USE_LOGGING
     spdlog::info("checking undo log...");
     for (auto li = ulog_->log_begin(); li != ulog_->log_end(); ++li) {
         if (li.valid()) {
             // TODO
         }
     }
+#endif
 }

@@ -39,6 +39,8 @@ struct root {
 
 #endif
 
+#ifdef USE_LOGGING
+
 TEST_CASE("creating a log and appending some entries", "[pmlog]") {
 #ifdef USE_PMDK
     auto pop = nvm::pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
@@ -123,4 +125,4 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
 #endif
 }
 
-
+#endif
