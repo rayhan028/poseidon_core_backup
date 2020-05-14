@@ -352,7 +352,7 @@ class chunked_vec {
     auto pos = tail->first_available();
     assert(pos != SIZE_MAX);
     auto offs = (chunk_list_.size() - 1) * elems_per_chunk_;
-    if (callback) callback(offs + pos);
+    if (callback != nullptr) callback(offs + pos);
     available_slots_--;
     tail->set(pos, true);
     tail->data_[pos] = o;
@@ -384,7 +384,7 @@ class chunked_vec {
     }
     offset_t pos = ch->first_available();
     assert(pos != SIZE_MAX);
-    if (callback) callback(idx + pos);
+    if (callback != nullptr) callback(idx + pos);
     available_slots_--;
     ch->set(pos, true);
     ch->data_[pos] = o;
