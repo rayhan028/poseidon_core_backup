@@ -60,6 +60,12 @@ pmem_log::log_object_type pmlog::log_rec_iter::obj_type() const {
   return (pmem_log::log_object_type)rec_ptr->obj_type;
 }
 
+void pmlog::log_rec_iter::set_invalid() {}
+
+bool pmlog::log_rec_iter::valid() const { return true; }
+
+/* -------------------------------------------------------------------------- */
+
 pmlog::pmlog() {
   nlogs_ = 50;
 #ifdef USE_PMDK

@@ -140,6 +140,9 @@ public:
 
     template <typename T> T *get() { return (T *)(&(chunk_->data_[pos_])); }
 
+    void set_invalid();
+    bool valid() const;
+
 #ifdef USE_PMDK
     p_ptr<log_chunk> chunk_;
 #else
@@ -172,6 +175,8 @@ public:
      * Returns true if this log contains log entries.
      */
     bool valid() const { return cpos_ < maxpos_ && log_[cpos_].txid_ != 0; }
+
+    void set_invalid() {}
 
     /**
      * Returns the transaction id for which this log was stored.
