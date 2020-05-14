@@ -57,19 +57,19 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
     auto lid1 = ulog.transaction_begin(42);
     auto lid2 = ulog.transaction_begin(44);
 
-    log_ins_record r1{ pmlog::log_insert, pmlog::log_node, 1234ul };
+    log_ins_record r1(pmem_log::log_insert, pmem_log::log_node, 1234ul);
     ulog.append(lid1, static_cast<void *>(&r1), sizeof(r1));
  
-    log_node_record r2{ pmlog::log_update, pmlog::log_node, 1236ul, 42, 101ul, 102ul, 103ul };
+    log_node_record r2(pmem_log::log_update, pmem_log::log_node, 1236ul, 42, 101ul, 102ul, 103ul);
     ulog.append(lid1, static_cast<void *>(&r2), sizeof(r2));
 
-    log_ins_record r3{ pmlog::log_insert, pmlog::log_node, 1235ul };
+    log_ins_record r3(pmem_log::log_insert, pmem_log::log_node, 1235ul);
     ulog.append(lid2, static_cast<void *>(&r3), sizeof(r3));
 
     ulog.transaction_end(lid2);
 
     auto lid3 = ulog.transaction_begin(46);
-    log_node_record r4{ pmlog::log_update, pmlog::log_node, 1237ul, 44, 201ul, 202ul, 203ul };
+    log_node_record r4(pmem_log::log_update, pmem_log::log_node, 1237ul, 44, 201ul, 202ul, 203ul);
     ulog.append(lid3, static_cast<void *>(&r4), sizeof(r4));
 
 #ifdef USE_PMDK
@@ -95,14 +95,14 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
             nlogs++;
             
             for (auto l = li.begin(); l != li.end(); ++l) {
-                if (l.log_type() == pmlog::log_insert) {
+                if (l.log_type() == pmem_log::log_insert) {
                     auto rec = l.get<log_ins_record>(); 
                     REQUIRE(rec->oid == 1234);
                     ninserts++;
                 }
 
-                else if (l.log_type() == pmlog::log_update) {
-                    if (l.obj_type() == pmlog::log_node) {
+                else if (l.log_type() == pmem_log::log_update) {
+                    if (l.obj_type() == pmem_log::log_node) {
                         auto rec = l.get<log_node_record>();
                         if (rec->oid == 1236)
                             REQUIRE(rec->label == 42);

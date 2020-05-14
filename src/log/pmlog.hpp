@@ -23,6 +23,19 @@
 #include "transaction.hpp"
 #include "properties.hpp"
 
+namespace pmem_log {
+/**
+ * The different kinds of log entries: insert, update, delete.
+ */
+enum log_entry_type { log_insert = 1, log_update = 2, log_delete = 3 };
+
+/**
+ * The different objects (nodes, relationships, property_set) represented
+ * by the log entries.
+ */
+enum log_object_type { log_node = 1, log_rship = 2, log_property = 3 };
+}
+
 struct log_dummy {
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
@@ -32,6 +45,9 @@ struct log_dummy {
  * A log record for inserting objects.
  */
 struct log_ins_record {
+  log_ins_record(pmem_log::log_entry_type le, pmem_log::log_object_type lo, offset_t o) : 
+    log_type(le), obj_type(lo), oid(o) {}
+ 
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
   offset_t oid;         // the id (node_id, rship_id) of the object
@@ -41,6 +57,10 @@ struct log_ins_record {
  * A log record for deleting and updating nodes.
  */
 struct log_node_record {
+  log_node_record(pmem_log::log_entry_type le, pmem_log::log_object_type lo, 
+                  offset_t o, dcode_t l, offset_t f, offset_t t, offset_t p) : 
+    log_type(le), obj_type(lo), oid(o), label(l), from_rship_list(f), to_rship_list(t), property_list(p) {}
+
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
   offset_t oid;         // the id (node_id, rship_id, property_set) of the object
@@ -52,6 +72,11 @@ struct log_node_record {
  * A log record for deleting and updating relationships.
  */
 struct log_rship_record {
+  log_rship_record(pmem_log::log_entry_type le, pmem_log::log_object_type lo, 
+                  offset_t o, dcode_t l, offset_t s, offset_t d, offset_t ns, offset_t nd) : 
+    log_type(le), obj_type(lo), oid(o), label(l), src_node(s), dest_node(d), 
+    next_src_rship(ns), next_dest_rship(nd) {}
+
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
   offset_t oid;         // the id (node_id, rship_id, property_set) of the object
@@ -63,6 +88,10 @@ struct log_rship_record {
  * A log record for deleting and updating property sets.
  */
 struct log_property_record {
+  log_property_record(pmem_log::log_entry_type le, pmem_log::log_object_type lo, 
+                  offset_t o, uint8_t f, property_set::p_item_list& pi, offset_t n, offset_t ow) : 
+      log_type(le), obj_type(lo), oid(o), flags(f), items(pi), next(n), owner(ow) {}
+
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
 
@@ -91,17 +120,6 @@ public:
   using id_t = std::size_t;
 
   /**
-   * The different kinds of log entries: insert, update, delete.
-   */
-  enum log_entry_type { log_insert = 1, log_update = 2, log_delete = 3 };
-
-  /**
-   * The different objects (nodes, relationships, property_set) represented
-   * by the log entries.
-   */
-  enum log_object_type { log_node = 1, log_rship = 2, log_property = 3 };
-
-  /**
    * An iterator for traversing the log entries.
    */
   struct log_rec_iter {
@@ -117,8 +135,8 @@ public:
 
     log_rec_iter &operator++();
 
-    log_entry_type log_type() const;
-    log_object_type obj_type() const;
+    pmem_log::log_entry_type log_type() const;
+    pmem_log::log_object_type obj_type() const;
 
     template <typename T> T *get() { return (T *)(&(chunk_->data_[pos_])); }
 

@@ -24,23 +24,23 @@ pmlog::log_rec_iter &pmlog::log_rec_iter::operator++() {
   auto old = pos_;
   auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
   switch (rec_ptr->log_type) {
-  case pmlog::log_insert:
+  case pmem_log::log_insert:
     pos_ += sizeof(log_ins_record);
     break;
-  case pmlog::log_update:
+  case pmem_log::log_update:
     switch (rec_ptr->obj_type) {
-    case pmlog::log_node:
+    case pmem_log::log_node:
       pos_ += sizeof(log_node_record);
       break;
-    case pmlog::log_rship:
+    case pmem_log::log_rship:
       // TODO
       break;
-    case pmlog::log_property:
+    case pmem_log::log_property:
       // TODO
       break;
     }
     break;
-  case pmlog::log_delete:
+  case pmem_log::log_delete:
     // TODO
     break;
   }
@@ -50,14 +50,14 @@ pmlog::log_rec_iter &pmlog::log_rec_iter::operator++() {
   return *this;
 }
 
-pmlog::log_entry_type pmlog::log_rec_iter::log_type() const {
+pmem_log::log_entry_type pmlog::log_rec_iter::log_type() const {
   auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
-  return (pmlog::log_entry_type)rec_ptr->log_type;
+  return (pmem_log::log_entry_type)rec_ptr->log_type;
 }
 
-pmlog::log_object_type pmlog::log_rec_iter::obj_type() const {
+pmem_log::log_object_type pmlog::log_rec_iter::obj_type() const {
   auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
-  return (pmlog::log_object_type)rec_ptr->obj_type;
+  return (pmem_log::log_object_type)rec_ptr->obj_type;
 }
 
 pmlog::pmlog() {
@@ -116,7 +116,6 @@ void pmlog::transaction_end(pmlog::id_t log_id) {
 }
 
 void pmlog::append(id_t log_id, void *log_entry, uint32_t lsize) {
-#ifdef USE_LOGGING
   auto entry = &(ulog_[log_id]);
 #ifdef USE_PMDK
   auto pop = pmem::obj::pool_by_vptr(this);
@@ -135,7 +134,6 @@ void pmlog::append(id_t log_id, void *log_entry, uint32_t lsize) {
   } else {
     // TODO
   }
-#endif
 }
 
 void pmlog::dump_chunk(log_chunk &log) {
@@ -144,12 +142,12 @@ void pmlog::dump_chunk(log_chunk &log) {
   uint32_t pos = 0;
   while (pos < log.used_) {
     auto rec_ptr = (log_dummy *)(&(log.data_[pos]));
-    if (rec_ptr->log_type == pmlog::log_insert) {
+    if (rec_ptr->log_type == pmem_log::log_insert) {
       auto ins_rec_ptr = (log_ins_record *)(&(log.data_[pos]));
       std::cout << "INSERT #" << ins_rec_ptr->oid << std::endl;
       pos += sizeof(log_ins_record);
-    } else if (rec_ptr->log_type == pmlog::log_update) {
-      if (rec_ptr->obj_type == pmlog::log_node) {
+    } else if (rec_ptr->log_type == pmem_log::log_update) {
+      if (rec_ptr->obj_type == pmem_log::log_node) {
         auto upd_rec_ptr = (log_node_record *)(&(log.data_[pos]));
         std::cout << "UPDATE #" << upd_rec_ptr->oid << ", UNDO={"
                   << upd_rec_ptr->label << "}" << std::endl;
