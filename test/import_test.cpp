@@ -205,3 +205,37 @@ TEST_CASE("Importing nodes with many properties from CSV", "[graph_db]") {
   remove(test_path.c_str());
 #endif
 }
+
+TEST_CASE("Importing nodes with many properties from Neo4j style CSV", "[graph_db]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  graph_db_ptr graph;
+  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
+#else
+  auto graph = p_make_ptr<graph_db>();
+#endif
+
+  std::string home(".");
+  auto h = getenv("TEST_HOME");
+  if (h != nullptr)
+    home = h;
+
+  spdlog::info("------------ Neo4j import ------------");
+
+  graph_db::mapping_t id_map;
+  spdlog::info("Importing Actor...");
+  auto num = graph->import_typed_n4j_nodes_from_csv("Actor", home + "/test/actors.csv", ',', id_map);
+  REQUIRE(num == 8);
+  spdlog::info("Importing Movie...");
+  num = graph->import_typed_n4j_nodes_from_csv("Movie", home + "/test/movies.csv", ',', id_map);
+  REQUIRE(num == 2);
+  spdlog::info("Importing relationships...");
+  num = graph->import_typed_n4j_relationships_from_csv(home + "/test/roles.csv", ',', id_map);
+  REQUIRE(num == 9);
+
+#ifdef USE_PMDK
+  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}

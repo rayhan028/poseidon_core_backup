@@ -51,6 +51,8 @@ TEST_CASE("Creating nodes", "[graph_db]") {
 }
 
 TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
+  spdlog::info("size = {}", sizeof(log_ins_record));
+
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 

@@ -36,10 +36,13 @@ enum log_entry_type { log_insert = 1, log_update = 2, log_delete = 3 };
 enum log_object_type { log_node = 1, log_rship = 2, log_property = 3 };
 }
 
+/**
+ * A placeholder for log records - not instantiated.
+ */
 struct log_dummy {
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
-  bool valid_flag;
+  bool valid_flag;      // true if the record is valid (i.e. not processed yet during recovery)
 };
 
 /**
@@ -51,7 +54,7 @@ struct log_ins_record {
  
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
-  bool valid_flag;
+  bool valid_flag;      // true if the record is valid (i.e. not processed yet during recovery
   offset_t oid;         // the id (node_id, rship_id) of the object
 };
 
@@ -65,7 +68,7 @@ struct log_node_record {
 
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
-  bool valid_flag;
+  bool valid_flag;      // true if the record is valid (i.e. not processed yet during recovery
   offset_t oid;         // the id (node_id, rship_id, property_set) of the object
   dcode_t label;        // the node label
   offset_t from_rship_list, to_rship_list, property_list;
@@ -82,7 +85,7 @@ struct log_rship_record {
 
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
-  bool valid_flag;
+  bool valid_flag;      // true if the record is valid (i.e. not processed yet during recovery
   offset_t oid;         // the id (node_id, rship_id, property_set) of the object
   dcode_t label;        // the relationship label
   offset_t src_node, dest_node, next_src_rship, next_dest_rship;
@@ -98,7 +101,7 @@ struct log_property_record {
 
   uint8_t log_type : 3; // log_entry_type
   uint8_t obj_type : 2; // log_object_type
-  bool valid_flag;
+  bool valid_flag;      // true if the record is valid (i.e. not processed yet during recovery
 
   offset_t oid;
   uint8_t flags;
@@ -112,11 +115,14 @@ struct log_property_record {
  * be traversed during recovery.
  */
 class pmlog {
+  /*
+   * A log_chunk stored a list of log records associated with a transaction.
+   */
   struct log_chunk {
-    uint8_t data_[4076];
-    xid_t txid_;
-    uint32_t used_;
-    p_ptr<log_chunk> next_;
+    uint8_t data_[4076];    // space for storing the log records
+    xid_t txid_;            // the id of the transaction of these log records
+    uint32_t used_;         // the number of bytes occupied already
+    p_ptr<log_chunk> next_; // the address of the next log_chunk belonging to this transaction
   };
 
   using chunk_ptr = p_ptr<log_chunk>;
@@ -140,12 +146,26 @@ public:
 
     log_rec_iter &operator++();
 
+    /**
+     * Return the type of the log record.
+     */
     pmem_log::log_entry_type log_type() const;
+
+    /**
+     * Return the object described by this log record.
+     */
     pmem_log::log_object_type obj_type() const;
 
     template <typename T> T *get() { return (T *)(&(chunk_->data_[pos_])); }
 
+    /**
+     * Mark this log record as invalid, i.e. already processed during recovery.
+     */
     void set_invalid();
+
+    /**
+     * Returns true if this log record is still valid.
+     */
     bool valid() const;
 
 #ifdef USE_PMDK
@@ -181,6 +201,9 @@ public:
      */
     bool valid() const { return cpos_ < maxpos_ && log_[cpos_].txid_ != 0; }
 
+    /**
+     * Mark this log as invalid, i.e. already processed during recovery.
+     */
     void set_invalid() {}
 
     /**

@@ -33,10 +33,10 @@ pmlog::log_rec_iter &pmlog::log_rec_iter::operator++() {
       pos_ += sizeof(log_node_record);
       break;
     case pmem_log::log_rship:
-      // TODO
+      pos_ += sizeof(log_rship_record);
       break;
     case pmem_log::log_property:
-      // TODO
+      pos_ += sizeof(log_property_record);
       break;
     }
     break;

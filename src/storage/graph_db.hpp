@@ -209,6 +209,9 @@ public:
   std::size_t import_typed_nodes_from_csv(const std::string &label,
                                     const std::string &filename, char delim,
                                     mapping_t &m, std::mutex *mtx = nullptr);
+  std::size_t import_typed_n4j_nodes_from_csv(const std::string &label,
+                                    const std::string &filename, char delim,
+                                    mapping_t &m);
 
   /**
    * Read the list of relationships from the given CSV file. The file is in
@@ -219,6 +222,9 @@ public:
 
   std::size_t import_typed_relationships_from_csv(const std::string &filename,
                                             char delim, const mapping_t &m, std::mutex *mtx = nullptr);
+
+   std::size_t import_typed_n4j_relationships_from_csv(const std::string &filename,
+                                            char delim, const mapping_t &m);
 
   /* ---------------- helper ---------------- */
 
