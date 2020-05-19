@@ -73,6 +73,19 @@ infer_datatype(const std::string& s, dict_ptr &dict) {
   return std::make_pair(p_item::p_dcode, boost::any(dict->insert(s)));
 }
 
+p_item::p_typecode
+get_datatype(const std::string& s) {
+
+    if (is_quoted_string(s))  return p_item::p_dcode;
+    else if (is_int(s))       return p_item::p_int;
+    else if (is_float(s))     return p_item::p_double;
+    else if (is_date(s))      return p_item::p_date;
+    else if (is_dtime(s))     return p_item::p_ptime;
+    return p_item::p_dcode;
+}
+
+
+
 node::id_t graph_db::import_node(const std::string &label,
                                  const properties_t &props) {
   auto type_code = dict_->insert(label);
@@ -110,6 +123,24 @@ node::id_t graph_db::import_typed_node(dcode_t label,
   return node_id;
 }
 
+node::id_t graph_db::import_typed_node(dcode_t label,
+                              const std::vector<dcode_t> &keys,
+                              const std::vector<p_item::p_typecode>& typelist,
+				const std::vector<std::string>& values,dict_ptr &dict) {
+  auto node_id = nodes_->append(node(label), 0);
+
+  // we need the node object not only the id
+  auto &n = nodes_->get(node_id);
+
+  // save properties
+  if (!keys.empty()) {
+    property_set::id_t pid =
+        node_properties_->append_typed_properties(node_id, keys, typelist, values, dict);
+    n.property_list = pid;
+  }
+
+  return node_id;
+}
 relationship::id_t graph_db::import_relationship(node::id_t from_id,
                                                  node::id_t to_id,
                                                  const std::string &label,
@@ -181,6 +212,44 @@ relationship::id_t graph_db::import_typed_relationship(node::id_t from_id,
 
 }
 
+relationship::id_t graph_db::import_typed_relationship(node::id_t from_id,
+                                         node::id_t to_id,
+                                         dcode_t label,
+                                         const std::vector<dcode_t> &keys,
+                                         const std::vector<p_item::p_typecode>& typelist,
+					  const std::vector<std::string>& values,dict_ptr &dict) {
+  auto &from_node = nodes_->get(from_id);
+  auto &to_node = nodes_->get(to_id);
+  auto rid = rships_->append(relationship(label, from_id, to_id), 0);
+
+  auto &r = rships_->get(rid);
+
+  // save properties
+  if (!keys.empty()) {
+    property_set::id_t pid =
+        rship_properties_->append_typed_properties(rid, keys, typelist, values, dict);
+    r.property_list = pid;
+  }
+
+  // update the list of relationships for each of both nodes
+  if (from_node.from_rship_list == UNKNOWN)
+    from_node.from_rship_list = rid;
+  else {
+    r.next_src_rship = from_node.from_rship_list;
+    from_node.from_rship_list = rid;
+  }
+
+  if (to_node.to_rship_list == UNKNOWN)
+    to_node.to_rship_list = rid;
+  else {
+    r.next_dest_rship = to_node.to_rship_list;
+    to_node.to_rship_list = rid;
+  }
+  return rid;
+
+}
+
+
 std::size_t graph_db::import_nodes_from_csv(const std::string &label,
                                             const std::string &filename,
                                             char delim, mapping_t &m, std::mutex *mtx) {
@@ -203,8 +272,8 @@ std::size_t graph_db::import_nodes_from_csv(const std::string &label,
       std::size_t i = 0;
       for (auto &field : row) {
         //auto pos = field.find(":ID"); // neo4j
-        auto pos = field.find("id");
-        if (pos != std::string::npos) {
+
+        if (auto pos = field.find("id",0); pos != std::string::npos) {
           // <name>:ID is a special field // neo4j
           id_column = i;
           //columns.push_back(field.substr(0, pos)); // neo4j
@@ -241,6 +310,11 @@ std::size_t graph_db::import_nodes_from_csv(const std::string &label,
   return num-1;
 }
 
+/*
+ * This method uses a custom CsvParser to process csv files
+ */
+    
+#if 0
 std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
                                             const std::string &filename,
                                             char delim, mapping_t &m, std::mutex *mtx) {
@@ -263,7 +337,6 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
 
   std::vector<dcode_t> prop_names;
   std::vector<p_item::p_typecode> prop_types; 
-  std::vector<boost::any> prop_values;
   std::vector<bool> inferred;
 
   for (auto &row : parser) {
@@ -287,7 +360,6 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
       assert(id_column >= 0);
       prop_names.resize(columns.size());
       prop_types.resize(columns.size());
-      prop_values.resize(columns.size());
       inferred.resize(columns.size(), false);
       for (auto j = 0u; j < columns.size(); j++) {
         prop_names[j] = dict_->insert(columns[j]);
@@ -303,66 +375,173 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
           id_label = field;
 
         // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
-
-        auto &col = columns[i];
-        if (!col.empty() && !field.empty()) {
+        if (const auto& col {columns[i]}; !col.empty() && !field.empty()) {
           if (col == "id") {
-            prop_types[i] = p_item::p_uint64;
-            prop_values[i] = boost::any((uint64_t)std::stoll(field));
+            prop_types[i] = p_item::p_uint64;     
           }
-          else {
-            auto p2 = infer_datatype(field, dict_);
-            prop_types[i] = p2.first;
-            prop_values[i] = p2.second;
-            inferred[i] = true;
+          else {   
+              prop_types[i] = get_datatype(field);
           }
+          inferred[i] = true;
         }  
         else {
           // the field is empty, let's assume a string value
            // spdlog::info("empty field #{} at record #{}", i, num-1);
-          prop_types[i] = p_item::p_dcode;
+            prop_types[i] = p_item::p_dcode;
         }     
         i++;
       }
       if (mtx != nullptr) 
         mtx->lock();
-      auto id = import_typed_node(label_code, prop_names, prop_types, prop_values);
+     auto id = import_typed_node(label_code, prop_names, prop_types, row, dict_);
       // fill mapping table
       auto id_label_s = id_label + "_" + label;
       m.insert({id_label_s, id});
       if (mtx != nullptr) 
         mtx->unlock();
     } else {
-      auto i = 0;
       std::string id_label;
+      auto i = 0;
       for (auto &field : row) {
         if (i == id_column)
           id_label = field;
 
         // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
-        auto &col = columns[i];
-        if (!col.empty() && !field.empty()) {
-          if (col == "id")
-            prop_values[i] = boost::any((uint64_t)std::stoll(field));
-          else if (inferred[i])
-            prop_values[i] = string_to_any(prop_types[i], field, dict_);
-          else { // columns whose datatypes we have not yet inferred
-            auto p2 = infer_datatype(field, dict_);
-            prop_types[i] = p2.first;
-            prop_values[i] = p2.second;
+        if (const auto& col {columns[i]}; !col.empty() && !field.empty()) {
+          if (!inferred[i]){ // columns whose datatypes we have not yet inferred
+        	  prop_types[i] = get_datatype(field);
             inferred[i] = true;
           }
-        }
+        }   
+         // spdlog::info("\t==> empty field #{} at record #{}", i, num-1);
+     
+        i++;
+      }
+
+
+      if (mtx != nullptr) 
+        mtx->lock();
+      // spdlog::info("import line #{}: ncolumns = {}", i, prop_values.size());
+      auto id = import_typed_node(label_code, prop_names, prop_types, row, dict_);
+      auto id_label_s = id_label + "_" + label;
+      m.insert({id_label_s, id});
+      if (mtx != nullptr) 
+        mtx->unlock();
+    }
+  num++;
+  }
+  return num-1;
+}
+#endif
+
+std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
+                                            const std::string &filename,
+                                            char delim, mapping_t &m, std::mutex *mtx) {
+
+  std::ifstream f(filename);
+  if (!f.is_open()) {
+    spdlog::warn("cannot find node file '{}'", filename);
+    return 0;
+  }
+    // throw file_not_found(filename);
+
+  std::string id_label;
+  auto label_code = dict_->insert(label);
+  std::size_t num = 0;
+
+  std::vector<std::string> columns; // names of all fields
+  int id_column = -1;               // field no of :ID
+
+  std::vector<dcode_t> prop_names;
+  std::vector<p_item::p_typecode> prop_types; 
+  std::vector<bool> inferred;
+  std::string rec {};
+  while (std::getline(f, rec)) {
+   std::vector<std::string> fields;
+   boost::split(fields, rec, boost::is_any_of("|"));
+    if (num == 0) {
+      /*
+       * process the header
+       */
+      auto i = 0;
+     for (const auto &field : fields) {
+        //auto pos = field.find(":ID"); // neo4j
+
+        if (auto pos = field.find("id", 0);pos != std::string::npos) {
+          // <name>:ID is a special field // neo4j
+          id_column = i;
+          //columns.push_back(field.substr(0, pos)); // neo4j
+           columns.push_back(field);
+        } else
+          columns.push_back(field);
+        i++;
+      }
+      assert(id_column >= 0);
+      prop_names.resize(columns.size());
+      prop_types.resize(columns.size());
+      inferred.resize(columns.size(), false);
+      for (auto j = 0u; j < columns.size(); j++) {
+        prop_names[j] = dict_->insert(columns[j]);
+      }
+    } else if (num == 1) {
+      /*
+       * process the first row: infer the data types
+       * Not all data types are inferred from first row
+       */
+      auto i = 0;
+    for (const auto &field : fields) {
+        if (i == id_column)
+          id_label = field;
+
+        // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
+        if (const auto& col {columns[i]}; !col.empty() && !field.empty()) {
+          if (col == "id") {
+            prop_types[i] = p_item::p_uint64;     
+          }
+          else {   
+              prop_types[i] = get_datatype(field);
+          }
+          inferred[i] = true;
+        }  
         else {
-           // spdlog::info("\t==> empty field #{} at record #{}", i, num-1);
-           prop_values[i] = boost::any();
-        }
+          // the field is empty, let's assume a string value
+           // spdlog::info("empty field #{} at record #{}", i, num-1);
+        	prop_types[i] = p_item::p_dcode;      	
+        }     
         i++;
       }
       if (mtx != nullptr) 
         mtx->lock();
+     auto id = import_typed_node(label_code, prop_names, prop_types, fields, dict_);
+      // fill mapping table
+      auto id_label_s = id_label + "_" + label;
+      m.insert({id_label_s, id});
+      if (mtx != nullptr) 
+        mtx->unlock();
+    } else {
+      std::string id_label;
+      auto i = 0;
+     for (const auto &field : fields) {
+        if (i == id_column)
+          id_label = field;
+
+        // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
+        if (const auto& col {columns[i]}; !col.empty() && !field.empty()) {
+          if (!inferred[i]){ // columns whose datatypes we have not yet inferred
+        	  prop_types[i] = get_datatype(field);
+            inferred[i] = true;
+          }
+        }   
+         // spdlog::info("\t==> empty field #{} at record #{}", i, num-1);
+     
+        i++;
+      }
+
+
+      if (mtx != nullptr) 
+        mtx->lock();
       // spdlog::info("import line #{}: ncolumns = {}", i, prop_values.size());
-      auto id = import_typed_node(label_code, prop_names, prop_types, prop_values);
+      auto id = import_typed_node(label_code, prop_names, prop_types, fields, dict_);
       auto id_label_s = id_label + "_" + label;
       m.insert({id_label_s, id});
       if (mtx != nullptr) 
@@ -517,7 +696,7 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
 
   std::vector<std::string> fp;
   boost::split(fp, filename, boost::is_any_of("/"));
-  assert(fp.back().find(".csv") != std::string::npos);
+  assert(fp.back().find(".csv", filename.size()-4) != std::string::npos);
   std::vector<std::string> fn;
   boost::split(fn, fp.back(), boost::is_any_of("_"));
   auto label = ":" + fn[1];
@@ -579,6 +758,11 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
   return num-1;
 }
 
+/*
+ * This method uses a custom CsvParser to process csv files
+ */
+    
+#if 0
 std::size_t graph_db::import_typed_relationships_from_csv(const std::string &filename,
                                                     char delim,
                                                     const mapping_t &m, std::mutex *mtx) {
@@ -595,7 +779,7 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
 
   std::vector<std::string> fp;
   boost::split(fp, filename, boost::is_any_of("/"));
-  assert(fp.back().find(".csv") != std::string::npos);
+  assert(fp.back().find(".csv", fp.size()-4) != std::string::npos);
   std::vector<std::string> fn;
   boost::split(fn, fp.back(), boost::is_any_of("_"));
   auto label = ":" + fn[1];
@@ -608,7 +792,7 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
 
   std::vector<dcode_t> prop_names;
   std::vector<p_item::p_typecode> prop_types; 
-  std::vector<boost::any> prop_values;
+  std::vector<std::string> prop_values;
 
   for (auto &row : parser) {
     if (num == 0) {
@@ -622,7 +806,7 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
       }
       prop_names.resize(columns.size());
       prop_types.resize(columns.size());
-      prop_values.resize(columns.size());
+     prop_values.resize(columns.size());
       for (auto j = 0u; j < columns.size(); j++) {
         prop_names[j] = dict_->insert(columns[j]);
       }
@@ -641,9 +825,8 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
       for (auto &field : row) {
         if (i != start_col && i != end_col) {
           if (!field.empty()) {
-            auto p2 = infer_datatype(field, dict_);
-            prop_types[j] = p2.first;
-            prop_values[j] = p2.second;
+        	  prop_types[j] = get_datatype(field);
+        	  prop_values[j] = field;
             j++;
           }
         }
@@ -652,7 +835,7 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
       if (mtx != nullptr)
         mtx->lock();
       import_typed_relationship(from_node, to_node, label_code, prop_names, 
-                                prop_types, prop_values);
+    		  prop_types, prop_values, dict_);
       if (mtx != nullptr)
         mtx->unlock();
     } else {
@@ -666,19 +849,112 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
         continue;
       node::id_t to_node = it->second;      
 
+      if (mtx != nullptr)
+        mtx->lock();
+      import_typed_relationship(from_node, to_node, label_code, prop_names, 
+                                prop_types, prop_values, dict_);
+      if (mtx != nullptr)
+        mtx->unlock();
+    }
+    num++;
+  }
+
+  return num-1;
+}
+
+#endif
+
+std::size_t graph_db::import_typed_relationships_from_csv(const std::string &filename,
+                                                    char delim,
+                                                    const mapping_t &m, std::mutex *mtx) {
+ 
+
+  std::ifstream f(filename);
+  if (!f.is_open()) {
+    spdlog::warn("cannot find relationship file '{}'", filename);
+    return 0;
+    // throw file_not_found(filename);
+  }
+  std::size_t num = 0;
+
+  std::vector<std::string> fp;
+  boost::split(fp, filename, boost::is_any_of("/"));
+  assert(fp.back().find(".csv", fp.size()-4) != std::string::npos);
+  std::vector<std::string> fn;
+  boost::split(fn, fp.back(), boost::is_any_of("_"));
+  auto label = ":" + fn[1];
+  auto label_code = dict_->insert(label);
+  auto src_node = fn[0];
+  auto des_node = fn[2];
+
+  std::vector<std::string> columns;
+  int start_col = 0, end_col = 1;
+
+  std::vector<dcode_t> prop_names;
+  std::vector<p_item::p_typecode> prop_types; 
+  std::vector<std::string> prop_values;
+  std::string rec {};
+  while (std::getline(f, rec)) {
+    std::vector<std::string> fields;
+    boost::split(fields, rec, boost::is_any_of("|"));
+    if (num == 0) {
+      auto i = 0;
+      // process header
+      for (const auto &field : fields) {
+        // ignore the src und dest id fields
+        if (i != start_col && i != end_col)
+          columns.push_back(field);
+        i++;
+      }
+      prop_names.resize(columns.size());
+      prop_types.resize(columns.size());
+     prop_values.resize(columns.size());
+      for (auto j = 0u; j < columns.size(); j++) {
+        prop_names[j] = dict_->insert(columns[j]);
+      }
+    } else if (num == 1) {
+      mapping_t::const_iterator it = node_id_from_field(m, src_node, fields[start_col]);
+      if (it == m.end())
+        continue;
+      node::id_t from_node = it->second;      
+
+      it = node_id_from_field(m, des_node, fields[end_col]);
+      if (it == m.end())
+        continue;
+      node::id_t to_node = it->second;      
+
       auto i = 0, j = 0;
-      for (auto &field : row) {
+      for (const auto &field : fields) {
         if (i != start_col && i != end_col) {
-          if (!field.empty())
-            prop_values[j] = string_to_any(prop_types[j], field, dict_);
-          j++;
+          if (!field.empty()) {
+        	  prop_types[j] = get_datatype(field);
+        	  prop_values[j] = field;
+            j++;
+          }
         }
         i++;
       }
       if (mtx != nullptr)
         mtx->lock();
       import_typed_relationship(from_node, to_node, label_code, prop_names, 
-                                prop_types, prop_values);
+    		  prop_types, prop_values, dict_);
+      if (mtx != nullptr)
+        mtx->unlock();
+    } else {
+      mapping_t::const_iterator it = node_id_from_field(m, src_node, fields[start_col]);
+      if (it == m.end())
+        continue;
+      node::id_t from_node = it->second;      
+
+      it = node_id_from_field(m, des_node, fields[end_col]);
+      if (it == m.end())
+        continue;
+      node::id_t to_node = it->second;      
+
+      if (mtx != nullptr)
+        mtx->lock();
+      import_typed_relationship(from_node, to_node, label_code, prop_names, 
+                                prop_types, prop_values, dict_);
       if (mtx != nullptr)
         mtx->unlock();
     }

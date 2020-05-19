@@ -1420,7 +1420,7 @@ void load_snb_data(graph_db_ptr &graph,
       res.push_back(pool.submit([&](){
         std::vector<std::string> fp;
         boost::split(fp, file, boost::is_any_of("/"));
-        assert(fp.back().find(".csv") != std::string::npos);
+         assert(fp.back().find(".csv",fp.size()-4) != std::string::npos);
         auto pos = fp.back().find("_");
         auto label = fp.back().substr(0, pos);
         if (label[0] >= 'a' && label[0] <= 'z')
@@ -1445,7 +1445,7 @@ void load_snb_data(graph_db_ptr &graph,
 
       std::vector<std::string> fp;
       boost::split(fp, file, boost::is_any_of("/"));
-      assert(fp.back().find(".csv") != std::string::npos);
+       assert(fp.back().find(".csv",fp.size()-4) != std::string::npos);
       auto pos = fp.back().find("_");
       auto label = fp.back().substr(0, pos);
       if (label[0] >= 'a' && label[0] <= 'z')
@@ -1478,7 +1478,7 @@ void load_snb_data(graph_db_ptr &graph,
       res.push_back(pool.submit([&](){
         std::vector<std::string> fp;
         boost::split(fp, file, boost::is_any_of("/"));
-        assert(fp.back().find(".csv") != std::string::npos);
+        assert(fp.back().find(".csv",fp.size()-4) != std::string::npos);
         std::vector<std::string> fn;
         boost::split(fn, fp.back(), boost::is_any_of("_"));
         auto label = ":" + fn[1];
@@ -1502,7 +1502,7 @@ void load_snb_data(graph_db_ptr &graph,
 
       std::vector<std::string> fp;
       boost::split(fp, file, boost::is_any_of("/"));
-      assert(fp.back().find(".csv") != std::string::npos);
+      assert(fp.back().find(".csv",fp.size()-4) != std::string::npos);
       std::vector<std::string> fn;
       boost::split(fn, fp.back(), boost::is_any_of("_"));
       auto label = ":" + fn[1];

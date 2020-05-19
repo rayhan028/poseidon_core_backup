@@ -123,6 +123,23 @@ p_item::p_item(dcode_t k, p_item::p_typecode tc, const boost::any &v) : key_(k),
   }  
 }
 
+
+p_item::p_item(dcode_t k, p_item::p_typecode tc, const std::string& v,dict_ptr &dict) : key_(k), flags_(0) {
+
+	  switch(tc) {
+	    case p_int    : set<int>(std::stoi(v)); 	    break;
+	    case p_double : set<double>(std::stod(v));   	break;
+	    case p_dcode  : set<dcode_t>(dict->insert(v));  break;
+	    case p_uint64 : set<uint64_t>(std::stoull(v));  break;
+	    case p_ptime  : set<ptime>(boost::posix_time::time_from_string([&](){std::string s=v; s[s.find("T")] = ' '; 
+	                    return s.substr(0, s.find("+"));}())); break;
+	    case p_date   : set<ptime>(boost::posix_time::ptime([&](){ return boost::gregorian::from_simple_string(v);}(),
+	    		     boost::posix_time::seconds(0)));break;
+	    default: break;
+	  }
+}
+
+
 p_item::p_item(dcode_t k, double v) : key_(k), flags_(0) { set<double>(v); }
 p_item::p_item(dcode_t k, int v) : key_(k), flags_(0) { set<int>(v); }
 p_item::p_item(dcode_t k, dcode_t v) : key_(k), flags_(0) { set<dcode_t>(v); }
@@ -355,6 +372,30 @@ property_set::id_t property_list::append_typed_properties(offset_t nid,
   return next_id;
 }
 
+
+property_set::id_t property_list::append_typed_properties(offset_t nid,
+                              const std::vector<dcode_t> &keys,
+                              const std::vector<p_item::p_typecode>& typelist,
+							  const std::vector<std::string>& values,dict_ptr &dict) {
+  property_set::id_t next_id = UNKNOWN;
+  property_set::p_item_list pil;
+  std::size_t pidx = 0;
+  // spdlog::info("append_typed_properties: {}, {}", values.size(), keys.size());
+  for (auto i = 0u; i < keys.size(); i++) {
+    if (values[i].empty()) // we don't add empty properties
+      continue;
+    // spdlog::info("property @{} <- {}, type={}", pidx, i, typelist[i]);
+    pil[pidx++] = p_item(keys[i], typelist[i], values[i], dict);
+    if (i == keys.size() - 1 || pidx == pil.max_size()) {
+      auto p =
+          properties_.append(property_set(nid, std::move(pil), next_id));
+      next_id = p.first;
+      pidx = 0;
+      pil.fill(p_item());
+    }
+  }
+  return next_id;
+}
 
 
 p_item property_list::property_value(offset_t id, dcode_t pkey) {

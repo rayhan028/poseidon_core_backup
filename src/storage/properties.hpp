@@ -95,6 +95,8 @@ struct p_item {
 
   p_item(const boost::any &v, dict_ptr &dct);
   p_item(const std::string &k, const boost::any &v, dict_ptr &dct);
+  p_item(dcode_t k, p_item::p_typecode tc, const std::string& v, dict_ptr &dict);
+
   p_item(dcode_t k, const boost::any &v, dict_ptr &dct);
 
   p_item &operator=(const p_item &p);
@@ -249,6 +251,11 @@ public:
                               const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist, 
                               const std::vector<boost::any>& values);
+
+  property_set::id_t append_typed_properties(offset_t nid,
+                              const std::vector<dcode_t> &keys,
+                              const std::vector<p_item::p_typecode>& typelist,
+							  const std::vector<std::string>& values,dict_ptr &dict);
 
  
   /**
