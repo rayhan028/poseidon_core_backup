@@ -343,6 +343,20 @@ struct limit_result : public qop {
 };
 
 /**
+ * TODO
+ */
+struct nodes_connected : public qop {
+  nodes_connected(std::pair<int, int> src_des)  : src_des_nodes_(src_des) {} 
+  ~nodes_connected() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::pair<int, int> src_des_nodes_;
+};
+
+/**
  * result_set is used to collect query results.
  */
 struct result_set {

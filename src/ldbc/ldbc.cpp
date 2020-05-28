@@ -6,23 +6,24 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 
-//#define RUN_INDEXED
+#define RUN_INDEXED
 #define IU_RESULT
-//#define RUN_PARALLEL
+#define RUN_PARALLEL
 
-#define QP_2
+#define QP_1
 
 namespace pj = builtin;
 
 // ------------------------------------------------------------------------------------------------------------------------
-#ifdef QP_1
+  #define IS1_QP1a
+
+  #ifdef IS1_QP1a
 void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   
   auto q = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Person", "id", personId)
-#else
-#ifdef RUN_PARALLEL
+#elif defined(RUN_PARALLEL)
                .all_nodes()
                .has_label("Person")
                .property( "id",
@@ -30,7 +31,6 @@ void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 #else
                .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(personId); })
-#endif
 #endif
                .from_relationships(":isLocatedIn")
                .to_node("Place")
@@ -46,12 +46,17 @@ void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   q.start();
   rs.wait();
 }
-#elif defined(QP_2)
+  #else
 void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
-  
+  #define PAR_1
+
   auto q = query(gdb)
+  #ifdef PAR_1
                .all_nodes()
                .has_label("Place")
+  #else
+               .all_nodes("Place")
+  #endif
                .to_relationships(":isLocatedIn")
                .from_node("Person")
                .property( "id",
@@ -68,16 +73,17 @@ void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   q.start();
   rs.wait();
 }
-#endif
-// ------------------------------------------------------------------------------------------------------------------------
+  #endif
 
-#ifdef QP_1
+// ------------------------------------------------------------------------------------------------------------------------
+  #define IS2p_QP1a
+  
+  #ifdef IS2p_QP1a
 void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   auto q = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Person", "id", personId)
-#else
-#ifdef RUN_PARALLEL
+#elif defined(RUN_PARALLEL)
                .all_nodes()
                .has_label("Person")
                .property( "id",
@@ -85,7 +91,6 @@ void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 #else
                .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(personId); })
-#endif
 #endif
                .to_relationships(":hasCreator")
                .from_node("Post")
@@ -107,13 +112,12 @@ void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   q.start();
   rs.wait();
 }
-#elif defined(QP_2)
+  #else
 void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   auto q = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Person", "id", personId)
-#else
-#ifdef RUN_PARALLEL
+#elif defined(RUN_PARALLEL)
                .all_nodes()
                .has_label("Person")
                .property( "id",
@@ -121,7 +125,6 @@ void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 #else
                .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(personId); })
-#endif
 #endif
                .to_relationships(":hasCreator")
                .from_node("Post")
@@ -147,19 +150,22 @@ void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   q.start();
   rs.wait();
 }
-#endif
+  #endif
 
 // ------------------------------------------------------------------------------------------------------------------------
 
 #ifdef QP_1
+
+  #define IS2c_QP1a
+
+  #ifdef IS2c_QP1a
 void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   auto maxHops = 100; 
   
   auto q = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Person", "id", personId)
-#else
-#ifdef RUN_PARALLEL
+#elif defined(RUN_PARALLEL)
                .all_nodes()
                .has_label("Person")
                .property( "id",
@@ -167,7 +173,6 @@ void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 #else
                .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(personId); })
-#endif
 #endif
                .to_relationships(":hasCreator")
                .from_node("Comment")
@@ -192,15 +197,14 @@ void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   q.start();
   rs.wait();
 }
-#elif defined(QP_2)
+  #else
 void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   auto maxHops = 100; 
   
   auto q = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Person", "id", personId)
-#else
-#ifdef RUN_PARALLEL
+#elif defined(RUN_PARALLEL)
                .all_nodes()
                .has_label("Person")
                .property( "id",
@@ -208,7 +212,6 @@ void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 #else
                .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(personId); })
-#endif
 #endif
                .to_relationships(":hasCreator")
                .from_node("Comment")
@@ -238,11 +241,136 @@ void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   q.start();
   rs.wait();
 }
+  #endif
+
+#else
+
+  #define IS2c_QP3b
+
+void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
+  auto maxHops = 100; 
+    
+  #ifndef IS2c_QP3c
+  auto q1 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", personId)
+#elif defined(RUN_PARALLEL)
+               .all_nodes()
+               .has_label("Person")
+               .property( "id",
+                           [&](auto &p) { return p.equal(personId); })
+#else
+               .nodes_where("Person", "id",
+                            [&](auto &p) { return p.equal(personId); })
+#endif
+               .to_relationships(":hasCreator")
+               .from_node("Comment")
+               .from_relationships({1, maxHops}, ":replyOf") 
+               .to_node("Post");
+
+  #ifdef IS2c_QP3a
+  auto q2 = query(gdb)
+               .all_nodes()
+               .has_label("Person")
+               .to_relationships(":hasCreator")
+               .from_node("Post")             
+               .join_on_node({2, 4}, q1)
+               .project({PExpr_(5, pj::uint64_property(res, "id")),
+                        PExpr_(5, pj::string_property(res, "content")),
+                        PExpr_(5, pj::ptime_property(res, "creationDate")),
+                        PExpr_(2, pj::uint64_property(res, "id")),
+                        PExpr_(0, pj::uint64_property(res, "id")),
+                        PExpr_(0, pj::string_property(res, "firstName")),
+                        PExpr_(0, pj::string_property(res, "lastName")) })
+               .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                        if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
+                          return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
+                        return boost::get<boost::posix_time::ptime>(qr1[2]) > boost::get<boost::posix_time::ptime>(qr2[2]); })
+               .limit(10)
+               .collect(rs);
+
+  #else
+  auto q2 = query(gdb)
+               .all_nodes()
+               .has_label("Person")
+               .to_relationships(":hasCreator")
+               .from_node("Post")             
+               .join_on_node({2, 4}, q1)
+               .project({PVar_(0),
+                        PVar_(2),
+                        PVar_(5),
+                        PExpr_(5, pj::uint64_property(res, "id")),
+                        PExpr_(5, pj::ptime_property(res, "creationDate")) })
+               .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                        if (boost::get<boost::posix_time::ptime>(qr1[4]) == boost::get<boost::posix_time::ptime>(qr2[4]))
+                          return boost::get<uint64_t>(qr1[3]) > boost::get<uint64_t>(qr2[3]);
+                        return boost::get<boost::posix_time::ptime>(qr1[4]) > boost::get<boost::posix_time::ptime>(qr2[4]); })
+               .limit(10)
+               .project({PVar_(3),
+                        PExpr_(2, pj::string_property(res, "content")),
+                        PVar_(4),
+                        PExpr_(1, pj::uint64_property(res, "id")),
+                        PExpr_(0, pj::uint64_property(res, "id")),
+                        PExpr_(0, pj::string_property(res, "firstName")),
+                        PExpr_(0, pj::string_property(res, "lastName")) })
+               .collect(rs);
+    #endif
+
+  #else
+
+  auto q1 = query(gdb)
+               .all_nodes()
+               .has_label("Person")
+               .to_relationships(":hasCreator")
+               .from_node("Post");
+
+  auto q2 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Person", "id", personId)
+#elif defined(RUN_PARALLEL)
+               .all_nodes()
+               .has_label("Person")
+               .property( "id",
+                           [&](auto &p) { return p.equal(personId); })
+#else
+               .nodes_where("Person", "id",
+                            [&](auto &p) { return p.equal(personId); })
+#endif
+               .to_relationships(":hasCreator")
+               .from_node("Comment")
+               .from_relationships({1, maxHops}, ":replyOf") 
+               .to_node("Post")
+               .project({PVar_(2),
+                        PVar_(4),
+                        PExpr_(2, pj::uint64_property(res, "id")),
+                        PExpr_(2, pj::ptime_property(res, "creationDate")) })
+               .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                        if (boost::get<boost::posix_time::ptime>(qr1[3]) == boost::get<boost::posix_time::ptime>(qr2[3]))
+                          return boost::get<uint64_t>(qr1[2]) > boost::get<uint64_t>(qr2[2]);
+                        return boost::get<boost::posix_time::ptime>(qr1[3]) > boost::get<boost::posix_time::ptime>(qr2[3]); })
+               .limit(10)
+               .join_on_node({1, 2}, q1)
+               .project({PVar_(2),
+                        PExpr_(0, pj::string_property(res, "content")),
+                        PVar_(3),
+                        PExpr_(1, pj::uint64_property(res, "id")),
+                        PExpr_(4, pj::uint64_property(res, "id")),
+                        PExpr_(4, pj::string_property(res, "firstName")),
+                        PExpr_(4, pj::string_property(res, "lastName")) })
+               .collect(rs);
+
+  #endif
+  query::start({&q1, &q2});
+  rs.wait();
+}
+
 #endif
 
 // ------------------------------------------------------------------------------------------------------------------------
 
-#ifdef QP_1
+  #define IS3_QP1a
+  
+  #ifdef IS3_QP1a
 void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 
   auto q = query(gdb)
@@ -274,7 +402,7 @@ void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   q.start();
   rs.wait();
 }
-#elif defined(QP_2)
+#else
 void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
 
   auto q = query(gdb)
@@ -310,6 +438,7 @@ void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
   rs.wait();
 }
 #endif
+
 // ------------------------------------------------------------------------------------------------------------------------
 
 void ldbc_is_query_4_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
@@ -427,16 +556,14 @@ void ldbc_is_query_6_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
   auto q = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Post", "id", messageId)
-#else
-#ifdef RUN_PARALLEL
-                .all_nodes()
+#elif defined(RUN_PARALLEL)
+               .all_nodes()
                .has_label("Post")
                .property( "id",
                            [&](auto &p) { return p.equal(messageId); })
 #else
                 .nodes_where("Post", "id",
                             [&](auto &p) { return p.equal(messageId); })
-#endif
 #endif
                 .to_relationships(":containerOf")
                 .from_node("Forum")
@@ -461,16 +588,14 @@ void ldbc_is_query_6_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
   auto q = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Comment", "id", messageId)
-#else
-#ifdef RUN_PARALLEL
-                .all_nodes()
+#elif defined(RUN_PARALLEL)
+               .all_nodes()
                .has_label("Comment")
                .property( "id",
                            [&](auto &p) { return p.equal(messageId); })
 #else
                 .nodes_where("Comment", "id",
                             [&](auto &p) { return p.equal(messageId); })
-#endif
 #endif
                 .from_relationships({1, maxHops}, ":replyOf") 
                 .to_node("Post")
@@ -492,13 +617,13 @@ void ldbc_is_query_6_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 // ------------------------------------------------------------------------------------------------------------------------
 
 #ifdef QP_1
+
 void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
      
   auto q1 = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Post", "id", messageId)
-#else
-#ifdef RUN_PARALLEL
+#elif defined(RUN_PARALLEL)
                 .all_nodes()
                .has_label("Post")
                .property( "id",
@@ -507,15 +632,16 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .nodes_where("Post", "id",
                             [&](auto &p) { return p.equal(messageId); })
 #endif
-#endif
                 .from_relationships(":hasCreator")
                 .to_node("Person");
   
+  #define IS7p_QP1a
+  
+  #ifdef IS7p_QP1a
   auto q2 = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Post", "id", messageId)
-#else
-#ifdef RUN_PARALLEL
+#elif defined(RUN_PARALLEL)
                .all_nodes()
                .has_label("Post")
                .property( "id",
@@ -523,7 +649,6 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 #else
                 .nodes_where("Post", "id",
                             [&](auto &p) { return p.equal(messageId); })
-#endif
 #endif
                 .to_relationships(":replyOf")    
                 .from_node("Comment")
@@ -543,30 +668,8 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
                         return boost::get<boost::posix_time::ptime>(qr1[2]) < boost::get<boost::posix_time::ptime>(qr2[2]); })
                 .collect(rs);
-
-  query::start({&q1, &q2});
-	rs.wait();
-}
-#elif defined(QP_2)
-void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
-     
-  auto q1 = query(gdb)
-#ifdef RUN_INDEXED
-               .nodes_where_indexed("Post", "id", messageId)
-#else
-#ifdef RUN_PARALLEL
-                .all_nodes()
-               .has_label("Post")
-               .property( "id",
-                           [&](auto &p) { return p.equal(messageId); })
-#else
-                .nodes_where("Post", "id",
-                            [&](auto &p) { return p.equal(messageId); })
-#endif
-#endif
-                .from_relationships(":hasCreator")
-                .to_node("Person");
   
+  #elif defined(IS7p_QP1b)
   auto q2 = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Post", "id", messageId)
@@ -597,37 +700,15 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                         return boost::get<boost::posix_time::ptime>(qr1[4]) < boost::get<boost::posix_time::ptime>(qr2[4]); })
                 .project({PVar_(3),
                           PExpr_(0, pj::string_property(res, "content")),
-                          PExpr_(1, pj::uint64_property(res, "id")),
                           PVar_(4),
+                          PExpr_(1, pj::uint64_property(res, "id")),
                           PExpr_(1, pj::string_property(res, "firstName")),
                           PExpr_(1, pj::string_property(res, "lastName")),
                           PExpr_(2, pj::string_rep(res) == "[0]{}" ?
                                       std::string("false") : std::string("true")) })
                 .collect(rs);
-
-  query::start({&q1, &q2});
-	rs.wait();
-}
-#elif defined(QP_3)
-void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
-     
-  auto q1 = query(gdb)
-#ifdef RUN_INDEXED
-               .nodes_where_indexed("Post", "id", messageId)
-#else
-#ifdef RUN_PARALLEL
-                .all_nodes()
-               .has_label("Post")
-               .property( "id",
-                           [&](auto &p) { return p.equal(messageId); })
-#else
-                .nodes_where("Post", "id",
-                            [&](auto &p) { return p.equal(messageId); })
-#endif
-#endif
-                .from_relationships(":hasCreator")
-                .to_node("Person");
   
+  #else
   auto q2 = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Post", "id", messageId)
@@ -646,30 +727,71 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .from_node("Comment")
                 .from_relationships(":hasCreator")
                 .to_node("Person")
-                .outerjoin({4, 2}, q1)
                 .project({PVar_(2),
                           PVar_(4),
-                          PVar_(8),
                           PExpr_(2, pj::uint64_property(res, "id")),
                           PExpr_(2, pj::ptime_property(res, "creationDate")) })
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
-                        if (boost::get<boost::posix_time::ptime>(qr1[4]) == boost::get<boost::posix_time::ptime>(qr2[4]))
-                          return boost::get<uint64_t>(qr1[3]) > boost::get<uint64_t>(qr2[3]);
-                        return boost::get<boost::posix_time::ptime>(qr1[4]) < boost::get<boost::posix_time::ptime>(qr2[4]); })
-                .project({PVar_(3),
+                        if (boost::get<boost::posix_time::ptime>(qr1[3]) == boost::get<boost::posix_time::ptime>(qr2[3]))
+                          return boost::get<uint64_t>(qr1[2]) > boost::get<uint64_t>(qr2[2]);
+                        return boost::get<boost::posix_time::ptime>(qr1[3]) < boost::get<boost::posix_time::ptime>(qr2[3]); })
+                .outerjoin({1, 2}, q1)
+                .project({PVar_(2),
                           PExpr_(0, pj::string_property(res, "content")),
+                          PVar_(3),
                           PExpr_(1, pj::uint64_property(res, "id")),
-                          PVar_(4),
                           PExpr_(1, pj::string_property(res, "firstName")),
                           PExpr_(1, pj::string_property(res, "lastName")),
-                          PExpr_(2, pj::string_rep(res) == "[0]{}" ?
+                          PExpr_(5, pj::string_rep(res) == "[0]{}" ?
                                       std::string("false") : std::string("true")) })
                 .collect(rs);
 
+  #endif
   query::start({&q1, &q2});
 	rs.wait();
 }
+
+#else
+
+void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
+  #define PAR_7p
+
+  auto q = query(gdb)
+        #ifdef PAR_7p
+                .all_nodes()
+                .has_label("Person")
+        #else
+                .all_nodes("Person")
+        #endif
+                .to_relationships(":hasCreator")
+                .from_node("Post")
+                .property( "id",
+                           [&](auto &p) { return p.equal(messageId); })
+                .to_relationships(":replyOf")    
+                .from_node("Comment")
+                .from_relationships(":hasCreator")
+                .to_node("Person")
+                .rship_exists({6, 0})
+                .project({PExpr_(4, pj::uint64_property(res, "id")),
+                          PExpr_(4, pj::string_property(res, "content")),
+                          PExpr_(4, pj::ptime_property(res, "creationDate")),
+                          PExpr_(6, pj::uint64_property(res, "id")),
+                          PExpr_(6, pj::string_property(res, "firstName")),
+                          PExpr_(6, pj::string_property(res, "lastName")),
+                          PExpr_(7, pj::string_rep(res) == "[0]{}" ?
+                                      std::string("false") : std::string("true")) })
+                .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                        if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
+                          return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
+                        return boost::get<boost::posix_time::ptime>(qr1[2]) < boost::get<boost::posix_time::ptime>(qr2[2]); })
+                .collect(rs);
+
+  q.start();
+	rs.wait();
+}
+
 #endif
+
 // ------------------------------------------------------------------------------------------------------------------------
 
 #ifdef QP_1
@@ -692,6 +814,9 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .from_relationships(":hasCreator")
                 .to_node("Person");
   
+  #define IS7c_QP1a
+  
+  #ifdef IS7c_QP1a
   auto q2 = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Comment", "id", messageId)
@@ -725,29 +850,7 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                         return boost::get<boost::posix_time::ptime>(qr1[2]) < boost::get<boost::posix_time::ptime>(qr2[2]); })
                 .collect(rs);
 
-  query::start({&q1, &q2});
-	rs.wait();
-}
-#elif defined(QP_2)
-void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
-     
-  auto q1 = query(gdb)
-#ifdef RUN_INDEXED
-               .nodes_where_indexed("Comment", "id", messageId)
-#else
-#ifdef RUN_PARALLEL
-                .all_nodes()
-               .has_label("Comment")
-               .property( "id",
-                           [&](auto &p) { return p.equal(messageId); })
-#else
-                .nodes_where("Comment", "id",
-                            [&](auto &p) { return p.equal(messageId); })
-#endif
-#endif
-                .from_relationships(":hasCreator")
-                .to_node("Person");
-  
+  #elif defined(IS7c_QP1b)
   auto q2 = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Comment", "id", messageId)
@@ -786,9 +889,88 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                                       std::string("false") : std::string("true")) })
                 .collect(rs);
 
+  #else
+  auto q2 = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Comment", "id", messageId)
+#else
+#ifdef RUN_PARALLEL
+               .all_nodes()
+               .has_label("Comment")
+               .property( "id",
+                           [&](auto &p) { return p.equal(messageId); })
+#else
+                .nodes_where("Comment", "id",
+                            [&](auto &p) { return p.equal(messageId); })
+#endif
+#endif
+                .to_relationships(":replyOf")    
+                .from_node("Comment")
+                .from_relationships(":hasCreator")
+                .to_node("Person")
+                .project({PVar_(2),
+                          PVar_(4),
+                          PExpr_(2, pj::uint64_property(res, "id")),
+                          PExpr_(2, pj::ptime_property(res, "creationDate"))})
+                .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                        if (boost::get<boost::posix_time::ptime>(qr1[3]) == boost::get<boost::posix_time::ptime>(qr2[3]))
+                          return boost::get<uint64_t>(qr1[2]) > boost::get<uint64_t>(qr2[2]);
+                        return boost::get<boost::posix_time::ptime>(qr1[3]) < boost::get<boost::posix_time::ptime>(qr2[3]); })
+                .outerjoin({1, 2}, q1)
+                .project({PVar_(2),
+                          PExpr_(0, pj::string_property(res, "content")),
+                          PVar_(3),
+                          PExpr_(1, pj::uint64_property(res, "id")),
+                          PExpr_(1, pj::string_property(res, "firstName")),
+                          PExpr_(1, pj::string_property(res, "lastName")),
+                          PExpr_(5, pj::string_rep(res) == "[0]{}" ?
+                                      std::string("false") : std::string("true")) })
+                .collect(rs);
+
+  #endif
   query::start({&q1, &q2});
 	rs.wait();
 }
+
+#else
+
+void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
+  #define PAR_7c
+
+  auto q = query(gdb)
+        #ifdef PAR_7c
+                .all_nodes()
+                .has_label("Person")
+        #else
+                .all_nodes("Person")
+        #endif
+                .to_relationships(":hasCreator")
+                .from_node("Comment")
+                .property( "id",
+                           [&](auto &p) { return p.equal(messageId); })
+                .to_relationships(":replyOf")    
+                .from_node("Comment")
+                .from_relationships(":hasCreator")
+                .to_node("Person")
+                .rship_exists({6, 0})
+                .project({PExpr_(4, pj::uint64_property(res, "id")),
+                          PExpr_(4, pj::string_property(res, "content")),
+                          PExpr_(4, pj::ptime_property(res, "creationDate")),
+                          PExpr_(6, pj::uint64_property(res, "id")),
+                          PExpr_(6, pj::string_property(res, "firstName")),
+                          PExpr_(6, pj::string_property(res, "lastName")),
+                          PExpr_(7, pj::string_rep(res) == "[0]{}" ?
+                                      std::string("false") : std::string("true")) })
+                .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                        if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
+                          return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
+                        return boost::get<boost::posix_time::ptime>(qr1[2]) < boost::get<boost::posix_time::ptime>(qr2[2]); })
+                .collect(rs);
+
+  q.start();
+	rs.wait();
+}
+
 #endif
 
 // ------------------------------------------------------------------------------------------------------------------------

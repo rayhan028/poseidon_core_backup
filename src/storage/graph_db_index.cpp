@@ -30,6 +30,8 @@
 namespace nvm = pmem::obj;
 #endif
 
+static bool FPTree_flag = false;
+
 index_id graph_db::create_index(const std::string& node_label, const std::string& prop_name) {
   // spdlog::info("create_index...");
   // (1) we create a new b+tree
@@ -76,6 +78,15 @@ void graph_db::drop_index(const std::string& node_label, const std::string& prop
 
 void graph_db::index_lookup(index_id idx_ptr, uint64_t key, node_consumer_func consumer) {
   offset_t val = 0;
+  
+  //#define FPTree
+  #ifdef FPTree
+  if (!FPTree_flag){
+    idx_ptr->recover();
+    FPTree_flag = true;
+  }
+  #endif
+  
   if (idx_ptr->lookup(key, &val)) {
     auto& n = node_by_id(val);
     consumer(n);

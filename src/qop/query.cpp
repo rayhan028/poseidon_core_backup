@@ -132,6 +132,12 @@ query &query::limit(std::size_t n) {
                    std::bind(&limit_result::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::rship_exists(std::pair<int, int> src_des) {
+  auto op = std::make_shared<nodes_connected>(src_des);
+  return append_op(op,
+                   std::bind(&nodes_connected::process, op.get(), ph::_1, ph::_2));
+}
+
 query &query::print() {
   auto op = std::make_shared<printer>();
   return append_op(op, std::bind(&printer::process, op.get(), ph::_1, ph::_2));
@@ -178,6 +184,15 @@ query &query::outerjoin(std::pair<int, int> src_des, query &other) {
   return append_op(
       op, std::bind(&left_outerjoin::process_left, op.get(), ph::_1, ph::_2),
       std::bind(&left_outerjoin::finish, op.get(), ph::_1));
+}
+
+query &query::join_on_node(std::pair<int, int> left_right, query &other) {
+  auto op = std::make_shared<nested_loop_join>(left_right);
+  other.append_op(
+      op, std::bind(&nested_loop_join::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&nested_loop_join::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&nested_loop_join::finish, op.get(), ph::_1));
 }
 
 /*

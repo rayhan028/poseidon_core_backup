@@ -118,6 +118,11 @@ public:
    */
   query &limit(std::size_t n);
 
+/**
+   * TODO
+   */
+  query &rship_exists(std::pair<int, int> src_des);
+
   /**
    * Add a projection operator that applies the given list of projection
    * functions to the query result.
@@ -158,6 +163,11 @@ public:
    * the destination node 
    */
   query &outerjoin(std::pair<int, int> src_des, query &other);
+
+  /**
+   * TODO 
+   */
+  query &join_on_node(std::pair<int, int> left_right, query &other);
 
   /**
    * Add an operator for invoking a LUA function as part of the query.

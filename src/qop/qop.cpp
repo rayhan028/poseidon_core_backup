@@ -244,6 +244,33 @@ void limit_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
 
 /* ------------------------------------------------------------------------ */
 
+void nodes_connected::dump(std::ostream &os) const {
+  os << "nodes_connected([" "])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void nodes_connected::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto src = boost::get<node *>(v[src_des_nodes_.first]);
+  auto des = boost::get<node *>(v[src_des_nodes_.second]);
+  bool flag = true;
+
+  gdb->foreach_from_relationship_of_node((*src), [&](auto &r) {
+      if (r.to_node_id() == des->id()){
+        flag = false;
+        auto res = append(v, query_result(&r));
+        consume_(gdb, res); //TODO: fix for potential result tuple size mismatch
+      }
+  });
+
+  if (flag){
+    auto res = append(v, query_result(std::string("[0]{}")));
+    consume_(gdb, res);
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+
 void order_by::dump(std::ostream &os) const {
   os << "order_by([])=>";
   if (subscriber_)
