@@ -376,7 +376,8 @@ property_set::id_t property_list::append_typed_properties(offset_t nid,
 property_set::id_t property_list::append_typed_properties(offset_t nid,
                               const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist,
-							  const std::vector<std::string>& values,dict_ptr &dict) {
+							                const std::vector<std::string>& values,
+                              dict_ptr &dict) {
   property_set::id_t next_id = UNKNOWN;
   property_set::p_item_list pil;
   std::size_t pidx = 0;

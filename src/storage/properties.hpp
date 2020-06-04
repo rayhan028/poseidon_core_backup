@@ -255,7 +255,8 @@ public:
   property_set::id_t append_typed_properties(offset_t nid,
                               const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist,
-							  const std::vector<std::string>& values,dict_ptr &dict);
+							                const std::vector<std::string>& values,
+                              dict_ptr &dict);
 
  
   /**
