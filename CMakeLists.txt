@@ -363,6 +363,18 @@ target_link_libraries(run_ldbc_updates
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+
+# The program for executing graphalytics.
+#
+add_executable(run_ldbc_graphalytics
+  src/ldbc/ldbc_graphalytics.cpp
+ )
+
+target_link_libraries(run_ldbc_graphalytics
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
 #-----------------------------------------------------------------------------------------
 #
 # Unit tests using Catch

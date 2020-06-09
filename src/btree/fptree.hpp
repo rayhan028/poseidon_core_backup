@@ -1539,22 +1539,23 @@ class FPBPTree {
   }
 
   inline uint8_t fpHash(const KeyType &k) const {
+    #define HASH_1
+
+    #ifdef HASH_1
     uint64_t x = (uint64_t)k;
     x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
     x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
     x = x ^ (x >> 31);
     return (uint8_t)(x & 0xFF);
-  }
 
-  
-  /*inline uint8_t fpHash(const KeyType &k) const {
+    #elif defined(HASH_2)
+    auto x = (k*2654435761) % (2 ^ 32);
+    return (uint8_t)(x & 0xFF);
+    
+    #else
     return (uint8_t)(k & 0xFF);
+    #endif
   }
-
-  inline uint8_t fpHash(const KeyType &k) const {
-     auto h = (k*2654435761) % (2 ^ 32);
-     return (uint8_t)(h & 0xFF);
-  }*/
 
 };//end class FPBPTree
 }//end namespace fptree

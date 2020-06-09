@@ -22,14 +22,14 @@
 
 #include "defs.hpp"
 
-//#define FPTree
 
 #ifdef USE_PMDK
+#define FPTree
 
 #ifdef FPTree
 #include "fptree.hpp"
 
-using btree_impl = fptree::FPBPTree<uint64_t, offset_t, 50, 50>;
+using btree_impl = fptree::FPBPTree<uint64_t, offset_t, 126, 10>;
 
 #else
 #include "pbtree.hpp"

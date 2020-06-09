@@ -95,12 +95,15 @@ struct hash_join : public qop {
 
   void build_phase(graph_db_ptr &gdb, const qr_tuple &v);
   void probe_phase(graph_db_ptr &gdb, const qr_tuple &v);
+  static uint64_t hasher(uint64_t id);
 
   void finish(graph_db_ptr &gdb);
 
 private:
+  const static int BUCKETS = 10;
+  std::vector<qr_tuple> input_[BUCKETS];
+  std::vector<node::id_t> join_ids_[BUCKETS];
   std::pair<int, int> left_right_nodes_;
-
 };
 
 #endif
