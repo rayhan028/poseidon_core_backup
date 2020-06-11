@@ -90,6 +90,75 @@ graph_db_ptr create_graph_db() { return p_make_ptr<graph_db>(); }
 
 #endif
 
+
+
+TEST_CASE("Test two concurrent Transactions trying to create nodes"  "[transaction]") {
+/*
+* If two concurrent write Transactions are triggered, then the end result must be that there are two seperate
+* nodes created
+*/
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t nid1 = 0, nid2 = 0;
+
+  /*
+   * Thread #1: Add node
+   */
+
+  auto t1 = std::thread([&]() {
+	    auto tx = gdb->begin_transaction();
+	    nid1 = gdb->add_node("New Actor",
+	                        {{"name", boost::any(std::string("Mark Wahlberg"))},
+	                         {"age", boost::any(48)}});
+	                         
+	    gdb->commit_transaction();
+
+  });
+
+  /*
+   * Thread #2: concurrently add node
+   */
+
+	  auto t2 = std::thread([&]() {
+		    auto tx = gdb->begin_transaction();
+		    nid2 = gdb->add_node("Actor",
+		                        {{"name", boost::any(std::string("Peter"))},
+		                         {"age", boost::any(22)}});
+		    gdb->commit_transaction();
+
+ });
+  
+//---------------------------------------------------------------
+
+  t1.join();
+  t2.join();
+  
+  //verify that two seperate nodes are created.
+    {
+    // check the node
+    auto tx = gdb->begin_transaction();
+    auto &n1 = gdb->node_by_id(nid1);
+    auto nd1 = gdb->get_node_description(n1);
+    REQUIRE(nd1.label == "New Actor");
+    REQUIRE(get_property<int>(nd1.properties, "age") == 48);
+    
+    
+    auto &n2 = gdb->node_by_id(nid2);
+    auto nd2 = gdb->get_node_description(n2);
+    REQUIRE(nd2.label == "Actor");
+    REQUIRE(get_property<int>(nd2.properties, "age") == 22);  
+    gdb->commit_transaction();
+  }
+
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a newly inserted node exist in the transaction",

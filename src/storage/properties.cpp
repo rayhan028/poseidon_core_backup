@@ -282,7 +282,9 @@ property_set::id_t property_list::add_pitems(offset_t nid,
   for (auto &pi : props) {
     pil[pidx++] = pi;
     if (++n == props.size() || pidx == pil.max_size()) {
+      std::unique_lock<std::mutex> ulock(m); 
       auto pr = properties_.store(property_set(nid, std::move(pil), next_id), callback);
+      ulock.unlock();  
       next_id = pr.first;
       pidx = 0;
       pil.fill(p_item());

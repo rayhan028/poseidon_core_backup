@@ -170,6 +170,11 @@ public:
   query &join_on_node(std::pair<int, int> left_right, query &other);
 
   /**
+   * TODO 
+   */
+  query &hashjoin_on_node(std::pair<int, int> left_right, query &other);
+
+  /**
    * Add an operator for invoking a LUA function as part of the query.
    */
   /* query &call_lua(const std::string &proc_name,

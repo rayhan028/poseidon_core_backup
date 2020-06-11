@@ -195,6 +195,15 @@ query &query::join_on_node(std::pair<int, int> left_right, query &other) {
       std::bind(&nested_loop_join::finish, op.get(), ph::_1));
 }
 
+query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
+  auto op = std::make_shared<hash_join>(left_right);
+  other.append_op(
+      op, std::bind(&hash_join::build_phase, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&hash_join::probe_phase, op.get(), ph::_1, ph::_2),
+      std::bind(&hash_join::finish, op.get(), ph::_1));
+}
+
 /*
 query &query::call_lua(const std::string &proc_name,
                        const std::vector<std::size_t> &params) {

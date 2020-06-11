@@ -3,11 +3,15 @@
 
 #include "graph_db.hpp"
 #include "qop.hpp"
+#include "thread_pool.hpp"
+
+#include <queue>
 
 //#define SF_1
 #define SF_10
 #define CREATE_INDEX
 #define PRINT_RESULT
+#define IU_RESULT
 
 using param_val = boost::variant<uint64_t, std::string, int>;
 using params_tuple = std::vector<param_val>;
@@ -36,9 +40,15 @@ void ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 void ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 void ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 
+/* graphalytics algorithms */
+void bfs(graph_db_ptr &gdb, result_set &rs, uint64_t id);
+
 void load_snb_data(graph_db_ptr &graph, const std::string& path, bool strict = true);
 
 void load_snb_data(graph_db_ptr &graph, 
                     std::vector<std::string> &node_files,
                     std::vector<std::string> &rship_files, bool strict = true);
+
+void fptree_recovery(graph_db_ptr &graph);
+
 #endif

@@ -363,6 +363,7 @@ public:
 
 private:
   chunked_vec<property_set, PROP_CHUNK_SIZE> properties_; // the actual list of properties
+  std::mutex m;
 };
 
 #endif
