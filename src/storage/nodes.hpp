@@ -233,7 +233,6 @@ public:
 
 private:
   chunked_vec<node, NODE_CHUNK_SIZE> nodes_; // the actual list of nodes
-  std::mutex m;
 };
 
 #endif

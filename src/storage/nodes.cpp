@@ -159,9 +159,7 @@ node::id_t node_list::append(node &&n, xid_t owner, std::function<void(offset_t)
 }
 
 node::id_t node_list::insert(node &&n, xid_t owner, std::function<void(offset_t)> callback) {
-  std::unique_lock<std::mutex> ulock(m);
   auto p = nodes_.store(std::move(n), callback);
-  ulock.unlock();
   p.second->id_ = p.first;
   if (owner != 0) {
     /// spdlog::info("lock node #{} by {}", p.first, owner);
