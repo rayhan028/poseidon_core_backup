@@ -31,6 +31,10 @@
 #include <libpmemobj++/container/array.hpp>
 #include <libpmemobj++/container/vector.hpp>
 #include <libpmemobj++/utils.hpp>
+#include <libpmemobj++/shared_mutex.hpp>
+#else
+#include <mutex>  // For std::unique_lock
+#include <shared_mutex>
 #endif
 
 #include "defs.hpp"
@@ -333,6 +337,7 @@ class chunked_vec {
     if (!is_used)
       available_slots_--;
     if (ch->is_full()) {
+      std::unique_lock lock(fl_mtx_);
       remove_from_free_list(idx);
     }
   }
@@ -342,6 +347,8 @@ class chunked_vec {
    * pointer(!) to the record as a pair.
    */
   std::pair<offset_t, T *> append(T &&o, std::function<void(offset_t)> callback = nullptr) {
+    std::unique_lock lock(fl_mtx_);
+
     if (is_full())
       resize(1);
     auto tail = chunk_list_.back();
@@ -369,6 +376,8 @@ class chunked_vec {
   std::pair<offset_t, T *> store(T &&o, std::function<void(offset_t)> callback = nullptr) {
     chunk_ptr ch;
     offset_t idx = 0;
+
+    std::unique_lock lock(fl_mtx_);
     if (free_list_.empty()) {
       // if we don't have anything in the freelist, we have to resize
       resize(1);
@@ -407,8 +416,10 @@ class chunked_vec {
     // TODO: if (ch->empty()) delete ch;
     // if this was the first slot on this chunk which is now empty, 
     // add this chunk to the free list
-    if (was_full)
+    if (was_full) {
+      std::unique_lock lock(fl_mtx_);
       add_to_free_list(idx);
+    }
   }
 
   /**
@@ -582,9 +593,11 @@ private:
   pmem::obj::vector<chunk_ptr>
       chunk_list_; // the persistent list of pointers to all chunks
   pmem::obj::vector<offset_t> free_list_;   // the list of chunks with empty slots (described by their indexes)
+  pmem::obj::shared_mutex fl_mtx_;;
 #else
   std::vector<chunk_ptr> chunk_list_; // the list of pointers to all chunks
   std::vector<offset_t> free_list_;   // the list of chunks with empty slots (described by their indexes)
+  mutable std::shared_mutex fl_mtx_;
 #endif
 };
 

@@ -347,9 +347,9 @@ TEST_CASE("Checking that a newly inserted node is not visible in another "
    * Thread #2: try to read this node (should fail)
    */
   auto t2 = std::thread([&]() {
-    auto tx = gdb->begin_transaction();
     // wait for thread #1
     b1.wait();
+    auto tx = gdb->begin_transaction();
     // std::cout << "-------------------1---------------\n";
     // gdb->dump();
     REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
@@ -409,9 +409,9 @@ TEST_CASE("Checking that a newly inserted relationship is not visible in another
    * Thread #2: try to read this relationship (should fail)
    */
   auto t2 = std::thread([&]() {
-    auto tx = gdb->begin_transaction();
     // wait for thread #1
     b1.wait();
+    auto tx = gdb->begin_transaction();
     // std::cout << "-------------------1---------------\n";
     // gdb->dump();
     REQUIRE_THROWS_AS(gdb->rship_by_id(rid), unknown_id);
@@ -977,6 +977,45 @@ TEST_CASE("Checking that a delete transaction does not interfer with another tra
 #endif
 }
 
+TEST_CASE("Checking two concurrent transactions trying to create node", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t nid1 = 0, nid2 = 0;
+
+  // Thread 1: Add node
+  auto t1 = std::thread([&]() {
+    auto tx = gdb->begin_transaction();
+
+    nid1 = gdb->add_node("New Actor",
+                        {{"name", boost::any(std::string("Mark Wahlberg"))},
+                         {"age", boost::any(48)}});
+
+    gdb->commit_transaction();
+  });
+  //  Thread 2: concurrently add node
+  auto t2 = std::thread([&]() {
+    auto tx = gdb->begin_transaction();
+
+	  nid2 = gdb->add_node("Actor",
+	                        {{"name", boost::any(std::string("Peter"))},
+	                         {"age", boost::any(22)}});
+
+	  gdb->commit_transaction();
+  });
+  t1.join();
+  t2.join();
+
+  REQUIRE(gdb->get_nodes()->num_chunks() == 1);
+  
+  gdb->dump();
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+} 
 /* -------------------------------------------------------------------------------- */
 
 #if TEST_INCORRECT
