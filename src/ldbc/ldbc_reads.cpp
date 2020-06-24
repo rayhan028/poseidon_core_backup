@@ -49,7 +49,7 @@ double run_query_1(graph_db_ptr gdb) {
         4233, 344, 10995116286457, 10976, 24189255813927};
         //{2199023266220, 28587302330379, 17592186045096, 10995116286457};
 #endif
-    
+
     std::vector<double> runtimes(personIds.size());
 
     for (auto i = 0u; i < personIds.size(); i++) {
@@ -93,7 +93,7 @@ double run_query_2_p(graph_db_ptr gdb) {
         24189255815734, 26388279077330, 15393162799262, 32985348843825, 32985348843760,
         32985348842653, 13194139540894, 13194139540856, 8796093028361, 6597069766998};
 #endif
-    
+
     std::vector<double> runtimes(personIds.size());
 
     for (auto i = 0u; i < personIds.size(); i++) {
@@ -115,7 +115,7 @@ double run_query_2_p(graph_db_ptr gdb) {
 }
 
 double run_query_2_c(graph_db_ptr gdb) {
-    std::vector<uint64_t> personIds = 
+    std::vector<uint64_t> personIds =
 #ifdef SF_100
         {316996};
 #elif defined(SF_10)
@@ -138,7 +138,7 @@ double run_query_2_c(graph_db_ptr gdb) {
         32985348842653, 13194139540894, 13194139540856, 8796093028361, 6597069766998};
         //{28587302330379};
 #endif
-        
+
     std::vector<double> runtimes(personIds.size());
 
     for (auto i = 0u; i < personIds.size(); i++) {
@@ -160,7 +160,7 @@ double run_query_2_c(graph_db_ptr gdb) {
 }
 
 double run_query_3(graph_db_ptr gdb) {
-    std::vector<uint64_t> personIds = 
+    std::vector<uint64_t> personIds =
 #ifdef SF_100
         {933};
 #elif defined(SF_10)
@@ -183,7 +183,7 @@ double run_query_3(graph_db_ptr gdb) {
         24189255820923, 32985348833548, 30786325581208, 26388279074032, 32985348834375};
         //{2199023262021, 6597069774931, 32985348833548};
 #endif
-    
+
     std::vector<double> runtimes(personIds.size());
 
     for (auto i = 0u; i < personIds.size(); i++) {
@@ -205,7 +205,7 @@ double run_query_3(graph_db_ptr gdb) {
 }
 
 double run_query_4_p(graph_db_ptr gdb) {
-    std::vector<uint64_t> postIds = 
+    std::vector<uint64_t> postIds =
 #ifdef SF_100
         {39582418599936, 17592187092992, 65971148923702, 43980918701267, 65971018451354,
         26388730323952, 8796096167946, 65971150117789};
@@ -225,7 +225,7 @@ double run_query_4_p(graph_db_ptr gdb) {
         {1374389534801, 687194926510, 1236950581577, 824633724379, 687194903818,
         549755930326, 1649267546616, 1649267453265, 1924145376549, 1099511719169};
 #endif
-    
+
     std::vector<double> runtimes(postIds.size());
 
     for (auto i = 0u; i < postIds.size(); i++) {
@@ -247,7 +247,7 @@ double run_query_4_p(graph_db_ptr gdb) {
 }
 
 double run_query_4_c(graph_db_ptr gdb) {
-    std::vector<uint64_t> commentIds = 
+    std::vector<uint64_t> commentIds =
 #ifdef SF_100
         {39582418599937, 17592187092993, 52776560230402, 43980918701269, 70369064968225,
         26388730323960, 8796096167948, 8796545473432};
@@ -267,7 +267,7 @@ double run_query_4_c(graph_db_ptr gdb) {
         {1236950581249, 1374389535139, 687194767797, 962072674365, 274877974096,
         1374389620660, 1374389535186, 2061584302604, 1099511678319, 1099511755889};
 #endif
-    
+
     std::vector<double> runtimes(commentIds.size());
 
     for (auto i = 0u; i < commentIds.size(); i++) {
@@ -309,7 +309,7 @@ double run_query_5_p(graph_db_ptr gdb) {
         {1649267611029, 1649267641500, 1649267717129, 549756117312, 962073027971,
         1924145709571, 1786706759766, 137439322338, 962073047211, 1786706792809};
 #endif
-    
+
     std::vector<double> runtimes(postIds.size());
 
     for (auto i = 0u; i < postIds.size(); i++) {
@@ -351,7 +351,7 @@ double run_query_5_c(graph_db_ptr gdb) {
         {2061584429975, 1099511764068, 1511828638961, 1099511794459, 1924145529653,
         137439153914, 1374389758562, 687194998602, 1099511869402, 1649267722310};
 #endif
-    
+
     std::vector<double> runtimes(commentIds.size());
 
     for (auto i = 0u; i < commentIds.size(); i++) {
@@ -395,7 +395,7 @@ double run_query_6_p(graph_db_ptr gdb) {
         1099512706784, 1924145709571, 274879100510, 2061585683162, 2061585683383,
         824638318943, 962073868902, 962076990540, 1236955780271, 1924151699930};
 #endif
-    
+
     std::vector<double> runtimes(postIds.size());
 
     for (auto i = 0u; i < postIds.size(); i++) {
@@ -439,7 +439,7 @@ double run_query_6_c(graph_db_ptr gdb) {
         824635086444, 2199024637100, 549762296256, 412319368884, 1924148311956,
         687196868319, 1786710956334, 2882812, 274878321446, 687194840176};
 #endif
-    
+
     std::vector<double> runtimes(commentIds.size());
 
     for (auto i = 0u; i < commentIds.size(); i++) {
@@ -483,7 +483,7 @@ double run_query_7_p(graph_db_ptr gdb) {
         1099517927842, 1374394239279, 2061590620755, 2061585333094, 1649273998043,
         1374391802860, 137440027420, 1099513852571, 1649272411554, 1786707657668};
 #endif
-    
+
     std::vector<double> runtimes(postIds.size());
 
     for (auto i = 0u; i < postIds.size(); i++) {
@@ -527,7 +527,7 @@ double run_query_7_c(graph_db_ptr gdb) {
         962075482675, 1786708701848, 2061588922925, 4784850, 4784913,
         412321645469, 1374394320184, 1374390902281, 1511834991008, 824634964783};
 #endif
-    
+
     std::vector<double> runtimes(commentIds.size());
 
     for (auto i = 0u; i < commentIds.size(); i++) {

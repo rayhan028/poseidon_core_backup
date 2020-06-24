@@ -157,8 +157,8 @@ findSplitKey(const std::array<KeyType, M> &data) {
  * @return position of the minimum key
  */
 template<typename KeyType, size_t N>
-static inline auto findMinKey(const std::array<KeyType, N> &keysRef,
-                              const std::bitset<N> &bitsRef) {
+static inline auto findMinKeyPos(const std::array<KeyType, N> &keysRef,
+                                 const std::bitset<N> &bitsRef) {
   auto pos = 0u;
   auto currMinKey = std::numeric_limits<KeyType>::max();
   for (auto i = 0u; i < N; ++i) {
@@ -177,8 +177,8 @@ static inline auto findMinKey(const std::array<KeyType, N> &keysRef,
  * @return position of the maximum key
  */
 template<typename KeyType, size_t N>
-static inline auto findMaxKey(const std::array<KeyType, N> &keysRef,
-                              const std::bitset<N> &bitsRef) {
+static inline auto findMaxKeyPos(const std::array<KeyType, N> &keysRef,
+                                 const std::bitset<N> &bitsRef) {
   auto pos = 0u;
   auto currMaxKey = std::numeric_limits<KeyType>::min();
   for (auto i = 0u; i < N; ++i) {
@@ -186,54 +186,6 @@ static inline auto findMaxKey(const std::array<KeyType, N> &keysRef,
       currMaxKey = keysRef[i]; pos = i;
     }
   }
-  return pos;
-}
-
-/**
- * Searches for the next greater key than @key in a key array with bitmap.
- *
- * @param keysRef a reference to the node's keys to find the key in
- * @param bitsRef a reference to the bitset of the node
- * @param key the current minimum key
- * @return position of the next minimum key
- */
-template<size_t N, typename KeyType>
-static inline auto findMinKeyGreaterThan(const std::array<KeyType, N> &keysRef,
-                                         const std::bitset<N> &bitsRef,
-                                         const KeyType &key) {
-  auto pos = 0ul;
-  constexpr auto maxLmt = std::numeric_limits<KeyType>::max();
-  auto currMinKey = maxLmt;
-  for (auto i = 0u; i < N; ++i) {
-    if (bitsRef.test(i) && keysRef[i] < currMinKey && keysRef[i] > key) {
-      currMinKey = keysRef[i]; pos = i;
-    }
-  }
-  if (currMinKey == maxLmt) return N;
-  return pos;
-}
-
-/**
- * Searches for the next smaller key than @key in a key array with bitmap.
- *
- * @param keysRef a reference to the node's keys to find the key in
- * @param bitsRef a reference to the bitset of the node
- * @param key the current maximum key
- * @return position of the next maximum key
- */
-template<size_t N, typename KeyType>
-static inline auto findMaxKeySmallerThan(const std::array<KeyType, N> &keysRef,
-                                         const std::bitset<N> &bitsRef,
-                                         const KeyType &key) {
-  auto pos = 0ul;
-  constexpr auto minLmt = std::numeric_limits<KeyType>::min();
-  auto currMaxKey = minLmt;
-  for (auto i = 0u; i < N; ++i) {
-    if (bitsRef.test(i) && keysRef[i] > currMaxKey && keysRef[i] < key) {
-      currMaxKey = keysRef[i]; pos = i;
-    }
-  }
-  if (currMaxKey == minLmt) return N;
   return pos;
 }
 
@@ -754,7 +706,7 @@ class FPBPTree {
       if (key > splitRef.key) {
         insertInLeafNodeAtPosition(sibling, BitOperations::getFreeZero(sibRef.bits.get_ro()), key, val);
       } else {
-        if (key > findMaxKey(nodeRef.keys.get_ro(), nodeRef.bits.get_ro())) {
+        if (key > nodeRef.keys.get_ro()[findMaxKeyPos(nodeRef.keys.get_ro(), nodeRef.bits.get_ro())]) {
           /// Special case: new key would be the middle, thus must be right
           insertInLeafNodeAtPosition(sibling, BitOperations::getFreeZero(sibRef.bits.get_ro()), key, val);
           splitRef.key = key;
@@ -787,15 +739,15 @@ class FPBPTree {
     const auto &splitKey = data[splitPos];
 
     /// copy leaf
-    /*
+    // /*
     const auto sibling = newLeafNode(node);
     auto &sibRef = *sibling;
     nodeRef.bits.get_rw() = bitmap;
     sibRef.bits.get_rw() = bitmap.flip();
-    */
+    // */
 
     /// Alternative: move instead of complete copy
-    ///*
+    /*
     const auto sibling = newLeafNode();
     auto &sibRef = *sibling;
     auto &sibBits = sibRef.bits.get_rw();
@@ -817,6 +769,7 @@ class FPBPTree {
         j++;
       }
     }
+    */
 
     /// setup the list of leaf nodes
     if (nodeRef.nextLeaf != nullptr) {
@@ -1093,7 +1046,7 @@ class FPBPTree {
   void underflowAtLeafLevel(BranchNode * const node, unsigned int pos, const pptr<LeafNode> &leaf) {
     auto &nodeRef = *node;
     auto &leafRef = *leaf;
-    auto prevNumKeys = 0u, nextNumKeys = 0u;
+    auto prevNumKeys = 0u;
     assert(pos <= nodeRef.numKeys);
     constexpr auto middle = (M + 1) / 2;
     /// 1. we check whether we can rebalance with one of the siblings but only if both nodes have
@@ -1103,13 +1056,13 @@ class FPBPTree {
       balanceLeafNodes(leafRef.prevLeaf, leaf);
 
       nodeRef.keys[pos - 1] =
-          leafRef.keys.get_ro()[findMinKey(leafRef.keys.get_ro(), leafRef.bits.get_ro())];
+          leafRef.keys.get_ro()[findMinKeyPos(leafRef.keys.get_ro(), leafRef.bits.get_ro())];
     } else if (pos < nodeRef.numKeys && leafRef.nextLeaf->bits.get_ro().count() > middle) {
       /// we have a sibling at the right for rebalancing the keys
       balanceLeafNodes(leafRef.nextLeaf, leaf);
       auto &nextLeaf = *leafRef.nextLeaf;
       nodeRef.keys[pos] =
-          nextLeaf.keys.get_ro()[findMinKey(nextLeaf.keys.get_ro(), nextLeaf.bits.get_ro())];
+          nextLeaf.keys.get_ro()[findMinKeyPos(nextLeaf.keys.get_ro(), nextLeaf.bits.get_ro())];
     } else {
       /// 2. if this fails we have to merge two leaf nodes but only if both nodes have the same
       ///    direct parent
@@ -1245,7 +1198,7 @@ class FPBPTree {
     if (donorKeys[0] < receiverKeys[0]) {
       /// move to a node with larger keys
       for (auto i = 0u; i < toMove; ++i) {
-        const auto max = findMaxKey(donorKeys, donorBits);
+        const auto max = findMaxKeyPos(donorKeys, donorBits);
         const auto pos = BitOperations::getFreeZero(receiverBits);
         receiverBits.set(pos);
         receiverHashs[pos] = fpHash(donorKeys[max]);
@@ -1256,7 +1209,7 @@ class FPBPTree {
     } else {
       /// move to a node with smaller keys
       for (auto i = 0u; i < toMove; ++i) {
-        const auto min = findMinKey(donorKeys, donorBits);
+        const auto min = findMinKeyPos(donorKeys, donorBits);
         const auto pos = BitOperations::getFreeZero(receiverBits);
         receiverBits.set(pos);
         receiverHashs[pos] = fpHash(donorKeys[min]);
@@ -1453,13 +1406,13 @@ class FPBPTree {
         auto newNode = newBranchNode();
         newNode->children[0] = leaf;
         splitRef.key =
-            leafRef.keys.get_ro()[findMinKey(leafRef.keys.get_ro(), leafRef.bits.get_ro())];
+            leafRef.keys.get_ro()[findMinKeyPos(leafRef.keys.get_ro(), leafRef.bits.get_ro())];
         splitRef.leftChild = node;
         splitRef.rightChild = newNode;
         return true;
       } else {
         nodeRef.keys[nodeRef.numKeys] =
-            leafRef.keys.get_ro()[findMinKey(leafRef.keys.get_ro(), leafRef.bits.get_ro())];
+            leafRef.keys.get_ro()[findMinKeyPos(leafRef.keys.get_ro(), leafRef.bits.get_ro())];
         ++nodeRef.numKeys;
         nodeRef.children[nodeRef.numKeys] = leaf;
         return false;

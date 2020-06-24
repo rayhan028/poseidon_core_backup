@@ -45,7 +45,7 @@ void bfs(graph_db_ptr &gdb, result_set &rs, uint64_t id);
 
 void load_snb_data(graph_db_ptr &graph, const std::string& path, bool strict = true);
 
-void load_snb_data(graph_db_ptr &graph, 
+void load_snb_data(graph_db_ptr &graph,
                     std::vector<std::string> &node_files,
                     std::vector<std::string> &rship_files, bool strict = true);
 
