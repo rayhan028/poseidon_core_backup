@@ -35,14 +35,15 @@ using graph_pool_ptr = std::unique_ptr<graph_pool>;
  */
 class graph_pool {
 public:
+    friend std::unique_ptr<graph_pool> std::make_unique<graph_pool>();
     /**
      * Create a new pmem pool on the given path with the given size.
      * This method shouldn't be used if a poolset is needed.
      */
     static graph_pool_ptr create(const std::string& path, unsigned long long pool_size = 1024*1024*40000ull);
-    
+
     /**
-     * Open an existing pool. If a pool was created as poolset via 'pmempool create' 
+     * Open an existing pool. If a pool was created as poolset via 'pmempool create'
      * the pool should be opened with init = true.
      */
     static graph_pool_ptr open(const std::string& path, bool init = false);
