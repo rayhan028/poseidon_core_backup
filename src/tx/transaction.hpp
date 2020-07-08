@@ -393,6 +393,29 @@ template <typename T> struct txn {
   }
 
   /**
+   * Check if a version exists in the list of objects (stored in the dirty list)
+   * that is valid for the transaction with the given xid by checking bts and
+   * cts timestamps.
+   */
+  bool has_valid_version(xid_t xid) const {
+    if (has_dirty_versions()) {
+      for (const auto& dn : *(d_->dirty_list_)) {
+       if (!dn->elem_.is_locked() || dn->elem_.is_locked_by(xid)) {
+        if (dn->elem_.is_valid_for(xid))
+          return true;
+        else {
+          // if the object is locked by us but not valid, then we have it 
+          // already deleted!
+          if (dn->elem_.is_locked_by(xid) && (dn->elem_.bts() == dn->elem_.cts()))
+            return false;
+        }
+       } 
+      }
+    }
+    return false;
+  }
+
+  /**
    * Retrieve the dirty object version belonging to the transaction with the
    * given xid.
    */

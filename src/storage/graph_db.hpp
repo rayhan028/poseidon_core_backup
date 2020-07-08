@@ -34,6 +34,7 @@
 #include "btree.hpp"
 #include "index_map.hpp"
 #include "pmlog.hpp"
+#include "gc.hpp"
 #include "robin_hood.h"
 
 /**
@@ -513,6 +514,21 @@ private:
    */
   void copy_properties(relationship &r, const dirty_rship_ptr& dr);
 
+  /**
+   * Check if the node still has valid FROM relationships.
+   */
+  bool has_valid_from_rships(node &n, xid_t tx);
+
+  /**
+   * Check if the node still has valid TO relationships.
+   */  
+  bool has_valid_to_rships(node &n, xid_t tx);
+
+   /**
+    * Perform garbage collection.
+    */
+  void vacuum(xid_t tx);
+
   p_ptr<node_list> nodes_; // the list of all nodes of the graph
   p_ptr<relationship_list>
       rships_; // the list of all relationships of the graph
@@ -533,6 +549,8 @@ private:
       *active_tx_;   // the list of all active transactions
   std::mutex *m_;    // mutex for accessing active_tx_
   xid_t oldest_xid_; // timestamp of the oldest transaction
+  std::mutex *gcm_;
+  gc_list *garbage_;
 };
 
 using graph_db_ptr = p_ptr<graph_db>;

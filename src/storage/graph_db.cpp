@@ -39,6 +39,8 @@ graph_db::graph_db(const std::string &db_name) {
   ulog_ = p_make_ptr<pmlog>();
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   m_ = new std::mutex();
+  garbage_ = new gc_list();
+  gcm_ = new std::mutex();
 }
 
 graph_db::~graph_db() {
@@ -48,6 +50,8 @@ graph_db::~graph_db() {
   }
   delete active_tx_;
   delete m_;
+  delete garbage_;
+  delete gcm_;
 #ifdef USE_TX
   current_transaction_.reset();
 #endif
@@ -64,6 +68,8 @@ void graph_db::runtime_initialize() {
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   oldest_xid_ = 0;
   m_ = new std::mutex();
+  gcm_ = new std::mutex();
+  garbage_ = new gc_list();
 }
 
 transaction_ptr graph_db::begin_transaction() {
@@ -129,6 +135,10 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         node_properties_->foreach_property_set(n.property_list, cb);
         // Because there might be an active transaction which still needs the object
         // we cannot delete the node, yet. However, we set the bts and cts accordingly.
+        {
+          std::unique_lock<std::mutex> l(*gcm_);
+          garbage_->push_back(gc_item { xid, node_id, gc_item::gc_node });
+        }
 		    n.set_cts(xid);
         // spdlog::info("===> COMMIT DELETE: #{}: [{},{}]", n.id(), short_ts(n.bts),short_ts(n.cts));
 		    // we can already delete the object from the dirty version list
@@ -193,7 +203,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
       auto log_id = current_transaction_->logid(); 
       if (dr->elem_.bts() == dr->elem_.cts()) {
         // CASE #2 = DELETE
-        // spdlog::info("COMMIT DELETE: {}, {}", dr->elem_.bts, dr->elem_.cts);
+        // spdlog::info("COMMIT DELETE: {}, {}", dr->elem_.bts(), dr->elem_.cts());
         log_rship_record rec { pmem_log::log_delete, pmem_log::log_rship, rel_id,
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
         ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));       
@@ -207,6 +217,11 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 
         // Because there might be an active transaction which still needs the object
         // we cannot delete the relationship, yet. However, we set the cts accordingly.
+        // TODO: make sure that r is eventually removed from the rships_ table!!
+        {
+          std::unique_lock<std::mutex> l(*gcm_);
+          garbage_->push_back(gc_item { xid, rel_id, gc_item::gc_rship });
+        }
 		    r.set_cts(xid);
 
 		    // we can already delete the object from the dirty version list
@@ -252,18 +267,19 @@ bool graph_db::commit_transaction() {
     oldest_xid_ = !active_tx_->empty() ? active_tx_->begin()->first : xid;
   }
 
-  // process dirty_nodes list
-  for (auto node_id : tx->dirty_nodes()) {
-    commit_dirty_node(tx, node_id);
-  }
-
   // process dirty_rships list
  for (auto rel_id : tx->dirty_relationships())  {
     commit_dirty_relationship(tx, rel_id);
   }
 
+  // process dirty_nodes list
+  for (auto node_id : tx->dirty_nodes()) {
+    commit_dirty_node(tx, node_id);
+  }
+
   ulog_->transaction_end(current_transaction_->logid());
   current_transaction_.reset();
+  vacuum(xid);
 #endif
   return true;
 }
@@ -305,9 +321,11 @@ bool graph_db::abort_transaction() {
       rships_->remove(rel_id);
     }
   }
-#endif
+  vacuum(xid);
+
   ulog_->transaction_end(current_transaction_->logid());
   current_transaction_.reset();
+#endif
   return true;
 }
 
@@ -871,7 +889,17 @@ void graph_db::delete_node(node::id_t id) {
   if (n.rts() > txid)
    throw transaction_abort();
 
-  // first, we make a copy of the original node which is stored in
+  // first, we check whether the node is still connected via relationships ..
+  // TODO: the relationship could still be stored in the rships_ table but marked as deleted!!
+  if (n.from_rship_list != UNKNOWN || n.to_rship_list != UNKNOWN) {
+    if (has_valid_from_rships(n, txid) || has_valid_to_rships(n, txid)) {
+      // in this case we have to abort
+      spdlog::info("abort delete of node #{}", n.id());
+      throw orphaned_relationship();
+    }
+  }
+
+  // then, we make a copy of the original node which is stored in
   // the dirty list
   std::list<p_item> pitems =
       node_properties_->build_dirty_property_list(n.property_list);
@@ -1023,4 +1051,44 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
     pid = rship_properties_->add_pitems(r.id(), dr->properties_, dict_, cb);
   }
   r.property_list = pid;
+}
+
+bool graph_db::has_valid_from_rships(node &n, xid_t xid) {
+  auto relship_id = n.from_rship_list;
+  while (relship_id != UNKNOWN) {
+    spdlog::info("node #{}, try to get from rship {}", n.id(), relship_id);
+    auto &relship = rships_->get(relship_id);
+    if (relship.is_locked_by(xid)) {
+      // because the relationship is locked we know that it was already updated
+      // by us and we should look for the dirty object containing the new values
+      assert(relship.has_dirty_versions());
+      if (relship.has_valid_version(xid))
+        return true;
+    }
+    else {
+      return relship.is_valid_for(xid);
+    }
+    relship_id = relship.next_src_rship;
+  }
+  return false;
+}
+
+bool graph_db::has_valid_to_rships(node &n, xid_t xid) {
+  auto relship_id = n.to_rship_list;
+  while (relship_id != UNKNOWN) {
+    spdlog::info("node #{}, try to get to rship {}", n.id(), relship_id);
+    auto &relship = rships_->get(relship_id);
+    if (relship.is_locked_by(xid)) {
+      // because the relationship is locked we know that it was already updated
+      // by us and we should look for the dirty object containing the new values
+      assert(relship.has_dirty_versions());
+      if (relship.has_valid_version(xid))
+        return true;
+    }
+    else {
+      return relship.is_valid_for(xid);
+    }
+    relship_id = relship.next_dest_rship;
+  }
+  return false;
 }

@@ -24,6 +24,7 @@
 
 #include "catch.hpp"
 #include "config.h"
+#include "exceptions.hpp"
 #include "graph_pool.hpp"
 #include "graph_db.hpp"
 #include "../qop/qop.hpp"
@@ -610,7 +611,7 @@ TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
   graph_pool::destroy(pool);
 } 
 
-TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
+TEST_CASE("Deleting all inserted nodes and relationships in separate transactions", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
@@ -666,13 +667,110 @@ TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
   REQUIRE(next_rship == 5);  
 
   // delete all nodes and relationships
-  for (node::id_t i = 0; i < next_node; i++)
-    graph->delete_node(i);
-  
   // deleting a node deletes all relationships associated with the node
   for (relationship::id_t i = 0; i < next_rship; i++)
     graph->delete_relationship(i);
 
+  graph->commit_transaction();
+  tx = graph->begin_transaction();
+
+  for (node::id_t i = 0; i < next_node; i++) {
+    graph->delete_node(i);
+  }
+  
+  graph->commit_transaction();
+
+  tx = graph->begin_transaction();
+
+  int num = 0;
+  graph->nodes([&num](node& n) {
+    num++;
+  });
+  REQUIRE(num == 0);
+  num = 0;
+  /*
+  spdlog::info("scan relationships...");
+  graph->relationships([&num](relationship& r) {
+    spdlog::info("---> {}", r.id());
+    num++;
+  });
+  REQUIRE(num == 0);
+  */
+
+  graph->commit_transaction();
+
+  graph_pool::destroy(pool);
+} 
+
+TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  auto tx = graph->begin_transaction();
+  
+  auto i = 1;
+  
+  auto p1 = graph->add_node(":Person", 
+                              {{"name", boost::any(std::string("John"))},
+                               {"age", boost::any(42)},
+                               {"number", boost::any(i++)},
+                               {"dummy1", boost::any(std::string("Dummy"))},
+                               {"dummy2", boost::any(1.2345)}}, true);
+
+  auto p2 = graph->add_node(":Person", 
+                              {{"name", boost::any(std::string("Doe"))},
+                               {"age", boost::any(42)},
+                               {"number", boost::any(i++)},
+                               {"dummy1", boost::any(std::string("Dummy"))},
+                               {"dummy2", boost::any(1.2345)}}, true);
+
+  auto b1 = graph->add_node(":Book", 
+                              {{"name", boost::any(std::string("Text Book"))},
+                               {"ISBN", boost::any(i++)},
+                               {"dummy1", boost::any(std::string("Dummy"))},
+                               {"dummy2", boost::any(1.2345)}}, true);
+
+  auto b2 = graph->add_node(":Book", 
+                              {{"name", boost::any(std::string("e-Book"))},
+                               {"age", boost::any(42)},
+                               {"ISBN", boost::any(i++)},
+                               {"dummy1", boost::any(std::string("Dummy"))},
+                               {"dummy2", boost::any(1.2345)}}, true);
+
+  auto b3 = graph->add_node(":Book", 
+                              {{"name", boost::any(std::string("Manuscript"))},
+                               {"ISBN", boost::any(i++)},
+                               {"dummy1", boost::any(std::string("Dummy"))},
+                               {"dummy2", boost::any(1.2345)}}, true);
+
+  graph->add_relationship(p1, b1, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b2, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  
+  graph->commit_transaction();
+  tx = graph->begin_transaction();
+  
+  node::id_t next_node = graph->get_nodes()->as_vec().first_available();
+  relationship::id_t next_rship = graph->get_relationships()->as_vec().first_available();
+  REQUIRE(next_node == 5);
+  REQUIRE(next_rship == 5);  
+
+  graph->dump();
+  spdlog::info("starting delete ... tx = {}", short_ts(tx->xid()));
+  // delete all nodes and relationships
+  // deleting a node deletes all relationships associated with the node
+  for (relationship::id_t i = 0; i < next_rship; i++) {
+    spdlog::info("    delete rship #{}", i);
+    graph->delete_relationship(i);
+  }
+  graph->dump();
+  for (node::id_t i = 0; i < next_node; i++) {
+    spdlog::info("    delete node #{}", i);
+    graph->delete_node(i);
+  }
+  
   graph->commit_transaction();
 
   tx = graph->begin_transaction();
@@ -705,8 +803,8 @@ TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
   auto i = 1;
   
   auto p1 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
-  auto p2 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
   auto b1 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
+  auto p2 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
   auto b2 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
   auto b3 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
 
@@ -717,28 +815,52 @@ TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
   
   graph->commit_transaction();
+  
   tx = graph->begin_transaction();
   
-  node::id_t next_node = graph->get_nodes()->as_vec().first_available();
-  for (node::id_t i = 1; i < next_node; i++)
-    graph->delete_node(i); 
   relationship::id_t next_rship = graph->get_relationships()->as_vec().first_available();
   for (node::id_t i = 1; i < next_rship; i++)
     graph->delete_relationship(i); 
-  
+
+  node::id_t next_node = graph->get_nodes()->as_vec().first_available();
+  for (node::id_t i = 2; i < next_node; i++) {// p2 ... b3
+    std::cout << "trying to delete #" << i << std::endl;
+    graph->delete_node(i); 
+  }
+
   int num = 0;
   graph->nodes([&num](node& n) {
     num++;
   });
-  REQUIRE(num == 1);
-  /*
-  next_node = graph->get_nodes()->as_vec().first_available();
-  next_rship = graph->get_relationships()->as_vec().first_available();
-  REQUIRE(next_node == 1);
-  REQUIRE(next_rship == 1);
-  */
+  REQUIRE(num == 2);
 
   graph->commit_transaction();
 
   graph_pool::destroy(pool);
 }
+
+TEST_CASE("Checking that we cannot delete nodes which are still part of a relationship", "[graph_db]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  auto tx = graph->begin_transaction();
+
+  auto p1 = graph->add_node(":Person", {});
+  auto p2 = graph->add_node(":Person", {});
+
+  graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {});
+  graph->commit_transaction();
+
+  graph->dump();
+
+  tx = graph->begin_transaction();
+  {
+    auto &n = graph->node_by_id(p1);
+    REQUIRE(n.id() == p1);
+    REQUIRE_THROWS_AS(graph->delete_node(p1), orphaned_relationship);
+  }
+  graph->commit_transaction();
+
+  graph_pool::destroy(pool);
+}
+

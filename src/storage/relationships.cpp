@@ -168,10 +168,27 @@ relationship_list::last_in_to_list(relationship::id_t id) {
 
 void relationship_list::dump() {
   std::cout << "------- RELATIONSHIPS -------\n";
-  for (const auto& r : rships_) {
-    std::cout << "#" << r.id() << ", " << r.rship_label << ", " << r.src_node
+  for (auto& r : rships_) {
+    std::cout << "#" << r.id() 
+      << " [ txn-id=" << short_ts(r.txn_id()) << ", bts=" << short_ts(r.bts())
+              << ", cts=" << short_ts(r.cts()) << ", dirty=" << r.d_->is_dirty_ 
+              << " ], label = " << r.rship_label << ", " << r.src_node
               << "->" << r.dest_node << ", " << r.next_src_rship << ", "
-              << r.next_dest_rship << "\n";
+              << r.next_dest_rship;
+    if (r.has_dirty_versions()) {
+      // print dirty list
+      std::cout << " {\n";
+       for (const auto& dr : *(r.dirty_list())) {
+        std::cout << "\t( @" << (unsigned long)&(dr->elem_)
+                  << ", txn-id=" << short_ts(dr->elem_.txn_id())
+                  << ", bts=" << short_ts(dr->elem_.bts()) << ", cts=" << short_ts(dr->elem_.cts())
+                  << ", label=" << dr->elem_.rship_label
+                  << ", dirty=" << dr->elem_.is_dirty();
+        std::cout << " ])\n";
+      }
+      std::cout << "}";
+    }
+    std::cout << "\n";
   }
   std::cout << "-----------------------------\n";
 }
