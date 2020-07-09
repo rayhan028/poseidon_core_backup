@@ -11,11 +11,15 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK       "Use Intel PMDK"                         ON)
+option(USE_PMDK       "Use Intel PMDK"                         OFF)
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
 option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
 #-------------------------------------------------------------------------------
+endif()
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+option(USE_PMDK       "Use Intel PMDK"                         OFF)
 endif()
 
 # Don't try to contact github everytime.
@@ -266,6 +270,7 @@ set(src_files
   src/storage/graph_db_index.cpp
   src/storage/graph_db_query.cpp
   src/storage/graph_db_recovery.cpp
+  src/storage/graph_db_gc.cpp
   src/btree/index_map.cpp
   src/qop/qop.cpp
   src/qop/update.cpp
@@ -355,6 +360,18 @@ add_executable(run_ldbc_updates
  )
 
 target_link_libraries(run_ldbc_updates
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
+# The program for executing graphalytics.
+#
+add_executable(run_ldbc_graphalytics
+  src/ldbc/ldbc_graphalytics.cpp
+ )
+
+target_link_libraries(run_ldbc_graphalytics
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options

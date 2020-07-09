@@ -29,21 +29,56 @@
 class graph_pool;
 using graph_pool_ptr = std::unique_ptr<graph_pool>;
 
+/**
+ * graph_pool is the main entry point to a graph database. It corresponds to a
+ * pmem pool and can store multiple graphs identified by their unique name.
+ */
 class graph_pool {
-
 public:
+    friend std::unique_ptr<graph_pool> std::make_unique<graph_pool>();
+    /**
+     * Create a new pmem pool on the given path with the given size.
+     * This method shouldn't be used if a poolset is needed.
+     */
     static graph_pool_ptr create(const std::string& path, unsigned long long pool_size = 1024*1024*40000ull);
-    static graph_pool_ptr open(const std::string& path);
+
+    /**
+     * Open an existing pool. If a pool was created as poolset via 'pmempool create'
+     * the pool should be opened with init = true.
+     */
+    static graph_pool_ptr open(const std::string& path, bool init = false);
+
+    /**
+     * Destroys the given pool. Works only with single pool but not with a poolset.
+     */
     static void destroy(graph_pool_ptr& p);
 
+    /**
+     * Destructor.
+     */
     ~graph_pool();
 
+    /**
+     * Create a new graph with the given name.
+     */
     graph_db_ptr create_graph(const std::string& name);
+
+    /**
+     * Open an existing graph with the given name. If no graph
+     * exists with this name an exception is raised.
+     */
     graph_db_ptr open_graph(const std::string& name);
 
+    /**
+     * Close the graph_pool.
+     */
     void close();
 
 private:
+    /**
+     * Private constructor - a graph_pool is created only via the static
+     * member functions.
+     */
     graph_pool();
 
 #ifdef USE_PMDK

@@ -31,6 +31,10 @@
 #include <libpmemobj++/container/array.hpp>
 #include <libpmemobj++/container/vector.hpp>
 #include <libpmemobj++/utils.hpp>
+#include <libpmemobj++/shared_mutex.hpp>
+#else
+#include <mutex>  // For std::unique_lock
+#include <shared_mutex>
 #endif
 
 #include "defs.hpp"
@@ -49,8 +53,6 @@
  */
 template <typename T, int num_records>
 struct alignas(64) chunk {
-  p<std::bitset<num_records>>
-      slots_; // bitstring representing empty slots (0), used slots (1)
 #ifdef USE_PMDK
   pmem::obj::array<T, num_records> data_;
   pmem::obj::persistent_ptr<chunk<T, num_records>> next_;
@@ -58,11 +60,14 @@ struct alignas(64) chunk {
   std::array<T, num_records> data_; // the array of data
   chunk<T, num_records> *next_;     // pointer to the successor chunk
 #endif
+  p<std::bitset<num_records>>
+      slots_; // bitstring representing empty slots (0), used slots (1)
+  p<uint32_t> first_;              // the index of the first available slot
 
   /**
    * Create a new chunk, allocate and initialize the memory.
    */
-  chunk() : next_(nullptr) {}
+  chunk() : next_(nullptr), first_(0) {}
 
   /**
    * Deallocate the memory.
@@ -89,6 +94,25 @@ struct alignas(64) chunk {
 #else
     slots_.set(i, b);
 #endif
+    if (!b && i < first_) {
+      // the record was deleted - update first_
+      first_ = i;   
+      return;
+    }
+    if (b && i == first_) {
+      // we have to find the next available slot starting from first_
+      for (auto j = first_; j < num_records; j++) {
+#ifdef USE_PMDK
+        if (!slots_.get_ro().test(j)) {
+#else
+        if (!slots_.test(j)) {
+#endif
+          first_ = j;
+          return;
+        }
+      }
+      if (first_ == i) first_ = num_records;
+    }
   }
 
   /**
@@ -102,7 +126,8 @@ struct alignas(64) chunk {
     if (slots_.all())
 #endif
       return SIZE_MAX;
-    for (auto i = 0u; i < num_records; i++)
+
+    for (auto i = first_; i < num_records; i++)
 #ifdef USE_PMDK
       if (!slots_.get_ro().test(i))
 #else
@@ -312,6 +337,7 @@ class chunked_vec {
     if (!is_used)
       available_slots_--;
     if (ch->is_full()) {
+      std::unique_lock lock(fl_mtx_);
       remove_from_free_list(idx);
     }
   }
@@ -321,6 +347,8 @@ class chunked_vec {
    * pointer(!) to the record as a pair.
    */
   std::pair<offset_t, T *> append(T &&o, std::function<void(offset_t)> callback = nullptr) {
+    std::unique_lock lock(fl_mtx_);
+
     if (is_full())
       resize(1);
     auto tail = chunk_list_.back();
@@ -331,7 +359,7 @@ class chunked_vec {
     auto pos = tail->first_available();
     assert(pos != SIZE_MAX);
     auto offs = (chunk_list_.size() - 1) * elems_per_chunk_;
-    if (callback) callback(offs + pos);
+    if (callback != nullptr) callback(offs + pos);
     available_slots_--;
     tail->set(pos, true);
     tail->data_[pos] = o;
@@ -348,6 +376,8 @@ class chunked_vec {
   std::pair<offset_t, T *> store(T &&o, std::function<void(offset_t)> callback = nullptr) {
     chunk_ptr ch;
     offset_t idx = 0;
+
+    std::unique_lock lock(fl_mtx_);
     if (free_list_.empty()) {
       // if we don't have anything in the freelist, we have to resize
       resize(1);
@@ -363,7 +393,7 @@ class chunked_vec {
     }
     offset_t pos = ch->first_available();
     assert(pos != SIZE_MAX);
-    if (callback) callback(idx + pos);
+    if (callback != nullptr) callback(idx + pos);
     available_slots_--;
     ch->set(pos, true);
     ch->data_[pos] = o;
@@ -386,8 +416,10 @@ class chunked_vec {
     // TODO: if (ch->empty()) delete ch;
     // if this was the first slot on this chunk which is now empty, 
     // add this chunk to the free list
-    if (was_full)
+    if (was_full) {
+      std::unique_lock lock(fl_mtx_);
       add_to_free_list(idx);
+    }
   }
 
   /**
@@ -561,9 +593,11 @@ private:
   pmem::obj::vector<chunk_ptr>
       chunk_list_; // the persistent list of pointers to all chunks
   pmem::obj::vector<offset_t> free_list_;   // the list of chunks with empty slots (described by their indexes)
+  pmem::obj::shared_mutex fl_mtx_;;
 #else
   std::vector<chunk_ptr> chunk_list_; // the list of pointers to all chunks
   std::vector<offset_t> free_list_;   // the list of chunks with empty slots (described by their indexes)
+  mutable std::shared_mutex fl_mtx_;
 #endif
 };
 

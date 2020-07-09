@@ -96,7 +96,8 @@ TEST_CASE("Testing get_property", "[properties]") {
   properties_t props = { {"skey", boost::any(std::string("string"))},
                                {"ikey", boost::any(42)}};
 
-  REQUIRE(get_property<int>(props, "ikey") == 42);
-  REQUIRE(get_property<std::string>(props, "skey") == "string");
-  CHECK_THROWS_AS(get_property<int>(props, "unknown"), unknown_property);
+  REQUIRE(get_property<int>(props, "ikey").value() == 42);
+  REQUIRE(get_property<std::string>(props, "skey").value() == "string");
+  REQUIRE(! get_property<int>(props, "unknown").has_value());
+  // CHECK_THROWS_AS(get_property<int>(props, "unknown"), unknown_property);
 }

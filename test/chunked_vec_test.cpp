@@ -187,6 +187,7 @@ TEST_CASE("Testing chunked_vec", "[chunked_vec]") {
     }
 
     REQUIRE(vec.first_available() == 100);
+
     {
       auto i = 100;
       record rec;

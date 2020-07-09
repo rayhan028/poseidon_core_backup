@@ -218,6 +218,7 @@ void printer::process(graph_db_ptr &gdb, const qr_tuple &v) {
       [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
       [&](const std::string &s) { std::cout << s; },
       [&](uint64_t ll) { std::cout << ll; },
+      [&](null_t n) { std::cout << "NULL"; },
       [&](ptime dt) { std::cout << dt; });
   for (auto &ge : v) {
     boost::apply_visitor(my_visitor, ge);
@@ -238,6 +239,33 @@ void limit_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
   if (processed_ < num_) {
     consume_(gdb, v);
     processed_++;
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+
+void nodes_connected::dump(std::ostream &os) const {
+  os << "nodes_connected([" "])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void nodes_connected::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto src = boost::get<node *>(v[src_des_nodes_.first]);
+  auto des = boost::get<node *>(v[src_des_nodes_.second]);
+  bool flag = true;
+
+  gdb->foreach_from_relationship_of_node((*src), [&](auto &r) {
+      if (r.to_node_id() == des->id()){
+        flag = false;
+        auto res = append(v, query_result(&r));
+        consume_(gdb, res); //TODO: fix for potential result tuple size mismatch
+      }
+  });
+
+  if (flag){
+    auto res = append(v, query_result(std::string("[0]{}")));
+    consume_(gdb, res);
   }
 }
 
@@ -304,6 +332,7 @@ std::ostream &operator<<(std::ostream &os, const result_set &rs) {
       [&](relationship *r) { /* os << gdb->get_relationship_label(*r); */ },
       [&](int i) { os << i; }, [&](double d) { os << d; },
       [&](const std::string &s) { os << s; }, [&](uint64_t ll) { os << ll; },
+      [&](null_t n) { os << "NULL"; },
       [&](ptime dt) { os << dt; }); 
 
   for (const qr_tuple &qv : rs.data) {
@@ -341,6 +370,7 @@ void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
       [&](double d) { return std::to_string(d); },
       [&](const std::string &s) { return s; }, 
       [&](uint64_t ll) { return std::to_string(ll); },
+      [&](null_t n) { return std::string("NULL"); },
       [&](ptime dt) { return to_iso_extended_string(dt); }); 
   for (std::size_t i = 0; i < v.size(); i++) {
     res[i] = boost::apply_visitor(my_visitor, v[i]);
@@ -425,10 +455,14 @@ void projection::process(graph_db_ptr &gdb, const qr_tuple &v) {
   for (auto i = 0u; i < exprs_.size(); i++) {
     // spdlog::info("projection::process: pv={}, i={}", pv.size(), i);
     auto &ex = exprs_[i];
-    if (ex.func != nullptr)
-      res[i] = ex.func(pv[var_map_[ex.vidx]]);
-    else
-      res[i] = builtin::forward(pv[var_map_[ex.vidx] - num_accessed_vars]);
+    try {
+      if (ex.func != nullptr)
+        res[i] = ex.func(pv[var_map_[ex.vidx]]);
+      else{
+        pr_result fwd = v[ex.vidx];
+        res[i] = builtin::forward(fwd);
+      }
+    } catch (unknown_property& exc) { }
   }
 
   consume_(gdb, res);
@@ -458,91 +492,107 @@ query_result forward(projection::pr_result &pv) {
     return boost::get<ptime>(pv);
   } 
   spdlog::info("builtin::forward: unexpected type: {}", pv.type().name());
-  return query_result(0);
+  return null_val;
 }
 
-int int_property(projection::pr_result &pv, /*std::size_t vidx, */
-                 const std::string &key) {
-  //  auto &pv = vec[vidx];
+
+bool has_property(projection::pr_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
-    return get_property<int>(nd.properties, key);
+    return nd.has_property(key);
   } else if (pv.type() == typeid(rship_description &)) {
     auto rd = boost::get<rship_description &>(pv);
-    return get_property<int>(rd.properties, key);
+    return rd.has_property(key);
   }
-  return 0;
+  return false; 
 }
-
-double double_property(projection::pr_result &pv, /* std::size_t vidx,*/
-                       const std::string &key) {
-  // auto &pv = vec[vidx];
+	
+query_result int_property(projection::pr_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
-    return get_property<double>(nd.properties, key);
+    auto o = get_property<int>(nd.properties, key);
+    return o.has_value() ? query_result(o.value()) : query_result(null_val);
   } else if (pv.type() == typeid(rship_description &)) {
     auto rd = boost::get<rship_description &>(pv);
-    return get_property<double>(rd.properties, key);
+    auto o = get_property<int>(rd.properties, key);
+    return o.has_value() ? query_result(o.value()) : query_result(null_val);
   }
-  return 0.0;
+  return null_val;
 }
 
-std::string string_property(projection::pr_result &pv, /*std::size_t vidx, */
-                            const std::string &key) {
-  // auto &pv = vec[vidx];
+query_result double_property(projection::pr_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
-    return get_property<std::string>(nd.properties, key);
+    auto o = get_property<double>(nd.properties, key);
+    return o.has_value() ? query_result(o.value()) : query_result(null_val);
   } else if (pv.type() == typeid(rship_description &)) {
     auto rd = boost::get<rship_description &>(pv);
-    return get_property<std::string>(rd.properties, key);
+    auto o = get_property<double>(rd.properties, key);
+    return o.has_value() ? query_result(o.value()) : query_result(null_val);
   }
-
-  return "";
+  return null_val;
 }
 
-uint64_t uint64_property(projection::pr_result &pv, /* std::size_t vidx, */
-                         const std::string &key) {
-  //  auto &pv = vec[vidx];
+query_result string_property(projection::pr_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
-    return get_property<uint64_t>(nd.properties, key);
+    auto o = get_property<std::string>(nd.properties, key);
+    return o.has_value() ? query_result(o.value()) : query_result(null_val);
   } else if (pv.type() == typeid(rship_description &)) {
     auto rd = boost::get<rship_description &>(pv);
-    return get_property<uint64_t>(rd.properties, key);
+    auto o = get_property<std::string>(rd.properties, key);
+    return o.has_value() ? query_result(o.value()) : query_result(null_val);
   }
-  return 0;
+
+  return null_val;
 }
 
-ptime ptime_property(projection::pr_result &pv, /* std::size_t vidx, */ // to remove
-                 const std::string &key){
-  //  auto &pv = vec[vidx];
+query_result uint64_property(projection::pr_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
-    return get_property<ptime>(nd.properties, key);
+    auto o = get_property<uint64_t>(nd.properties, key);
+    return o.has_value() ? query_result(o.value()) : query_result(null_val);
   } else if (pv.type() == typeid(rship_description &)) {
     auto rd = boost::get<rship_description &>(pv);
-    return get_property<ptime>(rd.properties, key);
+    auto o = get_property<uint64_t>(rd.properties, key);
+    return o.has_value() ? query_result(o.value()) : query_result(null_val);
   }
-  return ptime(); 
+  return null_val;
 }
 
-std::string pr_date(projection::pr_result &pv, /* std::size_t vidx, */
-                 const std::string &key){
-  //  auto &pv = vec[vidx];
+query_result  ptime_property(projection::pr_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
-    ptime dt = get_property<ptime>(nd.properties, key);
-    return to_iso_extended_string(dt.date());
+    auto o = get_property<ptime>(nd.properties, key);
+    return o.has_value() ? query_result(o.value()) : query_result(null_val);
   } else if (pv.type() == typeid(rship_description &)) {
     auto rd = boost::get<rship_description &>(pv);
-    ptime dt = get_property<ptime>(rd.properties, key);
-    return to_iso_extended_string(dt.date());
+    auto o = get_property<ptime>(rd.properties, key);
+    return o.has_value() ? query_result(o.value()) : query_result(null_val);
   }
-  return ""; 
+  return null_val;
 }
 
-std::string string_rep(projection::pr_result &res /*, std::size_t vidx*/) {
+query_result pr_date(projection::pr_result &pv, const std::string &key) {
+  if (pv.type() == typeid(node_description &)) {
+    auto nd = boost::get<node_description &>(pv);
+    if (nd.has_property(key)) {
+      auto o = get_property<ptime>(nd.properties, key);
+      return o.has_value() ? query_result(to_iso_extended_string(o.value().date())) 
+        : query_result(null_val);
+    }
+  } else if (pv.type() == typeid(rship_description &)) {
+    auto rd = boost::get<rship_description &>(pv);
+    if (rd.has_property(key)) {
+      auto o = get_property<ptime>(rd.properties, key);
+      return o.has_value() ? query_result(to_iso_extended_string(o.value().date())) 
+        : query_result(null_val);
+    }
+  }
+  return null_val; 
+}
+
+std::string string_rep(projection::pr_result &res) {
   auto my_visitor =
       boost::hana::overload([&](node_description &n) { return n.to_string(); },
                             [&](rship_description &r) { return r.to_string(); },
@@ -550,6 +600,7 @@ std::string string_rep(projection::pr_result &res /*, std::size_t vidx*/) {
                             [&](relationship *r) { return std::string(""); },
                             [&](int i) { return std::to_string(i); },
                             [&](double d) { return std::to_string(d); },
+                            [&](null_t n) { return std::string("NULL"); },
                             [&](const std::string &s) { return s; },
                             [&](uint64_t ll) { return std::to_string(ll); },  
                             [&](ptime dt) { return to_iso_extended_string(dt); } ); 
@@ -572,6 +623,11 @@ std::string int_to_datestring(int v) {
   return os.str();
 }
 
+std::string int_to_datestring(const query_result& v) {
+  assert(v.type() == typeid(int));
+ return int_to_datestring(boost::get<int>(v));
+}
+
 int datestring_to_int(const std::string &d) {
   boost::gregorian::date dt = boost::gregorian::from_simple_string(d);
   static ptime epoch(boost::gregorian::date(1970, 1, 1));
@@ -586,6 +642,11 @@ std::string int_to_dtimestring(int v) {
   // os.imbue(std::locale{std::cout.getloc(), dtf});
   os << d;
   return os.str();
+}
+
+std::string int_to_dtimestring(const query_result& v) {
+  assert(v.type() == typeid(int));
+ return int_to_dtimestring(boost::get<int>(v));
 }
 
 int dtimestring_to_int(const std::string &dt) {

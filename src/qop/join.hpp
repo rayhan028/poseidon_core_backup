@@ -64,5 +64,46 @@ private:
   std::pair<int, int> src_des_nodes_;
 };
 
+  /**
+   * TODO
+   */
+struct nested_loop_join : public qop {
+  nested_loop_join(std::pair<int, int> pos) : left_right_nodes_(pos) {} 
+  ~nested_loop_join() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+private:
+  std::vector<qr_tuple> input_;
+  std::vector<node::id_t> join_ids_;
+  std::pair<int, int> left_right_nodes_;
+};
+
+  /**
+   * TODO
+   */
+struct hash_join : public qop {
+  hash_join(std::pair<int, int> pos) : left_right_nodes_(pos) {} 
+  ~hash_join() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void build_phase(graph_db_ptr &gdb, const qr_tuple &v);
+  void probe_phase(graph_db_ptr &gdb, const qr_tuple &v);
+  static uint64_t hasher(uint64_t id);
+
+  void finish(graph_db_ptr &gdb);
+
+private:
+  const static int BUCKETS = 10;
+  std::vector<qr_tuple> input_[BUCKETS];
+  std::vector<node::id_t> join_ids_[BUCKETS];
+  std::pair<int, int> left_right_nodes_;
+};
 
 #endif

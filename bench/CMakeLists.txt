@@ -15,6 +15,7 @@ foreach(ONE_BENCH_CPP ${ALL_BENCH_CPP})
         poseidon_core
         benchmark
          ${PMDK_LIBRARIES}
+         Boost::program_options
    )
 
    # If you want to run benchmarks with the "make test" command, uncomment me

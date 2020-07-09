@@ -17,10 +17,13 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 #include "nodes.hpp"
+#include "thread_pool.hpp"
 #include <iostream>
 #include <sstream>
 
 #include "spdlog/spdlog.h"
+
+#define PARALLEL_INIT
 
 template <class T>
 bool output_any(std::ostream &os, const boost::any &any_value) {
@@ -90,24 +93,58 @@ std::string node_description::to_string() const {
   return os.str();
 }
 
+bool node_description::has_property(const std::string& pname) const {
+  return properties.find(pname) != properties.end();
+}
+
 /* ------------------------------------------------------------------------ */
 
+
+struct init_node_task {
+  using range = std::pair<std::size_t, std::size_t>;
+  init_node_task(node_list &n, std::size_t first, std::size_t last)
+      : nodes_(n), range_(first, last) {}
+
+  void operator()() {
+    auto iter = nodes_.range(range_.first, range_.second);
+    while (iter) {
+      auto &n = *iter;
+      n.runtime_initialize();
+     ++iter;
+    }
+  }
+
+  node_list &nodes_;
+  range range_;
+};
+
 node_list::~node_list() {
-	// Since dirty_list is not a smart pointer, clear all resources used for dirty list.
-	for (auto &n : nodes_) {
-		if(n.dirty_list) {
-			delete n.dirty_list;
-			n.dirty_list = nullptr;
-		}
-	}
 }
 
 void node_list::runtime_initialize() {
   // make sure that all locks are released and no dirty objects exist
-  for (auto &n : nodes_) {
-    n.txn_id = 0;
-    n.dirty_list = nullptr;
+#ifdef PARALLEL_INIT
+  const int nchunks = 100;
+  std::vector<std::future<void>> res;
+  res.reserve(num_chunks() / nchunks + 1);
+  // spdlog::info("starting {} init node tasks...", num_chunks() / nchunks + 1);
+  thread_pool pool;
+  std::size_t start = 0, end = nchunks - 1;
+  while (start < num_chunks()) {
+    res.push_back(pool.submit(
+        init_node_task(*this, start, end)));
+    // spdlog::info("starting: {}, {}", start, end);
+    start = end + 1;
+    end += nchunks;
   }
+ // std::cout << "waiting ..." << std::endl;
+  for (auto &f : res)
+    f.get();
+#else
+  for (auto &n : nodes_) {
+    n.runtime_initialize();
+  }
+#endif
 }
 
 node::id_t node_list::append(node &&n, xid_t owner, std::function<void(offset_t)> callback) {
@@ -157,30 +194,27 @@ node &node_list::get(node::id_t id) {
 void node_list::remove(node::id_t id) {
   if (nodes_.capacity() <= id)
     throw unknown_id();
-  auto &n = nodes_.at(id);
-  if (n.dirty_list) //Cannot use: if(n.has_dirty_versions()) because if dirty_list is empty, then resource not deleted.
-    delete n.dirty_list;
   nodes_.erase(id);
 }
 
 void node_list::dump() {
   std::cout << "----------- NODES -----------\n";
-  for (const auto& n : nodes_) {
+  for (auto& n : nodes_) {
     std::cout << "#" << n.id() << ", @" << (unsigned long)&n
-              << " [ txn-id=" << short_ts(n.txn_id.load()) << ", bts=" << short_ts(n.bts)
-              << ", cts=" << short_ts(n.cts) << ", dirty=" << n.is_dirty_ 
+              << " [ txn-id=" << short_ts(n.txn_id()) << ", bts=" << short_ts(n.bts())
+              << ", cts=" << short_ts(n.cts()) << ", dirty=" << n.d_->is_dirty_ 
               << " ], label=" << n.node_label << ", from="
               << n.from_rship_list << ", to=" << n.to_rship_list << ", props="
               << n.property_list;
     if (n.has_dirty_versions()) {
       // print dirty list
       std::cout << " {\n";
-      for (const auto& dn : *n.dirty_list) {
+      for (const auto& dn : *(n.dirty_list())) {
         std::cout << "\t( @" << (unsigned long)&(dn->elem_)
-                  << ", txn-id=" << short_ts(dn->elem_.txn_id.load())
-                  << ", bts=" << short_ts(dn->elem_.bts) << ", cts=" << short_ts(dn->elem_.cts)
+                  << ", txn-id=" << short_ts(dn->elem_.txn_id())
+                  << ", bts=" << short_ts(dn->elem_.bts()) << ", cts=" << short_ts(dn->elem_.cts())
                   << ", label=" << dn->elem_.node_label
-                  << ", dirty=" << dn->elem_.is_dirty_ 
+                  << ", dirty=" << dn->elem_.is_dirty()
                   << ", from=" << dn->elem_.from_rship_list
                   << ", to=" << dn->elem_.to_rship_list
                   << ", [";

@@ -74,6 +74,13 @@ class invalid_nested_transaction : public std::exception {
   }
 };
 
+class orphaned_relationship : public std::exception {
+  const char *what() const noexcept override {
+    return "Cannot delete node(s) since it has relationship.";
+  }
+};
+
+
 class file_not_found : public std::exception {
 public:
   file_not_found() : msg_("Cannot open file.") {}

@@ -48,7 +48,7 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
   // spdlog::info("create_index: fill index: {} => {}", prop_name, pc);
   nodes_by_label(node_label, [this, &new_idx, &pc](auto& n) {
     // spdlog::info("get property value for node #{}...", n.id());
-    auto val = properties_->property_value(n.property_list, pc);
+    auto val = node_properties_->property_value(n.property_list, pc);
     if (!val.empty()) {
       // because we don't distinguish differently typed indexes we use the raw value here
       auto v = val.get_raw(); // val.template get<int>();

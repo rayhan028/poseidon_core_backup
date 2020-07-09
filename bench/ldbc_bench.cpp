@@ -67,6 +67,7 @@ public:
 const std::string snb_sta("/home/data/SNB_SF_10/static/");
 const std::string snb_dyn("/home/data/SNB_SF_10/dynamic/");
 
+#if 0
 void load_snb_data(graph_db_ptr &graph, 
                     std::vector<std::string> &node_files,
                     std::vector<std::string> &rship_files){
@@ -119,6 +120,8 @@ void load_snb_data(graph_db_ptr &graph,
   }
   assert(nodes_imported || rships_imported); // data imported to run benchmark 
 }
+
+#endif
 
 /* ------------------------------------------------------------- */
 

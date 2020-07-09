@@ -4,6 +4,7 @@
 
 #include "defs.hpp"
 #include "graph_db.hpp"
+#include "graph_pool.hpp"
 #include "ldbc.hpp"
 #include "config.h"
 
@@ -12,25 +13,6 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
-#define SF_10
-#define BUILD_INDEX
-#define PRINT_RESULT
-
-#ifdef USE_PMDK
-
-const std::string test_path = poseidon::gPmemPath +
-
-#ifdef SF_10
-"sf10";
-#else
-"sf1";
-#endif
-
-struct root {
-  graph_db_ptr graph;
-};
-
-#endif
 
 double calc_avg_time(const std::vector<double>& vec) {
     double d = 0.0;
@@ -44,7 +26,9 @@ double calc_avg_time(const std::vector<double>& vec) {
 
 double run_query_1(graph_db_ptr gdb) {
     std::vector<uint64_t> personIds =
-#ifdef SF_10
+#ifdef SF_100
+        {933, 76209, 162351, 254831, 6597070122899, 35184372579149, 4398046893130, 4398046934215};
+#elif defined(SF_10)
         {26388279115622, 2199023280088, 19791209323074, 15393162816482, 15393162855246,
         19791209363124, 28587302347895, 10995116305049, 4398046515646, 2199023282192,
         30786325588998, 2199023301366, 19791209333857, 24189255835727, 26388279139007,
@@ -56,13 +40,16 @@ double run_query_1(graph_db_ptr gdb) {
         4398046511596, 13194139597106, 13194139540307, 32985348862047, 28587302352600,
         17592186070889, 8796093026236, 17592186094267, 32985348870938, 21990232600629,
         2199023283094};
+        /*{19791209323074, 30786325588998, 24189255855187, 17592186084059, 15393162854260,
+        8796093041362, 13194139597106, 28587302352600};*/
 #else
         {933, 24189255812290, 6597069773744, 2199023266220, 13194139544176,
         17592186050570, 24189255815734, 28587302330379, 32985348842922, 3601,
         4398046511870, 32985348834284, 17592186045096, 17592186053245, 4398046520495,
         4233, 344, 10995116286457, 10976, 24189255813927};
+        //{2199023266220, 28587302330379, 17592186045096, 10995116286457};
 #endif
-    
+
     std::vector<double> runtimes(personIds.size());
 
     for (auto i = 0u; i < personIds.size(); i++) {
@@ -85,7 +72,9 @@ double run_query_1(graph_db_ptr gdb) {
 
 double run_query_2_p(graph_db_ptr gdb) {
     std::vector<uint64_t> personIds =
-#ifdef SF_10
+#ifdef SF_100
+        {162351};
+#elif defined(SF_10)
         {10995116338469, 21990232591571, 19791209356794, 13194139598683, 68301,
         4398046529914, 21990232626534, 4398046537991, 10995116305964, 30786325620353,
         17592186073576, 58850, 8796093024620, 19791209367505, 2199023275285, 17592186110043,
@@ -96,13 +85,15 @@ double run_query_2_p(graph_db_ptr gdb) {
         10995116293981, 15393162815221, 30786325632464, 8796093035558, 26388279073187,
         21990232584928, 4398046512001, 4398046563886, 6597069820569, 13194139565644,
         17592186099787, 10995116282803, 15393162838932, 6597069825699};
+        /*{10995116338469, 4398046537991, 17592186073576, 8796093024620, 13194139576699,
+        4398046568995};*/
 #else
         {65, 28587302330379, 3601, 24189255817217, 4398046511870,
         8698, 6597069773744, 13194139544176, 17592186050570, 6597069766993,
         24189255815734, 26388279077330, 15393162799262, 32985348843825, 32985348843760,
         32985348842653, 13194139540894, 13194139540856, 8796093028361, 6597069766998};
 #endif
-    
+
     std::vector<double> runtimes(personIds.size());
 
     for (auto i = 0u; i < personIds.size(); i++) {
@@ -124,8 +115,10 @@ double run_query_2_p(graph_db_ptr gdb) {
 }
 
 double run_query_2_c(graph_db_ptr gdb) {
-    std::vector<uint64_t> personIds = 
-#ifdef SF_10
+    std::vector<uint64_t> personIds =
+#ifdef SF_100
+        {316996};
+#elif defined(SF_10)
         {6597069786683, 4398046519893, 36226, 36675, 8796093036632, 13194139577652,
         10995116308345, 8796093050459, 4398046578984, 4398046530211, 4398046584079,
         10995116294248, 15393162815075, 8796093047284, 17592186050313, 26736,
@@ -136,13 +129,16 @@ double run_query_2_c(graph_db_ptr gdb) {
         4398046537118, 19791209361803, 10995116324570, 2199023283682, 10995116322754,
         2199023271643, 4398046562506, 17592186090419, 17592186113138, 2199023298757,
         72607, 8796093052442, 10995116318624, 8796093067457};
+        /*{36226, 36675, 8796093036632, 13194139577652, 8796093050459, 10995116294248,
+        2199023273750, 15393162805575, 10995116322754, 17592186090419};*/
 #else
         {65, 28587302330379, 3601, 24189255817217, 4398046511870,
         8698, 6597069773744, 13194139544176, 17592186050570, 6597069766993,
         24189255815734, 26388279077330, 15393162799262, 32985348843825, 32985348843760,
         32985348842653, 13194139540894, 13194139540856, 8796093028361, 6597069766998};
+        //{28587302330379};
 #endif
-        
+
     std::vector<double> runtimes(personIds.size());
 
     for (auto i = 0u; i < personIds.size(); i++) {
@@ -164,8 +160,10 @@ double run_query_2_c(graph_db_ptr gdb) {
 }
 
 double run_query_3(graph_db_ptr gdb) {
-    std::vector<uint64_t> personIds = 
-#ifdef SF_10
+    std::vector<uint64_t> personIds =
+#ifdef SF_100
+        {933};
+#elif defined(SF_10)
         {2199023269673, 2199023326667, 10995116286165, 4398046514225, 2199023268992,
         17592186092889, 2199023304089, 36915, 15393162822969, 10995116295447,
         2199023272508, 13194139546280, 62739, 10995116303770, 2199023281253,
@@ -176,13 +174,16 @@ double run_query_3(graph_db_ptr gdb) {
         30786325627738, 6597069803008, 6597069769310, 13194139597867, 2199023271926,
         2199023281226, 4398046518021, 9598, 13194139585832, 10995116280587, 10995116328660,
         28587302392195, 4398046558180, 42321};
+        /*{4398046514225, 10995116295447, 10995116308879, 4398046581131, 13194139597867,
+        4398046558180};*/
 #else
         {19791209304051, 28587302326940, 2199023262021, 8796093027111, 2199023262994,
         6597069773744, 13194139544176, 17592186050570, 30786325588658, 24189255815734,
         6597069774931, 13194139544258, 15393162791382, 21990232558836, 28587302322686,
         24189255820923, 32985348833548, 30786325581208, 26388279074032, 32985348834375};
+        //{2199023262021, 6597069774931, 32985348833548};
 #endif
-    
+
     std::vector<double> runtimes(personIds.size());
 
     for (auto i = 0u; i < personIds.size(); i++) {
@@ -204,8 +205,11 @@ double run_query_3(graph_db_ptr gdb) {
 }
 
 double run_query_4_p(graph_db_ptr gdb) {
-    std::vector<uint64_t> postIds = 
-#ifdef SF_10
+    std::vector<uint64_t> postIds =
+#ifdef SF_100
+        {39582418599936, 17592187092992, 65971148923702, 43980918701267, 65971018451354,
+        26388730323952, 8796096167946, 65971150117789};
+#elif defined(SF_10)
         { 4398067251028,  2199043946640,  2199037876061,  6597090750692, 4398075704871,
         7696589408397,  3298550269571,  4398061999667,  7696621883870,  7696591812715,
         2748817450668,  5497571035089,  4398055319228, 8246355344067,  8246362564011,
@@ -221,7 +225,7 @@ double run_query_4_p(graph_db_ptr gdb) {
         {1374389534801, 687194926510, 1236950581577, 824633724379, 687194903818,
         549755930326, 1649267546616, 1649267453265, 1924145376549, 1099511719169};
 #endif
-    
+
     std::vector<double> runtimes(postIds.size());
 
     for (auto i = 0u; i < postIds.size(); i++) {
@@ -243,8 +247,11 @@ double run_query_4_p(graph_db_ptr gdb) {
 }
 
 double run_query_4_c(graph_db_ptr gdb) {
-    std::vector<uint64_t> commentIds = 
-#ifdef SF_10
+    std::vector<uint64_t> commentIds =
+#ifdef SF_100
+        {39582418599937, 17592187092993, 52776560230402, 43980918701269, 70369064968225,
+        26388730323960, 8796096167948, 8796545473432};
+#elif defined(SF_10)
         {7146837074657,  6597103956627,  3848301802195,  7146837499403,  5497571658687,
         7146859489686,  5497570252406,  3848303243210,  5497572320002,  5497579913092,
         2199023675683,  3298567083043,  3298545915339, 6047340077013,  2748810494285,
@@ -260,7 +267,7 @@ double run_query_4_c(graph_db_ptr gdb) {
         {1236950581249, 1374389535139, 687194767797, 962072674365, 274877974096,
         1374389620660, 1374389535186, 2061584302604, 1099511678319, 1099511755889};
 #endif
-    
+
     std::vector<double> runtimes(commentIds.size());
 
     for (auto i = 0u; i < commentIds.size(); i++) {
@@ -283,7 +290,10 @@ double run_query_4_c(graph_db_ptr gdb) {
 
 double run_query_5_p(graph_db_ptr gdb) {
     std::vector<uint64_t> postIds =
-#ifdef SF_10
+#ifdef SF_100
+        {39582418599936, 17592187092992, 65971148923702, 43980918701267, 65971018451354,
+        26388730323952, 8796096167946, 65971150117789};
+#elif defined(SF_10)
         {6047326493568, 3298542751399, 5497579766579, 6047315801577, 7146826860796,
         4398052411492, 6597071125408, 2748795008706, 5497565976239, 6047317955673,
         8246349086875, 6597101144059, 5497585321851, 6047322995696, 8246343732132,
@@ -299,7 +309,7 @@ double run_query_5_p(graph_db_ptr gdb) {
         {1649267611029, 1649267641500, 1649267717129, 549756117312, 962073027971,
         1924145709571, 1786706759766, 137439322338, 962073047211, 1786706792809};
 #endif
-    
+
     std::vector<double> runtimes(postIds.size());
 
     for (auto i = 0u; i < postIds.size(); i++) {
@@ -322,7 +332,10 @@ double run_query_5_p(graph_db_ptr gdb) {
 
 double run_query_5_c(graph_db_ptr gdb) {
     std::vector<uint64_t> commentIds =
-#ifdef SF_10
+#ifdef SF_100
+        {39582418599937, 17592187092993, 52776560230402, 43980918701269, 70369064968225,
+        26388730323960, 8796096167948, 8796545473432};
+#elif defined(SF_10)
         {4398085711669, 5497581697867, 8796113056132, 3298560907184, 4947822939393,
         4398070249301, 3848312245560, 1649279381402, 1649272063101, 7696601345746,
         1649270862758, 2199043244454, 3848330137206, 3848320714563, 7696599764981,
@@ -338,7 +351,7 @@ double run_query_5_c(graph_db_ptr gdb) {
         {2061584429975, 1099511764068, 1511828638961, 1099511794459, 1924145529653,
         137439153914, 1374389758562, 687194998602, 1099511869402, 1649267722310};
 #endif
-    
+
     std::vector<double> runtimes(commentIds.size());
 
     for (auto i = 0u; i < commentIds.size(); i++) {
@@ -361,7 +374,10 @@ double run_query_5_c(graph_db_ptr gdb) {
 
 double run_query_6_p(graph_db_ptr gdb) {
     std::vector<uint64_t> postIds =
-#ifdef SF_10
+#ifdef SF_100
+        {39582418599936, 17592187092992, 65971148923702, 43980918701267, 65971018451354,
+        26388730323952, 8796096167946, 65971150117789};
+#elif defined(SF_10)
         {6047348850997, 5497564365221, 3848329967558, 4398047599412, 6597105769994,
         4947821105898, 7696607613655, 5497597471779, 5497565124879, 7696587911380,
         7696592464558, 6047339895007, 7146837287657, 7696592802214, 6047333509576,
@@ -379,7 +395,7 @@ double run_query_6_p(graph_db_ptr gdb) {
         1099512706784, 1924145709571, 274879100510, 2061585683162, 2061585683383,
         824638318943, 962073868902, 962076990540, 1236955780271, 1924151699930};
 #endif
-    
+
     std::vector<double> runtimes(postIds.size());
 
     for (auto i = 0u; i < postIds.size(); i++) {
@@ -402,7 +418,10 @@ double run_query_6_p(graph_db_ptr gdb) {
 
 double run_query_6_c(graph_db_ptr gdb) {
     std::vector<uint64_t> commentIds =
-#ifdef SF_10
+#ifdef SF_100
+        {39582418599937, 17592187092993, 52776560230402, 43980918701269, 70369064968225,
+        26388730323960, 8796096167948, 8796545473432};
+#elif defined(SF_10)
         {7146848797209, 6047342252109, 8246377297601, 1099513403506, 1649297650520,
         8246341221876, 8246367373329, 8246342269850, 8246340778158, 6047344491668,
         8796115187591, 7696619489960, 1099521487215, 6047326425751, 8246351033697,
@@ -420,7 +439,7 @@ double run_query_6_c(graph_db_ptr gdb) {
         824635086444, 2199024637100, 549762296256, 412319368884, 1924148311956,
         687196868319, 1786710956334, 2882812, 274878321446, 687194840176};
 #endif
-    
+
     std::vector<double> runtimes(commentIds.size());
 
     for (auto i = 0u; i < commentIds.size(); i++) {
@@ -443,7 +462,10 @@ double run_query_6_c(graph_db_ptr gdb) {
 
 double run_query_7_p(graph_db_ptr gdb) {
     std::vector<uint64_t> postIds =
-#ifdef SF_10
+#ifdef SF_100
+        {39582418599936, 17592187092992, 65971148923702, 43980918701267, 65971018451354,
+        26388730323952, 8796096167946, 65971150117789};
+#elif defined(SF_10)
         {4398074288624, 3298546507517, 5497587033299, 4398052366789, 6047338065986,
         8246359029970, 7146840417476, 6597099197111, 6047334688191, 4947831710060,
         2748817142166, 1649296572103, 5497575564527, 2199062360690, 6047335741465,
@@ -461,7 +483,7 @@ double run_query_7_p(graph_db_ptr gdb) {
         1099517927842, 1374394239279, 2061590620755, 2061585333094, 1649273998043,
         1374391802860, 137440027420, 1099513852571, 1649272411554, 1786707657668};
 #endif
-    
+
     std::vector<double> runtimes(postIds.size());
 
     for (auto i = 0u; i < postIds.size(); i++) {
@@ -484,7 +506,10 @@ double run_query_7_p(graph_db_ptr gdb) {
 
 double run_query_7_c(graph_db_ptr gdb) {
     std::vector<uint64_t> commentIds =
-#ifdef SF_10
+#ifdef SF_100
+        {39582418599937, 17592187092993, 52776560230402, 43980918701269, 70369064968225,
+        26388730323960, 8796096167948, 8796545473432};
+#elif defined(SF_10)
         {7146846240480, 5497578410380, 5497572128778, 3298557786474, 3298564869730,
         6597085241772, 5497562407626, 7146865899861, 2199063215958, 3298543129796,
         7696585937397, 3848303485145, 7696584725469, 8246372882931, 4624321,
@@ -502,7 +527,7 @@ double run_query_7_c(graph_db_ptr gdb) {
         962075482675, 1786708701848, 2061588922925, 4784850, 4784913,
         412321645469, 1374394320184, 1374390902281, 1511834991008, 824634964783};
 #endif
-    
+
     std::vector<double> runtimes(commentIds.size());
 
     for (auto i = 0u; i < commentIds.size(); i++) {
@@ -521,185 +546,6 @@ double run_query_7_c(graph_db_ptr gdb) {
 #endif
     }
     return calc_avg_time(runtimes);
-}
-
-void load_snb_data(graph_db_ptr &graph, 
-                    std::vector<std::string> &node_files,
-                    std::vector<std::string> &rship_files){
-  auto delim = '|';
-  graph_db::mapping_t mapping;
-  bool nodes_imported = false, rships_imported = false;
-  
-  if (!node_files.empty()){
-    spdlog::info("######## NODES ########");
-
-    std::vector<std::size_t> num_nodes(node_files.size());
-    auto i = 0;
-    for (auto &file : node_files){
-      std::vector<std::string> fp;
-      boost::split(fp, file, boost::is_any_of("/"));
-      assert(fp.back().find(".csv") != std::string::npos);
-      auto pos = fp.back().find("_");
-      auto label = fp.back().substr(0, pos);
-      if (label[0] >= 'a' && label[0] <= 'z')
-        label[0] -= 32;
-
-      num_nodes[i] = graph->import_nodes_from_csv(label, file, delim, mapping);
-      spdlog::info("{} '{}' node objects imported", num_nodes[i], label);
-      if (num_nodes[i] > 0)
-        nodes_imported = true;
-      i++;
-    }
-  }
-
-  if (!rship_files.empty()){
-    spdlog::info("################ RELATIONSHIPS ################");
-    
-    std::vector<std::size_t> num_rships(rship_files.size());
-    auto i = 0;
-    for (auto &file : rship_files){
-      std::vector<std::string> fp;
-      boost::split(fp, file, boost::is_any_of("/"));
-      assert(fp.back().find(".csv") != std::string::npos);
-      std::vector<std::string> fn;
-      boost::split(fn, fp.back(), boost::is_any_of("_"));
-      auto label = ":" + fn[1];
-
-      num_rships[i] = graph->import_relationships_from_csv(file, delim, mapping);
-      spdlog::info("{} ({})-[{}]-({}) relationship objects imported", 
-        num_rships[i], fn[0], label, fn[2]);
-      if (num_rships[i] > 0)
-        rships_imported = true;
-      i++;
-    }
-  }
-}
-
-void load_in_memory(graph_db_ptr &graph){
-  std::string snb_home = 
-#ifdef SF_10
-    "/home/data/SNB_SF_10/";
-#else
-    "/home/data/SNB_SF_1/";
-#endif
-
-  std::string snb_sta = snb_home + "/static/";
-  std::string snb_dyn = snb_home + "/dynamic/";
-
-  std::vector<std::string> node_files = 
-    {snb_sta + "place_0_0.csv", snb_sta + "place_1_0.csv",
-    snb_sta + "place_2_0.csv", snb_sta + "place_3_0.csv",
-    snb_sta + "organisation_0_0.csv", snb_sta + "organisation_1_0.csv",
-    snb_sta + "organisation_2_0.csv", snb_sta + "organisation_3_0.csv",
-    snb_sta + "tagclass_0_0.csv", snb_sta + "tagclass_1_0.csv",
-    snb_sta + "tagclass_2_0.csv", snb_sta + "tagclass_3_0.csv",
-    snb_sta + "tag_0_0.csv", snb_sta + "tag_1_0.csv",
-    snb_sta + "tag_2_0.csv", snb_sta + "tag_3_0.csv",
-    snb_dyn + "comment_0_0.csv", snb_dyn + "comment_1_0.csv",
-    snb_dyn + "comment_2_0.csv", snb_dyn + "comment_3_0.csv",
-    snb_dyn + "forum_0_0.csv", snb_dyn + "forum_1_0.csv",
-    snb_dyn + "forum_2_0.csv", snb_dyn + "forum_3_0.csv",
-    snb_dyn + "person_0_0.csv", snb_dyn + "person_1_0.csv",
-    snb_dyn + "person_2_0.csv", snb_dyn + "person_3_0.csv",
-    snb_dyn + "post_0_0.csv", snb_dyn + "post_1_0.csv",
-    snb_dyn + "post_2_0.csv", snb_dyn + "post_3_0.csv"};
-
-  std::vector<std::string> rship_files = 
-    {snb_dyn + "comment_hasCreator_person_0_0.csv",
-    snb_dyn + "comment_hasCreator_person_1_0.csv",
-    snb_dyn + "comment_hasCreator_person_2_0.csv",
-    snb_dyn + "comment_hasCreator_person_3_0.csv",
-    snb_dyn + "comment_isLocatedIn_place_0_0.csv",
-    snb_dyn + "comment_isLocatedIn_place_1_0.csv",
-    snb_dyn + "comment_isLocatedIn_place_2_0.csv",
-    snb_dyn + "comment_isLocatedIn_place_3_0.csv",
-    snb_dyn + "comment_replyOf_comment_0_0.csv",
-    snb_dyn + "comment_replyOf_comment_1_0.csv",
-    snb_dyn + "comment_replyOf_comment_2_0.csv",
-    snb_dyn + "comment_replyOf_comment_3_0.csv",
-    snb_dyn + "comment_replyOf_post_0_0.csv",
-    snb_dyn + "comment_replyOf_post_1_0.csv",
-    snb_dyn + "comment_replyOf_post_2_0.csv",
-    snb_dyn + "comment_replyOf_post_3_0.csv",
-    snb_dyn + "forum_containerOf_post_0_0.csv",
-    snb_dyn + "forum_containerOf_post_1_0.csv",
-    snb_dyn + "forum_containerOf_post_2_0.csv",
-    snb_dyn + "forum_containerOf_post_3_0.csv",
-    snb_dyn + "forum_hasMember_person_0_0.csv",
-    snb_dyn + "forum_hasMember_person_1_0.csv",
-    snb_dyn + "forum_hasMember_person_2_0.csv",
-    snb_dyn + "forum_hasMember_person_3_0.csv",
-    snb_dyn + "forum_hasModerator_person_0_0.csv",
-    snb_dyn + "forum_hasModerator_person_1_0.csv",
-    snb_dyn + "forum_hasModerator_person_2_0.csv",
-    snb_dyn + "forum_hasModerator_person_3_0.csv",
-    snb_dyn + "forum_hasTag_tag_0_0.csv",
-    snb_dyn + "forum_hasTag_tag_1_0.csv",
-    snb_dyn + "forum_hasTag_tag_2_0.csv",
-    snb_dyn + "forum_hasTag_tag_3_0.csv",
-    snb_dyn + "person_hasInterest_tag_0_0.csv",
-    snb_dyn + "person_hasInterest_tag_1_0.csv",
-    snb_dyn + "person_hasInterest_tag_2_0.csv",
-    snb_dyn + "person_hasInterest_tag_3_0.csv",
-    snb_dyn + "person_isLocatedIn_place_0_0.csv",
-    snb_dyn + "person_isLocatedIn_place_1_0.csv",
-    snb_dyn + "person_isLocatedIn_place_2_0.csv",
-    snb_dyn + "person_isLocatedIn_place_3_0.csv",
-    snb_dyn + "person_knows_person_0_0.csv",
-    snb_dyn + "person_knows_person_1_0.csv",
-    snb_dyn + "person_knows_person_2_0.csv",
-    snb_dyn + "person_knows_person_3_0.csv",
-    snb_dyn + "person_likes_comment_0_0.csv",
-    snb_dyn + "person_likes_comment_1_0.csv",
-    snb_dyn + "person_likes_comment_2_0.csv",
-    snb_dyn + "person_likes_comment_3_0.csv",
-    snb_dyn + "person_likes_post_0_0.csv",
-    snb_dyn + "person_likes_post_1_0.csv",
-    snb_dyn + "person_likes_post_2_0.csv",
-    snb_dyn + "person_likes_post_3_0.csv",
-    snb_dyn + "post_hasCreator_person_0_0.csv",
-    snb_dyn + "post_hasCreator_person_1_0.csv",
-    snb_dyn + "post_hasCreator_person_2_0.csv",
-    snb_dyn + "post_hasCreator_person_3_0.csv",
-    snb_dyn + "comment_hasTag_tag_0_0.csv",
-    snb_dyn + "comment_hasTag_tag_1_0.csv",
-    snb_dyn + "comment_hasTag_tag_2_0.csv",
-    snb_dyn + "comment_hasTag_tag_3_0.csv",
-    snb_dyn + "post_hasTag_tag_0_0.csv",
-    snb_dyn + "post_hasTag_tag_1_0.csv",
-    snb_dyn + "post_hasTag_tag_2_0.csv",
-    snb_dyn + "post_hasTag_tag_3_0.csv",
-    snb_dyn + "post_isLocatedIn_place_0_0.csv",
-    snb_dyn + "post_isLocatedIn_place_1_0.csv",
-    snb_dyn + "post_isLocatedIn_place_2_0.csv",
-    snb_dyn + "post_isLocatedIn_place_3_0.csv",
-    snb_dyn + "person_studyAt_organisation_0_0.csv",
-    snb_dyn + "person_studyAt_organisation_1_0.csv",
-    snb_dyn + "person_studyAt_organisation_2_0.csv",
-    snb_dyn + "person_studyAt_organisation_3_0.csv",
-    snb_dyn + "person_workAt_organisation_0_0.csv",
-    snb_dyn + "person_workAt_organisation_1_0.csv",
-    snb_dyn + "person_workAt_organisation_2_0.csv",
-    snb_dyn + "person_workAt_organisation_3_0.csv"};
-
-  spdlog::info("trying to load data from {} and {}", snb_sta, snb_dyn);
-  load_snb_data(graph, node_files, rship_files);
-
-#ifdef BUILD_INDEX
-#ifdef USE_TX
-  auto tx = graph->begin_transaction();
-#endif
-  auto idx_1 = graph->create_index("Person", "id");
-  auto idx_2 = graph->create_index("Post", "id");
-  auto idx_3 = graph->create_index("Comment", "id");
-  auto idx_4 = graph->create_index("Place", "id");
-  auto idx_5 = graph->create_index("Tag", "id");
-  auto idx_6 = graph->create_index("Organisation", "id");
-  auto idx_7 = graph->create_index("Forum", "id");
-#ifdef USE_TX
-  graph->commit_transaction();
-#endif
-#endif
 }
 
 void run_benchmark(graph_db_ptr gdb) {
@@ -735,13 +581,23 @@ void run_benchmark(graph_db_ptr gdb) {
 using namespace boost::program_options;
 
 int main(int argc, char **argv) {
-  std::string db_name;
+  bool strict = false;
+  std::string pool_path, db_name;
+  std::string snb_home =
+#ifdef SF_10
+    "/home/data/SNB_SF_10/";
+#else
+    "/home/data/SNB_SF_1/";
+#endif
 
  try {
     options_description desc{"Options"};
     desc.add_options()
         ("help,h", "Help")
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
+        ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
+        ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem pool")
+        ("import,i", value<std::string>(&snb_home), "Path to directories containing SNB CSV files")
         ("db,d", value<std::string>(&db_name)->required(),"Database name (required)");
 
     variables_map vm;
@@ -753,6 +609,17 @@ int main(int argc, char **argv) {
                 << desc << '\n';
       return -1;
     }
+    if (vm.count("import"))
+      snb_home = vm["import"].as<std::string>();
+
+    if (vm.count("strict"))
+      strict = vm["strict"].as<bool>();
+
+    if (vm.count("db_name"))
+      db_name = vm["db_name"].as<std::string>();
+
+    if (vm.count("pool"))
+      pool_path = vm["pool"].as<std::string>();
 
     notify(vm);
 
@@ -761,29 +628,19 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  #ifdef USE_PMDK
-  namespace nvm = pmem::obj;
-
-  nvm::pool<root> pop;
-
-  if (access(test_path.c_str(), F_OK) != 0) {
-      std::cerr << "Cannot find pmem path '" << test_path << "'" << std::endl;
-      return -1;
-  } else {
-    pop = nvm::pool<root>::open(test_path, db_name);
-  }
-
-  auto q = pop.root();
-  if (!q->graph) {
-      std::cerr << "Cannot open database '" << db_name << "'" << std::endl;
-      return -1;
-  }
-  auto &graph = q->graph;
-  graph->runtime_initialize();
+#ifdef USE_PMDK
+    auto pool = graph_pool::open(pool_path);
+    auto graph = pool->open_graph(db_name);
+    #ifdef FPTree
+    fptree_recovery(graph);
+    #endif
 #else
-  auto graph = p_make_ptr<graph_db>(db_name);
-  load_in_memory(graph);
+  auto pool = graph_pool::create(pool_path);
+  auto graph = pool->create_graph(db_name);
+
+  load_snb_data(graph, snb_home, strict);
 #endif
+  graph->print_stats();
 
   run_benchmark(graph);
 }

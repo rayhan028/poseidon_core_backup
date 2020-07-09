@@ -97,6 +97,11 @@ struct rship_description {
    * Return a string representation of the node_description object.
    */
   std::string to_string() const;
+
+  /**
+   * Return true if a property with the given name exists.
+   */
+  bool has_property(const std::string& pname) const;
 };
 
 /**
@@ -111,6 +116,8 @@ std::ostream &operator<<(std::ostream &os, const rship_description &rdescr);
  */
 class relationship_list {
 public:
+ using range_iterator = chunked_vec<relationship, RSHIP_CHUNK_SIZE>::range_iter;
+
   /**
    * Constructors.
    */
@@ -174,7 +181,15 @@ public:
   /**
    * Returns the underlying vector of the relationship list.
    */
-  chunked_vec<relationship> &as_vec() { return rships_; }
+  chunked_vec<relationship, RSHIP_CHUNK_SIZE> &as_vec() { return rships_; }
+
+  /**
+   * Return a range iterator to traverse the relationship_list from first_chunk to
+   * last_chunk.
+   */
+  range_iterator range(std::size_t first_chunk, std::size_t last_chunk) {
+    return rships_.range(first_chunk, last_chunk);
+  }
 
   /**
    * Output the content of the relationship vector.
@@ -187,6 +202,6 @@ public:
   std::size_t num_chunks() const { return rships_.num_chunks(); }
 
 private:
-  chunked_vec<relationship> rships_; // the actual list of relationships
+  chunked_vec<relationship, RSHIP_CHUNK_SIZE> rships_; // the actual list of relationships
 };
 #endif

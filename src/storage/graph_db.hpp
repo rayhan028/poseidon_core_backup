@@ -34,6 +34,7 @@
 #include "btree.hpp"
 #include "index_map.hpp"
 #include "pmlog.hpp"
+#include "gc.hpp"
 #include "robin_hood.h"
 
 /**
@@ -109,6 +110,10 @@ public:
                               const std::vector<p_item::p_typecode>& typelist, 
                               const std::vector<boost::any>& values);
 
+  node::id_t import_typed_node(dcode_t label, const std::vector<dcode_t> &keys,
+                              const std::vector<p_item::p_typecode>& typelist,
+							  const std::vector<std::string>& values,dict_ptr &dict);
+
   /**
    * Add a new relationship to the graph that connects from_node and to_node.
    * This relationship has initialized with the given label and properties.
@@ -133,6 +138,14 @@ public:
                                          dcode_t label, 
                                          const std::vector<dcode_t> &keys,
                                          const std::vector<p_item::p_typecode>& typelist, 
+					  const std::vector<std::string>& values,dict_ptr &dict);
+
+
+  relationship::id_t import_typed_relationship(node::id_t from_node,
+                                         node::id_t to_node,
+                                         dcode_t label,
+                                         const std::vector<dcode_t> &keys,
+                                         const std::vector<p_item::p_typecode>& typelist,
                                          const std::vector<boost::any>& values);
 
   /* --------------- node/relationship information --------------- */
@@ -209,6 +222,9 @@ public:
   std::size_t import_typed_nodes_from_csv(const std::string &label,
                                     const std::string &filename, char delim,
                                     mapping_t &m, std::mutex *mtx = nullptr);
+  std::size_t import_typed_n4j_nodes_from_csv(const std::string &label,
+                                    const std::string &filename, char delim,
+                                    mapping_t &m);
 
   /**
    * Read the list of relationships from the given CSV file. The file is in
@@ -220,6 +236,9 @@ public:
   std::size_t import_typed_relationships_from_csv(const std::string &filename,
                                             char delim, const mapping_t &m, std::mutex *mtx = nullptr);
 
+   std::size_t import_typed_n4j_relationships_from_csv(const std::string &filename,
+                                            char delim, const mapping_t &m);
+
   /* ---------------- helper ---------------- */
 
   /**
@@ -228,10 +247,14 @@ public:
   p_ptr<dict> &get_dictionary() { return dict_; }
 
   /**
-   * Returns a reference to the property list of this graph.
+   * Returns a reference to the node property list of this graph.
    */
+  const p_ptr<property_list>& get_node_properties() { return node_properties_; }
 
-  const p_ptr<property_list>& get_properties() { return properties_; }
+  /**
+   * Returns a reference to the relationship property list of this graph.
+   */
+  const p_ptr<property_list>& get_rship_properties() { return rship_properties_; }
 
   /**
    * Returns a reference to the node list of this graph.
@@ -242,7 +265,6 @@ public:
   /**
    * Returns a reference to the relationship list of this graph.
    */
-
   const p_ptr<relationship_list>& get_relationships() { return rships_; }
 
   /**
@@ -492,11 +514,28 @@ private:
    */
   void copy_properties(relationship &r, const dirty_rship_ptr& dr);
 
+  /**
+   * Check if the node still has valid FROM relationships.
+   */
+  bool has_valid_from_rships(node &n, xid_t tx);
+
+  /**
+   * Check if the node still has valid TO relationships.
+   */  
+  bool has_valid_to_rships(node &n, xid_t tx);
+
+   /**
+    * Perform garbage collection.
+    */
+  void vacuum(xid_t tx);
+
   p_ptr<node_list> nodes_; // the list of all nodes of the graph
   p_ptr<relationship_list>
       rships_; // the list of all relationships of the graph
   p_ptr<property_list>
-      properties_;   // the list of all properties of nodes and relationships
+      node_properties_;   // the list of all properties of nodes 
+  p_ptr<property_list>
+      rship_properties_;   // the list of all properties of relationships
   p_ptr<dict> dict_; // the dictionary used for string compression
 
   p_ptr<index_map> index_map_; // the list of all exisiting indexes
@@ -510,6 +549,8 @@ private:
       *active_tx_;   // the list of all active transactions
   std::mutex *m_;    // mutex for accessing active_tx_
   xid_t oldest_xid_; // timestamp of the oldest transaction
+  std::mutex *gcm_;
+  gc_list *garbage_;
 };
 
 using graph_db_ptr = p_ptr<graph_db>;

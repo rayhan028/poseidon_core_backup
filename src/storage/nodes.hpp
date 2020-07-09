@@ -130,6 +130,11 @@ struct node_description {
    * Return a string representation of the node_description object.
    */
   std::string to_string() const;
+
+  /**
+   * Return true if a property with the given name exists.
+   */
+  bool has_property(const std::string& pname) const;
 };
 
 /**
@@ -148,7 +153,7 @@ std::ostream &operator<<(std::ostream &os, const boost::any &any_value);
  */
 class node_list {
 public:
-  using range_iterator = chunked_vec<node>::range_iter;
+  using range_iterator = chunked_vec<node, NODE_CHUNK_SIZE>::range_iter;
 
   /**
    * Constructor
@@ -206,7 +211,7 @@ public:
   /**
    * Returns the underlying vector of the node list.
    */
-  chunked_vec<node> &as_vec() { return nodes_; }
+  chunked_vec<node, NODE_CHUNK_SIZE> &as_vec() { return nodes_; }
 
   /**
    * Return a range iterator to traverse the node_list from first_chunk to
@@ -227,7 +232,7 @@ public:
   std::size_t num_chunks() const { return nodes_.num_chunks(); }
 
 private:
-  chunked_vec<node> nodes_; // the actual list of nodes
+  chunked_vec<node, NODE_CHUNK_SIZE> nodes_; // the actual list of nodes
 };
 
 #endif

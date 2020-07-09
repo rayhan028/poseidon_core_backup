@@ -45,7 +45,7 @@ struct scan_task {
     while (iter) {
 #ifdef USE_TX
       auto &n = *iter;
-      if (n.cts == INF) {
+      if (n.is_valid()) {
         auto &nv = graph_db_->get_valid_node_version(n, xid);
         consumer_(nv);
       }
@@ -72,7 +72,7 @@ void graph_db::nodes_by_label(const std::string &label,
   auto lc = dict_->lookup_string(label);
   for (auto &n : nodes_->as_vec()) {
 #ifdef USE_TX
-    if (n.cts == INF) {
+    if (n.is_valid()) {
       auto &nv = get_valid_node_version(n, txid);
       if (nv.node_label == lc) {
         consumer(nv);
@@ -117,7 +117,7 @@ void graph_db::nodes(node_consumer_func consumer) {
   for (auto &n : nodes_->as_vec()) {
 #ifdef USE_TX
     // spdlog::info("#{} ===> {},{} | {}", n.id(), short_ts(n.bts), short_ts(n.cts), short_ts(txid));
-    if (n.cts == INF) {
+    if (n.is_valid()) {
       try {
         auto &nv = get_valid_node_version(n, txid);
         consumer(nv);
@@ -132,7 +132,7 @@ void graph_db::nodes(node_consumer_func consumer) {
 void graph_db::nodes_where(const std::string &pkey, p_item::predicate_func pred,
                            node_consumer_func consumer) {
   auto pc = dict_->lookup_string(pkey);
-  properties_->foreach_node(pc, pred, [&](offset_t nid) {
+  node_properties_->foreach(pc, pred, [&](offset_t nid) {
     auto &n = this->node_by_id(nid);
     consumer(n);
   });
@@ -163,7 +163,7 @@ void graph_db::foreach_from_relationship_of_node(const node &n,
   auto relship_id = n.from_rship_list;
   while (relship_id != UNKNOWN) {
     auto &relship = rship_by_id(relship_id);
-    if (relship.cts == INF)
+    if (relship.is_valid())
       consumer(relship);
     relship_id = relship.next_src_rship;
   }
@@ -235,7 +235,7 @@ void graph_db::foreach_variable_from_relationship_of_node(
     // just about to exit the while loop
     if (rship_queue.empty() && (relship.rship_label != lcode)){
       // check if any potential n-hop rship match still exists 
-      if (n_hop_rship_cnt > 0){
+      if (n_hop_rship_cnt > 0) {
         mr_n_hop_rship_id = rship_by_id(mr_n_hop_rship_id).next_src_rship;
         rship_queue.push_back(std::make_pair(mr_n_hop_rship_id, mr_n_hop));
         continue;
@@ -364,7 +364,7 @@ void graph_db::foreach_to_relationship_of_node(const node &n,
   auto relship_id = n.to_rship_list;
   while (relship_id != UNKNOWN) {
     auto &relship = rship_by_id(relship_id);
-    if (relship.cts == INF)
+    if (relship.is_valid())
       consumer(relship);
     relship_id = relship.next_dest_rship;
   }
@@ -396,7 +396,7 @@ bool graph_db::is_node_property(const node &n, const std::string &pkey,
 
 bool graph_db::is_node_property(const node &n, dcode_t pcode,
                                 p_item::predicate_func pred) {
-  auto val = properties_->property_value(n.property_list, pcode);
+  auto val = node_properties_->property_value(n.property_list, pcode);
   return val.empty() ? false : pred(val);
 }
 
@@ -409,6 +409,6 @@ bool graph_db::is_relationship_property(const relationship &r,
 
 bool graph_db::is_relationship_property(const relationship &r, dcode_t pcode,
                                         p_item::predicate_func pred) {
-  auto val = properties_->property_value(r.id(), pcode);
+  auto val = rship_properties_->property_value(r.id(), pcode);
   return val.empty() ? false : pred(val);
 }

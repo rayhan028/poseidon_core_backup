@@ -19,6 +19,8 @@
 
 #include "join.hpp"
 
+#define HASHER
+
 void cross_join::dump(std::ostream &os) const { // TODO
   os << "cross_join()=>";
   if (subscriber_)
@@ -71,3 +73,82 @@ void left_outerjoin::process_right(graph_db_ptr &gdb, const qr_tuple &v) {
 }
 
 void left_outerjoin::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
+
+/* ------------------------------------------------------------------------ */
+
+void nested_loop_join::dump(std::ostream &os) const { // TODO
+  os << "nested_loop_join()=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void nested_loop_join::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto n = boost::get<node *>(v[left_right_nodes_.first]);
+  auto nid = n->id();
+
+  auto i = 0;
+  for (auto id : join_ids_) {
+    if (id == nid){
+      auto res = concat(v, input_[i]);
+      consume_(gdb, res);
+    }
+    i++;
+  }
+}
+
+void nested_loop_join::process_right(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto n = boost::get<node *>(v[left_right_nodes_.second]);
+  auto nd = n->id();
+  join_ids_.push_back(nd);
+  input_.push_back(v);
+}
+
+void nested_loop_join::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
+
+/* ------------------------------------------------------------------------ */
+
+void hash_join::dump(std::ostream &os) const { // TODO
+  os << "hash_join()=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void hash_join::probe_phase(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto n = boost::get<node *>(v[left_right_nodes_.first]);
+  auto nid = n->id();
+  #ifdef HASHER
+  int bucket = int(hasher(nid) % BUCKETS);
+  #else
+  int bucket = int(nid % BUCKETS);
+  #endif
+  
+  auto i = 0;
+  for (auto id : join_ids_[bucket]) {
+    if (id == nid){
+      auto res = concat(v, input_[bucket][i]);
+      consume_(gdb, res);
+    }
+    i++;
+  }
+}
+
+void hash_join::build_phase(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto n = boost::get<node *>(v[left_right_nodes_.second]);
+  auto nd = n->id();
+
+  #ifdef HASHER
+  int bucket = int(hasher(nd) % BUCKETS);
+  #else
+  int bucket = int(nd % BUCKETS);
+  #endif
+  join_ids_[bucket].push_back(nd);
+  input_[bucket].push_back(v);
+}
+
+uint64_t hash_join::hasher(uint64_t id){
+  id = (id ^ (id >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+  id = (id ^ (id >> 27)) * UINT64_C(0x94d049bb133111eb);
+  id = id ^ (id >> 31);
+  return id;
+}
+void hash_join::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }

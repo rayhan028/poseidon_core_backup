@@ -25,6 +25,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <optional>
 
 #include <boost/variant.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
@@ -56,13 +57,21 @@ constexpr uint64_t UNKNOWN = std::numeric_limits<uint64_t>::max();
 struct node;
 struct relationship;
 
+struct null_t {
+    explicit constexpr null_t(int) {}
+  inline bool operator()(const null_t& one, const null_t& two) { return true; }
+ inline bool operator==(const null_t& other) const { return true; }
+};
+
+inline constexpr null_t null_val(-1);
+
 /**
  * Typedef for an element (node, relationship, value) that might be part of a
- * query result.
+ * query result. null_t is used to represent NULL values.
  */
 using query_result =
     boost::variant<node *, relationship *, int, double, std::string, 
-                    uint64_t, boost::posix_time::ptime>;
+                    uint64_t, boost::posix_time::ptime, null_t>;
 
 /**
  * Typedef for a list of result elements which are passed to the next query
@@ -123,6 +132,22 @@ template <typename T, typename... Args>
 inline p_ptr<T> p_make_ptr(Args &&... args) {
   return std::make_shared<T>(std::forward<Args>(args)...);
 }
+
+#endif
+
+// #define SMALL_CHUNKS
+
+#ifdef SMALL_CHUNKS
+
+#define PROP_CHUNK_SIZE  4040 // ensures chunk_size of 4096 Bytes
+#define NODE_CHUNK_SIZE  4040 // ensures chunk_size of 4096 Bytes
+#define RSHIP_CHUNK_SIZE 4096 // ensures chunk_size of 4096 Bytes
+
+#else
+
+#define PROP_CHUNK_SIZE  1048576 // ensures chunk_size of 64 MB
+#define NODE_CHUNK_SIZE  1048576 // ensures chunk_size of 64 MB
+#define RSHIP_CHUNK_SIZE 1048576 // ensures chunk_size of 64 MB
 
 #endif
 

@@ -29,7 +29,7 @@ const std::string test_path = poseidon::gPmemPath + "gpool_test";
 TEST_CASE("Creating a pool", "[graph_pool]") {
     auto pool = graph_pool::create(test_path);
     REQUIRE(pool.get() != nullptr);
-    
+
     node::id_t nid;
 
     auto graph = pool->create_graph("my_graph");
@@ -55,14 +55,14 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
     auto graph2 = pool->open_graph("my_graph");
     // check the node
     {
-        auto tx = graph->begin_transaction();
+        auto tx = graph2->begin_transaction();
 
-        auto& n = graph->node_by_id(nid);
-        auto nd = graph->get_node_description(n);
+        auto& n = graph2->node_by_id(nid);
+        auto nd = graph2->get_node_description(n);
         REQUIRE(nd.id == nid);
         REQUIRE(nd.label == ":Person");
 
-        graph->commit_transaction();
+        graph2->commit_transaction();
     }
     REQUIRE_THROWS_AS(pool->open_graph("your_graph"), unknown_db);
 

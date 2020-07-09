@@ -18,8 +18,11 @@
  */
 
 #include "relationships.hpp"
+#include "thread_pool.hpp"
 #include <iostream>
 #include <sstream>
+
+#define PARALLEL_INIT
 
 std::ostream &operator<<(std::ostream &os, const rship_description &rdescr) {
   os << ":" << rdescr.label << "[" << rdescr.id << "]{"; // OpenCypher 9.0
@@ -42,14 +45,55 @@ std::string rship_description::to_string() const {
   return os.str();
 }
 
+bool rship_description::has_property(const std::string& pname) const {
+  return properties.find(pname) != properties.end();
+}
+
 /* ------------------------------------------------------------------------ */
+
+
+struct init_rship_task {
+  using range = std::pair<std::size_t, std::size_t>;
+  init_rship_task(relationship_list &r, std::size_t first, std::size_t last)
+      : rships_(r), range_(first, last) {}
+
+  void operator()() {
+    auto iter = rships_.range(range_.first, range_.second);
+    while (iter) {
+      auto &r = *iter;
+      r.runtime_initialize();
+     ++iter;
+    }
+  }
+
+  relationship_list &rships_;
+  range range_;
+};
 
 void relationship_list::runtime_initialize() {
   // make sure that all locks are released and no dirty objects exist
-  for (auto &r : rships_) {
-    r.txn_id = 0;
-    r.dirty_list = nullptr;
+#ifdef PARALLEL_INIT
+  const int nchunks = 100;
+  std::vector<std::future<void>> res;
+  res.reserve(num_chunks() / nchunks + 1);
+  // spdlog::info("starting {} init tasks for rships...", num_chunks() / nchunks + 1);
+  thread_pool pool;
+  std::size_t start = 0, end = nchunks - 1;
+  while (start < num_chunks()) {
+    res.push_back(pool.submit(
+        init_rship_task(*this, start, end)));
+    // spdlog::info("starting: {}, {}", start, end);
+    start = end + 1;
+    end += nchunks;
   }
+ // std::cout << "waiting ..." << std::endl;
+  for (auto &f : res)
+    f.get();
+#else
+  for (auto &r : rships_) {
+    r.runtime_initialize();
+  }
+#endif
 }
 
 relationship::id_t relationship_list::append(relationship &&r, xid_t owner, std::function<void(offset_t)> callback) {
@@ -97,23 +141,12 @@ relationship &relationship_list::get(relationship::id_t id) {
 void relationship_list::remove(relationship::id_t id) {
   if (rships_.capacity() <= id)
     throw unknown_id();
-  auto &r = rships_.at(id);
-  if (r.dirty_list) //Cannot use: if(r.has_dirty_versions()) because if dirty_list is empty, then resource not deleted.
-    delete r.dirty_list;
   rships_.erase(id);
 }
 
 
 
-relationship_list::~relationship_list(){
-	// Since dirty_list is not a smart pointer, clear all resources used for dirty list.
-	for (auto &r : rships_) {
-		if(r.dirty_list) {			 
-			delete r.dirty_list;
-			r.dirty_list = nullptr;
-		}
-	}
-}
+relationship_list::~relationship_list() {}
 
 relationship &
 relationship_list::last_in_from_list(relationship::id_t id) {
@@ -135,10 +168,27 @@ relationship_list::last_in_to_list(relationship::id_t id) {
 
 void relationship_list::dump() {
   std::cout << "------- RELATIONSHIPS -------\n";
-  for (const auto& r : rships_) {
-    std::cout << "#" << r.id() << ", " << r.rship_label << ", " << r.src_node
+  for (auto& r : rships_) {
+    std::cout << "#" << r.id() 
+      << " [ txn-id=" << short_ts(r.txn_id()) << ", bts=" << short_ts(r.bts())
+              << ", cts=" << short_ts(r.cts()) << ", dirty=" << r.d_->is_dirty_ 
+              << " ], label = " << r.rship_label << ", " << r.src_node
               << "->" << r.dest_node << ", " << r.next_src_rship << ", "
-              << r.next_dest_rship << "\n";
+              << r.next_dest_rship;
+    if (r.has_dirty_versions()) {
+      // print dirty list
+      std::cout << " {\n";
+       for (const auto& dr : *(r.dirty_list())) {
+        std::cout << "\t( @" << (unsigned long)&(dr->elem_)
+                  << ", txn-id=" << short_ts(dr->elem_.txn_id())
+                  << ", bts=" << short_ts(dr->elem_.bts()) << ", cts=" << short_ts(dr->elem_.cts())
+                  << ", label=" << dr->elem_.rship_label
+                  << ", dirty=" << dr->elem_.is_dirty();
+        std::cout << " ])\n";
+      }
+      std::cout << "}";
+    }
+    std::cout << "\n";
   }
   std::cout << "-----------------------------\n";
 }
