@@ -247,6 +247,9 @@ TEST_CASE("Checking FROM relationships", "[graph_db]") {
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {});
 
   graph->commit_transaction();
+
+  graph->dump_dot("from_rships.dot");
+
   tx = graph->begin_transaction();
 
   // check if we have all relationships for each node
@@ -291,6 +294,9 @@ TEST_CASE("Checking TO relationships", "[graph_db]") {
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {});
 
   graph->commit_transaction();
+
+  graph->dump_dot("to_rships.dot");
+  
   tx = graph->begin_transaction();
 
   {

@@ -283,6 +283,11 @@ public:
   void dump();
 
   /**
+   * Generate a DOT file with the given name representing the entire graph.
+   */
+  void dump_dot(const std::string& fname);
+
+  /**
    * Print some stats about memory usage.
    */
   void print_stats();
