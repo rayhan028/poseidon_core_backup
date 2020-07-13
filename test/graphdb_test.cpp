@@ -133,7 +133,7 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
       graph->commit_transaction();
    }
 
-  graph->dump();
+  graph->dump_dot("ldbc-2.dot");
 
 	/* After execution of IU 1 Query, there must be four "from_rship" from Source node */
 	auto tx = graph->begin_transaction();
@@ -152,9 +152,6 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
     std::cout << graph->get_node_description(dest_node) << std::endl;
 		graph->foreach_to_relationship_of_node(dest_node, [&](auto &r) {
 			num_of_to_rship++;
-      auto label = std::string(graph->get_string(r.rship_label));
-      auto &src_node = graph->node_by_id(r.to_node_id());
-      std::cout << src_node.id() << "-[" << label << "]->" << dest_node.id() << std::endl;
 		});
 		REQUIRE(num_of_to_rship == 1);
 	});
@@ -178,7 +175,6 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
 	graph_pool::destroy(pool);
 }
 
-#if 0
 TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
   spdlog::info("size = {}", sizeof(log_ins_record));
 
@@ -997,5 +993,3 @@ TEST_CASE("Checking that we cannot delete nodes which are still part of a relati
 
   graph_pool::destroy(pool);
 }
-
-#endif

@@ -798,11 +798,11 @@ void graph_db::update_to_node(transaction_ptr tx, node &n, relationship& r) {
     newv->elem_.set_timestamps(txid, INF);
     newv->elem_.set_dirty();
     
-    if (newv->elem_.from_rship_list == UNKNOWN)
-        newv->elem_.from_rship_list = r.id();
+    if (newv->elem_.to_rship_list == UNKNOWN)
+        newv->elem_.to_rship_list = r.id();
     else {
-        r.next_src_rship = newv->elem_.from_rship_list;
-        newv->elem_.from_rship_list = r.id();
+        r.next_src_rship = newv->elem_.to_rship_list;
+        newv->elem_.to_rship_list = r.id();
     }
     current_transaction()->add_dirty_node(n.id());
   }
