@@ -91,7 +91,7 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
 	  pool = graph_pool::create(test_path);
 #endif
 	  auto graph = pool->create_graph("graph_db");
-	  std::string snb_sta = "../../test/data_for_issue_24/";
+	  std::string snb_sta = "../test/data_for_issue_24/";
 	  std::vector<std::string> node_files{};
 	  node_files.push_back(snb_sta + "organisation_0_0.csv");
 	  node_files.push_back(snb_sta + "place_0_0.csv");
@@ -133,6 +133,8 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
       graph->commit_transaction();
    }
 
+  graph->dump();
+
 	/* After execution of IU 1 Query, there must be four "from_rship" from Source node */
 	auto tx = graph->begin_transaction();
 
@@ -147,8 +149,12 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
 	/* After execution of IU 1 Query, every destination node must have a "to_rship"  */
 	graph->nodes_by_label("Place",[&](node& dest_node) {
 		auto num_of_to_rship = 0u;
+    std::cout << graph->get_node_description(dest_node) << std::endl;
 		graph->foreach_to_relationship_of_node(dest_node, [&](auto &r) {
-			num_of_to_rship ++;
+			num_of_to_rship++;
+      auto label = std::string(graph->get_string(r.rship_label));
+      auto &src_node = graph->node_by_id(r.to_node_id());
+      std::cout << src_node.id() << "-[" << label << "]->" << dest_node.id() << std::endl;
 		});
 		REQUIRE(num_of_to_rship == 1);
 	});
@@ -172,7 +178,7 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
 	graph_pool::destroy(pool);
 }
 
-
+#if 0
 TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
   spdlog::info("size = {}", sizeof(log_ins_record));
 
@@ -986,3 +992,4 @@ TEST_CASE("Checking that we cannot delete nodes which are still part of a relati
   graph_pool::destroy(pool);
 }
 
+#endif
