@@ -28,6 +28,9 @@
 #include "graph_pool.hpp"
 #include "graph_db.hpp"
 #include "../qop/qop.hpp"
+#include "../src/ldbc/ldbc.hpp"
+#include <boost/algorithm/string.hpp>
+
 
 const std::string test_path = poseidon::gPmemPath + "graphdb_test";
 
@@ -50,6 +53,125 @@ TEST_CASE("Creating nodes", "[graph_db]") {
 
   graph_pool::destroy(pool);
 }
+
+/*
+ * Test case for issue : https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core/-/issues/24
+ * In this test only ldbc_iu_query_1() is taken as an example. 
+ * A similar behaviour ( i.e destination nodes must be reachable) is expected after execution of other LDBC IU Queries.
+ */
+TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the connections", "[graph_db]") {
+	  std::vector<params_tuple> parameters = {{
+				(uint64_t)32, //params[0]= place id
+				(uint64_t)19, // params[1] = Tag id
+				(uint64_t)3985, //params[2] = Organisation id : university
+				(uint64_t)21, // params[3]= Organisation id : Company
+				(uint64_t)30,  // params[4] = Person id
+				"Jose",  // firstName
+				"Rodriguez", //lastName
+				"male", //gender
+				"1980-11-23",  //birthday
+				"2011-06-20T22:41:36.349+0000", //creationDate
+				"170.25.1.157", //locationIP
+				"Chrome", //browserUsed
+				"Acholi",  //language
+				"Jose@gmail.com",//params[13] = email
+				2001,
+				2000}};
+	  graph_pool_ptr pool;	
+#ifdef USE_PMDK
+	 if (access(test_path.c_str(), F_OK) != 0) {
+	   pool = graph_pool::create(test_path);
+	 } else {
+	  remove(test_path.c_str());
+	  pool = graph_pool::create(test_path);
+
+	 }
+	  
+#else
+	  pool = graph_pool::create(test_path);
+#endif
+	  auto graph = pool->create_graph("graph_db");
+	  std::string snb_sta = "../../test/data_for_issue_24/";
+	  std::vector<std::string> node_files{};
+	  node_files.push_back(snb_sta + "organisation_0_0.csv");
+	  node_files.push_back(snb_sta + "place_0_0.csv");
+	  node_files.push_back(snb_sta + "tag_0_0.csv");
+
+	  spdlog::info("trying to load data from {} and {}", snb_sta);
+
+	  auto delim = '|';
+	  graph_db::mapping_t mapping;
+	  
+	  if (!node_files.empty()) {
+		  spdlog::info("--------- Importing nodes...");
+		  for (auto &file : node_files) {
+			  std::vector<std::string> fp;
+			  boost::split(fp, file, boost::is_any_of("/"));
+			  assert(fp.back().find(".csv") != std::string::npos);
+			  auto pos = fp.back().find("_");
+			  auto label = fp.back().substr(0, pos);
+			  if (label[0] >= 'a' && label[0] <= 'z')
+				  label[0] -= 32;
+			  auto num_nodes =  graph->import_typed_nodes_from_csv(label, file, delim, mapping);
+			  REQUIRE(num_nodes > 0);
+		  }
+	  }
+
+#ifdef CREATE_INDEX
+  {
+     auto tx = graph->begin_transaction();
+     graph->create_index("Place", "id");
+     graph->create_index("Tag", "id");
+     graph->create_index("Organisation", "id");
+     graph->commit_transaction();
+  }
+#endif
+   {
+      result_set rs;
+      auto tx = graph->begin_transaction();
+      ldbc_iu_query_1(graph, rs, parameters[0]);
+      graph->commit_transaction();
+   }
+
+	/* After execution of IU 1 Query, there must be four "from_rship" from Source node */
+	auto tx = graph->begin_transaction();
+
+	graph->nodes_by_label("Person",[&](node& src_node){
+		auto num_of_from_rship = 0u;
+		graph->foreach_from_relationship_of_node(src_node, [&](auto &r) {
+			num_of_from_rship ++;
+		});
+		REQUIRE(num_of_from_rship == 4);
+	});
+
+	/* After execution of IU 1 Query, every destination node must have a "to_rship"  */
+	graph->nodes_by_label("Place",[&](node& dest_node) {
+		auto num_of_to_rship = 0u;
+		graph->foreach_to_relationship_of_node(dest_node, [&](auto &r) {
+			num_of_to_rship ++;
+		});
+		REQUIRE(num_of_to_rship == 1);
+	});
+
+	graph->nodes_by_label("Tag",[&](node& dest_node) {
+		auto num_of_to_rship = 0u;
+		graph->foreach_to_relationship_of_node(dest_node, [&](auto &r) {
+			num_of_to_rship ++;
+		});
+		REQUIRE(num_of_to_rship == 1);
+	});
+
+	graph->nodes_by_label("Organisation",[&](node& dest_node){
+		auto num_of_to_rship = 0u;
+		graph->foreach_to_relationship_of_node(dest_node, [&](auto &r) {
+			num_of_to_rship ++;
+		});
+		REQUIRE(num_of_to_rship == 1);
+	});
+	graph->commit_transaction();
+	graph_pool::destroy(pool);
+}
+
 
 TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
   spdlog::info("size = {}", sizeof(log_ins_record));
