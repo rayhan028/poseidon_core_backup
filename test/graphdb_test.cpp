@@ -91,7 +91,13 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
 	  pool = graph_pool::create(test_path);
 #endif
 	  auto graph = pool->create_graph("graph_db");
-	  std::string snb_sta = "../test/data_for_issue_24/";
+    
+    std::string home(".");
+    auto h = getenv("TEST_HOME");
+    if (h != nullptr)
+      home = h;
+
+	  std::string snb_sta = home + "/test/data_for_issue_24/";
 	  std::vector<std::string> node_files{};
 	  node_files.push_back(snb_sta + "organisation_0_0.csv");
 	  node_files.push_back(snb_sta + "place_0_0.csv");

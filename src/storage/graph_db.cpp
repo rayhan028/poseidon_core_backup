@@ -157,9 +157,10 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		    n.node_label = dn->elem_.node_label;
         n.from_rship_list = dn->elem_.from_rship_list;
         n.to_rship_list = dn->elem_.to_rship_list;
+		    n.set_timestamps(xid, INF);
+        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		    copy_properties(n, dn);
 		    // spdlog::info("COMMIT UPDATE: set new={},{} @{}", xid, INF, n.id());
-		    n.set_timestamps(xid, INF);
 		    /// spdlog::info("COMMIT UPDATE: set old.cts={} @{}", xid,
 		    ///             (unsigned long)&(dn->node_));
 		    // we can already delete the object from the dirty version list
