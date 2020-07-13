@@ -986,6 +986,21 @@ void graph_db::dump() {
   rships_->dump();
 }
 
+void graph_db::dump_dot(const std::string& fname) {
+  std::ofstream out;
+  out.open(fname, std::ofstream::out | std::ofstream::trunc);
+  out << "digraph poseidon_db {\n";
+  for (auto& n : nodes_->as_vec()) {
+    out << '\t' << "n" << n.id() << " [label=\"" << get_string(n.node_label) << "\"];" << std::endl;
+  }
+  for (auto& r : rships_->as_vec()) {
+    out << '\t' << "n" << r.src_node << " -> n" << r.dest_node 
+        << " [label = \"" << get_string(r.rship_label) << "\"];" << std::endl;
+  }
+  out << "}";
+  out.close();
+}
+
 void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
   if (dn->properties_.empty())
     return;
