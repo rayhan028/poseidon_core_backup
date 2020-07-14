@@ -28,6 +28,9 @@
 #include "graph_pool.hpp"
 #include "graph_db.hpp"
 #include "../qop/qop.hpp"
+#include "../src/ldbc/ldbc.hpp"
+#include <boost/algorithm/string.hpp>
+
 
 const std::string test_path = poseidon::gPmemPath + "graphdb_test";
 
@@ -49,6 +52,129 @@ TEST_CASE("Creating nodes", "[graph_db]") {
   graph->commit_transaction();
 
   graph_pool::destroy(pool);
+}
+
+/*
+ * Test case for issue : https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core/-/issues/24
+ * In this test only ldbc_iu_query_1() is taken as an example. 
+ * A similar behaviour ( i.e destination nodes must be reachable) is expected after execution of other LDBC IU Queries.
+ */
+TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the connections", "[graph_db]") {
+	  std::vector<params_tuple> parameters = {{
+				(uint64_t)32, //params[0]= place id
+				(uint64_t)19, // params[1] = Tag id
+				(uint64_t)3985, //params[2] = Organisation id : university
+				(uint64_t)21, // params[3]= Organisation id : Company
+				(uint64_t)30,  // params[4] = Person id
+				"Jose",  // firstName
+				"Rodriguez", //lastName
+				"male", //gender
+				"1980-11-23",  //birthday
+				"2011-06-20T22:41:36.349+0000", //creationDate
+				"170.25.1.157", //locationIP
+				"Chrome", //browserUsed
+				"Acholi",  //language
+				"Jose@gmail.com",//params[13] = email
+				2001,
+				2000}};
+	  graph_pool_ptr pool;	
+#ifdef USE_PMDK
+	 if (access(test_path.c_str(), F_OK) != 0) {
+	   pool = graph_pool::create(test_path);
+	 } else {
+	  remove(test_path.c_str());
+	  pool = graph_pool::create(test_path);
+
+	 }
+	  
+#else
+	  pool = graph_pool::create(test_path);
+#endif
+	  auto graph = pool->create_graph("graph_db");
+    
+      auto tx = graph->begin_transaction();
+
+    graph->add_node("Organisation",
+                              {{"id", boost::any(21)},
+                               {"type", boost::any(std::string("company"))},
+                               {"name", boost::any(std::string("Aerolíneas_Argentinas"))},
+                               {"url", boost::any(std::string("http://dbpedia.org/resource/Aerolíneas_Argentinas"))}},
+                              true);
+      graph->add_node("Organisation",
+                              {{"id", boost::any(3985)},
+                               {"type", boost::any(std::string("company"))},
+                               {"name", boost::any(std::string("Aerolíneas_Argentinas"))},
+                               {"url", boost::any(std::string("http://dbpedia.org/resource/Aerolíneas_Argentinas"))}},
+                              true);
+        graph->add_node("Place",
+                              {{"id", boost::any(32)},
+                               {"type", boost::any(std::string("country"))},
+                               {"name", boost::any(std::string("Norway"))},
+                               {"url", boost::any(std::string("http://dbpedia.org/resource/Norwa"))}},
+                              true);
+         graph->add_node("Tag",
+                              {{"id", boost::any(19)},
+                               {"name", boost::any(std::string("José_Acasus"))},
+                               {"url", boost::any(std::string("http://dbpedia.org/resource/José_Acasuso"))}},
+                              true);
+       graph->commit_transaction();
+  
+#ifdef CREATE_INDEX
+  {
+     auto tx = graph->begin_transaction();
+     graph->create_index("Place", "id");
+     graph->create_index("Tag", "id");
+     graph->create_index("Organisation", "id");
+     graph->commit_transaction();
+  }
+#endif
+
+      result_set rs;
+      tx = graph->begin_transaction();
+      ldbc_iu_query_1(graph, rs, parameters[0]);
+      graph->commit_transaction();
+  
+
+  graph->dump_dot("ldbc-2.dot");
+
+	/* After execution of IU 1 Query, there must be four "from_rship" from Source node */
+	tx = graph->begin_transaction();
+
+	graph->nodes_by_label("Person",[&](node& src_node){
+		auto num_of_from_rship = 0u;
+		graph->foreach_from_relationship_of_node(src_node, [&](auto &r) {
+			num_of_from_rship ++;
+		});
+		REQUIRE(num_of_from_rship == 4);
+	});
+
+	/* After execution of IU 1 Query, every destination node must have a "to_rship"  */
+	graph->nodes_by_label("Place",[&](node& dest_node) {
+		auto num_of_to_rship = 0u;
+    std::cout << graph->get_node_description(dest_node) << std::endl;
+		graph->foreach_to_relationship_of_node(dest_node, [&](auto &r) {
+			num_of_to_rship++;
+		});
+		REQUIRE(num_of_to_rship == 1);
+	});
+
+	graph->nodes_by_label("Tag",[&](node& dest_node) {
+		auto num_of_to_rship = 0u;
+		graph->foreach_to_relationship_of_node(dest_node, [&](auto &r) {
+			num_of_to_rship ++;
+		});
+		REQUIRE(num_of_to_rship == 1);
+	});
+
+	graph->nodes_by_label("Organisation",[&](node& dest_node){
+		auto num_of_to_rship = 0u;
+		graph->foreach_to_relationship_of_node(dest_node, [&](auto &r) {
+			num_of_to_rship ++;
+		});
+		REQUIRE(num_of_to_rship == 1);
+	});
+	graph->commit_transaction();
+	graph_pool::destroy(pool);
 }
 
 TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
@@ -869,4 +995,3 @@ TEST_CASE("Checking that we cannot delete nodes which are still part of a relati
 
   graph_pool::destroy(pool);
 }
-

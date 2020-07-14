@@ -157,9 +157,10 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		    n.node_label = dn->elem_.node_label;
         n.from_rship_list = dn->elem_.from_rship_list;
         n.to_rship_list = dn->elem_.to_rship_list;
+		    n.set_timestamps(xid, INF);
+        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		    copy_properties(n, dn);
 		    // spdlog::info("COMMIT UPDATE: set new={},{} @{}", xid, INF, n.id());
-		    n.set_timestamps(xid, INF);
 		    /// spdlog::info("COMMIT UPDATE: set old.cts={} @{}", xid,
 		    ///             (unsigned long)&(dn->node_));
 		    // we can already delete the object from the dirty version list
@@ -191,9 +192,9 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		  // CASE #1 = INSERT: we have added a new relationship to relationship_list, but
 		  // its properties are stored in a dirty_rship object in this case, we
 		  // simply copy the properties to property_list and release the lock
-		  copy_properties(r, dr);
 		  // set bts/cts
 		  r.set_timestamps(xid, INF);
+		  copy_properties(r, dr);
 		  // we can already delete the object from the dirty version list
 		  r.dirty_list()->pop_front();
 	  } else {
@@ -239,9 +240,9 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship);
 
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));
+		  r.set_timestamps(xid, INF);
 		  r.rship_label = dr->elem_.rship_label;
 		  copy_properties(r, dr);
-		  r.set_timestamps(xid, INF);
 		  // we can already delete the dirty object from the dirty version list
 		  r.dirty_list()->pop_front();
 		  // release the lock of the older version.
@@ -798,11 +799,11 @@ void graph_db::update_to_node(transaction_ptr tx, node &n, relationship& r) {
     newv->elem_.set_timestamps(txid, INF);
     newv->elem_.set_dirty();
     
-    if (newv->elem_.from_rship_list == UNKNOWN)
-        newv->elem_.from_rship_list = r.id();
+    if (newv->elem_.to_rship_list == UNKNOWN)
+        newv->elem_.to_rship_list = r.id();
     else {
-        r.next_src_rship = newv->elem_.from_rship_list;
-        newv->elem_.from_rship_list = r.id();
+        r.next_src_rship = newv->elem_.to_rship_list;
+        newv->elem_.to_rship_list = r.id();
     }
     current_transaction()->add_dirty_node(n.id());
   }
