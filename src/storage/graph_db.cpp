@@ -192,9 +192,9 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		  // CASE #1 = INSERT: we have added a new relationship to relationship_list, but
 		  // its properties are stored in a dirty_rship object in this case, we
 		  // simply copy the properties to property_list and release the lock
-		  copy_properties(r, dr);
 		  // set bts/cts
 		  r.set_timestamps(xid, INF);
+		  copy_properties(r, dr);
 		  // we can already delete the object from the dirty version list
 		  r.dirty_list()->pop_front();
 	  } else {
@@ -240,9 +240,9 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship);
 
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));
+		  r.set_timestamps(xid, INF);
 		  r.rship_label = dr->elem_.rship_label;
 		  copy_properties(r, dr);
-		  r.set_timestamps(xid, INF);
 		  // we can already delete the dirty object from the dirty version list
 		  r.dirty_list()->pop_front();
 		  // release the lock of the older version.

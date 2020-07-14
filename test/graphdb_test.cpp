@@ -92,37 +92,33 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
 #endif
 	  auto graph = pool->create_graph("graph_db");
     
-    std::string home(".");
-    auto h = getenv("TEST_HOME");
-    if (h != nullptr)
-      home = h;
+      auto tx = graph->begin_transaction();
 
-	  std::string snb_sta = home + "/test/data_for_issue_24/";
-	  std::vector<std::string> node_files{};
-	  node_files.push_back(snb_sta + "organisation_0_0.csv");
-	  node_files.push_back(snb_sta + "place_0_0.csv");
-	  node_files.push_back(snb_sta + "tag_0_0.csv");
-
-	  spdlog::info("trying to load data from {} and {}", snb_sta);
-
-	  auto delim = '|';
-	  graph_db::mapping_t mapping;
-	  
-	  if (!node_files.empty()) {
-		  spdlog::info("--------- Importing nodes...");
-		  for (auto &file : node_files) {
-			  std::vector<std::string> fp;
-			  boost::split(fp, file, boost::is_any_of("/"));
-			  assert(fp.back().find(".csv") != std::string::npos);
-			  auto pos = fp.back().find("_");
-			  auto label = fp.back().substr(0, pos);
-			  if (label[0] >= 'a' && label[0] <= 'z')
-				  label[0] -= 32;
-			  auto num_nodes =  graph->import_typed_nodes_from_csv(label, file, delim, mapping);
-			  REQUIRE(num_nodes > 0);
-		  }
-	  }
-
+    graph->add_node("Organisation",
+                              {{"id", boost::any(21)},
+                               {"type", boost::any(std::string("company"))},
+                               {"name", boost::any(std::string("Aerolíneas_Argentinas"))},
+                               {"url", boost::any(std::string("http://dbpedia.org/resource/Aerolíneas_Argentinas"))}},
+                              true);
+      graph->add_node("Organisation",
+                              {{"id", boost::any(3985)},
+                               {"type", boost::any(std::string("company"))},
+                               {"name", boost::any(std::string("Aerolíneas_Argentinas"))},
+                               {"url", boost::any(std::string("http://dbpedia.org/resource/Aerolíneas_Argentinas"))}},
+                              true);
+        graph->add_node("Place",
+                              {{"id", boost::any(32)},
+                               {"type", boost::any(std::string("country"))},
+                               {"name", boost::any(std::string("Norway"))},
+                               {"url", boost::any(std::string("http://dbpedia.org/resource/Norwa"))}},
+                              true);
+         graph->add_node("Tag",
+                              {{"id", boost::any(19)},
+                               {"name", boost::any(std::string("José_Acasus"))},
+                               {"url", boost::any(std::string("http://dbpedia.org/resource/José_Acasuso"))}},
+                              true);
+       graph->commit_transaction();
+  
 #ifdef CREATE_INDEX
   {
      auto tx = graph->begin_transaction();
@@ -132,17 +128,17 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
      graph->commit_transaction();
   }
 #endif
-   {
+
       result_set rs;
-      auto tx = graph->begin_transaction();
+      tx = graph->begin_transaction();
       ldbc_iu_query_1(graph, rs, parameters[0]);
       graph->commit_transaction();
-   }
+  
 
   graph->dump_dot("ldbc-2.dot");
 
 	/* After execution of IU 1 Query, there must be four "from_rship" from Source node */
-	auto tx = graph->begin_transaction();
+	tx = graph->begin_transaction();
 
 	graph->nodes_by_label("Person",[&](node& src_node){
 		auto num_of_from_rship = 0u;
