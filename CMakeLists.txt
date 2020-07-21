@@ -276,6 +276,7 @@ set(src_files
   src/qop/update.cpp
   src/qop/join.cpp
   src/qop/query.cpp
+  src/qop/bfs.cpp
   src/qop/thread_pool.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
