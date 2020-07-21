@@ -66,6 +66,8 @@ TEST_CASE("Sequential BFS", "[ldbc]") {
 
   create_data(graph);
 
+  graph->dump_dot("bfs-graph.dot");
+
   SECTION("bidirectional test") {
     std::vector<int> rs, expected;
 
@@ -109,5 +111,25 @@ TEST_CASE("Sequential BFS", "[ldbc]") {
     REQUIRE(rs == expected);
   }
 
+  SECTION("path visitor test") {
+    std::vector<path> rs, expected;
+
+    auto tx = graph->begin_transaction(); 
+    path_bfs(graph, 0, false, 
+        [&](auto& r) { return true; }, 
+        [&](auto& n, const path& p) { 
+          rs.push_back(p);
+          /*
+          std::cout << "node = " << n.id() << " : "; 
+          for (auto& pi : p) { std::cout << pi << " "; }
+          std::cout << std::endl;
+          */
+        }
+    );
+    graph->commit_transaction();
+
+    expected = { { 0 }, { 0, 6 }, { 0, 1 }, { 0, 6, 2 }, { 0, 6, 2, 3 }, { 0, 6, 2, 3, 4 } };
+    REQUIRE(rs == expected);
+  }
   graph_pool::destroy(pool);
 }
