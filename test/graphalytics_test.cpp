@@ -119,11 +119,6 @@ TEST_CASE("Sequential BFS", "[ldbc]") {
         [&](auto& r) { return true; }, 
         [&](auto& n, const path& p) { 
           rs.push_back(p);
-          /*
-          std::cout << "node = " << n.id() << " : "; 
-          for (auto& pi : p) { std::cout << pi << " "; }
-          std::cout << std::endl;
-          */
         }
     );
     graph->commit_transaction();

@@ -117,43 +117,37 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 	  node::id_t nid = 0;
 	  barrier  b1{}, b2{}, b3{};
 
-	       // Just add a node
-		    auto tx = gdb->begin_transaction();
-		    nid = gdb->add_node("Actor",
+	  // Just create a node
+		auto tx = gdb->begin_transaction();
+		nid = gdb->add_node("Actor",
 		                        {{"name", boost::any(std::string("Mark Wahlberg"))},
 		                         {"age", boost::any(48)}});
-
-		    gdb->commit_transaction();
+		gdb->commit_transaction();
 
 	/*
 	 * Thread #1: read the node
 	 */
-
-	auto t1 = std::thread([&]() {
-
+	  auto t1 = std::thread([&]() {
 			// read the node
 			auto tx = gdb->begin_transaction();
 
-	        auto &n = gdb->node_by_id(nid);
+	    b1.notify();  // so that txn-3 can start.
+	    b2.wait(); // wait till txn-3 does a update but not yet committed
 
-	        b1.notify();  // so that txn-3 can start.
+	    auto &n = gdb->node_by_id(nid);
+	    auto nd = gdb->get_node_description(n);
 
-	        b2.wait(); // wait till txn-3 does a update but not yet committed
-
-	        auto nd = gdb->get_node_description(n);
-
-                       // Since the Read Txn started before Update Txn, it should always read the original version.
+      // Since the Read Txn started before Update Txn, it should always read the original version.
 			REQUIRE(nd.label == "Actor"); // It fails here because this txn sees updated Actor
 			REQUIRE(get_property<int>(nd.properties, "age") == 48); //here too.. it sees 52 instead of 48
 
 			gdb->commit_transaction();
+    });
 
-
-	});
 	/*
 	 * Thread #2: update the same node
 	 */
-	auto t2 = std::thread([&]() {
+	  auto t2 = std::thread([&]() {
 			// update the node
 			b1.wait(); // ensure that update Txn starts after read Txn
 			auto tx = gdb->begin_transaction();
@@ -177,8 +171,73 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 	#ifdef USE_PMDK
 	  drop_graph_db(pop, gdb);
 	#endif
-	}
+}
 
+TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {  
+	/*
+	* If two concurrent write Transactions are triggered, then the end result must be that there are two seperate
+	* nodes created
+	*/
+	#ifdef USE_PMDK
+	  auto pop = prepare_pool();
+	  auto gdb = create_graph_db(pop);
+	#else
+	  auto gdb = create_graph_db();
+	#endif
+	  std::cout<<" Test concurr between read and write \n";
+	  node::id_t nid = 0;
+	  barrier  b1{}, b2{}, b3{};
+
+	  // Just create a node
+		auto tx = gdb->begin_transaction();
+		nid = gdb->add_node("Actor",
+		                        {{"name", boost::any(std::string("Mark Wahlberg"))},
+		                         {"age", boost::any(48)}});
+		gdb->commit_transaction();
+
+	/*
+	 * Thread #1: read the node
+	 */
+	  auto t1 = std::thread([&]() {
+			// read the node
+			auto tx = gdb->begin_transaction();
+
+	    b1.notify();  // so that txn-3 can start.
+	    b2.wait(); // wait till txn-3 does a update but not yet committed
+
+	    auto &n = gdb->node_by_id(nid);
+	    auto nd = gdb->get_node_description(n);
+      // Since the Read Txn started before Update Txn, it should always read the original version.
+			REQUIRE(nd.label == "Actor"); // It fails here because this txn sees updated Actor
+			REQUIRE(get_property<int>(nd.properties, "age") == 48); //here too.. it sees 52 instead of 48
+
+			gdb->commit_transaction();
+    });
+
+	/*
+	 * Thread #2: update the same node
+	 */
+	  auto t2 = std::thread([&]() {
+			// update the node
+			b1.wait(); // ensure that update Txn starts after read Txn
+			auto tx = gdb->begin_transaction();
+			auto &n = gdb->node_by_id(nid);
+			gdb->update_node(n,  //update
+				   {
+				 { "age", boost::any(52)},
+				  },
+				   "Updated Actor");
+			gdb->commit_transaction();
+			b2.notify();
+	});
+
+	  t1.join();
+	  t2.join();
+
+	#ifdef USE_PMDK
+	  drop_graph_db(pop, gdb);
+	#endif
+}
 
 /* Test case for issue: https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core/-/issues/27
  * Where is the issue ? : It crashes when Read Txn has entered this else block at line https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core/-/blob/master/src/storage/graph_db.cpp#L580
@@ -188,7 +247,6 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
  */
 
 TEST_CASE("Test concurrency between update abort and read"  "[transaction]") { 
-
 #ifdef USE_PMDK
   auto pop = prepare_pool();
   auto gdb = create_graph_db(pop);
@@ -197,64 +255,50 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
 #endif
 
   node::id_t nid = 0;
- barrier  b1{}, b2{}, b3{};
+  barrier  b1{}, b2{}, b3{};
 
-       // Just add a node
-	    auto tx = gdb->begin_transaction(); // This is Txn-1
-	    nid = gdb->add_node("Actor",
+  // Just create a node
+	auto tx = gdb->begin_transaction(); 
+	nid = gdb->add_node("Actor",
 	                        {{"name", boost::any(std::string("Mark Wahlberg"))},
 	                         {"age", boost::any(48)}});
+  gdb->commit_transaction();
 
-	    gdb->commit_transaction();
-
-/*
- * Thread #1: read the node
- */
-
-auto t1 = std::thread([&]() { // This is Txn-2
-
+ /*
+  * Thread #1: read the node
+  */
+  auto t1 = std::thread([&]() { 
 		// read the node
 		auto tx = gdb->begin_transaction();
-		
-		b1.notify(); // Inform txn-3 to start
-
-		b2.wait(); // wait until Txn-3 updates  
+		b1.notify(); // Inform thread #2 to start
+		b2.wait(); // wait until thread #2 has performed the update
 		
 		auto &n = gdb->node_by_id(nid); 
-		
-		b3.notify(); // inform txxn-2 has read dirty version
-
+		b3.notify(); // inform thread #2 that we have read the node 
 
 		auto nd = gdb->get_node_description(n); //<===== Here it tries to access a deleted dirty version and crashes!
 
 		REQUIRE(nd.label == "Actor"); 
 		REQUIRE(get_property<int>(nd.properties, "age") == 48); 
 		gdb->commit_transaction();
+  });
 
-
-});
-/*
- * Thread #2: update the same node
- */
-auto t2 = std::thread([&]() { // This is Txn-3
+  /*
+   * Thread #2: update the same node
+  */
+  auto t2 = std::thread([&]() { 
 		// update the node
-		b1.wait(); // ensure that update starts after read Txn
+		b1.wait(); // ensure that update starts after the read transaction (thread #1)
 		auto tx = gdb->begin_transaction();
 		auto &n = gdb->node_by_id(nid);
-		gdb->update_node(n,  //update
-			   {
-			 { "age", boost::any(52)},
-			  },
-			   "Updated Actor");
+		gdb->update_node(n,  
+			   {{ "age", boost::any(52)}}, "Updated Actor");
 
 		b2.notify(); // Inform txn-2 that update is done but not yet committed or aborted
+	  b3.wait(); // wait until Txn-2 has accessed a dirty version
 
-	  		b3.wait(); // wait until Txn-2 has accessed a dirty version
-
-		 gdb->abort_transaction();  // abort the update
-
-
-});
+		gdb->abort_transaction();  // abort the update
+  });
 
   t1.join();
   t2.join();
