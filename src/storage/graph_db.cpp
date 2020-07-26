@@ -555,7 +555,7 @@ relationship &graph_db::rship_by_id(relationship::id_t id) {
 #endif
 }
 
-node_description graph_db::get_node_description(const node &n) {
+node_description graph_db::get_node_description(node &n) {
   std::string label; 
   properties_t props;
 #ifdef USE_TX
@@ -595,7 +595,7 @@ node_description graph_db::get_node_description(const node &n) {
   return node_description{n.id(), label, props};
 }
 
-rship_description graph_db::get_rship_description(const relationship &r) {
+rship_description graph_db::get_rship_description(relationship &r) {
   std::string label;
   properties_t props;
 #ifdef USE_TX
