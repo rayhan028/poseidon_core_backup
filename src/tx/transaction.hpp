@@ -25,6 +25,7 @@
 #include "properties.hpp"
 #include <atomic>
 #include <list>
+#include "ts_list.hpp"
 
 /**
  * Typedef for transaction ids.
@@ -134,8 +135,11 @@ transaction_ptr current_transaction();
  * used for multiversion transaction processing;
  */
 template <typename T> struct txn_data {
-  using dirty_list_ptr = std::list<T>*; // typedef for the list of dirty objects from
+  // using dirty_list_t = std::list<T>;
+  using dirty_list_t = ts_list<T>;
+  using dirty_list_ptr = dirty_list_t*; // typedef for the list of dirty objects from
                                         // currently active transactions
+
   timestamp_t bts_, cts_, rts_;         // begin timestamp, commit timestamp, read timestamp
   dirty_list_ptr dirty_list_;           // the list of dirty objects
   bool is_dirty_;                       // true if the object represents a dirty object
@@ -346,6 +350,8 @@ template <typename T> struct txn {
    */
   decltype(auto) dirty_list() { return d_->dirty_list_; }
 
+  std::mutex& dirty_list_mutex() { return d_->dirty_list_->mtx_; }
+
   /**
    * Delete the dirty list and sets it back to nullptr.
    */
@@ -365,9 +371,10 @@ template <typename T> struct txn {
    * that is valid for the transaction with the given xid by checking bts and
    * cts timestamps.
    */
-  const T& find_valid_version(xid_t xid) const {
+  const T& find_valid_version(xid_t xid) {
     if (has_dirty_versions()) {
       bool abort = false;
+      std::lock_guard<std::mutex> guard (dirty_list_mutex());
       for (const auto& dn : *(d_->dirty_list_)) {
        if (!dn->elem_.is_locked() || dn->elem_.is_locked_by(xid)) {
         if (dn->elem_.is_valid_for(xid))
@@ -397,8 +404,9 @@ template <typename T> struct txn {
    * that is valid for the transaction with the given xid by checking bts and
    * cts timestamps.
    */
-  bool has_valid_version(xid_t xid) const {
+  bool has_valid_version(xid_t xid) {
     if (has_dirty_versions()) {
+      std::lock_guard<std::mutex> guard(dirty_list_mutex());
       for (const auto& dn : *(d_->dirty_list_)) {
        if (!dn->elem_.is_locked() || dn->elem_.is_locked_by(xid)) {
         if (dn->elem_.is_valid_for(xid))
@@ -421,6 +429,7 @@ template <typename T> struct txn {
    */
   const T& get_dirty_version(xid_t xid) {
     if (has_dirty_versions()) {
+      std::lock_guard<std::mutex> guard(dirty_list_mutex());
       for (const auto& dn : *(d_->dirty_list_)) {
         if (dn->elem_.txn_id() == xid) // TODO: !!!!
           return dn;
@@ -434,7 +443,7 @@ template <typename T> struct txn {
    * Currently used in Garbage collection Test case.
    */
   decltype(auto) get_dirty_objects() const {
-    using dirty_list_ptr = const std::list<T>*;
+    using dirty_list_ptr = const typename txn_data<T>::dirty_list_t*;
     return has_dirty_versions() 
       ? std::optional<dirty_list_ptr>(d_->dirty_list_) 
       : std::optional<dirty_list_ptr>{};
@@ -446,6 +455,7 @@ template <typename T> struct txn {
    */
   void remove_dirty_version(xid_t xid) {
     if (has_dirty_versions()) {
+      std::lock_guard<std::mutex> guard(dirty_list_mutex());
       auto iter =
           std::remove_if(dirty_list()->begin(), dirty_list()->end(), [&](const T& dn) {
             return dn->elem_.txn_id_ == xid && dn->elem_.cts() == INF;
@@ -461,9 +471,10 @@ template <typename T> struct txn {
    */
   T& add_dirty_version(T&& tptr) {
     if (!dirty_list()) {
-      d_->dirty_list_ = new std::list<T>;
+      d_->dirty_list_ = new typename txn_data<T>::dirty_list_t;
     }
  
+    std::lock_guard<std::mutex> guard(dirty_list_mutex());
     tptr->elem_.d_->dirty_list_ = this->dirty_list();
     d_->dirty_list_->push_front(std::move(tptr));
 
@@ -476,6 +487,8 @@ template <typename T> struct txn {
    */
   bool updated_in_version(xid_t xid) {
     if (!dirty_list()) return false;
+    
+    std::lock_guard<std::mutex> guard(dirty_list_mutex());
     for (const auto& dn : *(d_->dirty_list_)) {
         if (dn->elem_.txn_id_ == xid) 
           return dn->updated();
@@ -491,6 +504,7 @@ template <typename T> struct txn {
     // we can safely delete all elements from the dirty list where cts <= txn
     // of the oldest active transaction
     if (has_dirty_versions()) {
+      std::lock_guard<std::mutex> guard(dirty_list_mutex());
       // spdlog::info("GC: remove everything smaller than {}: #{} elements",
       //             oldest, dirty_list->size());
       dirty_list()->remove_if([oldest](const T& dn) { return dn->elem_.cts() <= oldest; });

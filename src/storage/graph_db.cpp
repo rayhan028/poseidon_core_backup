@@ -97,6 +97,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
       // TODO: in case of inserts perform undo using the log
 		  throw transaction_abort();
 	  }
+    
 	  // get the version of dirty object.
 	  // Note: Dirty version are always put in front of the list.
 	  // If that order is changed, then same order must be used during access.
@@ -554,7 +555,7 @@ relationship &graph_db::rship_by_id(relationship::id_t id) {
 #endif
 }
 
-node_description graph_db::get_node_description(const node &n) {
+node_description graph_db::get_node_description(node &n) {
   std::string label; 
   properties_t props;
 #ifdef USE_TX
@@ -594,7 +595,7 @@ node_description graph_db::get_node_description(const node &n) {
   return node_description{n.id(), label, props};
 }
 
-rship_description graph_db::get_rship_description(const relationship &r) {
+rship_description graph_db::get_rship_description(relationship &r) {
   std::string label;
   properties_t props;
 #ifdef USE_TX
