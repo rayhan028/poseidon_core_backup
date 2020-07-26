@@ -10,9 +10,8 @@ template <typename T> struct ts_list {
  
     std::list<T> the_list_;
     std::mutex mtx_;
-    std::unique_lock<std::mutex> lck_;
 
-    ts_list() : lck_(mtx_, std::defer_lock) {}
+    ts_list() = default;
     ts_list(const ts_list& ts) : the_list_(ts.the_list_) {}
 
     ~ts_list() = default;
@@ -31,11 +30,6 @@ template <typename T> struct ts_list {
     inline void pop_front() { the_list_.pop_front(); }
 
     inline iterator erase(const_iterator first, const_iterator last) { return the_list_.erase(first, last); }
-
-    inline void lock() { lck_.lock(); }
-    inline void unlock() { lck_.unlock(); }
-
-    inline std::lock_guard<std::mutex> lock_guard() { return std::lock_guard<std::mutex> (mtx_); }
 };
 
 #endif
