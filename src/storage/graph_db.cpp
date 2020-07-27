@@ -555,11 +555,11 @@ relationship &graph_db::rship_by_id(relationship::id_t id) {
 #endif
 }
 
-node_description graph_db::get_node_description(node &n) {
+node_description graph_db::get_node_description(node::id_t nid) {
   std::string label; 
   properties_t props;
+  auto& n = node_by_id(nid);
 #ifdef USE_TX
-  check_tx_context();
   auto xid = current_transaction()->xid();
   // spdlog::info("get_node_description @{}", (unsigned long)&n);
   if (!n.has_dirty_versions()) {
@@ -595,11 +595,11 @@ node_description graph_db::get_node_description(node &n) {
   return node_description{n.id(), label, props};
 }
 
-rship_description graph_db::get_rship_description(relationship &r) {
+rship_description graph_db::get_rship_description(relationship::id_t rid) {
   std::string label;
   properties_t props;
+  auto& r = rship_by_id(rid);
 #ifdef USE_TX
-  check_tx_context();
   auto xid = current_transaction()->xid();
   if (!r.has_dirty_versions()) {
    // the simple case: no concurrent transactions are active and
