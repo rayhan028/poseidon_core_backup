@@ -113,7 +113,6 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 	#else
 	  auto gdb = create_graph_db();
 	#endif
-	  std::cout<<" Test concurr between read and write \n";
 	  node::id_t nid = 0;
 	  barrier  b1{}, b2{}, b3{};
 
@@ -132,10 +131,8 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 			auto tx = gdb->begin_transaction();
 
 	    b1.notify();  // so that txn-3 can start.
-	    b2.wait(); // wait till txn-3 does a update but not yet committed
-
-	    auto &n = gdb->node_by_id(nid);
-	    auto nd = gdb->get_node_description(n);
+      b2.wait();
+	    auto nd = gdb->get_node_description(nid);
 
       // Since the Read Txn started before Update Txn, it should always read the original version.
 			REQUIRE(nd.label == "Actor"); // It fails here because this txn sees updated Actor
@@ -159,10 +156,7 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 				   "Updated Actor");
 
 			b2.notify();
-
 			gdb->commit_transaction();
-
-
 	});
 
 	  t1.join();
@@ -205,8 +199,7 @@ TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {
 	    b1.notify();  // so that txn-3 can start.
 	    b2.wait(); // wait till txn-3 does a update but not yet committed
 
-	    auto &n = gdb->node_by_id(nid);
-	    auto nd = gdb->get_node_description(n);
+	    auto nd = gdb->get_node_description(nid);
       // Since the Read Txn started before Update Txn, it should always read the original version.
 			REQUIRE(nd.label == "Actor"); // It fails here because this txn sees updated Actor
 			REQUIRE(get_property<int>(nd.properties, "age") == 48); //here too.. it sees 52 instead of 48
@@ -273,10 +266,10 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
 		b1.notify(); // Inform thread #2 to start
 		b2.wait(); // wait until thread #2 has performed the update
 		
-		auto &n = gdb->node_by_id(nid); 
+		auto nd = gdb->get_node_description(nid); 
 		b3.notify(); // inform thread #2 that we have read the node 
 
-		auto nd = gdb->get_node_description(n); //<===== Here it tries to access a deleted dirty version and crashes!
+		nd = gdb->get_node_description(nid); //<===== Here it tries to access a deleted dirty version and crashes!
 
 		REQUIRE(nd.label == "Actor"); 
 		REQUIRE(get_property<int>(nd.properties, "age") == 48); 
@@ -308,7 +301,7 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
 #endif
 }
 
-TEST_CASE("Test two concurrent Transactions trying to create nodes"  "[transaction]") {
+TEST_CASE("Test two concurrent transactions trying to create nodes"  "[transaction]") {
 /*
 * If two concurrent write Transactions are triggered, then the end result must be that there are two seperate
 * nodes created
@@ -357,14 +350,11 @@ TEST_CASE("Test two concurrent Transactions trying to create nodes"  "[transacti
     {
     // check the node
     auto tx = gdb->begin_transaction();
-    auto &n1 = gdb->node_by_id(nid1);
-    auto nd1 = gdb->get_node_description(n1);
+    auto nd1 = gdb->get_node_description(nid1);
     REQUIRE(nd1.label == "New Actor");
     REQUIRE(get_property<int>(nd1.properties, "age") == 48);
     
-    
-    auto &n2 = gdb->node_by_id(nid2);
-    auto nd2 = gdb->get_node_description(n2);
+    auto nd2 = gdb->get_node_description(nid2);
     REQUIRE(nd2.label == "Actor");
     REQUIRE(get_property<int>(nd2.properties, "age") == 22);  
     gdb->commit_transaction();
@@ -458,7 +448,7 @@ TEST_CASE("Checking that a node update is undone after abort", "[transaction]") 
     // check the node
     auto tx = gdb->begin_transaction();
     auto &n = gdb->node_by_id(nid);
-    auto nd = gdb->get_node_description(n);
+    auto nd = gdb->get_node_description(nid);
     REQUIRE(nd.label == "Actor");
     REQUIRE(get_property<int>(nd.properties, "age") == 48);
     gdb->abort_transaction();
@@ -508,7 +498,7 @@ TEST_CASE("Checking that a relationship update is undone after abort", "[transac
     // check the node
     auto tx = gdb->begin_transaction();
     auto &r = gdb->rship_by_id(rid);
-    auto rd = gdb->get_rship_description(r);
+    auto rd = gdb->get_rship_description(rid);
     REQUIRE(rd.label == ":PLAYED_IN");
     REQUIRE(get_property<std::string>(rd.properties, "role") == "Killer");
     gdb->abort_transaction();
@@ -736,8 +726,7 @@ TEST_CASE("Checking that a newly inserted node becomes visible after commit",
 
   {
     auto tx = gdb->begin_transaction();
-    auto &my_node = gdb->node_by_id(nid);
-    auto descr = gdb->get_node_description(my_node);
+    auto descr = gdb->get_node_description(nid);
     REQUIRE(descr.id == nid);
     REQUIRE(descr.label == "Movie");
     gdb->commit_transaction();
@@ -777,8 +766,7 @@ TEST_CASE("Checking that a newly inserted relationship becomes visible after com
 
   {
     auto tx = gdb->begin_transaction();
-    auto &my_rship = gdb->rship_by_id(rid);
-    auto descr = gdb->get_rship_description(my_rship);
+    auto descr = gdb->get_rship_description(rid);
     REQUIRE(descr.id == rid);
     REQUIRE(descr.label == ":PLAYED_IN");
     gdb->commit_transaction();
@@ -825,9 +813,8 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
     // wait until thread #2 has committed.
     b2.wait();
 
-    auto &n = gdb->node_by_id(nid);
     // spdlog::info("read node @{}", (unsigned long)&n);
-    auto nd = gdb->get_node_description(n);
+    auto nd = gdb->get_node_description(nid);
     REQUIRE(nd.label == "Actor");
     REQUIRE(get_property<int>(nd.properties, "age") == 48);
 
@@ -866,8 +853,7 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
 
   {
     auto tx = gdb->begin_transaction();
-    auto &n = gdb->node_by_id(nid);
-    auto nd = gdb->get_node_description(n);
+    auto nd = gdb->get_node_description(nid);
     REQUIRE(nd.label == "Updated Actor");
     REQUIRE(get_property<int>(nd.properties, "age") == 49);
     REQUIRE(get_property<std::string>(nd.properties, "name") ==
@@ -1038,9 +1024,7 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
 		// read
     // spdlog::info("read #2.1");
     // gdb->dump();
-		auto &n = gdb->node_by_id(nid);
-
-   	auto nd = gdb->get_node_description(n);
+   	auto nd = gdb->get_node_description(nid);
     REQUIRE(nd.label == "Actor");
     REQUIRE(get_property<int>(nd.properties, "age") == 48);
     // spdlog::info("read #2.1 done {}", n.is_dirty());
@@ -1048,7 +1032,7 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
     b2.wait();
 		// make sure we still can read our version after the update of tx #1
     // spdlog::info("read #2.2 {}", n.is_dirty());
-   	auto nd2 = gdb->get_node_description(n);
+   	auto nd2 = gdb->get_node_description(nid);
     REQUIRE(nd2.label == "Actor");
     REQUIRE(get_property<int>(nd2.properties, "age") == 48);
     b3.notify();
@@ -1057,7 +1041,7 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
 		// make sure we still can read our version after the commit of tx #1
     // spdlog::info("read #2.3 {}", n.is_dirty());
     // gdb->dump();
-   	auto nd3 = gdb->get_node_description(n);
+   	auto nd3 = gdb->get_node_description(nid);
     REQUIRE(get_property<int>(nd3.properties, "age") == 48);
     REQUIRE(nd3.label == "Actor");
 
@@ -1228,9 +1212,8 @@ TEST_CASE("Checking that a delete transaction does not interfer with another tra
     // wait until tx #2 has deleted the node.
     b2.wait();
 
-    auto &n = gdb->node_by_id(nid);
     // spdlog::info("read node @{}", (unsigned long)&n);
-    auto nd = gdb->get_node_description(n);
+    auto nd = gdb->get_node_description(nid);
     REQUIRE(nd.label == ":Person");
     REQUIRE(get_property<int>(nd.properties, "age") == 36);
 

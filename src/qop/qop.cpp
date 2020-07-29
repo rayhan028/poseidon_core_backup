@@ -213,7 +213,7 @@ void printer::dump(std::ostream &os) const { os << "printer()"; }
 
 void printer::process(graph_db_ptr &gdb, const qr_tuple &v) {
   auto my_visitor = boost::hana::overload(
-      [&](node *n) { std::cout << gdb->get_node_description(*n); },
+      [&](node *n) { std::cout << gdb->get_node_description(n->id()); },
       [&](relationship *r) { std::cout << gdb->get_relationship_label(*r); },
       [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
       [&](const std::string &s) { std::cout << s; },
@@ -362,9 +362,9 @@ void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
   qr_tuple res(v.size());
 
   auto my_visitor = boost::hana::overload(
-      [&](node *n) { return gdb->get_node_description(*n).to_string(); },
+      [&](node *n) { return gdb->get_node_description(n->id()).to_string(); },
       [&](relationship *r) {
-        return gdb->get_rship_description(*r).to_string();
+        return gdb->get_rship_description(r->id()).to_string();
       },
       [&](int i) { return std::to_string(i); },
       [&](double d) { return std::to_string(d); },
@@ -441,10 +441,10 @@ void projection::process(graph_db_ptr &gdb, const qr_tuple &v) {
       continue;
     if (v[index].type() == typeid(node *)) {
       auto n = boost::get<node *>(v[index]);
-      pv[num_accessed_vars + i] = gdb->get_node_description(*n);
+      pv[num_accessed_vars + i] = gdb->get_node_description(n->id());
     } else if (v[index].type() == typeid(relationship *)) {
       auto r = boost::get<relationship *>(v[index]);
-      pv[num_accessed_vars + i] = gdb->get_rship_description(*r);
+      pv[num_accessed_vars + i] = gdb->get_rship_description(r->id());
     }
     var_map_[index] = num_accessed_vars + i; // we update mapping table
     i++;

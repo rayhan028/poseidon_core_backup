@@ -193,7 +193,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_GetNodeDescription)(benchmark::State &state) {
       auto tx = graph->begin_transaction();
 #endif
       auto &n = graph->node_by_id((node::id_t)i);
-      auto ndescr = graph->get_node_description(n);
+      auto ndescr = graph->get_node_description((node::id_t)i);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
