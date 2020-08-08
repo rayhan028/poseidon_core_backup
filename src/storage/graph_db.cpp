@@ -1019,7 +1019,7 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
             oid, 0, items, next, node_id);
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
     };
-    node_properties_->foreach_property_set(n.id(), cb);
+    node_properties_->foreach_property_set(n.property_list, cb);
     // we have to update the properties
     pid = node_properties_->update_pitems(n.id(), n.property_list, dn->properties_,
                                      dict_);
@@ -1052,7 +1052,7 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
             oid, 0, items, next, rship_id);
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
     };
-    rship_properties_->foreach_property_set(r.id(), cb);
+    rship_properties_->foreach_property_set(r.property_list, cb);
     // we have to update the properties
     pid = rship_properties_->update_pitems(r.id(), r.property_list, dr->properties_,
                                      dict_);
