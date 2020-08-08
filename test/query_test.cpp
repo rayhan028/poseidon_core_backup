@@ -208,7 +208,7 @@ auto post_id = graph->add_node(
   tx = graph->begin_transaction();
 
   auto &post = graph->node_by_id(post_id);
-  auto post_descr = graph->get_node_description(post);
+  auto post_descr = graph->get_node_description(post_id);
   auto pr_property = std::string("creationDate");
   auto sec = get_property<int>(post_descr.properties, pr_property).value();
   assert(std::floor(sec) == sec);
@@ -295,8 +295,8 @@ TEST_CASE("Projecting only PExpr_ of higher indexes", "[graph_db]") {
                   auto modrt_label = std::string(graph->get_string(modrt.node_label));
                   
                   if (modrt_label == "Person"){
-                    auto forum_descr = graph->get_node_description(forum);
-                    auto modrt_descr = graph->get_node_description(modrt);
+                    auto forum_descr = graph->get_node_description(forum.id());
+                    auto modrt_descr = graph->get_node_description(modrt.id());
                     auto f_id = get_property<int>(forum_descr.properties, 
                                                   std::string("id")).value();
                     auto f_title = get_property<std::string>(forum_descr.properties, 
@@ -426,8 +426,8 @@ graph->add_relationship(comment3_id, amin_id, ":hasCreator", {});
             auto creator_label = std::string(graph->get_string(creator.node_label));
             
             if (creator_label == "Person"){
-              auto msg_descr = graph->get_node_description(msg);
-              auto creator_descr = graph->get_node_description(creator);
+              auto msg_descr = graph->get_node_description(msg.id());
+              auto creator_descr = graph->get_node_description(creator.id());
               auto cmnt_id = get_property<int>(msg_descr.properties, 
                                             std::string("id")).value();
               auto cmnt_content = get_property<std::string>(msg_descr.properties, 
