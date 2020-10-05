@@ -992,7 +992,9 @@ void graph_db::dump_dot(const std::string& fname) {
   out.open(fname, std::ofstream::out | std::ofstream::trunc);
   out << "digraph poseidon_db {\n";
   for (auto& n : nodes_->as_vec()) {
-    out << '\t' << "n" << n.id() << " [label=\"" << get_string(n.node_label) << "\"];" << std::endl;
+    out << '\t' << "n" << n.id() 
+        << " [label = \"" << n.id() << ":" 
+        << get_string(n.node_label) << "\"];" << std::endl;
   }
   for (auto& r : rships_->as_vec()) {
     out << '\t' << "n" << r.src_node << " -> n" << r.dest_node 
