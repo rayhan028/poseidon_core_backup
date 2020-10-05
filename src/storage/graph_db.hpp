@@ -154,13 +154,13 @@ public:
    * Returns a description of the node, i.e. with all decoded labels and
    * properties.
    */
-  node_description get_node_description(const node &n);
+  node_description get_node_description(node::id_t nid);
 
   /**
    * Returns a description of the relationship, i.e. with all decoded labels and
    * properties.
    */
-  rship_description get_rship_description(const relationship &r);
+  rship_description get_rship_description(relationship::id_t rid);
 
   /**
    * Returns the decoded label of the relationship.

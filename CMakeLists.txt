@@ -11,15 +11,15 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK       "Use Intel PMDK"                         OFF)
+option(USE_PMDK       "Use Intel PMDK"                         ON)
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
-option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
+option(BUILD_PYTHON   "Build python interface for poseidon"    OFF)
 #-------------------------------------------------------------------------------
 endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-option(USE_PMDK       "Use Intel PMDK"                         OFF)
+  set(USE_PMDK OFF)
 endif()
 
 # Don't try to contact github everytime.
@@ -39,12 +39,15 @@ set(CMAKE_MACOSX_RPATH 1)
 # include(code-coverage)
 # add_code_coverage()
 
-# Require C++14
+# Require C++17
 include(c++-standards)
 cxx_17()
 
 # Include the PMDK module
-include(pmdk)
+if(USE_PMDK MATCHES ON)
+  message(STATUS "looking for PMDK")
+  include(pmdk)
+endif()
 
 # Transaction support
 if(USE_TX MATCHES ON)

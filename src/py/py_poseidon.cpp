@@ -121,14 +121,12 @@ int py_graph::import_relationships(const std::string &fname, py_mapping &pm) {
 }
 
 void py_graph::print_node(offset_t nid) {
-  auto& n = gdb_->node_by_id(nid);
-  auto descr = gdb_->get_node_description(n);
+  auto descr = gdb_->get_node_description(nid);
   std::cout << descr << std::endl;
 }
 
 void py_graph::print_relationship(offset_t rid) {
-  auto& r = gdb_->rship_by_id(rid);
-  auto descr = gdb_->get_rship_description(r);
+  auto descr = gdb_->get_rship_description(rid);
   std::cout << descr << std::endl;
 }
 

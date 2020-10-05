@@ -46,7 +46,7 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
         auto tx = graph->begin_transaction();
 
         auto& n = graph->node_by_id(nid);
-        auto nd = graph->get_node_description(n);
+        auto nd = graph->get_node_description(nid);
         REQUIRE(nd.id == nid);
         REQUIRE(nd.label == ":Person");
 
@@ -58,7 +58,7 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
         auto tx = graph2->begin_transaction();
 
         auto& n = graph2->node_by_id(nid);
-        auto nd = graph2->get_node_description(n);
+        auto nd = graph2->get_node_description(nid);
         REQUIRE(nd.id == nid);
         REQUIRE(nd.label == ":Person");
 

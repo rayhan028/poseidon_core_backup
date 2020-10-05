@@ -27,6 +27,7 @@
 #include "exceptions.hpp"
 #include "nodes.hpp"
 #include "transaction.hpp"
+#include "txn_data.hpp"
 
 struct relationship;
 using dirty_rship = dirty_object<relationship>;

@@ -151,7 +151,7 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
 	/* After execution of IU 1 Query, every destination node must have a "to_rship"  */
 	graph->nodes_by_label("Place",[&](node& dest_node) {
 		auto num_of_to_rship = 0u;
-    std::cout << graph->get_node_description(dest_node) << std::endl;
+    std::cout << graph->get_node_description(dest_node.id()) << std::endl;
 		graph->foreach_to_relationship_of_node(dest_node, [&](auto &r) {
 			num_of_to_rship++;
 		});
@@ -201,23 +201,23 @@ TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
   {
     auto &n = graph->node_by_id(p1);
     REQUIRE(n.id() == p1);
-    auto n1 = graph->get_node_description(n);
+    auto n1 = graph->get_node_description(p1);
     REQUIRE(n1.label == ":Person");
     REQUIRE(n1.id == p1);
 
-    auto n2 = graph->get_node_description(graph->node_by_id(p2));
+    auto n2 = graph->get_node_description(p2);
     REQUIRE(n2.label == ":Person");
     REQUIRE(n2.id == p2);
 
-    auto n3 = graph->get_node_description(graph->node_by_id(b1));
+    auto n3 = graph->get_node_description(b1);
     REQUIRE(n3.label == ":Book");
     REQUIRE(n3.id == b1);
 
-    auto n4 = graph->get_node_description(graph->node_by_id(b2));
+    auto n4 = graph->get_node_description(b2);
     REQUIRE(n4.label == ":Book");
     REQUIRE(n4.id == b2);
 
-    auto n5 = graph->get_node_description(graph->node_by_id(b3));
+    auto n5 = graph->get_node_description(b3);
     REQUIRE(n5.label == ":Book");
     REQUIRE(n5.id == b3);
   }
@@ -393,7 +393,7 @@ TEST_CASE("Checking adding a node with properties", "[graph_db]") {
   auto &n = graph->node_by_id(p1);
   REQUIRE(n.id() == p1);
 
-  auto ndescr = graph->get_node_description(n);
+  auto ndescr = graph->get_node_description(p1);
   REQUIRE(ndescr.id == p1);
   REQUIRE(ndescr.label == ":Person");
   REQUIRE(ndescr.properties.find("name") != ndescr.properties.end());
@@ -422,7 +422,7 @@ TEST_CASE("Checking node with properties", "[graph_db]") {
   tx = graph->begin_transaction();
 
   auto &n1 = graph->node_by_id(p1);
-  auto ndescr = graph->get_node_description(n1);
+  auto ndescr = graph->get_node_description(p1);
 
   REQUIRE(ndescr.id == p1);
   REQUIRE(ndescr.label == ":Person");
@@ -451,7 +451,7 @@ TEST_CASE("Checking a dirty node with properties", "[graph_db]") {
   auto &n = graph->node_by_id(p1);
   REQUIRE(n.id() == p1);
 
-  auto ndescr = graph->get_node_description(n);
+  auto ndescr = graph->get_node_description(p1);
   REQUIRE(ndescr.id == p1);
   REQUIRE(ndescr.label == ":Person");
   REQUIRE(ndescr.properties.find("name") != ndescr.properties.end());
@@ -501,7 +501,7 @@ TEST_CASE("Checking a node update", "[graph_db]") {
                             {"zipcode", boost::any(12345)}});
     // and check whether the updates are available within the transaction
     auto &n2 = graph->node_by_id(p1);
-    auto ndescr = graph->get_node_description(n2);
+    auto ndescr = graph->get_node_description(p1);
 
     REQUIRE(ndescr.id == p1);
     REQUIRE(ndescr.label == ":Person");
@@ -523,7 +523,7 @@ TEST_CASE("Checking a node update", "[graph_db]") {
     auto tx = graph->begin_transaction();
 
     auto &n2 = graph->node_by_id(p1);
-    auto ndescr = graph->get_node_description(n2);
+    auto ndescr = graph->get_node_description(p1);
 
     REQUIRE(ndescr.id == p1);
     REQUIRE(ndescr.label == ":Person");
@@ -579,7 +579,7 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
     // and check whether the updates are available within the transaction
     {
     auto &n2 = graph->node_by_id(p1);
-    auto ndescr = graph->get_node_description(n2);
+    auto ndescr = graph->get_node_description(p1);
 
     REQUIRE(ndescr.id == p1);
     REQUIRE(ndescr.label == ":Person");
@@ -600,7 +600,7 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
     // and check whether the updates are available within the transaction
     {
     auto &n2 = graph->node_by_id(p1);
-    auto ndescr = graph->get_node_description(n2);
+    auto ndescr = graph->get_node_description(p1);
 
     REQUIRE(ndescr.id == p1);
     REQUIRE(ndescr.label == ":Actor");
@@ -623,7 +623,7 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
     auto tx = graph->begin_transaction();
 
     auto &n2 = graph->node_by_id(p1);
-    auto ndescr = graph->get_node_description(n2);
+    auto ndescr = graph->get_node_description(p1);
 
     REQUIRE(ndescr.id == p1);
     REQUIRE(ndescr.label == ":Actor");
@@ -682,7 +682,7 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
     // and check whether the updates are available within the transaction
     auto &n2 = graph->node_by_id(p1);
     graph->foreach_from_relationship_of_node(n2, [&](relationship &rel) {
-      auto reldesc = graph->get_rship_description(rel);
+      auto reldesc = graph->get_rship_description(rel.id());
       std::cout << reldesc << std::endl;
 
       REQUIRE(reldesc.id == r);
@@ -705,7 +705,7 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
 
     auto &n2 = graph->node_by_id(p1);
     graph->foreach_from_relationship_of_node(n2, [&](relationship &rel) {
-      auto reldesc = graph->get_rship_description(rel);
+      auto reldesc = graph->get_rship_description(rel.id());
       std::cout << reldesc << std::endl;
 
       REQUIRE(reldesc.id == r);

@@ -97,6 +97,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
       // TODO: in case of inserts perform undo using the log
 		  throw transaction_abort();
 	  }
+    
 	  // get the version of dirty object.
 	  // Note: Dirty version are always put in front of the list.
 	  // If that order is changed, then same order must be used during access.
@@ -554,11 +555,11 @@ relationship &graph_db::rship_by_id(relationship::id_t id) {
 #endif
 }
 
-node_description graph_db::get_node_description(const node &n) {
+node_description graph_db::get_node_description(node::id_t nid) {
   std::string label; 
   properties_t props;
+  auto& n = node_by_id(nid);
 #ifdef USE_TX
-  check_tx_context();
   auto xid = current_transaction()->xid();
   // spdlog::info("get_node_description @{}", (unsigned long)&n);
   if (!n.has_dirty_versions()) {
@@ -594,11 +595,11 @@ node_description graph_db::get_node_description(const node &n) {
   return node_description{n.id(), label, props};
 }
 
-rship_description graph_db::get_rship_description(const relationship &r) {
+rship_description graph_db::get_rship_description(relationship::id_t rid) {
   std::string label;
   properties_t props;
+  auto& r = rship_by_id(rid);
 #ifdef USE_TX
-  check_tx_context();
   auto xid = current_transaction()->xid();
   if (!r.has_dirty_versions()) {
    // the simple case: no concurrent transactions are active and
@@ -1018,7 +1019,7 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
             oid, 0, items, next, node_id);
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
     };
-    node_properties_->foreach_property_set(n.id(), cb);
+    node_properties_->foreach_property_set(n.property_list, cb);
     // we have to update the properties
     pid = node_properties_->update_pitems(n.id(), n.property_list, dn->properties_,
                                      dict_);
@@ -1051,7 +1052,7 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
             oid, 0, items, next, rship_id);
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
     };
-    rship_properties_->foreach_property_set(r.id(), cb);
+    rship_properties_->foreach_property_set(r.property_list, cb);
     // we have to update the properties
     pid = rship_properties_->update_pitems(r.id(), r.property_list, dr->properties_,
                                      dict_);

@@ -33,6 +33,7 @@
 #include "exceptions.hpp"
 #include "properties.hpp"
 #include "transaction.hpp"
+#include "txn_data.hpp"
 
 struct node;
 using dirty_node = dirty_object<node>;

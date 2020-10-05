@@ -49,5 +49,5 @@ using path_visitor = std::function<void(node&, const path&)>;
 void bfs(graph_db_ptr gdb, node::id_t start, bool unidirectional, rship_predicate rpred, node_visitor visit);
 
 void path_bfs(graph_db_ptr gdb, node::id_t start, bool unidirectional, rship_predicate rpred, path_visitor visit);
-
+ 
 #endif
