@@ -638,9 +638,12 @@ int main(int argc, char **argv) {
   auto pool = graph_pool::create(pool_path);
   auto graph = pool->create_graph(db_name);
 
-  load_snb_data(graph, snb_home, strict);
+  load_snb_data(graph, snb_home);
 #endif
   graph->print_stats();
 
-  run_benchmark(graph);
+  for (auto i = 0; i < 10; i++) {
+          std::cout << "Run: " << i << "\n";
+    run_benchmark(graph);
+  }
 }

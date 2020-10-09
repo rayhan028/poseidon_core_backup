@@ -1776,11 +1776,14 @@ int main(int argc, char **argv) {
 #ifdef USE_PMDK
     auto pool = graph_pool::open(pool_path);
     auto graph = pool->open_graph(db_name);
+    #ifdef FPTree
+    fptree_recovery(graph);
+    #endif
  #else
   auto pool = graph_pool::create(pool_path);
   auto graph = pool->create_graph(db_name);
 
-  load_snb_data(graph, snb_home, strict);
+  load_snb_data(graph, snb_home);
 #endif
   graph->print_stats();
 
@@ -1789,7 +1792,9 @@ int main(int argc, char **argv) {
   property_set::id_t first_insert_nprop = graph->get_node_properties()->as_vec().first_available();
   property_set::id_t first_insert_rprop = graph->get_rship_properties()->as_vec().first_available();
 
-  run_benchmark(graph);
+  for (auto i = 0; i < 10; i++) {
+    run_benchmark(graph);
+  }
 
 #ifdef USE_TX
   auto tx = graph->begin_transaction();

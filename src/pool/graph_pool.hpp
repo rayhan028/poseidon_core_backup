@@ -40,7 +40,7 @@ public:
      * Create a new pmem pool on the given path with the given size.
      * This method shouldn't be used if a poolset is needed.
      */
-    static graph_pool_ptr create(const std::string& path, unsigned long long pool_size = 1024*1024*40000ull);
+    static graph_pool_ptr create(const std::string& path, unsigned long long pool_size = 1024*1024*160000ull);
 
     /**
      * Open an existing pool. If a pool was created as poolset via 'pmempool create'
