@@ -6,8 +6,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 
-#define RUN_INDEXED
-//#define RUN_PARALLEL
+// #define RUN_INDEXED
+#define RUN_PARALLEL
 
 #define QP_1
 

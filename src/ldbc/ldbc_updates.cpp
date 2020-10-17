@@ -1776,14 +1776,14 @@ int main(int argc, char **argv) {
 #ifdef USE_PMDK
     auto pool = graph_pool::open(pool_path);
     auto graph = pool->open_graph(db_name);
-     #ifdef FPTree
+    #ifdef FPTree
     fptree_recovery(graph);
     #endif
  #else
   auto pool = graph_pool::create(pool_path);
   auto graph = pool->create_graph(db_name);
 
-  load_snb_data(graph, snb_home, strict);
+  load_snb_data(graph, snb_home);
 #endif
   graph->print_stats();
 
