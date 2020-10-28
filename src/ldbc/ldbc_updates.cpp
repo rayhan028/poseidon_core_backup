@@ -1803,9 +1803,8 @@ int main(int argc, char **argv) {
   relationship::id_t last_insert_rship = graph->get_relationships()->as_vec().first_available();
   // property_set::id_t last_insert_nprop = graph->get_node_properties()->as_vec().first_available();
   // property_set::id_t last_insert_rprop = graph->get_rship_properties()->as_vec().first_available();
-  
-  //delete all created nodes and relationships
 
+  // delete all created nodes and relationships
   for (relationship::id_t i = first_insert_rship; i < last_insert_rship; i++)
     graph->delete_relationship(i);
   for (node::id_t i = first_insert_node; i < last_insert_node; i++)
