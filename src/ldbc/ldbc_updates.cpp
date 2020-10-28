@@ -1805,10 +1805,12 @@ int main(int argc, char **argv) {
   // property_set::id_t last_insert_rprop = graph->get_rship_properties()->as_vec().first_available();
   
   //delete all created nodes and relationships
-  for (node::id_t i = first_insert_node; i < last_insert_node; i++)
-    graph->delete_node(i);
+
   for (relationship::id_t i = first_insert_rship; i < last_insert_rship; i++)
     graph->delete_relationship(i);
+  for (node::id_t i = first_insert_node; i < last_insert_node; i++)
+    graph->delete_node(i);
+  
 
   node::id_t next_insert_node = graph->get_nodes()->as_vec().first_available();
   relationship::id_t next_insert_rship = graph->get_relationships()->as_vec().first_available();

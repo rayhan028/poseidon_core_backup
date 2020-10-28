@@ -10,7 +10,7 @@
 // #define SF_1
 #define SF_10
 #define CREATE_INDEX
-#define PRINT_RESULT
+//#define PRINT_RESULT
 #define IU_RESULT
 
 using param_val = boost::variant<uint64_t, std::string, int>;
