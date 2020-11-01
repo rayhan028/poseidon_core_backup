@@ -77,9 +77,9 @@ int main(int argc, char **argv) {
   if (access(pool_path.c_str(), F_OK) != 0) {
     pool = graph_pool::create(pool_path);
   } else {
-  	  remove(pool_path.c_str());
-	  pool = graph_pool::create(pool_path);
-   // pool = graph_pool::open(pool_path, true);
+  	  //remove(pool_path.c_str());
+	  // pool = graph_pool::create(pool_path);
+    pool = graph_pool::open(pool_path, true);
   }
   spdlog::info("open poolset {}", pool_path);
  #else
