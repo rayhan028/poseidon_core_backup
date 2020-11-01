@@ -76,6 +76,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/ldbc)
 include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 include_directories(${PROJECT_SOURCE_DIR}/src/pool)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
+include_directories(${PROJECT_SOURCE_DIR}/src/ql)
 #---------------------------------------------------------------------------
 
 set(THIRD_PARTY_DIR "${PROJECT_BINARY_DIR}/_deps")
@@ -174,6 +175,22 @@ if(NOT benchmark_POPULATED)
   set(BENCHMARK_INCLUDE_DIR ${benchmark_SOURCE_DIR}/include)
 endif()
 
+# PEGTL =================================================================== #
+include(FetchContent REQUIRED)
+ FetchContent_Declare(
+  pegtl
+  GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
+  GIT_TAG        2.8.3
+  )
+FetchContent_GetProperties(pegtl)
+if(NOT pegtl_POPULATED)
+  message(STATUS "Populating PEGTL")
+  FetchContent_Populate(pegtl)
+  set(PEGTL_INCLUDE_DIR ${pegtl_SOURCE_DIR}/include)
+  add_library(PEGTL IMPORTED INTERFACE)
+  set_property(TARGET PEGTL PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${PEGTL_INCLUDE_DIR}")
+endif()
+
 #---------------------------------------------------------------------------
 
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -251,6 +268,7 @@ endif()
 
 #-----------------------------------------------------------------------------------------
 
+include_directories("${PEGTL_INCLUDE_DIR}")
 include_directories("${CSV_INCLUDE_DIR}")
 include_directories("${SPDLOG_INCLUDE_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/src")
@@ -285,6 +303,7 @@ set(src_files
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
   src/ldbc/ldbc.cpp
+  src/ql/queryc.cpp
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -376,6 +395,18 @@ add_executable(run_ldbc_graphalytics
  )
 
 target_link_libraries(run_ldbc_graphalytics
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+#-----------------------------------------------------------------------------------------
+
+add_executable(qlc
+#  src/ql/ast.cpp
+  src/ql/qlc.cpp
+ )
+
+target_link_libraries(qlc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
