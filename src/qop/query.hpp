@@ -61,6 +61,14 @@ public:
    */
   query &nodes_where(const std::string &label, const std::string &key,
                      std::function<bool(const p_item &)> pred);
+  
+  /**
+   * Add a scan over all nodes with any of the given labels which satisfy the given predicate
+   * on the property with the given key. This is for entity objects belonging to the same
+   * abstract entity (e.g. Post and Comment are sub-classes of Message)
+   */
+  query &nodes_where(const std::vector<std::string> &labels, const std::string &key,
+                     std::function<bool(const p_item &)> pred);
 
   /**
    * Add an index scan over nodes where the key is equal to the given value. 

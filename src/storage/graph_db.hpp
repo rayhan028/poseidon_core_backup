@@ -332,6 +332,13 @@ public:
   void nodes_by_label(const std::string &label, node_consumer_func consumer);
 
   /**
+   * Scans all nodes of the graph with any of the given labels and invokes for each of
+   * these nodes the consumer function. This is for entity objects belonging to the same
+   * abstract entity (e.g. Post and Comment are sub-classes of Message)
+   */
+  void nodes_by_label(const std::vector<std::string> &labels, node_consumer_func consumer);
+
+  /**
    * Scans all nodes of the graph and invokes for each nodes the given consumer
    * function.
    */

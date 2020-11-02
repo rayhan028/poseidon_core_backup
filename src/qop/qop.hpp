@@ -156,6 +156,7 @@ protected:
  */
 struct scan_nodes : public qop {
   scan_nodes(const std::string &l) : label(l) {}
+  scan_nodes(const std::vector<std::string> &l) : labels(l) {}
   scan_nodes() = default;
   ~scan_nodes() = default;
 
@@ -164,6 +165,7 @@ struct scan_nodes : public qop {
   virtual void start(graph_db_ptr &gdb) override;
 
   std::string label;
+  std::vector<std::string> labels;
 };
 
 /**

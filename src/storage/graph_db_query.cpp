@@ -85,6 +85,37 @@ void graph_db::nodes_by_label(const std::string &label,
   }
 }
 
+void graph_db::nodes_by_label(const std::vector<std::string> &labels,
+                              node_consumer_func consumer) {
+#ifdef USE_TX
+  check_tx_context();
+  xid_t txid = current_transaction()->xid();
+#endif
+  for (auto &n : nodes_->as_vec()) {
+    dcode_t lc = 0;
+#ifdef USE_TX
+    if (n.is_valid()) {
+      auto &nv = get_valid_node_version(n, txid);
+      for (auto &label : labels) {
+        lc = dict_->lookup_string(label);
+        if (nv.node_label == lc) {
+          consumer(nv);
+          break;
+        }
+      }
+    }
+#else
+    for (auto &label : labels) {
+      lc = dict_->lookup_string(label);
+      if (n.node_label == lc) {
+        consumer(n);
+        break;
+      }
+    }
+#endif
+  }
+}
+
 void graph_db::parallel_nodes(node_consumer_func consumer) {
 #ifdef USE_TX
   check_tx_context();

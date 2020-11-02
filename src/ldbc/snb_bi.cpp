@@ -21,6 +21,8 @@ using namespace boost::posix_time;
 
 void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, ptime dt) {
 
+    std::vector<std::string> message = {"Post", "Comment"};
+
     auto q = query(gdb) // TODO add range index scan
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -31,14 +33,14 @@ void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, ptime dt) {
                                 return (*(reinterpret_cast<const ptime *>(p.value_))) < dt;
                               throw invalid_typecast(); })
 #else
-              .nodes_where("Post", "creationDate",
+              .nodes_where(message, "creationDate",
                             [&](auto &p) {
                               if ((p.flags_ & 0xe0) == p.p_ptime)
                                 return (*(reinterpret_cast<const ptime *>(p.value_))) < dt;
                               throw invalid_typecast(); })
 #endif
               .project({PExpr_(0, pj::pr_year(res, "creationDate")),
-                        PExpr_(0, (pj::has_property(res, "language")) ?
+                        PExpr_(0, (pj::has_property(res, "language") || pj::has_property(res, "imageFile")) ?
                             std::string("False") : std::string("True")),
                         PExpr_(0, pj::int_property(res, "length")),
                         projection::expr(0, [&](auto res) {
@@ -57,6 +59,32 @@ void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, ptime dt) {
                         }
                         else
                           return boost::get<int>(qr1[0]) > boost::get<int>(qr2[0]); })
+              .collect(rs);
+    q.start();
+    rs.wait();
+}
+
+void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+
+    std::vector<std::string> message = {"Post", "Comment"};
+
+    auto q = query(gdb) // TODO add range index scan
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Post")
+              .property( "creationDate",
+                           [&](auto &p) {
+                              if ((p.flags_ & 0xe0) == p.p_ptime)
+                                return (*(reinterpret_cast<const ptime *>(p.value_))) < dt;
+                              throw invalid_typecast(); })
+#else
+              .nodes_where(message, "creationDate",
+                [&](auto &p) {
+                  if ((p.flags_ & 0xe0) == p.p_ptime)
+                    return ((*(reinterpret_cast<const ptime *>(p.value_))) >= boost::get<ptime>(params[0])) &&
+                            ((*(reinterpret_cast<const ptime *>(p.value_))) <= boost::get<ptime>(params[1]));
+                  throw invalid_typecast(); })
+#endif
               .collect(rs);
     q.start();
     rs.wait();
@@ -98,10 +126,38 @@ double run_query_1(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
+double run_query_2(graph_db_ptr gdb) {
+    std::vector<params_tuple> params =
+        {{time_from_string(std::string("2011-04-14 01:51:21.746")),
+        time_from_string(std::string("2012-04-14 01:51:21.746")),
+        "Germany", "India"}};
+
+    std::vector<double> runtimes(params.size());
+
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        auto tx = gdb->begin_transaction();
+        ldbc_bi_query_2(gdb, rs, params[i]);
+        gdb->commit_transaction();
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return calc_avg_time(runtimes);
+}
+
 void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
     t = run_query_1(gdb);
     spdlog::info("Query #1: {} msecs", t);
+    // t = run_query_2(gdb);
+    // spdlog::info("Query #2: {} msecs", t);
 }
 
 /* ---------------------------------------------------------------------------- */

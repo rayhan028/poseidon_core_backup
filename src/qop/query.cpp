@@ -57,6 +57,14 @@ query &query::nodes_where(const std::string &label, const std::string &key,
                    std::bind(&is_property::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::nodes_where(const std::vector<std::string> &labels, const std::string &key,
+                          std::function<bool(const p_item &)> pred) {
+  plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(labels);
+  auto op = std::make_shared<is_property>(key, pred);
+  return append_op(op,
+                   std::bind(&is_property::process, op.get(), ph::_1, ph::_2));
+}
+
 query &query::nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val) {
   auto idx = graph_db_->get_index(label, prop);
   plan_head_ = plan_tail_ = std::make_shared<index_scan>(idx, val);
