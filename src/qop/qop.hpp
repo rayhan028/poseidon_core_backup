@@ -28,6 +28,7 @@
 #include <set>
 #include <iterator>
 #include <condition_variable>
+#include <unordered_map>
 
 #include "graph_db.hpp"
 #include "nodes.hpp"
@@ -430,6 +431,32 @@ struct order_by : public qop {
 };
 
 /**
+ * TODO
+ */
+struct group_by : public qop {
+
+  enum class aggr_t {count, sum, avg}; // aggregare operation types
+
+  using aggr = std::pair</*aggr_t*/int, int>; // TODO
+
+  group_by(std::vector<int> p, std::vector<aggr> ag);
+  ~group_by() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  int grpkey_cnt_;
+  std::vector<result_set> res_set_vec_;
+  std::set<std::string> grpkey_set_;
+  std::vector<int> grpkey_pos_;
+  std::unordered_map<std::string, int> grpkey_map_;
+  std::vector<aggr> aggregates;
+};
+
+/**
  * Operator for printing the content of a result set.
  */
 std::ostream &operator<<(std::ostream &os, const result_set &rs);
@@ -488,6 +515,7 @@ struct projection : public qop {
   struct expr {
     std::size_t vidx;
     std::function<query_result(pr_result)> func;
+    expr(std::size_t i, std::function<query_result(pr_result)> f) : vidx(i), func(f) {}
   };
 
   using expr_list = std::vector<expr>;
@@ -558,6 +586,13 @@ query_result ptime_property(projection::pr_result &res,
  * stored in projection_result res and identified by the given key.
  */
 query_result pr_date(projection::pr_result &pv, 
+                 const std::string &key);
+
+/**
+ * Return the year of the date property of a node/relationship 
+ * stored in projection_result res and identified by the given key.
+ */
+query_result pr_year(projection::pr_result &pv, 
                  const std::string &key);
 
 /**

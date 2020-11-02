@@ -380,6 +380,16 @@ target_link_libraries(run_ldbc_graphalytics
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+
+add_executable(run_ldbc_bi
+  src/ldbc/snb_bi.cpp
+)
+
+target_link_libraries(run_ldbc_bi
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
 #-----------------------------------------------------------------------------------------
 #
 # Unit tests using Catch

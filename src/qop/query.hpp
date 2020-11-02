@@ -135,6 +135,17 @@ public:
   query &orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp);
 
   /**
+   * Add an operator for grouping
+   * Groupby keys are specified by tuple positions in the vector p
+   * If there are aggregate operations, each aggregate function and
+   * its corresponding aggregate attribute are specified as a pair
+   * in the vector ag
+   */
+  query &groupby(std::vector<int> p, std::vector<std::pair</*aggr_t*/int, int>> ag); // TODO
+
+  query &groupby(std::vector<int> p);
+
+  /**
    * Add a print operator for outputting the query results to cout.
    */
   query &print();
