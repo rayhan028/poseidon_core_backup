@@ -53,9 +53,9 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Limit(20)", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
-      pegtl::string_input<>("NodeScan(\"Person\", ForeachRelationship(FROM, \":IsLocatedIn\"))", "")));
+      pegtl::string_input<>("ForeachRelationship(FROM, \":IsLocatedIn\", NodeScan('Person'))", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
-      pegtl::string_input<>("NodeScan(\"Person\", ForeachRelationship(FROM, ':IsLocatedIn', Expand(OUT, \"Post\")))", "")));
+      pegtl::string_input<>("Expand(OUT, \"Post\", ForeachRelationship(FROM, ':IsLocatedIn', NodeScan(\"Person\")))", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Filter($1.Age == 42)", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
