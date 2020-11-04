@@ -297,11 +297,6 @@ void order_by::finish(graph_db_ptr &gdb) {
 
 /* ------------------------------------------------------------------------ */
 
-group_by::group_by(std::vector<int> p, std::vector<aggr> ag) : 
-  grpkey_cnt_(0), grpkey_pos_(p), aggregates(ag) {
-  assert(grpkey_pos_.size() > 0);
-}
-
 void group_by::dump(std::ostream &os) const {
   os << "group_by([])=>";
   if (subscriber_)
@@ -310,7 +305,7 @@ void group_by::dump(std::ostream &os) const {
 
 void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
   std::string grpkeys = "";
-  for (auto pos : grpkey_pos_){ // TODO confirm type is not always string
+  for (auto pos : grpkey_pos_){
     if (v[pos].type() == typeid(std::string)) {
       grpkeys += boost::get<std::string>(v[pos]);
     } else if (v[pos].type() == typeid(int)) {
@@ -324,13 +319,13 @@ void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
     }
   }
 
-  // building a map of grouping keys and position in result set vector
+  // building a map of grouping keys and position in result_set vector
   const auto itr = grpkey_map_.find(grpkeys);
   if (itr != grpkey_map_.end())
     res_set_vec_[itr->second].append(v);
   else {
     grpkey_map_.emplace(grpkeys, grpkey_cnt_);
-    grpkey_set_.insert(grpkeys);
+    grpkey_set_.push_back(grpkeys);
     res_set_vec_.emplace_back();
     res_set_vec_[grpkey_cnt_++].append(v);
   }
@@ -339,56 +334,109 @@ void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
 void group_by::finish(graph_db_ptr &gdb) {
   for (auto &grp : grpkey_set_) {
     qr_tuple res;
-
-    // grouping keys
     auto gpos = grpkey_map_[grp];
     auto tpl = res_set_vec_[gpos].data.front();
     for (auto pos : grpkey_pos_)
       res.push_back(tpl[pos]);
-
-    // aggregate functions
-    for (auto &aggr : aggregates) {
-      switch (aggr.first) {
-        case /*aggr_t::count*/1: {
-          uint64_t gcnt = res_set_vec_[gpos].data.size();
-          res.push_back(query_result(gcnt));
-          break;
-        }
-        case /*aggr_t::sum*/2: {
-          uint64_t gs = 0;
-          for (auto &v : res_set_vec_[gpos].data) {
-            if (v[aggr.second].type() == typeid(int)) {
-              gs += boost::get<int>(v[aggr.second]);
-            } else if (v[aggr.second].type() == typeid(double)) {
-              gs += boost::get<double>(v[aggr.second]);
-            } else if (v[aggr.second].type() == typeid(uint64_t)) {
-              gs += boost::get<uint64_t>(v[aggr.second]);
-            }
-          }
-          res.push_back(query_result(gs));
-          break;
-        }
-        case /*aggr_t::avg*/3: { // TODO reuse count and avg
-          uint64_t gcnt = res_set_vec_[gpos].data.size();
-          uint64_t gs = 0;
-          for (auto &v : res_set_vec_[gpos].data) {
-            if (v[aggr.second].type() == typeid(int)) {
-              gs += boost::get<int>(v[aggr.second]);
-            } else if (v[aggr.second].type() == typeid(double)) {
-              gs += boost::get<double>(v[aggr.second]);
-            } else if (v[aggr.second].type() == typeid(uint64_t)) {
-              gs += boost::get<uint64_t>(v[aggr.second]);
-            }
-          }
-          double ga = gs / gcnt;
-          res.push_back(query_result(ga));
-          break;
-        }
-      }
-    }
     consume_(gdb, res);
   }
   finish_(gdb);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void count_aggr::dump(std::ostream &os) const {
+  os << "count_aggr()=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void count_aggr::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  if (!flag) {
+    for (auto &res : res_set_vec_)
+      total_cnt += res.data.size();
+    flag = true;
+  }
+  uint64_t gcnt = res_set_vec_[grpkey_cnt_++].data.size();
+  double p_gcnt = (gcnt / (double)total_cnt) * 100;
+  auto v2 = append(v, query_result(gcnt));
+  auto v3 = append(v2, query_result(p_gcnt));
+  consume_(gdb, v3); 
+}
+
+/* ------------------------------------------------------------------------ */
+  
+
+void sum_aggr::dump(std::ostream &os) const {
+  os << "sum_aggr()=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void sum_aggr::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto v2 = v;
+  for (auto pos : grpkey_pos_) {
+    auto &grp_data = res_set_vec_[grpkey_cnt_++].data;
+    auto key = grp_data.front()[pos];
+    if (key.type() == typeid(int)) {
+      int gsum = 0;
+      for (auto &tpl : grp_data)
+        gsum += boost::get<int>(tpl[pos]);
+      v2 = append(v2, query_result(gsum));
+    }
+    else if (key.type() == typeid(uint64_t)) {
+      uint64_t gsum = 0;
+      for (auto &tpl : grp_data)
+        gsum += boost::get<uint64_t>(tpl[pos]);
+      v2 = append(v2, query_result(gsum));
+    }
+    else if (key.type() == typeid(double)) {
+      double gsum = 0.0;
+      for (auto &tpl : grp_data)
+        gsum += boost::get<double>(tpl[pos]);
+      v2 = append(v2, query_result(gsum));
+    }
+  }
+  consume_(gdb, v2);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void avg_aggr::dump(std::ostream &os) const {
+  os << "sum_aggr()=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void avg_aggr::process(graph_db_ptr &gdb, const qr_tuple &v) { // TODO reuse count and sum
+  auto v2 = v;
+  for (auto pos : grpkey_pos_) {
+    auto &grp_data = res_set_vec_[grpkey_cnt_++].data;
+    uint64_t gcnt = grp_data.size();
+    auto key = grp_data.front()[pos];
+    if (key.type() == typeid(int)) {
+      int gsum = 0;
+      for (auto &tpl : grp_data)
+        gsum += boost::get<int>(tpl[pos]);
+      double g_avg = gsum / gcnt;
+      v2 = append(v2, query_result(g_avg));
+    }
+    else if (key.type() == typeid(uint64_t)) {
+      uint64_t gsum = 0;
+      for (auto &tpl : grp_data)
+        gsum += boost::get<uint64_t>(tpl[pos]);
+      double g_avg = gsum / gcnt;
+      v2 = append(v2, query_result(g_avg));
+    }
+    else if (key.type() == typeid(double)) {
+      double gsum = 0.0;
+      for (auto &tpl : grp_data)
+        gsum += boost::get<double>(tpl[pos]);
+      double g_avg = gsum / gcnt;
+      v2 = append(v2, query_result(g_avg));
+    }
+  }
+  consume_(gdb, v2);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -711,6 +759,33 @@ query_result pr_year(projection::pr_result &pv, const std::string &key) {
         auto dt = to_iso_extended_string(o.value());
         auto yr = dt.substr(0, dt.find("-"));
         return query_result(std::stoi(yr));
+      }
+      return query_result(null_val);
+    }
+  }
+  return null_val; 
+}
+
+query_result pr_month(projection::pr_result &pv, const std::string &key) {
+  if (pv.type() == typeid(node_description &)) {
+    auto nd = boost::get<node_description &>(pv);
+    if (nd.has_property(key)) {
+      auto o = get_property<ptime>(nd.properties, key);
+      if (o.has_value()) {
+        auto dt = to_iso_extended_string(o.value());
+        auto mo = dt.substr(5, 2);
+        return query_result(std::stoi(mo));
+      }
+      return query_result(null_val);
+    }
+  } else if (pv.type() == typeid(rship_description &)) {
+    auto rd = boost::get<rship_description &>(pv);
+    if (rd.has_property(key)) {
+      auto o = get_property<ptime>(rd.properties, key);
+      if (o.has_value()) {
+        auto dt = to_iso_extended_string(o.value());
+        auto mo = dt.substr(5, 2);
+        return query_result(std::stoi(mo));
       }
       return query_result(null_val);
     }

@@ -177,16 +177,28 @@ query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
 }
 
 query &
-query::groupby(std::vector<int> p, std::vector<std::pair</*aggr_t*/int, int>> ag) {
-  auto op = std::make_shared<group_by>(p, ag);
+query::groupby(std::vector<result_set> &grps, const std::vector<int> &pos) {
+  auto op = std::make_shared<group_by>(grps, pos);
   return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
                    std::bind(&group_by::finish, op.get(), ph::_1));
 }
 
 query &
-query::groupby(std::vector<int> p) {
-  std::vector<std::pair</*aggr_t*/int, int>> tmp;
-  return groupby(p, tmp);
+query::count(const std::vector<result_set> &grps) {
+  auto op = std::make_shared<count_aggr>(grps);
+  return append_op(op, std::bind(&count_aggr::process, op.get(), ph::_1, ph::_2));
+}
+
+query &
+query::sum(const std::vector<result_set> &grps, const std::vector<int> &pos) {
+  auto op = std::make_shared<sum_aggr>(grps, pos);
+  return append_op(op, std::bind(&sum_aggr::process, op.get(), ph::_1, ph::_2));
+}
+
+query &
+query::average(const std::vector<result_set> &grps, const std::vector<int> &pos) {
+  auto op = std::make_shared<avg_aggr>(grps, pos);
+  return append_op(op, std::bind(&avg_aggr::process, op.get(), ph::_1, ph::_2));
 }
 
 query &query::crossjoin(query &other) {

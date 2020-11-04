@@ -21,6 +21,7 @@ using namespace boost::posix_time;
 
 void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, ptime dt) {
 
+    std::vector<result_set> grps;
     std::vector<std::string> message = {"Post", "Comment"};
 
     auto q = query(gdb) // TODO add range index scan
@@ -49,7 +50,10 @@ void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, ptime dt) {
                           (len >= 40 && len < 80) ? query_result(std::string("1")) :
                           (len >= 80 && len < 160) ? query_result(std::string("2")) : query_result(std::string("3")); })
                         })
-              .groupby({0, 1, 3}, {{1, 1}, {3, 2}, {2, 2}} )
+              .groupby(grps, {0, 1, 3})
+              .count(grps)
+              .average(grps, {2})
+              .sum(grps, {2})
               .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         if (boost::get<int>(qr1[0]) == boost::get<int>(qr2[0])) {
                           if (boost::get<std::string>(qr1[1]) == boost::get<std::string>(qr2[1]))
@@ -66,6 +70,7 @@ void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, ptime dt) {
 
 void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 
+    std::vector<result_set> grps;
     std::vector<std::string> message = {"Post", "Comment"};
 
     auto q = query(gdb) // TODO add range index scan
@@ -73,10 +78,11 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
               .all_nodes()
               .has_label("Post")
               .property( "creationDate",
-                           [&](auto &p) {
-                              if ((p.flags_ & 0xe0) == p.p_ptime)
-                                return (*(reinterpret_cast<const ptime *>(p.value_))) < dt;
-                              throw invalid_typecast(); })
+                [&](auto &p) {
+                  if ((p.flags_ & 0xe0) == p.p_ptime)
+                    return ((*(reinterpret_cast<const ptime *>(p.value_))) >= boost::get<ptime>(params[0])) &&
+                            ((*(reinterpret_cast<const ptime *>(p.value_))) <= boost::get<ptime>(params[1]));
+                  throw invalid_typecast(); })
 #else
               .nodes_where(message, "creationDate",
                 [&](auto &p) {
@@ -85,6 +91,33 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
                             ((*(reinterpret_cast<const ptime *>(p.value_))) <= boost::get<ptime>(params[1]));
                   throw invalid_typecast(); })
 #endif
+              .from_relationships(":hasCreator")
+              .to_node("Person")
+              .from_relationships(":isLocatedIn")
+              .to_node("Place")
+              .from_relationships(":isPartOf")
+              .to_node("Place")
+              .property("name",
+                [&](auto &p) {
+                  auto c = *(reinterpret_cast<const dcode_t *>(p.value_));
+                  auto c1 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
+                  auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[3]));
+                  return c == c1 || c == c2; })
+              .project({PExpr_(6, pj::string_property(res, "name")),
+                        PExpr_(0, pj::pr_month(res, "creationDate")),
+                        PExpr_(2, pj::string_property(res, "gender")),
+                        projection::expr(2, [&](auto res) {
+                          auto edt = time_from_string(std::string("2013-01-01 00:00:00.000"));
+                          auto dt = boost::get<std::string>(pj::pr_date(res, "birthday"));
+                          ptime bdt (boost::gregorian::from_string(dt));
+                          int age_grp = (edt - bdt).hours() / (8760 * 5);
+                          return query_result(age_grp); }) })
+              .groupby(grps, {0, 1, 2, 3})
+              .count(grps)
+              .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                if (boost::get<std::string>(qr1[0]) == boost::get<std::string>(qr2[0]))
+                  return boost::get<uint64_t>(qr1[4]) > boost::get<uint64_t>(qr2[4]);
+                return boost::get<std::string>(qr1[0]) < boost::get<std::string>(qr2[0]); })
               .collect(rs);
     q.start();
     rs.wait();
@@ -94,11 +127,8 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 
 double calc_avg_time(const std::vector<double>& vec) {
     double d = 0.0;
-    for (auto v : vec) {
-        d += v;
-        std::cout << v << " ";
-    }
-    // std::cout << "\n";
+    for (auto v : vec)
+      d += v;
     return d / (double)vec.size();
 }
 
@@ -156,8 +186,8 @@ void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
     t = run_query_1(gdb);
     spdlog::info("Query #1: {} msecs", t);
-    // t = run_query_2(gdb);
-    // spdlog::info("Query #2: {} msecs", t);
+    t = run_query_2(gdb);
+    spdlog::info("Query #2: {} msecs", t);
 }
 
 /* ---------------------------------------------------------------------------- */

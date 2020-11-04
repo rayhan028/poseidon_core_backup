@@ -436,12 +436,10 @@ struct order_by : public qop {
  * TODO
  */
 struct group_by : public qop {
-
-  enum class aggr_t {count, sum, avg}; // aggregare operation types
-
-  using aggr = std::pair</*aggr_t*/int, int>; // TODO
-
-  group_by(std::vector<int> p, std::vector<aggr> ag);
+  group_by(std::vector<result_set> &grps, const std::vector<int> &pos) : 
+    grpkey_cnt_(0), res_set_vec_(grps), grpkey_pos_(pos) {
+    // assert(grpkey_pos_.size() > 0);
+  }
   ~group_by() = default;
 
   void dump(std::ostream &os) const override;
@@ -451,11 +449,68 @@ struct group_by : public qop {
   void finish(graph_db_ptr &gdb);
 
   int grpkey_cnt_;
-  std::vector<result_set> res_set_vec_;
-  std::set<std::string> grpkey_set_;
+  std::vector<result_set> &res_set_vec_;
+  std::vector<std::string> grpkey_set_;
   std::vector<int> grpkey_pos_;
   std::unordered_map<std::string, int> grpkey_map_;
-  std::vector<aggr> aggregates;
+};
+
+/**
+ * TODO
+ */
+struct count_aggr : public qop {
+  count_aggr(const std::vector<result_set> &grps) :
+    grpkey_cnt_(0), total_cnt(0), flag(false), res_set_vec_(grps) {}
+  ~count_aggr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  int grpkey_cnt_;
+  uint64_t total_cnt;
+  bool flag;
+  const std::vector<result_set> &res_set_vec_;
+};
+
+/**
+ * TODO
+ */
+struct sum_aggr : public qop {
+  sum_aggr(const std::vector<result_set> &grps, const std::vector<int> &pos) :
+    grpkey_cnt_(0), res_set_vec_(grps), grpkey_pos_(pos) {}
+  ~sum_aggr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  int grpkey_cnt_;
+  const std::vector<result_set> &res_set_vec_;
+  std::vector<int> grpkey_pos_;
+};
+
+/**
+ * TODO
+ */
+struct avg_aggr : public qop {
+  avg_aggr(const std::vector<result_set> &grps, const std::vector<int> &pos) :
+    grpkey_cnt_(0), res_set_vec_(grps), grpkey_pos_(pos) {}
+  ~avg_aggr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  int grpkey_cnt_;
+  const std::vector<result_set> &res_set_vec_;
+  std::vector<int> grpkey_pos_;
 };
 
 /**
@@ -595,6 +650,13 @@ query_result pr_date(projection::pr_result &pv,
  * stored in projection_result res and identified by the given key.
  */
 query_result pr_year(projection::pr_result &pv, 
+                 const std::string &key);
+
+/**
+ * Return the month of the date property of a node/relationship 
+ * stored in projection_result res and identified by the given key.
+ */
+query_result pr_month(projection::pr_result &pv, 
                  const std::string &key);
 
 /**

@@ -143,15 +143,30 @@ public:
   query &orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp);
 
   /**
-   * Add an operator for grouping
-   * Groupby keys are specified by tuple positions in the vector p
-   * If there are aggregate operations, each aggregate function and
-   * its corresponding aggregate attribute are specified as a pair
-   * in the vector ag
+   * Add an operator for grouping. The positions of the groupby keys in the query result
+   * tuple are specified by the positions in the vector pos. Each group is stored in a 
+   * result_set object in the vector grps.
    */
-  query &groupby(std::vector<int> p, std::vector<std::pair</*aggr_t*/int, int>> ag); // TODO
+  query &groupby(std::vector<result_set> &grps, const std::vector<int> &pos);
 
-  query &groupby(std::vector<int> p);
+  /**
+   * Add an operator for counting the tuples in each group from the groupby operator.
+   */
+  query &count(const std::vector<result_set> &grps);
+
+  /**
+   * Add an operator for summing the (numerical) values of attributes for each group
+   * from the groupby operator. The position(s) of the attribute(s) in the tuple is given
+   * by the vector of positions pos.
+   */
+  query &sum(const std::vector<result_set> &grps, const std::vector<int> &pos);
+
+  /**
+   * Add an operator for calculating the (numerical) average of attributes values for each group
+   * from the groupby operator. The position(s) of the attribute(s) in the tuple is given
+   * by the vector of positions pos.
+   */
+  query &average(const std::vector<result_set> &grps, const std::vector<int> &pos);
 
   /**
    * Add a print operator for outputting the query results to cout.
