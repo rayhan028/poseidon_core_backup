@@ -86,13 +86,14 @@ public:
 
   /**
    * Add an operator that scans all outgoing relationships of the last node in
-   * the query result. Optionally, the given label of the relationship is
-   * checked, too.
+   * the query result. Optionally, 1) the given label of the relationship is
+   * checked, too. 2) Nodes that were already explored, i.e. other than the frontier,
+   * can also be re-explored, given their position.
    */
-  query &from_relationships(const std::string &label = "");
+  query &from_relationships(const std::string &label = "", int pos = std::numeric_limits<int>::max());
 
   query &from_relationships(std::pair<int, int> range,
-                            const std::string &label = "");
+                            const std::string &label = "", int pos = std::numeric_limits<int>::max());
 
   /**
    * Add a filter operator for checking that the property with the given key
@@ -143,30 +144,37 @@ public:
   query &orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp);
 
   /**
-   * Add an operator for grouping. The positions of the groupby keys in the query result
+   * Add an operator for grouping. The positions of the grouping keys in the query result
    * tuple are specified by the positions in the vector pos. Each group is stored in a 
    * result_set object in the vector grps.
    */
-  query &groupby(std::vector<result_set> &grps, const std::vector<int> &pos);
+  query &group(std::vector<result_set> &grps, const std::vector<int> &pos);
 
   /**
-   * Add an operator for counting the tuples in each group from the groupby operator.
+   * Add an operator for counting the tuples in each group from the grouping operator.
+   * Optionally, each group's count value can be expressed as a percentage of the total
+   * result count by setting the p flag.
    */
-  query &count(const std::vector<result_set> &grps);
+  query &count(const std::vector<result_set> &grps, bool p = false);
 
   /**
    * Add an operator for summing the (numerical) values of attributes for each group
-   * from the groupby operator. The position(s) of the attribute(s) in the tuple is given
+   * from the grouping operator. The position(s) of the attribute(s) in the tuple is given
    * by the vector of positions pos.
    */
   query &sum(const std::vector<result_set> &grps, const std::vector<int> &pos);
 
   /**
    * Add an operator for calculating the (numerical) average of attributes values for each group
-   * from the groupby operator. The position(s) of the attribute(s) in the tuple is given
+   * from the grouping operator. The position(s) of the attribute(s) in the tuple is given
    * by the vector of positions pos.
    */
-  query &average(const std::vector<result_set> &grps, const std::vector<int> &pos);
+  query &avg(const std::vector<result_set> &grps, const std::vector<int> &pos);
+
+  /**
+   * Add an operator to filter projected result tuples based on the pred function.
+   */
+  query &where_qr_tuple(std::function<bool(const qr_tuple &)> pred);
 
   /**
    * Add a print operator for outputting the query results to cout.

@@ -191,7 +191,7 @@ struct index_scan : public qop {
  * of the consume method.
  */
 struct foreach_from_relationship : public qop {
-  foreach_from_relationship(const std::string &l) : label(l), lcode(0) {}
+  foreach_from_relationship(const std::string &l, int pos) : label(l), lcode(0), npos(pos) {}
   ~foreach_from_relationship() = default;
 
   void dump(std::ostream &os) const override;
@@ -200,6 +200,7 @@ struct foreach_from_relationship : public qop {
 
   std::string label;
   dcode_t lcode;
+  int npos;
 };
 
 /**
@@ -209,8 +210,8 @@ struct foreach_from_relationship : public qop {
  */
 struct foreach_variable_from_relationship : public qop {
   foreach_variable_from_relationship(const std::string &l, std::size_t min,
-                                     std::size_t max)
-      : label(l), lcode(0), min_range(min), max_range(max) {}
+                                     std::size_t max, int pos)
+      : label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
   ~foreach_variable_from_relationship() = default;
 
   void dump(std::ostream &os) const override;
@@ -220,6 +221,7 @@ struct foreach_variable_from_relationship : public qop {
   std::string label;
   dcode_t lcode;
   std::size_t min_range, max_range;
+  int npos;
 };
 
 /**
@@ -459,8 +461,8 @@ struct group_by : public qop {
  * TODO
  */
 struct count_aggr : public qop {
-  count_aggr(const std::vector<result_set> &grps) :
-    grpkey_cnt_(0), total_cnt(0), flag(false), res_set_vec_(grps) {}
+  count_aggr(const std::vector<result_set> &grps, bool p) :
+    grpkey_cnt_(0), percentage(p), total(false), total_cnt(0), res_set_vec_(grps) {}
   ~count_aggr() = default;
 
   void dump(std::ostream &os) const override;
@@ -470,8 +472,8 @@ struct count_aggr : public qop {
   void finish(graph_db_ptr &gdb);
 
   int grpkey_cnt_;
+  bool percentage, total;
   uint64_t total_cnt;
-  bool flag;
   const std::vector<result_set> &res_set_vec_;
 };
 
@@ -511,6 +513,23 @@ struct avg_aggr : public qop {
   int grpkey_cnt_;
   const std::vector<result_set> &res_set_vec_;
   std::vector<int> grpkey_pos_;
+};
+
+/**
+ * TODO
+ */
+struct filter_tuple : public qop {
+  filter_tuple(std::function<bool(const qr_tuple &)> func)
+      : pred_func_(func) {}
+  ~filter_tuple() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  std::function<bool(const qr_tuple &)> pred_func_;
 };
 
 /**

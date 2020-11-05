@@ -85,16 +85,16 @@ query &query::to_relationships(std::pair<int, int> range,
                                  op.get(), ph::_1, ph::_2));
 }
 
-query &query::from_relationships(const std::string &label) {
-  auto op = std::make_shared<foreach_from_relationship>(label);
+query &query::from_relationships(const std::string &label, int pos) {
+  auto op = std::make_shared<foreach_from_relationship>(label, pos);
   return append_op(op, std::bind(&foreach_from_relationship::process, op.get(),
                                  ph::_1, ph::_2));
 }
 
 query &query::from_relationships(std::pair<int, int> range,
-                                 const std::string &label) {
+                                 const std::string &label, int pos) {
   auto op = std::make_shared<foreach_variable_from_relationship>(
-      label, range.first, range.second);
+      label, range.first, range.second, pos);
   return append_op(op, std::bind(&foreach_variable_from_relationship::process,
                                  op.get(), ph::_1, ph::_2));
 }
@@ -177,15 +177,15 @@ query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
 }
 
 query &
-query::groupby(std::vector<result_set> &grps, const std::vector<int> &pos) {
+query::group(std::vector<result_set> &grps, const std::vector<int> &pos) {
   auto op = std::make_shared<group_by>(grps, pos);
   return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
                    std::bind(&group_by::finish, op.get(), ph::_1));
 }
 
 query &
-query::count(const std::vector<result_set> &grps) {
-  auto op = std::make_shared<count_aggr>(grps);
+query::count(const std::vector<result_set> &grps, bool p) {
+  auto op = std::make_shared<count_aggr>(grps, p);
   return append_op(op, std::bind(&count_aggr::process, op.get(), ph::_1, ph::_2));
 }
 
@@ -196,9 +196,16 @@ query::sum(const std::vector<result_set> &grps, const std::vector<int> &pos) {
 }
 
 query &
-query::average(const std::vector<result_set> &grps, const std::vector<int> &pos) {
+query::avg(const std::vector<result_set> &grps, const std::vector<int> &pos) {
   auto op = std::make_shared<avg_aggr>(grps, pos);
   return append_op(op, std::bind(&avg_aggr::process, op.get(), ph::_1, ph::_2));
+}
+
+query &
+query::where_qr_tuple(std::function<bool(const qr_tuple &)> pred) {
+  auto op = std::make_shared<filter_tuple>(pred);
+  return append_op(op,
+                   std::bind(&filter_tuple::process, op.get(), ph::_1, ph::_2));
 }
 
 query &query::crossjoin(query &other) {

@@ -65,7 +65,12 @@ void index_scan::dump(std::ostream &os) const {
 /* ------------------------------------------------------------------------ */
 
 void foreach_from_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
-  auto n = boost::get<node *>(v.back());
+  node *n = nullptr;
+  if (npos == std::numeric_limits<int>::max())
+    n = boost::get<node *>(v.back());
+  else
+    n = boost::get<node *>(v[npos]);
+  
   if (lcode == 0)
     lcode = gdb->get_code(label);
 
@@ -85,7 +90,12 @@ void foreach_from_relationship::dump(std::ostream &os) const {
 
 void foreach_variable_from_relationship::process(graph_db_ptr &gdb,
                                                  const qr_tuple &v) {
-  auto n = boost::get<node *>(v.back());
+  node *n = nullptr;
+  if (npos == std::numeric_limits<int>::max())
+    n = boost::get<node *>(v.back());
+  else
+    n = boost::get<node *>(v[npos]);
+
   if (lcode == 0)
     lcode = gdb->get_code(label);
 
@@ -352,23 +362,28 @@ void count_aggr::dump(std::ostream &os) const {
 }
 
 void count_aggr::process(graph_db_ptr &gdb, const qr_tuple &v) {
-  if (!flag) {
-    for (auto &res : res_set_vec_)
-      total_cnt += res.data.size();
-    flag = true;
-  }
   uint64_t gcnt = res_set_vec_[grpkey_cnt_++].data.size();
-  double p_gcnt = (gcnt / (double)total_cnt) * 100;
   auto v2 = append(v, query_result(gcnt));
-  auto v3 = append(v2, query_result(p_gcnt));
-  consume_(gdb, v3); 
+  if (percentage) {
+    if (!total) {
+      for (auto &res : res_set_vec_)
+        total_cnt += res.data.size();
+      total = true;
+    }
+    double p_gcnt = (gcnt / (double)total_cnt) * 100;
+    auto v3 = append(v2, query_result(p_gcnt));
+    consume_(gdb, v3);
+    return;
+  }
+
+  consume_(gdb, v2); 
 }
 
 /* ------------------------------------------------------------------------ */
   
 
 void sum_aggr::dump(std::ostream &os) const {
-  os << "sum_aggr()=>";
+  os << "sum_aggr([])=>";
   if (subscriber_)
     subscriber_->dump(os);
 }
@@ -403,7 +418,7 @@ void sum_aggr::process(graph_db_ptr &gdb, const qr_tuple &v) {
 /* ------------------------------------------------------------------------ */
 
 void avg_aggr::dump(std::ostream &os) const {
-  os << "sum_aggr()=>";
+  os << "avg_aggr([])=>";
   if (subscriber_)
     subscriber_->dump(os);
 }
@@ -437,6 +452,20 @@ void avg_aggr::process(graph_db_ptr &gdb, const qr_tuple &v) { // TODO reuse cou
     }
   }
   consume_(gdb, v2);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void filter_tuple::dump(std::ostream &os) const {
+  os << "filter_tuple([])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void filter_tuple::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  bool tp = pred_func_(v);
+  if (tp)
+    consume_(gdb, v);
 }
 
 /* ------------------------------------------------------------------------ */
