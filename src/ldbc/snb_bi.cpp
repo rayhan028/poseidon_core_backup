@@ -44,7 +44,7 @@ void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, ptime dt) {
     auto q = query(gdb) // TODO add range index scan
 #ifdef RUN_PARALLEL
               .all_nodes()
-              .has_label("Post")
+              .has_label(message)
               .property( "creationDate", filter_cdate)
 #else
               .nodes_where(message, "creationDate", filter_cdate)
@@ -103,10 +103,10 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
       };
 
     // query pipeline
-    auto q = query(gdb) // TODO add range index scan
+    auto q = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
-              .has_label("Post")
+              .has_label(message)
               .property( "creationDate", filter_cdate)
 #else
               .nodes_where(message, "creationDate", filter_cdate)
@@ -153,6 +153,7 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 void ldbc_bi_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 
     std::vector<result_set> grps;
+    std::vector<result_set> grps2;
     std::vector<std::string> message = {"Post", "Comment"};
 
     auto filter_cdate_1 =
@@ -187,46 +188,54 @@ void ldbc_bi_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
         throw invalid_typecast(); 
       };
 
-    auto q2 = query(gdb) // TODO add range index scan
+    auto compute_diff =
+      [&](qr_tuple &v) {
+        auto cnt = boost::get<uint64_t>(v[1]);
+        auto nxt_cnt = boost::get<uint64_t>(v[2]);
+        uint64_t diff = cnt > nxt_cnt ? cnt - nxt_cnt : nxt_cnt - cnt;
+        return query_result(diff);
+      };
+
+    // Query pipeline
+    auto q2 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
-              .has_label("Post")
+              .has_label(message)
               .property( "creationDate", filter_cdate_2)
 #else
               .nodes_where(message, "creationDate", filter_cdate_2)
 #endif
               .from_relationships(":hasTag", 0)
               .to_node("Tag")
-              .project({PExpr_(2, pj::string_property(res, "name")),
-                        PExpr_(0, pj::pr_month(res, "creationDate")),
-                        PExpr_(0, pj::pr_year(res, "creationDate")) })
-              .group(grps, {0, 1})
-              .count(grps)
-              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
-                            return boost::get<std::string>(q1[0]) < boost::get<std::string>(q2[0]);
-              });
+              .group(grps2, {2})
+              .count(grps2);
 
-    auto q1 = query(gdb) // TODO add range index scan
+    // Query pipeline
+    auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
-              .has_label("Post")
+              .has_label(message)
               .property( "creationDate", filter_cdate_1)
 #else
               .nodes_where(message, "creationDate", filter_cdate_1)
 #endif
               .from_relationships(":hasTag", 0)
               .to_node("Tag")
-              .project({PExpr_(2, pj::string_property(res, "name")),
-                        PExpr_(0, pj::pr_month(res, "creationDate")),
-                        PExpr_(0, pj::pr_year(res, "creationDate")) })
-              .group(grps, {0, 1})
+              .group(grps, {2})
               .count(grps)
+              .join_on_node({0, 0}, q2)
+              .project({PExpr_(0, pj::string_property(res, "name")),
+                        PVar_(1),
+                        PVar_(3)})
+              .append_to_qr_tuple(compute_diff)
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
-                            return boost::get<std::string>(q1[0]) < boost::get<std::string>(q2[0]);
-              })
+                if (boost::get<uint64_t>(q1[3]) == boost::get<uint64_t>(q2[3]))
+                  return boost::get<std::string>(q1[0]) < boost::get<std::string>(q2[0]);
+                return boost::get<uint64_t>(q1[3]) > boost::get<uint64_t>(q2[3]); })
+              .limit(100)
               .collect(rs);
-    q1.start();
-    // query::start({&q2, &q1})
+
+    query::start({&q2, &q1});
     rs.wait();
 }
 

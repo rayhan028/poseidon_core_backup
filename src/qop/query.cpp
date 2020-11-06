@@ -134,6 +134,12 @@ query &query::has_label(const std::string &label) {
       op, std::bind(&node_has_label::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::has_label(const std::vector<std::string> &labels) {
+  auto op = std::make_shared<node_has_label>(labels);
+  return append_op(
+      op, std::bind(&node_has_label::process, op.get(), ph::_1, ph::_2));
+}
+
 query &query::limit(std::size_t n) {
   auto op = std::make_shared<limit_result>(n);
   return append_op(op,
@@ -206,6 +212,13 @@ query::where_qr_tuple(std::function<bool(const qr_tuple &)> pred) {
   auto op = std::make_shared<filter_tuple>(pred);
   return append_op(op,
                    std::bind(&filter_tuple::process, op.get(), ph::_1, ph::_2));
+}
+
+query &
+query::append_to_qr_tuple(std::function<query_result(qr_tuple &)> func) {
+  auto op = std::make_shared<qr_tuple_append>(func);
+  return append_op(op,
+                   std::bind(&qr_tuple_append::process, op.get(), ph::_1, ph::_2));
 }
 
 query &query::crossjoin(query &other) {

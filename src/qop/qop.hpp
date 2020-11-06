@@ -285,6 +285,7 @@ struct is_property : public qop {
  * the given label.
  */
 struct node_has_label : public qop {
+  node_has_label(const std::vector<std::string> &l) : labels(l), lcode(0) {}
   node_has_label(const std::string &l) : label(l), lcode(0) {}
   ~node_has_label() = default;
 
@@ -292,6 +293,7 @@ struct node_has_label : public qop {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  std::vector<std::string> labels;
   std::string label;
   dcode_t lcode;
 };
@@ -530,6 +532,23 @@ struct filter_tuple : public qop {
   void finish(graph_db_ptr &gdb);
 
   std::function<bool(const qr_tuple &)> pred_func_;
+};
+
+/**
+ * TODO
+ */
+struct qr_tuple_append : public qop {
+  qr_tuple_append(std::function<query_result(qr_tuple &)> func)
+      : func_(func) {}
+  ~qr_tuple_append() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  std::function<query_result(qr_tuple &)> func_;
 };
 
 /**

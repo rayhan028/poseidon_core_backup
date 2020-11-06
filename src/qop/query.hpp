@@ -123,6 +123,12 @@ public:
   query &has_label(const std::string &label);
 
   /**
+   * Add a filter operator that checks whether the last node/relationship
+   * in the result has one of the given labels.
+   */
+  query &has_label(const std::vector<std::string> &labels);
+
+  /**
    * Add a limit operator that produces only the first n result elements.
    */
   query &limit(std::size_t n);
@@ -175,6 +181,12 @@ public:
    * Add an operator to filter projected result tuples based on the pred function.
    */
   query &where_qr_tuple(std::function<bool(const qr_tuple &)> pred);
+
+  /**
+   * Add an operator that applies a function on multiple query results in the 
+   * same query tuple and appends the result to the tuple.
+   */
+  query &append_to_qr_tuple(std::function<query_result(qr_tuple &)> func);
 
   /**
    * Add a print operator for outputting the query results to cout.

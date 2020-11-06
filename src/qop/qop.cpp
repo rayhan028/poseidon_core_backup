@@ -184,11 +184,22 @@ void node_has_label::dump(std::ostream &os) const {
 }
 
 void node_has_label::process(graph_db_ptr &gdb, const qr_tuple &v) {
-  if (lcode == 0)
-    lcode = gdb->get_code(label);
   auto n = boost::get<node *>(v.back());
-  if (n->node_label == lcode) {
-    consume_(gdb, v);
+  if (labels.empty()) {
+    if (lcode == 0)
+      lcode = gdb->get_code(label);
+    if (n->node_label == lcode) {
+      consume_(gdb, v);
+    }
+  }
+  else {
+    for (auto &label : labels) {
+      lcode = gdb->get_code(label);
+      if (n->node_label == lcode) {
+        consume_(gdb, v);
+        break;
+      }
+    }
   }
 }
 
@@ -315,7 +326,7 @@ void group_by::dump(std::ostream &os) const {
 
 void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
   std::string grpkeys = "";
-  for (auto pos : grpkey_pos_){
+  for (auto pos : grpkey_pos_) {
     if (v[pos].type() == typeid(std::string)) {
       grpkeys += boost::get<std::string>(v[pos]);
     } else if (v[pos].type() == typeid(int)) {
@@ -326,6 +337,8 @@ void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
       grpkeys += std::to_string(boost::get<uint64_t>(v[pos]));
     } else if (v[pos].type() == typeid(ptime)) { 
       grpkeys += to_iso_extended_string(boost::get<ptime>(v[pos]));
+    } else if (v[pos].type() == typeid(node *)) {
+      grpkeys += std::to_string(boost::get<node *>(v[pos])->id());
     }
   }
 
@@ -466,6 +479,21 @@ void filter_tuple::process(graph_db_ptr &gdb, const qr_tuple &v) {
   bool tp = pred_func_(v);
   if (tp)
     consume_(gdb, v);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void qr_tuple_append::dump(std::ostream &os) const {
+  os << "qr_tuple_append([])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void qr_tuple_append::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto v1 = v;
+  auto res = func_(v1);
+  auto v2 = append(v1, res);
+  consume_(gdb, v2);
 }
 
 /* ------------------------------------------------------------------------ */
