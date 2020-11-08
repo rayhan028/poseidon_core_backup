@@ -15,6 +15,8 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
             os << "Project("; break;
         case ast_op::limit:
             os << "Limit("; break;
+        case ast_op::join:
+            os << "Join("; break;
     }
     auto my_visitor = boost::hana::overload(
       [&](int i) { os << i; },
@@ -46,7 +48,7 @@ void _print_ast(ast_op_ptr root, const std::string& prefix) {
         auto& rchild = root->children_[1];
         bool printStrand = (hasFirst && hasSecond && (rchild->children_.size() > 0));
         std::string newPrefix = prefix + (printStrand ? "│   " : "    ");
-        std::cout << *root << std::endl;
+        std::cout << *rchild << std::endl;
         _print_ast(rchild, newPrefix);
     }
 

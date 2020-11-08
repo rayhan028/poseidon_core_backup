@@ -17,7 +17,7 @@ using ast_op_ptr = std::shared_ptr<ast_op>;
 using parse_tree_ptr = std::unique_ptr<tao::pegtl::parse_tree::node>;
 
 struct ast_op {
-    enum op_type { unknown, node_scan, filter, foreach_rship, expand, project, limit };
+    enum op_type { unknown, node_scan, filter, foreach_rship, expand, project, limit, join };
     using param_type = boost::variant<int, std::string, parse_tree_ptr>;
 
     ast_op(op_type ot) : op_(ot) {}
