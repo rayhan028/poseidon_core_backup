@@ -11,20 +11,19 @@ namespace pegtl = tao::pegtl;
 void queryc::compile(const std::string &query) {
     auto ast = parse(query);
     if (ast) {
-	      pegtl::parse_tree::print_dot( std::cout, *ast );
         ast_to_plan(ast);
     }
 }
 
-queryc::parse_tree_ptr
-queryc::parse(const std::string &query) {
+ast_op_ptr queryc::parse(const std::string &query) {
   pegtl::memory_input<> in(query, "");
 
-  queryc::parse_tree_ptr ptree;
+  parse_tree_ptr ptree;
 
   try {
     ptree = pegtl::parse_tree::parse<qlang::qoperator,
                                     qlang::my_selector, qlang::my_control>(in);
+	  pegtl::parse_tree::print_dot( std::cout, *ptree);
   } catch (const pegtl::parse_error &e) {
     const auto p = e.positions.front();
     std::cerr << e.what() << std::endl
@@ -35,7 +34,7 @@ queryc::parse(const std::string &query) {
 
   auto ast_node = ptree_to_ast(ptree->children.front());
   print_ast(ast_node);
-  return ptree;
+  return ast_node;
 }
 
 ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
@@ -70,14 +69,14 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
         nptr->add_param(std::stoi(param->string()));
       }
       else if (param->is<qlang::expression>()) {
-        // TODO
+        nptr->add_param(std::move(param));
       }
     }
   }
   return nptr;
 }
 
-void queryc::ast_to_plan(queryc::parse_tree_ptr &ast) {
+void queryc::ast_to_plan(ast_op_ptr &ast) {
   if (!ast)
     return;
 }

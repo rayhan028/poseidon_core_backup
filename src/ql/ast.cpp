@@ -19,7 +19,7 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
     auto my_visitor = boost::hana::overload(
       [&](int i) { os << i; },
       [&](const std::string &s) { os << s; },
-      [&](const qlang::expression& ex) { os << "??"; });
+      [&](const parse_tree_ptr& expr) { os << expr->string(); });
 
    for (auto& p : op.params_) {
         boost::apply_visitor(my_visitor, p);

@@ -7,16 +7,18 @@
 #include <iostream>
 
 #include <boost/variant.hpp>
+#include <tao/pegtl/contrib/parse_tree.hpp>
 
 #include "qlang_grammar.hpp"
 
 struct ast_op;
 
 using ast_op_ptr = std::shared_ptr<ast_op>;
+using parse_tree_ptr = std::unique_ptr<tao::pegtl::parse_tree::node>;
 
 struct ast_op {
     enum op_type { unknown, node_scan, filter, foreach_rship, expand, project, limit };
-    using param_type = boost::variant<int, std::string, qlang::expression>;
+    using param_type = boost::variant<int, std::string, parse_tree_ptr>;
 
     ast_op(op_type ot) : op_(ot) {}
     void add_child(ast_op_ptr c) { children_.push_back(c); }
@@ -24,6 +26,7 @@ struct ast_op {
 
     void add_param(int i) { params_.push_back(i); }
     void add_param(const std::string& s) { params_.push_back(s); }
+    void add_param(parse_tree_ptr expr) { params_.push_back(std::move(expr)); }
 
     op_type op_;
     std::vector<ast_op_ptr> children_;

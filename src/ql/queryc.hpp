@@ -9,7 +9,6 @@
 #include <tao/pegtl/contrib/parse_tree.hpp>
 
 class queryc {
-using parse_tree_ptr = std::unique_ptr<tao::pegtl::parse_tree::node>;
 
 public:
 
@@ -22,17 +21,18 @@ public:
 
 private:
   /**
-   * Parses the given query string and returns a parse tree.
+   * Parses the given query string and returns an AST.
    */
-  parse_tree_ptr parse(const std::string &query);
+  ast_op_ptr parse(const std::string &query);
 
   /**
    * Constructs a query execution plan from the given AST and
    * returns the root node.
    */
-  void ast_to_plan(parse_tree_ptr &ast);
+  void ast_to_plan(ast_op_ptr &ast);
 
   ast_op::op_type get_op_type(parse_tree_ptr& pn);
+  
   ast_op_ptr ptree_to_ast(parse_tree_ptr& pn);
 
     p_ptr<dict> &dict_;
