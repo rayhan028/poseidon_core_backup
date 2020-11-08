@@ -20,16 +20,61 @@ queryc::parse_tree_ptr
 queryc::parse(const std::string &query) {
   pegtl::memory_input<> in(query, "");
 
+  queryc::parse_tree_ptr ptree;
+
   try {
-    return pegtl::parse_tree::parse<qlang::qoperator,
+    ptree = pegtl::parse_tree::parse<qlang::qoperator,
                                     qlang::my_selector, qlang::my_control>(in);
   } catch (const pegtl::parse_error &e) {
     const auto p = e.positions.front();
     std::cerr << e.what() << std::endl
               << in.line_at(p) << std::endl
               << std::string(p.byte_in_line, ' ') << '^' << std::endl;
+    return nullptr;
   }
-  return nullptr;
+
+  auto ast_node = ptree_to_ast(ptree->children.front());
+  print_ast(ast_node);
+  return ptree;
+}
+
+ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
+  for (auto& n : pn->children) {
+    if (n->is<qlang::op_name>()) {
+      auto name = n->string();
+      if (name == "Filter")
+        return ast_op::filter;
+      else if (name == "NodeScan")
+        return ast_op::node_scan;
+      else if (name == "Limit")
+        return ast_op::limit;
+      // TODO
+    }
+  }
+  return ast_op::unknown;
+}
+
+ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
+  ast_op::op_type otype = get_op_type(pn);
+  auto nptr = std::make_shared<ast_op>(otype);  
+  for (auto &n : pn->children) {
+    if (n->is<qlang::param>()) {
+      auto& param = n->children.front();
+      if (param->is<qlang::qoperator>()) {
+        nptr->add_child(ptree_to_ast(param));
+      }
+      else if (param->is<qlang::literal_string>()) {
+        nptr->add_param(param->string());
+      }
+      else if (param->is<qlang::integer>()) {
+        nptr->add_param(std::stoi(param->string()));
+      }
+      else if (param->is<qlang::expression>()) {
+        // TODO
+      }
+    }
+  }
+  return nptr;
 }
 
 void queryc::ast_to_plan(queryc::parse_tree_ptr &ast) {

@@ -3,6 +3,7 @@
 
 #include "dict.hpp"
 #include "qlang_grammar.hpp"
+#include "ast.hpp"
 
 #include <tao/pegtl.hpp>
 #include <tao/pegtl/contrib/parse_tree.hpp>
@@ -30,6 +31,9 @@ private:
    * returns the root node.
    */
   void ast_to_plan(parse_tree_ptr &ast);
+
+  ast_op::op_type get_op_type(parse_tree_ptr& pn);
+  ast_op_ptr ptree_to_ast(parse_tree_ptr& pn);
 
     p_ptr<dict> &dict_;
 };

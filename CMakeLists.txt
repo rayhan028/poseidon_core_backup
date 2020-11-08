@@ -304,7 +304,8 @@ set(src_files
   src/log/pmlog.cpp
   src/ldbc/ldbc.cpp
   src/ql/queryc.cpp
-)
+  src/ql/ast.cpp
+  )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
 # in different libraries.
