@@ -23,8 +23,8 @@ ast_op_ptr queryc::parse(const std::string &query) {
   try {
     ptree = pegtl::parse_tree::parse<qlang::qoperator,
                                     qlang::my_selector, qlang::my_control>(in);
-    if (ptree)
-  	  pegtl::parse_tree::print_dot( std::cout, *ptree);
+    //if (ptree)
+  	//  pegtl::parse_tree::print_dot( std::cout, *ptree);
   } catch (const pegtl::parse_error &e) {
     const auto p = e.positions.front();
     std::cerr << e.what() << std::endl

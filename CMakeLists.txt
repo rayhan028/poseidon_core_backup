@@ -191,6 +191,25 @@ if(NOT pegtl_POPULATED)
   set_property(TARGET PEGTL PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${PEGTL_INCLUDE_DIR}")
 endif()
 
+# linenoise =================================================================== #
+include(FetchContent REQUIRED)
+ FetchContent_Declare(
+  linenoise
+  GIT_REPOSITORY https://github.com/yhirose/cpp-linenoise.git
+ #  GIT_TAG        1.2.1
+  )
+FetchContent_GetProperties(linenoise)
+
+if(NOT linenoise_POPULATED)
+  message(STATUS "Populating linenoise")
+  FetchContent_Populate(linenoise)
+  set(LINENOISE_INCLUDE_DIR ${linenoise_SOURCE_DIR})
+  add_library(LINENOISE IMPORTED INTERFACE)
+  set_property(TARGET LINENOISE PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${LINENOISE_INCLUDE_DIR}")
+endif()
+
+#---------------------------------------------------------------------------
+
 #---------------------------------------------------------------------------
 
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -272,6 +291,7 @@ include_directories("${PEGTL_INCLUDE_DIR}")
 include_directories("${CSV_INCLUDE_DIR}")
 include_directories("${SPDLOG_INCLUDE_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/src")
+include_directories("${LINENOISE_INCLUDE_DIR}")
 
 #-----------------------------------------------------------------------------------------
 
