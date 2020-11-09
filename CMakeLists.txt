@@ -76,6 +76,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/ldbc)
 include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 include_directories(${PROJECT_SOURCE_DIR}/src/pool)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
+include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
 #---------------------------------------------------------------------------
 
 set(THIRD_PARTY_DIR "${PROJECT_BINARY_DIR}/_deps")
@@ -173,6 +174,53 @@ if(NOT benchmark_POPULATED)
   add_subdirectory(${benchmark_SOURCE_DIR} ${benchmark_BINARY_DIR} EXCLUDE_FROM_ALL)
   set(BENCHMARK_INCLUDE_DIR ${benchmark_SOURCE_DIR}/include)
 endif()
+
+# LLVM ============================================================== #
+find_package(LLVM REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+include_directories(${LLVM_INCLUDE_DIRS})
+llvm_map_components_to_libnames(llvm_libs
+        AllTargetsAsmParsers
+        AllTargetsCodeGens
+        AllTargetsDescs
+        AllTargetsInfos
+        AggressiveInstCombine
+        Analysis
+        AsmParser
+        AsmPrinter
+        BinaryFormat
+        BitReader
+        BitWriter
+        BitstreamReader
+        CodeGen
+        Core
+        Demangle
+        ExecutionEngine
+        GlobalISel
+        InstCombine
+        Instrumentation
+        JITLink
+        Linker
+        IRReader
+        native
+        Object
+        OrcJIT
+        ProfileData
+        Remarks
+        RuntimeDyld
+        ScalarOpts
+        SelectionDAG
+        Support
+        Target
+        TransformUtils
+        Vectorize
+        X86AsmParser
+        X86CodeGen
+        X86Desc
+        X86Info
+        X86Utils)
+
 
 #---------------------------------------------------------------------------
 
@@ -285,6 +333,20 @@ set(src_files
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
   src/ldbc/ldbc.cpp
+  src/qcomp/codegen_inline.cpp
+  src/qcomp/filter_expression.cpp
+  src/qcomp/filter_expression_inline.cpp
+  src/qcomp/global_definitions.cpp
+  src/qcomp/interpreter.cpp
+  src/qcomp/jit_cache.cpp
+  src/qcomp/JitFromScratch.cpp
+  src/qcomp/Optimizer.cpp
+  src/qcomp/main.cpp
+  src/qcomp/p_context.cpp
+  src/qcomp/query_engine.cpp
+  src/qcomp/qoperator.cpp
+  src/qcomp/joiner.cpp
+  src/qcomp/interprete_filter_visitor.cpp
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -380,6 +442,18 @@ target_link_libraries(run_ldbc_graphalytics
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+
+# The program for executing the LLVM query compiler
+add_executable(qcomp
+	  src/qcomp/main.cpp
+	   )
+
+target_link_libraries(qcomp
+	     poseidon_core
+	     ${PMDK_LIBRARIES}
+	     Boost::program_options
+             )
+
 #-----------------------------------------------------------------------------------------
 #
 # Unit tests using Catch

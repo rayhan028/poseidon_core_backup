@@ -470,6 +470,12 @@ public:
   bool is_relationship_property(const relationship &r, dcode_t pcode,
                                 p_item::predicate_func pred);
 
+  /**
+   * Return the node version from the dirty list that is valid for the
+   * transaction identified by xid.
+   */
+  node &get_valid_node_version(node &n, xid_t xid);
+
 private:
   friend struct scan_task;
 
@@ -494,12 +500,6 @@ private:
    * Handle the commit of a relationship from the dirty list.
    */
   void commit_dirty_relationship(transaction_ptr tx, relationship::id_t rship_id);
-
-  /**
-   * Return the node version from the dirty list that is valid for the
-   * transaction identified by xid.
-   */
-  node &get_valid_node_version(node &n, xid_t xid);
 
   /**
    * Return the relationship version from the dirty list that is valid for the
