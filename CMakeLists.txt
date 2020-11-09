@@ -180,7 +180,7 @@ find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 include_directories(${LLVM_INCLUDE_DIRS})
-llvm_map_components_to_libnames(llvm_libs
+llvm_map_components_to_libnames(LLVM_LIBRARIES
         AllTargetsAsmParsers
         AllTargetsCodeGens
         AllTargetsDescs
@@ -364,6 +364,7 @@ add_library(poseidon_core SHARED
 )
 
 target_link_libraries(poseidon_core
+  ${LLVM_LIBRARIES}
   Boost::date_time
   spdlog::spdlog_header_only
 )
@@ -380,6 +381,7 @@ add_library(poseidon SHARED
 )
 
 target_link_libraries(poseidon
+  ${LLVM_LIBRARIES}
   Boost::date_time
   Boost::${BOOST_PYTHON}
   ${PYTHON_LIBRARIES}
@@ -404,6 +406,7 @@ add_executable(ldbc_loader
 target_link_libraries(ldbc_loader
   poseidon_core
   ${PMDK_LIBRARIES}
+  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 
@@ -416,6 +419,7 @@ add_executable(run_ldbc_reads
 target_link_libraries(run_ldbc_reads
   poseidon_core
   ${PMDK_LIBRARIES}
+  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 
@@ -428,6 +432,7 @@ add_executable(run_ldbc_updates
 target_link_libraries(run_ldbc_updates
   poseidon_core
   ${PMDK_LIBRARIES}
+  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 
@@ -440,6 +445,7 @@ add_executable(run_ldbc_graphalytics
 target_link_libraries(run_ldbc_graphalytics
   poseidon_core
   ${PMDK_LIBRARIES}
+  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 
@@ -451,6 +457,7 @@ add_executable(qcomp
 target_link_libraries(qcomp
 	     poseidon_core
 	     ${PMDK_LIBRARIES}
+	     ${LLVM_LIBRARIES}
 	     Boost::program_options
              )
 

@@ -121,9 +121,9 @@ extern "C" dcode_t gdb_get_dcode(graph_db *gdb, char *property) {
     return gdb->get_code(property);
 }
 
-extern "C" property_set *pset_get_item_at(graph_db *gdb, offset_t id) {
+extern "C" const property_set *pset_get_item_at(graph_db *gdb, offset_t id) {
     //std::cout << "Get property at: " << id << std::endl;
-    return &gdb->get_properties()->get(id);
+    return &gdb->get_node_properties()->get(id);
 }
 
 extern "C" int get_join_vec_size(std::vector<qr_arr>* vec) {
@@ -307,7 +307,7 @@ void apply_pexpr_node(graph_db *gdb, const char *key, FTYPE val_type, int *qr, i
         str_result[str_res_ctr] = boost::any_cast<std::string>(nd.properties[std::string(key)]);;
         *ret = str_res_ctr++;
     } else if(val_type == FTYPE::DATE) {
-        time_result[str_res_ctr] = get_property<boost::posix_time::ptime>(nd.properties, key);
+        time_result[str_res_ctr] = get_property<boost::posix_time::ptime>(nd.properties, key).value();
         *ret = str_res_ctr++;
     }
 

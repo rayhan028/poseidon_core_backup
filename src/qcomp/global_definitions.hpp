@@ -142,7 +142,7 @@ extern "C" dcode_t gdb_get_dcode(graph_db *gdb, char *property);
 /**
  * Returns the property item at the given position in the property set
  */
-extern "C" property_set *pset_get_item_at(graph_db *gdb, offset_t id);
+extern "C" const property_set *pset_get_item_at(graph_db *gdb, offset_t id);
 
 /**
  * Init of the transaction processing
