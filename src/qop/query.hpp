@@ -77,12 +77,15 @@ public:
 
   /**
    * Add an operator that scans all incoming relationships of the last node in
-   * the query result. Optionally, the given label of the relationship is
-   * checked, too.
+   * the query result. Optionally, 1) the given label of the relationship is
+   * checked, too. 2) Nodes that were already explored, i.e. other than the frontier,
+   * can also be re-explored, given their position.
    */
-  query &to_relationships(const std::string &label = "");
+  query &to_relationships(const std::string &label = "",
+                          int pos = std::numeric_limits<int>::max());
   query &to_relationships(std::pair<int, int> range,
-                          const std::string &label = "");
+                          const std::string &label = "",
+                          int pos = std::numeric_limits<int>::max());
 
   /**
    * Add an operator that scans all outgoing relationships of the last node in
@@ -90,10 +93,12 @@ public:
    * checked, too. 2) Nodes that were already explored, i.e. other than the frontier,
    * can also be re-explored, given their position.
    */
-  query &from_relationships(const std::string &label = "", int pos = std::numeric_limits<int>::max());
+  query &from_relationships(const std::string &label = "",
+                            int pos = std::numeric_limits<int>::max());
 
   query &from_relationships(std::pair<int, int> range,
-                            const std::string &label = "", int pos = std::numeric_limits<int>::max());
+                            const std::string &label = "",
+                            int pos = std::numeric_limits<int>::max());
 
   /**
    * Add a filter operator for checking that the property with the given key

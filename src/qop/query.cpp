@@ -71,16 +71,16 @@ query &query::nodes_where_indexed(const std::string &label, const std::string &p
   return *this;
 }
 
-query &query::to_relationships(const std::string &label) {
-  auto op = std::make_shared<foreach_to_relationship>(label);
+query &query::to_relationships(const std::string &label, int pos) {
+  auto op = std::make_shared<foreach_to_relationship>(label, pos);
   return append_op(op, std::bind(&foreach_to_relationship::process, op.get(),
                                  ph::_1, ph::_2));
 }
 
 query &query::to_relationships(std::pair<int, int> range,
-                               const std::string &label) {
+                               const std::string &label, int pos) {
   auto op = std::make_shared<foreach_variable_to_relationship>(
-      label, range.first, range.second);
+      label, range.first, range.second, pos);
   return append_op(op, std::bind(&foreach_variable_to_relationship::process,
                                  op.get(), ph::_1, ph::_2));
 }

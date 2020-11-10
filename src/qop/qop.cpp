@@ -116,7 +116,12 @@ void foreach_variable_from_relationship::dump(std::ostream &os) const {
 /* ------------------------------------------------------------------------ */
 
 void foreach_to_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
-  auto n = boost::get<node *>(v.back());
+  node *n = nullptr;
+  if (npos == std::numeric_limits<int>::max())
+    n = boost::get<node *>(v.back());
+  else
+    n = boost::get<node *>(v[npos]);
+
   if (lcode == 0)
     lcode = gdb->get_code(label);
   gdb->foreach_to_relationship_of_node(*n, lcode, [&](relationship &r) {
@@ -134,7 +139,12 @@ void foreach_to_relationship::dump(std::ostream &os) const {
 /* ------------------------------------------------------------------------ */
 void foreach_variable_to_relationship::process(graph_db_ptr &gdb,
                                                const qr_tuple &v) {
-  auto n = boost::get<node *>(v.back());
+  node *n = nullptr;
+  if (npos == std::numeric_limits<int>::max())
+    n = boost::get<node *>(v.back());
+  else
+    n = boost::get<node *>(v[npos]);
+
   if (lcode == 0)
     lcode = gdb->get_code(label);
 
