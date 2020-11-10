@@ -463,6 +463,90 @@ void ldbc_bi_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
     rs.wait();
 }
 
+void ldbc_bi_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+
+    std::vector<result_set> grps1;
+    std::vector<result_set> grps2;
+    std::vector<result_set> grps3;
+
+    auto filter_tag =
+      [&](auto &prop) {
+        auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+        auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+        return c1 == c2;
+      };
+
+    auto score_func =
+      [&](qr_tuple &v) {
+        auto reply_cnt = boost::get<uint64_t>(v[1]);
+        auto like_cnt = boost::get<uint64_t>(v[1]);
+        auto msg_cnt = boost::get<uint64_t>(v[1]);
+        auto score = msg_cnt + 2 * reply_cnt + 10 * like_cnt;
+        return query_result(score);
+      };
+
+    // Query pipelines
+    auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Tag")
+              .property("name", filter_tag)
+#else
+              .nodes_where("Tag", "name", filter_tag)
+#endif
+              .to_relationships(":hasTag")
+              .from_node("")
+              .from_relationships(":hasCreator")
+              .to_node("Person")
+              .to_relationships(":hasCreator")
+              .from_node("")
+              .to_relationships(":likes")
+              .from_node("Person")
+              .to_relationships(":hasCreator")
+              .from_node("")
+              .to_relationships(":likes")
+              .from_node("Person")
+              .limit(100)
+              .group(grps2, {8})
+              .aggregate(grps2, {{"count", 0}});
+              // .collect(rs);
+
+    auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Tag")
+              .property("name", filter_tag)
+#else
+              .nodes_where("Tag", "name", filter_tag)
+#endif
+              .to_relationships(":hasTag")
+              .from_node("")
+              .from_relationships(":hasCreator")
+              .to_node("Person")
+              .to_relationships(":hasCreator")
+              .from_node("")
+              .to_relationships(":likes")
+              .from_node("Person")
+              .limit(100)
+              .hashjoin_on_node({8, 0}, q2)
+              // .join_on_node({8, 0}, q2)
+              .group(grps1, {4})
+              .aggregate(grps1, {{"sum", 10}})
+              .project({PExpr_(0, pj::uint64_property(res, "id")),
+                        PVar_(1)
+                        })
+              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
+                if (boost::get<uint64_t>(q1[1]) == boost::get<uint64_t>(q2[1]))
+                  return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);
+                return boost::get<uint64_t>(q1[4]) > boost::get<uint64_t>(q2[4]); })
+              .limit(100)
+              .collect(rs);
+
+    query::start({&q2, &q1});
+    // q3.start();
+    rs.wait();
+}
+
 /* ------------------------------------------------------------------------ */
 
 double calc_avg_time(const std::vector<double>& vec) {
@@ -614,6 +698,29 @@ double run_query_6(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
+double run_query_7(graph_db_ptr gdb) {
+    std::vector<params_tuple> params = {{"United_Nations"}};
+
+    std::vector<double> runtimes(params.size());
+
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        auto tx = gdb->begin_transaction();
+        ldbc_bi_query_7(gdb, rs, params[i]);
+        gdb->commit_transaction();
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return calc_avg_time(runtimes);
+}
+
 void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
     t = run_query_1(gdb);
@@ -628,6 +735,8 @@ void run_benchmark(graph_db_ptr gdb) {
     spdlog::info("Query #5: {} msecs", t);
     t = run_query_6(gdb);
     spdlog::info("Query #6: {} msecs", t);
+    t = run_query_7(gdb);
+    spdlog::info("Query #7: {} msecs", t);
 }
 
 /* ---------------------------------------------------------------------------- */
