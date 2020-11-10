@@ -63,13 +63,12 @@ int main() {
 	queryEngine.generate(scan_expr, false);
 	queryEngine.prepare();
 
-	tx = graph->begin_transaction();
-
-	queryEngine.start_[0](graph.get(), 0, graph->get_nodes()->num_chunks(), tx, 1, 
+	/*queryEngine.start_[0](graph.get(), 0, graph->get_nodes()->num_chunks(), tx, 1, 
 			&queryEngine.type_vec_[0], &rs, nullptr, 
-			queryEngine.finish_[0], 0, args.args.data());
+			queryEngine.finish_[0], 0, args.args.data());*/
+	queryEngine.run(&rs, args.args);
 
-	graph->commit_transaction();
+
 	std::cout << rs.data.size() << std::endl;
 	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
 	pop.close();
