@@ -462,6 +462,27 @@ struct group_by : public qop {
 /**
  * TODO
  */
+struct aggr_ops : public qop {
+  aggr_ops(const std::vector<result_set> &grps,
+            const std::vector<std::pair<std::string, int>> &aggrs);
+  ~aggr_ops() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  int grpkey_cnt_;
+  bool total_;
+  uint64_t total_cnt_;
+  std::vector<std::pair<std::string, int>> aggrs_;
+  const std::vector<result_set> &res_set_vec_;
+};
+
+/**
+ * TODO
+ */
 struct count_aggr : public qop {
   count_aggr(const std::vector<result_set> &grps, bool p) :
     grpkey_cnt_(0), percentage(p), total(false), total_cnt(0), res_set_vec_(grps) {}

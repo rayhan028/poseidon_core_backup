@@ -190,6 +190,13 @@ query::group(std::vector<result_set> &grps, const std::vector<int> &pos) {
 }
 
 query &
+query::aggregate(const std::vector<result_set> &grps,
+              const std::vector<std::pair<std::string, int>> &aggrs) {
+  auto op = std::make_shared<aggr_ops>(grps, aggrs);
+  return append_op(op, std::bind(&aggr_ops::process, op.get(), ph::_1, ph::_2));
+}
+
+query &
 query::count(const std::vector<result_set> &grps, bool p) {
   auto op = std::make_shared<count_aggr>(grps, p);
   return append_op(op, std::bind(&count_aggr::process, op.get(), ph::_1, ph::_2));

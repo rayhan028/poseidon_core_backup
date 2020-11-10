@@ -157,6 +157,14 @@ public:
   query &group(std::vector<result_set> &grps, const std::vector<int> &pos);
 
   /**
+   * Add an operator for applying an aggregation function on the tuples in each group from 
+   * the grouping operator. The aggregation function name and the position of the attribute
+   * (in the tuple) to be aggregated are given by the string-int pair.
+   */
+  query &aggregate(const std::vector<result_set> &grps,
+                    const std::vector<std::pair<std::string, int>> &aggrs);
+
+  /**
    * Add an operator for counting the tuples in each group from the grouping operator.
    * Optionally, each group's count value can be expressed as a percentage of the total
    * result count by setting the p flag.

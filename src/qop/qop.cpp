@@ -368,6 +368,88 @@ void group_by::finish(graph_db_ptr &gdb) {
 
 /* ------------------------------------------------------------------------ */
 
+aggr_ops::aggr_ops(const std::vector<result_set> &grps,
+                    const std::vector<std::pair<std::string, int>> &aggrs) :
+                    grpkey_cnt_(0), total_(false), total_cnt_(0), aggrs_(aggrs), res_set_vec_(grps) {}
+
+void aggr_ops::dump(std::ostream &os) const {
+  os << "aggr_ops([])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void aggr_ops::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto res = v;
+  auto &grp_data = res_set_vec_[grpkey_cnt_++].data;
+
+  for (auto &aggr : aggrs_) {
+    if (aggr.first.compare("count") == 0) {
+      uint64_t gcnt = grp_data.size();
+      res = append(res, query_result(gcnt));
+    }
+    else if (aggr.first.compare("pcount") == 0) {
+      if (!total_) {
+        for (auto &res : res_set_vec_)
+          total_cnt_ += res.data.size();
+        total_ = true;
+      }
+      uint64_t gcnt = grp_data.size();
+      double p_gcnt = (gcnt / (double)total_cnt_) * 100;
+      res = append(res, query_result(p_gcnt));
+    }
+    else if (aggr.first.compare("sum") == 0) {
+      auto key = grp_data.front()[aggr.second];
+      if (key.type() == typeid(int)) {
+        int gsum = 0;
+        for (auto &tpl : grp_data)
+          gsum += boost::get<int>(tpl[aggr.second]);
+        res = append(res, query_result(gsum));
+      }
+      else if (key.type() == typeid(uint64_t)) {
+        uint64_t gsum = 0;
+        for (auto &tpl : grp_data)
+          gsum += boost::get<uint64_t>(tpl[aggr.second]);
+        res = append(res, query_result(gsum));
+      }
+      else if (key.type() == typeid(double)) {
+        double gsum = 0.0;
+        for (auto &tpl : grp_data)
+          gsum += boost::get<double>(tpl[aggr.second]);
+        res = append(res, query_result(gsum));
+      }
+    }
+    else if (aggr.first.compare("avg") == 0) {
+      uint64_t gcnt = grp_data.size();
+      auto key = grp_data.front()[aggr.second];
+      if (key.type() == typeid(int)) {
+        int gsum = 0;
+        for (auto &tpl : grp_data)
+          gsum += boost::get<int>(tpl[aggr.second]);
+        double g_avg = gsum / gcnt;
+        res = append(res, query_result(g_avg));
+      }
+      else if (key.type() == typeid(uint64_t)) {
+        uint64_t gsum = 0;
+        for (auto &tpl : grp_data)
+          gsum += boost::get<uint64_t>(tpl[aggr.second]);
+        double g_avg = gsum / gcnt;
+        res = append(res, query_result(g_avg));
+      }
+      else if (key.type() == typeid(double)) {
+        double gsum = 0.0;
+        for (auto &tpl : grp_data)
+          gsum += boost::get<double>(tpl[aggr.second]);
+        double g_avg = gsum / gcnt;
+        res = append(res, query_result(g_avg));
+      }
+    }
+  }
+
+  consume_(gdb, res); 
+}
+
+/* ------------------------------------------------------------------------ */
+
 void count_aggr::dump(std::ostream &os) const {
   os << "count_aggr()=>";
   if (subscriber_)
