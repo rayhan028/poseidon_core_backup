@@ -86,6 +86,8 @@ void query_engine::prepare() {
 
 
 void query_engine::run(result_set * rs, std::vector<uint64_t*> args) {
+    prepare();
+
     auto tx = graph_->begin_transaction();
     current_transaction_ = tx;
     if(parallel_) {

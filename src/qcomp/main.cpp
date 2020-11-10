@@ -1,5 +1,6 @@
 #include <set>
 #include <iostream>
+#include <boost/variant.hpp>
 
 #include "config.h"
 #include "graph_db.hpp"
@@ -31,7 +32,7 @@ int main() {
 	int NO_PERSONS = 42;
 	for (int i = 0; i < PERSONS; i++) {
 		auto p = graph->add_node("Person",
-				{{"name", boost::any(std::string("John Doe"))},
+				{{"name", boost::any(std::string("John Doe")+std::to_string(i))},
 				{"age", boost::any(42)},
 				{"id", boost::any(i)},
 				{"dummy1", boost::any(std::string("Dummy"))},
@@ -60,16 +61,13 @@ int main() {
 
 	result_set rs;
 	auto scan_expr = Scan("Person", Filter(EQ(Key("id"), Int(42)), ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", Expand(EXPAND::OUT, "Book", Project({{0, "name", FTYPE::STRING}}, Collect(rs))))));
+	
 	queryEngine.generate(scan_expr, false);
-	queryEngine.prepare();
 
-	/*queryEngine.start_[0](graph.get(), 0, graph->get_nodes()->num_chunks(), tx, 1, 
-			&queryEngine.type_vec_[0], &rs, nullptr, 
-			queryEngine.finish_[0], 0, args.args.data());*/
 	queryEngine.run(&rs, args.args);
 
+	std::cout << boost::get<std::string>(rs.data.front()[0]) << std::endl;
 
-	std::cout << rs.data.size() << std::endl;
 	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
 	pop.close();
 	remove(test_path.c_str());
