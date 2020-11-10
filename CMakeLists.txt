@@ -78,6 +78,8 @@ include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 include_directories(${PROJECT_SOURCE_DIR}/src/pool)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
 include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
+include_directories(${PROJECT_SOURCE_DIR}/src/ql)
+
 #---------------------------------------------------------------------------
 
 set(THIRD_PARTY_DIR "${PROJECT_BINARY_DIR}/_deps")
@@ -222,6 +224,38 @@ llvm_map_components_to_libnames(LLVM_LIBRARIES
         X86Info
         X86Utils)
 
+# PEGTL =================================================================== #
+include(FetchContent REQUIRED)
+ FetchContent_Declare(
+  pegtl
+  GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
+  GIT_TAG        2.8.3
+  )
+FetchContent_GetProperties(pegtl)
+if(NOT pegtl_POPULATED)
+  message(STATUS "Populating PEGTL")
+  FetchContent_Populate(pegtl)
+  set(PEGTL_INCLUDE_DIR ${pegtl_SOURCE_DIR}/include)
+  add_library(PEGTL IMPORTED INTERFACE)
+  set_property(TARGET PEGTL PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${PEGTL_INCLUDE_DIR}")
+endif()
+
+# linenoise =================================================================== #
+include(FetchContent REQUIRED)
+ FetchContent_Declare(
+  linenoise
+  GIT_REPOSITORY https://github.com/yhirose/cpp-linenoise.git
+ #  GIT_TAG        1.2.1
+  )
+FetchContent_GetProperties(linenoise)
+
+if(NOT linenoise_POPULATED)
+  message(STATUS "Populating linenoise")
+  FetchContent_Populate(linenoise)
+  set(LINENOISE_INCLUDE_DIR ${linenoise_SOURCE_DIR})
+  add_library(LINENOISE IMPORTED INTERFACE)
+  set_property(TARGET LINENOISE PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${LINENOISE_INCLUDE_DIR}")
+endif()
 
 #---------------------------------------------------------------------------
 
@@ -300,9 +334,11 @@ endif()
 
 #-----------------------------------------------------------------------------------------
 
+include_directories("${PEGTL_INCLUDE_DIR}")
 include_directories("${CSV_INCLUDE_DIR}")
 include_directories("${SPDLOG_INCLUDE_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/src")
+include_directories("${LINENOISE_INCLUDE_DIR}")
 
 #-----------------------------------------------------------------------------------------
 
@@ -348,7 +384,9 @@ set(src_files
   src/qcomp/qoperator.cpp
   src/qcomp/joiner.cpp
   src/qcomp/interprete_filter_visitor.cpp
-)
+  src/ql/queryc.cpp
+  src/ql/ast.cpp
+  )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
 # in different libraries.
@@ -462,6 +500,19 @@ target_link_libraries(qcomp
 	     Boost::program_options
              )
 
+#-----------------------------------------------------------------------------------------
+
+add_executable(qlc
+#  src/ql/ast.cpp
+  src/ql/qlc.cpp
+ )
+
+target_link_libraries(qlc
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  ${LLVM_LIBRARIES}
+  Boost::program_options
+)
 #-----------------------------------------------------------------------------------------
 #
 # Unit tests using Catch
