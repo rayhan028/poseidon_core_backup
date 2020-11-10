@@ -20,6 +20,7 @@ endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(USE_PMDK OFF)
+  set(LLVM_DIR "/usr/local/opt/llvm/lib/cmake/llvm")
 endif()
 
 # Don't try to contact github everytime.
