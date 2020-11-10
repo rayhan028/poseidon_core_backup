@@ -7,30 +7,6 @@
 
 class base_op;
 
-struct qscan_task {
-    using task_fct = std::function<void(graph_db_ptr, unsigned)>;
-    qscan_task(unsigned tid, graph_db_ptr graph, task_fct fct);
-
-    void operator()();
-
-    graph_db_ptr graph_;
-    task_fct task_;
-    unsigned tid_;
-};
-
-struct task_scheduler {
-
-    task_scheduler(unsigned num_threads);
-
-    void operator()();
-
-    std::vector<qscan_task> tasks_;
-    unsigned thread_num_;
-    std::atomic<bool> running_;
-    std::atomic<bool> started_;
-    std::mutex task_mut_;
-    std::condition_variable cv_;
-};
 
 class query_engine;
 
@@ -44,8 +20,6 @@ struct compile_task {
     std::shared_ptr<base_op> query_;
     query_engine &qeng_;
 };
-using args_el = int*;
-using query_args = args_el[64];
 
 struct arg_builder {
     std::vector<uint64_t> int_args;
@@ -73,32 +47,30 @@ struct arg_builder {
 };
 
 class query_engine {
-    using qrl_collector = std::shared_ptr<result_collector>;
-
     unsigned thread_num_;
-    qrl_collector qrlc_;
-    PContext &ctx_;
+    PContext ctx_;
+    std::unique_ptr<JitFromScratch> jit_;
 
-    task_scheduler scheduler_;
     std::thread sched_th;
     std::thread compile_th;
-
-    void request_next();
 
     transaction_ptr cur_tx_;
     std::shared_ptr<base_op> cur_query_;
 
-public:
-    query_engine(PContext &ctx, unsigned thread_num, unsigned cv_range);
+    graph_db_ptr graph_;
+public: 
+    query_engine(graph_db_ptr graph, unsigned int thread_num, unsigned cv_range);
     ~query_engine();
 
-    void generate(JitFromScratch &jit, std::shared_ptr<base_op> query, bool parallel = true);
+    static std::unique_ptr<JitFromScratch> initializeJitCompiler();
 
-    void prepare(JitFromScratch &jit, graph_db_ptr graph);
+    void generate(std::shared_ptr<base_op> query, bool parallel = true);
 
-    void run(JitFromScratch &jit, graph_db_ptr graph, result_set * rs, std::vector<uint64_t*> args);
+    void prepare();
 
-    void run_parallel(JitFromScratch &jit, graph_db_ptr graph, result_set * rs, arg_builder & args, unsigned thread_num);
+    void run(result_set * rs, std::vector<uint64_t*> args);
+
+    void run_parallel(result_set * rs, arg_builder & args, unsigned thread_num);
 
     void add_joiner(unsigned thread_id);
 

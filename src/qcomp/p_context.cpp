@@ -1,4 +1,5 @@
 #include "p_context.hpp"
+#include <llvm/Support/TargetSelect.h>
 
 dcode_t PContext::get_dcode(std::string &key) {
     return gdb_->get_code(key);
@@ -33,9 +34,9 @@ void PContext::createNewModule() {
 }
 
 PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
-        ctx_ = std::make_unique<LLVMContext>();
-        module_ = std::make_unique<Module>("QOP", *ctx_);
-        Builder = std::make_unique<IRBuilder<>>(*ctx_);
+    ctx_ = std::make_unique<LLVMContext>();
+    module_ = std::make_unique<Module>("QOP", *ctx_);
+    Builder = std::make_unique<IRBuilder<>>(*ctx_);
 
     voidTy = Type::getVoidTy(*ctx_);
     boolTy = Type::getInt1Ty(*ctx_);
@@ -233,11 +234,10 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
 //++++++++++++++++++ BODY DEFINITIONS + ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     nodeAtomicIdTy->setBody({int64Ty});
     rshipAtomicIdTy->setBody({int64Ty});
-    nodeTxnBaseTy->setBody({int64Ty, int64Ty, int64Ty, nodeAtomicIdTy, opaqueListTy->getPointerTo(), int8Ty});
+    nodeTxnBaseTy->setBody({nodeAtomicIdTy, int8PtrTy});
     nodeTy->setBody({nodeTxnBaseTy, int64Ty, int64Ty, int64Ty, int64Ty, int32Ty}); // TODO: check type size
 
-    rshipTxnBaseTy->setBody(
-            {{int64Ty, int64Ty, int64Ty, rshipAtomicIdTy, opaqueListTy->getPointerTo(), int8Ty}});
+    rshipTxnBaseTy->setBody({rshipAtomicIdTy, int8PtrTy});
     rshipTy->setBody({rshipTxnBaseTy, int64Ty, int64Ty, int64Ty, int64Ty, int64Ty, int64Ty, int32Ty});
 
     pitemTy->setBody({pitemValueArrTy, int32Ty, int8Ty}); // value, key, flags
