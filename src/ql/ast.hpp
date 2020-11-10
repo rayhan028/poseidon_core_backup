@@ -28,6 +28,10 @@ struct ast_op {
     void add_param(const std::string& s) { params_.push_back(s); }
     void add_param(parse_tree_ptr expr) { params_.push_back(std::move(expr)); }
 
+    bool is_source() const { return op_ == node_scan; }
+    template<typename T>
+    T get_param(std::size_t i) { return boost::get<T>(params_[i]); }
+
     op_type op_;
     std::vector<ast_op_ptr> children_;
     std::vector<param_type> params_;

@@ -7,6 +7,7 @@
 #include "queryc.hpp"
 
 namespace pegtl = tao::pegtl;
+namespace ph = std::placeholders;
 
 void queryc::compile(const std::string &query) {
     auto ast = parse(query);
@@ -82,4 +83,35 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
 void queryc::ast_to_plan(ast_op_ptr &ast) {
   if (!ast)
     return;
+
+  auto qop = ast_to_qop(ast, nullptr);
 }
+
+qop_ptr queryc::ast_to_qop(ast_op_ptr &ast, qop_ptr parent) {
+  std::cout << "ast_to_qop: " << ast->op_ << std::endl;
+  qop_ptr qop;
+  switch (ast->op_) {
+    case ast_op::node_scan:
+      qop = std::make_shared<scan_nodes>(ast->get_param<std::string>(0));
+      break;
+    case ast_op::limit:
+      qop = std::make_shared<limit_result>(ast->get_param<int>(0));
+      break;
+  /*  case ast_op::filter:
+      qop = std::make_shared<is_property>(??);
+      if (parent)
+        parent->connect(qop, std::bind(&is_property::process,
+                                dynamic_cast<is_property *>(qop.get()), ph::_1,
+                                ph::_2));
+      break;*/
+    default:
+      break;
+  } 
+  if (!ast->is_source()) {
+    auto qop1 = ast_to_qop(ast->children_[0], qop);
+    if (ast->children_.size() == 2) {
+      auto qop2 = ast_to_qop(ast->children_[1], qop);
+    }    
+  }
+  return qop;
+} 

@@ -4,6 +4,7 @@
 #include "dict.hpp"
 #include "qlang_grammar.hpp"
 #include "ast.hpp"
+#include "qop.hpp"
 
 #include <tao/pegtl.hpp>
 #include <tao/pegtl/contrib/parse_tree.hpp>
@@ -35,7 +36,9 @@ private:
   
   ast_op_ptr ptree_to_ast(parse_tree_ptr& pn);
 
-    p_ptr<dict> &dict_;
+  qop_ptr ast_to_qop(ast_op_ptr &ast, qop_ptr parent);
+
+  p_ptr<dict> &dict_;
 };
 
 #endif
