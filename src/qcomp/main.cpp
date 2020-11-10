@@ -10,21 +10,29 @@
 #include "JitFromScratch.hpp"
 #include "qoperator.hpp"
 
+const std::string test_path = poseidon::gPmemPath + "jit_test";
+
+#ifdef USE_PMDK
+
 #define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
 
 namespace nvm = pmem::obj;
-const std::string test_path = poseidon::gPmemPath + "jit_test";
 
 nvm::pool_base prepare_pool() {
 	auto pop = nvm::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
 	return pop;
 }
+#endif
 
 int main() {
+#ifdef USE_PMDK
 	auto pop = prepare_pool();
 	graph_db_ptr graph;
 	nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
-
+#else
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+#endif
 	auto tx = graph->begin_transaction();
 
 
@@ -68,9 +76,10 @@ int main() {
 
 	std::cout << boost::get<std::string>(rs.data.front()[0]) << std::endl;
 
+#ifdef USE_PMDK
 	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
 	pop.close();
 	remove(test_path.c_str());
-
+#endif
 	return 0;
 }
