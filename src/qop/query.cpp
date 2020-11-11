@@ -117,6 +117,14 @@ query &query::to_node(const std::string &label) {
   return *this;
 }
 
+query &query::to_node(const std::vector<std::string> &labels) {
+  auto op = std::make_shared<get_to_node>();
+  append_op(op, std::bind(&get_to_node::process, op.get(), ph::_1, ph::_2));
+  auto op2 = std::make_shared<node_has_label>(labels);
+  return append_op(
+      op2, std::bind(&node_has_label::process, op2.get(), ph::_1, ph::_2));
+}
+
 query &query::from_node(const std::string &label) {
   auto op = std::make_shared<get_from_node>();
   append_op(op, std::bind(&get_from_node::process, op.get(), ph::_1, ph::_2));
@@ -126,6 +134,14 @@ query &query::from_node(const std::string &label) {
         op2, std::bind(&node_has_label::process, op2.get(), ph::_1, ph::_2));
   }
   return *this;
+}
+
+query &query::from_node(const std::vector<std::string> &labels) {
+  auto op = std::make_shared<get_from_node>();
+  append_op(op, std::bind(&get_from_node::process, op.get(), ph::_1, ph::_2));
+  auto op2 = std::make_shared<node_has_label>(labels);
+  return append_op(
+      op2, std::bind(&node_has_label::process, op2.get(), ph::_1, ph::_2));
 }
 
 query &query::has_label(const std::string &label) {

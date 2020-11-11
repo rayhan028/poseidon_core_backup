@@ -111,15 +111,19 @@ public:
 
   /**
    * Add an operator the retrieves the node at the destination side of the
-   * currently processed relationship with an optional filter for label.
+   * currently processed relationship with an optional filter for label(s).
    */
   query &to_node(const std::string &label = "");
 
+  query &to_node(const std::vector<std::string> &labels);
+
   /**
    * Add an operator the retrieves the node at the source side of the
-   * currently processed relationship with an optional filter for label.
+   * currently processed relationship with an optional filter for label(s).
    */
   query &from_node(const std::string &label = "");
+
+  query &from_node(const std::vector<std::string> &labels);
 
   /**
    * Add a filter operator that checks whether the last node/relationship
