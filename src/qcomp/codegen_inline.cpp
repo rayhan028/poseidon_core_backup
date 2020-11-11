@@ -712,7 +712,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     // merge the lhs and rhs    
     ctx.getBuilder().SetInsertPoint(concat_qrl);
 
-    for(int i = 0; i < types.size(); i++) {
+    for(auto i = 0u; i < types.size(); i++) {
         if(types.at(i) == 0) {
             auto idx = ConstantInt::get(ctx.int64Ty, i);
             Value *n = ctx.getBuilder().CreateCall(node_reg, {tp, idx});

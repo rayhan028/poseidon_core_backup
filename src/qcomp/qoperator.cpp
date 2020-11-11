@@ -708,8 +708,8 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
     BasicBlock *for_each_next = BasicBlock::Create(ctx.getContext(), "for_each_next_rship", fct);
     BasicBlock *end = BasicBlock::Create(ctx.getContext(), "end", fct);
 
-    Value *left_pos;
-    Value *right_pos;
+    Value *left_pos = nullptr;
+    Value *right_pos = nullptr;
 
     auto get_join_vec = ctx.extern_func("get_join_vec_arr");
     auto get_join_vec_size = ctx.extern_func("get_join_vec_size");

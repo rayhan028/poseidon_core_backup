@@ -156,7 +156,7 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
     case ast_op::expand:
     {
       auto expand_dir_str = ast->get_param<std::string>(0);
-      EXPAND expand_dir;
+      EXPAND expand_dir = EXPAND::IN;
 
       if(boost::iequals(expand_dir_str, "'IN'")) {
         expand_dir = EXPAND::IN;
