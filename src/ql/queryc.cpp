@@ -1,6 +1,8 @@
 #include <iostream>
 #include <memory>
 
+#include <boost/algorithm/string.hpp>
+
 #include <tao/pegtl/contrib/parse_tree.hpp>
 #include <tao/pegtl/contrib/parse_tree_to_dot.hpp>
 
@@ -13,6 +15,14 @@ void queryc::compile(const std::string &query) {
     auto ast = parse(query);
     if (ast) {
         ast_to_plan(ast);
+    }
+}
+
+void queryc::compile(const std::string &query, algebra_optr& op) {
+    auto ast = parse(query);
+    auto collect = Collect();
+    if(ast) {
+        op = ast_to_algoptr(ast, collect);
     }
 }
 
@@ -51,6 +61,10 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
         return ast_op::limit;
       else if (name == "Join")
         return ast_op::join;
+      else if (name == "ForeachRelationship")
+        return ast_op::foreach_rship;
+      else if (name == "Expand")
+        return ast_op::expand;
       // TODO
     }
   }
@@ -115,3 +129,73 @@ qop_ptr queryc::ast_to_qop(ast_op_ptr &ast, qop_ptr parent) {
   }
   return qop;
 } 
+
+algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
+  algebra_optr op;
+  switch(ast->op_) {
+    case ast_op::node_scan:
+      op = Scan(ast->get_param<std::string>(0), parent);
+      break;
+    case ast_op::foreach_rship:
+    {
+      auto rship_dir_str = ast->get_param<std::string>(0);
+      RSHIP_DIR rship_dir;
+
+      if(boost::iequals(rship_dir_str, "'FROM'")) {
+        rship_dir = RSHIP_DIR::FROM;
+      }
+      else if(boost::iequals(rship_dir_str, "'TO'")) {
+        rship_dir = RSHIP_DIR::TO;
+      }
+
+      auto rship_label = ast->get_param<std::string>(1);
+
+      op = ForeachRship(rship_dir, {}, rship_label, parent);
+    }
+      break;
+    case ast_op::expand:
+    {
+      auto expand_dir_str = ast->get_param<std::string>(0);
+      EXPAND expand_dir;
+
+      if(boost::iequals(expand_dir_str, "'IN'")) {
+        expand_dir = EXPAND::IN;
+      } else if(boost::iequals(expand_dir_str, "'OUT'")) {
+        expand_dir = EXPAND::OUT;
+      }
+
+      auto expand_label = ast->get_param<std::string>(1);
+
+      op = Expand(expand_dir, expand_label, parent);
+    }
+      break;
+    case ast_op::limit:
+      std::cout << "LIMIT" << std::endl;
+      op = Limit(ast->get_param<int>(0), parent);
+      break;
+    case ast_op::filter:
+    {
+        //TODO:
+    }
+      break;
+    case ast_op::project:
+    {
+        //TODO:
+    }
+      break;
+    case ast_op::join:
+    {
+        //TODO:
+    }
+      break;
+    default:
+      break;
+  }
+  if(!ast->is_source()) {
+    op = ast_to_algoptr(ast->children_[0], op);
+    //if(ast->children_.size() == 2) {
+      //auto qop2 = ast_to_algoptr(ast->children_[1], op);
+    //}
+  }
+  return op;
+}

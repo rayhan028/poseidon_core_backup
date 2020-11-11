@@ -20,6 +20,10 @@ std::string join_op_str(JOIN_OP jop) {
             return "cross";
         case JOIN_OP::LEFT_OUTER:
             return "left_outer";
+        case JOIN_OP::NESTED_LOOP:
+            return "nested_loop";
+        case JOIN_OP::HASH_JOIN:
+            return "hash_join";
     }
 }
 

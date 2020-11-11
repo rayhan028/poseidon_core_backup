@@ -298,7 +298,9 @@ inline algebra_optr Expand(EXPAND exp, std::string label, algebra_optr op) { ret
 
 enum class JOIN_OP {
     CROSS,
-    LEFT_OUTER
+    LEFT_OUTER,
+    NESTED_LOOP,
+    HASH_JOIN
 };
 
 std::string join_op_str(JOIN_OP jop);
@@ -364,14 +366,14 @@ inline algebra_optr Join(JOIN_OP jop, std::pair<int, int> pos, algebra_optr lhs,
 class collect_op : public base_op, public std::enable_shared_from_this<collect_op> {
 public:
 
-    collect_op(result_set & rs) : rs_(rs) {
+    collect_op() {
         name_ = "Collect";
         type_ = qop_type::collect;
         produced_type_ = -1;
     }
 
     algebra_optr copy() const {
-        return std::make_shared<collect_op>(rs_);
+        return std::make_shared<collect_op>();
     }
 
     algebra_optr deep_copy() const {
@@ -379,10 +381,9 @@ public:
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
-    result_set & rs_;
 };
 
-inline algebra_optr Collect(result_set & rs) { return std::make_shared<collect_op>(rs); }
+inline algebra_optr Collect() { return std::make_shared<collect_op>(); }
 
 class filter_op : public base_op, public std::enable_shared_from_this<filter_op> {
 public:

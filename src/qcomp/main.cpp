@@ -6,9 +6,9 @@
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
 
-#include "p_context.hpp"
-#include "JitFromScratch.hpp"
 #include "qoperator.hpp"
+#include "queryc.hpp"
+
 
 const std::string test_path = poseidon::gPmemPath + "jit_test";
 
@@ -50,7 +50,7 @@ int main() {
 				{{"title", boost::any(std::string("Title"))},
 				{"id", boost::any(i)}},
 				true);
-		graph->add_relationship(p, b, ":HAS_READ", {});
+		auto x = graph->add_relationship(p, b, ":HAS_READ", {});
 	}
 
 	graph->commit_transaction();
@@ -63,18 +63,31 @@ int main() {
 
 	arg_builder args;
 	args.arg(1, "Person");
-	args.arg(2, 42);
-	args.arg(3, ":HAS_READ");
-	args.arg(4, "Book");
+	args.arg(2, ":HAS_READ");
+	args.arg(3, "Book");
 
 	result_set rs;
-	auto scan_expr = Scan("Person", Filter(EQ(Key("id"), Int(42)), ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", Expand(EXPAND::OUT, "Book", Project({{0, "name", FTYPE::STRING}}, Collect(rs))))));
+
+	p_ptr<dict> dct;
+#ifdef USE_PMDK
+	nvm::transaction::run(pop, [&] {
+#endif
+		dct = p_make_ptr<dict>();
+#ifdef USE_PMDK
+	});
+#endif
+
+    queryc qlc(dct);
 	
-	queryEngine.generate(scan_expr, false);
+	algebra_optr op;
+
+	qlc.compile("Expand('OUT', 'Book', ForeachRelationship('FROM', ':HAS_READ', NodeScan('Person'))))", op);
+
+	queryEngine.generate(op, false);
 
 	queryEngine.run(&rs, args.args);
 
-	std::cout << boost::get<std::string>(rs.data.front()[0]) << std::endl;
+	std::cout << boost::get<std::string>(rs.data.front()[2]) << std::endl;
 
 #ifdef USE_PMDK
 	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });

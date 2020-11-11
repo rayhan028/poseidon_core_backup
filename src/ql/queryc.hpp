@@ -5,6 +5,8 @@
 #include "qlang_grammar.hpp"
 #include "ast.hpp"
 #include "qop.hpp"
+#include "qoperator.hpp"
+#include "query_engine.hpp"
 
 #include <tao/pegtl.hpp>
 #include <tao/pegtl/contrib/parse_tree.hpp>
@@ -19,6 +21,10 @@ public:
   queryc(p_ptr<dict> &d) : dict_(d) {}
 
   void compile(const std::string &query);
+
+  void compile(const std::string &query, algebra_optr& op);
+
+  algebra_optr ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent);
 
 private:
   /**
