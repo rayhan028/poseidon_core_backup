@@ -61,10 +61,11 @@ void left_outerjoin::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
         consume_(gdb, res);
       }
     });
-    if (dangling_tuple){
-      auto res = append(concat(v, inp), query_result(std::string("[0]{}")));
-      consume_(gdb, res);
-    }
+  }
+  if (dangling_tuple){
+    qr_tuple nll(input_.front().size(), query_result(null_t(-1)));
+    auto res = append(concat(v, nll), query_result(null_t(-1)));
+    consume_(gdb, res);
   }
 }
 

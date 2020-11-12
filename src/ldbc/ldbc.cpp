@@ -657,7 +657,7 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(4, pj::uint64_property(res, "id")),
                           PExpr_(4, pj::string_property(res, "firstName")),
                           PExpr_(4, pj::string_property(res, "lastName")),
-                          PExpr_(8, pj::string_rep(res) == "[0]{}" ?
+                          PExpr_(8, pj::string_rep(res) == "NULL" ?
                                       std::string("false") : std::string("true")) })
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
@@ -698,7 +698,7 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(1, pj::uint64_property(res, "id")),
                           PExpr_(1, pj::string_property(res, "firstName")),
                           PExpr_(1, pj::string_property(res, "lastName")),
-                          PExpr_(2, pj::string_rep(res) == "[0]{}" ?
+                          PExpr_(2, pj::string_rep(res) == "NULL" ?
                                       std::string("false") : std::string("true")) })
                 .collect(rs);
 
@@ -734,7 +734,7 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(1, pj::uint64_property(res, "id")),
                           PExpr_(1, pj::string_property(res, "firstName")),
                           PExpr_(1, pj::string_property(res, "lastName")),
-                          PExpr_(5, pj::string_rep(res) == "[0]{}" ?
+                          PExpr_(5, pj::string_rep(res) == "NULL" ?
                                       std::string("false") : std::string("true")) })
                 .collect(rs);
 
@@ -770,7 +770,7 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(6, pj::uint64_property(res, "id")),
                           PExpr_(6, pj::string_property(res, "firstName")),
                           PExpr_(6, pj::string_property(res, "lastName")),
-                          PExpr_(7, pj::string_rep(res) == "[0]{}" ?
+                          PExpr_(7, pj::string_rep(res) == "NULL" ?
                                       std::string("false") : std::string("true")) })
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
@@ -830,7 +830,7 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(4, pj::uint64_property(res, "id")),
                           PExpr_(4, pj::string_property(res, "firstName")),
                           PExpr_(4, pj::string_property(res, "lastName")),
-                          PExpr_(8, pj::string_rep(res) == "[0]{}" ?
+                          PExpr_(8, pj::string_rep(res) == "NULL" ?
                                       std::string("false") : std::string("true")) })
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
@@ -871,7 +871,7 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(1, pj::uint64_property(res, "id")),
                           PExpr_(1, pj::string_property(res, "firstName")),
                           PExpr_(1, pj::string_property(res, "lastName")),
-                          PExpr_(2, pj::string_rep(res) == "[0]{}" ?
+                          PExpr_(2, pj::string_rep(res) == "NULL" ?
                                       std::string("false") : std::string("true")) })
                 .collect(rs);
 
@@ -907,7 +907,7 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(1, pj::uint64_property(res, "id")),
                           PExpr_(1, pj::string_property(res, "firstName")),
                           PExpr_(1, pj::string_property(res, "lastName")),
-                          PExpr_(5, pj::string_rep(res) == "[0]{}" ?
+                          PExpr_(5, pj::string_rep(res) == "NULL" ?
                                       std::string("false") : std::string("true")) })
                 .collect(rs);
 
@@ -943,7 +943,7 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(6, pj::uint64_property(res, "id")),
                           PExpr_(6, pj::string_property(res, "firstName")),
                           PExpr_(6, pj::string_property(res, "lastName")),
-                          PExpr_(7, pj::string_rep(res) == "[0]{}" ?
+                          PExpr_(7, pj::string_rep(res) == "NULL" ?
                                       std::string("false") : std::string("true")) })
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
