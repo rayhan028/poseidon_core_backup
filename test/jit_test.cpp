@@ -100,14 +100,28 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     SECTION("Scan all nodes for given label") {
         auto expr = Scan("Person", Collect());
         arg_builder args;
-	    args.arg(1, "Person");
+	      args.arg(1, "Person");
 
         result_set rs;
         queryEngine.generate(expr, false);
-	    queryEngine.run(&rs, args.args);
+	      queryEngine.run(&rs, args.args);
 
         REQUIRE(rs.data.size() == num_persons);
         //REQUIRE(boost::get<std::string>(rs.data[43][0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\"}");
+    }
+
+    SECTION("Using an index to retrieve a certain node") {
+        auto expr = IndexScan(Collect());
+        arg_builder args;
+        args.arg(1, "Person");
+        args.arg(2, "id");
+        args.arg(3, 42);
+
+        result_set rs;
+        queryEngine.generate(expr, false);
+        queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.size() == 1);
     }
 
     SECTION("Find a outgoing relationship from each Person node") {
@@ -121,8 +135,8 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         queryEngine.run(&rs, args.args);
 
         REQUIRE(rs.data.size() == num_books);
-        //REQUIRE(boost::get<std::string>(rs.data[43][0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\"}");
-        //REQUIRE(boost::get<std::string>(rs.data[43][1]) == "Book[142]{title: \"Book Title\", year: 1942, id: 42}");
+        REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "Person[0]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 0, name: \"John Doe\"}");
+        REQUIRE(boost::get<std::string>(rs.data.front()[1]) == "::HAS_READ[0]{}");
     }
 
     SECTION("Find a ingoing relationship from each Book node") {

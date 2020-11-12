@@ -736,6 +736,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         auto cur_rhs_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
         ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, cur_rhs_idx);
 
+        // iteration 
+        // TODO:
         
     }
 

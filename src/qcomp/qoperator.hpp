@@ -83,6 +83,8 @@ enum class qop_type {
     expand,
     cross_join,
     left_join,
+    hash_join,
+    nest_loop_join,
     sort,
     limit,
     collect,
@@ -98,12 +100,6 @@ class query_engine;
 
 class base_op {
 protected:
-    algebra_optr deep_copy_inputs(algebra_optr op) const {
-        for (auto inp : inputs_) {
-            op->inputs_.push_back(op->deep_copy());
-        }
-        return op;
-    }
 
 public:
     algebra_optr_list inputs_;
@@ -114,10 +110,6 @@ public:
     void set_consumer(Function *fct) { consumer_ = fct; }
 
     virtual ~base_op() = default;
-
-    virtual algebra_optr copy() const = 0;
-
-    virtual algebra_optr deep_copy() const = 0;
 
     virtual void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false) = 0;
 
@@ -146,14 +138,6 @@ public:
 
         type_ = qop_type::scan;
         produced_type_ = 0;
-    }
-
-    algebra_optr copy() const {
-        return std::make_shared<scan_op>(label_, indexed_, copy());
-    }
-
-    algebra_optr deep_copy() const {
-        return deep_copy_inputs(copy());
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
@@ -189,14 +173,6 @@ public:
         inputs_.push_back(inp);
         produced_type_ = 1;
         type_ = qop_type::foreach_rship;
-    }
-
-    algebra_optr copy() const {
-        return std::make_shared<scan_op>(copy());
-    }
-
-    algebra_optr deep_copy() const {
-        return deep_copy_inputs(copy());
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
@@ -238,14 +214,6 @@ public:
         produced_type_ = -1;
     }
 
-    algebra_optr copy() const {
-        return std::make_shared<project>(copy());
-    }
-
-    algebra_optr deep_copy() const {
-        return deep_copy_inputs(copy());
-    }
-
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
     std::vector<pr_expr> prexpr_;
@@ -276,15 +244,6 @@ public:
         inputs_.push_back(inp);
         type_ = qop_type::expand;
         produced_type_ = 0;
-    }
-
-
-    algebra_optr copy() const {
-        return std::make_shared<expand_op>(exp_, copy());
-    }
-
-    algebra_optr deep_copy() const {
-        return deep_copy_inputs(copy());
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
@@ -318,6 +277,12 @@ public:
             case JOIN_OP::CROSS:
                 type_ = qop_type::cross_join;
                 break;
+            case JOIN_OP::HASH_JOIN:
+                type_ = qop_type::hash_join;
+                break;
+            case JOIN_OP::NESTED_LOOP:
+                type_ = qop_type::nest_loop_join;
+                break;
         }
 
         produced_type_ = -1;
@@ -336,17 +301,14 @@ public:
             case JOIN_OP::LEFT_OUTER:
                 type_ = qop_type::left_join;
                 break;
-
+            case JOIN_OP::HASH_JOIN:
+                type_ = qop_type::hash_join;
+                break;
+            case JOIN_OP::NESTED_LOOP:
+                type_ = qop_type::nest_loop_join;
+                break;
         }
         produced_type_ = -1;
-    }
-
-    algebra_optr copy() const {
-        return std::make_shared<join_op>(jop_, join_pos_, copy());
-    }
-
-    algebra_optr deep_copy() const {
-        return deep_copy_inputs(copy());
     }
 
     Function *codegen_rhs(PContext &ctx, Function *consumer);
@@ -372,14 +334,6 @@ public:
         produced_type_ = -1;
     }
 
-    algebra_optr copy() const {
-        return std::make_shared<collect_op>();
-    }
-
-    algebra_optr deep_copy() const {
-        return deep_copy_inputs(copy());
-    }
-
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 };
 
@@ -392,14 +346,6 @@ public:
         inputs_.push_back(inp);
         type_ = qop_type::filter;
         produced_type_ = -1;
-    }
-
-    algebra_optr copy() const {
-        return std::make_shared<filter_op>(fexpr_, copy());
-    }
-
-    algebra_optr deep_copy() const {
-        return deep_copy_inputs(copy());
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
@@ -421,14 +367,6 @@ public:
         inputs_.push_back(inp);
         cmp_ = cmp;
         produced_type_ = -1;
-    }
-
-    algebra_optr copy() const {
-        return std::make_shared<sort_op>(cmp_, copy());
-    }
-
-    algebra_optr deep_copy() const {
-        return deep_copy_inputs(copy());
     }
 
     static void sort(result_set *rs) {
@@ -453,14 +391,6 @@ public:
         produced_type_ = -1;
     }
 
-    algebra_optr copy() const {
-        return std::make_shared<limit_op>(limit_, copy());
-    }
-
-    algebra_optr deep_copy() const {
-        return deep_copy_inputs(copy());
-    }
-
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
     int limit_;
@@ -475,14 +405,6 @@ public:
         name_ = "End";
         type_ = qop_type::none;
         produced_type_ = -1;
-    }
-
-    algebra_optr copy() const {
-        return std::make_shared<end_op>();
-    }
-
-    algebra_optr deep_copy() const {
-        return deep_copy_inputs(copy());
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
@@ -511,15 +433,7 @@ public:
         produced_type_ = static_cast<int>(ct);
         src_des_ = src_des;
     }
-
-    algebra_optr copy() const {
-        return std::make_shared<create_op>();
-    }
-
-    algebra_optr deep_copy() const {
-        return deep_copy_inputs(copy());
-    }
-
+    
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
     create_type ctype_;

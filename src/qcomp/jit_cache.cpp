@@ -20,13 +20,13 @@ static inline int file_exists(const char *file) {
 
 PJitObjectCache::PJitObjectCache(std::string dir) : dir_(dir) {
 /*        if(file_exists(dir_.c_str()) != 0) {
-            cache_pool_ = pool<PCache>::create(dir_.c_str(), LAYOUT, POOLSIZE, S_IRWXU);
+            cache_pool_ = pool<PCache>::create(dir_.c_str(), "", POOLSIZE, S_IRWXU);
             transaction::run(cache_pool_, [&] {
                 cache_pool_.root()->cache = make_persistent<PObjCache>();
                 cache_pool_.root()->cache->runtime_initialize();
             });
         } else {
-            cache_pool_ = pool<PCache>::open(dir_.c_str(), LAYOUT);
+            cache_pool_ = pool<PCache>::open(dir_.c_str(), "");
             cache_pool_.root()->cache->runtime_initialize();
             cache_pool_.root()->cache->defragment();
         }

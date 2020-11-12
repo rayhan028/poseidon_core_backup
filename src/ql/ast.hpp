@@ -31,6 +31,7 @@ struct ast_op {
     bool is_source() const { return op_ == node_scan; }
     template<typename T>
     T get_param(std::size_t i) { return boost::get<T>(params_[i]); }
+    parse_tree_ptr get_param(std::size_t i) { return std::move(boost::get<parse_tree_ptr>(params_[i])); }
 
     op_type op_;
     std::vector<ast_op_ptr> children_;

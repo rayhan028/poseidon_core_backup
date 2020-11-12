@@ -170,12 +170,39 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
     }
       break;
     case ast_op::limit:
-      std::cout << "LIMIT" << std::endl;
       op = Limit(ast->get_param<int>(0), parent);
       break;
     case ast_op::filter:
     {
-        //TODO:
+      /* TODO: more complex filter expressions
+       * currently, only simple expressions 
+       * for the previous emitted query result are supported
+       */
+
+        auto fe_expr = ast->get_param(0);
+
+        auto lhs_key = std::move(fe_expr->children[0]);
+        auto key_se = Key(lhs_key->content());
+        std::cout << "Key: " << lhs_key->content() << std::endl;
+        auto rhs_value = std::move(fe_expr->children[2]);
+        expr value_se;
+        if(is_int(rhs_value->content())) {
+            auto n = std::stoi(rhs_value->content()); // TODO: find better solution
+            value_se = Int(n);
+            std::cout << "Int: " << n << std::endl;
+        } else {
+            value_se = Str(rhs_value->content());
+        }
+
+        auto fe_op = std::move(fe_expr->children[1]);
+        expr op_se;
+
+        if(boost::equals(fe_op->content(), "==")) {
+            op_se = EQ(key_se, value_se);
+            std::cout << "Op: " << "==" << std::endl;
+        }
+
+        op = Filter(op_se, parent);
     }
       break;
     case ast_op::project:

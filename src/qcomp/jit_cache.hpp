@@ -64,7 +64,6 @@
 class PJitObjectCache : public llvm::ObjectCache {
 #ifdef USE_PMDK
     using PObjCache = pmem::obj::concurrent_hash_map<string_t, string_t, string_hasher>;
-    char *LAYOUT = "QCACHE";
     struct PCache {
         pmem::obj::persistent_ptr<PObjCache> cache;
     };
