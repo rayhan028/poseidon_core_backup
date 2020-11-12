@@ -650,7 +650,7 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .from_node("Comment")
                 .from_relationships(":hasCreator")
                 .to_node("Person")
-                .outerjoin({4, 2}, q1)
+                .outerjoin_on_rship({4, 2}, q1)
                 .project({PExpr_(2, pj::uint64_property(res, "id")),
                           PExpr_(2, pj::string_property(res, "content")),
                           PExpr_(2, pj::ptime_property(res, "creationDate")),
@@ -682,7 +682,7 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .from_node("Comment")
                 .from_relationships(":hasCreator")
                 .to_node("Person")
-                .outerjoin({4, 2}, q1)
+                .outerjoin_on_rship({4, 2}, q1)
                 .project({PVar_(2),
                           PVar_(4),
                           PVar_(8),
@@ -727,7 +727,7 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                         if (boost::get<boost::posix_time::ptime>(qr1[3]) == boost::get<boost::posix_time::ptime>(qr2[3]))
                           return boost::get<uint64_t>(qr1[2]) > boost::get<uint64_t>(qr2[2]);
                         return boost::get<boost::posix_time::ptime>(qr1[3]) < boost::get<boost::posix_time::ptime>(qr2[3]); })
-                .outerjoin({1, 2}, q1)
+                .outerjoin_on_rship({1, 2}, q1)
                 .project({PVar_(2),
                           PExpr_(0, pj::string_property(res, "content")),
                           PVar_(3),
@@ -823,7 +823,7 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .from_node("Comment")
                 .from_relationships(":hasCreator")
                 .to_node("Person")
-                .outerjoin({4, 2}, q1)
+                .outerjoin_on_rship({4, 2}, q1)
                 .project({PExpr_(2, pj::uint64_property(res, "id")),
                           PExpr_(2, pj::string_property(res, "content")),
                           PExpr_(2, pj::ptime_property(res, "creationDate")),
@@ -855,7 +855,7 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .from_node("Comment")
                 .from_relationships(":hasCreator")
                 .to_node("Person")
-                .outerjoin({4, 2}, q1)
+                .outerjoin_on_rship({4, 2}, q1)
                 .project({PVar_(2),
                           PVar_(4),
                           PVar_(8),
@@ -900,7 +900,7 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                         if (boost::get<boost::posix_time::ptime>(qr1[3]) == boost::get<boost::posix_time::ptime>(qr2[3]))
                           return boost::get<uint64_t>(qr1[2]) > boost::get<uint64_t>(qr2[2]);
                         return boost::get<boost::posix_time::ptime>(qr1[3]) < boost::get<boost::posix_time::ptime>(qr2[3]); })
-                .outerjoin({1, 2}, q1)
+                .outerjoin_on_rship({1, 2}, q1)
                 .project({PVar_(2),
                           PExpr_(0, pj::string_property(res, "content")),
                           PVar_(3),

@@ -227,15 +227,6 @@ public:
   query &crossjoin(query &other);
 
   /**
-   * Add a left outerjoin operator for merging tuples of two 
-   * queries if there exists a relationship defined by an object
-   * (at a given position) in the left tuple as the source node 
-   * and an object (at a given position) in the right tuple as 
-   * the destination node 
-   */
-  query &outerjoin(std::pair<int, int> src_des, query &other);
-
-  /**
    * TODO 
    */
   query &join_on_node(std::pair<int, int> left_right, query &other);
@@ -244,6 +235,23 @@ public:
    * TODO 
    */
   query &hashjoin_on_node(std::pair<int, int> left_right, query &other);
+
+  /**
+   * Add a left outerjoin operator for merging tuples of two queries if the node
+   * at a given position in the left tuple is the same as the node at another
+   * given position in the right tuple. The node positions are specified by the
+   * pos pair. Dangling tuples are padded with "NULL" 
+   */
+  query &outerjoin_on_node(const std::pair<int, int> &left_right, query &other);
+
+  /**
+   * Add a left outerjoin operator for merging tuples of two 
+   * queries if there exists a relationship defined by an object
+   * (at a given position) in the left tuple as the source node 
+   * and an object (at a given position) in the right tuple as 
+   * the destination node 
+   */
+  query &outerjoin_on_rship(std::pair<int, int> src_des, query &other);
 
   /**
    * Add an operator for invoking a LUA function as part of the query.

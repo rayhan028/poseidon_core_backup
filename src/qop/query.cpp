@@ -253,15 +253,6 @@ query &query::crossjoin(query &other) {
       std::bind(&cross_join::finish, op.get(), ph::_1));
 }
 
-query &query::outerjoin(std::pair<int, int> src_des, query &other) {
-  auto op = std::make_shared<left_outerjoin>(src_des);
-  other.append_op(
-      op, std::bind(&left_outerjoin::process_right, op.get(), ph::_1, ph::_2));
-  return append_op(
-      op, std::bind(&left_outerjoin::process_left, op.get(), ph::_1, ph::_2),
-      std::bind(&left_outerjoin::finish, op.get(), ph::_1));
-}
-
 query &query::join_on_node(std::pair<int, int> left_right, query &other) {
   auto op = std::make_shared<nested_loop_join>(left_right);
   other.append_op(
@@ -278,6 +269,24 @@ query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
   return append_op(
       op, std::bind(&hash_join::probe_phase, op.get(), ph::_1, ph::_2),
       std::bind(&hash_join::finish, op.get(), ph::_1));
+}
+
+query &query::outerjoin_on_node(const std::pair<int, int> &left_right, query &other) {
+  auto op = std::make_shared<left_outerjoin_on_node>(left_right);
+  other.append_op(
+      op, std::bind(&left_outerjoin_on_node::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&left_outerjoin_on_node::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&left_outerjoin_on_node::finish, op.get(), ph::_1));
+}
+
+query &query::outerjoin_on_rship(std::pair<int, int> src_des, query &other) {
+  auto op = std::make_shared<left_outerjoin_on_rship>(src_des);
+  other.append_op(
+      op, std::bind(&left_outerjoin_on_rship::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&left_outerjoin_on_rship::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&left_outerjoin_on_rship::finish, op.get(), ph::_1));
 }
 
 /*
