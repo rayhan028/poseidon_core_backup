@@ -82,7 +82,7 @@ struct number_token : public expression, public std::enable_shared_from_this<num
 
     number_token(const int value = 0);
 
-    std::string operator()() const;
+    std::string operator()() const override;
 
     void accept(int rank, expression_visitor &fep) override;
 };
@@ -95,7 +95,7 @@ struct key_token : public expression, std::enable_shared_from_this<key_token> {
 
     key_token(std::string key);
 
-    std::string operator()() const;
+    std::string operator()() const override;
 
     void accept(int rank, expression_visitor &fep) override;
 };
@@ -107,7 +107,7 @@ struct str_token : public expression, std::enable_shared_from_this<str_token> {
 
     str_token(std::string str);
 
-    std::string operator()() const;
+    std::string operator()() const override;
 
     void accept(int rank, expression_visitor &fep) override;
 };
@@ -123,7 +123,7 @@ struct binary_predicate : public expression {
 
     binary_predicate(FOP fop, expr const left = 0, expr const right = 0, bool prec = 0, bool is_bool = 0);
 
-    std::string operator()() const;
+    std::string operator()() const override;
 };
 
 struct eq_predicate : public binary_predicate, std::enable_shared_from_this<eq_predicate> {

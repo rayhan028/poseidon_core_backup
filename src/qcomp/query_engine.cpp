@@ -79,7 +79,7 @@ void query_engine::cleanup() {
 }
 
 void query_engine::prepare() {
-    for(auto i = 1; i < start_.size(); i++) {
+    for(auto i = 1u; i < start_.size(); i++) {
         type_vec_[i].insert(type_vec_[i].end(), type_vec_[i-1].begin(), type_vec_[i-1].end());
     }
 }
@@ -103,7 +103,7 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args) {
     std::vector<call_map> call_maps;
     call_maps.resize(operator_functions_.size());
     int i = 0;
-    for(int j = 0; j < start_.size(); j++) {
+    for(auto j = 0u; j < start_.size(); j++) {
         auto qop = operator_functions_[j];
         for(auto & op : qop) {
             call_maps[j][i] = (int*)op;
