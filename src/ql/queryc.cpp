@@ -65,6 +65,8 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
         return ast_op::foreach_rship;
       else if (name == "Expand")
         return ast_op::expand;
+      else if (name == "Project")
+        return ast_op::project;
       // TODO
     }
   }
@@ -89,9 +91,26 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
       else if (param->is<qlang::expression>()) {
         nptr->add_param(std::move(param));
       }
+      else if (param->is<qlang::proj_array>()) {
+        prop_spec_list plist;
+        for (auto& p : param->children) {
+          auto pspec = get_property_spec(p);
+          plist.push_back(pspec);
+        }
+        nptr->add_param(plist);
+      }
     }
   }
   return nptr;
+}
+
+prop_spec queryc::get_property_spec(parse_tree_ptr& pn) {
+  assert (pn->is<qlang::proj_expr>());
+  std::vector<std::string> s;
+  boost::split(s, pn->content(), boost::is_any_of(":"));
+  return prop_spec{ s[0], s[1] };
+   
+  // std::cout << "====> " << pn->children.size() << ": " << pn->content() << std::endl;
 }
 
 void queryc::ast_to_plan(ast_op_ptr &ast) {
@@ -146,7 +165,7 @@ expr parse_filter_expression(ast_op_ptr &ast) {
 
   auto lhs_key = std::move(fe_expr->children[0]);
   
-  unsigned lhs_qr_id;
+  unsigned int lhs_qr_id = 0;
 
   if(lhs_key->is<qlang::variable_name>()) {
       auto lhs_id = std::move(lhs_key->children[0]);

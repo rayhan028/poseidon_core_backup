@@ -19,7 +19,7 @@ std::unique_ptr<JitFromScratch> query_engine::initializeJitCompiler() {
 }
 
 query_engine::query_engine(graph_db_ptr graph, unsigned int thread_num, unsigned cv_range) 
-    : jit_(initializeJitCompiler()), graph_(graph), ctx_(PContext(graph)), thread_num_(thread_num), compiled_(false), complete_(false) {
+    : thread_num_(thread_num), ctx_(PContext(graph)), jit_(initializeJitCompiler()), graph_(graph), compiled_(false), complete_(false) {
 
     ctx_.getModule().setDataLayout(jit_->getDataLayout());
 
@@ -199,7 +199,8 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
 }
 
 
-compile_task::compile_task(query_engine & qeng, PContext &ctx, JitFromScratch &jit, std::shared_ptr<base_op> query) : qeng_(qeng), ctx_(ctx), jit_(jit), query_(query) {}
+compile_task::compile_task(query_engine & qeng, PContext &ctx, JitFromScratch &jit, std::shared_ptr<base_op> query) 
+    : ctx_(ctx), jit_(jit), query_(query), qeng_(qeng) {}
 
 int query_cnt = 0;
 

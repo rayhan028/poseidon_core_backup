@@ -27,7 +27,7 @@ struct arg_builder {
     std::vector<properties_t> prop_args;
     std::vector<uint64_t*> args;
 
-    arg_builder() : args(64), string_args(64), int_args(64), prop_args(64) {}
+    arg_builder() : int_args(64), string_args(64), prop_args(64), args(64) {}
     void arg(int op_id, std::string arg) {
         string_args[op_id] = arg;
         args[op_id] = (uint64_t*)(string_args[op_id].c_str());

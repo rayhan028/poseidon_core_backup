@@ -168,7 +168,7 @@ public:
         inputs_.push_back(inp);
     }
 
-    foreach_rship_op(RSHIP_DIR dir, std::pair<int, int> hops, std::string label, algebra_optr inp) : dir_(dir), hops_(hops), label_(label) {
+    foreach_rship_op(RSHIP_DIR dir, std::pair<int, int> hops, std::string label, algebra_optr inp) : dir_(dir), label_(label), hops_(hops) {
         name_ = "ForeachRelationship";
         inputs_.push_back(inp);
         produced_type_ = 1;
@@ -445,9 +445,9 @@ inline algebra_optr CreateNode(algebra_optr inp) { return std::make_shared<creat
 inline algebra_optr CreateRship(std::pair<int, int> src_des, algebra_optr inp) { return std::make_shared<create_op>(create_type::rship, src_des, inp); }
 
 struct FExp {
-    FExp(PContext &ctx, FOP fop, FTYPE type, std::string property, std::string value) : fop_(fop), property_(property),
-                                                                                        value_(value), type_(type),
-                                                                                        ctx(ctx) {
+    FExp(PContext &ctx, FOP fop, FTYPE type, std::string property, std::string value) : fop_(fop), type_(type),
+                                                                                        property_(property),
+                                                                                        value_(value), ctx(ctx) {
         get_vec_back = ctx.gen_funcs["qr_list_get_front"];
     }
 

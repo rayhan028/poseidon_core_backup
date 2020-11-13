@@ -1,5 +1,35 @@
+/*
+ * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
+ *
+ * This file is part of the Poseidon package.
+ *
+ * Poseidon is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Poseidon is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "ast.hpp"
 #include <boost/hana.hpp>
+
+std::ostream& operator<<(std::ostream& os, const prop_spec_list& plist) {
+    os << "[ ";
+    for (auto i = 0u; i < plist.size(); i++) {
+        auto& pi = plist[i];
+        os << pi.pname;
+        if (i < plist.size()-1) os << ", ";
+    }
+    os << " ]";
+    return os;
+}
 
 std::ostream& operator<<(std::ostream& os, ast_op& op) {
     switch(op.op_) {
@@ -17,11 +47,14 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
             os << "Limit("; break;
         case ast_op::join:
             os << "Join("; break;
+        default:
+            break;
     }
     auto my_visitor = boost::hana::overload(
       [&](int i) { os << i; },
       [&](const std::string &s) { os << s; },
-      [&](const parse_tree_ptr& expr) { os << expr->string(); });
+      [&](const parse_tree_ptr& expr) { os << expr->string(); },
+      [&](const prop_spec_list& plist) { os << plist; } );
 
    for (auto& p : op.params_) {
         boost::apply_visitor(my_visitor, p);

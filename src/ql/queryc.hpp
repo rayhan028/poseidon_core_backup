@@ -39,7 +39,8 @@ private:
   void ast_to_plan(ast_op_ptr &ast);
 
   ast_op::op_type get_op_type(parse_tree_ptr& pn);
-  
+  prop_spec get_property_spec(parse_tree_ptr& pn);
+
   ast_op_ptr ptree_to_ast(parse_tree_ptr& pn);
 
   qop_ptr ast_to_qop(ast_op_ptr &ast, qop_ptr parent);

@@ -118,9 +118,20 @@ struct op_name : sor< key_node_scan,
 struct directions : sor<TAO_PEGTL_KEYWORD("FROM"), TAO_PEGTL_KEYWORD("TO"), 
                         TAO_PEGTL_KEYWORD("IN"), TAO_PEGTL_KEYWORD("OUT")> {};
 
+struct key_int : TAO_PEGTL_KEYWORD("int") {};
+struct key_float : TAO_PEGTL_KEYWORD("float") {};
+struct key_string : TAO_PEGTL_KEYWORD("string") {};
+struct key_dtime : TAO_PEGTL_KEYWORD("datetime") {};
+
+struct dtype : sor< key_int, key_float, key_string, key_dtime> {};
+
+struct proj_expr : seq< variable_name, one<':'>, dtype> {};
+
+struct proj_array : seq< one<'['>, opt<space>, list<proj_expr, comma>, opt<space>, one<']'> > {};
+
 struct qoperator;
 
-struct param : sor<literal_string, qoperator, directions, integer, expression> {};
+struct param : sor<literal_string, qoperator, directions, integer, expression, proj_array> {};
 
 struct param_list : list<param, comma> {};
 
@@ -138,6 +149,8 @@ template <> struct my_selector<integer> : std::true_type {};
 template <> struct my_selector<variable_name> : std::true_type {};
 template <> struct my_selector<op_name> : std::true_type {};
 template <> struct my_selector<operators_cmp> : std::true_type {};
+template <> struct my_selector<proj_array> : std::true_type {};
+template <> struct my_selector<proj_expr> : std::true_type {};
 
 /* ------------------------------------------------------------- */
 

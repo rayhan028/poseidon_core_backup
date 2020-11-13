@@ -62,6 +62,10 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
       pegtl::string_input<>("Filter($2.Name != 'John')", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("NodeScan(Filter($1.Age >= 42))", "")));
+  REQUIRE(pegtl::parse<qlang::proj_expr, pegtl::nothing>(
+      pegtl::string_input<>("$1.Age:int", "")));
+  REQUIRE(pegtl::parse<qlang::proj_array, pegtl::nothing>(
+      pegtl::string_input<>("[$1.Age:int, $1.Name:string]", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
-      pegtl::string_input<>("Project($1.Age, $1.Name)", "")));
+      pegtl::string_input<>("Project([$1.Age:int, $1.Name:string])", "")));
 }

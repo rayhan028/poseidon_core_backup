@@ -63,7 +63,9 @@ int main(int argc, char* argv[]) {
 
     auto dct = p_make_ptr<dict>();
     queryc qlc(dct);
+   
+    qlc.compile("Project([$1.Id:int, $1.Age:int, $2.Name:string], Join($1.Id == $2.Id, NodeScan('Movie'), Filter($1.Age >= 42, NodeScan('Person'))))");
 
     run_shell(qlc);
-    // qlc.compile("Limit(20, Join($1.Id == $2.Id, NodeScan('Movie'), Filter($1.Age >= 42, NodeScan('Person'))))");
 }
+ 
