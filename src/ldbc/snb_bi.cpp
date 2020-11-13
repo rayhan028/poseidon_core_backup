@@ -681,6 +681,186 @@ void ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
     rs.wait();
 }
 
+void ldbc_bi_query_10(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+
+    std::vector<result_set> grps2;
+    std::vector<result_set> grps4;
+    std::vector<std::string> message = {"Post", "Comment"};
+
+    auto fltr_tag =
+      [&](auto &prop) {
+        auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
+        auto c1 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+        return c == c1;
+      };
+
+    auto fltr_cdate =
+      [&](auto &prop) {
+        auto date = (*(reinterpret_cast<const ptime *>(prop.value_)));
+        return date > boost::get<ptime>(params[1]);
+      };
+
+    auto check_msg =
+      [&](const node &person) {
+        bool found = false;
+        uint64_t cnt = 0;
+        auto lcode1 = gdb->get_code(":hasCreator");
+        gdb->foreach_to_relationship_of_node(person, lcode1, [&](relationship &r1) {
+          auto &msg = gdb->node_by_id(r1.from_node_id());
+          auto lcode2 = gdb->get_code(":hasTag");
+          gdb->foreach_from_relationship_of_node(msg, lcode2, [&](relationship &r2) {
+            auto &tag = gdb->node_by_id(r2.to_node_id());
+            if (gdb->is_node_property(tag, "name", fltr_tag)) {
+              found = true;
+              ++cnt;
+            }
+          });
+        });
+        std::pair<bool, uint64_t> pair(found, cnt);
+        return pair;
+      };
+
+    auto check_intrst =
+      [&](const node &person) {
+        bool found = false;
+        auto lcode = gdb->get_code(":hasInterest");
+        gdb->foreach_from_relationship_of_node(person, lcode, [&](relationship &r) {
+          auto &tag = gdb->node_by_id(r.to_node_id());
+          if (gdb->is_node_property(tag, "name", fltr_tag))
+            found = true;
+        });
+        return found;
+      };
+
+    auto interest_only =
+      [&](const qr_tuple &v) {
+        const auto person = boost::get<node *>(v[0]);
+        return check_msg(*person).first ? false : true;
+      };
+
+    auto msg_only =
+      [&](const qr_tuple &v) {
+        const auto person = boost::get<node *>(v[0]);
+        return check_intrst(*person) ? false : true;
+      };
+
+    auto get_score =
+      [&](node &frnd) {
+        auto pair = check_msg(frnd);
+        auto has_msg = pair.first;
+        auto has_intrst = check_intrst(frnd);
+        if (has_intrst && has_msg) {
+          return (uint64_t)100 + check_msg(frnd).second;
+        } else if (has_intrst && !has_msg) {
+          return (uint64_t)100;
+        } else if (!has_intrst && has_msg) {
+          return check_msg(frnd).second;
+        } else {
+          return (uint64_t)0;
+        }
+      };
+
+    auto sum_frnds_score =
+      [&](qr_tuple &v) {
+        auto person = boost::get<node *>(v[0]);
+        auto lcode = gdb->get_code(":knows");
+        uint64_t scores = 0;
+        gdb->foreach_from_relationship_of_node(*person, lcode, [&](relationship &r) {
+          auto &frnd = gdb->node_by_id(r.to_node_id());
+          scores += get_score(frnd);
+        });
+        return query_result(scores);
+      };
+
+    auto q4 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Tag")
+              .property("name", fltr_tag)
+#else
+              .nodes_where("Tag", "name", fltr_tag)
+#endif
+              .to_relationships(":hasTag")
+              .from_node(message)
+              .property("creationDate", fltr_cdate)
+              .from_relationships(":hasCreator")
+              .to_node("Person")
+              .group(grps4, {4})
+              .aggregate(grps4, {{"count", 0}});
+
+    auto q3 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Tag")
+              .property("name", fltr_tag)
+#else
+              .nodes_where("Tag", "name", fltr_tag)
+#endif
+              .to_relationships(":hasInterest")
+              .from_node("Person")
+              .project({PVar_(2)})
+              .hashjoin_on_node({0, 0}, q4)
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                auto score = boost::get<uint64_t>(v[2]);
+                score += 100;
+                return query_result(score); })
+              .project({PVar_(0),
+                        PVar_(3) });
+
+    auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Tag")
+              .property("name", fltr_tag)
+#else
+              .nodes_where("Tag", "name", fltr_tag)
+#endif
+              .to_relationships(":hasTag")
+              .from_node(message)
+              .property("creationDate", fltr_cdate)
+              .from_relationships(":hasCreator")
+              .to_node("Person")
+              .group(grps2, {4})
+              .aggregate(grps2, {{"count", 0}})
+              .where_qr_tuple(msg_only);
+
+    auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Tag")
+              .property("name", fltr_tag)
+#else
+              .nodes_where("Tag", "name", fltr_tag)
+#endif
+              .to_relationships(":hasInterest")
+              .from_node("Person")
+              .project({PVar_(2)})
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                return query_result((uint64_t)100); })
+              .where_qr_tuple(interest_only)
+              .union_all({&q2, &q3})
+              .append_to_qr_tuple(sum_frnds_score)
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                auto s = boost::get<uint64_t>(v[1]) + boost::get<uint64_t>(v[2]);
+                return query_result(s); })
+              .project({PExpr_(0, pj::uint64_property(res, "id")),
+                        PVar_(1),
+                        PVar_(2),
+                        PVar_(3) })
+              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
+                if (boost::get<uint64_t>(q1[3]) == boost::get<uint64_t>(q2[3]))
+                  return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);
+                return boost::get<uint64_t>(q1[3]) > boost::get<uint64_t>(q2[3]); })
+              .project({PVar_(0),
+                        PVar_(1),
+                        PVar_(2) })
+              .limit(100)
+              .collect(rs);
+
+    query::start({&q4, &q3, &q2, &q1});
+    rs.wait();
+}
+
 /* ------------------------------------------------------------------------ */
 
 double calc_avg_time(const std::vector<double>& vec) {
@@ -901,6 +1081,31 @@ double run_query_9(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
+double run_query_10(graph_db_ptr gdb) {
+    std::vector<params_tuple> params = {{"Garry_Kasparov",
+        time_from_string(std::string("2011-04-14 01:51:21.746"))
+                                      /*(uint64_t)1311285600000*/}};
+
+    std::vector<double> runtimes(params.size());
+
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        auto tx = gdb->begin_transaction();
+        ldbc_bi_query_10(gdb, rs, params[i]);
+        gdb->commit_transaction();
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return calc_avg_time(runtimes);
+}
+
 void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
     t = run_query_1(gdb);
@@ -921,6 +1126,8 @@ void run_benchmark(graph_db_ptr gdb) {
     spdlog::info("Query #8: {} msecs", t);
     t = run_query_9(gdb);
     spdlog::info("Query #9: {} msecs", t);
+    t = run_query_10(gdb);
+    spdlog::info("Query #10: {} msecs", t);
 }
 
 /* ---------------------------------------------------------------------------- */
