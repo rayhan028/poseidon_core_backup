@@ -8,6 +8,7 @@
 #include "filter_visitor.hpp"
 #include "p_context.hpp"
 #include "filter_expression.hpp"
+#include "codegen_inline.hpp"
 
 /**
  * The visitor structure for the filter expression code generation
@@ -15,7 +16,8 @@
 struct fep_visitor_inline : public expression_visitor {
 
     // the actual tuple for evaluation
-    Value *roi_;
+    //Value *roi_;
+    std::vector<codegen_inline_visitor::QR_VALUE> &qr_regs_;
 
     // the type of the tuple
     Value *type_;
@@ -37,7 +39,7 @@ struct fep_visitor_inline : public expression_visitor {
     Value *max_cnt_;
     Value *pitem_;
 
-    fep_visitor_inline(PContext *ctx, Function *parent, Value *qr_node, BasicBlock *next, BasicBlock *end, Value *item_arr, Value *item, Value *pset,
+    fep_visitor_inline(PContext *ctx, Function *parent, std::vector<codegen_inline_visitor::QR_VALUE> &qr, BasicBlock *next, BasicBlock *end, Value *item_arr, Value *item, Value *pset,
             Value *unknown_id, Value *plist_id, Value *loop_cnt, Value *max_cnt, Value *pitem,
             Value *arg);
 

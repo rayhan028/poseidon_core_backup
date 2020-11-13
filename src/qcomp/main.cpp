@@ -47,7 +47,7 @@ int main() {
 				true);
 		auto b = graph->add_node("Book",
 				{{"title", boost::any(std::string("Title"))},
-				{"$1.Age", boost::any(42)},
+				{"Age", boost::any(42)},
 				{"id", boost::any(i)}},
 				true);
 		auto x = graph->add_relationship(p, b, ":HAS_READ", {});
@@ -82,14 +82,11 @@ int main() {
 	
 	algebra_optr op;
 
-	qlc.compile("Filter($1.Age == 42 , Expand('OUT', 'Book', ForeachRelationship('FROM', ':HAS_READ', NodeScan('Person')))))", op);
-
+	qlc.compile("Filter($2.Age == 42 , Expand('OUT', 'Book', ForeachRelationship('FROM', ':HAS_READ', NodeScan('Person')))))", op);
 
 	queryEngine.generate(op, false);
 
 	queryEngine.run(&rs, args.args);
-
-	std::cout << "runned" << std::endl;
 
 	std::cout << boost::get<std::string>(rs.data.front()[2]) << std::endl;
 

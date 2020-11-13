@@ -36,7 +36,7 @@ void number_token::accept(int rank, expression_visitor &fep) {
     fep.visit(rank, shared_from_this());
 }
 
-key_token::key_token(std::string key) : key_(key) {
+key_token::key_token(unsigned qr_id, std::string key) : qr_id_(qr_id), key_(key) {
     name_ = "KEY";
     ftype_ = FOP_TYPE::KEY;
 }

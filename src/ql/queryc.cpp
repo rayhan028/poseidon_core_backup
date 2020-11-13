@@ -130,6 +130,56 @@ qop_ptr queryc::ast_to_qop(ast_op_ptr &ast, qop_ptr parent) {
   return qop;
 } 
 
+std::string parse_variable_name(std::string content) {
+  auto dot_pos = content.find(".");
+  return content.substr(dot_pos+1);
+}
+
+expr parse_filter_expression(ast_op_ptr &ast) {
+/* TODO: more complex filter expressions
+  * currently, only simple (binary) expressions are supported
+  * e.g. Age >= 42
+  */
+
+  // process lhs of expression
+  auto fe_expr = ast->get_param(0);
+
+  auto lhs_key = std::move(fe_expr->children[0]);
+  
+  unsigned lhs_qr_id;
+
+  if(lhs_key->is<qlang::variable_name>()) {
+      auto lhs_id = std::move(lhs_key->children[0]);
+      lhs_qr_id = std::stoi(lhs_id->content());
+  }
+
+  // extract the actual key after $X. in string
+  auto lhs_var_name = parse_variable_name(lhs_key->content());
+  auto key_se = Key(lhs_qr_id, lhs_var_name);
+
+
+  auto rhs_value = std::move(fe_expr->children[2]);
+  expr value_se;
+  if(is_int(rhs_value->content())) {
+      auto n = std::stoi(rhs_value->content()); // TODO: find better solution
+      value_se = Int(n);
+  } else if(rhs_value->is<qlang::variable_name>()){
+      auto rhs_var_name = parse_variable_name(lhs_key->content());
+      auto rhs_id = std::move(rhs_value->children[0]);
+      auto rhs_qr_id = std::stoi(rhs_id->content());
+      value_se = Key(rhs_qr_id, rhs_var_name);
+  }
+
+  auto fe_op = std::move(fe_expr->children[1]);
+  expr op_se;
+
+  if(boost::equals(fe_op->content(), "==")) {
+      op_se = EQ(key_se, value_se);
+  }
+
+  return op_se;
+}
+
 algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
   algebra_optr op;
   switch(ast->op_) {
@@ -174,35 +224,8 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       break;
     case ast_op::filter:
     {
-      /* TODO: more complex filter expressions
-       * currently, only simple expressions 
-       * for the previous emitted query result are supported
-       */
-
-        auto fe_expr = ast->get_param(0);
-
-        auto lhs_key = std::move(fe_expr->children[0]);
-        auto key_se = Key(lhs_key->content());
-        std::cout << "Key: " << lhs_key->content() << std::endl;
-        auto rhs_value = std::move(fe_expr->children[2]);
-        expr value_se;
-        if(is_int(rhs_value->content())) {
-            auto n = std::stoi(rhs_value->content()); // TODO: find better solution
-            value_se = Int(n);
-            std::cout << "Int: " << n << std::endl;
-        } else {
-            value_se = Str(rhs_value->content());
-        }
-
-        auto fe_op = std::move(fe_expr->children[1]);
-        expr op_se;
-
-        if(boost::equals(fe_op->content(), "==")) {
-            op_se = EQ(key_se, value_se);
-            std::cout << "Op: " << "==" << std::endl;
-        }
-
-        op = Filter(op_se, parent);
+      auto fexpr = parse_filter_expression(ast);
+      op = Filter(fexpr, parent);
     }
       break;
     case ast_op::project:

@@ -92,15 +92,16 @@ inline expr Int(const int value = 0) { return std::make_shared<number_token>(val
 
 struct key_token : public expression, std::enable_shared_from_this<key_token> {
     std::string key_;
+    unsigned qr_id_; 
 
-    key_token(std::string key);
+    key_token(unsigned qr_id, std::string key);
 
     std::string operator()() const override;
 
     void accept(int rank, expression_visitor &fep) override;
 };
 
-inline expr Key(std::string value = 0) { return std::make_shared<key_token>(value); }
+inline expr Key(unsigned qr_id, std::string value = 0) { return std::make_shared<key_token>(qr_id, value); }
 
 struct str_token : public expression, std::enable_shared_from_this<str_token> {
     std::string str_;

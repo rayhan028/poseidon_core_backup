@@ -2,12 +2,12 @@
 
 std::map<int, Value*> expr_register;
 
-fep_visitor_inline::fep_visitor_inline(PContext *ctx, Function *parent, Value *qr_node, BasicBlock *next, BasicBlock *end, Value *item_arr, Value *item, Value *pset,
+fep_visitor_inline::fep_visitor_inline(PContext *ctx, Function *parent, std::vector<codegen_inline_visitor::QR_VALUE> &qr, BasicBlock *next, BasicBlock *end, Value *item_arr, Value *item, Value *pset,
                                        Value *unknown_id, Value *plist_id, Value *loop_cnt, Value *max_cnt, Value *pitem,
         Value *arg)
         : ctx_(ctx),
           fct_(parent),
-          qr_node_(qr_node),
+          qr_regs_(qr),
           next_(next),
           end_(end) {
     cur_item = item;
@@ -20,7 +20,7 @@ fep_visitor_inline::fep_visitor_inline(PContext *ctx, Function *parent, Value *q
     max_cnt_ = max_cnt;
     pitem_ = pitem;
 
-    roi_ = qr_node;
+    //roi_ = qr_node;
 }
 
 /**
@@ -49,6 +49,9 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<key_token> key)  {
     ctx_->getBuilder().CreateBr(spitem);
     ctx_->getBuilder().SetInsertPoint(spitem);
 
+    // get the tuple from the register
+    auto roi = qr_regs_.at(key->qr_id_).reg_val;
+
     // obtain the dict code
     auto dc = ctx_->get_dcode(key->key_);
     auto pcode = ConstantInt::get(ctx_->int32Ty, APInt(32, dc));
@@ -70,7 +73,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<key_token> key)  {
 
     // process node tuple
     ctx_->getBuilder().SetInsertPoint(is_node);
-    auto res_node = ctx_->getBuilder().CreateBitCast(roi_, ctx_->nodePtrTy);
+    auto res_node = ctx_->getBuilder().CreateBitCast(roi, ctx_->nodePtrTy);
     auto plist_id = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateStructGEP(res_node, 4));
     //auto plist_id_alloc = alloc("roi_plist_alloc", ctx_->int64Ty, plist_id);
     ctx_->getBuilder().CreateStore(plist_id, plist_id_);

@@ -499,9 +499,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<filter_op> op) {
     
     // obtain the last query result
     auto pres = reg_query_results.back().reg_val;
-
+    
     // generate code for each filter expression
-    auto vis = fep_visitor_inline(&ctx, main_function, pres, consume, false_pred, cur_item_arr, cur_item, cur_pset, rhs_alloca, plist_id, loop_cnt, max_cnt, pitem, arg);
+    auto vis = fep_visitor_inline(&ctx, main_function, reg_query_results, consume, 
+            false_pred, cur_item_arr, cur_item, cur_pset, 
+            rhs_alloca, plist_id, 
+            loop_cnt, max_cnt, pitem, arg);
     op->fexpr_->accept(0, vis);
 
 
