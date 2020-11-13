@@ -298,7 +298,7 @@ void nodes_connected::process(graph_db_ptr &gdb, const qr_tuple &v) {
   });
 
   if (flag){
-    auto res = append(v, query_result(std::string("[0]{}")));
+    auto res = append(v, query_result(null_t(-1)));
     consume_(gdb, res);
   }
 }
@@ -587,6 +587,24 @@ void qr_tuple_append::process(graph_db_ptr &gdb, const qr_tuple &v) {
   auto v2 = append(v1, res);
   consume_(gdb, v2);
 }
+
+/* ------------------------------------------------------------------------ */
+
+void union_all_qres::dump(std::ostream &os) const { // TODO
+  os << "union_all_qres()=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void union_all_qres::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
+  consume_(gdb, v);
+}
+
+void union_all_qres::process_right(graph_db_ptr &gdb, const qr_tuple &v) {
+  consume_(gdb, v);
+}
+
+void union_all_qres::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
 
 /* ------------------------------------------------------------------------ */
 

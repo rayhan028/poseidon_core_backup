@@ -244,6 +244,25 @@ query::append_to_qr_tuple(std::function<query_result(qr_tuple &)> func) {
                    std::bind(&qr_tuple_append::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::union_all(query &other) {
+  auto op = std::make_shared<union_all_qres>();
+  other.append_op(
+      op, std::bind(&union_all_qres::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&union_all_qres::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&union_all_qres::finish, op.get(), ph::_1));
+}
+
+query &query::union_all(std::initializer_list<query *> queries) {
+  auto op = std::make_shared<union_all_qres>();
+  for (auto &q : queries)
+    q->append_op(
+        op, std::bind(&union_all_qres::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&union_all_qres::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&union_all_qres::finish, op.get(), ph::_1));
+}
+
 query &query::crossjoin(query &other) {
   auto op = std::make_shared<cross_join>();
   other.append_op(

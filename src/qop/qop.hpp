@@ -575,6 +575,21 @@ struct qr_tuple_append : public qop {
 };
 
 /**
+ * TODO
+ */
+struct union_all_qres : public qop {
+  union_all_qres() = default;
+  ~union_all_qres() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+};
+
+/**
  * Operator for printing the content of a result set.
  */
 std::ostream &operator<<(std::ostream &os, const result_set &rs);

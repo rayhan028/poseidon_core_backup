@@ -206,6 +206,13 @@ public:
   query &append_to_qr_tuple(std::function<query_result(qr_tuple &)> func);
 
   /**
+   * TODO
+   */
+  query &union_all(query &other);
+
+  query &union_all(std::initializer_list<query *> queries);
+
+  /**
    * Add a print operator for outputting the query results to cout.
    */
   query &print();
