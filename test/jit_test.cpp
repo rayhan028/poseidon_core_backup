@@ -182,6 +182,47 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         REQUIRE(rs.data.size() == num_books);
     }
 
+    SECTION("Filter a node for a given property condition") {
+        auto expr = Scan("Person", Filter(EQ(Key(0, "id"), Int(42)), Collect()));
+        arg_builder args;
+        args.arg(1, "Person");
+        args.arg(2, 42);
+
+        result_set rs;
+        queryEngine.generate(expr, false);
+        queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.size() == 1);
+        REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\"}");
+    }
+
+    SECTION("Apply a Projection to a tuple result") {
+        auto expr = Scan("Person", Filter(EQ(Key(0, "id"), Int(42)), Project({{0, "name", FTYPE::STRING}}, Collect())));
+        arg_builder args;
+        args.arg(1, "Person");
+        args.arg(2, 42);
+
+        result_set rs;
+        queryEngine.generate(expr, false);
+        queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.size() == 1);
+        REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "John Doe");
+    }
+
+    SECTION("Apply a Projection on all tuple results") {
+        auto expr = Scan("Person", Project({{0, "name", FTYPE::STRING}}, Collect()));
+        arg_builder args;
+        args.arg(1, "Person");
+
+        result_set rs;
+        queryEngine.generate(expr, false);
+        queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.size() == num_persons);
+        REQUIRE(boost::get<std::string>(rs.data.back()[0]) == "John Doe");     
+    }
+
 #ifdef USE_PMDK
 	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
 	pop.close();
