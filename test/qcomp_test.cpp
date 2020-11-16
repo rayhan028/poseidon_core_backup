@@ -147,6 +147,57 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
         REQUIRE(exp->inputs_[0]->type_ == qop_type::collect);
     }
 
+    SECTION("Transform a Filter query into a valid graph algebra expression") {
+        algebra_optr op;
+        std::string filter_query = "Filter($2.age == 42, NodeScan('Person'))";
+        qlc.compile(filter_query, op);
+
+        REQUIRE(op->type_ == qop_type::scan);
+
+        auto filter = op->inputs_[0];
+        REQUIRE(filter->type_ == qop_type::filter);
+
+        auto fil_op = std::dynamic_pointer_cast<filter_op>(filter);
+        auto fexp = fil_op->fexpr_;
+
+        REQUIRE(fexp->name_ == "EQ");
+
+        auto bin_expr = std::dynamic_pointer_cast<binary_predicate>(fexp);
+        REQUIRE(bin_expr->fop_ == FOP::EQ);
+
+        auto lhs = bin_expr->left_;
+        REQUIRE(lhs->ftype_ == FOP_TYPE::KEY);
+
+        auto rhs = bin_expr->right_;
+        REQUIRE(rhs->ftype_ == FOP_TYPE::INT);
+    }
+
+    SECTION("Transform a Projection query into a valid graph algebra expression") {
+        algebra_optr op;
+        std::string prj_query = "Project([$0.age:int, $42.name:string], NodeScan('Person'))";
+        qlc.compile(prj_query, op);
+
+        REQUIRE(op->type_ == qop_type::scan);
+
+        auto prj = op->inputs_[0];
+        REQUIRE(prj->type_ == qop_type::project);
+
+        auto prj_op = std::dynamic_pointer_cast<project>(prj);
+        auto pexp = prj_op->prexpr_;
+        REQUIRE(pexp.size() == 2);
+
+        auto prj1 = pexp.front();
+        auto prj2 = pexp.back();
+
+        REQUIRE(prj1.id == 0);
+        REQUIRE(prj1.key == "age");
+        REQUIRE(prj1.type == FTYPE::INT);
+
+        REQUIRE(prj2.id == 42);
+        REQUIRE(prj2.key == "name");
+        REQUIRE(prj2.type == FTYPE::STRING);
+    }
+
 #ifdef USE_PMDK
 	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
 	pop.close();

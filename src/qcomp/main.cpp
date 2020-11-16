@@ -82,13 +82,13 @@ int main() {
 	
 	algebra_optr op;
 
-	qlc.compile("Filter($2.Age == 42 , Expand('OUT', 'Book', ForeachRelationship('FROM', ':HAS_READ', NodeScan('Person')))))", op);
+	qlc.compile("Project([$0.name:string], Expand('OUT', 'Book', ForeachRelationship('FROM', ':HAS_READ', NodeScan('Person')))))", op);
 
 	queryEngine.generate(op, false);
-
+        std::cout << "Generated" << std::endl;
 	queryEngine.run(&rs, args.args);
 
-	std::cout << boost::get<std::string>(rs.data.front()[2]) << std::endl;
+	std::cout << rs << std::endl;
 
 #ifdef USE_PMDK
 	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });

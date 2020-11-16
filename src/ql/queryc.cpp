@@ -149,9 +149,14 @@ qop_ptr queryc::ast_to_qop(ast_op_ptr &ast, qop_ptr parent) {
   return qop;
 } 
 
-std::string parse_variable_name(std::string content) {
-  auto dot_pos = content.find(".");
-  return content.substr(dot_pos+1);
+std::string parse_variable_name(std::string var_name) {
+  auto dot_pos = var_name.find(".");
+  return var_name.substr(dot_pos+1);
+}
+
+unsigned parse_tuple_id(std::string var_name) {
+  auto dot_pos = var_name.find(".");
+  return std::stoi(var_name.substr(1, dot_pos-1));
 }
 
 expr parse_filter_expression(ast_op_ptr &ast) {
@@ -244,12 +249,32 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
     case ast_op::filter:
     {
       auto fexpr = parse_filter_expression(ast);
+
+
+        std::cout << "Filter created" << std::endl;
+
       op = Filter(fexpr, parent);
     }
       break;
     case ast_op::project:
     {
-        //TODO:
+        auto pr_list = ast->get_param<prop_spec_list>(0);
+        std::vector<pr_expr> pr_exprs;
+
+        for(auto & p : pr_list) {
+            FTYPE type;
+            if(boost::iequals(p.ptype, "int")) {
+              type = FTYPE::INT;
+            } else if (boost::iequals(p.ptype, "string")) {
+              type = FTYPE::STRING;
+            } // TODO: improve type handling
+
+            auto pv_id = parse_tuple_id(p.pname);
+            auto pv_name = parse_variable_name(p.pname);
+            pr_exprs.push_back({pv_id, pv_name, type});
+        }
+        std::cout << "Projection created" << std::endl;
+        op = Project(pr_exprs, parent);
     }
       break;
     case ast_op::join:
