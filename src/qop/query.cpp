@@ -71,6 +71,17 @@ query &query::nodes_where_indexed(const std::string &label, const std::string &p
   return *this;
 }
 
+query &query::nodes_where_indexed(const std::vector<std::string> &labels,
+                                  const std::string &prop, uint64_t val) {
+  std::list<index_id> idxs;
+  for (auto &label : labels) {
+    auto idx = graph_db_->get_index(label, prop);
+    idxs.push_back(idx);
+  }
+  plan_head_ = plan_tail_ = std::make_shared<index_scan>(idxs, val);
+  return *this;
+}
+
 query &query::to_relationships(const std::string &label, int pos) {
   auto op = std::make_shared<foreach_to_relationship>(label, pos);
   return append_op(op, std::bind(&foreach_to_relationship::process, op.get(),

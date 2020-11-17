@@ -175,6 +175,7 @@ struct scan_nodes : public qop {
  */
 struct index_scan : public qop {
   index_scan(index_id ix, uint64_t k) : idx(ix), key(k) {}
+  index_scan(std::list<index_id> &ixs, uint64_t k) : key(k), idxs(ixs) {}
   ~index_scan() = default;
 
   void dump(std::ostream &os) const override;
@@ -183,6 +184,7 @@ struct index_scan : public qop {
 
   index_id idx;
   uint64_t key;
+  std::list<index_id> idxs;
 };
 
 /**

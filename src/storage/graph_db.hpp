@@ -323,6 +323,8 @@ public:
    */
   void index_lookup(index_id idx, uint64_t key, node_consumer_func consumer);
 
+  void index_lookup(std::list<index_id> &idxs, uint64_t key, node_consumer_func consumer);
+
   /* ---------------- query support ---------------- */
 
   /**

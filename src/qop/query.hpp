@@ -75,6 +75,9 @@ public:
    */
   query &nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val);
 
+  query &nodes_where_indexed(const std::vector<std::string> &labels,
+                              const std::string &prop, uint64_t val);
+
   /**
    * Add an operator that scans all incoming relationships of the last node in
    * the query result. Optionally, 1) the given label of the relationship is

@@ -52,7 +52,11 @@ void scan_nodes::dump(std::ostream &os) const {
 /* ------------------------------------------------------------------------ */
 
 void index_scan::start(graph_db_ptr &gdb) {
-  gdb->index_lookup(idx, key, [&](node &n) { consume_(gdb, {&n}); });
+  if (idxs.empty())
+    gdb->index_lookup(idx, key, [&](node &n) { consume_(gdb, {&n}); });
+  else
+    gdb->index_lookup(idxs, key, [&](node &n) { consume_(gdb, {&n}); });
+  
   qop::default_finish(gdb);
 }
 
