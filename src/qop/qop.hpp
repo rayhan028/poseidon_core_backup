@@ -578,7 +578,7 @@ struct qr_tuple_append : public qop {
  * TODO
  */
 struct union_all_qres : public qop {
-  union_all_qres() = default;
+  union_all_qres() : init(true) {}
   ~union_all_qres() = default;
 
   void dump(std::ostream &os) const override;
@@ -587,6 +587,9 @@ struct union_all_qres : public qop {
   void process_right(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  bool init;
+  std::list<qr_tuple> res_;
 };
 
 /**
