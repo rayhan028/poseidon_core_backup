@@ -40,6 +40,7 @@ enum class FTYPE {
     DATE = 3,
     TIME = 4,
     BOOLEAN = 5,
+    UINT64 = 6
 };
 
 struct qres {
@@ -250,6 +251,7 @@ extern std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
 /**
  * Thread local storage of intermediate projection results
  */
+extern thread_local std::map<int, uint64_t> uint_result;
 extern thread_local std::map<int, std::string> str_result;
 extern thread_local std::map<int, boost::posix_time::ptime> time_result;
 

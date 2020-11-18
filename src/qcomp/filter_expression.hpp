@@ -28,7 +28,8 @@ enum class FOP_TYPE {
     TIME = 4,
     OP = 5,
     BOOL_OP = 6,
-    KEY = 7
+    KEY = 7,
+    UINT64 = 8
 };
 
 struct expression;

@@ -68,6 +68,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
                                {"id", boost::any(i)},
+                               {"num", boost::any(uint64_t(1234567890123412))},
                                {"dummy1", boost::any(std::string("Dummy"))},
                                {"dummy2", boost::any(1.2345)}},
                               true);
@@ -135,7 +136,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         queryEngine.run(&rs, args.args);
 
         REQUIRE(rs.data.size() == num_books);
-        REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "Person[0]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 0, name: \"John Doe\"}");
+        REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "Person[0]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 0, name: \"John Doe\", num: 1234567890123412}");
         REQUIRE(boost::get<std::string>(rs.data.front()[1]) == "::HAS_READ[0]{}");
     }
 
@@ -193,7 +194,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         queryEngine.run(&rs, args.args);
 
         REQUIRE(rs.data.size() == 1);
-        REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\"}");
+        REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\", num: 1234567890123412}");
     }
 
     SECTION("Apply a Projection to a tuple result") {
@@ -222,6 +223,135 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         REQUIRE(rs.data.size() == num_persons);
         REQUIRE(boost::get<std::string>(rs.data.back()[0]) == "John Doe");     
     }
+
+    SECTION("CrossJoin two tuple results") {
+        auto rhs = Scan("Book", End());
+        auto lhs = Scan("Person", Join(JOIN_OP::CROSS, {}, Collect(), rhs));
+        arg_builder args;
+        args.arg(1, "Book");
+        args.arg(2, "Person");
+
+        result_set rs;
+        queryEngine.generate(lhs, false);
+        queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.size() == num_persons * num_books);
+    }
+
+    SECTION("Find connected nodes between two results with a LeftJoin") {
+        auto rhs = Scan("Book", End());
+        auto lhs = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0,0}, Collect(), rhs));
+
+        arg_builder args;
+        args.arg(1, "Book");
+        args.arg(2, "Person");
+
+        result_set rs;
+        queryEngine.generate(lhs, false);
+        queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.size() == num_persons * num_books * 2);
+    }   
+
+#ifdef USE_PMDK
+	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+	pop.close();
+	remove(test_path.c_str());
+#endif
+
+}
+
+TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  graph_db_ptr graph;
+  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
+#else
+  auto graph = p_make_ptr<graph_db>();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+
+  auto num_persons = 100;
+  auto num_books = 42;
+
+  for (int i = 0; i < num_persons; i++) {
+    graph->add_node("Person",
+                              {{"name", boost::any(std::string("John Doe"))},
+                               {"age", boost::any(42)},
+                               {"id", boost::any(i)},
+                               {"num", boost::any(uint64_t(1234567890123412))},
+                               {"dummy1", boost::any(std::string("Dummy"))},
+                               {"dummy2", boost::any(1.2345)}},
+                              false);
+  }
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+	auto chunks = graph->get_nodes()->num_chunks();
+
+	query_engine queryEngine(graph, 1, chunks);
+
+    SECTION("Single Projection - string type") {
+        auto expr = Scan("Person", Project({{0, "name", FTYPE::STRING}}, Collect()));
+        arg_builder args;
+	      args.arg(1, "Person");
+
+        result_set rs;
+        queryEngine.generate(expr, false);
+	      queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.size() == num_persons);
+        REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "John Doe");
+    }
+
+    SECTION("Single Projection - int type") {
+        auto expr = Scan("Person", Project({{0, "age", FTYPE::INT}}, Collect()));
+        arg_builder args;
+        args.arg(1, "Person");
+
+        result_set rs;
+        queryEngine.generate(expr, false);
+        queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.size() == num_persons);
+        REQUIRE(boost::get<int>(rs.data.front()[0]) == 42);
+    }
+
+    SECTION("Single Projection - uint64_t type ") {
+        auto expr = Scan("Person", Project({{0, "num", FTYPE::UINT64}}, Collect()));
+        arg_builder args;
+        args.arg(1, "Person");
+
+        result_set rs;
+        queryEngine.generate(expr, false);
+        queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.size() == num_persons);
+        REQUIRE(boost::get<uint64_t>(rs.data.front()[0]) == 1234567890123412);
+    }
+
+    SECTION("Multi Projection - string, int, uint64_t ") {
+        auto expr = Scan("Person", Project({{0, "name", FTYPE::STRING}, 
+                                            {0, "age", FTYPE::INT}, 
+                                            {0, "num", FTYPE::UINT64}}, Collect()));
+        arg_builder args;
+        args.arg(1, "Person");
+
+        result_set rs;
+        queryEngine.generate(expr, false);
+        queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.size() == num_persons);
+        REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "John Doe");
+        REQUIRE(boost::get<int>(rs.data.front()[1]) == 42);
+        REQUIRE(boost::get<uint64_t>(rs.data.front()[2]) == 1234567890123412);
+    }
+
 
 #ifdef USE_PMDK
 	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });

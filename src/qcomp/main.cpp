@@ -42,6 +42,7 @@ int main() {
 				{{"name", boost::any(std::string("John Doe")+std::to_string(i))},
 				{"age", boost::any(42)},
 				{"id", boost::any(i)},
+				{"num", boost::any(uint64_t(1234567890123412))},
 				{"dummy1", boost::any(std::string("Dummy"))},
 				{"dummy2", boost::any(1.2345)}},
 				true);
@@ -82,10 +83,10 @@ int main() {
 	
 	algebra_optr op;
 
-	qlc.compile("Project([$0.name:string], Expand('OUT', 'Book', ForeachRelationship('FROM', ':HAS_READ', NodeScan('Person')))))", op);
+	qlc.compile("Project([$0.num:uint64], NodeScan('Person'))", op);
 
 	queryEngine.generate(op, false);
-        std::cout << "Generated" << std::endl;
+	
 	queryEngine.run(&rs, args.args);
 
 	std::cout << rs << std::endl;

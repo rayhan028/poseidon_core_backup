@@ -143,6 +143,7 @@ graph_db *Collector::gdb = nullptr;
 Joiner joiner;
 
 thread_local std::map<int, std::string> str_result;
+thread_local std::map<int, uint64_t> uint_result;
 thread_local std::map<int, boost::posix_time::ptime> time_result;
 thread_local int str_res_ctr = 0;
 
@@ -301,16 +302,32 @@ void apply_pexpr_node(graph_db *gdb, const char *key, FTYPE val_type, int *qr, i
         descs[n->id()] = gdb->get_node_description(n->id());
     auto nd = descs[n->id()];
 
-    if(val_type == FTYPE::INT) {
-        *ret = get_property<uint64_t>(nd.properties, key).value();
-    } else if(val_type == FTYPE::STRING) {
-        str_result[str_res_ctr] = boost::any_cast<std::string>(nd.properties[std::string(key)]);;
-        *ret = str_res_ctr++;
-    } else if(val_type == FTYPE::DATE) {
-        time_result[str_res_ctr] = get_property<boost::posix_time::ptime>(nd.properties, key).value();
-        *ret = str_res_ctr++;
+    switch(val_type) {
+        case FTYPE::INT: {
+            *ret = get_property<int>(nd.properties, key).value();
+            break;
+        }
+        case FTYPE::UINT64: {
+            uint_result[str_res_ctr] = get_property<uint64_t>(nd.properties, key).value(); 
+            *ret = str_res_ctr++;
+            break;
+        }
+        case FTYPE::STRING: {
+            str_result[str_res_ctr] = boost::any_cast<std::string>(nd.properties[std::string(key)]);
+            *ret = str_res_ctr++;
+            break;
+        }
+        case FTYPE::TIME: // TODO: wip
+        case FTYPE::DATE: {
+            time_result[str_res_ctr] = get_property<boost::posix_time::ptime>(nd.properties, key).value();
+            *ret = str_res_ctr++;
+            break;
+        }
+        case FTYPE::DOUBLE:
+        case FTYPE::BOOLEAN:
+        default:
+            break;   
     }
-
 }
 
 void apply_pexpr_rship(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int *ret) {
@@ -396,14 +413,15 @@ std::mutex mat_reg_mut;
 extern "C" void mat_reg_value(graph_db *gdb, int *reg, int type) {
     std::lock_guard<std::mutex> lck(mat_reg_mut);
     if(type == 2) {
-        uint64_t x = std::stoull(con_map[type](gdb, reg));
-        tp.push_back(x);
+        int res = std::stoi(con_map[type](gdb, reg));
+        tp.push_back(res);
     } else if(type == 5) {
         tp.push_back(time_result[*reg]);
+    } else if(type == 8) {
+        tp.push_back(uint64_t(std::stoull(con_map[type](gdb, reg))));
     } else {
         tp.push_back(con_map[type](gdb, reg));
     }
-
 }
 
 std::mutex ct_mut;

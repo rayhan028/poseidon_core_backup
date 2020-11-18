@@ -119,11 +119,12 @@ struct directions : sor<TAO_PEGTL_KEYWORD("FROM"), TAO_PEGTL_KEYWORD("TO"),
                         TAO_PEGTL_KEYWORD("IN"), TAO_PEGTL_KEYWORD("OUT")> {};
 
 struct key_int : TAO_PEGTL_KEYWORD("int") {};
+struct key_uint64 : TAO_PEGTL_KEYWORD("uint64") {};
 struct key_float : TAO_PEGTL_KEYWORD("float") {};
 struct key_string : TAO_PEGTL_KEYWORD("string") {};
 struct key_dtime : TAO_PEGTL_KEYWORD("datetime") {};
 
-struct dtype : sor< key_int, key_float, key_string, key_dtime> {};
+struct dtype : sor< key_int, key_uint64, key_float, key_string, key_dtime> {};
 
 struct proj_expr : seq< variable_name, one<':'>, dtype> {};
 

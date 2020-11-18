@@ -42,8 +42,6 @@ struct arg_builder {
         args[op_id] = (uint64_t*)&(prop_args[op_id]);
     }
 
-
-
 };
 
 class query_engine {
@@ -92,6 +90,5 @@ public:
 
     std::vector<char*> strs;
 };
-
 
 #endif //POSEIDON_CORE_QUERY_ENGINE_HPP

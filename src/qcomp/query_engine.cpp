@@ -41,10 +41,15 @@ query_engine::query_engine(graph_db_ptr graph, unsigned int thread_num, unsigned
         return str_result[*ptr];
     };
 
+    auto insert_uint = [&] (graph_db* gdb, int *ptr) -> std::string {
+        return std::to_string(uint_result[*ptr]);
+    }; 
+
     con_map[0] = insert_nd;
     con_map[1] = insert_rd;
     con_map[2] = insert_int;
     con_map[4] = insert_str;
+    con_map[8] = insert_uint;
 }
 
 query_engine::~query_engine() {
