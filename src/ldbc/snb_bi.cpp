@@ -1006,6 +1006,47 @@ void ldbc_bi_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
     rs.wait();
 }
 
+void ldbc_bi_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+
+    std::vector<result_set> grps;
+
+    // Query pipeline
+    auto q = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label(message)
+              .property( "creationDate", [&](auto &prop) {
+                  return (*(reinterpret_cast<const ptime *>(prop.value_))) >
+                          boost::get<ptime>(params[0]); })
+#else
+              .nodes_where(message, "creationDate", [&](auto &prop) {
+                  return (*(reinterpret_cast<const ptime *>(prop.value_))) >
+                          boost::get<ptime>(params[0]); })
+#endif
+              .to_relationships(":likes")
+              .from_node("Person")
+              .group(grps, {0})
+              .aggregate(grps, {{"count", 0}})
+              .where_qr_tuple([&](const auto &v) {
+                return boost::get<uint64_t>(v[1]) > boost::get<uint64_t>(params[1]); })
+              .from_relationships(":hasCreator", 0)
+              .to_node("Person")
+              .project({PExpr_(0, pj::uint64_property(res, "id")),
+                        PExpr_(0, pj::ptime_property(res, "creationDate")),
+                        PExpr_(3, pj::string_property(res, "firstName")),
+                        PExpr_(3, pj::string_property(res, "lastName")),
+                        PVar_(1) })
+              .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                if (boost::get<uint64_t>(qr1[4]) == boost::get<uint64_t>(qr2[4]))
+                  return boost::get<uint64_t>(qr1[0]) < boost::get<uint64_t>(qr2[0]);
+                else
+                  return boost::get<uint64_t>(qr1[4]) > boost::get<uint64_t>(qr2[4]); })
+              .limit(100)
+              .collect(rs);
+    q.start();
+    rs.wait();
+}
+
 /* ------------------------------------------------------------------------ */
 
 double calc_avg_time(const std::vector<double>& vec) {
@@ -1274,6 +1315,30 @@ double run_query_11(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
+double run_query_12(graph_db_ptr gdb) {
+    std::vector<params_tuple> params = {{time_from_string(std::string("2011-04-14 01:51:21.746"))
+                                      /*(uint64_t)1311285600000*/, (uint64_t)400}};
+
+    std::vector<double> runtimes(params.size());
+
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        auto tx = gdb->begin_transaction();
+        ldbc_bi_query_12(gdb, rs, params[i]);
+        gdb->commit_transaction();
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return calc_avg_time(runtimes);
+}
+
 void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
     t = run_query_1(gdb);
@@ -1298,6 +1363,8 @@ void run_benchmark(graph_db_ptr gdb) {
     spdlog::info("Query #10: {} msecs", t);
     t = run_query_11(gdb);
     spdlog::info("Query #11: {} msecs", t);
+    t = run_query_12(gdb);
+    spdlog::info("Query #12: {} msecs", t);
 }
 
 /* ---------------------------------------------------------------------------- */
