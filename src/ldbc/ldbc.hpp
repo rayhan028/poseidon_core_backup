@@ -18,15 +18,20 @@ using params_tuple = std::vector<param_val>;
 
 /* interactive short queries */
 void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId);
+void ldbc_is_query_2(graph_db_ptr &gdb, result_set &rs, uint64_t personId);
 void ldbc_is_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId);
 void ldbc_is_query_2_c(graph_db_ptr &gdb, result_set &rs, uint64_t personId);
 void ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs, uint64_t personId);
+void ldbc_is_query_4(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_4_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_4_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
+void ldbc_is_query_5(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_5_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_5_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
+void ldbc_is_query_6(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_6_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_6_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
+void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId);
 
