@@ -55,7 +55,33 @@ As shown in the example, properties are passed as `boost::any` types. However, i
  
 ## Querying Poseidon database
 
-Queries - or better query plans - are directly implemented in C++ by using the `query` class. This class provides methods to construct a query plan from a set of separate operators. Poseidon provides a push-based query engine, i.e. the query plan starts with scans. The following example shows an implementation of LDBC interactive short query 1:
+Poseidon provides a simple algebra-like query language which allows to formulate query plans. Note, that the query plans are executed as specified, i.e., no query optimization is performed. A query looks like 
+
+```
+Project([ $1.Name, $1.ID ], 
+   Expand(OUT, "Post", 
+      ForeachRelationship(FROM, ':IsLocatedIn', 
+         NodeScan("Person"))))
+```
+
+Such queries can be either passed to the `queryc` class which accepts a query string, compiles it to JIT code, and executes the query. In addition, the `qlc` program can be used to enter and execute queries interactively.
+
+Currently, the following query operators are supported:
+
+Operator | Parameter | Description
+---------| ----------|------------
+NodeScan | node type | Scans the node table and returns all nodes of the given type.
+IndexScan |          |
+Filter | filter expression, input | Processes the input list of nodes and rships and returns all tuples satisfying the given condition.
+Expand | IN or OUT, node type, input |
+Project | [ projection list ], input |
+Limit | number of tuples, input | Limits the input list to the given number of tuples
+ForeachRelationship | TO or FROM, relationship type, input |
+
+
+
+
+Query plans can be also directly implemented in C++ by using the `query` class. This class provides methods to construct a query plan from a set of separate operators. Poseidon provides a push-based query engine, i.e. the query plan starts with scans. The following example shows an implementation of LDBC interactive short query 1:
 
 ```c++
 namespace pj = builtin;
