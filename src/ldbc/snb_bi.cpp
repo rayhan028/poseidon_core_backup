@@ -1,4 +1,5 @@
 #include <iostream>
+#include <regex>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 
@@ -17,12 +18,13 @@
 namespace pj = builtin;
 using namespace boost::posix_time;
 
+static std::vector<std::string> message = {"Post", "Comment"};
+
 /* ------------------------------------------------------------------------ */
 
 void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, ptime dt) {
 
     std::vector<result_set> grps;
-    std::vector<std::string> message = {"Post", "Comment"};
 
     auto filter_cdate =
       [&](auto &prop) {
@@ -152,7 +154,6 @@ void ldbc_bi_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 
     std::vector<result_set> grps1;
     std::vector<result_set> grps2;
-    std::vector<std::string> message = {"Post", "Comment"};
 
     auto filter_cdate_1 =
       [&](auto &p) {
@@ -467,7 +468,6 @@ void ldbc_bi_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 
     std::vector<result_set> grps1;
     std::vector<result_set> grps2;
-    std::vector<std::string> message = {"Post", "Comment"};
 
     auto filter_tag =
       [&](auto &prop) {
@@ -541,7 +541,6 @@ void ldbc_bi_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 void ldbc_bi_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 
     std::vector<result_set> grps;
-    std::vector<std::string> message = {"Post", "Comment"};
 
     auto filter_tag =
       [&](auto &prop) {
@@ -685,7 +684,6 @@ void ldbc_bi_query_10(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 
     std::vector<result_set> grps2;
     std::vector<result_set> grps4;
-    std::vector<std::string> message = {"Post", "Comment"};
 
     auto fltr_tag =
       [&](auto &prop) {
@@ -858,6 +856,153 @@ void ldbc_bi_query_10(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
               .collect(rs);
 
     query::start({&q4, &q3, &q2, &q1});
+    rs.wait();
+}
+
+void ldbc_bi_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+
+    std::vector<result_set> grps1;
+    std::vector<result_set> grps2;
+
+    auto filter_cntry =
+      [&](auto &prop) {
+        auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+        auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+        return c1 == c2;
+      };
+
+    auto get_tags =
+      [&](const node &n) {
+        std::set<node::id_t> tags;
+        auto lcode = gdb->get_code(":hasTag");
+        gdb->foreach_from_relationship_of_node(n, lcode, [&](relationship &r) {
+          auto tag = r.to_node_id();
+          tags.insert(tag);
+        });
+        return tags;
+      };
+
+    auto fltr_reply =
+      [&](const qr_tuple &v) {
+        auto reply = boost::get<node *>(v[6]);
+        auto msg = boost::get<node *>(v[8]);
+        auto reply_tags = get_tags(*reply);
+        auto msg_tags = get_tags(*msg);
+        for (auto rtag : reply_tags) {
+          if (msg_tags.find(rtag) != msg_tags.end())
+            return false;
+        }
+        return true;
+      };
+
+    auto fltr_blist =
+      [&](const qr_tuple &v) {
+        auto content = boost::get<std::string>(v[2]);
+        auto itr = params.begin();
+        while (++itr != params.end()) {
+          auto bl_word = boost::get<std::string>(*itr);
+          std::regex bl_expr(("(.*)" + bl_word + "(.*)"));
+          if (std::regex_match(content, bl_expr))
+            return false;
+        }
+        return true;
+      };
+
+    // Query pipelines
+    auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Place")
+              .property("name", filter_cntry)
+#else
+              .nodes_where("Place", "name", filter_cntry)
+#endif
+              .to_relationships(":isPartOf")
+              .from_node("Place")
+              .to_relationships(":isLocatedIn")
+              .from_node("Person")
+              .to_relationships(":hasCreator")
+              .from_node("Comment")
+              .from_relationships(":replyOf")
+              .to_node(message)
+              .where_qr_tuple(fltr_reply)
+              .project({PVar_(4),
+                        PVar_(6),
+                        PExpr_(6, pj::string_property(res, "content")) })
+              .where_qr_tuple(fltr_blist)
+              .from_relationships(":hasTag", 1)
+              .to_node("Tag")
+              .group(grps1, {4})
+              .aggregate(grps1, {{"count", 0}});
+
+    auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Place")
+              .property("name", filter_cntry)
+#else
+              .nodes_where("Place", "name", filter_cntry)
+#endif
+              .to_relationships(":isPartOf")
+              .from_node("Place")
+              .to_relationships(":isLocatedIn")
+              .from_node("Person")
+              .to_relationships(":hasCreator")
+              .from_node("Comment")
+              .from_relationships(":replyOf")
+              .to_node(message)
+              .where_qr_tuple(fltr_reply)
+              .project({PVar_(4),
+                        PVar_(6),
+                        PExpr_(6, pj::string_property(res, "content")) })
+              .where_qr_tuple(fltr_blist)
+              .from_relationships(":hasTag", 1)
+              .to_node("Tag")
+              .to_relationships(":likes", 1)
+              .from_node("Person")
+              .group(grps2, {4})
+              .aggregate(grps2, {{"count", 0}})
+              .hashjoin_on_node({0, 0}, q1);
+
+    auto q3 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Place")
+              .property("name", filter_cntry)
+#else
+              .nodes_where("Place", "name", filter_cntry)
+#endif
+              .to_relationships(":isPartOf")
+              .from_node("Place")
+              .to_relationships(":isLocatedIn")
+              .from_node("Person")
+              .to_relationships(":hasCreator")
+              .from_node("Comment")
+              .from_relationships(":replyOf")
+              .to_node(message)
+              .where_qr_tuple(fltr_reply)
+              .project({PVar_(4),
+                        PVar_(6),
+                        PExpr_(6, pj::string_property(res, "content")) })
+              .where_qr_tuple(fltr_blist)
+              .from_relationships(":hasTag", 1)
+              .to_node("Tag")
+              .hashjoin_on_node({4, 0}, q2)
+              .project({PExpr_(0, pj::uint64_property(res, "id")),
+                        PExpr_(4, pj::string_property(res, "name")),
+                        PVar_(6),
+                        PVar_(8) })
+              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
+                if (boost::get<uint64_t>(q1[2]) == boost::get<uint64_t>(q2[2])) {
+                  if (boost::get<uint64_t>(q1[0]) == boost::get<uint64_t>(q2[0]))
+                    return boost::get<std::string>(q1[1]) < boost::get<std::string>(q2[1]);
+                  return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);
+                }
+                return boost::get<uint64_t>(q1[2]) > boost::get<uint64_t>(q2[2]); })
+              .limit(100)
+              .collect(rs);
+
+    query::start({&q1, &q2, &q3});
     rs.wait();
 }
 
@@ -1106,6 +1251,29 @@ double run_query_10(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
+double run_query_11(graph_db_ptr gdb) {
+    std::vector<params_tuple> params = {{"Pakistan", "has", "Green"}};
+
+    std::vector<double> runtimes(params.size());
+
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        auto tx = gdb->begin_transaction();
+        ldbc_bi_query_11(gdb, rs, params[i]);
+        gdb->commit_transaction();
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return calc_avg_time(runtimes);
+}
+
 void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
     t = run_query_1(gdb);
@@ -1128,6 +1296,8 @@ void run_benchmark(graph_db_ptr gdb) {
     spdlog::info("Query #9: {} msecs", t);
     t = run_query_10(gdb);
     spdlog::info("Query #10: {} msecs", t);
+    t = run_query_11(gdb);
+    spdlog::info("Query #11: {} msecs", t);
 }
 
 /* ---------------------------------------------------------------------------- */
@@ -1168,7 +1338,7 @@ int main(int argc, char **argv) {
 
     if (vm.count("strict"))
       strict = vm["strict"].as<bool>();
-    
+
     if (vm.count("db_name"))
       db_name = vm["db_name"].as<std::string>();
 
