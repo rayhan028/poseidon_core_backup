@@ -1,7 +1,6 @@
 #ifndef queryc_hpp_
 #define queryc_hpp_
 
-#include "dict.hpp"
 #include "qlang_grammar.hpp"
 #include "ast.hpp"
 #include "qop.hpp"
@@ -18,11 +17,11 @@ public:
   /**
    * Constructor for a new query compiler.
    */
-  queryc(p_ptr<dict> &d) : dict_(d) {}
+  queryc() = default;
 
   void compile(const std::string &query);
 
-  void compile(const std::string &query, algebra_optr& op);
+  algebra_optr compile_to_plan(const std::string &query);
 
   algebra_optr ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent);
 
@@ -44,8 +43,6 @@ private:
   ast_op_ptr ptree_to_ast(parse_tree_ptr& pn);
 
   qop_ptr ast_to_qop(ast_op_ptr &ast, qop_ptr parent);
-
-  p_ptr<dict> &dict_;
 };
 
 #endif

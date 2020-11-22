@@ -92,4 +92,11 @@ public:
 private:
   std::string msg_;
 };
+
+class query_execution_error : public std::exception {
+  const char *what() const noexcept override {
+    return "Query execution failed.";
+  }
+};
+
 #endif

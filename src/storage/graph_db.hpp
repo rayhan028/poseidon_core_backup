@@ -237,7 +237,7 @@ public:
                                             char delim, const mapping_t &m, std::mutex *mtx = nullptr);
 
    std::size_t import_typed_n4j_relationships_from_csv(const std::string &filename,
-                                            char delim, const mapping_t &m);
+                                            char delim, const mapping_t &m, const std::string& rship_type = "");
 
   /* ---------------- helper ---------------- */
 

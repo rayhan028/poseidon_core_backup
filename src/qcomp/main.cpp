@@ -79,11 +79,9 @@ int main() {
 	});
 #endif
 
-    queryc qlc(dct);
+    queryc qlc;
 	
-	algebra_optr op;
-
-	qlc.compile("Project([$0.num:uint64], NodeScan('Person'))", op);
+	algebra_optr op = qlc.compile_to_plan("Project([$0.num:uint64], NodeScan('Person'))");
 
 	queryEngine.generate(op, false);
 	

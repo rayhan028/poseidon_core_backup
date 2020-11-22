@@ -11,6 +11,13 @@
 namespace pegtl = tao::pegtl;
 namespace ph = std::placeholders;
 
+std::string trim_string(const std::string& s) {
+  std::string s2 = s;
+  if (s2[0] == '\'' || s2[0] == '"')
+    s2 = s2.substr(1, s2.size()-2);
+  return s2;
+}
+
 void queryc::compile(const std::string &query) {
     auto ast = parse(query);
     if (ast) {
@@ -18,12 +25,12 @@ void queryc::compile(const std::string &query) {
     }
 }
 
-void queryc::compile(const std::string &query, algebra_optr& op) {
+algebra_optr queryc::compile_to_plan(const std::string &query) {
     auto ast = parse(query);
+    if (!ast) 
+      throw query_execution_error();
     auto collect = Collect();
-    if(ast) {
-        op = ast_to_algoptr(ast, collect);
-    }
+    return ast_to_algoptr(ast, collect);
 }
 
 ast_op_ptr queryc::parse(const std::string &query) {
@@ -208,12 +215,12 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
   algebra_optr op;
   switch(ast->op_) {
     case ast_op::node_scan:
-      op = Scan(ast->get_param<std::string>(0), parent);
+      op = Scan(trim_string(ast->get_param<std::string>(0)), parent);
       break;
     case ast_op::foreach_rship:
     {
       auto rship_dir_str = ast->get_param<std::string>(0);
-      RSHIP_DIR rship_dir;
+      RSHIP_DIR rship_dir = RSHIP_DIR::FROM;
 
       if(boost::iequals(rship_dir_str, "'FROM'")) {
         rship_dir = RSHIP_DIR::FROM;
@@ -222,7 +229,7 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
         rship_dir = RSHIP_DIR::TO;
       }
 
-      auto rship_label = ast->get_param<std::string>(1);
+      auto rship_label = trim_string(ast->get_param<std::string>(1));
 
       op = ForeachRship(rship_dir, {}, rship_label, parent);
     }
@@ -238,7 +245,7 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
         expand_dir = EXPAND::OUT;
       }
 
-      auto expand_label = ast->get_param<std::string>(1);
+      auto expand_label = trim_string(ast->get_param<std::string>(1));
 
       op = Expand(expand_dir, expand_label, parent);
     }
