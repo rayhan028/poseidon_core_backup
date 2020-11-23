@@ -1,9 +1,10 @@
 #ifndef POSEIDON_CORE_QUERY_ENGINE_HPP
 #define POSEIDON_CORE_QUERY_ENGINE_HPP
-#include "qoperator.hpp"
+
 #include "collector.hpp"
 #include "joiner.hpp"
 #include "JitFromScratch.hpp"
+#include "p_context.hpp"
 
 class base_op;
 
@@ -54,6 +55,8 @@ class query_engine {
 
     transaction_ptr cur_tx_;
     std::shared_ptr<base_op> cur_query_;
+    arg_builder query_args;
+    unsigned arg_counter;
 
     graph_db_ptr graph_;
 public: 
@@ -66,6 +69,7 @@ public:
 
     void prepare();
 
+    void run(result_set * rs);
     void run(result_set * rs, std::vector<uint64_t*> args);
 
     void run_parallel(result_set * rs, arg_builder & args, unsigned thread_num);
@@ -73,6 +77,8 @@ public:
     void add_joiner(unsigned thread_id);
 
     void cleanup();
+
+    void extract_arg(std::shared_ptr<base_op> op);
 
     bool parallel_;
     static int thread_iter_range;

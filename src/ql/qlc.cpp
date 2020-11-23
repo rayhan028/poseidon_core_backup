@@ -137,8 +137,8 @@ void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
 
   spdlog::debug("create query_engine");     
 	query_engine queryEngine(gdb, 1, gdb->get_nodes()->num_chunks());
-  arg_builder args;
-  args.arg(1, "Product"); // TODO: 
+  //arg_builder args;
+  //args.arg(1, "Product"); // TODO: 
 
 	result_set rs;
 
@@ -147,7 +147,7 @@ void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
   queryEngine.generate(plan, false);
  
   spdlog::debug("execute query code");     
-	queryEngine.run(&rs, args.args);
+	queryEngine.run(&rs);
 
   auto end_qp = std::chrono::steady_clock::now();
 

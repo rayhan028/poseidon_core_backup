@@ -4,8 +4,8 @@
 
 #include "query_engine.hpp"
 #include "interpreter.hpp"
-#include "codegen_inline.hpp"
 #include "qid_generator.hpp"
+#include "codegen_inline.hpp"
 
 using namespace std::placeholders;
 
@@ -19,7 +19,13 @@ std::unique_ptr<JitFromScratch> query_engine::initializeJitCompiler() {
 }
 
 query_engine::query_engine(graph_db_ptr graph, unsigned int thread_num, unsigned cv_range) 
-    : thread_num_(thread_num), ctx_(PContext(graph)), jit_(initializeJitCompiler()), graph_(graph), compiled_(false), complete_(false) {
+    : thread_num_(thread_num), 
+    ctx_(PContext(graph)), 
+    jit_(initializeJitCompiler()), 
+    arg_counter(1u),
+    graph_(graph), 
+    compiled_(false), 
+    complete_(false) {
 
     ctx_.getModule().setDataLayout(jit_->getDataLayout());
 
@@ -89,6 +95,49 @@ void query_engine::prepare() {
     }
 }
 
+void query_engine::extract_arg(std::shared_ptr<base_op> op) {
+    switch(op->type_) {
+        case qop_type::scan: {
+            auto s_op = dynamic_pointer_cast<scan_op>(op);
+            query_args.arg(arg_counter++, s_op->label_);
+            if(s_op->indexed_) {
+                    //TODO: 2nd index argument
+            }
+            break;
+        }
+        case qop_type::foreach_rship: {
+            auto fe_op = dynamic_pointer_cast<foreach_rship_op>(op);
+            query_args.arg(arg_counter++, fe_op->label_);
+            break;
+        }
+        case qop_type::expand: {
+            auto exp_op = dynamic_pointer_cast<expand_op>(op);
+            query_args.arg(arg_counter++, exp_op->label_);
+            break;
+        }
+        case qop_type::filter: {
+            //TODO: all filter arguments
+            break;
+        }
+        case qop_type::create: {
+            //TODO: all create arguments
+            break;
+        }
+        case qop_type::collect:
+        case qop_type::cross_join:
+        case qop_type::hash_join:
+        case qop_type::left_join:
+        case qop_type::limit:
+        case qop_type::nest_loop_join:
+        case qop_type::none:
+        case qop_type::project:
+        case qop_type::sort:
+        case qop_type::any:
+        default:
+            return;
+    }
+}
+
 
 void query_engine::run(result_set * rs, std::vector<uint64_t*> args) {
     prepare();
@@ -105,19 +154,8 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args) {
 
 
     }
-    std::vector<call_map> call_maps;
-    call_maps.resize(operator_functions_.size());
+    
     int i = 0;
-    for(auto j = 0u; j < start_.size(); j++) {
-        auto qop = operator_functions_[j];
-        for(auto & op : qop) {
-            call_maps[j][i] = (int*)op;
-            i++;
-        }
-        i = 0;
-    }
-
-    result_set r;
 
     std::vector<int> offsets;
     offsets.resize(start_.size());
@@ -135,6 +173,11 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args) {
 
     cleanup();
 }
+
+void query_engine::run(result_set * rs) {
+    run(rs, query_args.args);
+}
+
 std::map<int, std::vector<consumer_fct_type>> query_engine::operator_functions_ = {};
 std::map<int, finish_fct_type> query_engine::finish_ = {};
 
@@ -239,6 +282,7 @@ void compile_task::operator()() {
     std::vector<int> type_vec;
     std::vector<algebra_optr> recur_list;
     while(!cur_op->inputs_.empty() || !recur_list.empty()) {
+        qeng_.extract_arg(cur_op);
         if(cur_op->inputs_.empty()) {
             cur_op = recur_list.back();
             recur_list.pop_back();

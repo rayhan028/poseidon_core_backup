@@ -63,10 +63,10 @@ int main() {
 	query_engine queryEngine(graph, THREAD_NUM, cv_range);
 
 	arg_builder args;
-	args.arg(1, "Person");
+	/*args.arg(1, "Person");
 	args.arg(2, ":HAS_READ");
 	args.arg(3, "Book");
-	args.arg(4, 42);
+	args.arg(4, 42);*/
 
 	result_set rs;
 
@@ -85,7 +85,7 @@ int main() {
 
 	queryEngine.generate(op, false);
 	
-	queryEngine.run(&rs, args.args);
+	queryEngine.run(&rs);
 
 	std::cout << rs << std::endl;
 
