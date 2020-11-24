@@ -10,16 +10,23 @@
 #include "queryc.hpp"
 
 
-const std::string test_path = poseidon::gPmemPath + "jit_test";
+const std::string test_path = poseidon::gPmemPath + "Product";
 
 #ifdef USE_PMDK
 
-#define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
+#define PMEMOBJ_POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull))
 
 namespace nvm = pmem::obj;
 
 nvm::pool_base prepare_pool() {
-	auto pop = nvm::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
+	nvm::pool_base pop;
+	if (access(test_path.c_str(), F_OK) != 0) {
+    	pop = nvm::pool_base::create(test_path, "Product", PMEMOBJ_POOL_SIZE);
+  	} else {
+    	pop = nvm::pool_base::open(test_path, "Product");
+  	}
+
+	//auto pop = nvm::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
 	return pop;
 }
 #endif
@@ -33,6 +40,8 @@ int main() {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 #endif
+
+
 	auto tx = graph->begin_transaction();
 
 	int PERSONS = 100;
@@ -45,13 +54,13 @@ int main() {
 				{"num", boost::any(uint64_t(1234567890123412))},
 				{"dummy1", boost::any(std::string("Dummy"))},
 				{"dummy2", boost::any(1.2345)}},
-				true);
+				false);
 		auto b = graph->add_node("Book",
 				{{"title", boost::any(std::string("Title"))},
 				{"Age", boost::any(42)},
 				{"id", boost::any(i)}},
-				true);
-		auto x = graph->add_relationship(p, b, ":HAS_READ", {});
+				false);
+		auto x = graph->add_relationship(p, b, ":HAS_READ", {}, false);
 	}
 
 	graph->commit_transaction();
@@ -90,9 +99,9 @@ int main() {
 	std::cout << rs << std::endl;
 
 #ifdef USE_PMDK
-	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+	//nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
 	pop.close();
-	remove(test_path.c_str());
+	//remove(test_path.c_str());
 #endif
 	return 0;
 }

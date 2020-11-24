@@ -52,18 +52,18 @@ extern "C" void list_size(qr_list *list) {
 #include <boost/thread/barrier.hpp>
 boost::barrier bar(std::thread::hardware_concurrency());
 
-extern "C" chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
+extern "C" __attribute__((always_inline)) chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
     //bar.wait();
 
     return new chunked_vec<node, NODE_CHUNK_SIZE>::range_iter(vec->as_vec(), first, last);
 }
 
-extern "C" chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
+extern "C" __attribute__((always_inline)) chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
     //std::cout << "Get next" << std::endl;
     return &it->operator++();;
 }
 
-extern "C" bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
+extern "C" __attribute__((always_inline)) bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
     //std::cout << "test end" << std::endl;
     return !it->operator bool();
 }

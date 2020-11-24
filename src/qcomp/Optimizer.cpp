@@ -27,6 +27,7 @@ Optimizer::operator()(ThreadSafeModule TSM,
     FPM.add(createCFGSimplificationPass());
     //FPM.add(createLCSSAPass());
     //FPM.add(createLoopDeletionPass());
+    FPM.add(createInstructionCombiningPass());
     B.populateFunctionPassManager(FPM);
     FPM.doInitialization();
 

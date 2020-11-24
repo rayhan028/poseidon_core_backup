@@ -71,17 +71,17 @@ extern "C" void list_size(qr_list *list);
 /**
  * Function to obtain the iterator of a node vector
  */
-extern "C" chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last);
+extern "C" __attribute__((always_inline)) chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last);
 
 /**
  * Function to obtain the next iterator of a node vector
  */
-extern "C" chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it);
+extern "C" __attribute__((always_inline)) chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it);
 
 /**
  * Boolean function to check if the end of the node vector is reached
  */
-extern "C" bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it);
+extern "C" __attribute__((always_inline)) bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it);
 
 /**
  * Function to obtain the iterator of a relationship vector

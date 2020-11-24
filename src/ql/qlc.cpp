@@ -134,7 +134,6 @@ void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
   os << "'";
   spdlog::debug(os.str());
 */
-
   spdlog::debug("create query_engine");     
 	query_engine queryEngine(gdb, 1, gdb->get_nodes()->num_chunks());
   //arg_builder args;
@@ -145,7 +144,8 @@ void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
   auto start_qp = std::chrono::steady_clock::now();
   spdlog::debug("generate query code");     
   queryEngine.generate(plan, false);
- 
+  auto end_qc = std::chrono::steady_clock::now();
+
   spdlog::debug("execute query code");     
 	queryEngine.run(&rs);
 
@@ -153,6 +153,11 @@ void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
 
   std::cout << "Query executed in "
             << std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                     start_qp)
+                   .count()
+            << " ms" << std::endl;
+  std::cout << "Query compiled in "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end_qc -
                                                                      start_qp)
                    .count()
             << " ms" << std::endl;
