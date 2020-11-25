@@ -68,10 +68,6 @@ JitFromScratch::JitFromScratch(ExitOnError ExitOnErr)
             pointerToJITTargetAddress(&gdb_get_dcode), JITSymbolFlags::Exported);
     M[Mangle("pset_get_item_at")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&pset_get_item_at), JITSymbolFlags::Exported);
-    M[Mangle("collect")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&collect), JITSymbolFlags::Exported);
-    M[Mangle("join_consume_left")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&join_consume_left), JITSymbolFlags::Exported);
     M[Mangle("get_tx")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&get_tx), JITSymbolFlags::Exported);
     M[Mangle("get_valid_node")] = JITEvaluatedSymbol(
@@ -80,10 +76,6 @@ JitFromScratch::JitFromScratch(ExitOnError ExitOnErr)
             pointerToJITTargetAddress(&apply_pexpr), JITSymbolFlags::Exported);
     M[Mangle("dict_lookup_dcode")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&lookup_dc), JITSymbolFlags::Exported);
-    M[Mangle("get_join_vec_arr")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_join_vec_arr), JITSymbolFlags::Exported);
-    M[Mangle("get_join_vec_size")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_join_vec_size), JITSymbolFlags::Exported);
     M[Mangle("create_node")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&create_node), JITSymbolFlags::Exported);
     M[Mangle("create_ship")] = JITEvaluatedSymbol(

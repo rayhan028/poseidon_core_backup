@@ -1,7 +1,6 @@
 #ifndef POSEIDON_CORE_QUERY_ENGINE_HPP
 #define POSEIDON_CORE_QUERY_ENGINE_HPP
 
-#include "collector.hpp"
 #include "joiner.hpp"
 #include "JitFromScratch.hpp"
 #include "p_context.hpp"

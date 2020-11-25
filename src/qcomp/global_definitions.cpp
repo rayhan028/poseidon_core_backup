@@ -1,36 +1,38 @@
-#include "global_definitions.hpp"
 #include <boost/thread/barrier.hpp>
 #include <boost/hana.hpp>
 
+#include "global_definitions.hpp"
+#include "joiner.hpp"
+
 boost::barrier bar(std::thread::hardware_concurrency());
 
-extern "C" __attribute__((always_inline)) chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
+extern "C" chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
     //bar.wait();
 
     return new chunked_vec<node, NODE_CHUNK_SIZE>::range_iter(vec->as_vec(), first, last);
 }
 
-extern "C" __attribute__((always_inline)) chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
+extern "C" chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
     //std::cout << "Get next" << std::endl;
     return &it->operator++();;
 }
 
-extern "C" __attribute__((always_inline)) bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
+extern "C" bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
     //std::cout << "test end" << std::endl;
     return !it->operator bool();
 }
 
-extern "C" chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter get_vec_begin_r(relationship_list &vec) {
+chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter get_vec_begin_r(relationship_list &vec) {
     return vec.as_vec().begin();
 }
 
-extern "C" chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *get_vec_next_r(chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *it) {
+chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *get_vec_next_r(chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *it) {
     //std::cout << "Next called" << std::endl;
     //std::cout << "it get" << std::endl;
     return &it->operator++();
 }
 
-extern "C" bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter it) {
+bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter it) {
     //std::cout << "vec_end_reached: " << std::endl;
     return !(it != vec.as_vec().end());
 }
@@ -78,22 +80,6 @@ extern "C" const property_set *pset_get_item_at(graph_db *gdb, offset_t id) {
     return &gdb->get_node_properties()->get(id);
 }
 
-extern "C" int get_join_vec_size(std::vector<qr_arr>* vec) {
-    return vec->size();
-}
-
-int sz = 1;
-
-extern "C" int** get_join_vec_arr(std::vector<qr_arr>* vec, int idx) {
-    //return vec->data()->data();
-    return vec->at(idx).data();
-}
-
-Collector clr;
-graph_db *Collector::gdb = nullptr;
-
-Joiner joiner;
-
 thread_local std::map<int, std::string> str_result;
 thread_local std::map<int, uint64_t> uint_result;
 thread_local std::map<int, boost::posix_time::ptime> time_result;
@@ -104,112 +90,8 @@ thread_local std::map<int, rship_description> rdescs;
 
 std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
 
-extern "C" void collect(graph_db *gdb, int **qr, result_set * rs, int qr_size, std::vector<int> *types) {
-    qr_tuple res(types->size());
-    int j = types->size()-1;
-
-    for(int i = types->size(); i > 0; i--) {
-        auto type = types->at(i-1);
-        if(type == 2) {
-            //TODO: optimize
-            res[j] = std::stoi(con_map[type](gdb, qr[i]));
-        } else {
-            res[j] = con_map[type](gdb, qr[i]);
-        }
-
-        j--;
-    }
-
-    str_res_ctr = 0;
-    descs.clear();
-    rs->data.push_back(res);
-}
-
-extern "C" qr_list *join_consume_left() {
-    return joiner.consume();
-}
-
-void Collector::collect(int **rl)  {
-/*    auto n = (node*)rl[1];
-    auto nd = gdb->get_node_description(*n).to_string();
-    auto r = (relationship*)rl[2];
-    auto rd = gdb->get_rship_description(*r).to_string();
-    auto n2 = (node*)rl[3];
-    auto nd2 = gdb->get_node_description(*n2).to_string();
-    auto r2 = (relationship*)rl[4];
-    auto rd2 = gdb->get_rship_description(*r2).to_string();
-    auto n3 = (node*)rl[5];
-    auto nd3 = gdb->get_node_description(*n3).to_string();
-    {
-        std::unique_lock<std::mutex> lk {mut};
-        results.push_back(nd);
-        results.push_back(rd);
-        results.push_back(nd2);
-        called_++;
-    } */
-    //std::cout << "Collected list with: " << rl->size << " elements" << std::endl;
-/*    auto tail = rl->tail;
-    auto res = tail->res;
-
-    qr_tuple result(rl->size);
-
-    auto cur = rl->head;
-    while(cur != nullptr) {
-        if(cur->res->type == 0) {
-            auto n = (node*)cur->res->res;
-            auto nd = gdb->get_node_description(*n).to_string();
-            result.push_back(nd);
-        } else if(cur->res->type == 1) {
-            auto r = (relationship*)cur->res->res;
-            auto rd = gdb->get_rship_description(*r).to_string();
-            result.push_back(rd);
-        } else if(cur->res->type == 2) {
-            result.push_back(std::to_string(*cur->res->res));
-        } else if(cur->res->type == 4) {
-            auto str  = reinterpret_cast<char*>(rl->tail->res->res);
-            result.push_back(std::string(str));
-        }
-        cur = cur->next;
-    }
-    {
-        std::unique_lock<std::mutex> lk {mut};
-        results.data.push_back(result);
-        called_++;
-    }*/
-/*
-    if(res->type == 0) {
-        //std::cout << "node label: " << ((node *) (rl->tail->res->res))->node_label << std::endl;
-    } else if(res->type == 1) {
-        //std::cout << "rship label: " << ((relationship *) (rl->tail->res->res))->rship_label << std::endl;
-    } else if(res->type == 2) {
-        std::cout << "int prj:  " << *rl->tail->res->res << std::endl;
-    } else if(res->type == 4)
-        //std::cout << "string prj:  " << (reinterpret_cast<char*>(rl->tail->res->res)) << std::endl;
-
-*/
-    //std::cout << "Called: " << called_ << " times" << std::endl;
-}
-
-void Joiner::insert(qr_list *res)  {
-    left_input_.push_back(res);
-    std::cout << "Size: " << left_input_.size() << std::endl;
-    cur_pos_ = left_input_.begin();
-}
-
-qr_list * Joiner::consume()  {
-    std::cout << "consumed " << left_input_.size() << std::endl;
-    if (left_input_.size() == 0)
-        return nullptr;
-    auto qrl = left_input_.back();
-    left_input_.pop_back();
-    return qrl;
-}
-
 extern "C" xid_t get_tx(transaction_ptr tx) {
     return tx->xid();
-    //current_transaction_ = std::move(tx);
-    //check_tx_context();
-    //return current_transaction()->xid();
 }
 
 extern "C" node * get_valid_node(graph_db *gdb, node * n, transaction_ptr tx) {
@@ -316,14 +198,6 @@ extern "C" const char* lookup_dc(graph_db *gdb, dcode_t dc) {
     return gdb->get_string(dc);
 }
 
-extern "C" void join_vec_insert(std::vector<int*> *inputs, int* res) {
-    inputs->push_back(res);
-}
-
-extern "C" void merge_type_vec(std::vector<int*> *lhs, std::vector<int*> *rhs) {
-
-}
-
 extern "C" node* create_node(graph_db *gdb, char *label, properties_t *props) {
     auto node_id = gdb->add_node(std::string(label), *props, true);
     return &gdb->node_by_id(node_id);
@@ -402,8 +276,6 @@ extern "C" void collect_tuple(result_set *rs, bool print) {
     }
     tp.clear();
 }
-
-#include "joiner.hpp"
 
 thread_local qr_tuple mat_tuple;
 

@@ -20,12 +20,11 @@ using finish_fct_type = void(*)(result_set*);
  * The type for the generated query function.
  */ 
 using start_ty = void(*)(graph_db*, int, int, transaction_ptr, int, std::vector<int>*, result_set*, int**, finish_fct_type, uint64_t, uint64_t**);
-typedef int* qrl_ty;
-typedef std::array<int*, 100> qr_arr;
 
 
 /**
- * Filter expression types.
+ * Tuple result types
+ * TODO: consistent type id mapping for all classes
  */
 enum class FTYPE {
     INT = 0,
@@ -37,54 +36,35 @@ enum class FTYPE {
     UINT64 = 6
 };
 
-struct qres {
-    int *res;
-    int type;
-    bool is_null;
-};
-
-struct nn {
-    nn *next;
-    nn *prev;
-    int x;
-    qres *res;
-};
-
-struct qr_list {
-    nn *head;
-    nn *tail;
-    int size;
-};
-
 /**
  * Function to obtain the iterator of a node vector
  */
-extern "C" __attribute__((always_inline)) chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last);
+extern "C" chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last);
 
 /**
  * Function to obtain the next iterator of a node vector
  */
-extern "C" __attribute__((always_inline)) chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it);
+extern "C" chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it);
 
 /**
  * Boolean function to check if the end of the node vector is reached
  */
-extern "C" __attribute__((always_inline)) bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it);
+extern "C" bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it);
 
 /**
  * Function to obtain the iterator of a relationship vector
  */
-extern "C" chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter get_vec_begin_r(relationship_list &vec);
+chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter get_vec_begin_r(relationship_list &vec);
 
 /**
  * Function to obtain the next iterator of a relationship vector
  */
-extern "C" chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *get_vec_next_r(chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *it);
+chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *get_vec_next_r(chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *it);
 
 /**
  * Boolean function to check if the end of the relationship vector is reached
  */
-extern "C" bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter it);
+bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter it);
 
 /**
  * Function to lookup a label
@@ -144,16 +124,6 @@ extern "C" xid_t get_tx(transaction_ptr);
 extern "C" node * get_valid_node(graph_db *gdb, node * n, transaction_ptr tx);
 
 /**
- * Returns the size of the rhs tuple list of a join
- */
-extern "C" int get_join_vec_size(std::vector<qr_arr>* vec);
-
-/**
- * Returns the a pointer to a tuple at a given position in the rhs tuple list of a join
- */
-extern "C" int** get_join_vec_arr(std::vector<qr_arr>* vec, int idx);
-
-/**
  * Applies a given Projection on a node result and writes the result at a memory address, given by the caller.
  */
 extern "C" void apply_pexpr_node(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int *ret);
@@ -183,47 +153,6 @@ extern "C" void insert_fev_rship(std::list<std::pair<relationship::id_t, std::si
  */
 extern "C" bool fev_queue_empty(std::list<std::pair<relationship::id_t, std::size_t>> &queue);
 
-class Collector {
-    int called_;
-    std::vector<std::string> results;
-    std::mutex mut;
-
-
-public:
-    Collector() {
-        called_ = 0;
-    }
-
-    void collect(int **rl);
-    static graph_db *gdb;
-};
-
-class Joiner {
-    using left_table = std::vector<qr_list *>;
-    left_table left_input_;
-    left_table::iterator cur_pos_;
-
-public:
-    Joiner() {
-        cur_pos_ = left_input_.begin();
-
-    }
-
-    void insert(qr_list *res);
-
-    int i = 0;
-
-    qr_list *consume();
-
-};
-
-/**
- * Method for the handling of the tuple collection.
- */
-extern "C" void collect(graph_db *gdb, int **qr, result_set * rs, int qr_size, std::vector<int> *types);
-
-extern "C" qr_list *join_consume_left();
-
 /**
  * Method that processes the actual projection on a tuple result
  */
@@ -233,10 +162,6 @@ extern "C" void apply_pexpr(graph_db *gdb, const char *key, FTYPE val_type, int 
  * Function to lookup a given dictionary code
  */
 extern "C" const char* lookup_dc(graph_db *gdb, dcode_t dc);
-
-extern "C" void join_vec_insert(std::vector<int*> *inputs, int* res);
-
-extern "C" void merge_type_vec(std::vector<int*> *lhs, std::vector<int*> *rhs);
 
 //extern "C" void get_nodes(graph_db gdb, consumer_fct_type consumer);
 
@@ -251,11 +176,14 @@ extern "C" node* create_node(graph_db *gdb, char *label, properties_t *props);
 extern "C" relationship* create_rship(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props);
 
 /**
- * Functions to handle the variable from/to relationship operator
+ * Functions to handle the variable from relationship operator
  */
 extern "C" void foreach_variable_from(graph_db *gdb, dcode_t label, int min, int max, consumer_fct_type consumer,
                                  int oid, int **qr, int *rs, int size, int *ty, int **call_map_arg, int offset);
 
+/**
+ * Functions to handle the variable to relationship operator
+ */
 extern "C" void foreach_variable_to(graph_db *gdb, dcode_t label, int min, int max, consumer_fct_type consumer,
                                       int oid, int **qr, int *rs, int size, int *ty, int **call_map_arg, int offset);
 
@@ -263,26 +191,71 @@ extern "C" void foreach_variable_to(graph_db *gdb, dcode_t label, int min, int m
 extern std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
 
 /**
- * Thread local storage of intermediate projection results
+ * Thread local storage to store the Projection of a tuple. These values are
+ * materialized to the result_set.
+ * //TODO: remove map
  */
 extern thread_local std::map<int, uint64_t> uint_result;
 extern thread_local std::map<int, std::string> str_result;
 extern thread_local std::map<int, boost::posix_time::ptime> time_result;
 
 /**
- * Functions for the materilization of tuple results
+ * Function to transform a register value into the appropriate type and materialize to 
+ * thread local storage.
  */
 extern "C" void mat_reg_value(graph_db *gdb, int *reg, int type);
+
+/**
+ * collect_tuple inserts the tuple from thread_local storage into the given result_set.  
+ * If print is true, the tuple will be printed to the standard output
+ */
 extern "C" void collect_tuple(result_set *rs, bool print);
+
+/**
+ * obtain_mat_tuple returns a thread local tuple storage used to materialize the
+ * rhs side of a join.
+ */
 extern "C" qr_tuple *obtain_mat_tuple();
+
+/**
+ * mat_node materialize a node to a thread local tuple storage
+ */
 extern "C" void mat_node(node *n, qr_tuple *qr);
+
+/**
+ * mat_rship materialize a rship to a thread local tuple storage
+ */
 extern "C" void mat_rship(relationship *r, qr_tuple *qr);
+
+/**
+ * collect_tuple_join inserts the thread local tuple storage to a list of
+ * the appropriate join operation with the id jid
+ */
 extern "C" void collect_tuple_join(int jid, qr_tuple *qr);
+
+/**
+ * get_join_tp_at returns a tuple from the join list at the given position
+ */
 extern "C" qr_tuple *get_join_tp_at(int jid, int pos);
+
+/**
+ * get_node_res_at returns a ptr to the node from the tuple at the given postion
+ */
 extern "C" node *get_node_res_at(qr_tuple *tuple, int pos);
+
+/**
+ * get_rship_res_at returns a ptr to the rship from the tuple at the given postion
+ */
 extern "C" relationship *get_rship_res_at(qr_tuple *tuple, int pos);
+
+/**
+ * get_mat_res_size returns the size of the materialized rhs list of a join with the id = jid
+ */
 extern "C" int get_mat_res_size(int jid);
 
+/**
+ * index_get_node is a helper method in order to process a index scan for a specific node
+ */
 extern "C" node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t value);
 
 #endif //PJIT_GLOBAL_DEFINITIONS_HPP
