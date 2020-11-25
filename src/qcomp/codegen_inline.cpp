@@ -309,18 +309,29 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     Value *rship;
 
     Value *hop_cnt;
+    // generate code depending on variable traversion or single
     if(op->is_variable()) {
+        // for variable traversion
+        // transform min and max hop into constants
         auto min_hop = ConstantInt::get(ctx.int64Ty, op->hops_.first);
         auto max_hop = ConstantInt::get(ctx.int64Ty, op->hops_.second);
+
+        // retrieve all relationships and store it into a intermediate vector (externally)
         ctx.getBuilder().CreateCall(retrieve_rships, {gdb, label_code, node, min_hop, max_hop});        
 
+        // simple loop in order to traverse the previous filled vector
         ctx.getBuilder().CreateBr(loop_head);
+        // the loop header
         ctx.getBuilder().SetInsertPoint(loop_head);
+        // check if the end of the vector is reached (externally) and branch to body or end
         auto is_end = ctx.getBuilder().CreateCall(fev_list_end, {});
         ctx.getBuilder().CreateCondBr(is_end, foreach_rship_end, loop_body);
 
+        // in the body, simply obtain the relationship (externally) and move the address to a register value
         ctx.getBuilder().SetInsertPoint(loop_body);
         rship = ctx.getBuilder().CreateCall(get_next_rship, {});
+
+        // branch to the next operator
         ctx.getBuilder().CreateBr(consumeBB);
 
     } else {
