@@ -132,6 +132,10 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     retrieveFEVqueryFctTy = FunctionType::get(int8PtrTy, {}, false);
     fevQueueEmptyFctTy = FunctionType::get(boolTy, {int8PtrTy}, false);
     insertInFEVQueueFctTy = FunctionType::get(voidTy, {int8PtrTy, int64Ty, int64Ty}, false);
+
+    feFromVarFctTy = FunctionType::get(voidTy, {int8PtrTy, int32Ty, nodePtrTy, int64Ty, int64Ty}, false);
+    getNextRshipFctTy = FunctionType::get(rshipPtrTy, {}, false);
+    fevListEndFctTy = FunctionType::get(boolTy, {}, false);
 //++++++++++++++++++ FILTER FCT ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     filterConsumerFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy},
                                             false);
@@ -317,6 +321,10 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     function_types["retrieve_fev_queue"] = retrieveFEVqueryFctTy;
     function_types["fev_queue_empty"] = fevQueueEmptyFctTy;
     function_types["insert_fev_rship"] = insertInFEVQueueFctTy;
+
+    function_types["foreach_from_variable_rship"] = feFromVarFctTy;
+    function_types["get_next_rship_fev"] = getNextRshipFctTy;
+    function_types["fev_list_end"] = fevListEndFctTy;
 }
 
 

@@ -258,4 +258,13 @@ extern "C" int get_mat_res_size(int jid);
  */
 extern "C" node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t value);
 
+extern thread_local std::vector<relationship*> fev_rship_list;
+extern thread_local std::vector<relationship*>::iterator fev_list_iter;
+
+extern "C" void foreach_from_variable_rship(graph_db *gdb, dcode_t lcode, node *n, std::size_t min, std::size_t max);
+
+extern "C" relationship *get_next_rship_fev();
+
+extern "C" bool fev_list_end();
+
 #endif //PJIT_GLOBAL_DEFINITIONS_HPP

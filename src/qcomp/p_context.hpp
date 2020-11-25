@@ -144,6 +144,10 @@ public:
     FunctionType *retrieveFEVqueryFctTy;
     FunctionType *fevQueueEmptyFctTy;
     FunctionType *insertInFEVQueueFctTy;
+
+    FunctionType *feFromVarFctTy;
+    FunctionType *getNextRshipFctTy;
+    FunctionType *fevListEndFctTy;
 //++++++++++++++++++ FILTER FCT ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     FunctionType *filterConsumerFctTy;
 

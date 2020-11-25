@@ -339,11 +339,33 @@ extern "C" std::list<std::pair<relationship::id_t, std::size_t>> retrieve_fev_qu
     return std::list<std::pair<relationship::id_t, std::size_t>>();
 }
 
-
 extern "C" void insert_fev_rship(std::list<std::pair<relationship::id_t, std::size_t>> &queue, relationship::id_t rid, std::size_t hop) {
     queue.push_back(std::make_pair(rid, hop));
 }
 
 extern "C" bool fev_queue_empty(std::list<std::pair<relationship::id_t, std::size_t>> &queue) {
     return queue.empty();
+}
+
+thread_local std::vector<relationship*> fev_rship_list;
+thread_local std::vector<relationship*>::iterator fev_list_iter;
+
+extern "C" void foreach_from_variable_rship(graph_db *gdb, dcode_t lcode, node *n, std::size_t min, std::size_t max) {
+    gdb->foreach_variable_from_relationship_of_node(*n, lcode, min, max, [&](relationship &r) {
+        fev_rship_list.push_back(&r);
+    });
+    fev_list_iter = fev_rship_list.begin();
+}
+
+ extern "C" relationship *get_next_rship_fev() {
+    auto rship = *fev_list_iter;
+    fev_list_iter++;
+    return rship;
+}
+
+extern "C" bool fev_list_end() {
+    auto is_end = fev_list_iter == fev_rship_list.end();
+    if(is_end)
+        fev_rship_list.clear();
+    return is_end;
 }

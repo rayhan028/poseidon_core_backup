@@ -29,7 +29,7 @@ JitFromScratch::JitFromScratch(ExitOnError ExitOnErr)
         ObjCache(std::make_unique<PJitObjectCache>()),
 #endif
           CompileLayer(*ES, ObjLinkingLayer, std::make_unique<SimpleCompiler>(*TM)),
-          OptimizeLayer(*ES, CompileLayer){
+          OptimizeLayer(*ES, CompileLayer) {
     //ObjLinkingLayer.setNotifyLoaded(createNotifyLoadedFtor());
     ES->createJITDylib("Main");
     if(auto R = createHostProcessResolver())
@@ -114,6 +114,12 @@ JitFromScratch::JitFromScratch(ExitOnError ExitOnErr)
             pointerToJITTargetAddress(&retrieve_fev_queue), JITSymbolFlags::Exported);            
     M[Mangle("insert_fev_rship")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&insert_fev_rship), JITSymbolFlags::Exported);            
+    M[Mangle("foreach_from_variable_rship")] = JITEvaluatedSymbol(
+            pointerToJITTargetAddress(&foreach_from_variable_rship), JITSymbolFlags::Exported);            
+    M[Mangle("get_next_rship_fev")] = JITEvaluatedSymbol(
+            pointerToJITTargetAddress(&get_next_rship_fev), JITSymbolFlags::Exported);            
+    M[Mangle("fev_list_end")] = JITEvaluatedSymbol(
+            pointerToJITTargetAddress(&fev_list_end), JITSymbolFlags::Exported);            
 
     ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
 }

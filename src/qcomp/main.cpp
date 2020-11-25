@@ -8,6 +8,7 @@
 
 #include "qoperator.hpp"
 #include "queryc.hpp"
+#include "query.hpp"
 
 
 const std::string test_path = poseidon::gPmemPath + "Product";
@@ -61,6 +62,7 @@ int main() {
 				{"id", boost::any(i)}},
 				false);
 		auto x = graph->add_relationship(p, b, ":HAS_READ", {}, false);
+		auto y = graph->add_relationship(b, p, ":HAS_READ", {}, false);
 	}
 
 	graph->commit_transaction();
@@ -100,11 +102,13 @@ int main() {
                         Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64},
                                   {3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {3, "id", FTYPE::INT}, {5, "name", FTYPE::STRING}}, Collect()), r_expr))));
 
-	queryEngine.generate(op, false);
+	auto fev = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {1,2}, ":HAS_READ", Collect()));
+
+	queryEngine.generate(fev, false);
 	
 	queryEngine.run(&rs);
 
-	//std::cout << rs << std::endl;
+	std::cout << rs.data.size() << std::endl;
 
 #ifdef USE_PMDK
 	//nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });

@@ -264,11 +264,20 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     FunctionCallee get_rship_queue = ctx.extern_func("retrieve_fev_queue");
     FunctionCallee insert_to_queue = ctx.extern_func("insert_fev_rship");
 
+    FunctionCallee retrieve_rships = ctx.extern_func("foreach_from_variable_rship");
+    FunctionCallee get_next_rship = ctx.extern_func("get_next_rship_fev");
+    FunctionCallee fev_list_end = ctx.extern_func("fev_list_end");
+
     // create the basic blocks for the operator processing
     BasicBlock *fe_entry = BasicBlock::Create(ctx.getContext(), "fe_entry", main_function);
     BasicBlock *foreach_rship_end = BasicBlock::Create(ctx.getModule().getContext(), "foreach_rel_end", main_function);
     BasicBlock *nextBB = BasicBlock::Create(ctx.getModule().getContext(), "next_rship", main_function);
     BasicBlock *consumeBB = BasicBlock::Create(ctx.getModule().getContext(), "consume_rship", main_function);
+
+    // basic blocks for the fev operator
+    BasicBlock *loop_head = BasicBlock::Create(ctx.getContext(), "fev_loop_head", main_function);
+    BasicBlock *loop_body = BasicBlock::Create(ctx.getContext(), "fev_loop_body", main_function);
+    BasicBlock *loop_next = BasicBlock::Create(ctx.getContext(), "fev_loop_next", main_function);
 
     // link the entry point with the block of the previous operator
     ctx.getBuilder().SetInsertPoint(prev_bb);
@@ -301,17 +310,18 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
 
     Value *hop_cnt;
     if(op->is_variable()) {
-        // calculate potential 1-hop matches
-        hop_cnt = ctx.getBuilder().CreateCall(ohop_count, {gdb, node_rship_id});
+        auto min_hop = ConstantInt::get(ctx.int64Ty, op->hops_.first);
+        auto max_hop = ConstantInt::get(ctx.int64Ty, op->hops_.second);
+        ctx.getBuilder().CreateCall(retrieve_rships, {gdb, label_code, node, min_hop, max_hop});        
 
-        // allocate queue for iteration
-        auto rship_queue = ctx.getBuilder().CreateCall(get_rship_queue, {});
+        ctx.getBuilder().CreateBr(loop_head);
+        ctx.getBuilder().SetInsertPoint(loop_head);
+        auto is_end = ctx.getBuilder().CreateCall(fev_list_end, {});
+        ctx.getBuilder().CreateCondBr(is_end, foreach_rship_end, loop_body);
 
-        // insert the first rship to queue
-        ctx.getBuilder().CreateCall(insert_to_queue, {rship_queue, node_rship_id, ctx.LLVM_ONE});
-
-        // iterate through the queue, while it is not empty
-        
+        ctx.getBuilder().SetInsertPoint(loop_body);
+        rship = ctx.getBuilder().CreateCall(get_next_rship, {});
+        ctx.getBuilder().CreateBr(consumeBB);
 
     } else {
         // iterate through the relationship list of the node
@@ -353,8 +363,13 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
         ctx.getBuilder().CreateBr(main_return);
     }
 
-    // set backflow to the iteration loop
-    main_return = nextBB;
+    if(op->is_variable()) {
+        main_return = loop_head;
+    } else {
+        // set backflow to the iteration loop
+        main_return = nextBB;
+    }
+
 }
 
 /**
