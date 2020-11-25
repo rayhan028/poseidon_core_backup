@@ -430,6 +430,10 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
   graph->commit_transaction();
 #endif
 
+	auto chunks = graph->get_nodes()->num_chunks();
+
+	query_engine queryEngine(graph, 1, chunks);
+
   SECTION("Test the internal variable foreach relationship operator") {
         result_set rs;
 
@@ -439,6 +443,20 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
         graph->commit_transaction();
         REQUIRE(rs.data.size() == 191);
   }
+
+  SECTION("Test the compiled variable foreach relationship operator") {
+        auto fev = Scan("Town", ForeachRship(RSHIP_DIR::FROM, {1, 2}, ":CONNECTED", 
+                       Collect()));
+        arg_builder args;
+        args.arg(1, "Town");
+        args.arg(2, ":CONNECTED");
+
+        result_set rs;
+        queryEngine.generate(fev, false);
+        queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.size() == 191);
+    }
 
 #ifdef USE_PMDK
 	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });

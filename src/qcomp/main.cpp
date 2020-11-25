@@ -106,10 +106,31 @@ int main() {
 
 	queryEngine.generate(fev, false);
 	
+
+  	auto js = std::chrono::steady_clock::now();
 	queryEngine.run(&rs);
+  	auto je = std::chrono::steady_clock::now();
 
-	std::cout << rs.data.size() << std::endl;
+	  std::cout << "JIT: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(je -
+                                                                     js)
+                   .count()
+            << " ms" << std::endl;
 
+	result_set rss;
+	auto qry = query(graph).all_nodes("Person").from_relationships({1,2}, ":HAS_READ").collect(rss);
+
+  	auto is = std::chrono::steady_clock::now();
+	graph->begin_transaction();
+	qry.start();
+	graph->commit_transaction();
+  	auto ie = std::chrono::steady_clock::now();
+
+  	std::cout << "AOT: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(ie -
+                                                                     is)
+                   .count()
+            << " ms" << std::endl;
 #ifdef USE_PMDK
 	//nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
 	pop.close();
