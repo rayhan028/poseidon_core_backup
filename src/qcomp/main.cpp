@@ -77,6 +77,7 @@ int main() {
 	args.arg(3, "Book");
 	args.arg(4, 42);*/
 
+
 	result_set rs;
 
 	p_ptr<dict> dct;
@@ -90,13 +91,20 @@ int main() {
 
     queryc qlc;
 	
-	algebra_optr op = qlc.compile_to_plan("Project([$0.num:uint64], NodeScan('Person'))");
+	algebra_optr op = qlc.compile_to_plan("Project([$0.name:string, $0.num:uint64], NodeScan('Person'))");
+
+	auto r_expr = Scan("Book", ForeachRship(RSHIP_DIR::TO, {}, ":HAS_READ", Expand(EXPAND::IN, "Person", End())));
+
+    auto l_expr = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", 
+                       Expand(EXPAND::OUT, "Book", Join(JOIN_OP::CROSS, {}, 
+                        Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64},
+                                  {3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {3, "id", FTYPE::INT}, {5, "name", FTYPE::STRING}}, Collect()), r_expr))));
 
 	queryEngine.generate(op, false);
 	
 	queryEngine.run(&rs);
 
-	std::cout << rs << std::endl;
+	//std::cout << rs << std::endl;
 
 #ifdef USE_PMDK
 	//nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });

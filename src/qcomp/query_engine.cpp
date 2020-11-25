@@ -140,7 +140,7 @@ void query_engine::extract_arg(std::shared_ptr<base_op> op) {
 
 
 void query_engine::run(result_set * rs, std::vector<uint64_t*> args) {
-    prepare();
+    //prepare();
 
     auto tx = graph_->begin_transaction();
     current_transaction_ = tx;

@@ -38,14 +38,6 @@ JitFromScratch::JitFromScratch(ExitOnError ExitOnErr)
     SymbolMap M;
     MangleAndInterner Mangle(*ES, getDataLayout());
     // Register every symbol that can be accessed from the JIT'ed code.
-    M[Mangle("call_consumer_function")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&call_consumer_function), JITSymbolFlags::Exported);
-    M[Mangle("printNode")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&printNode), JITSymbolFlags::Exported);
-    M[Mangle("consumerDummy")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&consumerDummy), JITSymbolFlags::Exported);
-    M[Mangle("list_size")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&list_size), JITSymbolFlags::Exported);
     M[Mangle("vec_end_reached")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&vec_end_reached), JITSymbolFlags::Exported);
     M[Mangle("get_vec_begin")] = JITEvaluatedSymbol(
@@ -60,10 +52,6 @@ JitFromScratch::JitFromScratch(ExitOnError ExitOnErr)
             pointerToJITTargetAddress(&node_by_id), JITSymbolFlags::Absolute);
     M[Mangle("get_node_from_it")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&get_node_from_it), JITSymbolFlags::Exported);
-    M[Mangle("stupid")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&stupid), JITSymbolFlags::Exported);
-    M[Mangle("stupid_test")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&test_ints), JITSymbolFlags::Exported);
     M[Mangle("gdb_get_rships")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&gdb_get_rships), JITSymbolFlags::Exported);
     M[Mangle("get_rship_from_it")] = JITEvaluatedSymbol(
@@ -84,10 +72,6 @@ JitFromScratch::JitFromScratch(ExitOnError ExitOnErr)
             pointerToJITTargetAddress(&collect), JITSymbolFlags::Exported);
     M[Mangle("join_consume_left")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&join_consume_left), JITSymbolFlags::Exported);
-    M[Mangle("join_insert_left")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&join_insert_left), JITSymbolFlags::Exported);
-    M[Mangle("print_int")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&print_int), JITSymbolFlags::Exported);
     M[Mangle("get_tx")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&get_tx), JITSymbolFlags::Exported);
     M[Mangle("get_valid_node")] = JITEvaluatedSymbol(
@@ -100,8 +84,6 @@ JitFromScratch::JitFromScratch(ExitOnError ExitOnErr)
             pointerToJITTargetAddress(&get_join_vec_arr), JITSymbolFlags::Exported);
     M[Mangle("get_join_vec_size")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&get_join_vec_size), JITSymbolFlags::Exported);
-    M[Mangle("check_qr")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&check_qr), JITSymbolFlags::Exported);
     M[Mangle("create_node")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&create_node), JITSymbolFlags::Exported);
     M[Mangle("create_ship")] = JITEvaluatedSymbol(
@@ -132,6 +114,15 @@ JitFromScratch::JitFromScratch(ExitOnError ExitOnErr)
             pointerToJITTargetAddress(&get_mat_res_size), JITSymbolFlags::Exported);
     M[Mangle("index_get_node")] = JITEvaluatedSymbol(
             pointerToJITTargetAddress(&index_get_node), JITSymbolFlags::Exported);
+    M[Mangle("apply_pexpr_node")] = JITEvaluatedSymbol(
+            pointerToJITTargetAddress(&apply_pexpr_node), JITSymbolFlags::Exported);
+    M[Mangle("apply_pexpr_rship")] = JITEvaluatedSymbol(
+            pointerToJITTargetAddress(&apply_pexpr_rship), JITSymbolFlags::Exported);
+    M[Mangle("retrieve_fev_queue")] = JITEvaluatedSymbol(
+            pointerToJITTargetAddress(&retrieve_fev_queue), JITSymbolFlags::Exported);            
+    M[Mangle("insert_fev_rship")] = JITEvaluatedSymbol(
+            pointerToJITTargetAddress(&insert_fev_rship), JITSymbolFlags::Exported);            
+
     ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
 }
 

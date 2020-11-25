@@ -140,6 +140,10 @@ public:
 
     FunctionType *foreachRshipFctTy;
 
+    FunctionType *countPotentialOHopFctTy;
+    FunctionType *retrieveFEVqueryFctTy;
+    FunctionType *fevQueueEmptyFctTy;
+    FunctionType *insertInFEVQueueFctTy;
 //++++++++++++++++++ FILTER FCT ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     FunctionType *filterConsumerFctTy;
 
@@ -155,7 +159,8 @@ public:
 
 //++++++++++++++++++ PROJECT FCT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     FunctionType *projectConsumerFctTy;
-
+    FunctionType *applyNodeProjectionFctTy;
+    FunctionType *applyRshipProjectionFctTy;
 //++++++++++++++++++ INDEX +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     FunctionType *indexGetNodeTy;
 

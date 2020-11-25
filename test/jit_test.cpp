@@ -31,6 +31,7 @@
 
 #include "qoperator.hpp"
 #include "queryc.hpp"
+#include "query.hpp"
 
 
 const std::string test_path = poseidon::gPmemPath + "jit_test";
@@ -275,17 +276,24 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 #endif
 
   auto num_persons = 100;
-  auto num_books = 42;
-
+  auto num_books = 42;    
   for (int i = 0; i < num_persons; i++) {
-    graph->add_node("Person",
+    auto p = graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
                                {"id", boost::any(i)},
                                {"num", boost::any(uint64_t(1234567890123412))},
                                {"dummy1", boost::any(std::string("Dummy"))},
                                {"dummy2", boost::any(1.2345)}},
-                              false);
+                              true);
+    if(i < num_books) {
+      auto b = graph->add_node("Book",
+                                {{"title", boost::any(std::string("Book Title"))},
+                                {"year", boost::any(1942)},
+                                {"id", boost::any(i)}},
+                                true);
+      graph->add_relationship(p, b, ":HAS_READ", {});
+    }
   }
 
 #ifdef USE_TX
@@ -352,6 +360,85 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         REQUIRE(boost::get<uint64_t>(rs.data.front()[2]) == 1234567890123412);
     }
 
+    SECTION("Project over several query results") {
+        auto r_expr = Scan("Book",  End());
+
+        auto l_expr = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", 
+                       Expand(EXPAND::OUT, "Book", Join(JOIN_OP::CROSS, {}, 
+                        Project({{0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64}, 
+                        {3, "name", FTYPE::STRING}}, Collect()), r_expr))));
+        arg_builder args;
+        args.arg(1, "Person");
+        args.arg(2, ":HAS_READ");
+        args.arg(3, "Book");
+        args.arg(4, "Book");
+        args.arg(5, ":HAS_READ");
+        args.arg(6, "Person");
+
+        result_set rs;
+        queryEngine.generate(l_expr, false);
+        queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.front().size() == 3);
+    }
+
+#ifdef USE_PMDK
+	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+	pop.close();
+	remove(test_path.c_str());
+#endif
+}
+
+TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVariable]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  graph_db_ptr graph;
+  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
+#else
+  auto graph = p_make_ptr<graph_db>();
+#endif
+
+#ifdef USE_TX
+  auto tx = graph->begin_transaction();
+#endif
+
+  int num_towns = 42;
+  
+  for(auto i = 0u; i < num_towns; i+=3) {
+        auto t1 = graph->add_node("Town",
+                              {{"name", boost::any(std::string("Town_")+std::to_string(i))},
+                               {"population", boost::any(int(42*i))}},
+                              false);
+        auto t2 = graph->add_node("Town",
+                              {{"name", boost::any(std::string("Town_")+std::to_string(i+1))},
+                               {"population", boost::any(int(42*(i+1)))}},
+                              false);
+        auto t3 = graph->add_node("Town",
+                              {{"name", boost::any(std::string("Town_")+std::to_string(i+2))},
+                               {"population", boost::any(int(42*(i+2)))}},
+                              false);
+        if(i>0) {
+          graph->add_relationship(t1-3, t1, ":CONNECTED", {});
+        }
+        graph->add_relationship(t1, t2, ":CONNECTED", {});
+        graph->add_relationship(t2, t1, ":CONNECTED", {});
+        graph->add_relationship(t2, t3, ":CONNECTED", {});
+        graph->add_relationship(t3, t2, ":CONNECTED", {});
+  }
+
+#ifdef USE_TX
+  graph->commit_transaction();
+#endif
+
+  SECTION("Test the internal variable foreach relationship operator") {
+        result_set rs;
+
+        auto t = graph->begin_transaction();
+        auto q = query(graph).all_nodes("Town").from_relationships({1, 2}, ":CONNECTED").collect(rs);
+        q.start();
+        graph->commit_transaction();
+        REQUIRE(rs.data.size() == 191);
+  }
 
 #ifdef USE_PMDK
 	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });

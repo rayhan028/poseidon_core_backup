@@ -260,6 +260,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     // obtain the FunctionCallees for the operator processing
     FunctionCallee rship_by_id = ctx.extern_func("rship_by_id");
     FunctionCallee gdb_get_rships = ctx.extern_func("gdb_get_rships");
+    FunctionCallee ohop_count = ctx.extern_func("count_potential_o_hop");
+    FunctionCallee get_rship_queue = ctx.extern_func("retrieve_fev_queue");
+    FunctionCallee insert_to_queue = ctx.extern_func("insert_fev_rship");
 
     // create the basic blocks for the operator processing
     BasicBlock *fe_entry = BasicBlock::Create(ctx.getContext(), "fe_entry", main_function);
@@ -296,28 +299,44 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     // register value for the current relationship
     Value *rship;
 
-    // iterate through the relationship list of the node
-    auto loop_body = ctx.while_loop_condition(main_function, lhs_alloca, rhs_alloca, PContext::WHILE_COND::LT, foreach_rship_end,
-                                              [&](BasicBlock *, BasicBlock *) {
-                                                  // extract relationship id from alloca
-                                                  auto lhs = ctx.getBuilder().CreateLoad(lhs_alloca);
+    Value *hop_cnt;
+    if(op->is_variable()) {
+        // calculate potential 1-hop matches
+        hop_cnt = ctx.getBuilder().CreateCall(ohop_count, {gdb, node_rship_id});
 
-                                                  // obtain the relationship through an extern function call
-                                                  rship = ctx.getBuilder().CreateCall(rship_by_id, {gdb, lhs});
+        // allocate queue for iteration
+        auto rship_queue = ctx.getBuilder().CreateCall(get_rship_queue, {});
 
-                                                  // check for the given label
-                                                  auto consume_cond = ctx.rship_cmp_label(rship, label_code);
+        // insert the first rship to queue
+        ctx.getBuilder().CreateCall(insert_to_queue, {rship_queue, node_rship_id, ctx.LLVM_ONE});
 
-                                                  // branch if relationship label is equal to the given label
-                                                  ctx.getBuilder().CreateCondBr(consume_cond, consumeBB, nextBB);
-                                              });
+        // iterate through the queue, while it is not empty
+        
 
-    // obtain the next relationship 
-    ctx.getBuilder().SetInsertPoint(nextBB);
-    {
-        auto next_rship = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(rship, next_rship_idx));
-        ctx.getBuilder().CreateStore(next_rship, lhs_alloca);
-        ctx.getBuilder().CreateBr(loop_body);
+    } else {
+        // iterate through the relationship list of the node
+        auto loop_body = ctx.while_loop_condition(main_function, lhs_alloca, rhs_alloca, PContext::WHILE_COND::LT, foreach_rship_end,
+                                                [&](BasicBlock *, BasicBlock *) {
+                                                    // extract relationship id from alloca
+                                                    auto lhs = ctx.getBuilder().CreateLoad(lhs_alloca);
+
+                                                    // obtain the relationship through an extern function call
+                                                    rship = ctx.getBuilder().CreateCall(rship_by_id, {gdb, lhs});
+
+                                                    // check for the given label
+                                                    auto consume_cond = ctx.rship_cmp_label(rship, label_code);
+
+                                                    // branch if relationship label is equal to the given label
+                                                    ctx.getBuilder().CreateCondBr(consume_cond, consumeBB, nextBB);
+                                                });
+
+        // obtain the next relationship 
+        ctx.getBuilder().SetInsertPoint(nextBB);
+        {
+            auto next_rship = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(rship, next_rship_idx));
+            ctx.getBuilder().CreateStore(next_rship, lhs_alloca);
+            ctx.getBuilder().CreateBr(loop_body);
+        }
     }
 
     // consume the given relationship
@@ -346,6 +365,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
 
     // obtain FunctionCallee for apply_pexpr
     auto apply_pexpr = ctx.extern_func("apply_pexpr");
+    auto apply_pexpr_node = ctx.extern_func("apply_pexpr_node");
+    auto apply_pexpr_rship = ctx.extern_func("apply_pexpr_rship");
 
     // create entry block and link with the previous operator
     BasicBlock *entry = BasicBlock::Create(ctx.getContext(), "project_entry", main_function);
@@ -378,7 +399,13 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
             auto dest = ctx.getBuilder().CreateInBoundsGEP(newResAlloc, {ctx.LLVM_ZERO, nidx});
 
             // apply the projection in an external function
-            ctx.getBuilder().CreateCall(apply_pexpr, {gdb, project_keys[i-1], type, qrp, id, ty, pv[i]});
+            if(r.type == 0) {
+                ctx.getBuilder().CreateCall(apply_pexpr_node, {gdb, project_keys[i-1], type, qrp, pv[i]});
+            } else {
+                ctx.getBuilder().CreateCall(apply_pexpr_rship, {gdb, project_keys[i-1], type, qrp, pv[i]});
+            }
+
+            //ctx.getBuilder().CreateCall(apply_pexpr, {gdb, project_keys[i-1], type, qrp, id, ty, pv[i]});
 
             // add new register value to global list
             nqrv.push_back({pv[i], static_cast<int>(pe.type)+2});
@@ -538,6 +565,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
     ctx.getBuilder().CreateBr(entry);
     ctx.getBuilder().SetInsertPoint(entry);
 
+    auto print_tuple = ConstantInt::get(ctx.boolTy, op->print_on_collect_);
+
     // create a single materialization call for each register value
     // each register will be materialized into thread local storage
     for(auto & res : reg_query_results) {
@@ -549,7 +578,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
     }
 
     // materialize the complete thread local storage into a global list
-    ctx.getBuilder().CreateCall(collect_regs, {rs});
+    ctx.getBuilder().CreateCall(collect_regs, {rs, print_tuple});
 
     ctx.getBuilder().CreateBr(main_return);
 }
@@ -893,9 +922,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     jids.pop_front();
     auto jid = ConstantInt::get(ctx.int64Ty, last_jid);
     ctx.getBuilder().CreateCall(collect_tuple_join, {jid, tp});
-
-    // insert left results in global list -> extern function
-    //ctx.getBuilder().CreateCall(join_insert_left, {inputs_vec, qr_tuple_list});
 
     ctx.getBuilder().CreateBr(main_return);
 }

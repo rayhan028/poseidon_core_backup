@@ -1,55 +1,7 @@
 #include "global_definitions.hpp"
-
-//void(*)(graph_db*, int, int**, int*, int, int*, int**, int);
-// {gdb, next_oid, forward, rs, qr_size, ty, call_map_arg, offset});
-/*extern "C" void get_nodes(graph_db *gdb, char *label, consumer_fct_type consumer) {
-    qr_arr qrl;
-    gdb->nodes_by_label(std::string(label), [&](node &n) {
-        consumer(gdb, {&n});
-    });
-}*/
-
-
-void call_consumer_function(consumer_fct_type consumer, graph_db* gdb, int tid, int** qr, int* rs, int size, int* tyvec, int** consumer_) {
-    std::cout << "call consumer" << std::endl;
-    consumer(gdb, tid, qr, rs, size, tyvec, consumer_, 0);
-}
-
-extern "C" void printNode(node *n) {
-    std::cout << "from printNode: " << n->node_label << std::endl;
-}
-
-extern "C" void print_int(int i) {
-    std::cout << "Int is " << i << std::endl;
-}
-
-static int CONSUME_COUNTER = 0;
-
-extern "C" void stupid() {
-    //std::cout << "CALLED: " << CONSUME_COUNTER++ << std::endl;
-}
-
-
-extern "C" void consumerDummy(qres *qr) {
-    CONSUME_COUNTER++;
-    //std::cout << "Consumer called " << CONSUME_COUNTER << " times. " << std::endl;
-    //std::cout << "Consumed type: " << qr->type << " and null: " << qr->is_null << " with label: " << reinterpret_cast<node*>(qr->res)->node_label << std::endl;
-}
-
-extern "C" void list_size(qr_list *list) {
-    //std::cout << "Size of list is: " << list->size << std::endl;
-    auto head = list->head;
-    int i = 0;
-    while (head != nullptr) {
-        i++;
-        //std::cout << i << " " << head << " is of type: " << head->res->type << std::endl;
-        head = head->next;
-    }
-    //std::cout << "Size of iterate list is: " << i << std::endl;
-}
-
-
 #include <boost/thread/barrier.hpp>
+#include <boost/hana.hpp>
+
 boost::barrier bar(std::thread::hardware_concurrency());
 
 extern "C" __attribute__((always_inline)) chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
@@ -173,26 +125,6 @@ extern "C" void collect(graph_db *gdb, int **qr, result_set * rs, int qr_size, s
     rs->data.push_back(res);
 }
 
-
-extern "C" void join_insert_left(std::vector<qr_arr>* vec, int **qrl) {
-    /*qr_arr qr;
-    qr.fill(&sz);
-    auto size = *qrl[0];
-    qr[0] = &sz;
-    for(int i = 1; i <= size; i++) {
-        qr[i] = qrl[i];
-    }
-
-    vec->push_back(qr);*/
-}
-
-extern "C" void check_qr(int** qr) {
-    auto sz = qr[0];
-    auto n = (relationship*)qr[3];
-    std::cout << "Sz: " << *sz << std::endl;
-    std::cout << "Label: " << n->rship_label << std::endl;
-}
-
 extern "C" qr_list *join_consume_left() {
     return joiner.consume();
 }
@@ -297,28 +229,32 @@ extern "C" char* get_str_property(const properties_t &p, const std::string &key)
 }
 
 void apply_pexpr_node(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int *ret) {
+    // cast the query result to a node
     auto n = (node*)qr;
+
+    // try to find the description in the thread local result memory
+    // if it is not present, generate the description and write it to the thread local memory
     if(descs.find(n->id()) == descs.end())
         descs[n->id()] = gdb->get_node_description(n->id());
     auto nd = descs[n->id()];
 
     switch(val_type) {
-        case FTYPE::INT: {
+        case FTYPE::INT: { // an integer type can be directly written to the memory
             *ret = get_property<int>(nd.properties, key).value();
             break;
         }
-        case FTYPE::UINT64: {
+        case FTYPE::UINT64: { // store the uint64 result in thread local memory and return the result id to the caller
             uint_result[str_res_ctr] = get_property<uint64_t>(nd.properties, key).value(); 
             *ret = str_res_ctr++;
             break;
         }
-        case FTYPE::STRING: {
+        case FTYPE::STRING: { // store the string in thread local memory and return the result id to the caller
             str_result[str_res_ctr] = boost::any_cast<std::string>(nd.properties[std::string(key)]);
             *ret = str_res_ctr++;
             break;
         }
         case FTYPE::TIME: // TODO: wip
-        case FTYPE::DATE: {
+        case FTYPE::DATE: { // store the time object in thread local memory and return the result id to the caller
             time_result[str_res_ctr] = get_property<boost::posix_time::ptime>(nd.properties, key).value();
             *ret = str_res_ctr++;
             break;
@@ -336,15 +272,32 @@ void apply_pexpr_rship(graph_db *gdb, const char *key, FTYPE val_type, int *qr, 
         rdescs[r->id()] = gdb->get_rship_description(r->id());
     auto rd = rdescs[r->id()];
 
-    if(val_type == FTYPE::INT) {
-        *ret = get_property<int>(rd.properties, key).value();
+    switch(val_type) {
+        case FTYPE::INT: { // an integer type can be directly written to the memory
+            *ret = get_property<int>(rd.properties, key).value();
+            break;
+        }
+        case FTYPE::UINT64: { // store the uint64 result in thread local memory and return the result id to the caller
+            break;
+        }
+        case FTYPE::STRING: { // store the string in thread local memory and return the result id to the caller
+            str_result[str_res_ctr] = boost::any_cast<std::string>(rd.properties[std::string(key)]);;
+            *ret = str_res_ctr++;
+            break;
+        }
+        case FTYPE::TIME: // TODO: wip
+        case FTYPE::DATE: { // store the time object in thread local memory and return the result id to the caller
+            time_result[str_res_ctr] = get_property<boost::posix_time::ptime>(rd.properties, key).value();
+            *ret = str_res_ctr++;
+            break;
+        }
+        case FTYPE::DOUBLE:
+        case FTYPE::BOOLEAN:
+        default:
+            break;   
     }
-    else if(val_type == FTYPE::STRING) {
-        str_result[str_res_ctr] = boost::any_cast<std::string>(rd.properties[std::string(key)]);;
-        *ret = str_res_ctr++;
-    }
-
 }
+
 std::mutex prj_mutex;
 
 extern "C" void apply_pexpr(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int idx, std::vector<int> types, int *ret) {
@@ -425,9 +378,28 @@ extern "C" void mat_reg_value(graph_db *gdb, int *reg, int type) {
 }
 
 std::mutex ct_mut;
-extern "C" void collect_tuple(result_set *rs) {
+extern "C" void collect_tuple(result_set *rs, bool print) {
     std::lock_guard<std::mutex> lck(ct_mut);
     rs->data.push_back(tp);
+
+    if(print) {
+        std::cout << "{";
+        auto my_visitor = boost::hana::overload(
+            [&](node *n) { /*os << gdb->get_node_description(*n); */ },
+            [&](relationship *r) { /* os << gdb->get_relationship_label(*r); */ },
+            [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
+            [&](const std::string &s) { std::cout << s; }, [&](uint64_t ll) { std::cout << ll; },
+            [&](null_t n) { std::cout << "NULL"; },
+            [&](boost::posix_time::ptime dt) { std::cout << dt; }); 
+
+        auto i = 0u;
+        for (const auto &qr : tp) {
+            boost::apply_visitor(my_visitor, qr);
+            if (++i < tp.size())
+                std::cout << ", ";
+        }
+        std::cout << "}" << std::endl;
+    }
     tp.clear();
 }
 
@@ -479,4 +451,27 @@ extern "C" node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t
         n_ptr = &n;
     });
     return n_ptr;
+}
+
+extern "C" int count_potential_o_hop(graph_db *gdb, offset_t rship_id) {
+    auto cnt = 0;
+    while(rship_id != UNKNOWN) {
+        cnt++;
+        rship_id = gdb->rship_by_id(rship_id).next_src_rship;
+    }
+    return cnt;
+}
+
+
+extern "C" std::list<std::pair<relationship::id_t, std::size_t>> retrieve_fev_queue() {
+    return std::list<std::pair<relationship::id_t, std::size_t>>();
+}
+
+
+extern "C" void insert_fev_rship(std::list<std::pair<relationship::id_t, std::size_t>> &queue, relationship::id_t rid, std::size_t hop) {
+    queue.push_back(std::make_pair(rid, hop));
+}
+
+extern "C" bool fev_queue_empty(std::list<std::pair<relationship::id_t, std::size_t>> &queue) {
+    return queue.empty();
 }

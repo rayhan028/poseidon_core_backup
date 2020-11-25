@@ -177,6 +177,10 @@ public:
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
+    bool is_variable() {
+        return hops_.first == 0 && hops_.second == 0 ? false : true;
+    }
+
     RSHIP_DIR dir_;
     std::string label_;
     std::pair<int, int> hops_;
@@ -326,18 +330,21 @@ inline algebra_optr Join(JOIN_OP jop, std::pair<int, int> pos, algebra_optr lhs,
 }
 
 class collect_op : public base_op, public std::enable_shared_from_this<collect_op> {
+    
 public:
 
-    collect_op() {
+    collect_op(bool print_on_collect) : print_on_collect_(print_on_collect) {
         name_ = "Collect";
         type_ = qop_type::collect;
         produced_type_ = -1;
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
+
+    bool print_on_collect_;
 };
 
-inline algebra_optr Collect() { return std::make_shared<collect_op>(); }
+inline algebra_optr Collect(bool print = false) { return std::make_shared<collect_op>(print); }
 
 class filter_op : public base_op, public std::enable_shared_from_this<filter_op> {
 public:

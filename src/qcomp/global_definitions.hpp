@@ -23,12 +23,6 @@ using start_ty = void(*)(graph_db*, int, int, transaction_ptr, int, std::vector<
 typedef int* qrl_ty;
 typedef std::array<int*, 100> qr_arr;
 
-void call_consumer_function(consumer_fct_type consumer, graph_db* gdb, int tid, int** qr, int* rs, int size, int* tyvec, int** consumer_);
-
-extern "C" void printNode(node *n);
-
-
-extern "C" void stupid();
 
 /**
  * Filter expression types.
@@ -49,10 +43,6 @@ struct qres {
     bool is_null;
 };
 
-extern "C" void consumerDummy(qres *qr);
-
-extern "C" void print_int(int i);
-
 struct nn {
     nn *next;
     nn *prev;
@@ -65,8 +55,6 @@ struct qr_list {
     nn *tail;
     int size;
 };
-
-extern "C" void list_size(qr_list *list);
 
 /**
  * Function to obtain the iterator of a node vector
@@ -165,7 +153,35 @@ extern "C" int get_join_vec_size(std::vector<qr_arr>* vec);
  */
 extern "C" int** get_join_vec_arr(std::vector<qr_arr>* vec, int idx);
 
-extern "C" void check_qr(int** qr);
+/**
+ * Applies a given Projection on a node result and writes the result at a memory address, given by the caller.
+ */
+extern "C" void apply_pexpr_node(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int *ret);
+
+/**
+ * Applies a given Projection on a relationship result and writes the result at a memory address, given by the caller.
+ */
+extern "C" void apply_pexpr_rship(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int *ret);
+
+/**
+ * External function to count all potential 1-hop relationships, used by the variable ForeachRelationship operator
+ */
+extern "C" int count_potential_o_hop(graph_db *gdb, offset_t rship_id);
+
+/**
+ * Allocates a queue in order to scan all relationships recursively
+ */
+extern "C" std::list<std::pair<relationship::id_t, std::size_t>> retrieve_fev_queue();
+
+/**
+ * Insert the relationship id and the hop count to the FEV queue 
+ */
+extern "C" void insert_fev_rship(std::list<std::pair<relationship::id_t, std::size_t>> &queue, relationship::id_t rid, std::size_t hop);
+
+/**
+ * Returns true when the queue, used by the FEV operator, is empty
+ */
+extern "C" bool fev_queue_empty(std::list<std::pair<relationship::id_t, std::size_t>> &queue);
 
 class Collector {
     int called_;
@@ -205,8 +221,6 @@ public:
  * Method for the handling of the tuple collection.
  */
 extern "C" void collect(graph_db *gdb, int **qr, result_set * rs, int qr_size, std::vector<int> *types);
-
-extern "C" void join_insert_left(std::vector<qr_arr>* vec, int **qrl);
 
 extern "C" qr_list *join_consume_left();
 
@@ -259,7 +273,7 @@ extern thread_local std::map<int, boost::posix_time::ptime> time_result;
  * Functions for the materilization of tuple results
  */
 extern "C" void mat_reg_value(graph_db *gdb, int *reg, int type);
-extern "C" void collect_tuple(result_set *rs);
+extern "C" void collect_tuple(result_set *rs, bool print);
 extern "C" qr_tuple *obtain_mat_tuple();
 extern "C" void mat_node(node *n, qr_tuple *qr);
 extern "C" void mat_rship(relationship *r, qr_tuple *qr);

@@ -128,7 +128,10 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
 
     foreachRshipFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy, callMapPtrTy},
                                           false);
-
+    countPotentialOHopFctTy = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
+    retrieveFEVqueryFctTy = FunctionType::get(int8PtrTy, {}, false);
+    fevQueueEmptyFctTy = FunctionType::get(boolTy, {int8PtrTy}, false);
+    insertInFEVQueueFctTy = FunctionType::get(voidTy, {int8PtrTy, int64Ty, int64Ty}, false);
 //++++++++++++++++++ FILTER FCT ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     filterConsumerFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy},
                                             false);
@@ -148,6 +151,9 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
                                              false);
 
     collectConsumerFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy, callMapPtrTy}, false);
+
+    applyNodeProjectionFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int8PtrTy, int64Ty, int64PtrTy, int64PtrTy}, false);
+    applyRshipProjectionFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int8PtrTy, int64Ty, int64PtrTy, int64PtrTy}, false);
 //++++++++++++++++++ START FCT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     finishFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int64PtrTy}, false);
@@ -194,7 +200,7 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     get_join_vec_size_ty = FunctionType::get(int64Ty, {int64PtrTy}, false);
 
     mat_reg_val_ty = FunctionType::get(voidTy, {int8PtrTy, int64PtrTy, int64Ty}, false);
-    collect_reg_ty = FunctionType::get(voidTy, {int64PtrTy}, false);
+    collect_reg_ty = FunctionType::get(voidTy, {int64PtrTy, boolTy}, false);
 
     obtain_mat_tuple_ty = FunctionType::get(int8PtrTy, {}, false);
     mat_node_ty = FunctionType::get(voidTy, {nodePtrTy, int8PtrTy}, false);
@@ -303,6 +309,14 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     function_types["get_mat_res_size"] = get_mat_res_size_ty;
 
     function_types["index_get_node"] = indexGetNodeTy;
+
+    function_types["apply_pexpr_node"] = applyNodeProjectionFctTy;
+    function_types["apply_pexpr_rship"] = applyRshipProjectionFctTy;
+
+    function_types["count_potential_o_hop"] = countPotentialOHopFctTy;
+    function_types["retrieve_fev_queue"] = retrieveFEVqueryFctTy;
+    function_types["fev_queue_empty"] = fevQueueEmptyFctTy;
+    function_types["insert_fev_rship"] = insertInFEVQueueFctTy;
 }
 
 

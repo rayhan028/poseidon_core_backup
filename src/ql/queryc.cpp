@@ -29,7 +29,7 @@ algebra_optr queryc::compile_to_plan(const std::string &query) {
     auto ast = parse(query);
     if (!ast) 
       throw query_execution_error();
-    auto collect = Collect();
+    auto collect = Collect(true);
     return ast_to_algoptr(ast, collect);
 }
 
