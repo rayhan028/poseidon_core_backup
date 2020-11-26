@@ -1,4 +1,4 @@
-image: "dbisilm/pmdk:latest"
+image: "dbisilm/llvm_pmdk:10"
 
 stages:
   - build
@@ -11,7 +11,7 @@ build:
   script:
     - mkdir build
     - cd build
-    - cmake -DCMAKE_BUILD_TYPE=Release -DUSE_PMDK=ON ..
+    - cmake -DCMAKE_BUILD_TYPE=Release -DUSE_PMDK=ON -DLLVM_DIR=/usr/lib64/llvm10/lib/cmake/llvm ..
     - make -j 3
     # clean up unnecessary files and strip binaries
     - rm -rf _deps 
@@ -41,7 +41,7 @@ coverage:
     - pip install gcovr --user
     - mkdir build
     - cd build
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_PMDK=ON -DCMAKE_CXX_FLAGS="-g -O0 -fprofile-arcs -ftest-coverage" ..
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_PMDK=ON -DLLVM_DIR=/usr/lib64/llvm10/lib/cmake/llvm -DCMAKE_CXX_FLAGS="-g -O0 -fprofile-arcs -ftest-coverage" ..
     - make -j 3
     - echo pass | sudo -S mkdir -m 777 -p /mnt/pmem0/poseidon
     - ctest
