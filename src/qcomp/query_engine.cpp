@@ -1,7 +1,7 @@
 #include <llvm/Support/Error.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/InitLLVM.h>
-
+#include <memory>
 #include "query_engine.hpp"
 #include "interpreter.hpp"
 #include "qid_generator.hpp"
