@@ -488,6 +488,19 @@ target_link_libraries(run_ldbc_graphalytics
   Boost::program_options
 )
 
+# The program for executing jitted short read queries.
+#
+add_executable(run_ldbc_jit_reads
+  src/ldbc/ldbc_jit_reads.cpp
+ )
+
+target_link_libraries(run_ldbc_jit_reads
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  ${LLVM_LIBRARIES}
+  Boost::program_options
+)
+
 # The program for executing the LLVM query compiler
 add_executable(qcomp
 	  src/qcomp/main.cpp

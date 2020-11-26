@@ -103,7 +103,7 @@ int main() {
                                   {3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {3, "id", FTYPE::INT}, {5, "name", FTYPE::STRING}}, Collect()), r_expr))));
 
 	auto sort_fct = [&](const qr_tuple &q1, const qr_tuple &q2) -> bool {
-		return boost::get<uint64_t>(q1[2]) > boost::get<uint64_t>(q2[2]); 
+		return boost::get<uint64_t>(q1[2]) < boost::get<uint64_t>(q2[2]); 
 	};
 
 	auto fev = Scan("Person", 
