@@ -34,6 +34,7 @@ test:
 
 coverage:
   stage: build
+  image: "dbisilm/llvm_pmdk:10"
   tags:
     - grouprunner
   script:

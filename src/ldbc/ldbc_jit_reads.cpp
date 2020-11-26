@@ -18,13 +18,15 @@
 
 using namespace boost::program_options;
 
-void ldbc_jit_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
+void ldbc_jit_is_query_1(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, uint64_t personId) {
   auto q = Scan("Person",
               Filter(EQ(Key(0, "id"), Int(personId)),
                 ForeachRship(RSHIP_DIR::FROM, {}, ":isLocated", 
                   Expand(EXPAND::OUT, "Place",
                     Project({}, 
                       Collect())))));
+
+  
 }
 
 void run_benchmark(graph_db_ptr gdb) {
