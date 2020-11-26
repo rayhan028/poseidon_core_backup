@@ -45,14 +45,14 @@ int main() {
 
 	auto tx = graph->begin_transaction();
 
-	int PERSONS = 100;
+	int PERSONS = 10;
 	int NO_PERSONS = 42;
 	for (int i = 0; i < PERSONS; i++) {
 		auto p = graph->add_node("Person",
 				{{"name", boost::any(std::string("John Doe")+std::to_string(i))},
 				{"age", boost::any(42)},
 				{"id", boost::any(i)},
-				{"num", boost::any(uint64_t(1234567890123412))},
+				{"num", boost::any(uint64_t(1234567890123412)+uint64_t(i))},
 				{"dummy1", boost::any(std::string("Dummy"))},
 				{"dummy2", boost::any(1.2345)}},
 				false);
@@ -102,8 +102,15 @@ int main() {
                         Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64},
                                   {3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {3, "id", FTYPE::INT}, {5, "name", FTYPE::STRING}}, Collect()), r_expr))));
 
-	auto fev = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {1,2}, ":HAS_READ", Collect()));
+	auto sort_fct = [&](const qr_tuple &q1, const qr_tuple &q2) -> bool {
+		return boost::get<uint64_t>(q1[2]) > boost::get<uint64_t>(q2[2]); 
+	};
 
+	auto fev = Scan("Person", 
+					ForeachRship(RSHIP_DIR::FROM, {1,2}, ":HAS_READ", 
+						Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64}},
+							Sort(sort_fct, Collect()))));
+	
 	queryEngine.generate(fev, false);
 	
 
@@ -111,26 +118,13 @@ int main() {
 	queryEngine.run(&rs);
   	auto je = std::chrono::steady_clock::now();
 
+	std::cout << rs << std::endl;
 	  std::cout << "JIT: "
             << std::chrono::duration_cast<std::chrono::milliseconds>(je -
                                                                      js)
                    .count()
             << " ms" << std::endl;
 
-	result_set rss;
-	auto qry = query(graph).all_nodes("Person").from_relationships({1,2}, ":HAS_READ").collect(rss);
-
-  	auto is = std::chrono::steady_clock::now();
-	graph->begin_transaction();
-	qry.start();
-	graph->commit_transaction();
-  	auto ie = std::chrono::steady_clock::now();
-
-  	std::cout << "AOT: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(ie -
-                                                                     is)
-                   .count()
-            << " ms" << std::endl;
 #ifdef USE_PMDK
 	//nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
 	pop.close();
