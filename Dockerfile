@@ -1,4 +1,4 @@
-FROM dbisilm/llvm_pmdk:latest
+FROM dbisilm/llvm_pmdk:10
 MAINTAINER Kai-Uwe Sattler <kus@tu-ilmenau.de>
 
 
