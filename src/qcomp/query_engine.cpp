@@ -98,7 +98,7 @@ void query_engine::prepare() {
 void query_engine::extract_arg(std::shared_ptr<base_op> op) {
     switch(op->type_) {
         case qop_type::scan: {
-            auto s_op = dynamic_pointer_cast<scan_op>(op);
+            auto s_op = std::dynamic_pointer_cast<scan_op>(op);
             query_args.arg(arg_counter++, s_op->label_);
             if(s_op->indexed_) {
                     //TODO: 2nd index argument
@@ -106,12 +106,12 @@ void query_engine::extract_arg(std::shared_ptr<base_op> op) {
             break;
         }
         case qop_type::foreach_rship: {
-            auto fe_op = dynamic_pointer_cast<foreach_rship_op>(op);
+            auto fe_op = std::dynamic_pointer_cast<foreach_rship_op>(op);
             query_args.arg(arg_counter++, fe_op->label_);
             break;
         }
         case qop_type::expand: {
-            auto exp_op = dynamic_pointer_cast<expand_op>(op);
+            auto exp_op = std::dynamic_pointer_cast<expand_op>(op);
             query_args.arg(arg_counter++, exp_op->label_);
             break;
         }
