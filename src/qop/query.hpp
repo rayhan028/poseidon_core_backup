@@ -255,6 +255,15 @@ public:
   query &outerjoin_on_node(const std::pair<int, int> &left_right, query &other);
 
   /**
+   * Add a join operator for merging tuples of two 
+   * queries if there exists a relationship defined by an object
+   * (at a given position) in the left tuple as the source node 
+   * and an object (at a given position) in the right tuple as 
+   * the destination node 
+   */
+  query &join_on_rship(std::pair<int, int> src_des, query &other);
+
+  /**
    * Add a left outerjoin operator for merging tuples of two 
    * queries if there exists a relationship defined by an object
    * (at a given position) in the left tuple as the source node 

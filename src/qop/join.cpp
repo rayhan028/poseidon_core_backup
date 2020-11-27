@@ -193,3 +193,31 @@ void left_outerjoin_on_rship::process_right(graph_db_ptr &gdb, const qr_tuple &v
 void left_outerjoin_on_rship::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
 
 /* ------------------------------------------------------------------------ */
+
+void rship_join::dump(std::ostream &os) const { // TODO
+  os << "rship_join()=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void rship_join::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto src = boost::get<node *>(v[src_des_nodes_.first]);
+
+  for (auto &inp : input_) {
+    auto des = boost::get<node *>(inp[src_des_nodes_.second]);
+    gdb->foreach_from_relationship_of_node((*src), [&](auto &r) {
+      if (r.to_node_id() == des->id()){
+        auto res = append(concat(v, inp), query_result(&r));
+        consume_(gdb, res);
+      }
+    });
+  }
+}
+
+void rship_join::process_right(graph_db_ptr &gdb, const qr_tuple &v) {
+  input_.push_back(v);
+}
+
+void rship_join::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
+
+/* ------------------------------------------------------------------------ */

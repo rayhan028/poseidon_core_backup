@@ -310,6 +310,15 @@ query &query::outerjoin_on_node(const std::pair<int, int> &left_right, query &ot
       std::bind(&left_outerjoin_on_node::finish, op.get(), ph::_1));
 }
 
+query &query::join_on_rship(std::pair<int, int> src_des, query &other) {
+  auto op = std::make_shared<rship_join>(src_des);
+  other.append_op(
+      op, std::bind(&rship_join::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&rship_join::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&rship_join::finish, op.get(), ph::_1));
+}
+
 query &query::outerjoin_on_rship(std::pair<int, int> src_des, query &other) {
   auto op = std::make_shared<left_outerjoin_on_rship>(src_des);
   other.append_op(
