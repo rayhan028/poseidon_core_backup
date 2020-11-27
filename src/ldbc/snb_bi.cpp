@@ -22,15 +22,14 @@ static std::vector<std::string> message = {"Post", "Comment"};
 
 /* ------------------------------------------------------------------------ */
 
-void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, ptime dt) {
+void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 
     std::vector<result_set> grps;
 
     auto filter_cdate =
       [&](auto &prop) {
-        if ((prop.flags_ & 0xe0) == prop.p_ptime)
-          return (*(reinterpret_cast<const ptime *>(prop.value_))) < dt;
-        throw invalid_typecast();
+          return (*(reinterpret_cast<const ptime *>(prop.value_))) <
+                    boost::get<ptime>(params[0]);
       };
 
     auto group_msg_len =
@@ -78,34 +77,20 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 
     auto filter_cdate_1 =
       [&](auto &p) {
-        if ((p.flags_ & 0xe0) == p.p_ptime) {
-          auto yr = boost::get<int>(params[0]);
-          auto mo = boost::get<int>(params[1]);
-          auto dt = *(reinterpret_cast<const ptime *>(p.value_));
-          auto dts = to_iso_extended_string(dt);
-          auto year = std::stoi(dts.substr(0, dts.find("-")));
-          auto month = std::stoi(dts.substr(5, 2));
-          return year == yr && month == mo;
-        }
-        throw invalid_typecast(); 
+        auto d = *(reinterpret_cast<const ptime *>(p.value_));
+        auto dt = boost::get<ptime>(params[0]);
+        time_period duration(dt, hours(24*100));
+        return duration.contains(d) ? true : false;
       };
 
     auto filter_cdate_2 =
       [&](auto &p) {
-        if ((p.flags_ & 0xe0) == p.p_ptime) {
-          auto nxt_yr = boost::get<int>(params[0]);
-          auto nxt_mo = boost::get<int>(params[1]) + 1;
-          if (nxt_mo > 12) {
-            nxt_mo %= 12;
-            ++nxt_yr;
-          }
-          auto dt = *(reinterpret_cast<const ptime *>(p.value_));
-          auto dts = to_iso_extended_string(dt);
-          auto year = std::stoi(dts.substr(0, dts.find("-")));
-          auto month = std::stoi(dts.substr(5, 2));
-          return year == nxt_yr && month == nxt_mo;
-        }
-        throw invalid_typecast(); 
+        auto d = *(reinterpret_cast<const ptime *>(p.value_));
+        auto dt1 = boost::get<ptime>(params[0]);
+        time_period duration1(dt1, hours(24*100));
+        auto dt2 = duration1.last();
+        time_period duration2(dt2, hours(24*100));
+        return duration2.contains(d) ? true : false; 
       };
 
     auto compute_diff =
@@ -192,7 +177,7 @@ void ldbc_bi_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
               .to_relationships(":hasModerator")
               .from_node("Forum")
               .from_relationships(":containerOf")
-              .to_node("Post")
+              .to_node(message)
               .from_relationships(":hasTag")
               .to_node("Tag")
               .from_relationships(":hasType")
@@ -230,26 +215,6 @@ void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
       };
 
     // Query pipelines
-    auto q2 = query(gdb)
-#ifdef RUN_PARALLEL
-              .all_nodes()
-              .has_label("Place")
-              .property("name", filter_cntry)
-#else
-              .nodes_where("Place", "name", filter_cntry)
-#endif
-              .to_relationships(":isPartOf")
-              .from_node("Place")
-              .to_relationships(":isLocatedIn")
-              .from_node("Person")
-              .to_relationships(":hasMember")
-              .from_node("Forum")
-              .group(grps2, {6})
-              .aggregate(grps2, {{"count", 0}})
-              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
-                return boost::get<uint64_t>(q1[1]) > boost::get<uint64_t>(q2[1]); })
-              .limit(100);
-
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -264,8 +229,39 @@ void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
               .from_node("Person")
               .to_relationships(":hasMember")
               .from_node("Forum")
-              .group(grps1, {6})
+              .project({PVar_(6),
+                        PExpr_(6, pj::ptime_property(res, "creationDate"))
+                        })
+              .where_qr_tuple([&](auto &v) {
+                return boost::get<ptime>(v[1]) > boost::get<ptime>(params[1]);})
+              .group(grps1, {0})
               .aggregate(grps1, {{"count", 0}})
+              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
+                return boost::get<uint64_t>(q1[1]) > boost::get<uint64_t>(q2[1]); })
+              .limit(100)
+              .collect(rs);
+
+    auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Place")
+              .property("name", filter_cntry)
+#else
+              .nodes_where("Place", "name", filter_cntry)
+#endif
+              .to_relationships(":isPartOf")
+              .from_node("Place")
+              .to_relationships(":isLocatedIn")
+              .from_node("Person")
+              .to_relationships(":hasMember")
+              .from_node("Forum")
+              .project({PVar_(6),
+                        PExpr_(6, pj::ptime_property(res, "creationDate"))
+                        })
+              .where_qr_tuple([&](auto &v) {
+                return boost::get<ptime>(v[1]) > boost::get<ptime>(params[1]);})
+              .group(grps2, {0})
+              .aggregate(grps2, {{"count", 0}})
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
                 return boost::get<uint64_t>(q1[1]) > boost::get<uint64_t>(q2[1]); })
               .limit(100)
@@ -275,7 +271,7 @@ void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
               .from_node("Post")
               .to_relationships(":containerOf")
               .from_node("Forum")
-              .join_on_node({7, 0}, q2)
+              .hashjoin_on_node({7, 0}, q1)
               .group(grps3, {3})
               .aggregate(grps3, {{"count", 0}})
               .project({PExpr_(0, pj::uint64_property(res, "id")),
@@ -290,7 +286,7 @@ void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
                 return boost::get<uint64_t>(q1[4]) > boost::get<uint64_t>(q2[4]); })
               .collect(rs);
 
-    query::start({&q2, &q1});
+    query::start({&q1, &q2});
     rs.wait();
 }
 
@@ -689,7 +685,6 @@ void ldbc_bi_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 }
 
 void ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
-
     ;
 }
 
@@ -703,17 +698,17 @@ double calc_avg_time(const std::vector<double>& vec) {
 }
 
 double run_query_1(graph_db_ptr gdb) {
-    std::vector<ptime> dates =
-        {time_from_string(std::string("2017-04-14 01:51:21.746"))};
+    std::vector<params_tuple> params =
+        {{time_from_string(std::string("2017-04-14 01:51:21.746"))}};
 
-    std::vector<double> runtimes(dates.size());
+    std::vector<double> runtimes(params.size());
 
-    for (auto i = 0u; i < dates.size(); i++) {
+    for (auto i = 0u; i < params.size(); i++) {
         result_set rs;
         auto start_qp = std::chrono::steady_clock::now();
 
         auto tx = gdb->begin_transaction();
-        ldbc_bi_query_1(gdb, rs, dates[i]);
+        ldbc_bi_query_1(gdb, rs, params[i]);
         gdb->commit_transaction();
 
         auto end_qp = std::chrono::steady_clock::now();
@@ -727,7 +722,7 @@ double run_query_1(graph_db_ptr gdb) {
 }
 
 double run_query_2(graph_db_ptr gdb) {
-    std::vector<params_tuple> params = {{2010, 10}};
+    std::vector<params_tuple> params = {{time_from_string(std::string("2011-04-14 01:51:21.746"))}};
 
     std::vector<double> runtimes(params.size());
 
@@ -773,7 +768,7 @@ double run_query_3(graph_db_ptr gdb) {
 }
 
 double run_query_4(graph_db_ptr gdb) {
-    std::vector<params_tuple> params = {{"Turkey"}};
+    std::vector<params_tuple> params = {{"Turkey", time_from_string(std::string("2011-04-14 01:51:21.746"))}};
 
     std::vector<double> runtimes(params.size());
 
@@ -891,9 +886,8 @@ double run_query_8(graph_db_ptr gdb) {
 
 double run_query_9(graph_db_ptr gdb) {
     std::vector<params_tuple> params =
-        {{time_from_string(std::string("2011-04-14 01:51:21.746")),
-        time_from_string(std::string("2012-04-14 01:51:21.746")),
-        "Germany", "India"}};
+        {{time_from_string(std::string("2010-10-30 01:51:21.746")),
+        time_from_string(std::string("2014-04-14 01:51:21.746"))}};
 
     std::vector<double> runtimes(params.size());
 
