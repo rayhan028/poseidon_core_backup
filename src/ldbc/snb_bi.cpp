@@ -685,7 +685,55 @@ void ldbc_bi_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 }
 
 void ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
-    ;
+  std::vector<result_set> grps1;
+  std::vector<result_set> grps2;
+
+  auto q = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Person")
+              .property("name", fltr_tag)
+#else
+              .all_nodes("Person")
+#endif
+              .to_relationships(":hasCreator")
+              .from_node("Post")
+              .project({PVar_(0),
+                        PVar_(1),
+                        PVar_(2),
+                        PExpr_(2, pj::ptime_property(res, "creationDate")) })
+              .where_qr_tuple([&](const qr_tuple &v) {
+                return boost::get<ptime>(v[3]) >= boost::get<ptime>(params[0]) &&
+                        boost::get<ptime>(v[3]) <= boost::get<ptime>(params[1]); })
+              .to_relationships({1, 100}, ":replyOf", 2)
+              .from_node("Comment")
+              .project({PVar_(0),
+                        PVar_(1),
+                        PVar_(2),
+                        PVar_(4),
+                        PVar_(5),
+                        PExpr_(5, pj::ptime_property(res, "creationDate")) })
+              .where_qr_tuple([&](const qr_tuple &v) {
+                return boost::get<ptime>(v[5]) >= boost::get<ptime>(params[0]) &&
+                        boost::get<ptime>(v[5]) <= boost::get<ptime>(params[1]); })
+              .group(grps1, {0, 2})
+              .aggregate(grps1, {{"count", 0}})
+              .group(grps2, {0})
+              .aggregate(grps2, {{"count", 0}, {"sum", 2}})
+              .project({PExpr_(0, pj::uint64_property(res, "id")),
+                        PExpr_(0, pj::string_property(res, "firstName")),
+                        PExpr_(0, pj::string_property(res, "lastName")),
+                        PVar_(1),
+                        PVar_(2) })
+              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
+                if (boost::get<uint64_t>(q1[4]) == boost::get<uint64_t>(q2[4]))
+                  return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);
+                return boost::get<uint64_t>(q1[4]) > boost::get<uint64_t>(q2[4]); })
+              .limit(100)
+              .collect(rs);
+
+  q.start();
+  rs.wait();
 }
 
 /* ------------------------------------------------------------------------ */
