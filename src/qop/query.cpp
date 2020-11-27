@@ -173,8 +173,8 @@ query &query::limit(std::size_t n) {
                    std::bind(&limit_result::process, op.get(), ph::_1, ph::_2));
 }
 
-query &query::rship_exists(std::pair<int, int> src_des) {
-  auto op = std::make_shared<nodes_connected>(src_des);
+query &query::rship_exists(std::pair<int, int> src_des, bool dangle) {
+  auto op = std::make_shared<nodes_connected>(src_des, dangle);
   return append_op(op,
                    std::bind(&nodes_connected::process, op.get(), ph::_1, ph::_2));
 }

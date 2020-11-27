@@ -148,7 +148,7 @@ public:
 /**
    * TODO
    */
-  query &rship_exists(std::pair<int, int> src_des);
+  query &rship_exists(std::pair<int, int> src_des, bool dangle = false);
 
   /**
    * Add a projection operator that applies the given list of projection

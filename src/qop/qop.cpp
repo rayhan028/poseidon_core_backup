@@ -301,7 +301,7 @@ void nodes_connected::process(graph_db_ptr &gdb, const qr_tuple &v) {
       }
   });
 
-  if (flag){
+  if (flag && dangle_){
     auto res = append(v, query_result(null_t(-1)));
     consume_(gdb, res);
   }
