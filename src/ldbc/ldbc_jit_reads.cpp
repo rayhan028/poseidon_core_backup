@@ -23,8 +23,19 @@ void ldbc_jit_is_query_1(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
               Filter(EQ(Key(0, "id"), Int(personId)),
                 ForeachRship(RSHIP_DIR::FROM, {}, ":isLocated", 
                   Expand(EXPAND::OUT, "Place",
-                    Project({}, 
+                    Project({{0, "firstName", FTYPE::STRING}, {0, "lastName", FTYPE::STRING},
+                            {0, "birthday", FTYPE::DATE}, {0, "locationIP", FTYPE::STRING},
+                            {0, "browserUsed", FTYPE::STRING}, {2, "id", FTYPE::STRING},
+                            {0, "gender", FTYPE::STRING}, {0, "creationDate", FTYPE::TIME}}, 
                       Collect())))));
+  arg_builder ab;
+  ab.arg(1, "Person");
+  ab.arg(2, personId);
+  ab.arg(3, ":isLocated");
+  ab.arg(4, "Place");
+
+  qeng.generate(q, false);
+  qeng.run(&rs, ab.args);
 
   
 }

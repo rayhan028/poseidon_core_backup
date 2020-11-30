@@ -206,7 +206,10 @@ llvm_map_components_to_libnames(LLVM_LIBRARIES
         JITLink
         Linker
         IRReader
+        MC
+        MCJit
         native
+        nativecodegen
         Object
         OrcJIT
         ProfileData
@@ -221,8 +224,8 @@ llvm_map_components_to_libnames(LLVM_LIBRARIES
         X86AsmParser
         X86CodeGen
         X86Desc
-        X86Info
-        X86Utils)
+        X86Info)
+        #X86Utils)
 
 # PEGTL =================================================================== #
 include(FetchContent REQUIRED)

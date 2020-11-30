@@ -228,7 +228,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
             ctx.getBuilder().CreateBr(next_op);
         } else {
             global_end = scan_nodes_end;
-            ctx.getBuilder().CreateCall(finish, {rs});
+            ctx.getBuilder().CreateCall(ctx.finishFctTy, finish, {rs});
             ctx.getBuilder().CreateRet(nullptr);
         }
     }
@@ -868,7 +868,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<sort_op> op) {
     auto sort_fc_ptr = ctx.getBuilder().CreateIntToPtr(sort_fc_raw, ctx.int64PtrTy);
     auto sort_fc = ctx.getBuilder().CreateBitCast(sort_fc_ptr, ctx.finishFctTy->getPointerTo());
 
-    ctx.getBuilder().CreateCall(sort_fc, {res});
+    ctx.getBuilder().CreateCall(ctx.finishFctTy, sort_fc, {res});
 
     ctx.getBuilder().CreateRetVoid();
 }

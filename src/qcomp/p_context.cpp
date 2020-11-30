@@ -963,13 +963,13 @@ Function *PContext::qr_list_append() {
         auto nnode = create_qr_node(qr);
 
         // 3 add to new list
-        Builder->CreateCall(add_end, {nlist, qr});
+        //Builder->CreateCall(add_end, {nlist, qr});
         Builder->CreateBr(epilog);
     });
 
     Builder->SetInsertPoint(end);
     {
-        Builder->CreateCall(add_end, {nlist, qr_el});
+        //Builder->CreateCall(add_end, {nlist, qr_el});
         Builder->CreateRet(nlist);
     }
 
@@ -1035,7 +1035,7 @@ Function *PContext::qr_list_concat() {
         auto nnode = create_qr_node(qr);
 
         // 3 add to new list
-        Builder->CreateCall(add_end, {nlist, qr});
+        //Builder->CreateCall(add_end, {nlist, qr});
         Builder->CreateBr(epilog);
     });
 
@@ -1050,13 +1050,13 @@ Function *PContext::qr_list_concat() {
         auto nnode = create_qr_node(qr);
 
         // 3 add to new list
-        Builder->CreateCall(add_end, {nlist, qr});
+        //Builder->CreateCall(add_end, {nlist, qr});
         Builder->CreateBr(epilog);
     });
 
     Builder->SetInsertPoint(end);
     {
-        Builder->CreateCall(add_end, {nlist, qr_el});
+        //Builder->CreateCall(add_end, {nlist, qr_el});
         Builder->CreateRet(nlist);
     }
 

@@ -325,7 +325,7 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
 
     ctx.getBuilder().SetInsertPoint(consume);
     auto forward = ctx.getBuilder().CreateBitCast(lhs_qr_arr, ctx.int64PtrTy);
-    ctx.getBuilder().CreateCall(fct_ptr, {gdb, noid, forward, rs, nsize, ty, call_map_arg, offset});
+    //ctx.getBuilder().CreateCall(fct_ptr, {gdb, noid, forward, rs, nsize, ty, call_map_arg, offset});
     ctx.getBuilder().CreateBr(loop_body);
 
 
