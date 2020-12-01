@@ -112,7 +112,6 @@ int main() {
 							Sort(sort_fct, Collect()))));
 	
 	queryEngine.generate(fev, false);
-	
 
   	auto js = std::chrono::steady_clock::now();
 	queryEngine.run(&rs);

@@ -314,12 +314,19 @@ void compile_task::operator()() {
     for(int q = 0; q <= query_id; q++) {
         for(auto i = 1u; i < qeng_.operator_names_[q].size(); i++) {
             auto op_name = qeng_.operator_names_[q].at(i);
-            query_engine::operator_functions_[q].push_back(jit_.get_exit()((jit_.getFunctionRaw<consumer_fct_type>(op_name))));
+            auto fc = jit_.getFunctionRaw<consumer_fct_type>(op_name);
+            if(fc)
+                query_engine::operator_functions_[q].push_back(*fc);
         }
     }
 
     for(int q = 0; q <= query_id; q++) {
-        qeng_.finish_[q] = jit_.get_exit()((jit_.getFunctionRaw<finish_fct_type>(finish_name)));
-        qeng_.start_[q] = jit_.get_exit()((jit_.getFunctionRaw<start_ty>(qeng_.operator_names_[q].at(0))));
+        auto finish_fc = jit_.getFunctionRaw<finish_fct_type>(finish_name);
+        if(finish_fc)
+            qeng_.finish_[q] = *finish_fc;
+
+        auto start_fc = jit_.getFunctionRaw<start_ty>(qeng_.operator_names_[q].at(0));
+        if(start_fc)
+            qeng_.start_[q] = *start_fc;
     }
 }

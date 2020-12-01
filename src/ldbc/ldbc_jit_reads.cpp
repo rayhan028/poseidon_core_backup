@@ -18,10 +18,10 @@
 
 using namespace boost::program_options;
 
-void ldbc_jit_is_query_1(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, uint64_t personId) {
+void ldbc_jit_is_query_1_a(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
   auto q = Scan("Person",
               Filter(EQ(Key(0, "id"), Int(personId)),
-                ForeachRship(RSHIP_DIR::FROM, {}, ":isLocated", 
+                ForeachRship(RSHIP_DIR::FROM, {}, ":isLocatedIn", 
                   Expand(EXPAND::OUT, "Place",
                     Project({{0, "firstName", FTYPE::STRING}, {0, "lastName", FTYPE::STRING},
                             {0, "birthday", FTYPE::DATE}, {0, "locationIP", FTYPE::STRING},
@@ -31,13 +31,101 @@ void ldbc_jit_is_query_1(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
   arg_builder ab;
   ab.arg(1, "Person");
   ab.arg(2, personId);
-  ab.arg(3, ":isLocated");
+  ab.arg(3, ":isLocatedIn");
   ab.arg(4, "Place");
 
-  qeng.generate(q, false);
+  qeng.generate(q, adaptive);
   qeng.run(&rs, ab.args);
+}
 
+void ldbc_jit_is_query_1_b(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
+  auto q = Scan("Place",
+            ForeachRship(RSHIP_DIR::TO, {}, ":isLocatedIn",
+              Expand(EXPAND::IN, "Person",
+                Filter(EQ(Key(2, "id"), Int(personId)),
+                  Project({{0, "firstName", FTYPE::STRING}, {0, "lastName", FTYPE::STRING},
+                            {0, "birthday", FTYPE::DATE}, {0, "locationIP", FTYPE::STRING},
+                            {0, "browserUsed", FTYPE::STRING}, {2, "id", FTYPE::STRING},
+                            {0, "gender", FTYPE::STRING}, {0, "creationDate", FTYPE::TIME}}, 
+                    Collect())))));
+
+  arg_builder ab;
+  ab.arg(1, "Place");
+  ab.arg(2, ":isLocatedIn");
+  ab.arg(3, ":Person");
+  ab.arg(4, personId);
+
+  qeng.generate(q, adaptive);
+  qeng.run(&rs, ab.args);
+}
+
+void ldbc_jit_is_query_2_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
+  auto q = Scan("Person", 
+            Filter(EQ(Key(0, "id"), Int(personId)), 
+              ForeachRship(RSHIP_DIR::TO, {}, ":hasCreator",
+                Expand(EXPAND::IN, "Post",
+                  Project({{2, "id", FTYPE::UINT64}, {2, "imageFile", FTYPE::STRING},
+                           {2, "creationDate", FTYPE::TIME}, {2, "id", FTYPE::UINT64},
+                           {0, "id", FTYPE::UINT64}, {0, "firstName", FTYPE::STRING},
+                           {0, "lastName", FTYPE::STRING}}, Collect())))));
   
+  arg_builder ab;
+  ab.arg(1, "Person");
+  ab.arg(2, personId);
+  ab.arg(3, ":hasCreator");
+  ab.arg(4, "Post");
+
+  qeng.generate(q, adaptive);
+  qeng.run(&rs, ab.args);
+}
+
+void ldbc_jit_is_query_2_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
+  auto maxHops = 100;
+  
+  auto q  = Scan("Person",
+              Filter(EQ(Key(0, "id"), Int(personId)), 
+                ForeachRship(RSHIP_DIR::TO, {}, ":hasCreator",
+                  Expand(EXPAND::IN, "Comment", 
+                    ForeachRship(RSHIP_DIR::FROM, {1, maxHops}, ":replyOf",
+                      Expand(EXPAND::OUT, "Post",
+                        ForeachRship(RSHIP_DIR::FROM, {}, ":hasCreator",
+                          Expand(EXPAND::OUT, "Person",
+                            Project({{2, "id", FTYPE::UINT64}, {2, "content", FTYPE::STRING},
+                                     {2, "creationDate", FTYPE::TIME}, {4, "id", FTYPE::UINT64},
+                                     {6, "id", FTYPE::UINT64}, {6, "firstName", FTYPE::STRING},
+                                     {6, "lastName", FTYPE::STRING}}, 
+                              Sort([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                                if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
+                                  return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
+                                return boost::get<boost::posix_time::ptime>(qr1[2]) > boost::get<boost::posix_time::ptime>(qr2[2]); }, 
+                                  Limit(10, Collect())))))))))));
+
+  arg_builder ab;
+  ab.arg(1, "Person");
+  ab.arg(2, personId);
+  ab.arg(3, ":hasCreator");
+  ab.arg(4, "Comment");
+  ab.arg(5, ":replyOf");
+  ab.arg(6, "Post");
+  ab.arg(7, ":hasCreator");
+  ab.arg(8, "Person");
+
+  qeng.generate(q, adaptive);
+  qeng.run(&rs, ab.args);
+}
+
+void ldbc_jit_is_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
+  auto q = Scan("Person",
+            Filter(EQ(Key(0, "id"), Int(personId)), 
+              ForeachRship(RSHIP_DIR::FROM, {}, ":knows",
+                Expand(EXPAND::OUT, "Person",
+                  Project({}, 
+                    Sort([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                          if (boost::get<boost::posix_time::ptime>(qr1[3]) == boost::get<boost::posix_time::ptime>(qr2[3]))
+                            return boost::get<uint64_t>(qr1[0]) < boost::get<uint64_t>(qr2[0]);
+                          return boost::get<boost::posix_time::ptime>(qr1[3]) > boost::get<boost::posix_time::ptime>(qr2[3]); },
+                      Collect()))))));
+
 }
 
 void run_benchmark(graph_db_ptr gdb) {

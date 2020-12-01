@@ -31,97 +31,98 @@ JitFromScratch::JitFromScratch(ExitOnError ExitOnErr)
           CompileLayer(*ES, ObjLinkingLayer, std::make_unique<SimpleCompiler>(*TM)),
           OptimizeLayer(*ES, CompileLayer) {
     //ObjLinkingLayer.setNotifyLoaded(createNotifyLoadedFtor());
-    ES->createJITDylib("Main");
-    if(auto R = createHostProcessResolver())
-        ES->getJITDylibByName("Main")->addGenerator(std::move(R));
+    auto exp_jit_dylib = ES->createJITDylib("Main");
+    if(exp_jit_dylib) {
+        if(auto R = createHostProcessResolver())
+                ES->getJITDylibByName("Main")->addGenerator(std::move(R));
+        SymbolMap M;
+        MangleAndInterner Mangle(*ES, getDataLayout());
+        // Register every symbol that can be accessed from the JIT'ed code.
+        M[Mangle("vec_end_reached")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&vec_end_reached), JITSymbolFlags::Exported);
+        M[Mangle("get_vec_begin")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_vec_begin), JITSymbolFlags::Exported);
+        M[Mangle("get_vec_next")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_vec_next), JITSymbolFlags::Exported);
+        M[Mangle("dict_lookup_label")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&dict_lookup_label), JITSymbolFlags::Exported);
+        M[Mangle("gdb_get_nodes")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&gdb_get_nodes), JITSymbolFlags::Exported);
+        M[Mangle("node_by_id")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&node_by_id), JITSymbolFlags::Absolute);
+        M[Mangle("get_node_from_it")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_node_from_it), JITSymbolFlags::Exported);
+        M[Mangle("gdb_get_rships")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&gdb_get_rships), JITSymbolFlags::Exported);
+        M[Mangle("get_rship_from_it")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_rship_from_it), JITSymbolFlags::Exported);
+        M[Mangle("get_vec_begin_r")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_vec_begin_r), JITSymbolFlags::Exported);
+        M[Mangle("get_vec_next_r")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_vec_next_r), JITSymbolFlags::Exported);
+        M[Mangle("vec_end_reached_r")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&vec_end_reached_r), JITSymbolFlags::Exported);
+        M[Mangle("rship_by_id")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&rship_by_id), JITSymbolFlags::Exported);
+        M[Mangle("gdb_get_dcode")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&gdb_get_dcode), JITSymbolFlags::Exported);
+        M[Mangle("pset_get_item_at")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&pset_get_item_at), JITSymbolFlags::Exported);
+        M[Mangle("get_tx")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_tx), JITSymbolFlags::Exported);
+        M[Mangle("get_valid_node")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_valid_node), JITSymbolFlags::Exported);
+        M[Mangle("apply_pexpr")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&apply_pexpr), JITSymbolFlags::Exported);
+        M[Mangle("dict_lookup_dcode")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&lookup_dc), JITSymbolFlags::Exported);
+        M[Mangle("create_node")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&create_node), JITSymbolFlags::Exported);
+        M[Mangle("create_ship")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&create_rship), JITSymbolFlags::Exported);
+        M[Mangle("foreach_variable_from")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&foreach_variable_from), JITSymbolFlags::Exported);
+        M[Mangle("foreach_variable_from")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&foreach_variable_from), JITSymbolFlags::Exported);
+        M[Mangle("mat_reg_value")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&mat_reg_value), JITSymbolFlags::Exported);
+        M[Mangle("collect_tuple")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&collect_tuple), JITSymbolFlags::Exported);
+        M[Mangle("obtain_mat_tuple")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&obtain_mat_tuple), JITSymbolFlags::Exported);
+        M[Mangle("mat_node")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&mat_node), JITSymbolFlags::Exported);
+        M[Mangle("mat_rship")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&mat_rship), JITSymbolFlags::Exported);
+        M[Mangle("collect_tuple_join")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&collect_tuple_join), JITSymbolFlags::Exported);
+        M[Mangle("get_join_tp_at")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_join_tp_at), JITSymbolFlags::Exported);
+        M[Mangle("get_node_res_at")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_node_res_at), JITSymbolFlags::Exported);
+        M[Mangle("get_rship_res_at")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_rship_res_at), JITSymbolFlags::Exported);
+        M[Mangle("get_mat_res_size")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_mat_res_size), JITSymbolFlags::Exported);
+        M[Mangle("index_get_node")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&index_get_node), JITSymbolFlags::Exported);
+        M[Mangle("apply_pexpr_node")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&apply_pexpr_node), JITSymbolFlags::Exported);
+        M[Mangle("apply_pexpr_rship")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&apply_pexpr_rship), JITSymbolFlags::Exported);
+        M[Mangle("retrieve_fev_queue")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&retrieve_fev_queue), JITSymbolFlags::Exported);            
+        M[Mangle("insert_fev_rship")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&insert_fev_rship), JITSymbolFlags::Exported);            
+        M[Mangle("foreach_from_variable_rship")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&foreach_from_variable_rship), JITSymbolFlags::Exported);            
+        M[Mangle("get_next_rship_fev")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_next_rship_fev), JITSymbolFlags::Exported);            
+        M[Mangle("fev_list_end")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&fev_list_end), JITSymbolFlags::Exported);            
 
-    SymbolMap M;
-    MangleAndInterner Mangle(*ES, getDataLayout());
-    // Register every symbol that can be accessed from the JIT'ed code.
-    M[Mangle("vec_end_reached")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&vec_end_reached), JITSymbolFlags::Exported);
-    M[Mangle("get_vec_begin")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_vec_begin), JITSymbolFlags::Exported);
-    M[Mangle("get_vec_next")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_vec_next), JITSymbolFlags::Exported);
-    M[Mangle("dict_lookup_label")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&dict_lookup_label), JITSymbolFlags::Exported);
-    M[Mangle("gdb_get_nodes")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&gdb_get_nodes), JITSymbolFlags::Exported);
-    M[Mangle("node_by_id")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&node_by_id), JITSymbolFlags::Absolute);
-    M[Mangle("get_node_from_it")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_node_from_it), JITSymbolFlags::Exported);
-    M[Mangle("gdb_get_rships")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&gdb_get_rships), JITSymbolFlags::Exported);
-    M[Mangle("get_rship_from_it")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_rship_from_it), JITSymbolFlags::Exported);
-    M[Mangle("get_vec_begin_r")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_vec_begin_r), JITSymbolFlags::Exported);
-    M[Mangle("get_vec_next_r")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_vec_next_r), JITSymbolFlags::Exported);
-    M[Mangle("vec_end_reached_r")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&vec_end_reached_r), JITSymbolFlags::Exported);
-    M[Mangle("rship_by_id")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&rship_by_id), JITSymbolFlags::Exported);
-    M[Mangle("gdb_get_dcode")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&gdb_get_dcode), JITSymbolFlags::Exported);
-    M[Mangle("pset_get_item_at")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&pset_get_item_at), JITSymbolFlags::Exported);
-    M[Mangle("get_tx")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_tx), JITSymbolFlags::Exported);
-    M[Mangle("get_valid_node")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_valid_node), JITSymbolFlags::Exported);
-    M[Mangle("apply_pexpr")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&apply_pexpr), JITSymbolFlags::Exported);
-    M[Mangle("dict_lookup_dcode")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&lookup_dc), JITSymbolFlags::Exported);
-    M[Mangle("create_node")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&create_node), JITSymbolFlags::Exported);
-    M[Mangle("create_ship")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&create_rship), JITSymbolFlags::Exported);
-    M[Mangle("foreach_variable_from")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&foreach_variable_from), JITSymbolFlags::Exported);
-    M[Mangle("foreach_variable_from")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&foreach_variable_from), JITSymbolFlags::Exported);
-    M[Mangle("mat_reg_value")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&mat_reg_value), JITSymbolFlags::Exported);
-    M[Mangle("collect_tuple")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&collect_tuple), JITSymbolFlags::Exported);
-    M[Mangle("obtain_mat_tuple")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&obtain_mat_tuple), JITSymbolFlags::Exported);
-    M[Mangle("mat_node")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&mat_node), JITSymbolFlags::Exported);
-    M[Mangle("mat_rship")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&mat_rship), JITSymbolFlags::Exported);
-    M[Mangle("collect_tuple_join")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&collect_tuple_join), JITSymbolFlags::Exported);
-    M[Mangle("get_join_tp_at")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_join_tp_at), JITSymbolFlags::Exported);
-    M[Mangle("get_node_res_at")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_node_res_at), JITSymbolFlags::Exported);
-    M[Mangle("get_rship_res_at")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_rship_res_at), JITSymbolFlags::Exported);
-    M[Mangle("get_mat_res_size")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_mat_res_size), JITSymbolFlags::Exported);
-    M[Mangle("index_get_node")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&index_get_node), JITSymbolFlags::Exported);
-    M[Mangle("apply_pexpr_node")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&apply_pexpr_node), JITSymbolFlags::Exported);
-    M[Mangle("apply_pexpr_rship")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&apply_pexpr_rship), JITSymbolFlags::Exported);
-    M[Mangle("retrieve_fev_queue")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&retrieve_fev_queue), JITSymbolFlags::Exported);            
-    M[Mangle("insert_fev_rship")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&insert_fev_rship), JITSymbolFlags::Exported);            
-    M[Mangle("foreach_from_variable_rship")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&foreach_from_variable_rship), JITSymbolFlags::Exported);            
-    M[Mangle("get_next_rship_fev")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&get_next_rship_fev), JITSymbolFlags::Exported);            
-    M[Mangle("fev_list_end")] = JITEvaluatedSymbol(
-            pointerToJITTargetAddress(&fev_list_end), JITSymbolFlags::Exported);            
-
-    ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
+        ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
+    }
 }
 
 Error JitFromScratch::addModule(std::unique_ptr<Module> M) {
