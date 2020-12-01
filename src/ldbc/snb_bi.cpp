@@ -933,6 +933,106 @@ void ldbc_bi_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
   rs.wait();
 }
 
+void ldbc_bi_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+    std::vector<result_set> grps1;
+    std::vector<result_set> grps2;
+    std::vector<result_set> grps3;
+    std::vector<result_set> grps4;
+
+    // Query pipeline
+    auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Place")
+              .property("name", [&](auto &prop) {
+                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
+                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
+#else
+              .nodes_where("Place", "name", [&](auto &prop) {
+                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
+                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
+#endif
+              .to_relationships(":isPartOf")
+              .from_node("Place")
+              .to_relationships(":isLocatedIn")
+              .from_node("Person")
+              .property("creationDate", [&](auto &p) {
+                return (*(reinterpret_cast<const ptime *>(p.value_))) <
+                        boost::get<ptime>(params[1]); })
+              .to_relationships(":hasCreator")
+              .from_node(message)
+              .group(grps1, {4})
+              .aggregate(grps1, {{"count", 0}})
+              .project({PVar_(0),
+                        PVar_(1),
+                        PExpr_(0, pj::ptime_property(res, "creationDate")) })
+              .where_qr_tuple([&](const qr_tuple &v) {
+                time_period duration(boost::get<ptime>(v[2]), boost::get<ptime>(params[1])); // TODO
+                auto mpm = (duration.length().hours() / 713) / boost::get<uint64_t>(v[1]);
+                return mpm < 1; });
+
+    auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Place")
+              .property("name", [&](auto &prop) {
+                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
+                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
+#else
+              .nodes_where("Place", "name", [&](auto &prop) {
+                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
+                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
+#endif
+              .to_relationships(":isPartOf")
+              .from_node("Place")
+              .to_relationships(":isLocatedIn")
+              .from_node("Person")
+              .property("creationDate", [&](auto &p) {
+                return (*(reinterpret_cast<const ptime *>(p.value_))) <
+                        boost::get<ptime>(params[1]); })
+              .to_relationships(":hasCreator")
+              .from_node(message)
+              .group(grps2, {4})
+              .aggregate(grps2, {{"count", 0}})
+              .project({PVar_(0),
+                        PVar_(1),
+                        PExpr_(0, pj::ptime_property(res, "creationDate")) })
+              .where_qr_tuple([&](const qr_tuple &v) {
+                time_period duration(boost::get<ptime>(v[2]), boost::get<ptime>(params[1]));
+                auto mpm = (duration.length().hours() / 713) / boost::get<uint64_t>(v[1]);
+                return mpm < 1; })
+              .to_relationships(":hasCreator", 0)
+              .from_node(message)
+              .to_relationships(":likes")
+              .from_node("Person")
+              .hashjoin_on_node({6, 0}, q1)
+              .group(grps3, {0})
+              .aggregate(grps3, {{"count", 0}})
+              .to_relationships(":hasCreator", 0)
+              .from_node(message)
+              .to_relationships(":likes")
+              .from_node("Person")
+              .group(grps4, {0, 1})
+              .aggregate(grps4, {{"count", 0}})
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                auto score = boost::get<uint64_t>(v[2]) == 0 ?
+                      0 : boost::get<uint64_t>(v[1]) / (double)boost::get<uint64_t>(v[2]);
+                return query_result(score); })
+              .project({PExpr_(0, pj::uint64_property(res, "id")),
+                        PVar_(1),
+                        PVar_(2),
+                        PVar_(3) })
+              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
+                if (boost::get<double>(q1[3]) == boost::get<double>(q2[3]))
+                  return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);
+                return boost::get<double>(q1[3]) > boost::get<double>(q2[3]); })
+              .limit(100)
+              .collect(rs);
+
+    query::start({&q1, &q2});
+    rs.wait();
+}
+
 /* ------------------------------------------------------------------------ */
 
 double calc_avg_time(const std::vector<double>& vec) {
@@ -1224,6 +1324,29 @@ double run_query_12(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
+double run_query_13(graph_db_ptr gdb) {
+    std::vector<params_tuple> params = {{"Spain", time_from_string(std::string("2010-10-30 01:51:21.746"))}};
+
+    std::vector<double> runtimes(params.size());
+
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        auto tx = gdb->begin_transaction();
+        ldbc_bi_query_13(gdb, rs, params[i]);
+        gdb->commit_transaction();
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return calc_avg_time(runtimes);
+}
+
 void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
     t = run_query_1(gdb);
@@ -1250,6 +1373,8 @@ void run_benchmark(graph_db_ptr gdb) {
     spdlog::info("Query #11: {} msecs", t);
     t = run_query_12(gdb);
     spdlog::info("Query #12: {} msecs", t);
+    t = run_query_13(gdb);
+    spdlog::info("Query #13: {} msecs", t);
 }
 
 /* ---------------------------------------------------------------------------- */
