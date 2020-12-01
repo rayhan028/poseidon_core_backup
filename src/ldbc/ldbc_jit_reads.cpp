@@ -119,13 +119,208 @@ void ldbc_jit_is_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
             Filter(EQ(Key(0, "id"), Int(personId)), 
               ForeachRship(RSHIP_DIR::FROM, {}, ":knows",
                 Expand(EXPAND::OUT, "Person",
-                  Project({}, 
+                  Project({{2, "id", FTYPE::UINT64}, {2, "firstName", FTYPE::STRING},
+                           {2, "lastName", FTYPE::STRING}, {1, "creationDate", FTYPE::TIME}}, 
                     Sort([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                           if (boost::get<boost::posix_time::ptime>(qr1[3]) == boost::get<boost::posix_time::ptime>(qr2[3]))
                             return boost::get<uint64_t>(qr1[0]) < boost::get<uint64_t>(qr2[0]);
                           return boost::get<boost::posix_time::ptime>(qr1[3]) > boost::get<boost::posix_time::ptime>(qr2[3]); },
                       Collect()))))));
 
+  arg_builder ab;
+  ab.arg(1, "Person");
+  ab.arg(2, personId);
+  ab.arg(3, ":knows");
+  ab.arg(4, "Person");
+
+  qeng.generate(q, adaptive);
+  qeng.run(&rs, ab.args);
+}
+
+void ldbc_jit_is_query_4_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
+  auto q = Scan("Post",
+            Filter(EQ(Key(0, "id"), Int(messageId)), 
+              Project({{0, "creationDate", FTYPE::TIME}, {0, "imageFile", FTYPE::STRING}}, 
+                Collect())));
+  
+  arg_builder ab;
+  ab.arg(1, "Post");
+  ab.arg(2, messageId);
+
+  qeng.generate(q, adaptive);
+  qeng.run(&rs, ab.args);
+}
+
+void ldbc_jit_is_query_4_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
+  auto q = Scan("Comment",
+            Filter(EQ(Key(0, "id"), Int(messageId)), 
+              Project({{0, "creationDate", FTYPE::TIME}, {0, "content", FTYPE::STRING}}, 
+                Collect())));
+  
+  arg_builder ab;
+  ab.arg(1, "Comment");
+  ab.arg(2, messageId);
+
+  qeng.generate(q, adaptive);
+  qeng.run(&rs, ab.args);
+}
+
+void ldbc_jit_is_query_5_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
+  auto q = Scan("Post",
+            Filter(EQ(Key(0, "id"), Int(messageId)),
+              ForeachRship(RSHIP_DIR::FROM, {}, ":hasCreator",
+                Expand(EXPAND::OUT, "Person",
+                  Project({{2, "id", FTYPE::UINT64}, {2, "firstName", FTYPE::STRING}, {2, "lastName", FTYPE::STRING}}, 
+                    Collect())))));
+
+  arg_builder ab;
+  ab.arg(1, "Post");
+  ab.arg(2, messageId);
+  ab.arg(3, ":hasCreator");
+  ab.arg(4, "Person");
+
+  qeng.generate(q, adaptive);
+  qeng.run(&rs, ab.args);
+}
+
+void ldbc_jit_is_query_5_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
+  auto q = Scan("Comment",
+            Filter(EQ(Key(0, "id"), Int(messageId)),
+              ForeachRship(RSHIP_DIR::FROM, {}, ":hasCreator",
+                Expand(EXPAND::OUT, "Person",
+                  Project({{2, "id", FTYPE::UINT64}, {2, "firstName", FTYPE::STRING}, {2, "lastName", FTYPE::STRING}}, 
+                    Collect())))));
+
+  arg_builder ab;
+  ab.arg(1, "Comment");
+  ab.arg(2, messageId);
+  ab.arg(3, ":hasCreator");
+  ab.arg(4, "Person");
+
+  qeng.generate(q, adaptive);
+  qeng.run(&rs, ab.args);
+}
+
+void ldbc_jit_is_query_6_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
+  auto q = Scan("Post",
+            Filter(EQ(Key(0, "id"), Int(messageId)),
+              ForeachRship(RSHIP_DIR::TO, {}, ":containerOf",
+                Expand(EXPAND::IN, "Forum",
+                  ForeachRship(RSHIP_DIR::FROM, {}, ":hasModerator",
+                    Expand(EXPAND::OUT, "Person",
+                      Project({{2, "id", FTYPE::UINT64}, {2, "title", FTYPE::STRING}, {4, "id", FTYPE::UINT64},
+                               {4, "firstName", FTYPE::STRING}, {4, "lastName", FTYPE::STRING}}, 
+                        Collect())))))));
+
+  arg_builder ab;
+  ab.arg(1, "Post");
+  ab.arg(2, messageId);
+  ab.arg(3, ":containerOf");
+  ab.arg(4, "Forum");
+  ab.arg(5, ":hasModerator");
+  ab.arg(6, "Person");
+
+  qeng.generate(q, adaptive);
+  qeng.run(&rs, ab.args);
+}
+
+void ldbc_jit_is_query_6_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
+  auto maxHops = 100;
+
+  auto q = Scan("Comment",
+            Filter(EQ(Key(0, "id"), Int(messageId)),
+              ForeachRship(RSHIP_DIR::TO, {1, maxHops}, ":replyOf",
+                Expand(EXPAND::IN, "Post",
+                  ForeachRship(RSHIP_DIR::FROM, {}, ":containerOf",
+                    Expand(EXPAND::OUT, "Forum",
+                      ForeachRship(RSHIP_DIR::FROM, {}, ":hasModerator",
+                        Expand(EXPAND::OUT, "Person",
+                          Project({{2, "id", FTYPE::UINT64}, {2, "title", FTYPE::STRING}, {4, "id", FTYPE::UINT64},
+                               {4, "firstName", FTYPE::STRING}, {4, "lastName", FTYPE::STRING}}, 
+                            Collect())))))))));
+
+  arg_builder ab;
+  ab.arg(1, "Comment");
+  ab.arg(2, messageId);
+  ab.arg(3, ":replyOf");
+  ab.arg(4, "Post");
+  ab.arg(5, ":containerOf");
+  ab.arg(6, "Forum");
+  ab.arg(7, ":hasModerator");
+  ab.arg(8, "Person");
+
+  qeng.generate(q, adaptive);
+  qeng.run(&rs, ab.args);
+}
+
+void ldbc_jit_is_query_7_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
+  auto q1 = Scan("Post",
+            Filter(EQ(Key(0, "id"), Int(messageId)),
+              ForeachRship(RSHIP_DIR::FROM, {}, ":hasCreator",
+                Expand(EXPAND::OUT, "Person", End()))));
+
+  auto q2 = Scan("Post",
+            Filter(EQ(Key(0, "id"), Int(messageId)),
+              ForeachRship(RSHIP_DIR::TO, {}, ":replyOf",
+                Expand(EXPAND::IN, "Comment", 
+                  ForeachRship(RSHIP_DIR::FROM, {}, ":hasCreator",
+                    Expand(EXPAND::OUT, "Person", 
+                      Join(JOIN_OP::LEFT_OUTER, {4, 2}, 
+                        Project({
+                          {2, "id", FTYPE::UINT64}, {2, "content", FTYPE::STRING}, {2, "creationDate", FTYPE::TIME},
+                          {4, "id", FTYPE::UINT64}, {4, "firstName", FTYPE::STRING}, {4, "lastName", FTYPE::STRING},
+                          {8, "", FTYPE::BOOLEAN}
+                          }, 
+                          Collect()), q1)))))));
+
+  arg_builder ab;
+  ab.arg(1, "Person");
+  ab.arg(2, messageId);
+  ab.arg(3, ":replyOf");
+  ab.arg(4, "Comment");
+  ab.arg(5, ":hasCreator");
+  ab.arg(6, "Person");
+  ab.arg(7, "Post");
+  ab.arg(8, messageId);
+  ab.arg(9, ":hasCreator");
+  ab.arg(10, "Person");
+
+  qeng.generate(q2, adaptive);
+  qeng.run(&rs, ab.args);
+}
+
+void ldbc_jit_is_query_7_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
+  auto q1 = Scan("Comment",
+            Filter(EQ(Key(0, "id"), Int(messageId)),
+              ForeachRship(RSHIP_DIR::FROM, {}, ":hasCreator",
+                Expand(EXPAND::OUT, "Person", End()))));
+
+  auto q2 = Scan("Comment",
+            Filter(EQ(Key(0, "id"), Int(messageId)),
+              ForeachRship(RSHIP_DIR::TO, {}, ":replyOf",
+                Expand(EXPAND::IN, "Comment", 
+                  ForeachRship(RSHIP_DIR::TO, {}, ":hasCreator",
+                    Expand(EXPAND::OUT, "Person", 
+                      Join(JOIN_OP::LEFT_OUTER, {4, 2}, Project({
+                          {2, "id", FTYPE::UINT64}, {2, "content", FTYPE::STRING}, {2, "creationDate", FTYPE::TIME},
+                          {4, "id", FTYPE::UINT64}, {4, "firstName", FTYPE::STRING}, {4, "lastName", FTYPE::STRING},
+                          {8, "", FTYPE::BOOLEAN}
+                          }, Collect()), q1)))))));
+
+  arg_builder ab;
+  ab.arg(1, "Comment");
+  ab.arg(2, messageId);
+  ab.arg(3, ":replyOf");
+  ab.arg(4, "Comment");
+  ab.arg(5, ":hasCreator");
+  ab.arg(6, "Person");
+  ab.arg(7, "Post");
+  ab.arg(8, messageId);
+  ab.arg(9, ":hasCreator");
+  ab.arg(10, "Person");
+
+  qeng.generate(q2, adaptive);
+  qeng.run(&rs, ab.args);
 }
 
 void run_benchmark(graph_db_ptr gdb) {
