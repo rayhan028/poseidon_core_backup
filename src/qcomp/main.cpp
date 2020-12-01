@@ -111,10 +111,17 @@ int main() {
 						Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64}},
 							Sort(sort_fct, Collect()))));
 	
-	queryEngine.generate(fev, false);
+	queryEngine.generate(l_expr, false);
+	arg_builder ab;
+	ab.arg(1, "Person");
+	ab.arg(2, ":HAS_READ");
+	ab.arg(3, "Book");
+	ab.arg(4, "Book");
+	ab.arg(5, ":HAS_READ");
+	ab.arg(6, "Person");
 
   	auto js = std::chrono::steady_clock::now();
-	queryEngine.run(&rs);
+	queryEngine.run(&rs, ab.args);
   	auto je = std::chrono::steady_clock::now();
 
 	std::cout << rs << std::endl;
