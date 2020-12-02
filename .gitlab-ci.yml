@@ -6,7 +6,6 @@ stages:
 
 build:
   stage: build
-  image: "dbisilm/pmdk:latest"
   tags:
     - grouprunner
   script:
@@ -24,7 +23,6 @@ build:
 
 test:
   stage: test
-  image: "dbisilm/pmdk:latest"
   tags:
     - grouprunner
   script:
@@ -36,7 +34,6 @@ test:
 
 coverage:
   stage: build
-  image: "dbisilm/pmdk:latest"
   tags:
     - grouprunner
   script:
