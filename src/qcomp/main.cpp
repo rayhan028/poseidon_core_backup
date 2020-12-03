@@ -45,7 +45,7 @@ int main() {
 
 	auto tx = graph->begin_transaction();
 
-	int PERSONS = 10;
+	int PERSONS = 1000;
 	int NO_PERSONS = 42;
 	for (int i = 0; i < PERSONS; i++) {
 		auto p = graph->add_node("Person",
@@ -95,26 +95,27 @@ int main() {
 	
 	algebra_optr op = qlc.compile_to_plan("Project([$0.name:string, $0.num:uint64], NodeScan('Person'))");
 
-	auto r_expr = Scan("Book", ForeachRship(RSHIP_DIR::TO, {}, ":HAS_READ", Expand(EXPAND::IN, "Person", End())));
+	auto r_expr = Scan("Book", End());
 
-    auto l_expr = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", 
-                       Expand(EXPAND::OUT, "Book", Join(JOIN_OP::CROSS, {}, 
-                        Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64},
-                                  {3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {3, "id", FTYPE::INT}, {5, "name", FTYPE::STRING}}, Collect()), r_expr))));
+    auto l_expr = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0, 0}, 
+                        Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64}
+                                  /*{3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {0, "id", FTYPE::INT}, {0, "name", FTYPE::STRING}*/}, 
+							Collect()), r_expr));
 
 	auto sort_fct = [&](const qr_tuple &q1, const qr_tuple &q2) -> bool {
 		return boost::get<uint64_t>(q1[2]) < boost::get<uint64_t>(q2[2]); 
 	};
 
 	auto fev = Scan("Person", 
-					ForeachRship(RSHIP_DIR::FROM, {1,2}, ":HAS_READ", 
+					ForeachRship(RSHIP_DIR::FROM, {1,100}, ":HAS_READ", 
 						Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64}},
 							Sort(sort_fct, Collect()))));
 	
 	queryEngine.generate(l_expr, false);
+	
 	arg_builder ab;
 	ab.arg(1, "Person");
-	ab.arg(2, ":HAS_READ");
+	ab.arg(2, "Book");
 	ab.arg(3, "Book");
 	ab.arg(4, "Book");
 	ab.arg(5, ":HAS_READ");
@@ -124,7 +125,7 @@ int main() {
 	queryEngine.run(&rs, ab.args);
   	auto je = std::chrono::steady_clock::now();
 
-	std::cout << rs << std::endl;
+	std::cout << rs.data.size() << std::endl;
 	  std::cout << "JIT: "
             << std::chrono::duration_cast<std::chrono::milliseconds>(je -
                                                                      js)

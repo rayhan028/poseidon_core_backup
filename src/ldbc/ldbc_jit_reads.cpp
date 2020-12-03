@@ -25,7 +25,7 @@ void ldbc_jit_is_query_1_a(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
                   Expand(EXPAND::OUT, "Place",
                     Project({{0, "firstName", FTYPE::STRING}, {0, "lastName", FTYPE::STRING},
                             {0, "birthday", FTYPE::DATE}, {0, "locationIP", FTYPE::STRING},
-                            {0, "browserUsed", FTYPE::STRING}, {2, "id", FTYPE::STRING},
+                            {0, "browserUsed", FTYPE::STRING}, {2, "id", FTYPE::UINT64},
                             {0, "gender", FTYPE::STRING}, {0, "creationDate", FTYPE::TIME}}, 
                       Collect())))));
   arg_builder ab;
@@ -34,8 +34,20 @@ void ldbc_jit_is_query_1_a(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(3, ":isLocatedIn");
   ab.arg(4, "Place");
 
+  auto c_s = std::chrono::steady_clock::now();
   qeng.generate(q, adaptive);
+  auto c_e = std::chrono::steady_clock::now();
+
+  auto e_s = std::chrono::steady_clock::now();
   qeng.run(&rs, ab.args);
+  auto e_e = std::chrono::steady_clock::now();
+
+  std::cout << "Compilation: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count()
+        << " ms" << std::endl;
+  std::cout << "Execution: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
 }
 
 void ldbc_jit_is_query_1_b(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
@@ -64,7 +76,7 @@ void ldbc_jit_is_query_2_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
             Filter(EQ(Key(0, "id"), Int(personId)), 
               ForeachRship(RSHIP_DIR::TO, {}, ":hasCreator",
                 Expand(EXPAND::IN, "Post",
-                  Project({{2, "id", FTYPE::UINT64}, {2, "imageFile", FTYPE::STRING},
+                  Project({{2, "id", FTYPE::UINT64}, /*{2, "content", FTYPE::STRING},*/
                            {2, "creationDate", FTYPE::TIME}, {2, "id", FTYPE::UINT64},
                            {0, "id", FTYPE::UINT64}, {0, "firstName", FTYPE::STRING},
                            {0, "lastName", FTYPE::STRING}}, Collect())))));
@@ -75,8 +87,20 @@ void ldbc_jit_is_query_2_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(3, ":hasCreator");
   ab.arg(4, "Post");
 
+  auto c_s = std::chrono::steady_clock::now();
   qeng.generate(q, adaptive);
+  auto c_e = std::chrono::steady_clock::now();
+
+  auto e_s = std::chrono::steady_clock::now();
   qeng.run(&rs, ab.args);
+  auto e_e = std::chrono::steady_clock::now();
+
+  std::cout << "Compilation: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count()
+        << " ms" << std::endl;
+  std::cout << "Execution: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
 }
 
 void ldbc_jit_is_query_2_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
@@ -94,11 +118,11 @@ void ldbc_jit_is_query_2_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
                                      {2, "creationDate", FTYPE::TIME}, {4, "id", FTYPE::UINT64},
                                      {6, "id", FTYPE::UINT64}, {6, "firstName", FTYPE::STRING},
                                      {6, "lastName", FTYPE::STRING}}, 
-                              Sort([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                              /*Sort([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                                 if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
                                   return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
-                                return boost::get<boost::posix_time::ptime>(qr1[2]) > boost::get<boost::posix_time::ptime>(qr2[2]); }, 
-                                  Limit(10, Collect())))))))))));
+                                return boost::get<boost::posix_time::ptime>(qr1[2]) > boost::get<boost::posix_time::ptime>(qr2[2]); },*/ 
+                                  Limit(10, Collect()))))))))));
 
   arg_builder ab;
   ab.arg(1, "Person");
@@ -110,8 +134,20 @@ void ldbc_jit_is_query_2_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(7, ":hasCreator");
   ab.arg(8, "Person");
 
+  auto c_s = std::chrono::steady_clock::now();
   qeng.generate(q, adaptive);
+  auto c_e = std::chrono::steady_clock::now();
+
+  auto e_s = std::chrono::steady_clock::now();
   qeng.run(&rs, ab.args);
+  auto e_e = std::chrono::steady_clock::now();
+
+  std::cout << "Compilation: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count()
+        << " ms" << std::endl;
+  std::cout << "Execution: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
 }
 
 void ldbc_jit_is_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
@@ -121,11 +157,11 @@ void ldbc_jit_is_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
                 Expand(EXPAND::OUT, "Person",
                   Project({{2, "id", FTYPE::UINT64}, {2, "firstName", FTYPE::STRING},
                            {2, "lastName", FTYPE::STRING}, {1, "creationDate", FTYPE::TIME}}, 
-                    Sort([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                    /*Sort([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                           if (boost::get<boost::posix_time::ptime>(qr1[3]) == boost::get<boost::posix_time::ptime>(qr2[3]))
                             return boost::get<uint64_t>(qr1[0]) < boost::get<uint64_t>(qr2[0]);
-                          return boost::get<boost::posix_time::ptime>(qr1[3]) > boost::get<boost::posix_time::ptime>(qr2[3]); },
-                      Collect()))))));
+                          return boost::get<boost::posix_time::ptime>(qr1[3]) > boost::get<boost::posix_time::ptime>(qr2[3]); },*/
+                      Collect())))));
 
   arg_builder ab;
   ab.arg(1, "Person");
@@ -133,22 +169,46 @@ void ldbc_jit_is_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
   ab.arg(3, ":knows");
   ab.arg(4, "Person");
 
+  auto c_s = std::chrono::steady_clock::now();
   qeng.generate(q, adaptive);
+  auto c_e = std::chrono::steady_clock::now();
+
+  auto e_s = std::chrono::steady_clock::now();
   qeng.run(&rs, ab.args);
+  auto e_e = std::chrono::steady_clock::now();
+
+  std::cout << "Compilation: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count()
+        << " ms" << std::endl;
+  std::cout << "Execution: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
 }
 
 void ldbc_jit_is_query_4_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
   auto q = Scan("Post",
             Filter(EQ(Key(0, "id"), Int(messageId)), 
-              Project({{0, "creationDate", FTYPE::TIME}, {0, "imageFile", FTYPE::STRING}}, 
+              Project({{0, "creationDate", FTYPE::TIME}, /*{0, "imageFile", FTYPE::STRING}*/}, 
                 Collect())));
   
   arg_builder ab;
   ab.arg(1, "Post");
   ab.arg(2, messageId);
 
+  auto c_s = std::chrono::steady_clock::now();
   qeng.generate(q, adaptive);
+  auto c_e = std::chrono::steady_clock::now();
+
+  auto e_s = std::chrono::steady_clock::now();
   qeng.run(&rs, ab.args);
+  auto e_e = std::chrono::steady_clock::now();
+
+  std::cout << "Compilation: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count()
+        << " ms" << std::endl;
+  std::cout << "Execution: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
 }
 
 void ldbc_jit_is_query_4_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
@@ -161,8 +221,20 @@ void ldbc_jit_is_query_4_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(1, "Comment");
   ab.arg(2, messageId);
 
+  auto c_s = std::chrono::steady_clock::now();
   qeng.generate(q, adaptive);
+  auto c_e = std::chrono::steady_clock::now();
+
+  auto e_s = std::chrono::steady_clock::now();
   qeng.run(&rs, ab.args);
+  auto e_e = std::chrono::steady_clock::now();
+
+  std::cout << "Compilation: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count()
+        << " ms" << std::endl;
+  std::cout << "Execution: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
 }
 
 void ldbc_jit_is_query_5_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
@@ -179,8 +251,20 @@ void ldbc_jit_is_query_5_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(3, ":hasCreator");
   ab.arg(4, "Person");
 
+  auto c_s = std::chrono::steady_clock::now();
   qeng.generate(q, adaptive);
+  auto c_e = std::chrono::steady_clock::now();
+
+  auto e_s = std::chrono::steady_clock::now();
   qeng.run(&rs, ab.args);
+  auto e_e = std::chrono::steady_clock::now();
+
+  std::cout << "Compilation: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count()
+        << " ms" << std::endl;
+  std::cout << "Execution: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
 }
 
 void ldbc_jit_is_query_5_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
@@ -197,8 +281,20 @@ void ldbc_jit_is_query_5_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(3, ":hasCreator");
   ab.arg(4, "Person");
 
+  auto c_s = std::chrono::steady_clock::now();
   qeng.generate(q, adaptive);
+  auto c_e = std::chrono::steady_clock::now();
+
+  auto e_s = std::chrono::steady_clock::now();
   qeng.run(&rs, ab.args);
+  auto e_e = std::chrono::steady_clock::now();
+
+  std::cout << "Compilation: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count()
+        << " ms" << std::endl;
+  std::cout << "Execution: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
 }
 
 void ldbc_jit_is_query_6_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
@@ -220,8 +316,20 @@ void ldbc_jit_is_query_6_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(5, ":hasModerator");
   ab.arg(6, "Person");
 
+  auto c_s = std::chrono::steady_clock::now();
   qeng.generate(q, adaptive);
+  auto c_e = std::chrono::steady_clock::now();
+
+  auto e_s = std::chrono::steady_clock::now();
   qeng.run(&rs, ab.args);
+  auto e_e = std::chrono::steady_clock::now();
+
+  std::cout << "Compilation: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count()
+        << " ms" << std::endl;
+  std::cout << "Execution: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
 }
 
 void ldbc_jit_is_query_6_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
@@ -229,14 +337,14 @@ void ldbc_jit_is_query_6_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
 
   auto q = Scan("Comment",
             Filter(EQ(Key(0, "id"), Int(messageId)),
-              ForeachRship(RSHIP_DIR::TO, {1, maxHops}, ":replyOf",
-                Expand(EXPAND::IN, "Post",
-                  ForeachRship(RSHIP_DIR::FROM, {}, ":containerOf",
-                    Expand(EXPAND::OUT, "Forum",
+              ForeachRship(RSHIP_DIR::FROM, {1, maxHops}, ":replyOf",
+                Expand(EXPAND::OUT, "Post",
+                  ForeachRship(RSHIP_DIR::TO, {}, ":containerOf",
+                    Expand(EXPAND::IN, "Forum",
                       ForeachRship(RSHIP_DIR::FROM, {}, ":hasModerator",
                         Expand(EXPAND::OUT, "Person",
-                          Project({{2, "id", FTYPE::UINT64}, {2, "title", FTYPE::STRING}, {4, "id", FTYPE::UINT64},
-                               {4, "firstName", FTYPE::STRING}, {4, "lastName", FTYPE::STRING}}, 
+                          Project({{4, "id", FTYPE::UINT64}, {4, "title", FTYPE::STRING}, {6, "id", FTYPE::UINT64},
+                               {6, "firstName", FTYPE::STRING}, {6, "lastName", FTYPE::STRING}}, 
                             Collect())))))))));
 
   arg_builder ab;
@@ -249,8 +357,20 @@ void ldbc_jit_is_query_6_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(7, ":hasModerator");
   ab.arg(8, "Person");
 
+  auto c_s = std::chrono::steady_clock::now();
   qeng.generate(q, adaptive);
+  auto c_e = std::chrono::steady_clock::now();
+
+  auto e_s = std::chrono::steady_clock::now();
   qeng.run(&rs, ab.args);
+  auto e_e = std::chrono::steady_clock::now();
+
+  std::cout << "Compilation: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count()
+        << " ms" << std::endl;
+  std::cout << "Execution: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
 }
 
 void ldbc_jit_is_query_7_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
@@ -268,13 +388,13 @@ void ldbc_jit_is_query_7_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
                       Join(JOIN_OP::LEFT_OUTER, {4, 2}, 
                         Project({
                           {2, "id", FTYPE::UINT64}, {2, "content", FTYPE::STRING}, {2, "creationDate", FTYPE::TIME},
-                          {4, "id", FTYPE::UINT64}, {4, "firstName", FTYPE::STRING}, {4, "lastName", FTYPE::STRING},
-                          {8, "", FTYPE::BOOLEAN}
+                          {4, "id", FTYPE::UINT64}, {4, "firstName", FTYPE::STRING}, {4, "lastName", FTYPE::STRING}
+                          /*{8, "", FTYPE::BOOLEAN}*/
                           }, 
                           Collect()), q1)))))));
 
   arg_builder ab;
-  ab.arg(1, "Person");
+  ab.arg(1, "Post");
   ab.arg(2, messageId);
   ab.arg(3, ":replyOf");
   ab.arg(4, "Comment");
@@ -285,8 +405,20 @@ void ldbc_jit_is_query_7_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(9, ":hasCreator");
   ab.arg(10, "Person");
 
+  auto c_s = std::chrono::steady_clock::now();
   qeng.generate(q2, adaptive);
+  auto c_e = std::chrono::steady_clock::now();
+
+  auto e_s = std::chrono::steady_clock::now();
   qeng.run(&rs, ab.args);
+  auto e_e = std::chrono::steady_clock::now();
+
+  std::cout << "Compilation: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count()
+        << " ms" << std::endl;
+  std::cout << "Execution: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
 }
 
 void ldbc_jit_is_query_7_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t messageId) {
@@ -299,7 +431,7 @@ void ldbc_jit_is_query_7_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
             Filter(EQ(Key(0, "id"), Int(messageId)),
               ForeachRship(RSHIP_DIR::TO, {}, ":replyOf",
                 Expand(EXPAND::IN, "Comment", 
-                  ForeachRship(RSHIP_DIR::TO, {}, ":hasCreator",
+                  ForeachRship(RSHIP_DIR::FROM, {}, ":hasCreator",
                     Expand(EXPAND::OUT, "Person", 
                       Join(JOIN_OP::LEFT_OUTER, {4, 2}, Project({
                           {2, "id", FTYPE::UINT64}, {2, "content", FTYPE::STRING}, {2, "creationDate", FTYPE::TIME},
@@ -314,17 +446,87 @@ void ldbc_jit_is_query_7_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(4, "Comment");
   ab.arg(5, ":hasCreator");
   ab.arg(6, "Person");
-  ab.arg(7, "Post");
+  ab.arg(7, "Comment");
   ab.arg(8, messageId);
   ab.arg(9, ":hasCreator");
   ab.arg(10, "Person");
 
+  auto c_s = std::chrono::steady_clock::now();
   qeng.generate(q2, adaptive);
+  auto c_e = std::chrono::steady_clock::now();
+
+  auto e_s = std::chrono::steady_clock::now();
   qeng.run(&rs, ab.args);
+  auto e_e = std::chrono::steady_clock::now();
+
+  std::cout << "Compilation: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count()
+        << " ms" << std::endl;
+  std::cout << "Execution: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
 }
 
-void run_benchmark(graph_db_ptr gdb) {
+void run_benchmark(graph_db_ptr gdb, query_engine &qeng) {
+  result_set rs;
+  ldbc_jit_is_query_1_a(gdb, qeng, rs, false, 26388279115622);
+  //std::cout << rs << std::endl;
+  spdlog::info("Query #1: {} msecs", 5);
+  rs.data.clear();
 
+  ldbc_jit_is_query_2_p(gdb, qeng, rs, false, 10995116338469);
+  //std::cout << rs << std::endl;
+  spdlog::info("Query #2: {} msecs", 5);
+  rs.data.clear();
+
+  ldbc_jit_is_query_2_c(gdb, qeng, rs, false, 8796093050459);
+  //std::cout << rs << std::endl;
+  spdlog::info("Query #3: {} msecs", 5);
+  rs.data.clear();
+
+  ldbc_jit_is_query_3(gdb, qeng, rs, false, 13194139546280);
+  //std::cout << rs << std::endl;
+  spdlog::info("Query #4: {} msecs", 5);
+  rs.data.clear();
+
+  ldbc_jit_is_query_4_p(gdb, qeng, rs, false, 4398055319228);
+  //std::cout << rs << std::endl;
+  spdlog::info("Query #5: {} msecs", 5);
+  rs.data.clear();
+
+  ldbc_jit_is_query_4_c(gdb, qeng, rs, false, 3298545915339);
+  //std::cout << rs << std::endl;
+  spdlog::info("Query #6: {} msecs", 5);
+  rs.data.clear();
+
+  ldbc_jit_is_query_5_p(gdb, qeng, rs, false, 5497585321851);
+  //std::cout << rs << std::endl;
+  spdlog::info("Query #7: {} msecs", 5);
+  rs.data.clear();
+
+  ldbc_jit_is_query_5_c(gdb, qeng, rs, false, 7146830729841);
+  //std::cout << rs << std::endl;
+  spdlog::info("Query #8: {} msecs", 5);
+  rs.data.clear();
+
+  ldbc_jit_is_query_6_p(gdb, qeng, rs, false, 8246366523162);
+  //std::cout << rs << std::endl;
+  spdlog::info("Query #9: {} msecs", 5);
+  rs.data.clear();
+
+  ldbc_jit_is_query_6_c(gdb, qeng, rs, false, 6047350744524);
+  //std::cout << rs << std::endl;
+  spdlog::info("Query #10: {} msecs", 5);
+  rs.data.clear();
+
+  ldbc_jit_is_query_7_p(gdb, qeng, rs, false, 4398061553596);
+  std::cout << rs << std::endl;
+  spdlog::info("Query #11: {} msecs", 5);
+  rs.data.clear();
+
+  ldbc_jit_is_query_7_c(gdb, qeng, rs, false, 5497574002790);
+  std::cout << rs << std::endl;
+  spdlog::info("Query #12: {} msecs", 5);
 }
 
 int main(int argc, char **argv) {
@@ -388,9 +590,14 @@ int main(int argc, char **argv) {
   load_snb_data(graph, snb_home);
 #endif
   graph->print_stats();
+	auto THREAD_NUM = 4;
+	auto chunks = graph->get_nodes()->num_chunks();
+	auto cv_range = chunks / THREAD_NUM;
+
+	query_engine queryEngine(graph, THREAD_NUM, cv_range);
 
   for (auto i = 0; i < 10; i++) {
-          std::cout << "Run: " << i << "\n";
-    run_benchmark(graph);
+    std::cout << "Run: " << i << "\n";
+    run_benchmark(graph, queryEngine);
   }
 }

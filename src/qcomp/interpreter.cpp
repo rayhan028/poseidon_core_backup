@@ -20,13 +20,24 @@ void interprete_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     auto label = args_.string_args.at(op_id_);
     auto q = queries_.back();
     queries_.pop_back();
+
     switch(op->dir_) {
-        case RSHIP_DIR::TO:
-            queries_.push_back(q.to_relationships(label));
+        case RSHIP_DIR::TO: {
+            if(op->is_variable()) {
+                queries_.push_back(q.to_relationships(op->hops_, label));
+            } else {
+                queries_.push_back(q.to_relationships(label));
+            }
             break;
-        case RSHIP_DIR::FROM:
-            queries_.push_back(q.from_relationships(label));
+        }
+        case RSHIP_DIR::FROM: {
+            if(op->is_variable()) {
+                queries_.push_back(q.from_relationships(op->hops_, label));
+            } else {
+                queries_.push_back(q.from_relationships(label));
+            }
             break;
+        }
     }
     op_id_++;
 }
@@ -124,6 +135,7 @@ void interprete_visitor::visit(std::shared_ptr<join_op> op) {
 
 void interprete_visitor::start() {
     for(auto & q : queries_) {
+        q.dump();
         q.start();
     }
     op_id_ = 1;

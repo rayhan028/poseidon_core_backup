@@ -643,8 +643,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     // create all basic blocks for the join processing
     BasicBlock *join_lhs_entry = BasicBlock::Create(ctx.getContext(), "entry_join_lhs", main_function);
     BasicBlock *left_outer = BasicBlock::Create(ctx.getContext(), "left_outer", main_function);
-    BasicBlock *nested_loop = BasicBlock::Create(ctx.getContext(), "nested_loop", main_function);
-    BasicBlock *hash_join = BasicBlock::Create(ctx.getContext(), "hash_join_probe", main_function);
+    //BasicBlock *nested_loop = BasicBlock::Create(ctx.getContext(), "nested_loop", main_function);
+    //BasicBlock *hash_join = BasicBlock::Create(ctx.getContext(), "hash_join_probe", main_function);
 
     BasicBlock *for_each_next = BasicBlock::Create(ctx.getContext(), "for_each_next_rship", main_function);
     BasicBlock *concat_qrl = BasicBlock::Create(ctx.getContext(), "concat_qrl", main_function);
@@ -719,7 +719,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         auto ridx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
         ctx.getBuilder().CreateStore(node_rship_id, ridx);
 
-        Value *rship;
+        //Value *rship; //TODO: fix workaround for LLVM 11 bug 
 
         // iterate through relationship list of lhs node
         loop_rship = ctx.while_loop_condition(main_function, ridx, rhs_alloca, PContext::WHILE_COND::LT, incr_loop,
@@ -727,8 +727,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
                                                       auto cur_id = ctx.getBuilder().CreateLoad(ridx);
 
                                                       // get the current rship
-                                                      rship = ctx.getBuilder().CreateCall(rship_by_id, {gdb, cur_id});
-
+                                                      auto rship = ctx.getBuilder().CreateCall(rship_by_id, {gdb, cur_id});
+                                                      ctx.getBuilder().CreateStore(rship, ra);
                                                       // get the dest node of the rship
                                                       auto to_node = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(rship, 3));
                                                       
@@ -742,6 +742,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         // get next rship from list
         ctx.getBuilder().SetInsertPoint(for_each_next);
         {
+            auto rship = ctx.getBuilder().CreateLoad(ra);
             auto next_rship = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(rship, 4));
             ctx.getBuilder().CreateStore(next_rship, ridx);
             ctx.getBuilder().CreateBr(loop_rship);
@@ -759,7 +760,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         ctx.getBuilder().CreateCondBr(is_reached, for_each_next, loop_body);
 
     } else if(op->jop_ == JOIN_OP::NESTED_LOOP) {
-        // for nested loop join
+        /*// for nested loop join
         ctx.getBuilder().SetInsertPoint(nested_loop);
 
         // get lhs tuple at id -> direct register value
@@ -775,10 +776,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
 
         // compare the node ids and branch 
         auto id_cmp = ctx.getBuilder().CreateICmpEQ(lhs_id, rhs_id);
-        ctx.getBuilder().CreateCondBr(id_cmp, concat_qrl, incr_loop);
+        ctx.getBuilder().CreateCondBr(id_cmp, concat_qrl, incr_loop);*/
 
     } else if(op->jop_ == JOIN_OP::HASH_JOIN) {
-        // for hash join
+        /*// for hash join
         ctx.getBuilder().SetInsertPoint(hash_join);
         
         // get lhs tuple at id -> direct register value
@@ -792,7 +793,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
 
         // iterate through buckets to find matches
         auto cur_rhs_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
-        ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, cur_rhs_idx);
+        ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, cur_rhs_idx);*/
 
         // iteration 
         // TODO:

@@ -23,11 +23,11 @@ Optimizer::operator()(ThreadSafeModule TSM,
 
 
     legacy::FunctionPassManager FPM(&M);
-    FPM.add(createPromoteMemoryToRegisterPass());
-    FPM.add(createCFGSimplificationPass());
-    //FPM.add(createLCSSAPass());
-    //FPM.add(createLoopDeletionPass());
-    FPM.add(createInstructionCombiningPass());
+    //FPM.add(createPromoteMemoryToRegisterPass());
+    /*FPM.add(createCFGSimplificationPass());
+    FPM.add(createLCSSAPass());
+    FPM.add(createLoopDeletionPass());*/
+    //FPM.add(createInstructionCombiningPass());
     B.populateFunctionPassManager(FPM);
     FPM.doInitialization();
 
@@ -36,8 +36,8 @@ Optimizer::operator()(ThreadSafeModule TSM,
     FPM.doFinalization();
 
     legacy::PassManager MPM;
-    B.populateModulePassManager(MPM);
-    MPM.run(M);
-
+    //B.populateModulePassManager(MPM);
+    //MPM.run(M);
+    //M.dump();
     return std::move(TSM);
 }

@@ -151,8 +151,7 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args) {
         cur_query_->codegen(iv, op_start, true);
         iv.start();
         compile_th.join();
-
-
+        std::cout << "NO COMPILED " << rs->data.size() << std::endl;
     }
     
     int i = 0;

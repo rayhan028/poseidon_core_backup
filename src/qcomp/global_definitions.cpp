@@ -1,13 +1,10 @@
-#include <boost/thread/barrier.hpp>
-#include <boost/hana.hpp>
-
 #include "global_definitions.hpp"
 #include "joiner.hpp"
 
-boost::barrier bar(std::thread::hardware_concurrency());
+boost::barrier pipeline_barrier(std::thread::hardware_concurrency());
 
 extern "C" chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
-    //bar.wait();
+    //pipeline_barrier.wait();
 
     return new chunked_vec<node, NODE_CHUNK_SIZE>::range_iter(vec->as_vec(), first, last);
 }
@@ -242,7 +239,7 @@ extern "C" void mat_reg_value(graph_db *gdb, int *reg, int type) {
     if(type == 2) {
         int res = std::stoi(con_map[type](gdb, reg));
         tp.push_back(res);
-    } else if(type == 5) {
+    } else if(type == 5 || type == 6) {
         tp.push_back(time_result[*reg]);
     } else if(type == 8) {
         tp.push_back(uint64_t(std::stoull(con_map[type](gdb, reg))));

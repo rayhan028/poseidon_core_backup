@@ -277,11 +277,13 @@ if (BUILD_PYTHON)
     program_options
     date_time
     ${BOOST_PYTHON}
+    thread
     REQUIRED)
 else()
   find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
     program_options
     date_time
+    thread
     REQUIRED)
 endif()
 
@@ -368,6 +370,7 @@ add_library(poseidon_core SHARED
 target_link_libraries(poseidon_core
   ${LLVM_LIBRARIES}
   Boost::date_time
+  Boost::thread
   spdlog::spdlog_header_only
 )
 
@@ -386,6 +389,7 @@ target_link_libraries(poseidon
   ${LLVM_LIBRARIES}
   Boost::date_time
   Boost::${BOOST_PYTHON}
+  Boost::thread
   ${PYTHON_LIBRARIES}
   ${PMDK_LIBRARIES}
   spdlog::spdlog_header_only

@@ -12,6 +12,10 @@
 #include <iostream>
 #include <qop.hpp>
 
+#include <boost/thread/barrier.hpp>
+#include <boost/hana.hpp>
+
+
 using consumer_ty = std::function<void(graph_db*, int, int**, int*, int, int*)>;
 using consumer_fct_type = void(*)(graph_db*, int, int**, int*, int, int*, int**, int);
 using finish_fct_type = void(*)(result_set*);

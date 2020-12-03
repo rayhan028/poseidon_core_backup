@@ -141,7 +141,7 @@ Error JitFromScratch::addModule(std::unique_ptr<Module> M) {
         return ObjLinkingLayer.add(*ES->getJITDylibByName("Main"), std::move(obj->getValue()));
     }*/
 
-    OptimizeLayer.setTransform(Optimizer(0));
+    OptimizeLayer.setTransform(Optimizer(3));
 
     return OptimizeLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx), K);
     //cantFail(CompileLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx)));
