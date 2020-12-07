@@ -88,9 +88,9 @@ void ldbc_jit_is_query_1_b(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
 
 void ldbc_jit_is_query_2_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
   auto sort_fct = [&](const qr_tuple &qr1, const qr_tuple &qr2) {
-                        if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
+                        if (boost::get<boost::posix_time::ptime>(qr1[1]) == boost::get<boost::posix_time::ptime>(qr2[1]))
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
-                        return boost::get<boost::posix_time::ptime>(qr1[2]) > boost::get<boost::posix_time::ptime>(qr2[2]); };
+                        return boost::get<boost::posix_time::ptime>(qr1[1]) > boost::get<boost::posix_time::ptime>(qr2[1]); };
 
   auto q = Scan("Person", 
             Filter(EQ(Key(0, "id"), Int(personId)), 
