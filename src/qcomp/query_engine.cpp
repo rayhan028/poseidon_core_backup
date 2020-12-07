@@ -139,7 +139,7 @@ void query_engine::extract_arg(std::shared_ptr<base_op> op) {
 }
 
 
-void query_engine::run(result_set * rs, std::vector<uint64_t*> args) {
+void query_engine::run(result_set * rs, std::vector<uint64_t*> args, bool cleanup_query) {
     //prepare();
 
     auto tx = graph_->begin_transaction();
@@ -156,21 +156,22 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args) {
     
     int i = 0;
 
-    std::vector<int> offsets;
-    offsets.resize(start_.size());
-    offsets[0] = type_vec_[0].size();
+    //std::vector<int> offsets;
+    //offsets.resize(start_.size());
+    //offsets[0] = type_vec_[0].size();
 
-    int offset = 0;
+    //int offset = 0;
     auto start_idx = start_.size()-1;
 
     for(i = start_idx; i >= 0; i--) {
         start_[i](graph_.get(), 0, graph_->get_nodes()->num_chunks(), tx, 1, &type_vec_[start_idx], rs, nullptr, finish_[0], 0, args.data());
-        offset += offsets[i];
+        //offset += offsets[i];
     }
     graph_->commit_transaction();
 
 
-    cleanup();
+    if(cleanup_query)
+        cleanup();
 }
 
 void query_engine::run(result_set * rs) {

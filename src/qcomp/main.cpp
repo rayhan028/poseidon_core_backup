@@ -45,7 +45,7 @@ int main() {
 
 	auto tx = graph->begin_transaction();
 
-	int PERSONS = 1000;
+	int PERSONS = 10;
 	int NO_PERSONS = 42;
 	for (int i = 0; i < PERSONS; i++) {
 		auto p = graph->add_node("Person",
