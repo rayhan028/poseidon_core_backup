@@ -1740,10 +1740,10 @@ void fptree_recovery(graph_db_ptr &graph){
   indexes.push_back(graph->get_index("Person", "id"));
   indexes.push_back(graph->get_index("Post", "id"));
   indexes.push_back(graph->get_index("Comment", "id"));
-  indexes.push_back(graph->get_index("Place", "id"));
+/*  indexes.push_back(graph->get_index("Place", "id"));
   indexes.push_back(graph->get_index("Tag", "id"));
   indexes.push_back(graph->get_index("Organisation", "id"));
-  indexes.push_back(graph->get_index("Forum", "id"));
+  indexes.push_back(graph->get_index("Forum", "id"));*/
   graph->commit_transaction();
   for (auto idx_ptr : indexes)
     idx_ptr->recover();

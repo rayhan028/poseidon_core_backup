@@ -34,7 +34,7 @@ Optimizer::operator()(ThreadSafeModule TSM,
     for (Function &F : M)
         FPM.run(F);
     FPM.doFinalization();
-
+    //M.dump();
     legacy::PassManager MPM;
     //B.populateModulePassManager(MPM);
     //MPM.run(M);

@@ -83,9 +83,14 @@ void interprete_visitor::visit(std::shared_ptr<project> op) {
         projection::expr pe;
 
         switch(p.type) {
-            case FTYPE::INT:
+            case FTYPE::UINT64:
             {
                 pe = PExpr_(p.id, builtin::uint64_property(res, p.key));
+                break;
+            }
+            case FTYPE::INT:
+            {
+                pe = PExpr_(p.id, builtin::int_property(res, p.key));
                 break;
             }
             case FTYPE::DOUBLE:
@@ -135,7 +140,7 @@ void interprete_visitor::visit(std::shared_ptr<join_op> op) {
 
 void interprete_visitor::start() {
     for(auto & q : queries_) {
-        q.dump();
+        //q.dump();
         q.start();
     }
     op_id_ = 1;

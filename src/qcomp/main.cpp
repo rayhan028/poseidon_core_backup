@@ -45,7 +45,7 @@ int main() {
 
 	auto tx = graph->begin_transaction();
 
-	int PERSONS = 10;
+	int PERSONS = 100000;
 	int NO_PERSONS = 42;
 	for (int i = 0; i < PERSONS; i++) {
 		auto p = graph->add_node("Person",
@@ -106,23 +106,24 @@ int main() {
 		return boost::get<uint64_t>(q1[2]) < boost::get<uint64_t>(q2[2]); 
 	};
 
-	auto fev = Scan("Person", 
-					ForeachRship(RSHIP_DIR::FROM, {1,100}, ":HAS_READ", 
-						Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64}},
-							Sort(sort_fct, Collect()))));
-	
-	queryEngine.generate(l_expr, false);
+	auto fev = Scan("Person", Collect());
+	scan_task::callee_ = &scan_task::scan;	
+	queryEngine.generate(fev, true);
 	
 	arg_builder ab;
 	ab.arg(1, "Person");
-	ab.arg(2, "Book");
+	ab.arg(2, ":HAS_READ");
 	ab.arg(3, "Book");
 	ab.arg(4, "Book");
 	ab.arg(5, ":HAS_READ");
 	ab.arg(6, "Person");
 
+	auto qer = query(graph).all_nodes().has_label("Person").collect(rs);
   	auto js = std::chrono::steady_clock::now();
-	queryEngine.run(&rs, ab.args);
+	graph->begin_transaction();
+	queryEngine.run_parallel(&rs, ab, 24);
+	
+	graph->commit_transaction();
   	auto je = std::chrono::steady_clock::now();
 
 	std::cout << rs.data.size() << std::endl;

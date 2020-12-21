@@ -204,8 +204,10 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
         auto start = 1u;
         cur_query_->codegen(iv, start, false);
         std::thread t1([&] {
-            compile_th.join();
-	    prepare();
+	    if(compile_th.joinable())
+            	compile_th.join();
+	
+	    //prepare();
             task_callee_ = [&](transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer) {
                 current_transaction_ = tx;
                 start_[0](gdb, first, last, tx, 1, &type_vec_[0], rs, nullptr, finish_[0], 0, args.args.data());
@@ -217,10 +219,11 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
         iv.start();
         t1.join();
     } else {
-        auto chunksz = graph_->get_nodes()->num_chunks() / thread_num;
-        auto max_chunksz = graph_->get_nodes()->num_chunks();
+    auto chunksz = graph_->get_nodes()->num_chunks() / thread_num;
+    auto max_chunksz = graph_->get_nodes()->num_chunks();
+    if(compile_th.joinable())
         compile_th.join();
-	prepare();
+	//prepare();
 	type_vec_[0].push_back(7);
         std::vector<std::thread> query_threads;
         auto cur_start = 0;
