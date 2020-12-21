@@ -341,8 +341,8 @@ set(src_files
   src/qcomp/global_definitions.cpp
   src/qcomp/interpreter.cpp
   src/qcomp/jit_cache.cpp
-  src/qcomp/JitFromScratch.cpp
-  src/qcomp/Optimizer.cpp
+  src/qcomp/p_jit.cpp
+  src/qcomp/optimizer.cpp
   src/qcomp/main.cpp
   src/qcomp/p_context.cpp
   src/qcomp/query_engine.cpp

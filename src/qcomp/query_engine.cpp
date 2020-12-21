@@ -9,13 +9,13 @@
 
 using namespace std::placeholders;
 
-std::unique_ptr<JitFromScratch> query_engine::initializeJitCompiler() {
+std::unique_ptr<p_jit> query_engine::initializeJitCompiler() {
     InitLLVM LLVM();
     InitializeNativeTarget();
 	InitializeNativeTargetAsmPrinter();
 	InitializeNativeTargetAsmParser();
     ExitOnError exitOnError;
-    return std::make_unique<JitFromScratch>(exitOnError);
+    return std::make_unique<p_jit>(exitOnError);
 }
 
 query_engine::query_engine(graph_db_ptr graph, unsigned int thread_num, unsigned cv_range) 
@@ -250,7 +250,7 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
 }
 
 
-compile_task::compile_task(query_engine & qeng, PContext &ctx, JitFromScratch &jit, std::shared_ptr<base_op> query) 
+compile_task::compile_task(query_engine & qeng, PContext &ctx, p_jit &jit, std::shared_ptr<base_op> query) 
     : ctx_(ctx), jit_(jit), query_(query), qeng_(qeng) {}
 
 int query_cnt = 0;

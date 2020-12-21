@@ -2,7 +2,7 @@
 #define POSEIDON_CORE_QUERY_ENGINE_HPP
 
 #include "joiner.hpp"
-#include "JitFromScratch.hpp"
+#include "p_jit.hpp"
 #include "p_context.hpp"
 
 class base_op;
@@ -11,12 +11,12 @@ class base_op;
 class query_engine;
 
 struct compile_task {
-    compile_task(query_engine & qeng, PContext &ctx, JitFromScratch &jit, std::shared_ptr<base_op> query);
+    compile_task(query_engine & qeng, PContext &ctx, p_jit &jit, std::shared_ptr<base_op> query);
 
     void operator()();
 
     PContext &ctx_;
-    JitFromScratch &jit_;
+    p_jit &jit_;
     std::shared_ptr<base_op> query_;
     query_engine &qeng_;
 };
@@ -47,7 +47,7 @@ struct arg_builder {
 class query_engine {
     unsigned thread_num_;
     PContext ctx_;
-    std::unique_ptr<JitFromScratch> jit_;
+    std::unique_ptr<p_jit> jit_;
 
     std::thread sched_th;
     std::thread compile_th;
@@ -62,7 +62,7 @@ public:
     query_engine(graph_db_ptr graph, unsigned int thread_num, unsigned cv_range);
     ~query_engine();
 
-    static std::unique_ptr<JitFromScratch> initializeJitCompiler();
+    static std::unique_ptr<p_jit> initializeJitCompiler();
 
     void generate(std::shared_ptr<base_op> query, bool parallel = true);
 
