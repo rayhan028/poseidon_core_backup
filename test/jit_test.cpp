@@ -100,6 +100,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
 	query_engine queryEngine(graph, 1, chunks);
 
+
     SECTION("Scan all nodes for given label") {
         auto expr = Scan("Person", Collect());
         arg_builder args;
@@ -126,7 +127,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
         REQUIRE(rs.data.size() == 1);
     }
-
+/*
     SECTION("Find a outgoing relationship from each Person node") {
         auto expr = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", Collect()));
         arg_builder args;
@@ -239,7 +240,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
         REQUIRE(rs.data.size() == num_persons * num_books);
     }
-/*
+
     TODO: Fix LeftJoin test
     SECTION("Find connected nodes between two results with a LeftJoin") {
         auto rhs = Scan("Book", End());
@@ -266,7 +267,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
 }
 /*
-ST_CASE("Test the Projection operator", "[jit_query_projection]") {
+TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
   graph_db_ptr graph;

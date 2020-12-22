@@ -45,7 +45,7 @@ void PJitObjectCache::notifyObjectCompiled(const Module *M, MemoryBufferRef Obj)
     acc.release();
     cache_pool_.close();*/
 #else
-    code_cache_.insert({std::string(M->getModuleIdentifier()), Obj.getBufferStart()});
+    //code_cache_.insert({std::string(M->getModuleIdentifier()), Obj.getBufferStart()});
 #endif
 }
 
@@ -71,7 +71,7 @@ std::unique_ptr<MemoryBuffer> PJitObjectCache::getObject(const Module *M) {
     cache_pool_.close();
     return MemoryBuffer::getMemBufferCopy(std::string(ret, buf_size));
 #else
-    return MemoryBuffer::getMemBufferCopy(code_cache_[mid]);
+    //return MemoryBuffer::getMemBufferCopy(code_cache_[mid]);
 #endif
 }
 

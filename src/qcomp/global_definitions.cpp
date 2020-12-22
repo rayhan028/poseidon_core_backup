@@ -4,7 +4,7 @@
 boost::barrier pipeline_barrier(24);
 
 extern "C" chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
-    pipeline_barrier.wait();
+    //pipeline_barrier.wait();
 
     return new chunked_vec<node, NODE_CHUNK_SIZE>::range_iter(vec->as_vec(), first, last);
 }
