@@ -308,6 +308,21 @@ public:
    */
   query &update(std::size_t var, properties_t &props);
 
+  /**
+   * TODO
+   */
+  query &delete_detach(const std::size_t pos = std::numeric_limits<std::size_t>::max());
+
+  /**
+   * TODO
+   */
+  query &delete_node(const std::size_t pos = std::numeric_limits<std::size_t>::max());
+
+  /**
+   * TODO
+   */
+  query &delete_rship(const std::size_t pos = std::numeric_limits<std::size_t>::max());
+
   /*-------------------------------------------------------------------*/
 
   /**

@@ -644,14 +644,14 @@ void graph_db::update_node(node &n, const properties_t &props,
   check_tx_context();
   xid_t txid = current_transaction()->xid();
 
-  // if we don't own the lock and cannot acquire a lock, we have to abort
-  if (!n.is_locked_by(txid) && !n.try_lock(txid))
-    throw transaction_abort();
-
   // make sure we don't overwrite an object that was read by 
   // a more recent transaction
   if (n.rts() > txid)
    throw transaction_abort();
+
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!n.is_locked_by(txid) && !n.try_lock(txid))
+    throw transaction_abort();
 
   bool first_update = true;
   if (n.has_dirty_versions()) {
@@ -703,14 +703,14 @@ void graph_db::update_node(node &n, const properties_t &props,
 void graph_db::update_from_node(transaction_ptr tx, node &n, relationship& r) {
   xid_t txid = tx->xid();
 
-  // if we don't own the lock and cannot acquire a lock, we have to abort
-  if (!n.is_locked_by(txid) && !n.try_lock(txid))
-    throw transaction_abort();
-
   // make sure we don't overwrite an object that was read by 
   // a more recent transaction
   if (n.rts() > txid)
    throw transaction_abort();
+
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!n.is_locked_by(txid) && !n.try_lock(txid))
+    throw transaction_abort();
 
   bool first_update = true;
   if (n.has_dirty_versions()) {
@@ -758,14 +758,14 @@ void graph_db::update_from_node(transaction_ptr tx, node &n, relationship& r) {
 void graph_db::update_to_node(transaction_ptr tx, node &n, relationship& r) {
  xid_t txid = tx->xid();
 
-  // if we don't own the lock and cannot acquire a lock, we have to abort
-  if (!n.is_locked_by(txid) && !n.try_lock(txid))
-    throw transaction_abort();
-
   // make sure we don't overwrite an object that was read by 
   // a more recent transaction
   if (n.rts() > txid)
    throw transaction_abort();
+
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!n.is_locked_by(txid) && !n.try_lock(txid))
+    throw transaction_abort();
 
   bool first_update = true;
   if (n.has_dirty_versions()) {
@@ -803,7 +803,7 @@ void graph_db::update_to_node(transaction_ptr tx, node &n, relationship& r) {
     if (newv->elem_.to_rship_list == UNKNOWN)
         newv->elem_.to_rship_list = r.id();
     else {
-        r.next_src_rship = newv->elem_.to_rship_list;
+        r.next_dest_rship = newv->elem_.to_rship_list;
         newv->elem_.to_rship_list = r.id();
     }
     current_transaction()->add_dirty_node(n.id());
@@ -818,14 +818,14 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
   check_tx_context();
   xid_t txid = current_transaction()->xid();
 
-  // if we don't own the lock and cannot acquire a lock, we have to abort
-  if (!r.is_locked_by(txid) && !r.try_lock(txid))
-    throw transaction_abort();
-
   // make sure we don't overwrite an object that was read by 
   // a more recent transaction
   if (r.rts() > txid)
    throw transaction_abort();
+
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!r.is_locked_by(txid) && !r.try_lock(txid))
+    throw transaction_abort();
 
   bool first_update = true;
   if (r.has_dirty_versions()) {
@@ -882,14 +882,14 @@ void graph_db::delete_node(node::id_t id) {
 
   auto &n = this->node_by_id(id);
 
-  // if we don't own the lock and cannot acquire a lock, we have to abort
-  if (!n.is_locked_by(txid) && !n.try_lock(txid))
-    throw transaction_abort();
-
   // make sure we don't overwrite an object that was read by 
   // a more recent transaction
   if (n.rts() > txid)
    throw transaction_abort();
+
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!n.is_locked_by(txid) && !n.try_lock(txid))
+    throw transaction_abort();
 
   // first, we check whether the node is still connected via relationships ..
   // TODO: the relationship could still be stored in the rships_ table but marked as deleted!!
@@ -940,14 +940,14 @@ void graph_db::delete_relationship(relationship::id_t id) {
 
   auto &r = this->rship_by_id(id);
 
-  // if we don't own the lock and cannot acquire a lock, we have to abort
-  if (!r.is_locked_by(txid) && !r.try_lock(txid))
-    throw transaction_abort();
-
   // make sure we don't overwrite an object that was read by 
   // a more recent transaction
   if (r.rts() > txid)
    throw transaction_abort();
+
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!r.is_locked_by(txid) && !r.try_lock(txid))
+    throw transaction_abort();
 
   // first, we make a copy of the original relationship which is stored in
   // the dirty list

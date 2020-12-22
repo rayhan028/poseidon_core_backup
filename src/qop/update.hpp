@@ -107,4 +107,48 @@ struct update_node : public qop {
   properties_t props;
 };
 
+/**
+ * TODO
+ */
+struct detach_node : public qop {
+  // detach_node(const std::vector<std::size_t> &r, std::size_t p)  : pos_(p), /*rels_(r)*/ {} 
+  detach_node(std::size_t p)  : pos_(p) {}
+  ~detach_node() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t pos_;
+  // std::vector<std::size_t> rels_;
+};
+
+/**
+ * TODO
+ */
+struct remove_node : public qop {
+  remove_node(std::size_t p)  : pos_(p) {} 
+  ~remove_node() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t pos_;
+};
+
+/**
+ * TODO
+ */
+struct remove_rship : public qop {
+  remove_rship(std::size_t p)  : pos_(p) {} 
+  ~remove_rship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t pos_;
+};
+
 #endif

@@ -582,31 +582,6 @@ void ldbc_is_query_4_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 
 // ------------------------------------------------------------------------------------------------------------------------
 
-void ldbc_is_query_5_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
-
-  auto q = query(gdb)
-#ifdef RUN_INDEXED
-               .nodes_where_indexed("Post", "id", messageId)
-#elif defined(RUN_PARALLEL)
-                .all_nodes()
-               .has_label("Post")
-               .property( "id",
-                           [&](auto &p) { return p.equal(messageId); })
-#else
-                .nodes_where("Post", "id",
-                            [&](auto &p) { return p.equal(messageId); })
-#endif
-                .from_relationships(":hasCreator")
-                .to_node("Person")
-                .project({PExpr_(2, pj::uint64_property(res, "id")),
-                          PExpr_(2, pj::string_property(res, "firstName")),
-                          PExpr_(2, pj::string_property(res, "lastName")) })
-                .collect(rs);
-
-  q.start();
-  rs.wait();
-}
-
 void ldbc_is_query_5(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
   std::vector<std::string> message = {"Post", "Comment"};
 
@@ -620,6 +595,31 @@ void ldbc_is_query_5(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                            [&](auto &p) { return p.equal(messageId); })
 #else
                 .nodes_where(message, "id",
+                            [&](auto &p) { return p.equal(messageId); })
+#endif
+                .from_relationships(":hasCreator")
+                .to_node("Person")
+                .project({PExpr_(2, pj::uint64_property(res, "id")),
+                          PExpr_(2, pj::string_property(res, "firstName")),
+                          PExpr_(2, pj::string_property(res, "lastName")) })
+                .collect(rs);
+
+  q.start();
+  rs.wait();
+}
+
+void ldbc_is_query_5_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
+
+  auto q = query(gdb)
+#ifdef RUN_INDEXED
+               .nodes_where_indexed("Post", "id", messageId)
+#elif defined(RUN_PARALLEL)
+                .all_nodes()
+               .has_label("Post")
+               .property( "id",
+                           [&](auto &p) { return p.equal(messageId); })
+#else
+                .nodes_where("Post", "id",
                             [&](auto &p) { return p.equal(messageId); })
 #endif
                 .from_relationships(":hasCreator")
@@ -985,7 +985,7 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .from_node("Comment")
                 .from_relationships(":hasCreator")
                 .to_node("Person")
-                .rship_exists({6, 0})
+                .rship_exists({6, 0}, true)
                 .project({PExpr_(4, pj::uint64_property(res, "id")),
                           PExpr_(4, pj::string_property(res, "content")),
                           PExpr_(4, pj::ptime_property(res, "creationDate")),
@@ -1158,7 +1158,7 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .from_node("Comment")
                 .from_relationships(":hasCreator")
                 .to_node("Person")
-                .rship_exists({6, 0})
+                .rship_exists({6, 0}, true)
                 .project({PExpr_(4, pj::uint64_property(res, "id")),
                           PExpr_(4, pj::string_property(res, "content")),
                           PExpr_(4, pj::ptime_property(res, "creationDate")),
@@ -1964,6 +1964,7 @@ void load_snb_data(graph_db_ptr &graph,
   graph->create_index("Comment", "id");
   graph->create_index("Place", "id");
   graph->create_index("Tag", "id");
+  graph->create_index("Tagclass", "id");
   graph->create_index("Organisation", "id");
   graph->create_index("Forum", "id");
   graph->commit_transaction();
@@ -1980,6 +1981,7 @@ void fptree_recovery(graph_db_ptr &graph){
   indexes.push_back(graph->get_index("Comment", "id"));
   indexes.push_back(graph->get_index("Place", "id"));
   indexes.push_back(graph->get_index("Tag", "id"));
+  indexes.push_back(graph->get_index("Tagclass", "id"));
   indexes.push_back(graph->get_index("Organisation", "id"));
   indexes.push_back(graph->get_index("Forum", "id"));
   graph->commit_transaction();

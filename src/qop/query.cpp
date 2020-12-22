@@ -366,6 +366,24 @@ query &query::update(std::size_t var, properties_t &props) {
                    std::bind(&update_node::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::delete_detach(const std::size_t pos) {
+  auto op = std::make_shared<detach_node>(pos);
+  return append_op(op,
+                   std::bind(&detach_node::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::delete_node(const std::size_t pos) {
+  auto op = std::make_shared<remove_node>(pos);
+  return append_op(op,
+                   std::bind(&remove_node::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::delete_rship(const std::size_t pos) {
+  auto op = std::make_shared<remove_rship>(pos);
+  return append_op(op,
+                   std::bind(&remove_rship::process, op.get(), ph::_1, ph::_2));
+}
+
 void query::start() { plan_head_->start(graph_db_); }
 
 void query::dump(std::ostream &os) { plan_head_->dump(os); }
