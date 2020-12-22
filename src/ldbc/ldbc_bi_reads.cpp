@@ -1033,6 +1033,141 @@ void ldbc_bi_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
     rs.wait();
 }
 
+void ldbc_bi_query_14(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+
+    auto c1 =
+      [&](const node &p1, const node &p2, bool flag) {
+        bool found = false;
+        auto creator_code = gdb->get_code(":hasCreator");
+        auto reply_code = gdb->get_code(":replyOf");
+        auto cmt_code = gdb->get_code("Comment");
+        auto post_code = gdb->get_code("Post");
+        gdb->foreach_to_relationship_of_node(p1, creator_code, [&](relationship &r1) {
+          auto &n1 = gdb->node_by_id(r1.from_node_id());
+          if (n1.node_label == cmt_code) {
+            gdb->foreach_from_relationship_of_node(n1, reply_code, [&](relationship &r2) {
+              auto &n2 = gdb->node_by_id(r2.to_node_id());
+              if (n2.node_label == cmt_code || n2.node_label == post_code) {
+                gdb->foreach_from_relationship_of_node(n2, creator_code, [&](relationship &r3) {
+                  if (r3.to_node_id() == p2.id())
+                    found = true;
+                  });
+              }
+              });
+          }
+          });
+        return !found ? query_result(0) :
+                flag ? query_result(4) : query_result(1);
+      };
+
+    auto c4 =
+      [&](const node &p1, const node &p2, bool flag) {
+        bool found = false;
+        uint64_t cnt = 0;
+        auto creator_code = gdb->get_code(":hasCreator");
+        auto like_code = gdb->get_code(":likes");
+        auto cmt_code = gdb->get_code("Comment");
+        auto post_code = gdb->get_code("Post");
+        gdb->foreach_from_relationship_of_node(p1, like_code, [&](relationship &r1) {
+          auto &n1 = gdb->node_by_id(r1.to_node_id());
+          if (n1.node_label == cmt_code || n1.node_label == post_code) {
+            gdb->foreach_from_relationship_of_node(n1, creator_code, [&](relationship &r2) {
+              if (r2.to_node_id() == p2.id())
+                found = true;
+              });
+          }
+          });
+        return !found ? query_result(0) :
+                flag ? query_result(10) : query_result(1);
+      };
+
+    // Query pipeline
+    auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Place")
+              .property("name", [&](auto &prop) {
+                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
+                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
+#else
+              .nodes_where("Place", "name", [&](auto &prop) {
+                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
+                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
+#endif
+              .to_relationships(":isPartOf")
+              .from_node("Place")
+              .to_relationships(":isLocatedIn")
+              .from_node("Person")
+              .project({PVar_(2),
+                        PVar_(4) });
+
+    auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Place")
+              .property("name", [&](auto &prop) {
+                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
+                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1])); })
+#else
+              .nodes_where("Place", "name", [&](auto &prop) {
+                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
+                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1])); })
+#endif
+              .to_relationships(":isPartOf")
+              .from_node("Place")
+              .to_relationships(":isLocatedIn")
+              .from_node("Person")
+              .project({PVar_(2),
+                        PVar_(4) })
+              .crossjoin(q1)
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                auto p1 = boost::get<node *>(v[1]);
+                auto p2 = boost::get<node *>(v[3]);
+                return c1(*p1, *p2, true); })
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                auto p1 = boost::get<node *>(v[1]);
+                auto p2 = boost::get<node *>(v[3]);
+                return c1(*p2, *p1, false); })
+              .rship_exists({1, 3}, true)
+              .rship_exists({3, 1}, true)
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                if (v[6].type() == typeid(null_t) && v[7].type() == typeid(null_t))
+                  return query_result(0);
+                else
+                  return query_result(15); })
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                auto p1 = boost::get<node *>(v[1]);
+                auto p2 = boost::get<node *>(v[3]);
+                return c4(*p1, *p2, true); })
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                auto p1 = boost::get<node *>(v[1]);
+                auto p2 = boost::get<node *>(v[3]);
+                return c4(*p2, *p1, false); })
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                auto s1 = boost::get<int>(v[4]);
+                auto s2 = boost::get<int>(v[5]);
+                auto s3 = boost::get<int>(v[8]);
+                auto s4 = boost::get<int>(v[9]);
+                auto s5 = boost::get<int>(v[10]);
+                auto s = s1 + s2 + s3 + s4 + s5;
+                return query_result(s); })
+              .project({PExpr_(1, pj::uint64_property(res, "id")),
+                        PExpr_(3, pj::uint64_property(res, "id")),
+                        PExpr_(0, pj::string_property(res, "name")),
+                        PVar_(11) })
+              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
+                if (boost::get<int>(q1[3]) == boost::get<int>(q2[3])) {
+                  if (boost::get<uint64_t>(q1[0]) == boost::get<uint64_t>(q2[0]))
+                    return boost::get<uint64_t>(q1[1]) < boost::get<uint64_t>(q2[1]);
+                  return boost::get<uint64_t>(q1[0]) > boost::get<uint64_t>(q2[0]);
+                }
+                return boost::get<int>(q1[3]) > boost::get<int>(q2[3]); })
+              .collect(rs);
+
+    query::start({&q1, &q2});
+    rs.wait();
+}
+
 /* ------------------------------------------------------------------------ */
 
 double calc_avg_time(const std::vector<double>& vec) {
@@ -1347,6 +1482,29 @@ double run_query_13(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
+double run_query_14(graph_db_ptr gdb) {
+    std::vector<params_tuple> params = {{"Mexico", "Indonesia"}};
+
+    std::vector<double> runtimes(params.size());
+
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        auto tx = gdb->begin_transaction();
+        ldbc_bi_query_14(gdb, rs, params[i]);
+        gdb->commit_transaction();
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return calc_avg_time(runtimes);
+}
+
 void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
     t = run_query_1(gdb);
@@ -1375,6 +1533,8 @@ void run_benchmark(graph_db_ptr gdb) {
     spdlog::info("Query #12: {} msecs", t);
     t = run_query_13(gdb);
     spdlog::info("Query #13: {} msecs", t);
+    t = run_query_14(gdb);
+    spdlog::info("Query #14: {} msecs", t);
 }
 
 /* ---------------------------------------------------------------------------- */

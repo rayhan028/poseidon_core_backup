@@ -381,11 +381,11 @@ target_link_libraries(run_ldbc_graphalytics
   Boost::program_options
 )
 
-add_executable(run_ldbc_bi
-  src/ldbc/snb_bi.cpp
+add_executable(run_ldbc_bi_reads
+  src/ldbc/ldbc_bi_reads.cpp
 )
 
-target_link_libraries(run_ldbc_bi
+target_link_libraries(run_ldbc_bi_reads
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
