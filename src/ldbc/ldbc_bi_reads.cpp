@@ -1168,6 +1168,187 @@ void ldbc_bi_query_14(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
     rs.wait();
 }
 
+void ldbc_bi_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+    std::vector<result_set> grps1;
+    std::vector<result_set> grps2;
+    std::vector<result_set> grps3;
+    std::vector<result_set> grps4;
+    std::vector<result_set> grps5;
+    std::vector<result_set> grps6;
+    std::vector<result_set> grps7;
+    std::vector<result_set> grps8;
+
+    // Query pipelines
+    auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+#else
+              .nodes_where("Tag", "name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+#endif
+              .to_relationships(":hasTag")
+              .from_node(message)
+              .property("creationDate", [&](auto &prop) {
+                auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
+                auto edt = boost::get<ptime>(params[1]);
+                return gdt.date() == edt.date(); })
+              .from_relationships(":hasCreator")
+              .to_node("Person")
+              .from_relationships(":knows") // first of pair
+              .to_node("Person")
+              .to_relationships(":hasCreator")
+              .from_node(message)
+              .property("creationDate", [&](auto &prop) {
+                auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
+                auto edt = boost::get<ptime>(params[1]);
+                return gdt.date() == edt.date(); })
+              .from_relationships(":hasTag")
+              .to_node("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+              .group(grps1, {2, 4})
+              .aggregate(grps1, {{"count", 0}})
+              .where_qr_tuple([&](const qr_tuple v) {
+                return boost::get<uint64_t>(v[2]) <= (uint64_t)boost::get<int>(params[4]); })
+              .group(grps2, {1})
+              .aggregate(grps2, {{"count", 0}})
+              .from_relationships(":knows", 0)
+              .to_node("Person")
+              .to_relationships(":hasCreator")
+              .from_node(message)
+              .property("creationDate", [&](auto &prop) {
+                auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
+                auto edt = boost::get<ptime>(params[1]);
+                return gdt.date() == edt.date(); })
+              .from_relationships(":hasTag")
+              .to_node("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+              .from_relationships(":knows", 3) // Second of pair
+              .to_node("Person")
+              .to_relationships(":hasCreator")
+              .from_node(message)
+              .property("creationDate", [&](auto &prop) {
+                auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
+                auto edt = boost::get<ptime>(params[1]);
+                return gdt.date() == edt.date(); })
+              .from_relationships(":hasTag")
+              .to_node("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+              .group(grps3, {0, 1, 3, 5})
+              .aggregate(grps3, {{"count", 0}})
+              .where_qr_tuple([&](const qr_tuple v) {
+                return boost::get<uint64_t>(v[4]) <= (uint64_t)boost::get<int>(params[4]); })
+              .group(grps4, {0, 1, 2})
+              .aggregate(grps4, {{"count", 0}});
+
+    auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
+                return gtg == etg; })
+#else
+              .nodes_where("Tag", "name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
+                return gtg == etg; })
+#endif
+              .to_relationships(":hasTag")
+              .from_node(message)
+              .property("creationDate", [&](auto &prop) {
+                auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
+                auto edt = boost::get<ptime>(params[3]);
+                return gdt.date() == edt.date(); })
+              .from_relationships(":hasCreator")
+              .to_node("Person")
+              .from_relationships(":knows") // first of pair
+              .to_node("Person")
+              .to_relationships(":hasCreator")
+              .from_node(message)
+              .property("creationDate", [&](auto &prop) {
+                auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
+                auto edt = boost::get<ptime>(params[3]);
+                return gdt.date() == edt.date(); })
+              .from_relationships(":hasTag")
+              .to_node("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
+                return gtg == etg; })
+              .group(grps5, {2, 4})
+              .aggregate(grps5, {{"count", 0}})
+              .where_qr_tuple([&](const qr_tuple v) {
+                return boost::get<uint64_t>(v[2]) <= (uint64_t)boost::get<int>(params[4]); })
+              .group(grps6, {1})
+              .aggregate(grps6, {{"count", 0}})
+              .from_relationships(":knows", 0)
+              .to_node("Person")
+              .to_relationships(":hasCreator")
+              .from_node(message)
+              .property("creationDate", [&](auto &prop) {
+                auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
+                auto edt = boost::get<ptime>(params[3]);
+                return gdt.date() == edt.date(); })
+              .from_relationships(":hasTag")
+              .to_node("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
+                return gtg == etg; })
+              .from_relationships(":knows", 3) // Second of pair
+              .to_node("Person")
+              .to_relationships(":hasCreator")
+              .from_node(message)
+              .property("creationDate", [&](auto &prop) {
+                auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
+                auto edt = boost::get<ptime>(params[3]);
+                return gdt.date() == edt.date(); })
+              .from_relationships(":hasTag")
+              .to_node("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
+                return gtg == etg; })
+              .group(grps7, {0, 1, 3, 5})
+              .aggregate(grps7, {{"count", 0}})
+              .where_qr_tuple([&](const qr_tuple v) {
+                return boost::get<uint64_t>(v[4]) <= (uint64_t)boost::get<int>(params[4]); })
+              .group(grps8, {0, 1, 2})
+              .aggregate(grps8, {{"count", 0}})
+              .hashjoin_on_node({0, 0}, q1)
+              .append_to_qr_tuple([&](qr_tuple v) {
+                uint64_t cnt = boost::get<uint64_t>(v[1]) + boost::get<uint64_t>(v[4]);
+                return query_result(cnt); })
+              .project({PVar_(8),
+                        PExpr_(0, pj::uint64_property(res, "id")) })
+              .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                if (boost::get<uint64_t>(qr1[0]) == boost::get<uint64_t>(qr2[0]))
+                  return boost::get<uint64_t>(qr1[1]) < boost::get<uint64_t>(qr2[1]);
+                return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]); })
+              .limit(20)
+              .collect(rs);
+
+    query::start({&q1, &q2});
+    rs.wait();
+}
+
 /* ------------------------------------------------------------------------ */
 
 double calc_avg_time(const std::vector<double>& vec) {
@@ -1505,6 +1686,31 @@ double run_query_14(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
+double run_query_16(graph_db_ptr gdb) {
+    std::vector<params_tuple> params = {{"George_Frideric_Handel",
+      time_from_string(std::string("2011-10-22 21:45:42.621")), "Napoleon",
+      time_from_string(std::string("2011-06-02 08:39:49.912")), 3}};
+
+    std::vector<double> runtimes(params.size());
+
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        auto tx = gdb->begin_transaction();
+        ldbc_bi_query_16(gdb, rs, params[i]);
+        gdb->commit_transaction();
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return calc_avg_time(runtimes);
+}
+
 void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
     t = run_query_1(gdb);
@@ -1535,6 +1741,8 @@ void run_benchmark(graph_db_ptr gdb) {
     spdlog::info("Query #13: {} msecs", t);
     t = run_query_14(gdb);
     spdlog::info("Query #14: {} msecs", t);
+    t = run_query_16(gdb);
+    spdlog::info("Query #16: {} msecs", t);
 }
 
 /* ---------------------------------------------------------------------------- */
