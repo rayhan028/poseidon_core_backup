@@ -41,8 +41,8 @@ ast_op_ptr queryc::parse(const std::string &query) {
   try {
     ptree = pegtl::parse_tree::parse<qlang::qoperator,
                                     qlang::my_selector, qlang::my_control>(in);
-    //if (ptree)
-  	//  pegtl::parse_tree::print_dot( std::cout, *ptree);
+    if (ptree)
+  	  pegtl::parse_tree::print_dot( std::cout, *ptree);
   } catch (const pegtl::parse_error &e) {
     const auto p = e.positions.front();
     std::cerr << e.what() << std::endl
@@ -74,6 +74,19 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
         return ast_op::expand;
       else if (name == "Project")
         return ast_op::project;
+      else if (name == "Create") {
+        if (pn->children.size() > 1) {
+          auto& sibling = pn->children[1];
+          auto& pattern = sibling->children.front();
+          if (pattern->is<qlang::node_pattern>()) {
+            return ast_op::create_node;
+          }
+          else if (pattern->is<qlang::rship_pattern>()) {
+            return ast_op::create_rship;
+          }
+        }
+        return ast_op::unknown;
+      }
       // TODO
     }
   }
@@ -105,6 +118,12 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
           plist.push_back(pspec);
         }
         nptr->add_param(plist);
+      }
+      else if (param->is<qlang::node_pattern>()) {
+        // TODO!!!!
+      }  
+      else if (param->is<qlang::rship_pattern>()) {
+        // TODO!!!!
       }
     }
   }

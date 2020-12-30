@@ -104,6 +104,7 @@ struct key_project : TAO_PEGTL_KEYWORD("Project") {};
 struct key_limit : TAO_PEGTL_KEYWORD("Limit") {};
 struct key_foreach_rship : TAO_PEGTL_KEYWORD("ForeachRelationship") {};
 struct key_join : TAO_PEGTL_KEYWORD("Join") {};
+struct key_create : TAO_PEGTL_KEYWORD("Create") {};
 
 struct op_name : sor< key_node_scan, 
                     key_index_scan, 
@@ -112,7 +113,8 @@ struct op_name : sor< key_node_scan,
                     key_project,
                     key_limit,
                     key_foreach_rship,
-                    key_join
+                    key_join,
+                    key_create
                     > {};
 
 struct directions : sor<TAO_PEGTL_KEYWORD("FROM"), TAO_PEGTL_KEYWORD("TO"), 
@@ -130,9 +132,27 @@ struct proj_expr : seq< variable_name, one<':'>, dtype> {};
 
 struct proj_array : seq< one<'['>, opt<space>, list<proj_expr, comma>, opt<space>, one<']'> > {};
 
+struct property : seq< name, opt<space>, one<':'>, opt<space>, sor<decimal, literal_string> > {};
+
+struct prop_list : seq<one<'{'>, opt<space>, list<property, comma>, opt<space>, one<'}'> > {};
+
+struct node_or_rship_pattern : seq<name, opt<space>, one<':'>, opt<space>, name, opt<space>, opt<prop_list> > {};
+struct node_pattern : seq<one<'('>, opt<space>, node_or_rship_pattern, opt<space>, one<')'> > {};
+
+struct snode : seq<one<'('>, opt<space>, one< '$' >, integer, opt<space>, one<')'>> {};
+
+struct right_rship_dir : seq< one<'-'>, opt< one<'>'>>> {};
+struct left_rship_dir : seq< opt< one<'<'>>, one<'-'>> {};
+
+struct rship_pattern : seq<snode, 
+                          left_rship_dir, 
+                          one<'['>, opt<space>, node_or_rship_pattern, opt<space>, one <']'>, 
+                          right_rship_dir, 
+                          snode> {};
+
 struct qoperator;
 
-struct param : sor<literal_string, qoperator, directions, integer, expression, proj_array> {};
+struct param : sor<literal_string, qoperator, directions, integer, expression, proj_array, node_pattern, rship_pattern> {};
 
 struct param_list : list<param, comma> {};
 
@@ -152,7 +172,9 @@ template <> struct my_selector<op_name> : std::true_type {};
 template <> struct my_selector<operators_cmp> : std::true_type {};
 template <> struct my_selector<proj_array> : std::true_type {};
 template <> struct my_selector<proj_expr> : std::true_type {};
-
+template <> struct my_selector<prop_list> : std::true_type {};
+template <> struct my_selector<node_pattern> : std::true_type {};
+template <> struct my_selector<rship_pattern> : std::true_type {};
 /* ------------------------------------------------------------- */
 
 template <typename Rule> struct my_control : tao::pegtl::normal<Rule> {

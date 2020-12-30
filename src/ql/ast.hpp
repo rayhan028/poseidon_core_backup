@@ -49,7 +49,7 @@ using prop_spec_list = std::vector<prop_spec>;
  * ast_op is used for representing query operators in the AST.
  */
 struct ast_op {
-    enum op_type { unknown, node_scan, filter, foreach_rship, expand, project, limit, join };
+    enum op_type { unknown, node_scan, filter, foreach_rship, expand, project, limit, join, create_node, create_rship };
     using param_type = boost::variant<int, std::string, parse_tree_ptr, prop_spec_list>;
 
     /**
