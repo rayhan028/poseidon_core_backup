@@ -20,7 +20,7 @@
 #include "ast.hpp"
 #include <boost/hana.hpp>
 
-std::ostream& operator<<(std::ostream& os, const prop_spec_list& plist) {
+std::ostream& operator<<(std::ostream& os, const proj_spec_list& plist) {
     os << "[ ";
     for (auto i = 0u; i < plist.size(); i++) {
         auto& pi = plist[i];
@@ -28,6 +28,17 @@ std::ostream& operator<<(std::ostream& os, const prop_spec_list& plist) {
         if (i < plist.size()-1) os << ", ";
     }
     os << " ]";
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const jproperty_list& plist) {
+    os << "{ ";
+    for (auto i = 0u; i < plist.size(); i++) {
+        auto& pi = plist[i];
+        os << pi.pname << ": " << pi.pval;
+        if (i < plist.size()-1) os << ", ";
+    }
+    os << " }";
     return os;
 }
 
@@ -47,6 +58,10 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
             os << "Limit("; break;
         case ast_op::join:
             os << "Join("; break;
+        case ast_op::create_node:
+            os << "CreateNode("; break;
+        case ast_op::create_rship:
+            os << "CreateRelationship("; break;
         default:
             break;
     }
@@ -54,7 +69,8 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
       [&](int i) { os << i; },
       [&](const std::string &s) { os << s; },
       [&](const parse_tree_ptr& expr) { os << expr->string(); },
-      [&](const prop_spec_list& plist) { os << plist; } );
+      [&](const proj_spec_list& plist) { os << plist; },
+      [&](const jproperty_list& plist) { os << plist; });
 
    for (auto& p : op.params_) {
         boost::apply_visitor(my_visitor, p);

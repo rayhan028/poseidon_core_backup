@@ -136,7 +136,8 @@ struct property : seq< name, opt<space>, one<':'>, opt<space>, sor<decimal, lite
 
 struct prop_list : seq<one<'{'>, opt<space>, list<property, comma>, opt<space>, one<'}'> > {};
 
-struct node_or_rship_pattern : seq<name, opt<space>, one<':'>, opt<space>, name, opt<space>, opt<prop_list> > {};
+struct node_or_rship_label : seq<name, opt<space>, one<':'>, opt<space>, name> {};
+struct node_or_rship_pattern : seq<node_or_rship_label, opt<space>, opt<prop_list> > {};
 struct node_pattern : seq<one<'('>, opt<space>, node_or_rship_pattern, opt<space>, one<')'> > {};
 
 struct snode : seq<one<'('>, opt<space>, one< '$' >, integer, opt<space>, one<')'>> {};
@@ -172,9 +173,15 @@ template <> struct my_selector<op_name> : std::true_type {};
 template <> struct my_selector<operators_cmp> : std::true_type {};
 template <> struct my_selector<proj_array> : std::true_type {};
 template <> struct my_selector<proj_expr> : std::true_type {};
+template <> struct my_selector<property> : std::true_type {};
 template <> struct my_selector<prop_list> : std::true_type {};
+template <> struct my_selector<node_or_rship_pattern> : std::true_type {};
+template <> struct my_selector<left_rship_dir> : std::true_type {};
+template <> struct my_selector<right_rship_dir> : std::true_type {};
+template <> struct my_selector<node_or_rship_label> : std::true_type {};
 template <> struct my_selector<node_pattern> : std::true_type {};
 template <> struct my_selector<rship_pattern> : std::true_type {};
+
 /* ------------------------------------------------------------- */
 
 template <typename Rule> struct my_control : tao::pegtl::normal<Rule> {

@@ -36,21 +36,28 @@ using ast_op_ptr = std::shared_ptr<ast_op>;
 using parse_tree_ptr = std::unique_ptr<tao::pegtl::parse_tree::node>;
 
 /**
- * prop_spec represents a property specification used in a projection clause.
+ * proj_spec represents a projection specification used in a project clause.
  */
-struct prop_spec {
-    std::string pname; // property name in the form of $1.name
-    std::string ptype; // property typename
+struct proj_spec {
+    std::string pname; // name in the form of $1.name
+    std::string ptype; // typename
 };
 
-using prop_spec_list = std::vector<prop_spec>;
+using proj_spec_list = std::vector<proj_spec>;
+
+struct jproperty {
+    std::string pname; // property name
+    std::string pval; // property value
+};
+
+using jproperty_list = std::vector<jproperty>;
 
 /**
  * ast_op is used for representing query operators in the AST.
  */
 struct ast_op {
     enum op_type { unknown, node_scan, filter, foreach_rship, expand, project, limit, join, create_node, create_rship };
-    using param_type = boost::variant<int, std::string, parse_tree_ptr, prop_spec_list>;
+    using param_type = boost::variant<int, std::string, parse_tree_ptr, proj_spec_list, jproperty_list>;
 
     /**
      * Constructor
@@ -83,10 +90,14 @@ struct ast_op {
     void add_param(parse_tree_ptr expr) { params_.push_back(std::move(expr)); }
 
     /**
-     * Add a property specification list as parameter (used for projection).
+     * Add a projection specification list as parameter (used for projection).
      */
-    void add_param(prop_spec_list& plist) { params_.push_back(plist); }
+    void add_param(proj_spec_list& plist) { params_.push_back(plist); }
 
+    /**
+     * Add a property list as parameter (used for create).
+     */
+    void add_param(jproperty_list& plist) { params_.push_back(plist); }
     /**
      * Return true if the AST operator is a source parameter.
      */
