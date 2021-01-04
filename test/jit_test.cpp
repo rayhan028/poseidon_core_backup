@@ -46,7 +46,7 @@ nvm::pool_base prepare_pool() {
 	auto pop = nvm::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
 	return pop;
 }
-#endif
+
 
 TEST_CASE("Query the graph", "[jit_query_read]") {
 #ifdef USE_PMDK
@@ -476,3 +476,6 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
 #endif
 
 }*/
+
+
+#endif
