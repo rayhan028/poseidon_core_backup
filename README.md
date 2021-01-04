@@ -73,11 +73,12 @@ Operator | Parameter | Description
 NodeScan | node type | Scans the node table and returns all nodes of the given type.
 IndexScan |          |
 Filter | filter expression, input | Processes the input list of nodes and rships and returns all tuples satisfying the given condition.
-Expand | IN or OUT, node type, input |
+Expand | IN or OUT, NodeType, input |
 Project | [ projection list ], input |
 Limit | number of tuples, input | Limits the input list to the given number of tuples
-ForeachRelationship | TO or FROM, relationship type, input |
-
+ForeachRelationship | TO or FROM, RelationshipType, input |
+Create | (n:NodeType { key: val, ...} ), input | Creates a new node from the literals or the input
+Create | ($1)-[r:RelationshipType { key: val, ...} ]->($2), input | Creates a new relationship from the literals or the input
 
 
 

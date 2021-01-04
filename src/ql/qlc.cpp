@@ -299,7 +299,7 @@ int main(int argc, char* argv[]) {
     run_shell(graph);
   }
 
-  exec_query(graph, "NodeScan('Product')");
+  exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
 
   if (!query_string.empty()) {
     exec_query(graph, query_string);

@@ -41,8 +41,8 @@ ast_op_ptr queryc::parse(const std::string &query) {
   try {
     ptree = pegtl::parse_tree::parse<qlang::qoperator,
                                     qlang::my_selector, qlang::my_control>(in);
-    //if (ptree)
-  	//  pegtl::parse_tree::print_dot( std::cout, *ptree);
+    if (ptree)
+  	  pegtl::parse_tree::print_dot( std::cout, *ptree);
   } catch (const pegtl::parse_error &e) {
     const auto p = e.positions.front();
     std::cerr << e.what() << std::endl
@@ -74,6 +74,19 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
         return ast_op::expand;
       else if (name == "Project")
         return ast_op::project;
+      else if (name == "Create") {
+        if (pn->children.size() > 1) {
+          auto& sibling = pn->children[1];
+          auto& pattern = sibling->children.front();
+          if (pattern->is<qlang::node_pattern>()) {
+            return ast_op::create_node;
+          }
+          else if (pattern->is<qlang::rship_pattern>()) {
+            return ast_op::create_rship;
+          }
+        }
+        return ast_op::unknown;
+      }
       // TODO
     }
   }
@@ -99,9 +112,48 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
         nptr->add_param(std::move(param));
       }
       else if (param->is<qlang::proj_array>()) {
-        prop_spec_list plist;
+        proj_spec_list plist;
         for (auto& p : param->children) {
           auto pspec = get_property_spec(p);
+          plist.push_back(pspec);
+        }
+        nptr->add_param(plist);
+      }
+      else if (param->is<qlang::node_pattern>()) {
+        auto& p = param->children.front();
+        // p->children[0] > node_or_rship_label
+        nptr->add_param(p->children[0]->string());
+        // p->children[1] -> prop_list
+        jproperty_list plist;
+        for (auto& prop : p->children[1]->children) {
+          auto pspec = get_json_property(prop);
+          plist.push_back(pspec);
+        }
+        nptr->add_param(plist);
+      }  
+      else if (param->is<qlang::rship_pattern>()) {
+        auto d1 = param->children[1]->string();
+        auto d2 = param->children[3]->string();
+        if (d1 == "-" && d2 == "->")
+          nptr->add_param(std::string("->"));
+        else if (d1 == "<-" && d2 == "-")
+          nptr->add_param(std::string("<-"));
+        else if (d1 == "<-" && d2 == "->")
+          nptr->add_param(std::string("<->"));
+        else
+          nptr->add_param(std::string("-"));
+        
+        auto& p0 = param->children[0];
+        nptr->add_param(p0->string());
+        auto& p = param->children[2];
+        auto& p1 = param->children[4];
+        nptr->add_param(p1->string());
+        // p->children[0] > node_or_rship_label
+        nptr->add_param(p->children[0]->string());
+        // p->children[1] -> prop_list
+        jproperty_list plist;
+        for (auto& prop : p->children[1]->children) {
+          auto pspec = get_json_property(prop);
           plist.push_back(pspec);
         }
         nptr->add_param(plist);
@@ -111,13 +163,18 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
   return nptr;
 }
 
-prop_spec queryc::get_property_spec(parse_tree_ptr& pn) {
+proj_spec queryc::get_property_spec(parse_tree_ptr& pn) {
   assert (pn->is<qlang::proj_expr>());
   std::vector<std::string> s;
   boost::split(s, pn->content(), boost::is_any_of(":"));
-  return prop_spec{ s[0], s[1] };
-   
-  // std::cout << "====> " << pn->children.size() << ": " << pn->content() << std::endl;
+  return proj_spec{ s[0], s[1] };
+}
+
+jproperty queryc::get_json_property(parse_tree_ptr& pn) {
+  assert (pn->is<qlang::property>());
+  std::vector<std::string> s;
+  boost::split(s, pn->content(), boost::is_any_of(":"));
+  return jproperty{ s[0], s[1] };
 }
 
 void queryc::ast_to_plan(ast_op_ptr &ast) {
@@ -262,12 +319,12 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       break;
     case ast_op::project:
     {
-        auto pr_list = ast->get_param<prop_spec_list>(0);
+        auto pr_list = ast->get_param<proj_spec_list>(0);
         std::vector<pr_expr> pr_exprs;
 
         for(auto & p : pr_list) {
-            FTYPE type;
-            if(boost::iequals(p.ptype, "int")) {
+            FTYPE type = FTYPE::INT;
+            if (boost::iequals(p.ptype, "int")) {
               type = FTYPE::INT;
             } else if (boost::iequals(p.ptype, "string")) {
               type = FTYPE::STRING;

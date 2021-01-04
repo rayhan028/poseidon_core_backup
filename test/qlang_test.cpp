@@ -68,4 +68,22 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
       pegtl::string_input<>("[$1.Age:int, $1.Name:string]", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Project([$1.Age:int, $1.Name:string])", "")));
+  REQUIRE(pegtl::parse<qlang::prop_list, pegtl::nothing>(
+      pegtl::string_input<>("{ name1: 'Val1', name2: 42 }", "")));
+  REQUIRE(pegtl::parse<qlang::node_pattern, pegtl::nothing>(
+      pegtl::string_input<>("(n:Label { name1: 'Val1', name2: 42 })", "")));
+  REQUIRE(pegtl::parse<qlang::rship_pattern, pegtl::nothing>(
+      pegtl::string_input<>("($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)", "")));
+  REQUIRE(pegtl::parse<qlang::rship_pattern, pegtl::nothing>(
+      pegtl::string_input<>("($1)-[r:Label]->($2)", "")));
+  REQUIRE(pegtl::parse<qlang::rship_pattern, pegtl::nothing>(
+      pegtl::string_input<>("($1)<-[r:Label]-($2)", "")));
+  REQUIRE(pegtl::parse<qlang::rship_pattern, pegtl::nothing>(
+      pegtl::string_input<>("($1)-[r:Label]-($2)", "")));
+  REQUIRE(pegtl::parse<qlang::rship_pattern, pegtl::nothing>(
+      pegtl::string_input<>("($1)<-[r:Label]->($2)", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("Create((n:Label { name1: 'Val1', name2: 42 }))", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("Create((n:Label { name1: 'Val1', name2: 42 }), NodeScan('Person'))", "")));
 }
