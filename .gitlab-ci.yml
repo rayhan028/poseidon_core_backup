@@ -1,4 +1,4 @@
-image: "dbisilm/pmdk:latest"
+image: "dbisilm/llvm_pmdk:latest"
 
 stages:
   - build
