@@ -735,7 +735,7 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
 
 std::size_t graph_db::import_typed_n4j_relationships_from_csv(const std::string &filename,
                                                     char delim,
-                                                    const mapping_t &m) {
+                                                    const mapping_t &m, const std::string& rship_type) {
   using namespace aria::csv;
 
   std::ifstream f(filename);
@@ -760,9 +760,9 @@ std::size_t graph_db::import_typed_n4j_relationships_from_csv(const std::string 
       // process header
       for (auto &field : row) {
         columns.push_back(field);
-        if (field == ":START_ID") // neo4j
+        if (field.rfind(":START_ID", 0) == 0) // neo4j
           start_col = i;
-        else if (field == ":END_ID")
+        else if (field.rfind(":END_ID", 0) == 0)
           end_col = i;
         else if (field == ":TYPE")
           type_col = i;
@@ -770,7 +770,8 @@ std::size_t graph_db::import_typed_n4j_relationships_from_csv(const std::string 
       }
       assert(start_col >= 0); // neo4j
       assert(end_col >= 0);
-      assert(type_col >= 0);
+      if (rship_type.empty())
+        assert(type_col >= 0);
 
       prop_names.resize(columns.size());
       prop_types.resize(columns.size());
@@ -785,7 +786,8 @@ std::size_t graph_db::import_typed_n4j_relationships_from_csv(const std::string 
       }
       node::id_t from_node = it->second;      
 
-      auto &label = row[type_col];
+      // if the type (label) of the relationship was given, we just use it 
+      auto &label = rship_type.empty() ? row[type_col] : rship_type;
       auto label_code = dict_->insert(label);
 
       it = m.find(row[end_col]); 
@@ -813,7 +815,7 @@ std::size_t graph_db::import_typed_n4j_relationships_from_csv(const std::string 
         continue;
       node::id_t from_node = it->second;      
 
-      auto &label = row[type_col];
+      auto &label = rship_type.empty() ? row[type_col] : rship_type;
       auto label_code = dict_->insert(label);
 
       it = m.find(row[end_col]); // node_id_from_field(m, des_node, row[end_col]);

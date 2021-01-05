@@ -29,39 +29,37 @@
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
 #endif
-struct scan_task {
-  using range = std::pair<std::size_t, std::size_t>;
-  scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last,
-            graph_db::node_consumer_func c, transaction_ptr tp = nullptr)
-      : graph_db_(gdb), nodes_(n), range_(first, last), consumer_(c), tx_(tp) {}
 
-  void operator()() {
+scan_task::scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last, graph_db::node_consumer_func c, transaction_ptr tp)
+	: graph_db_(gdb), nodes_(n), range_(first, last), consumer_(c), tx_(tp) {}
+
+void scan_task::scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer) {
     xid_t xid = 0;
-    if (tx_) { // we need the transaction pointer in thread-local storage
-      current_transaction_ = tx_;
-      xid = tx_->xid();
+    if (tx) { // we need the transaction pointer in thread-local storage
+	current_transaction_ = tx;
+	xid = tx->xid();				    
     }
-    auto iter = nodes_.range(range_.first, range_.second);
+    auto iter = gdb->get_nodes()->range(first, last);
+    
     while (iter) {
 #ifdef USE_TX
-      auto &n = *iter;
-      if (n.is_valid()) {
-        auto &nv = graph_db_->get_valid_node_version(n, xid);
-        consumer_(nv);
-      }
+	auto &n = *iter;
+	if (n.is_valid()) {
+	   auto &nv = gdb->get_valid_node_version(n, xid);
+		consumer(nv);
+	}
 #else
-      consumer_(*iter);
+	consumer_(*iter);
 #endif
-      ++iter;
+	++iter;
     }
-  }
+}
 
-  graph_db *graph_db_;
-  node_list &nodes_;
-  range range_;
-  graph_db::node_consumer_func consumer_;
-  transaction_ptr tx_;
-};
+std::function<void(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer)> scan_task::callee_ = &scan_task::scan;
+
+void scan_task::operator()() {
+   callee_(tx_, graph_db_, range_.first, range_.second, consumer_);
+}
 
 void graph_db::nodes_by_label(const std::string &label,
                               node_consumer_func consumer) {

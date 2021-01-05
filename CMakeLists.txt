@@ -20,6 +20,7 @@ endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(USE_PMDK OFF)
+  set(LLVM_DIR "/usr/local/opt/llvm/lib/cmake/llvm")
 endif()
 
 # Don't try to contact github everytime.
@@ -76,6 +77,9 @@ include_directories(${PROJECT_SOURCE_DIR}/src/ldbc)
 include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 include_directories(${PROJECT_SOURCE_DIR}/src/pool)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
+include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
+include_directories(${PROJECT_SOURCE_DIR}/src/ql)
+
 #---------------------------------------------------------------------------
 
 set(THIRD_PARTY_DIR "${PROJECT_BINARY_DIR}/_deps")
@@ -174,6 +178,48 @@ if(NOT benchmark_POPULATED)
   set(BENCHMARK_INCLUDE_DIR ${benchmark_SOURCE_DIR}/include)
 endif()
 
+# LLVM ============================================================== #
+find_package(LLVM REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+include_directories(${LLVM_INCLUDE_DIRS})
+llvm_map_components_to_libnames(LLVM_LIBRARIES
+XRay WindowsManifest TableGen Symbolize DebugInfoPDB OrcJIT OrcError JITLink ObjectYAML MCA LTO Passes Coroutines ObjCARCOpts Extensions LineEditor LibDriver Interpreter FuzzMutate MCJIT ExecutionEngine RuntimeDyld DWARFLinker DlltoolDriver Option DebugInfoGSYM Coverage XCoreDisassembler XCoreCodeGen XCoreDesc XCoreInfo X86Disassembler X86AsmParser X86CodeGen X86Desc X86Info WebAssemblyDisassembler WebAssemblyCodeGen WebAssemblyDesc WebAssemblyAsmParser WebAssemblyInfo SystemZDisassembler SystemZCodeGen SystemZAsmParser SystemZDesc SystemZInfo SparcDisassembler SparcCodeGen SparcAsmParser SparcDesc SparcInfo RISCVDisassembler RISCVCodeGen RISCVAsmParser RISCVDesc RISCVUtils RISCVInfo PowerPCDisassembler PowerPCCodeGen PowerPCAsmParser PowerPCDesc PowerPCInfo NVPTXCodeGen NVPTXDesc NVPTXInfo MSP430Disassembler MSP430CodeGen MSP430AsmParser MSP430Desc MSP430Info MipsDisassembler MipsCodeGen MipsAsmParser MipsDesc MipsInfo LanaiDisassembler LanaiCodeGen LanaiAsmParser LanaiDesc LanaiInfo HexagonDisassembler HexagonCodeGen HexagonAsmParser HexagonDesc HexagonInfo BPFDisassembler BPFCodeGen BPFAsmParser BPFDesc BPFInfo AVRDisassembler AVRCodeGen AVRAsmParser AVRDesc AVRInfo ARMDisassembler ARMCodeGen ARMAsmParser ARMDesc ARMUtils ARMInfo AMDGPUDisassembler AMDGPUCodeGen MIRParser ipo Instrumentation Vectorize Linker IRReader AsmParser FrontendOpenMP AMDGPUAsmParser AMDGPUDesc AMDGPUUtils AMDGPUInfo AArch64Disassembler MCDisassembler AArch64CodeGen CFGuard GlobalISel SelectionDAG AsmPrinter DebugInfoDWARF CodeGen Target ScalarOpts InstCombine AggressiveInstCombine TransformUtils BitWriter Analysis ProfileData Object TextAPI BitReader Core Remarks BitstreamReader AArch64AsmParser MCParser AArch64Desc MC DebugInfoCodeView DebugInfoMSF BinaryFormat AArch64Utils AArch64Info Support Demangle)
+        #X86Utils)
+
+# PEGTL =================================================================== #
+include(FetchContent REQUIRED)
+ FetchContent_Declare(
+  pegtl
+  GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
+  GIT_TAG        2.8.3
+  )
+FetchContent_GetProperties(pegtl)
+if(NOT pegtl_POPULATED)
+  message(STATUS "Populating PEGTL")
+  FetchContent_Populate(pegtl)
+  set(PEGTL_INCLUDE_DIR ${pegtl_SOURCE_DIR}/include)
+  add_library(PEGTL IMPORTED INTERFACE)
+  set_property(TARGET PEGTL PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${PEGTL_INCLUDE_DIR}")
+endif()
+
+# linenoise =================================================================== #
+include(FetchContent REQUIRED)
+ FetchContent_Declare(
+  linenoise
+  GIT_REPOSITORY https://github.com/yhirose/cpp-linenoise.git
+ #  GIT_TAG        1.2.1
+  )
+FetchContent_GetProperties(linenoise)
+
+if(NOT linenoise_POPULATED)
+  message(STATUS "Populating linenoise")
+  FetchContent_Populate(linenoise)
+  set(LINENOISE_INCLUDE_DIR ${linenoise_SOURCE_DIR})
+  add_library(LINENOISE IMPORTED INTERFACE)
+  set_property(TARGET LINENOISE PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${LINENOISE_INCLUDE_DIR}")
+endif()
+
 #---------------------------------------------------------------------------
 
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -231,11 +277,13 @@ if (BUILD_PYTHON)
     program_options
     date_time
     ${BOOST_PYTHON}
+    thread
     REQUIRED)
 else()
   find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
     program_options
     date_time
+    thread
     REQUIRED)
 endif()
 
@@ -251,9 +299,11 @@ endif()
 
 #-----------------------------------------------------------------------------------------
 
+include_directories("${PEGTL_INCLUDE_DIR}")
 include_directories("${CSV_INCLUDE_DIR}")
 include_directories("${SPDLOG_INCLUDE_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/src")
+include_directories("${LINENOISE_INCLUDE_DIR}")
 
 #-----------------------------------------------------------------------------------------
 
@@ -285,7 +335,23 @@ set(src_files
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
   src/ldbc/ldbc.cpp
-)
+  src/qcomp/codegen_inline.cpp
+  src/qcomp/filter_expression.cpp
+  src/qcomp/filter_expression_inline.cpp
+  src/qcomp/global_definitions.cpp
+  src/qcomp/interpreter.cpp
+  src/qcomp/jit_cache.cpp
+  src/qcomp/p_jit.cpp
+  src/qcomp/optimizer.cpp
+  src/qcomp/main.cpp
+  src/qcomp/p_context.cpp
+  src/qcomp/query_engine.cpp
+  src/qcomp/qoperator.cpp
+  src/qcomp/joiner.cpp
+  src/qcomp/interprete_filter_visitor.cpp
+  src/ql/queryc.cpp
+  src/ql/ast.cpp
+  )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
 # in different libraries.
@@ -302,7 +368,9 @@ add_library(poseidon_core SHARED
 )
 
 target_link_libraries(poseidon_core
+  ${LLVM_LIBRARIES}
   Boost::date_time
+  Boost::thread
   spdlog::spdlog_header_only
 )
 
@@ -318,8 +386,10 @@ add_library(poseidon SHARED
 )
 
 target_link_libraries(poseidon
+  ${LLVM_LIBRARIES}
   Boost::date_time
   Boost::${BOOST_PYTHON}
+  Boost::thread
   ${PYTHON_LIBRARIES}
   ${PMDK_LIBRARIES}
   spdlog::spdlog_header_only
@@ -342,6 +412,7 @@ add_executable(ldbc_loader
 target_link_libraries(ldbc_loader
   poseidon_core
   ${PMDK_LIBRARIES}
+  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 
@@ -354,6 +425,7 @@ add_executable(run_ldbc_reads
 target_link_libraries(run_ldbc_reads
   poseidon_core
   ${PMDK_LIBRARIES}
+  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 
@@ -366,6 +438,7 @@ add_executable(run_ldbc_updates
 target_link_libraries(run_ldbc_updates
   poseidon_core
   ${PMDK_LIBRARIES}
+  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 
@@ -378,6 +451,46 @@ add_executable(run_ldbc_graphalytics
 target_link_libraries(run_ldbc_graphalytics
   poseidon_core
   ${PMDK_LIBRARIES}
+  ${LLVM_LIBRARIES}
+  Boost::program_options
+)
+
+# The program for executing jitted short read queries.
+#
+add_executable(run_ldbc_jit_reads
+  src/ldbc/ldbc_jit_reads.cpp
+ )
+
+target_link_libraries(run_ldbc_jit_reads
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  ${LLVM_LIBRARIES}
+  Boost::program_options
+)
+
+# The program for executing the LLVM query compiler
+add_executable(qcomp
+	  src/qcomp/main.cpp
+	   )
+
+target_link_libraries(qcomp
+	     poseidon_core
+	     ${PMDK_LIBRARIES}
+	     ${LLVM_LIBRARIES}
+	     Boost::program_options
+             )
+
+#-----------------------------------------------------------------------------------------
+
+add_executable(qlc
+#  src/ql/ast.cpp
+  src/ql/qlc.cpp
+ )
+
+target_link_libraries(qlc
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 #-----------------------------------------------------------------------------------------

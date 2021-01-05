@@ -237,7 +237,10 @@ class chunked_vec {
   struct range_iter {
     range_iter(chunked_vec &v, std::size_t first, std::size_t last)
         : vec_(v), range_(first, last), current_chunk_(first),
-          cptr_(vec_.chunk_list_[first]), pos_(0) {}
+          cptr_(nullptr), pos_(0) {
+            if (vec_.chunk_list_.size() > 0)
+              cptr_ = vec_.chunk_list_[first];
+        }
 
     operator bool() const { return current_chunk_ <= range_.second && cptr_; }
 

@@ -237,7 +237,7 @@ public:
                                             char delim, const mapping_t &m, std::mutex *mtx = nullptr);
 
    std::size_t import_typed_n4j_relationships_from_csv(const std::string &filename,
-                                            char delim, const mapping_t &m);
+                                            char delim, const mapping_t &m, const std::string& rship_type = "");
 
   /* ---------------- helper ---------------- */
 
@@ -470,6 +470,12 @@ public:
   bool is_relationship_property(const relationship &r, dcode_t pcode,
                                 p_item::predicate_func pred);
 
+  /**
+   * Return the node version from the dirty list that is valid for the
+   * transaction identified by xid.
+   */
+  node &get_valid_node_version(node &n, xid_t xid);
+
 private:
   friend struct scan_task;
 
@@ -494,12 +500,6 @@ private:
    * Handle the commit of a relationship from the dirty list.
    */
   void commit_dirty_relationship(transaction_ptr tx, relationship::id_t rship_id);
-
-  /**
-   * Return the node version from the dirty list that is valid for the
-   * transaction identified by xid.
-   */
-  node &get_valid_node_version(node &n, xid_t xid);
 
   /**
    * Return the relationship version from the dirty list that is valid for the
@@ -559,5 +559,23 @@ private:
 };
 
 using graph_db_ptr = p_ptr<graph_db>;
+
+struct scan_task {
+  using range = std::pair<std::size_t, std::size_t>;
+  scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last,
+	    graph_db::node_consumer_func c, transaction_ptr tp = nullptr);
+
+  void operator()();
+
+  static void scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer);
+
+  static std::function<void(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer)> callee_;
+
+  graph_db *graph_db_;
+  node_list &nodes_;
+  range range_;
+  graph_db::node_consumer_func consumer_;
+  transaction_ptr tx_;
+};
 
 #endif
