@@ -170,6 +170,22 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<str_token> str) {
     opd_cnt++;
 }
 
+void fep_visitor_inline::visit(int rank, std::shared_ptr<fct_call> fct) {
+    fct->opd_num = opd_cnt;
+    expr_stack.insert(expr_stack.begin(), fct);
+
+    auto fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_);
+    auto fct_ptr = ctx_->getBuilder().CreateIntToPtr(fct_raw, ctx_->int64PtrTy);
+    auto fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int64PtrTy}, false);
+    auto fct_callee = ctx_->getBuilder().CreateBitCast(fct_ptr, fct_callee_type->getPointerTo());
+
+    auto roi = ctx_->getBuilder().CreateBitCast(qr_regs_.at(0).reg_val, ctx_->int64PtrTy);
+
+    auto res = ctx_->getBuilder().CreateCall(fct_callee_type, fct_callee, {roi});
+
+    ctx_->getBuilder().CreateCondBr(res, next_, end_);
+}
+
 /**
  * Generates code for the evaluation of an equality expression
  */

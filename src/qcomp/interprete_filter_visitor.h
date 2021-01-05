@@ -40,6 +40,8 @@ public:
 
     void visit(int rank, std::shared_ptr<str_token> str) override;
 
+    void visit(int rank, std::shared_ptr<fct_call> str) override;
+
     void visit(int rank, std::shared_ptr<eq_predicate> eq) override;
 
     void visit(int rank, std::shared_ptr<and_predicate> andpr) override;

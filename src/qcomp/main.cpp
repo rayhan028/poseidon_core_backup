@@ -10,8 +10,7 @@
 #include "queryc.hpp"
 #include "query.hpp"
 
-
-const std::string test_path = poseidon::gPmemPath + "Product";
+const std::string test_path = poseidon::gPmemPath + "jit_qcomp";
 
 #ifdef USE_PMDK
 
@@ -22,9 +21,9 @@ namespace nvm = pmem::obj;
 nvm::pool_base prepare_pool() {
 	nvm::pool_base pop;
 	if (access(test_path.c_str(), F_OK) != 0) {
-    	pop = nvm::pool_base::create(test_path, "Product", PMEMOBJ_POOL_SIZE);
+    	pop = nvm::pool_base::create(test_path, "jit_qcomp", PMEMOBJ_POOL_SIZE);
   	} else {
-    	pop = nvm::pool_base::open(test_path, "Product");
+    	pop = nvm::pool_base::open(test_path, "jit_qcomp");
   	}
 
 	//auto pop = nvm::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
@@ -39,13 +38,13 @@ int main() {
 	nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("jit_qcomp");
 #endif
 
 
 	auto tx = graph->begin_transaction();
 
-	int PERSONS = 100000;
+	int PERSONS = 100;
 	int NO_PERSONS = 42;
 	for (int i = 0; i < PERSONS; i++) {
 		auto p = graph->add_node("Person",
@@ -73,15 +72,6 @@ int main() {
 
 	query_engine queryEngine(graph, THREAD_NUM, cv_range);
 
-	arg_builder args;
-	/*args.arg(1, "Person");
-	args.arg(2, ":HAS_READ");
-	args.arg(3, "Book");
-	args.arg(4, 42);*/
-
-
-	result_set rs;
-
 	p_ptr<dict> dct;
 #ifdef USE_PMDK
 	nvm::transaction::run(pop, [&] {
@@ -93,7 +83,7 @@ int main() {
 
     queryc qlc;
 	
-	algebra_optr op = qlc.compile_to_plan("Project([$0.name:string, $0.num:uint64], NodeScan('Person'))");
+	//algebra_optr op = qlc.compile_to_plan("Project([$0.name:string, $0.num:uint64], NodeScan('Person'))");
 
 	auto r_expr = Scan("Book", End());
 
@@ -118,13 +108,11 @@ int main() {
 	ab.arg(5, ":HAS_READ");
 	ab.arg(6, "Person");
 
-	auto qer = query(graph).all_nodes().has_label("Person").collect(rs);
+	result_set rs;
+
   	auto js = std::chrono::steady_clock::now();
-	graph->begin_transaction();
-	queryEngine.run_parallel(&rs, ab, 24);
-	
-	graph->commit_transaction();
-  	auto je = std::chrono::steady_clock::now();
+	queryEngine.run(&rs, ab.args);
+	auto je = std::chrono::steady_clock::now();
 
 	std::cout << rs.data.size() << std::endl;
 	  std::cout << "JIT: "

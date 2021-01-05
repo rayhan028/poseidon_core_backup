@@ -62,6 +62,18 @@ void str_token::accept(int rank, expression_visitor &fep) {
     fep.visit(rank, shared_from_this());
 }
 
+fct_call::fct_call(fct_t fct) : fct_(fct) {
+    name_ = "FCT";
+}
+
+void fct_call::accept(int rank, expression_visitor &fep) {
+    fep.visit(rank, shared_from_this());
+}
+
+std::string fct_call::operator()() const {
+    return "";
+}
+
 binary_predicate::binary_predicate(FOP fop, const expr left, const expr right, bool prec, bool is_bool)
         : left_(left), right_(right), fop_(fop), prec_(prec), is_bool_(is_bool) {}
 
@@ -236,6 +248,20 @@ void fep_visitor::visit(int rank, std::shared_ptr<str_token> str) {
     ctx_->getBuilder().CreateBr(epilog);
     ctx_->getBuilder().SetInsertPoint(epilog);
     opd_cnt++;
+}
+
+void fep_visitor::visit(int rank, std::shared_ptr<fct_call> fct) {
+    fct->opd_num = opd_cnt;
+    expr_stack.insert(expr_stack.begin(), fct);
+
+    auto fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_);
+    auto fct_ptr = ctx_->getBuilder().CreateIntToPtr(fct_raw, ctx_->int64PtrTy);
+    auto fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int64PtrTy}, false);
+    auto fct_callee = ctx_->getBuilder().CreateBitCast(fct_ptr, fct_callee_type->getPointerTo());
+
+    auto res = ctx_->getBuilder().CreateCall(fct_callee_type, fct_callee, {roi_});
+
+    ctx_->getBuilder().CreateCondBr(res, next_, end_);
 }
 
 void fep_visitor::visit(int rank, std::shared_ptr<eq_predicate> eq)  {

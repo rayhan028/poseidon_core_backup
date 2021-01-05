@@ -24,6 +24,10 @@ void interprete_filter_visitor::visit(int rank, std::shared_ptr<str_token> str) 
     dict_value_ = dc;
 }
 
+void interprete_filter_visitor::visit(int rank, std::shared_ptr<fct_call> fct) {
+    //TODO: implement
+}
+
 void interprete_filter_visitor::visit(int rank, std::shared_ptr<eq_predicate> eq) {
     pred_ = predicate::eq;
 }

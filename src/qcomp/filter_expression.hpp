@@ -38,6 +38,7 @@ struct fep_visitor;
 struct number_token;
 struct key_token;
 struct str_token;
+struct fct_call;
 struct eq_predicate;
 struct and_predicate;
 struct or_predicate;
@@ -56,6 +57,8 @@ public:
     virtual void visit(int rank, std::shared_ptr<key_token> op) = 0;
 
     virtual void visit(int rank, std::shared_ptr<str_token> op) = 0;
+
+    virtual void visit(int rank, std::shared_ptr<fct_call> op) = 0;
 
     virtual void visit(int rank, std::shared_ptr<eq_predicate> op) = 0;
 
@@ -116,6 +119,19 @@ struct str_token : public expression, std::enable_shared_from_this<str_token> {
 
 inline expr Str(std::string value = 0) { return std::make_shared<str_token>(value); }
 
+struct fct_call : public expression, std::enable_shared_from_this<fct_call> {
+    using fct_t = bool (*)(int*);  
+    fct_t fct_;
+
+    fct_call(fct_t fct);
+
+    std::string operator()() const override;
+
+    void accept(int rank, expression_visitor &fep) override;
+};
+
+inline expr Fct(fct_call::fct_t fct) { return std::make_shared<fct_call>(fct); }
+
 struct binary_predicate : public expression {
     expr left_;
     expr right_;
@@ -174,8 +190,9 @@ struct fep_visitor : public expression_visitor {
 
     void visit(int rank, std::shared_ptr<key_token> key) override;
 
-
     void visit(int rank, std::shared_ptr<str_token> str) override;
+
+    void visit(int rank, std::shared_ptr<fct_call> fct) override;
 
     void visit(int rank, std::shared_ptr<eq_predicate> eq) override;
 
