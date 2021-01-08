@@ -173,8 +173,8 @@ query &query::limit(std::size_t n) {
                    std::bind(&limit_result::process, op.get(), ph::_1, ph::_2));
 }
 
-query &query::rship_exists(std::pair<int, int> src_des, bool dangle) {
-  auto op = std::make_shared<nodes_connected>(src_des, dangle);
+query &query::rship_exists(std::pair<int, int> src_des, bool append_null) {
+  auto op = std::make_shared<nodes_connected>(src_des, append_null);
   return append_op(op,
                    std::bind(&nodes_connected::process, op.get(), ph::_1, ph::_2));
 }
@@ -221,24 +221,6 @@ query::aggregate(const std::vector<result_set> &grps,
               const std::vector<std::pair<std::string, int>> &aggrs) {
   auto op = std::make_shared<aggr_ops>(grps, aggrs);
   return append_op(op, std::bind(&aggr_ops::process, op.get(), ph::_1, ph::_2));
-}
-
-query &
-query::count(const std::vector<result_set> &grps, bool p) {
-  auto op = std::make_shared<count_aggr>(grps, p);
-  return append_op(op, std::bind(&count_aggr::process, op.get(), ph::_1, ph::_2));
-}
-
-query &
-query::sum(const std::vector<result_set> &grps, const std::vector<int> &pos) {
-  auto op = std::make_shared<sum_aggr>(grps, pos);
-  return append_op(op, std::bind(&sum_aggr::process, op.get(), ph::_1, ph::_2));
-}
-
-query &
-query::avg(const std::vector<result_set> &grps, const std::vector<int> &pos) {
-  auto op = std::make_shared<avg_aggr>(grps, pos);
-  return append_op(op, std::bind(&avg_aggr::process, op.get(), ph::_1, ph::_2));
 }
 
 query &

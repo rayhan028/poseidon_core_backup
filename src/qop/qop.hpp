@@ -354,17 +354,21 @@ struct limit_result : public qop {
 };
 
 /**
- * TODO
+ * nodes_connected appends the relationship object between a source and a
+ * destination node, whose positions in the query tuple are given by the
+ * src_des pair.
+ * When no relationship exist between them, the boolean b sets whether a
+ * null_t is appended instead (true) or not (false)
  */
 struct nodes_connected : public qop {
-  nodes_connected(std::pair<int, int> src_des, bool b)  : dangle_(b), src_des_nodes_(src_des) {} 
+  nodes_connected(std::pair<int, int> src_des, bool b)  : append_null_(b), src_des_nodes_(src_des) {} 
   ~nodes_connected() = default;
 
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
-  bool dangle_;
+  bool append_null_;
   std::pair<int, int> src_des_nodes_;
 };
 
@@ -442,13 +446,14 @@ struct order_by : public qop {
 };
 
 /**
- * TODO
+ * group_by implements an operator for grouping tuples. The grouping
+ * keys are query result(s) given by their positions in the query tuple.
+ * Each group of tuples with the same grouping key is stored as a result_set.
+ * The vector grps stores all the grouped tuples.
  */
 struct group_by : public qop {
   group_by(std::vector<result_set> &grps, const std::vector<int> &pos) : 
-    grpkey_cnt_(0), res_set_vec_(grps), grpkey_pos_(pos) {
-    // assert(grpkey_pos_.size() > 0);
-  }
+    grpkey_cnt_(0), res_set_vec_(grps), grpkey_pos_(pos) {}
   ~group_by() = default;
 
   void dump(std::ostream &os) const override;
@@ -465,7 +470,13 @@ struct group_by : public qop {
 };
 
 /**
- * TODO
+ * aggr_ops imlements different aggregate operations: count, sum, average,
+ * percentage count. It is used after a group_by operator, which stores the
+ * grouped tuples in the vector grps.
+ * The aggregate type(s) and aggregate attribute(s) are given
+ * as a string-integer pair. The aggregate types above are specified as "count",
+ * "sum", "avg" and "pcount" respectively. The integer denotes the position of the
+ * aggregate attribute in the tuples of grps.
  */
 struct aggr_ops : public qop {
   aggr_ops(const std::vector<result_set> &grps,
@@ -486,65 +497,8 @@ struct aggr_ops : public qop {
 };
 
 /**
- * TODO
- */
-struct count_aggr : public qop {
-  count_aggr(const std::vector<result_set> &grps, bool p) :
-    grpkey_cnt_(0), percentage(p), total(false), total_cnt(0), res_set_vec_(grps) {}
-  ~count_aggr() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(graph_db_ptr &gdb, const qr_tuple &v);
-
-  void finish(graph_db_ptr &gdb);
-
-  int grpkey_cnt_;
-  bool percentage, total;
-  uint64_t total_cnt;
-  const std::vector<result_set> &res_set_vec_;
-};
-
-/**
- * TODO
- */
-struct sum_aggr : public qop {
-  sum_aggr(const std::vector<result_set> &grps, const std::vector<int> &pos) :
-    grpkey_cnt_(0), res_set_vec_(grps), grpkey_pos_(pos) {}
-  ~sum_aggr() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(graph_db_ptr &gdb, const qr_tuple &v);
-
-  void finish(graph_db_ptr &gdb);
-
-  int grpkey_cnt_;
-  const std::vector<result_set> &res_set_vec_;
-  std::vector<int> grpkey_pos_;
-};
-
-/**
- * TODO
- */
-struct avg_aggr : public qop {
-  avg_aggr(const std::vector<result_set> &grps, const std::vector<int> &pos) :
-    grpkey_cnt_(0), res_set_vec_(grps), grpkey_pos_(pos) {}
-  ~avg_aggr() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(graph_db_ptr &gdb, const qr_tuple &v);
-
-  void finish(graph_db_ptr &gdb);
-
-  int grpkey_cnt_;
-  const std::vector<result_set> &res_set_vec_;
-  std::vector<int> grpkey_pos_;
-};
-
-/**
- * TODO
+ * filter_tuple implements an operator that filters a tuple
+ * based on a predicate function.
  */
 struct filter_tuple : public qop {
   filter_tuple(std::function<bool(const qr_tuple &)> func)
@@ -561,7 +515,9 @@ struct filter_tuple : public qop {
 };
 
 /**
- * TODO
+ * qr_tuple_append implements an operator that appends a query
+ * result to a query tuple. The query result is computed from
+ * already existing query results in the tuple.
  */
 struct qr_tuple_append : public qop {
   qr_tuple_append(std::function<query_result(qr_tuple &)> func)
@@ -578,7 +534,9 @@ struct qr_tuple_append : public qop {
 };
 
 /**
- * TODO
+ * union_all_qres implements an operator that unions all the
+ * query tuples of the left query pipeline and the right query
+ * pipeline(s).
  */
 struct union_all_qres : public qop {
   union_all_qres() : init(true) {}
@@ -619,7 +577,8 @@ struct collect_result : public qop {
 };
 
 /**
- * end_pipeline is a query operator to end a query pipeline.
+ * end_pipeline is a query operator to end a query pipeline without
+ * collecting the query results.
  */
 struct end_pipeline : public qop {
   end_pipeline() = default;

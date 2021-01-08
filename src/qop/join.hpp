@@ -42,7 +42,10 @@ private:
 };
 
   /**
-   * TODO
+   * hash_join implements a nested loop join operator for merging tuples of two
+   * query pipelines if the node at a given position in the left tuple
+   * is the same as the node at another given position in the right tuple.
+   * The node positions are specified by the pos pair.
    */
 struct nested_loop_join : public qop {
   nested_loop_join(std::pair<int, int> pos) : left_right_nodes_(pos) {} 
@@ -62,7 +65,10 @@ private:
 };
 
   /**
-   * TODO
+   * hash_join implements a hashjoin operator for merging tuples of two
+   * query pipelines if the node at a given position in the left tuple
+   * is the same as the node at another given position in the right tuple.
+   * The node positions are specified by the pos pair.
    */
 struct hash_join : public qop {
   hash_join(std::pair<int, int> pos) : left_right_nodes_(pos) {} 

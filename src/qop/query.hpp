@@ -145,10 +145,14 @@ public:
    */
   query &limit(std::size_t n);
 
-/**
-   * TODO
+  /**
+   * Add an operator that appends the relationship object between a source and a
+   * destination node, whose positions in the query tuple are given by the
+   * src_des pair.
+   * When no relationship exist between them, the boolean b sets whether a
+   * null_t is appended instead (true) or not (false)
    */
-  query &rship_exists(std::pair<int, int> src_des, bool dangle = false);
+  query &rship_exists(std::pair<int, int> src_des, bool append_null = false);
 
   /**
    * Add a projection operator that applies the given list of projection
@@ -177,27 +181,6 @@ public:
                     const std::vector<std::pair<std::string, int>> &aggrs);
 
   /**
-   * Add an operator for counting the tuples in each group from the grouping operator.
-   * Optionally, each group's count value can be expressed as a percentage of the total
-   * result count by setting the p flag.
-   */
-  query &count(const std::vector<result_set> &grps, bool p = false);
-
-  /**
-   * Add an operator for summing the (numerical) values of attributes for each group
-   * from the grouping operator. The position(s) of the attribute(s) in the tuple is given
-   * by the vector of positions pos.
-   */
-  query &sum(const std::vector<result_set> &grps, const std::vector<int> &pos);
-
-  /**
-   * Add an operator for calculating the (numerical) average of attributes values for each group
-   * from the grouping operator. The position(s) of the attribute(s) in the tuple is given
-   * by the vector of positions pos.
-   */
-  query &avg(const std::vector<result_set> &grps, const std::vector<int> &pos);
-
-  /**
    * Add an operator to filter projected result tuples based on the pred function.
    */
   query &where_qr_tuple(std::function<bool(const qr_tuple &)> pred);
@@ -209,7 +192,8 @@ public:
   query &append_to_qr_tuple(std::function<query_result(qr_tuple &)> func);
 
   /**
-   * TODO
+   * Add an operator to unions all the query tuples of the left query 
+   * pipeline and the right query pipeline(s).
    */
   query &union_all(query &other);
 
@@ -232,17 +216,24 @@ public:
   query &finish();
 
   /**
-   * TODO
+   * Add an operator for constructing the cartesian product of the query tuples 
+   * of the left and right query pipelines.
    */
   query &crossjoin(query &other);
 
   /**
-   * TODO 
+   * Add a nested loop join operator for merging tuples of two
+   * query pipelines if the node at a given position in the left tuple
+   * is the same as the node at another given position in the right tuple.
+   * The node positions are specified by the pos pair. 
    */
   query &join_on_node(std::pair<int, int> left_right, query &other);
 
   /**
-   * TODO 
+   * Add a hash join operator for merging tuples of two
+   * query pipelines if the node at a given position in the left tuple
+   * is the same as the node at another given position in the right tuple.
+   * The node positions are specified by the pos pair. 
    */
   query &hashjoin_on_node(std::pair<int, int> left_right, query &other);
 
@@ -309,17 +300,24 @@ public:
   query &update(std::size_t var, properties_t &props);
 
   /**
-   * TODO
+   * Add an operator for deleting the last node in a query tuple.
+   * All relationship objects connected to the node are also deleted.
+   * The optional pos specifies a node to be deleted at other
+   * positions in the tuple.
    */
   query &delete_detach(const std::size_t pos = std::numeric_limits<std::size_t>::max());
 
   /**
-   * TODO
+   * Add an operator for deleting the last node in a query tuple.
+   * The optional pos specifies a node to be deleted at other
+   * positions in the tuple.
    */
   query &delete_node(const std::size_t pos = std::numeric_limits<std::size_t>::max());
 
   /**
-   * TODO
+   * Add an operator for deleting the last relationship in a query tuple.
+   * The optional pos specifies a relationship to be deleted at other
+   * positions in the tuple.
    */
   query &delete_rship(const std::size_t pos = std::numeric_limits<std::size_t>::max());
 

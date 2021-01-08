@@ -108,7 +108,9 @@ struct update_node : public qop {
 };
 
 /**
- * TODO
+ * detach_node implements an operator for deleting the last node in a query tuple.
+ * All relationship objects connected to the node are also deleted.
+ * The optional p specifies a node to be deleted at other positions in the tuple.
  */
 struct detach_node : public qop {
   // detach_node(const std::vector<std::size_t> &r, std::size_t p)  : pos_(p), /*rels_(r)*/ {} 
@@ -124,7 +126,8 @@ struct detach_node : public qop {
 };
 
 /**
- * TODO
+ * remove_node implements an operator for deleting the last node in a query tuple.
+ * The optional p specifies a node to be deleted at other positions in the tuple.
  */
 struct remove_node : public qop {
   remove_node(std::size_t p)  : pos_(p) {} 
@@ -138,7 +141,8 @@ struct remove_node : public qop {
 };
 
 /**
- * TODO
+ * remove_rship implements an operator for deleting the last relationship in a query tuple.
+ * The optional p specifies a relationship to be deleted at other positions in the tuple.
  */
 struct remove_rship : public qop {
   remove_rship(std::size_t p)  : pos_(p) {} 

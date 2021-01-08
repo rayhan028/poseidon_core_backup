@@ -291,17 +291,17 @@ void nodes_connected::dump(std::ostream &os) const {
 void nodes_connected::process(graph_db_ptr &gdb, const qr_tuple &v) {
   auto src = boost::get<node *>(v[src_des_nodes_.first]);
   auto des = boost::get<node *>(v[src_des_nodes_.second]);
-  bool flag = true;
+  bool found = false;
 
   gdb->foreach_from_relationship_of_node((*src), [&](auto &r) {
       if (r.to_node_id() == des->id()){
-        flag = false;
+        found = true;
         auto res = append(v, query_result(&r));
         consume_(gdb, res); //TODO: fix for potential result tuple size mismatch
       }
   });
 
-  if (flag && dangle_){
+  if (!found && append_null_){
     auto res = append(v, query_result(null_t(-1)));
     consume_(gdb, res);
   }
@@ -460,107 +460,6 @@ void aggr_ops::process(graph_db_ptr &gdb, const qr_tuple &v) {
   }
 
   consume_(gdb, res); 
-}
-
-/* ------------------------------------------------------------------------ */
-
-void count_aggr::dump(std::ostream &os) const {
-  os << "count_aggr()=>";
-  if (subscriber_)
-    subscriber_->dump(os);
-}
-
-void count_aggr::process(graph_db_ptr &gdb, const qr_tuple &v) {
-  uint64_t gcnt = res_set_vec_[grpkey_cnt_++].data.size();
-  auto v2 = append(v, query_result(gcnt));
-  if (percentage) {
-    if (!total) {
-      for (auto &res : res_set_vec_)
-        total_cnt += res.data.size();
-      total = true;
-    }
-    double p_gcnt = (gcnt / (double)total_cnt) * 100;
-    auto v3 = append(v2, query_result(p_gcnt));
-    consume_(gdb, v3);
-    return;
-  }
-
-  consume_(gdb, v2); 
-}
-
-/* ------------------------------------------------------------------------ */
-  
-
-void sum_aggr::dump(std::ostream &os) const {
-  os << "sum_aggr([])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
-}
-
-void sum_aggr::process(graph_db_ptr &gdb, const qr_tuple &v) {
-  auto v2 = v;
-  for (auto pos : grpkey_pos_) {
-    auto &grp_data = res_set_vec_[grpkey_cnt_++].data;
-    auto key = grp_data.front()[pos];
-    if (key.type() == typeid(int)) {
-      int gsum = 0;
-      for (auto &tpl : grp_data)
-        gsum += boost::get<int>(tpl[pos]);
-      v2 = append(v2, query_result(gsum));
-    }
-    else if (key.type() == typeid(uint64_t)) {
-      uint64_t gsum = 0;
-      for (auto &tpl : grp_data)
-        gsum += boost::get<uint64_t>(tpl[pos]);
-      v2 = append(v2, query_result(gsum));
-    }
-    else if (key.type() == typeid(double)) {
-      double gsum = 0.0;
-      for (auto &tpl : grp_data)
-        gsum += boost::get<double>(tpl[pos]);
-      v2 = append(v2, query_result(gsum));
-    }
-  }
-  consume_(gdb, v2);
-}
-
-/* ------------------------------------------------------------------------ */
-
-void avg_aggr::dump(std::ostream &os) const {
-  os << "avg_aggr([])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
-}
-
-void avg_aggr::process(graph_db_ptr &gdb, const qr_tuple &v) { // TODO reuse count and sum
-  auto v2 = v;
-  for (auto pos : grpkey_pos_) {
-    auto &grp_data = res_set_vec_[grpkey_cnt_++].data;
-    uint64_t gcnt = grp_data.size();
-    auto key = grp_data.front()[pos];
-    if (key.type() == typeid(int)) {
-      int gsum = 0;
-      for (auto &tpl : grp_data)
-        gsum += boost::get<int>(tpl[pos]);
-      double g_avg = gsum / gcnt;
-      v2 = append(v2, query_result(g_avg));
-    }
-    else if (key.type() == typeid(uint64_t)) {
-      uint64_t gsum = 0;
-      for (auto &tpl : grp_data)
-        gsum += boost::get<uint64_t>(tpl[pos]);
-      double g_avg = gsum / gcnt;
-      v2 = append(v2, query_result(g_avg));
-    }
-    else if (key.type() == typeid(double)) {
-      double gsum = 0.0;
-      for (auto &tpl : grp_data)
-        gsum += boost::get<double>(tpl[pos]);
-      double g_avg = gsum / gcnt;
-      v2 = append(v2, query_result(g_avg));
-    }
-  }
-  consume_(gdb, v2);
 }
 
 /* ------------------------------------------------------------------------ */
