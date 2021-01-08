@@ -77,6 +77,12 @@ Expand | IN or OUT, NodeType, input |
 Project | [ projection list ], input |
 Limit | number of tuples, input | Limits the input list to the given number of tuples
 ForeachRelationship | TO or FROM, RelationshipType, input |
+Group |             |
+Aggregate |         |
+AppendToTuple |     |
+FilterTuple |       |
+ConnectedNodes |    |
+Union |             |
 Create | (n:NodeType { key: val, ...} ), input | Creates a new node from the literals or the input
 Create | ($1)-[r:RelationshipType { key: val, ...} ]->($2), input | Creates a new relationship from the literals or the input
 
