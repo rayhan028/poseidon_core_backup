@@ -77,6 +77,7 @@ Expand | IN or OUT, NodeType, input |
 Project | [ projection list ], input |
 Limit | number of tuples, input | Limits the input list to the given number of tuples
 ForeachRelationship | TO or FROM, RelationshipType, input |
+Sort |              |
 Group |             |
 Aggregate |         |
 AppendToTuple |     |
