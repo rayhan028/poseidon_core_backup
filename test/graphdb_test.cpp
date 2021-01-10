@@ -995,3 +995,51 @@ TEST_CASE("Checking that we cannot delete nodes which are still part of a relati
 
   graph_pool::destroy(pool);
 }
+
+TEST_CASE("Checking delete_detached_node", "[graph_db]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  auto tx = graph->begin_transaction();
+
+  auto p1 = graph->add_node(":Person", {});
+  auto p2 = graph->add_node(":Person", {});
+  auto p3 = graph->add_node(":Person", {});
+
+  auto r1 = graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {});
+  auto r2 = graph->add_relationship(p1, p3, ":IS_FRIENDS_WITH", {});
+  graph->commit_transaction();
+
+  graph->dump();
+
+  tx = graph->begin_transaction();
+  {
+    auto &n = graph->node_by_id(p1);
+    REQUIRE(n.id() == p1);
+    graph->detach_delete_node(p1);
+  }
+  spdlog::info("detach_delete_node finished");
+  graph->commit_transaction();
+
+  // we should not find r1 and r2 anymore
+  tx = graph->begin_transaction();
+  {
+    auto &n1 = graph->node_by_id(p2);
+    REQUIRE(n1.id() == p2);
+    REQUIRE(n1.from_rship_list == UNKNOWN);
+    REQUIRE(n1.to_rship_list == UNKNOWN);
+
+    auto &n2 = graph->node_by_id(p3);
+    REQUIRE(n2.id() == p3);
+    REQUIRE(n2.from_rship_list == UNKNOWN);
+    REQUIRE(n2.to_rship_list == UNKNOWN);
+
+    REQUIRE_THROWS_AS(graph->delete_node(p1), unknown_id);
+    REQUIRE_THROWS_AS(graph->delete_relationship(r1), unknown_id);
+    REQUIRE_THROWS_AS(graph->delete_relationship(r2), unknown_id);
+  }
+  graph->commit_transaction();
+
+  graph_pool::destroy(pool);
+
+}
