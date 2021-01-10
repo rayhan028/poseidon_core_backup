@@ -70,13 +70,18 @@ Currently, the following query operators are supported:
 
 Operator | Parameter | Description
 ---------| ----------|------------
-NodeScan | node type | Scans the node table and returns all nodes of the given type.
-IndexScan |          |
+NodeScan | NodeType | Scans the node table and returns all nodes of the given type.
+IndexScan | NodeType, selection predicate | Performs an index lookup and returns all nodes of the given type that satisfy the predicate condition 
 Filter | filter expression, input | Processes the input list of nodes and rships and returns all tuples satisfying the given condition.
-Expand | IN or OUT, NodeType, input |
-Project | [ projection list ], input |
+Expand | IN or OUT, NodeType, input | Gets all the source or destination nodes of the given type
+Project | [ projection list ], input | Projects query results based on the given projection list
 Limit | number of tuples, input | Limits the input list to the given number of tuples
-ForeachRelationship | TO or FROM, RelationshipType, input |
+ForeachRelationship | TO or FROM, RelationshipType, input | Traverses all incoming or outgoing relationships of the given type
+Sort |  sort function, input | Orders tuples according to the sorting function
+Group | [ GroupKey list ], input | Group all tuples based on grouping key(s)
+Aggregate | [ AggregateType list ], input | Apply aggregate function(s) and appends the output to tuple
+AppendToTuple | [ result function ], input | Computes a query result and appends it to tuple
+Union | [ query list ], input | Combines the tuples of multiple queries
 Create | (n:NodeType { key: val, ...} ), input | Creates a new node from the literals or the input
 Create | ($1)-[r:RelationshipType { key: val, ...} ]->($2), input | Creates a new relationship from the literals or the input
 
