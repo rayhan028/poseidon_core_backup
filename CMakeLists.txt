@@ -8,7 +8,7 @@ if(${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
 #-------------------------------------------------------------------------------
 # Set the mount path of your pmem device where the tests/benchmarks are stored
 if(NOT PMEM_MNT_PATH)
-  set(PMEM_MNT_PATH "/mnt/pmem0/test/poseidon")
+  set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
 option(USE_PMDK       "Use Intel PMDK"                         ON)
