@@ -8,7 +8,7 @@ if(${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
 #-------------------------------------------------------------------------------
 # Set the mount path of your pmem device where the tests/benchmarks are stored
 if(NOT PMEM_MNT_PATH)
-  set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
+  set(PMEM_MNT_PATH "/mnt/pmem0/test/poseidon")
 endif()
 
 option(USE_PMDK       "Use Intel PMDK"                         ON)
@@ -186,6 +186,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 llvm_map_components_to_libnames(LLVM_LIBRARIES
 XRay WindowsManifest TableGen Symbolize DebugInfoPDB OrcJIT OrcError JITLink ObjectYAML MCA LTO Passes Coroutines ObjCARCOpts Extensions LineEditor LibDriver Interpreter FuzzMutate MCJIT ExecutionEngine RuntimeDyld DWARFLinker DlltoolDriver Option DebugInfoGSYM Coverage XCoreDisassembler XCoreCodeGen XCoreDesc XCoreInfo X86Disassembler X86AsmParser X86CodeGen X86Desc X86Info WebAssemblyDisassembler WebAssemblyCodeGen WebAssemblyDesc WebAssemblyAsmParser WebAssemblyInfo SystemZDisassembler SystemZCodeGen SystemZAsmParser SystemZDesc SystemZInfo SparcDisassembler SparcCodeGen SparcAsmParser SparcDesc SparcInfo RISCVDisassembler RISCVCodeGen RISCVAsmParser RISCVDesc RISCVUtils RISCVInfo PowerPCDisassembler PowerPCCodeGen PowerPCAsmParser PowerPCDesc PowerPCInfo NVPTXCodeGen NVPTXDesc NVPTXInfo MSP430Disassembler MSP430CodeGen MSP430AsmParser MSP430Desc MSP430Info MipsDisassembler MipsCodeGen MipsAsmParser MipsDesc MipsInfo LanaiDisassembler LanaiCodeGen LanaiAsmParser LanaiDesc LanaiInfo HexagonDisassembler HexagonCodeGen HexagonAsmParser HexagonDesc HexagonInfo BPFDisassembler BPFCodeGen BPFAsmParser BPFDesc BPFInfo AVRDisassembler AVRCodeGen AVRAsmParser AVRDesc AVRInfo ARMDisassembler ARMCodeGen ARMAsmParser ARMDesc ARMUtils ARMInfo AMDGPUDisassembler AMDGPUCodeGen MIRParser ipo Instrumentation Vectorize Linker IRReader AsmParser FrontendOpenMP AMDGPUAsmParser AMDGPUDesc AMDGPUUtils AMDGPUInfo AArch64Disassembler MCDisassembler AArch64CodeGen CFGuard GlobalISel SelectionDAG AsmPrinter DebugInfoDWARF CodeGen Target ScalarOpts InstCombine AggressiveInstCombine TransformUtils BitWriter Analysis ProfileData Object TextAPI BitReader Core Remarks BitstreamReader AArch64AsmParser MCParser AArch64Desc MC DebugInfoCodeView DebugInfoMSF BinaryFormat AArch64Utils AArch64Info Support Demangle)
         #X86Utils)
+# LLVM_DYLIB_COMPONENTS in case of dynamic lib
 
 # PEGTL =================================================================== #
 include(FetchContent REQUIRED)
@@ -368,7 +369,7 @@ add_library(poseidon_core SHARED
 )
 
 target_link_libraries(poseidon_core
-  ${LLVM_LIBRARIES}
+  LLVM
   Boost::date_time
   Boost::thread
   spdlog::spdlog_header_only
@@ -386,7 +387,7 @@ add_library(poseidon SHARED
 )
 
 target_link_libraries(poseidon
-  ${LLVM_LIBRARIES}
+  LLVM
   Boost::date_time
   Boost::${BOOST_PYTHON}
   Boost::thread
@@ -412,7 +413,6 @@ add_executable(ldbc_loader
 target_link_libraries(ldbc_loader
   poseidon_core
   ${PMDK_LIBRARIES}
-  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 
@@ -425,7 +425,6 @@ add_executable(run_ldbc_reads
 target_link_libraries(run_ldbc_reads
   poseidon_core
   ${PMDK_LIBRARIES}
-  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 
@@ -438,7 +437,6 @@ add_executable(run_ldbc_updates
 target_link_libraries(run_ldbc_updates
   poseidon_core
   ${PMDK_LIBRARIES}
-  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 
@@ -451,7 +449,6 @@ add_executable(run_ldbc_graphalytics
 target_link_libraries(run_ldbc_graphalytics
   poseidon_core
   ${PMDK_LIBRARIES}
-  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 
@@ -464,7 +461,6 @@ add_executable(run_ldbc_jit_reads
 target_link_libraries(run_ldbc_jit_reads
   poseidon_core
   ${PMDK_LIBRARIES}
-  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 
@@ -476,7 +472,6 @@ add_executable(qcomp
 target_link_libraries(qcomp
 	     poseidon_core
 	     ${PMDK_LIBRARIES}
-	     ${LLVM_LIBRARIES}
 	     Boost::program_options
              )
 
@@ -490,7 +485,6 @@ add_executable(qlc
 target_link_libraries(qlc
   poseidon_core
   ${PMDK_LIBRARIES}
-  ${LLVM_LIBRARIES}
   Boost::program_options
 )
 #-----------------------------------------------------------------------------------------
