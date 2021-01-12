@@ -33,6 +33,7 @@
 #include "graph_db.hpp"
 #include "nodes.hpp"
 #include "relationships.hpp"
+#include "shortest_path.hpp"
 
 template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
   std::vector<T> v2;
@@ -553,6 +554,24 @@ struct union_all_qres : public qop {
   std::list<qr_tuple> res_;
 };
 
+struct shortest_path_opr : public qop {
+  shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
+    rship_predicate pred, bool b) : bidirectional_(b),
+                  rpred_(pred), start_stop_(uv) {}
+  ~shortest_path_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  path_item path_;
+  bool bidirectional_;
+  rship_predicate rpred_;
+  std::pair<std::size_t, std::size_t> start_stop_;
+};
+
 /**
  * Operator for printing the content of a result set.
  */
@@ -608,7 +627,7 @@ struct end_pipeline : public qop {
 struct projection : public qop {
   using pr_result = boost::variant<node_description, node *, rship_description,
                                    relationship *, int, double, 
-                                   std::string, uint64_t, boost::posix_time::ptime, null_t>;
+                                   std::string, uint64_t, boost::posix_time::ptime, array_t, null_t>;
 
   struct expr {
     std::size_t vidx;

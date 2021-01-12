@@ -10,6 +10,7 @@
 #include "config.h"
 #include "qop.hpp"
 #include "query.hpp"
+#include "shortest_path.hpp"
 
 #include "threadsafe_queue.hpp"
 #include "spdlog/sinks/basic_file_sink.h"
@@ -1168,6 +1169,111 @@ void ldbc_bi_query_14(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
     rs.wait();
 }
 
+void ldbc_bi_query_15(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+
+    auto edge_weight =
+      [&](const node &n1, const node &n2) {
+        double w = 0.0;
+        gdb->foreach_to_relationship_of_node(n1, ":hasCreator", [&](relationship &r1) {
+          auto &msg1 = gdb->node_by_id(r1.from_node_id());
+          if (msg1.node_label == gdb->get_code("Post")) {
+            gdb->foreach_to_relationship_of_node(msg1, ":containerOf", [&](relationship &r2) {
+              auto &forum = gdb->node_by_id(r2.from_node_id());
+              if (forum.node_label == gdb->get_code("Forum")) {
+                auto forum_descr = gdb->get_node_description(forum.id());
+                ptime dt = get_property<ptime>(forum_descr.properties, 
+                                                  std::string("creationDate")).value();
+                ptime gdt1 = boost::get<ptime>(params[2]);
+                ptime gdt2 = boost::get<ptime>(params[3]);
+                if (gdt1 <= dt && dt <= gdt2) {
+                  gdb->foreach_to_relationship_of_node(msg1, ":replyOf", [&](relationship &r3) {
+                    auto &msg2 = gdb->node_by_id(r3.from_node_id());
+                    if (msg2.node_label == gdb->get_code("Comment")) {
+                      gdb->foreach_from_relationship_of_node(msg2, ":hasCreator", [&](relationship &r4) {
+                        if (r4.to_node_id() == n2.id())
+                          w += 1.0;
+                      });
+                    }
+                  });
+                }
+              }
+            });
+          }
+          else if (msg1.node_label == gdb->get_code("Comment")) {
+            auto reply_code = gdb->get_code(":replyOf");
+            gdb->foreach_variable_from_relationship_of_node(msg1, reply_code, 1, 100, [&](relationship &r2) {
+              auto &post = gdb->node_by_id(r2.to_node_id());
+              if (post.node_label == gdb->get_code("Post")) {
+                gdb->foreach_to_relationship_of_node(post, ":containerOf", [&](relationship &r3) {
+                  auto &forum = gdb->node_by_id(r3.from_node_id());
+                  if (forum.node_label == gdb->get_code("Forum")) {
+                    auto forum_descr = gdb->get_node_description(forum.id());
+                    ptime dt = get_property<ptime>(forum_descr.properties, 
+                                                      std::string("creationDate")).value();
+                    ptime gdt1 = boost::get<ptime>(params[2]);
+                    ptime gdt2 = boost::get<ptime>(params[3]);
+                    if (gdt1 <= dt && dt <= gdt2) {
+                      gdb->foreach_to_relationship_of_node(msg1, ":replyOf", [&](relationship &r4) {
+                        auto &msg2 = gdb->node_by_id(r4.from_node_id());
+                        if (msg1.node_label == gdb->get_code("Comment")) {
+                          gdb->foreach_from_relationship_of_node(msg2, ":hasCreator", [&](relationship &r5) {
+                            if (r5.to_node_id() == n2.id())
+                              w += 0.5;
+                          });
+                        }
+                      });
+                    }
+                  }
+                });
+              }
+            });
+          }
+        });
+        return w;
+      };
+
+    // Query pipeline
+    auto q = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Person")
+              .property("id", [&](auto &prop) {
+                return prop.equal(boost::get<uint64_t>(params[0])); })
+#else
+              .nodes_where("Person", "id", [&](auto &prop) {
+                return prop.equal(boost::get<uint64_t>(params[0])); })
+#endif
+              .from_relationships({1, 100}, ":knows")
+              .to_node("Person")
+              .property("id", [&](auto &prop) {
+                return prop.equal(boost::get<uint64_t>(params[1])); })
+              .find_shortest_path({0, 2}, [&](relationship &r) {
+                return std::string(gdb->get_string(r.rship_label)) == ":knows"; }, true)
+              .append_to_qr_tuple([&](qr_tuple v) {
+                double weight = 0.0;
+                auto nids = boost::get<array_t>(v[3]).elems;
+                for (std::size_t i = 0; i < (nids.size() - 1); i++) {
+                  auto &n1 = gdb->node_by_id(nids[i]);
+                  auto &n2 = gdb->node_by_id(nids[i + 1]);
+                  weight += edge_weight(n1, n2);
+                  weight += edge_weight(n2, n1);
+                }
+                return query_result(weight); })
+              .append_to_qr_tuple([&](qr_tuple v) {
+                auto nids = boost::get<array_t>(v[3]).elems;
+                std::sort(nids.begin(), nids.end());
+                array_t res(nids);
+                return query_result(res); })
+              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
+                return boost::get<double>(q1[5]) < boost::get<double>(q2[5]); })
+              .project({PVar_(6),
+                        PVar_(5) })
+              .collect(rs);
+
+    q.start();
+    rs.wait();
+}
+
 void ldbc_bi_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
     std::vector<result_set> grps1;
     std::vector<result_set> grps2;
@@ -2105,6 +2211,31 @@ double run_query_14(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
+double run_query_15(graph_db_ptr gdb) {
+    std::vector<params_tuple> params = {{(uint64_t)933, (uint64_t)4139, 
+      time_from_string(std::string("2010-01-22 21:45:42.621")),
+      time_from_string(std::string("2011-10-12 03:05:14.333"))}};
+
+    std::vector<double> runtimes(params.size());
+
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        auto tx = gdb->begin_transaction();
+        ldbc_bi_query_15(gdb, rs, params[i]);
+        gdb->commit_transaction();
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return calc_avg_time(runtimes);
+}
+
 double run_query_16(graph_db_ptr gdb) {
     std::vector<params_tuple> params = {{"George_Frideric_Handel",
       time_from_string(std::string("2011-10-22 21:45:42.621")), "Napoleon",
@@ -2206,6 +2337,8 @@ void run_benchmark(graph_db_ptr gdb) {
     spdlog::info("Query #13: {} msecs", t);
     t = run_query_14(gdb);
     spdlog::info("Query #14: {} msecs", t);
+    t = run_query_15(gdb);
+    spdlog::info("Query #15: {} msecs", t);
     t = run_query_16(gdb);
     spdlog::info("Query #16: {} msecs", t);
     t = run_query_17(gdb);

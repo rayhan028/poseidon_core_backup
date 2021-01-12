@@ -257,6 +257,11 @@ void printer::process(graph_db_ptr &gdb, const qr_tuple &v) {
       [&](const std::string &s) { std::cout << s; },
       [&](uint64_t ll) { std::cout << ll; },
       [&](null_t n) { std::cout << "NULL"; },
+      [&](array_t arr) {
+        std::cout << "[ ";
+        for (auto elem : arr.elems)
+          std::cout << elem << " ";
+        std::cout << " ]"; },
       [&](ptime dt) { std::cout << dt; });
   for (auto &ge : v) {
     boost::apply_visitor(my_visitor, ge);
@@ -302,7 +307,7 @@ void nodes_connected::process(graph_db_ptr &gdb, const qr_tuple &v) {
   });
 
   if (!found && append_null_){
-    auto res = append(v, query_result(null_t(-1)));
+    auto res = append(v, query_result(null_val));
     consume_(gdb, res);
   }
 }
@@ -516,6 +521,32 @@ void union_all_qres::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
 
 /* ------------------------------------------------------------------------ */
 
+void shortest_path_opr::dump(std::ostream &os) const {
+  os << "shortest_path_opr([])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto a = boost::get<node *>(v[start_stop_.first]);
+  auto b = boost::get<node *>(v[start_stop_.second]);
+  auto start = a->id();
+  auto stop = b->id();
+
+  path_item spath;
+  path_visitor pv = [&](node &n, const path &p) { return; }; // TODO
+  unweighted_shortest_path(gdb, start, stop, bidirectional_, rpred_, pv, spath);
+
+  auto res = v;
+  array_t nids(spath.path_);
+  res.push_back(query_result(nids));
+  res.push_back(query_result(spath.distance_));
+
+  consume_(gdb, res);
+}
+
+/* ------------------------------------------------------------------------ */
+
 void result_set::wait() {
   std::unique_lock<std::mutex> lock(m);
   cond_var.wait(lock, [&] { return ready.load(); });
@@ -555,6 +586,11 @@ std::ostream &operator<<(std::ostream &os, const result_set &rs) {
       [&](int i) { os << i; }, [&](double d) { os << d; },
       [&](const std::string &s) { os << s; }, [&](uint64_t ll) { os << ll; },
       [&](null_t n) { os << "NULL"; },
+      [&](array_t arr) {
+        os << "[ ";
+        for (auto elem : arr.elems)
+          os << elem << " ";
+        os << " ]"; },
       [&](ptime dt) { os << dt; }); 
 
   for (const qr_tuple &qv : rs.data) {
@@ -593,6 +629,12 @@ void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
       [&](const std::string &s) { return s; }, 
       [&](uint64_t ll) { return std::to_string(ll); },
       [&](null_t n) { return std::string("NULL"); },
+      [&](array_t arr) {
+        auto astr = std::string("[ ");
+        for (auto elem : arr.elems)
+          astr += (std::to_string(elem) + std::string(" "));
+        astr += std::string("]");
+        return astr; },
       [&](ptime dt) { return to_iso_extended_string(dt); }); 
   for (std::size_t i = 0; i < v.size(); i++) {
     res[i] = boost::apply_visitor(my_visitor, v[i]);
@@ -712,7 +754,9 @@ query_result forward(projection::pr_result &pv) {
     return nd.to_string();
   } else if (pv.type() == typeid(ptime)) { 
     return boost::get<ptime>(pv);
-  } 
+  } else if (pv.type() == typeid(array_t)) { 
+    return boost::get<array_t>(pv);
+  }
   spdlog::info("builtin::forward: unexpected type: {}", pv.type().name());
   return null_val;
 }
@@ -877,6 +921,12 @@ std::string string_rep(projection::pr_result &res) {
                             [&](int i) { return std::to_string(i); },
                             [&](double d) { return std::to_string(d); },
                             [&](null_t n) { return std::string("NULL"); },
+                            [&](array_t arr) {
+                              auto astr = std::string("[ ");
+                              for (auto elem : arr.elems)
+                                astr += std::to_string(elem);
+                              astr += std::string(" ]");
+                              return astr; },
                             [&](const std::string &s) { return s; },
                             [&](uint64_t ll) { return std::to_string(ll); },  
                             [&](ptime dt) { return to_iso_extended_string(dt); } ); 
