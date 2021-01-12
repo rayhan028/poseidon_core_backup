@@ -929,7 +929,105 @@ void graph_db::delete_node(node::id_t id) {
 }
 
 void graph_db::detach_delete_node(node::id_t id) {
-  // TODO
+  spdlog::info("try to detach_delete_node: {}", id);
+#ifdef USE_TX
+  // acquire lock and create a dirty object
+  check_tx_context();
+  xid_t txid = current_transaction()->xid();
+
+  auto &n = this->node_by_id(id);
+
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!n.is_locked_by(txid) && !n.try_lock(txid))
+    throw transaction_abort();
+
+  // make sure we don't overwrite an object that was read by 
+  // a more recent transaction
+  if (n.rts() > txid)
+   throw transaction_abort();
+
+  // we collect the ids of all relationships in which n is involved
+  std::list<relationship::id_t> rships;
+  auto relship_id = n.from_rship_list;
+  while (relship_id != UNKNOWN) {
+    auto& relship = rships_->get(relship_id);
+    if (relship.is_locked_by(txid)) {
+      // because the relationship is locked we know that it was already updated
+      // by us and we should look for the dirty object containing the new values
+      assert(relship.has_dirty_versions());
+      if (relship.has_valid_version(txid))
+        rships.push_back(relship_id);
+    }
+    else if (relship.is_valid_for(txid)) 
+      rships.push_back(relship_id);
+
+    relship_id = relship.next_src_rship;
+  }
+  relship_id = n.to_rship_list;
+  while (relship_id != UNKNOWN) {
+    auto& relship = rships_->get(relship_id);
+    if (relship.is_locked_by(txid)) {
+      // because the relationship is locked we know that it was already updated
+      // by us and we should look for the dirty object containing the new values
+      assert(relship.has_dirty_versions());
+      if (relship.has_valid_version(txid))
+        rships.push_back(relship_id);
+    }
+    else if (relship.is_valid_for(txid)) 
+      rships.push_back(relship_id);
+
+    relship_id = relship.next_dest_rship;
+  }
+
+  for (auto& r : rships) {
+    spdlog::info("detach_delete_node => delete rship: {}", r);
+    delete_relationship(r);
+  }
+
+  // then, we make a copy of the original node which is stored in
+  // the dirty list
+  std::list<p_item> pitems =
+      node_properties_->build_dirty_property_list(n.property_list);
+  // cts is set to txid
+  const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
+  oldv->elem_.set_timestamps(n.bts(), txid);
+  oldv->elem_.set_dirty();
+  // but unlock it for readers
+  oldv->elem_.unlock();
+
+  // ... and create another copy as the new deleted version
+  const auto &newv = n.add_dirty_version(std::make_unique<dirty_node>(n, std::list<p_item>(), true /* updated */));
+  newv->elem_.set_timestamps(txid, txid);
+  newv->elem_.set_dirty();
+
+  current_transaction()->add_dirty_node(n.id());
+
+#else
+  auto &n = this->node_by_id(id);
+
+  // we collect the ids of all relationships in which n is involved
+  std::list<relationship::id_t> rships;
+  auto relship_id = n.from_rship_list;
+  while (relship_id != UNKNOWN) {
+    rships.push_back(relship_id);
+    auto& relship = rships_->get(relship_id);
+    relship_id = relship.next_src_rship;
+  }
+  relship_id = n.to_rship_list;
+  while (relship_id != UNKNOWN) {
+    rships.push_back(relship_id);
+    auto& relship = rships_->get(relship_id);
+    relship_id = relship.next_dest_rship;
+  }
+
+  for (auto& r : rships) {
+    spdlog::info("detach_delete_node => delete rship: {}", r);
+    delete_relationship(r);
+  }
+  node_properties_->remove_properties(n.property_list);
+ 
+  nodes_->remove(id);
+#endif
 }
 
 void graph_db::delete_relationship(relationship::id_t id) {

@@ -1146,6 +1146,88 @@ TEST_CASE("Checking that deleting a node works also within a transaction", "[tra
 
 /* ----------------------------------------------------------------------- */
 
+TEST_CASE("Checking that detach delete a node works", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t a, b, c, d, e;
+  {
+    // add a few nodes
+    auto tx = gdb->begin_transaction();
+      a = gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
+                                  {"age", boost::any(42)}});
+      b = gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                  {"age", boost::any(36)}});
+      c = gdb->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
+                                  {"age", boost::any(58)}});
+      d = gdb->add_relationship(a, b, ":knows", {});
+      e = gdb->add_relationship(a, c, ":knows", {});
+
+    gdb->commit_transaction();
+  }
+  {
+    // delete the node and all its relationships
+    auto tx = gdb->begin_transaction();
+    gdb->detach_delete_node(a);
+    gdb->commit_transaction();
+  }
+
+  {
+    // check that the node doesn't exist anymore
+    auto tx = gdb->begin_transaction();
+    REQUIRE_THROWS_AS(gdb->node_by_id(a), unknown_id);
+    REQUIRE_THROWS_AS(gdb->rship_by_id(d), unknown_id);
+    REQUIRE_THROWS_AS(gdb->rship_by_id(e), unknown_id);
+    gdb->abort_transaction();
+  }
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that detach delete also works within a transaction", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t a, b, c, d, e;
+  {
+    // add a few nodes
+    auto tx = gdb->begin_transaction();
+      a = gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
+                                  {"age", boost::any(42)}});
+      b = gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                  {"age", boost::any(36)}});
+      c = gdb->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
+                                  {"age", boost::any(58)}});
+      d = gdb->add_relationship(a, b, ":knows", {});
+      e = gdb->add_relationship(a, c, ":knows", {});
+
+    gdb->commit_transaction();
+  }
+  {
+    // delete the node
+    auto tx = gdb->begin_transaction();
+    gdb->detach_delete_node(a);
+    REQUIRE_THROWS_AS(gdb->node_by_id(a), unknown_id);
+    REQUIRE_THROWS_AS(gdb->rship_by_id(d), unknown_id);
+    REQUIRE_THROWS_AS(gdb->rship_by_id(e), unknown_id);
+    gdb->abort_transaction();
+  }
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
 TEST_CASE("Checking that aborting a delete transaction works", "[transaction]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
