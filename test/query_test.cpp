@@ -462,3 +462,42 @@ graph->add_relationship(comment3_id, amin_id, ":hasCreator", {});
   graph_pool::destroy(pool);
 } 
 
+TEST_CASE("Finding Unweighted Shortest Path", "[shortest_path]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  path_item ss_path;
+  path_visitor path_vis = [&](node &n, const path &p) { return; };
+  auto rpred = [&](relationship &r) {
+                return std::string(graph->get_string(r.rship_label)) == ":knows"; };
+
+  auto tx = graph->begin_transaction();
+
+  auto a = graph->add_node(":Person", {{"name",
+            boost::any(std::string("John"))}, {"age", boost::any(42)}});
+  auto b = graph->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                {"age", boost::any(36)}});
+  auto c = graph->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
+                                {"age", boost::any(58)}});
+  auto d = graph->add_node(":Person", {{"name", boost::any(std::string("Han"))},
+                                {"age", boost::any(13)}});
+  auto e = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
+                                {"age", boost::any(47)}});
+
+  graph->add_relationship(a, b, ":knows", {});
+  graph->add_relationship(b, c, ":knows", {});
+  graph->add_relationship(c, d, ":knows", {});
+  graph->add_relationship(a, e, ":knows", {});
+  graph->add_relationship(e, d, ":knows", {});
+
+  std::vector<uint64_t> exp_path = {0, 4, 3};
+  bool found = unweighted_shortest_path(graph, a, d, true, rpred, path_vis, ss_path);
+
+  REQUIRE(found);
+  REQUIRE(ss_path.hops_ == 2);
+  REQUIRE(ss_path.path_ == exp_path);
+
+  graph->commit_transaction();
+
+  graph_pool::destroy(pool);
+}

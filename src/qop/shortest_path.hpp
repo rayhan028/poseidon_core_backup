@@ -39,9 +39,15 @@ using path = std::vector<offset_t>;
 
 using path_visitor = std::function<void(node&, const path&)>;
 
+/**
+ * Typedef for a function that computes the weight of a relationship.
+ */
+using rship_weight = std::function<uint64_t(relationship&)>;
+
 struct path_item {
     path path_;
-    uint64_t distance_;
+    uint64_t hops_;
+    uint64_t weight_;
 };
 
 /**
@@ -52,6 +58,9 @@ struct path_item {
  * (unidirectional = true).
  */
 bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
+            bool unidirectional, rship_predicate rpred, path_visitor visit, path_item &spath);
+
+bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
             bool unidirectional, rship_predicate rpred, path_visitor visit, path_item &spath);
 
 #endif

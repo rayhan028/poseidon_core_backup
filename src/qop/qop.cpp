@@ -540,7 +540,7 @@ void shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
   auto res = v;
   array_t nids(spath.path_);
   res.push_back(query_result(nids));
-  res.push_back(query_result(spath.distance_));
+  res.push_back(query_result(spath.hops_));
 
   consume_(gdb, res);
 }

@@ -55,7 +55,7 @@ bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
                 if (vid == stop) {
                     found = true;
                     spath.path_ = u2;
-                    spath.distance_ = distance[vid];
+                    spath.hops_ = distance[vid];
                 }
             }
         });
@@ -73,7 +73,7 @@ bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
                     if (vid == stop) {
                         found = true;
                         spath.path_ = u2;
-                        spath.distance_ = distance[vid];
+                        spath.hops_ = distance[vid];
                     }
                 }
             });
