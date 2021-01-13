@@ -42,12 +42,17 @@ using path_visitor = std::function<void(node&, const path&)>;
 /**
  * Typedef for a function that computes the weight of a relationship.
  */
-using rship_weight = std::function<uint64_t(relationship&)>;
+using rship_weight = std::function<double(relationship&)>;
 
+/**
+ * A struct containing shortest path information.
+ */
 struct path_item {
+    path_item() : hops_(0), weight_(0.0) {}
+
     path path_;
     uint64_t hops_;
-    uint64_t weight_;
+    double weight_;
 };
 
 /**
@@ -60,7 +65,18 @@ struct path_item {
 bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
             bool unidirectional, rship_predicate rpred, path_visitor visit, path_item &spath);
 
-bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
-            bool unidirectional, rship_predicate rpred, path_visitor visit, path_item &spath);
+/**
+ * A sequential implementation of weighted shortest path search on the given graph. The search starts at the
+ * given start node and follows all relationships satisfying the predicate rpred. The weight of a traversed
+ * relationship is calculated from the weight function. For each visited node, the node_visitor callback 
+ * is invoked. 
+ * The unidirectional flag determines whether only outgoing relationships are considered 
+ * (unidirectional = false) or both outgoing and incoming relationships (unidirectional = true).
+ */
+bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool unidirectional,
+                        rship_predicate rpred, rship_weight weight_func, path_visitor visit, path_item &spath);
+
+double weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool unidirectional,
+                        rship_predicate rpred, rship_weight weight_func, path_visitor visit);
 
 #endif

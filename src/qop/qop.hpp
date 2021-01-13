@@ -554,6 +554,10 @@ struct union_all_qres : public qop {
   std::list<qr_tuple> res_;
 };
 
+/**
+ * shortest_path_opr implements an operator that finds the
+ * unweighted shortest path between two nodes.
+ */
 struct shortest_path_opr : public qop {
   shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
     rship_predicate pred, bool b) : bidirectional_(b),
@@ -569,6 +573,27 @@ struct shortest_path_opr : public qop {
   path_item path_;
   bool bidirectional_;
   rship_predicate rpred_;
+  std::pair<std::size_t, std::size_t> start_stop_;
+};
+
+/**
+ * weighted_shortest_path_opr implements an operator that finds the
+ * weighted shortest path between two nodes.
+ */
+struct weighted_shortest_path_opr : public qop {
+  weighted_shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
+    rship_predicate pred, rship_weight weight, bool b) : bidirectional_(b),
+                  rpred_(pred), rweight_(weight), start_stop_(uv) {}
+  ~weighted_shortest_path_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  path_item path_;
+  bool bidirectional_;
+  rship_predicate rpred_;
+  rship_weight rweight_;
   std::pair<std::size_t, std::size_t> start_stop_;
 };
 

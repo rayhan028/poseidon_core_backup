@@ -317,6 +317,13 @@ query &query::find_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
                    std::bind(&shortest_path_opr::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::find_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+            rship_predicate rpred, rship_weight weight, bool bidirectional) {
+  auto op = std::make_shared<weighted_shortest_path_opr>(start_stop, rpred, weight, bidirectional);
+  return append_op(op,
+                   std::bind(&weighted_shortest_path_opr::process, op.get(), ph::_1, ph::_2));
+}
+
 /*
 query &query::call_lua(const std::string &proc_name,
                        const std::vector<std::size_t> &params) {
