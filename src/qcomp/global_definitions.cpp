@@ -1,5 +1,6 @@
 #include "global_definitions.hpp"
 #include "joiner.hpp"
+#include "grouper.hpp"
 
 boost::barrier pipeline_barrier(24);
 
@@ -346,6 +347,7 @@ extern "C" bool fev_queue_empty(std::list<std::pair<relationship::id_t, std::siz
 
 thread_local std::vector<relationship*> fev_rship_list;
 thread_local std::vector<relationship*>::iterator fev_list_iter;
+thread_local std::string grpkey_buffer;
 
 extern "C" void foreach_from_variable_rship(graph_db *gdb, dcode_t lcode, node *n, std::size_t min, std::size_t max) {
     gdb->foreach_variable_from_relationship_of_node(*n, lcode, min, max, [&](relationship &r) {
@@ -365,4 +367,102 @@ extern "C" bool fev_list_end() {
     if(is_end)
         fev_rship_list.clear();
     return is_end;
+}
+std::set<unsigned> pos_set;
+extern "C" void get_node_grpkey(node* n, unsigned pos) {
+    pos_set.insert(pos);
+    grpkey_buffer += std::to_string(n->id());
+}
+
+extern "C" void get_rship_grpkey(relationship* r, unsigned pos) {
+    pos_set.insert(pos);
+    grpkey_buffer += std::to_string(r->id());
+}
+
+extern "C" void get_int_grpkey(int i, unsigned pos) {
+    pos_set.insert(pos);
+    grpkey_buffer += std::to_string(i);
+}
+
+extern "C" void get_double_grpkey(int* d_ptr, unsigned pos) {
+    //TODO: implement double handling
+}
+
+extern "C" void get_string_grpkey(int* str_ptr, unsigned pos) {
+    pos_set.insert(pos);
+    grpkey_buffer += str_result[*str_ptr];
+}
+
+extern "C" void get_time_grpkey(int* time_ptr, unsigned pos) {
+    pos_set.insert(pos);
+    grpkey_buffer += to_iso_extended_string(time_result[*time_ptr]);
+}
+
+extern "C" void add_to_group() {
+    grouper::add_to_group(grpkey_buffer, tp, pos_set);
+    grpkey_buffer = "";
+    pos_set.clear();
+    tp.clear();
+}
+
+extern "C" void finish_group_by(result_set* rs) {
+    grouper::finish(rs);
+}
+
+extern "C" void clear_mat_tuple() {
+    tp.clear();
+}
+
+extern "C" qr_tuple* grp_demat_at(int index) {
+    return grouper::demat_tuple(index);
+}
+
+extern "C" int int_to_reg(qr_tuple* qr, int pos) {
+    return boost::get<int>(qr->at(pos));
+}
+
+extern "C" int str_to_reg(qr_tuple* qr, int pos) {
+    str_result[str_res_ctr] = boost::get<std::string>(qr->at(pos));
+    return str_res_ctr++;
+}
+
+extern "C" node* node_to_reg(qr_tuple* qr, int pos) {
+    return boost::get<node*>(qr->at(pos));
+}
+
+extern "C" relationship* rship_to_reg(qr_tuple* qr, int pos) {
+    return boost::get<relationship*>(qr->at(pos));
+}
+
+extern "C" int time_to_reg(qr_tuple* qr, int pos) {
+    time_result[str_res_ctr] = boost::get<boost::posix_time::ptime>(qr->at(pos));
+    return str_res_ctr++;
+}
+
+extern "C" int get_grp_rs_count() {
+    return grouper::get_rs_count();
+}
+
+extern "C" void init_grp_aggr() {
+    grouper::init_grp_aggr();
+}
+
+extern "C" int get_group_count() {
+    return grouper::get_group_cnt();
+}
+
+extern "C" int get_total_group_count() {
+    return grouper::get_total_group_cnt();
+}
+
+extern "C" int get_group_sum_int(int pos) {
+    return grouper::get_group_sum_int(pos);
+}
+
+extern "C" double get_group_sum_double(int pos) {
+    return grouper::get_group_sum_double(pos);
+}
+
+extern "C" uint64_t get_group_sum_uint(int pos) {
+    return grouper::get_group_sum_uint(pos);
 }

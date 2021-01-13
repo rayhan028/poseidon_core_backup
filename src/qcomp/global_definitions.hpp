@@ -264,11 +264,46 @@ extern "C" node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t
 
 extern thread_local std::vector<relationship*> fev_rship_list;
 extern thread_local std::vector<relationship*>::iterator fev_list_iter;
+extern thread_local std::string grpkey_buffer;
 
 extern "C" void foreach_from_variable_rship(graph_db *gdb, dcode_t lcode, node *n, std::size_t min, std::size_t max);
 
 extern "C" relationship *get_next_rship_fev();
 
 extern "C" bool fev_list_end();
+
+/**
+ * Methods to process the group_by operation
+ */
+extern "C" void get_node_grpkey(node* n, unsigned pos);
+extern "C" void get_rship_grpkey(relationship* r, unsigned pos);
+extern "C" void get_int_grpkey(int i, unsigned pos);
+extern "C" void get_double_grpkey(int* d_ptr, unsigned pos);
+extern "C" void get_string_grpkey(int* str_ptr, unsigned pos);
+extern "C" void get_time_grpkey(int* time_ptr, unsigned pos);
+extern "C" void add_to_group();
+extern "C" void finish_group_by(result_set* rs);
+extern "C" void clear_mat_tuple();
+extern "C" qr_tuple* grp_demat_at(int index);
+extern "C" int get_grp_rs_count();
+
+/**
+ * Methods for the dematerialization of the tuple to IR registers
+ */
+extern "C" int int_to_reg(qr_tuple* qr, int pos);
+extern "C" int str_to_reg(qr_tuple* qr, int pos);
+extern "C" node* node_to_reg(qr_tuple* qr, int pos);
+extern "C" relationship* rship_to_reg(qr_tuple* qr, int pos);
+extern "C" int time_to_reg(qr_tuple* qr, int pos);
+
+/**
+ * Methods for the aggregation processing
+ */
+extern "C" void init_grp_aggr();
+extern "C" int get_group_count();
+extern "C" int get_total_group_count();
+extern "C" int get_group_sum_int(int pos);
+extern "C" double get_group_sum_double(int pos);
+extern "C" uint64_t get_group_sum_uint(int pos);
 
 #endif //PJIT_GLOBAL_DEFINITIONS_HPP

@@ -126,7 +126,6 @@ void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
 
   spdlog::debug("compile_to_plan");     
   auto plan = qlc.compile_to_plan(qstr);
-
 /*
   std::ostringstream os;
   os << "Execution plan: '";
@@ -138,8 +137,8 @@ void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
 	query_engine queryEngine(gdb, 1, gdb->get_nodes()->num_chunks());
   //arg_builder args;
   //args.arg(1, "Product"); // TODO: 
-
-	result_set rs;
+  result_set rs;
+	
 
   auto start_qp = std::chrono::steady_clock::now();
   spdlog::debug("generate query code");     
@@ -161,6 +160,8 @@ void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
                                                                      start_qp)
                    .count()
             << " ms" << std::endl;
+
+  std::cout << rs << std::endl;
 }
 
 
@@ -299,7 +300,7 @@ int main(int argc, char* argv[]) {
     run_shell(graph);
   }
 
-  exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
+  //exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
 
   if (!query_string.empty()) {
     exec_query(graph, query_string);

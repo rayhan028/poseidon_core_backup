@@ -43,6 +43,12 @@ query_engine::query_engine(graph_db_ptr graph, unsigned int thread_num, unsigned
         return std::to_string(*ptr);
     };
 
+    auto insert_double = [&] (graph_db* gdb, int *ptr) -> std::string {
+        auto dptr = reinterpret_cast<double*>(ptr);
+        std::cout << "Double: " << std::to_string(*dptr) << std::endl;
+        return std::to_string(*dptr);
+    };
+
     auto insert_str = [&] (graph_db* gdb, int *ptr) -> std::string {
         return str_result[*ptr];
     };
@@ -54,6 +60,7 @@ query_engine::query_engine(graph_db_ptr graph, unsigned int thread_num, unsigned
     con_map[0] = insert_nd;
     con_map[1] = insert_rd;
     con_map[2] = insert_int;
+    con_map[3] = insert_double;
     con_map[4] = insert_str;
     con_map[8] = insert_uint;
 }
@@ -324,9 +331,9 @@ void compile_task::operator()() {
     }
 
     for(int q = 0; q <= query_id; q++) {
-        auto finish_fc = jit_.getFunctionRaw<finish_fct_type>(finish_name);
+        /*auto finish_fc = jit_.getFunctionRaw<finish_fct_type>(finish_name);
         if(finish_fc)
-            qeng_.finish_[q] = *finish_fc;
+            qeng_.finish_[q] = *finish_fc;*/
 
         auto start_fc = jit_.getFunctionRaw<start_ty>(qeng_.operator_names_[q].at(0));
         if(start_fc)

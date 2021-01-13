@@ -219,6 +219,33 @@ public:
     FunctionType *get_rship_res_at_ty;
     FunctionType *get_mat_res_size_ty;
 
+//++++++++++++++++++ GROUP_BY FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+    FunctionType *get_node_grpkey_ty;
+    FunctionType *get_rship_grpkey_ty;
+    FunctionType *get_int_grpkey_ty;
+    FunctionType *get_string_grpkey_ty;
+    FunctionType *get_time_grpkey_ty;
+    FunctionType *add_to_group_ty;
+    FunctionType *finish_group_by_ty;
+
+//++++++++++++++++++ DEMAT FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    FunctionType *grp_demat_at_ty;
+    FunctionType *get_grp_rs_count_ty;
+    FunctionType *clear_mat_tuple_ty;
+    FunctionType *int_to_reg_ty;
+    FunctionType *str_to_reg_ty;
+    FunctionType *node_to_reg_ty;
+    FunctionType *rship_to_reg_ty;
+    FunctionType *time_to_reg_ty;
+
+//++++++++++++++++++ AGGR FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    FunctionType *init_grp_aggr_ty;
+    FunctionType *get_group_cnt_ty;
+    FunctionType *get_total_group_cnt_ty;
+    FunctionType *get_group_sum_int_ty;
+    FunctionType *get_group_sum_double_ty;
+    FunctionType *get_group_sum_uint_ty;
+
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     FunctionType *lookup_label_type;
     FunctionType *lookup_dcode_type;

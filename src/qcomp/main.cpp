@@ -10,6 +10,11 @@
 #include "queryc.hpp"
 #include "query.hpp"
 
+int cnt = 0;
+bool fct(int* np) {
+	return cnt++ % 2 ? 1 : 0;
+}
+
 const std::string test_path = poseidon::gPmemPath + "jit_qcomp";
 
 #ifdef USE_PMDK
@@ -41,15 +46,19 @@ int main() {
   auto graph = pool->create_graph("jit_qcomp");
 #endif
 
-
 	auto tx = graph->begin_transaction();
 
 	int PERSONS = 100;
 	int NO_PERSONS = 42;
+	int add = 0;
+	int j = 1;
 	for (int i = 0; i < PERSONS; i++) {
+		add = i % j++;
+		if(j == 10)
+			j = 1;
 		auto p = graph->add_node("Person",
-				{{"name", boost::any(std::string("John Doe")+std::to_string(i))},
-				{"age", boost::any(42)},
+				{{"name", boost::any(std::string("John Doe"))},
+				{"age", boost::any(42+add)},
 				{"id", boost::any(i)},
 				{"num", boost::any(uint64_t(1234567890123412)+uint64_t(i))},
 				{"dummy1", boost::any(std::string("Dummy"))},
@@ -88,7 +97,7 @@ int main() {
 	auto r_expr = Scan("Book", End());
 
     auto l_expr = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0, 0}, 
-                        Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64}
+                        Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}
                                   /*{3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {0, "id", FTYPE::INT}, {0, "name", FTYPE::STRING}*/}, 
 							Collect()), r_expr));
 
@@ -96,9 +105,9 @@ int main() {
 		return boost::get<uint64_t>(q1[2]) < boost::get<uint64_t>(q2[2]); 
 	};
 
-	auto fev = Scan("Person", Collect());
+	auto fev = Scan("Person", Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}}, GroupBy({0, 1}, Aggr({{"avg", 2}, {"count", 2}, {"pcount", 2}}, Collect()))));
 	scan_task::callee_ = &scan_task::scan;	
-	queryEngine.generate(fev, true);
+	queryEngine.generate(fev, false);
 	
 	arg_builder ab;
 	ab.arg(1, "Person");
@@ -114,7 +123,7 @@ int main() {
 	queryEngine.run(&rs, ab.args);
 	auto je = std::chrono::steady_clock::now();
 
-	std::cout << rs.data.size() << std::endl;
+	std::cout << rs << std::endl;
 	  std::cout << "JIT: "
             << std::chrono::duration_cast<std::chrono::milliseconds>(je -
                                                                      js)

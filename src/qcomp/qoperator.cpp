@@ -388,3 +388,32 @@ void create_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted)
     }
 }
 
+void group_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) {
+    op_id_ = op_id;
+
+    vis.visit(shared_from_this());
+
+    for(auto & inp : inputs_) {
+        inp->codegen(vis, op_id+=1,true);
+    }
+}
+
+void aggr_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) {
+    op_id_ = op_id;
+
+    vis.visit(shared_from_this());
+
+    for(auto & inp : inputs_) {
+        inp->codegen(vis, op_id+=1,true);
+    }
+}
+
+void connected_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) {
+    op_id_ = op_id;
+
+    vis.visit(shared_from_this());
+
+    for(auto & inp : inputs_) {
+        inp->codegen(vis, op_id+=1,true);
+    }
+}

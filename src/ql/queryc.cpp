@@ -194,6 +194,9 @@ qop_ptr queryc::ast_to_qop(ast_op_ptr &ast, qop_ptr parent) {
     case ast_op::limit:
       qop = std::make_shared<limit_result>(ast->get_param<int>(0));
       break;
+    case ast_op::project:
+      std::cout << "Project" << std::endl;
+      break;
   /*  case ast_op::filter:
       qop = std::make_shared<is_property>(??);
       if (parent)

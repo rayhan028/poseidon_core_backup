@@ -24,6 +24,7 @@ void codegen_inline_visitor::init_function(BasicBlock *entry) {
 
     // rhs loop counter, used in while_loop
     // intialize with UNKNOWN ID
+    
     rhs_alloca = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     ctx.getBuilder().CreateStore(ctx.UNKNOWN_ID, rhs_alloca);
     strAlloc = ctx.getBuilder().CreateAlloca(ctx.int8PtrTy);
@@ -69,6 +70,8 @@ void codegen_inline_visitor::init_function(BasicBlock *entry) {
     dangling = ctx.getBuilder().CreateAlloca(ctx.int64Ty);    
 }
 
+BasicBlock *df_finish_bb;
+
 /*
 * Generates code for a scan operator.
 */
@@ -81,12 +84,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     // check if this operator is the first access path
     if(!main_function) {
         // if it is the first access path -> intialize finish function
-        Function *df_finish = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, "default_finish_"+qid_,
-                                               ctx.getModule());
-
-        BasicBlock *df_finish_bb = BasicBlock::Create(ctx.getContext(), "entry", df_finish);
-        ctx.getBuilder().SetInsertPoint(df_finish_bb);
-        ctx.getBuilder().CreateRetVoid();
+        /*df_finish = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, "default_finish_"+qid_,
+                                               ctx.getModule());*/
 
         // create unique function name for the JIT instance
         int cnt = 0;
@@ -138,7 +137,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
 
     // initialize all relevant functions
     init_function(bb);
-
+    df_finish_bb = BasicBlock::Create(ctx.getContext(), "finish_entry", main_function);
         // node
 
     // obtain the query function arguments
@@ -228,8 +227,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
             ctx.getBuilder().CreateBr(next_op);
         } else {
             global_end = scan_nodes_end;
-            ctx.getBuilder().CreateCall(ctx.finishFctTy, finish, {rs});
-            ctx.getBuilder().CreateRet(nullptr);
+            //ctx.getBuilder().CreateCall(ctx.finishFctTy, finish, {rs});
+            //ctx.getBuilder().CreateRet(nullptr);
+            ctx.getBuilder().CreateBr(df_finish_bb);
         }
     }
 
@@ -607,6 +607,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
     ctx.getBuilder().CreateCall(collect_regs, {rs, print_tuple});
 
     ctx.getBuilder().CreateBr(main_return);
+
+    // complete the finish call
+    ctx.getBuilder().SetInsertPoint(df_finish_bb);
+    ctx.getBuilder().CreateRetVoid();
 }
 
 // process recursively the type vector of the rhs of a join
@@ -1025,6 +1029,242 @@ void codegen_inline_visitor::visit(std::shared_ptr<create_op> op) {
         ctx.getBuilder().SetInsertPoint(main_return);
         ctx.getBuilder().CreateRetVoid();
     }
+}
 
 
+/**
+ * Generates code for the group_by operation
+ */
+void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
+    op->name_ = "";
+
+    auto get_node_grpkey = ctx.extern_func("get_node_grpkey");
+    auto get_rship_grpkey = ctx.extern_func("get_rship_grpkey");
+    auto get_int_grpkey = ctx.extern_func("get_int_grpkey");
+    auto get_string_grpkey = ctx.extern_func("get_string_grpkey");
+    auto get_time_grpkey = ctx.extern_func("get_time_grpkey");
+    auto add_to_group = ctx.extern_func("add_to_group");
+
+    BasicBlock *group_entry = BasicBlock::Create(ctx.getContext(), "group_entry", main_function);
+
+    ctx.getBuilder().SetInsertPoint(prev_bb);
+    ctx.getBuilder().CreateBr(group_entry);
+    ctx.getBuilder().SetInsertPoint(group_entry);
+
+    // materialize tuple
+    FunctionCallee mat_reg = ctx.extern_func("mat_reg_value");
+
+    for(auto & res : reg_query_results) {
+        // value type 7 => boolean, already transformed into integer
+        auto type_id = (res.type == 7 ? 2 : res.type);
+        auto type = ConstantInt::get(ctx.int64Ty, type_id);
+        auto cv_reg = ctx.getBuilder().CreateBitCast(res.reg_val, ctx.int64PtrTy);
+        ctx.getBuilder().CreateCall(mat_reg, {gdb, cv_reg, type});
+    }
+
+    std::vector<std::pair<int,int>> pos_type;
+    int i = 0;
+    for(auto pos : op->grpkey_pos_) {
+        auto qr = reg_query_results[pos];
+        auto pos_val = ConstantInt::get(ctx.int64Ty, pos);
+        switch(qr.type) {
+            case 0: {
+                ctx.getBuilder().CreateCall(get_node_grpkey, {qr.reg_val, pos_val});
+                break;
+            } 
+            case 1: {
+                ctx.getBuilder().CreateCall(get_rship_grpkey, {qr.reg_val, pos_val});
+                break;
+            } 
+            case 2: {
+                ctx.getBuilder().CreateCall(get_int_grpkey, {ctx.getBuilder().CreateLoad(qr.reg_val), pos_val});
+                break;
+            } 
+            case 3: // double
+            break;
+            case 4: {
+                ctx.getBuilder().CreateCall(get_string_grpkey, {qr.reg_val, pos_val});
+                break;
+            }
+            case 5: {
+                ctx.getBuilder().CreateCall(get_time_grpkey, {qr.reg_val, pos_val});
+                break;
+            } 
+            break;
+        }
+        pos_type.push_back({i++, qr.type});
+    }
+    ctx.getBuilder().CreateCall(add_to_group, {});
+    ctx.getBuilder().CreateBr(main_return);
+    prev_bb = group_entry;
+
+    //modify the finish processing -> add to last basic block of pipeline
+    BasicBlock *group_finish = BasicBlock::Create(ctx.getContext(), "group_finish", main_function);
+    ctx.getBuilder().SetInsertPoint(df_finish_bb);
+    ctx.getBuilder().CreateBr(group_finish);
+    ctx.getBuilder().SetInsertPoint(group_finish);
+    auto finish_group_by = ctx.extern_func("finish_group_by");
+    ctx.getBuilder().CreateCall(finish_group_by, {rs});
+
+    auto int_to_reg = ctx.extern_func("int_to_reg");
+    auto str_to_reg = ctx.extern_func("str_to_reg");
+    auto node_to_reg = ctx.extern_func("node_to_reg");
+    auto rship_to_reg = ctx.extern_func("rship_to_reg");
+    auto time_to_reg = ctx.extern_func("time_to_reg");
+    auto get_grp_rs_count = ctx.extern_func("get_grp_rs_count");
+    auto grp_demat_at = ctx.extern_func("grp_demat_at");
+
+    auto demat_results = ctx.getBuilder().CreateCall(get_grp_rs_count, {});
+    auto cur_pos = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+    ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, cur_pos);
+    
+    BasicBlock *group_loop_head = BasicBlock::Create(ctx.getContext(), "group_loop_head", main_function);
+    BasicBlock *group_loop_body = BasicBlock::Create(ctx.getContext(), "group_loop_body", main_function);
+    BasicBlock *group_loop_exit = BasicBlock::Create(ctx.getContext(), "group_loop_exit", main_function);
+
+    // demat all grouped intermediate result again to registers
+    ctx.getBuilder().CreateBr(group_loop_head);
+
+    ctx.getBuilder().SetInsertPoint(group_loop_head);
+    auto cur_idx = ctx.getBuilder().CreateLoad(cur_pos);
+    auto cmp_head = ctx.getBuilder().CreateICmpULT(cur_idx, demat_results);
+    ctx.getBuilder().CreateCondBr(cmp_head, group_loop_body, group_loop_exit);
+
+    ctx.getBuilder().SetInsertPoint(group_loop_body);
+    auto tuple = ctx.getBuilder().CreateCall(grp_demat_at, {cur_idx});
+    auto new_idx = ctx.getBuilder().CreateAdd(cur_idx, ctx.LLVM_ONE);
+    ctx.getBuilder().CreateStore(new_idx, cur_pos);
+
+    std::vector<QR_VALUE> new_query_res;
+    for(auto & pt : pos_type) {
+        auto pos = ConstantInt::get(ctx.int64Ty, pt.first);
+        Value *demat;
+        switch(pt.second) {
+            case 0:
+            case 1:
+            case 2: {
+                auto i = ctx.getBuilder().CreateCall(int_to_reg, {tuple, pos});
+                demat = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                ctx.getBuilder().CreateStore(i, demat);
+                break;
+            }
+            case 3:
+            case 4: {
+                auto str = ctx.getBuilder().CreateCall(str_to_reg, {tuple, pos});
+                demat = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                ctx.getBuilder().CreateStore(str, demat);
+            }
+            case 5:
+                break;
+        }
+        new_query_res.push_back({demat, pt.second});
+    }
+    reg_query_results = new_query_res;
+    //ctx.getBuilder().CreateBr(group_loop_head);
+
+    //ctx.getBuilder().SetInsertPoint(group_loop_exit);
+    df_finish_bb = group_loop_exit;
+    main_return = group_loop_head;
+    prev_bb = group_loop_body;
+}
+
+/**
+ * Generates code for aggr operations
+ */
+void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
+    op->name_ = "";
+
+    auto init_grp_aggr = ctx.extern_func("init_grp_aggr");
+    auto grp_cnt = ctx.extern_func("get_group_cnt");
+    auto grp_total_cnt = ctx.extern_func("get_total_group_cnt");
+    auto get_group_sum_int = ctx.extern_func("get_group_sum_int"); 
+    auto get_group_sum_double = ctx.extern_func("get_group_sum_double");
+    auto get_group_sum_uint = ctx.extern_func("get_group_sum_uint");  
+
+    //modify the finish processing -> add to last basic block of pipeline
+    BasicBlock *aggr_finish = BasicBlock::Create(ctx.getContext(), "aggr_finish", main_function);
+    ctx.getBuilder().SetInsertPoint(prev_bb);
+    ctx.getBuilder().CreateBr(aggr_finish);
+    ctx.getBuilder().SetInsertPoint(aggr_finish);
+    ctx.getBuilder().CreateCall(init_grp_aggr, {});
+    for(auto &aggr: op->aggrs_) {
+        if(aggr.first.compare("count") == 0) {
+            auto cnt_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+            auto cnt = ctx.getBuilder().CreateCall(grp_cnt, {});
+            ctx.getBuilder().CreateStore(cnt, cnt_alloc);
+            reg_query_results.push_back({cnt_alloc, 2});
+        } else if(aggr.first.compare("pcount") == 0) {
+            auto pcnt_alloc = ctx.getBuilder().CreateAlloca(ctx.doubleTy);
+            auto cnt = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(grp_cnt, {}), ctx.doubleTy);
+            auto total_cnt = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(grp_total_cnt, {}), ctx.doubleTy);
+            auto cnt_div = ctx.getBuilder().CreateFDiv(cnt, total_cnt);
+            auto pcount = ctx.getBuilder().CreateFMul(cnt_div, ConstantFP::get(ctx.getContext(), APFloat(100.0)));
+            ctx.getBuilder().CreateStore(pcount, pcnt_alloc);
+            reg_query_results.push_back({ctx.getBuilder().CreateBitCast(pcnt_alloc, ctx.int64PtrTy), 3});
+        } else if(aggr.first.compare("sum") == 0) {
+            auto pos = ConstantInt::get(ctx.int64Ty, aggr.second);
+            switch(reg_query_results[aggr.second].type) {
+                case 2: {
+                    auto sum_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                    auto sum = ctx.getBuilder().CreateCall(get_group_sum_int, {pos});
+                    ctx.getBuilder().CreateStore(sum, sum_alloc);
+                    reg_query_results.push_back({sum_alloc, 2});
+                    break;
+                }
+                case 3: {
+                    auto sum_alloc = ctx.getBuilder().CreateAlloca(ctx.doubleTy);
+                    auto sum = ctx.getBuilder().CreateCall(get_group_sum_double, {pos});
+                    ctx.getBuilder().CreateStore(sum, sum_alloc);
+                    reg_query_results.push_back({sum_alloc, 3});
+                    break;
+                }
+                case 5: {
+                    auto sum_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                    auto sum = ctx.getBuilder().CreateCall(get_group_sum_uint, {pos});
+                    ctx.getBuilder().CreateStore(sum, sum_alloc);
+                    reg_query_results.push_back({sum_alloc, 5});
+                    break;
+                }
+            }
+
+        } else if(aggr.first.compare("avg") == 0) {
+            auto pos = ConstantInt::get(ctx.int64Ty, aggr.second);
+            switch(reg_query_results[aggr.second].type) {
+                case 2: {
+                    auto avg_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                    auto cnt = ctx.getBuilder().CreateCall(grp_cnt, {});
+                    auto sum = ctx.getBuilder().CreateCall(get_group_sum_int, {pos});
+                    auto avg = ctx.getBuilder().CreateUDiv(sum, cnt);
+                    ctx.getBuilder().CreateStore(avg, avg_alloc);
+                    reg_query_results.push_back({avg_alloc, 2});
+                    break;
+                }
+                case 3: {
+                    auto avg_alloc = ctx.getBuilder().CreateAlloca(ctx.doubleTy);
+                    auto cnt = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(grp_cnt, {}), ctx.doubleTy);
+                    auto sum = ctx.getBuilder().CreateCall(get_group_sum_double, {pos});
+                    auto avg = ctx.getBuilder().CreateUDiv(sum, cnt);
+                    ctx.getBuilder().CreateStore(avg, avg_alloc);
+                    reg_query_results.push_back({avg_alloc, 5});
+                    break;
+                }
+                case 5: {
+                    auto avg_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                    auto cnt = ctx.getBuilder().CreateCall(grp_cnt, {});
+                    auto sum = ctx.getBuilder().CreateCall(get_group_sum_uint, {pos});
+                    auto avg = ctx.getBuilder().CreateUDiv(sum, cnt);
+                    ctx.getBuilder().CreateStore(avg, avg_alloc);
+                    reg_query_results.push_back({avg_alloc, 5});
+                    break;
+                }
+            }
+        }
+    }
+
+    prev_bb = aggr_finish;
+
+}
+
+void codegen_inline_visitor::visit(std::shared_ptr<connected_op> op) {
+    op->name_ = "";
 }

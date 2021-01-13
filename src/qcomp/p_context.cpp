@@ -216,6 +216,30 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     get_node_res_at_ty = FunctionType::get(nodePtrTy, {int8PtrTy, int64Ty}, false);
     get_rship_res_at_ty = FunctionType::get(rshipPtrTy, {int8PtrTy, int64Ty}, false);
     get_mat_res_size_ty = FunctionType::get(int64Ty, {int64Ty}, false);
+
+    get_node_grpkey_ty = FunctionType::get(voidTy, {nodePtrTy, int64Ty}, false);
+    get_rship_grpkey_ty = FunctionType::get(voidTy, {rshipPtrTy, int64Ty}, false);
+    get_int_grpkey_ty = FunctionType::get(voidTy, {int64Ty, int64Ty}, false);
+    get_string_grpkey_ty = FunctionType::get(voidTy, {int64PtrTy, int64Ty}, false);
+    get_time_grpkey_ty = FunctionType::get(voidTy, {int64PtrTy, int64Ty}, false);
+    add_to_group_ty = FunctionType::get(voidTy, {}, false);
+    finish_group_by_ty = FunctionType::get(voidTy, {int64PtrTy}, false);
+
+    grp_demat_at_ty = FunctionType::get(int8PtrTy, {int64Ty}, false);
+    clear_mat_tuple_ty = FunctionType::get(voidTy, {}, false);
+    get_grp_rs_count_ty = FunctionType::get(int64Ty, {}, false);
+    int_to_reg_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
+    str_to_reg_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
+    node_to_reg_ty = FunctionType::get(nodePtrTy, {int8PtrTy, int64Ty}, false);
+    rship_to_reg_ty = FunctionType::get(rshipPtrTy, {int8PtrTy, int64Ty}, false);
+    time_to_reg_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
+
+    init_grp_aggr_ty = FunctionType::get(voidTy, {}, false);
+    get_group_cnt_ty = FunctionType::get(int64Ty, {}, false);
+    get_total_group_cnt_ty = FunctionType::get(int64Ty, {}, false);
+    get_group_sum_int_ty = FunctionType::get(int64Ty, {int64Ty}, false);
+    get_group_sum_double_ty = FunctionType::get(doubleTy, {int64Ty}, false);
+    get_group_sum_uint_ty = FunctionType::get(int64Ty, {int64Ty}, false);
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     lookup_label_type = FunctionType::get(int32Ty, {int8PtrTy, int8PtrTy}, false);
     lookup_dcode_type = FunctionType::get(int8PtrTy, {int8PtrTy, int32Ty}, false);
@@ -325,6 +349,31 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     function_types["foreach_from_variable_rship"] = feFromVarFctTy;
     function_types["get_next_rship_fev"] = getNextRshipFctTy;
     function_types["fev_list_end"] = fevListEndFctTy;
+
+    function_types["get_node_grpkey"] = get_node_grpkey_ty;
+    function_types["get_rship_grpkey"] = get_rship_grpkey_ty;
+    function_types["get_int_grpkey"] = get_int_grpkey_ty;
+    function_types["get_string_grpkey"] = get_string_grpkey_ty;
+    function_types["get_time_grpkey"] = get_time_grpkey_ty;
+    function_types["add_to_group"] = add_to_group_ty;
+    function_types["finish_group_by"] = finish_group_by_ty;
+
+    function_types["grp_demat_at"] = grp_demat_at_ty;
+    function_types["clear_mat_tuple"] = clear_mat_tuple_ty;
+    function_types["get_grp_rs_count"] = get_grp_rs_count_ty;
+    function_types["int_to_reg"] = int_to_reg_ty;
+    function_types["str_to_reg"] = str_to_reg_ty;
+    function_types["node_to_reg"] = node_to_reg_ty;
+    function_types["rship_to_reg"] = rship_to_reg_ty;
+    function_types["time_to_reg"] = time_to_reg_ty;
+
+    function_types["init_grp_aggr"] = init_grp_aggr_ty;
+    function_types["get_group_cnt"] = get_group_cnt_ty;
+    function_types["get_total_group_cnt"] = get_total_group_cnt_ty;
+    function_types["get_group_sum_int"] = get_group_sum_int_ty;
+    function_types["get_group_sum_double"] = get_group_sum_double_ty;
+    function_types["get_group_sum_uint"] = get_group_sum_uint_ty;
+
 }
 
 

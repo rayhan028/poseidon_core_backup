@@ -43,6 +43,12 @@ public:
 
     void visit(std::shared_ptr<create_op> op) override;
 
+    void visit(std::shared_ptr<group_op> op) override;
+
+    void visit(std::shared_ptr<aggr_op> op) override;
+
+    void visit(std::shared_ptr<connected_op> op) override;
+
     /*
      * Initializer for the function
      */

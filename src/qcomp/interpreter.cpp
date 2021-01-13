@@ -164,3 +164,15 @@ void interprete_visitor::visit(std::shared_ptr<create_op> op) {
 
     }
 }
+
+void interprete_visitor::visit(std::shared_ptr<group_op> op) {
+
+}
+
+void interprete_visitor::visit(std::shared_ptr<aggr_op> op) {
+
+}
+
+void interprete_visitor::visit(std::shared_ptr<connected_op> op) {
+
+}

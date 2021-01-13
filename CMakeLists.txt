@@ -349,6 +349,7 @@ set(src_files
   src/qcomp/query_engine.cpp
   src/qcomp/qoperator.cpp
   src/qcomp/joiner.cpp
+  src/qcomp/grouper.cpp
   src/qcomp/interprete_filter_visitor.cpp
   src/ql/queryc.cpp
   src/ql/ast.cpp

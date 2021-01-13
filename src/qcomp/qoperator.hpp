@@ -23,6 +23,9 @@ class sort_op;
 class limit_op;
 class end_op;
 class create_op;
+class group_op;
+class aggr_op;
+class connected_op;
 
 class op_visitor {
 public:
@@ -49,6 +52,12 @@ public:
     virtual void visit(std::shared_ptr<end_op> op) = 0;
 
     virtual void visit(std::shared_ptr<create_op> op) = 0;
+
+    virtual void visit(std::shared_ptr<group_op> op) = 0;
+
+    virtual void visit(std::shared_ptr<aggr_op> op) = 0;
+
+    virtual void visit(std::shared_ptr<connected_op> op) = 0;
 };
 
 using algebra_optr = std::shared_ptr<base_op>;
@@ -434,7 +443,7 @@ public:
     }
 
     create_op(create_type ct, std::pair<int, int> src_des, algebra_optr inp) {
-        name_ = "CreateNode";
+        name_ = "CreateRship";
         type_ = qop_type::create;
         inputs_.push_back(inp);
         produced_type_ = static_cast<int>(ct);
@@ -450,6 +459,45 @@ public:
 };
 inline algebra_optr CreateNode(algebra_optr inp) { return std::make_shared<create_op>(create_type::node, inp); }
 inline algebra_optr CreateRship(std::pair<int, int> src_des, algebra_optr inp) { return std::make_shared<create_op>(create_type::rship, src_des, inp); }
+
+class group_op : public base_op, public std::enable_shared_from_this<group_op> {
+public:
+    group_op(std::vector<unsigned> grpkey_pos, algebra_optr inp) : grpkey_pos_(grpkey_pos) {
+        inputs_.push_back(inp);
+    }
+
+    void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
+
+    std::vector<unsigned> grpkey_pos_;
+    std::vector<result_set> grps;
+};
+
+inline algebra_optr GroupBy(std::vector<unsigned> grpkey_pos, algebra_optr inp) { return std::make_shared<group_op>(grpkey_pos, inp); }
+
+class aggr_op : public base_op, public std::enable_shared_from_this<aggr_op> {
+public:
+    aggr_op(std::vector<std::pair<std::string, int>> aggrs, algebra_optr inp) : aggrs_(aggrs) {
+        inputs_.push_back(inp);
+    }
+
+    void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
+
+    std::vector<std::pair<std::string, int>> aggrs_;
+};
+inline algebra_optr Aggr(std::vector<std::pair<std::string, int>> aggrs, algebra_optr inp) { return std::make_shared<aggr_op>(aggrs, inp); }
+
+class connected_op : public base_op, public std::enable_shared_from_this<connected_op> {
+public:
+    connected_op(std::pair<int, int> src_des, bool b, algebra_optr inp) : src_des_(src_des), append_null_(b) {
+        inputs_.push_back(inp);
+    }
+
+    void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
+
+    bool append_null_;
+    std::pair<int, int> src_des_;
+};
+inline algebra_optr Connected(std::pair<int, int> src_des, bool b, algebra_optr inp) { return std::make_shared<connected_op>(src_des, b, inp); }
 
 struct FExp {
     FExp(PContext &ctx, FOP fop, FTYPE type, std::string property, std::string value) : fop_(fop), type_(type),

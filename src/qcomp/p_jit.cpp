@@ -119,8 +119,51 @@ p_jit::p_jit(ExitOnError ExitOnErr)
         M[Mangle("get_next_rship_fev")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_next_rship_fev), JITSymbolFlags::Exported);            
         M[Mangle("fev_list_end")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&fev_list_end), JITSymbolFlags::Exported);  
+        M[Mangle("fev_list_end")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&fev_list_end), JITSymbolFlags::Exported);            
-
+        M[Mangle("get_node_grpkey")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_node_grpkey), JITSymbolFlags::Exported);  
+        M[Mangle("get_rship_grpkey")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_rship_grpkey), JITSymbolFlags::Exported);  
+        M[Mangle("get_int_grpkey")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_int_grpkey), JITSymbolFlags::Exported);  
+        M[Mangle("get_string_grpkey")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_string_grpkey), JITSymbolFlags::Exported);  
+        M[Mangle("get_time_grpkey")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_time_grpkey), JITSymbolFlags::Exported);
+        M[Mangle("add_to_group")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&add_to_group), JITSymbolFlags::Exported);  
+        M[Mangle("finish_group_by")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&finish_group_by), JITSymbolFlags::Exported); 
+        M[Mangle("clear_mat_tuple")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&clear_mat_tuple), JITSymbolFlags::Exported);
+        M[Mangle("int_to_reg")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&int_to_reg), JITSymbolFlags::Exported);
+        M[Mangle("str_to_reg")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&str_to_reg), JITSymbolFlags::Exported);
+        M[Mangle("node_to_reg")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&node_to_reg), JITSymbolFlags::Exported);
+        M[Mangle("rship_to_reg")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&rship_to_reg), JITSymbolFlags::Exported);
+        M[Mangle("time_to_reg")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&time_to_reg), JITSymbolFlags::Exported);  
+        M[Mangle("grp_demat_at")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&grp_demat_at), JITSymbolFlags::Exported);
+        M[Mangle("get_grp_rs_count")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_grp_rs_count), JITSymbolFlags::Exported);  
+        M[Mangle("get_group_cnt")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_group_count), JITSymbolFlags::Exported);
+        M[Mangle("init_grp_aggr")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&init_grp_aggr), JITSymbolFlags::Exported);
+        M[Mangle("get_group_sum_int")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_group_sum_int), JITSymbolFlags::Exported);
+        M[Mangle("get_group_sum_double")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_group_sum_double), JITSymbolFlags::Exported);
+        M[Mangle("get_group_sum_uint")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_group_sum_uint), JITSymbolFlags::Exported);
+        M[Mangle("get_total_group_cnt")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_total_group_count), JITSymbolFlags::Exported);
         ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
     }
 }

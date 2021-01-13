@@ -1,0 +1,93 @@
+#include "grouper.hpp"
+
+unsigned grouper::grp_cnt_ = 0;
+int grouper::aggr_grp_cnt_ = -1;
+std::vector<result_set> grouper::grps_ = {};
+std::vector<std::string> grouper::grpkey_set_ = {};
+std::unordered_map<std::string, unsigned> grouper::grpkey_map_ = {};
+std::set<unsigned> grouper::pos_set_ = {};
+result_set grouper::intermediate_rs_;
+qr_tuple grouper::current_tp_;
+
+void grouper::add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos_set) {
+    pos_set_ = pos_set;
+
+    const auto itr = grpkey_map_.find(key);
+    if(itr != grpkey_map_.end()) {
+        grps_[itr->second].append(qr);
+    } else {
+        grpkey_map_.emplace(key, grp_cnt_);
+        grpkey_set_.push_back(key);
+        grps_.emplace_back();
+        grps_[grp_cnt_++].append(qr);
+    }
+}
+
+void grouper::finish(result_set* rs) {
+    rs->data.clear();
+    for(auto &grp : grpkey_set_) {
+        qr_tuple res;
+        auto gpos = grpkey_map_[grp];
+        auto tpl = grps_[gpos].data.front();
+        for(auto pos : pos_set_) {
+            res.push_back(tpl[pos]);
+        }
+
+        intermediate_rs_.append(res);
+    }
+}
+
+qr_tuple* grouper::demat_tuple(int index) {
+    current_tp_ = intermediate_rs_.data.front();
+    intermediate_rs_.data.pop_front();
+    return &current_tp_;
+}
+
+unsigned grouper::get_rs_count() {
+    return intermediate_rs_.data.size();
+}
+bool init = false;
+void grouper::init_grp_aggr() {
+    aggr_grp_cnt_++;
+}
+
+unsigned grouper::get_group_cnt() {
+    auto &grp_data = grps_[aggr_grp_cnt_].data;
+    return grp_data.size();
+}
+
+unsigned grouper::get_total_group_cnt() {
+    int total = 0;
+    for(auto & g : grps_) {
+        total += g.data.size();
+    }
+    return total;
+}
+
+unsigned grouper::get_group_sum_int(int pos) {
+    auto &grp_data = grps_[aggr_grp_cnt_].data;
+    int gsum = 0;
+    int i = 0;
+    for(auto &tpl : grp_data) {
+        gsum += boost::get<int>(tpl[pos]);
+    }
+    return gsum;
+}
+
+double grouper::get_group_sum_double(int pos) {
+    auto &grp_data = grps_[aggr_grp_cnt_].data;
+    double gsum = 0;
+    for(auto &tpl : grp_data) {
+        gsum += boost::get<double>(tpl[pos]);
+    }
+    return gsum;
+}
+
+uint64_t grouper::get_group_sum_uint(int pos) {
+    auto &grp_data = grps_[aggr_grp_cnt_].data;
+    uint64_t gsum = 0;
+    for(auto &tpl : grp_data) {
+        gsum += boost::get<uint64_t>(tpl[pos]);
+    }
+    return gsum;
+}
