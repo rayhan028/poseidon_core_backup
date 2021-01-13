@@ -6,6 +6,7 @@ LABEL Poseidon Graph Database Engine
 USER $USER
 WORKDIR /home/$USER
 
+RUN echo pass | sudo -S mkdir -m 777 -p /mnt/pmem0/poseidon
 
 # Download and prepare project
 RUN cd /home/$USER \
