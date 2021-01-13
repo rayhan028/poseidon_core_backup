@@ -62,7 +62,7 @@ bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
 
         if (unidirectional) {
             gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
-                auto vid = r.to_node_id();
+                auto vid = r.from_node_id();
                 if (rpred(r) && !visited[vid]) {
                     visited.set(vid);
                     distance[vid] = distance[uid] + 1;
