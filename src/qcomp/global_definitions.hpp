@@ -215,6 +215,8 @@ extern "C" void mat_reg_value(graph_db *gdb, int *reg, int type);
  */
 extern "C" void collect_tuple(result_set *rs, bool print);
 
+extern "C" qr_tuple &get_qr_tuple();
+
 /**
  * obtain_mat_tuple returns a thread local tuple storage used to materialize the
  * rhs side of a join.
@@ -305,5 +307,7 @@ extern "C" int get_total_group_count();
 extern "C" int get_group_sum_int(int pos);
 extern "C" double get_group_sum_double(int pos);
 extern "C" uint64_t get_group_sum_uint(int pos);
+
+extern "C" void append_to_tuple(query_result qr);
 
 #endif //PJIT_GLOBAL_DEFINITIONS_HPP

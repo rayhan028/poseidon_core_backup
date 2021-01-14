@@ -122,7 +122,6 @@ int get_nopid(int & start, std::vector<algebra_optr> & ops, join_op endop) {
 void join_op::codegen(op_visitor & vis, unsigned & op_id, bool interpreted) {
     op_id_ = op_id;
 
-    auto lhs_op_id = op_id_+1;
     auto cur_op = inputs_[1];
 
     if(!interpreted) {
@@ -184,19 +183,14 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
     auto qr_tuple_list = fct->args().begin() + 2;
     auto rs = fct->args().begin() + 3;
     auto prev_size = fct->args().begin() + 4;
-    auto ty = fct->args().begin() + 5;
     auto call_map_arg = fct->args().begin() + 6;
-    auto offset = fct->args().begin() + 7;
     auto call_map = ctx.getBuilder().CreateBitCast(fct->args().begin() + 6, ctx.callMapPtrTy);
 
     auto lhs_qr_arr = ctx.getBuilder().CreateBitCast(qr_tuple_list, ctx.res_arr_type->getPointerTo());
     auto lhs_size_field = ctx.getBuilder().CreateInBoundsGEP(lhs_qr_arr, {ctx.LLVM_ZERO, ctx.LLVM_ZERO});
-    auto lhs_size = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateLoad(lhs_size_field));
-    auto insert_pos = ctx.getBuilder().CreateAdd(prev_size, ctx.LLVM_ONE);
 
     auto lhs_alloca = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     auto rhs_alloca = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
-    auto rhs_id_alloca = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
 
     auto max_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     auto cur_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
@@ -324,7 +318,6 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
     ctx.getBuilder().CreateBr(copy_body);
 
     ctx.getBuilder().SetInsertPoint(consume);
-    auto forward = ctx.getBuilder().CreateBitCast(lhs_qr_arr, ctx.int64PtrTy);
     //ctx.getBuilder().CreateCall(fct_ptr, {gdb, noid, forward, rs, nsize, ty, call_map_arg, offset});
     ctx.getBuilder().CreateBr(loop_body);
 
@@ -409,6 +402,16 @@ void aggr_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) {
 }
 
 void connected_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) {
+    op_id_ = op_id;
+
+    vis.visit(shared_from_this());
+
+    for(auto & inp : inputs_) {
+        inp->codegen(vis, op_id+=1,true);
+    }
+}
+
+void append_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) {
     op_id_ = op_id;
 
     vis.visit(shared_from_this());

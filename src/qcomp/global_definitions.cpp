@@ -249,6 +249,14 @@ extern "C" void mat_reg_value(graph_db *gdb, int *reg, int type) {
     }
 }
 
+extern "C" void append_to_tuple(query_result qr) {
+    tp.push_back(qr);
+}
+
+extern "C" qr_tuple &get_qr_tuple() {
+    return tp;
+}
+
 std::mutex ct_mut;
 extern "C" void collect_tuple(result_set *rs, bool print) {
     std::lock_guard<std::mutex> lck(ct_mut);

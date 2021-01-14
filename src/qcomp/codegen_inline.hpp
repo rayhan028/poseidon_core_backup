@@ -49,6 +49,8 @@ public:
 
     void visit(std::shared_ptr<connected_op> op) override;
 
+    void visit(std::shared_ptr<append_op> op) override;
+
     /*
      * Initializer for the function
      */
@@ -65,6 +67,12 @@ public:
      * block. Only temporary
      */
     BasicBlock *main_return;
+
+    /**
+     * Entry point for other operators to manipulate the
+     * query result before the actual materialization
+     */
+    BasicBlock *pre_tuple_mat;
 
     /*
      * BasicBlock for consume handling. Each operator, which is not the

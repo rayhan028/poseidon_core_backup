@@ -246,6 +246,9 @@ public:
     FunctionType *get_group_sum_double_ty;
     FunctionType *get_group_sum_uint_ty;
 
+    FunctionType *append_to_tuple_ty;
+    FunctionType *get_qr_tuple_ty;
+
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     FunctionType *lookup_label_type;
     FunctionType *lookup_dcode_type;

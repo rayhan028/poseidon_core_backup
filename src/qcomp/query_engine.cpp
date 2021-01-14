@@ -44,9 +44,7 @@ query_engine::query_engine(graph_db_ptr graph, unsigned int thread_num, unsigned
     };
 
     auto insert_double = [&] (graph_db* gdb, int *ptr) -> std::string {
-        auto dptr = reinterpret_cast<double*>(ptr);
-        std::cout << "Double: " << std::to_string(*dptr) << std::endl;
-        return std::to_string(*dptr);
+        return std::to_string(*reinterpret_cast<double*>(ptr));
     };
 
     auto insert_str = [&] (graph_db* gdb, int *ptr) -> std::string {
@@ -158,7 +156,6 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args, bool cleanu
         cur_query_->codegen(iv, op_start, true);
         iv.start();
         compile_th.join();
-        std::cout << "NO COMPILED " << rs->data.size() << std::endl;
     }
     
     int i = 0;

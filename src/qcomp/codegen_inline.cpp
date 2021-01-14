@@ -24,7 +24,7 @@ void codegen_inline_visitor::init_function(BasicBlock *entry) {
 
     // rhs loop counter, used in while_loop
     // intialize with UNKNOWN ID
-    
+
     rhs_alloca = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     ctx.getBuilder().CreateStore(ctx.UNKNOWN_ID, rhs_alloca);
     strAlloc = ctx.getBuilder().CreateAlloca(ctx.int8PtrTy);
@@ -126,6 +126,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
         op->name_ = "";
     } else {
         bb = BasicBlock::Create(ctx.getModule().getContext(), "entry", main_function);
+        pre_tuple_mat = BasicBlock::Create(ctx.getModule().getContext(), "pre_tuple_mat", main_function);
     }
 
     if(!access) {
@@ -603,10 +604,15 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
         ctx.getBuilder().CreateCall(mat_reg, {gdb, cv_reg, type});
     }
 
+    ctx.getBuilder().CreateBr(pre_tuple_mat);
+
+    ctx.getBuilder().SetInsertPoint(pre_tuple_mat);
     // materialize the complete thread local storage into a global list
     ctx.getBuilder().CreateCall(collect_regs, {rs, print_tuple});
 
     ctx.getBuilder().CreateBr(main_return);
+
+    pre_tuple_mat->dump();
 
     // complete the finish call
     ctx.getBuilder().SetInsertPoint(df_finish_bb);
@@ -1231,12 +1237,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
             auto pos = ConstantInt::get(ctx.int64Ty, aggr.second);
             switch(reg_query_results[aggr.second].type) {
                 case 2: {
-                    auto avg_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
-                    auto cnt = ctx.getBuilder().CreateCall(grp_cnt, {});
-                    auto sum = ctx.getBuilder().CreateCall(get_group_sum_int, {pos});
-                    auto avg = ctx.getBuilder().CreateUDiv(sum, cnt);
+                    auto avg_alloc = ctx.getBuilder().CreateAlloca(ctx.doubleTy);
+                    auto cnt = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(grp_cnt, {}), ctx.doubleTy);
+                    auto sum = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(get_group_sum_int, {pos}), ctx.doubleTy);
+                    auto avg = ctx.getBuilder().CreateFDiv(sum, cnt);
                     ctx.getBuilder().CreateStore(avg, avg_alloc);
-                    reg_query_results.push_back({avg_alloc, 2});
+                    reg_query_results.push_back({avg_alloc, 3});
                     break;
                 }
                 case 3: {
@@ -1267,4 +1273,86 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
 
 void codegen_inline_visitor::visit(std::shared_ptr<connected_op> op) {
     op->name_ = "";
+    auto rship_by_id = ctx.extern_func("rship_by_id");
+
+    BasicBlock *connected_entry = BasicBlock::Create(ctx.getContext(), "connected_entry", main_function);
+    BasicBlock *connected_head = BasicBlock::Create(ctx.getContext(), "connected_head", main_function);
+    BasicBlock *connected_body = BasicBlock::Create(ctx.getContext(), "connected_body", main_function);
+    BasicBlock *connected_exit = BasicBlock::Create(ctx.getContext(), "connected_exit", main_function);
+    BasicBlock *consume = BasicBlock::Create(ctx.getContext(), "consume", main_function);
+    BasicBlock *append_null = BasicBlock::Create(ctx.getContext(), "consume", main_function);
+
+    ctx.getBuilder().SetInsertPoint(prev_bb);
+    ctx.getBuilder().CreateBr(connected_entry);
+    ctx.getBuilder().SetInsertPoint(connected_entry);
+
+    auto found = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+    ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, found);
+
+    // get the src and dest node
+    auto src = reg_query_results[op->src_des_.first].reg_val;
+    auto dst = reg_query_results[op->src_des_.second].reg_val;
+
+    // get the first from rship
+    auto rship_id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(src, 2));
+    auto id_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+    ctx.getBuilder().CreateStore(rship_id, id_alloc);
+
+    // get the id of the dst node
+    auto dst_id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(dst, 1));
+    ctx.getBuilder().CreateBr(connected_head);
+
+    //iterate through rship list of src and find a dst with id dst_id
+    ctx.getBuilder().SetInsertPoint(connected_head);
+    auto unknown_id = ctx.getBuilder().CreateICmpEQ(dst_id, ctx.UNKNOWN_ID);
+    ctx.getBuilder().CreateCondBr(unknown_id, connected_exit, connected_body);
+
+    ctx.getBuilder().SetInsertPoint(connected_body);
+    auto id = ctx.getBuilder().CreateLoad(id_alloc);
+    auto rship = ctx.getBuilder().CreateCall(rship_by_id, {id});
+    auto to_node = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(rship, 3));
+    auto next_rship = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(rship, 4));
+    ctx.getBuilder().CreateStore(next_rship, id_alloc);
+    auto connected = ctx.getBuilder().CreateICmpEQ(to_node, dst_id);
+    ctx.getBuilder().CreateCondBr(connected, consume, connected_head);
+
+    ctx.getBuilder().SetInsertPoint(connected_exit);
+    if(op->append_null_) {
+        ctx.getBuilder().CreateBr(consume);
+    } else {
+        ctx.getBuilder().CreateBr(main_return);
+    }
+
+    if(op->append_null_) {
+        reg_query_results.push_back({found, 2});
+    }
+
+    ctx.getBuilder().SetInsertPoint(consume);
+    ctx.getBuilder().CreateStore(ctx.LLVM_ONE, consume);
+
+    prev_bb = consume;
+    main_return = connected_head;
+}
+
+void codegen_inline_visitor::visit(std::shared_ptr<append_op> op) {
+    op->name_ = "";
+
+    auto append_to_tuple = ctx.extern_func("append_to_tuple");
+    auto get_qr_tuple = ctx.extern_func("get_qr_tuple");
+
+    ctx.getBuilder().SetInsertPoint(pre_tuple_mat);
+    auto fct_raw = ConstantInt::get(ctx.int64Ty, (int64_t )op->func_);
+    auto fct_ptr = ctx.getBuilder().CreateIntToPtr(fct_raw, ctx.int64PtrTy);
+    auto fct_callee_type = FunctionType::get(ctx.int8PtrTy, {ctx.int8PtrTy}, false);
+    auto fct_callee = ctx.getBuilder().CreateBitCast(fct_ptr, fct_callee_type->getPointerTo());
+
+    // get qr_tuple
+    auto qrt = ctx.getBuilder().CreateCall(get_qr_tuple, {});
+
+    // execute op func
+    auto qr = ctx.getBuilder().CreateCall(fct_callee_type, fct_callee, {qrt});
+
+    // append to result
+    ctx.getBuilder().CreateCall(append_to_tuple, {qr});
+
 }

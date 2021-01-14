@@ -35,6 +35,8 @@ public:
 
     void visit(std::shared_ptr<connected_op> op) override;
 
+    void visit(std::shared_ptr<append_op> op) override;
+
 };
 
 

@@ -240,6 +240,9 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     get_group_sum_int_ty = FunctionType::get(int64Ty, {int64Ty}, false);
     get_group_sum_double_ty = FunctionType::get(doubleTy, {int64Ty}, false);
     get_group_sum_uint_ty = FunctionType::get(int64Ty, {int64Ty}, false);
+
+    append_to_tuple_ty = FunctionType::get(voidTy, {int8PtrTy}, false);
+    get_qr_tuple_ty = FunctionType::get(int8PtrTy, {});
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     lookup_label_type = FunctionType::get(int32Ty, {int8PtrTy, int8PtrTy}, false);
     lookup_dcode_type = FunctionType::get(int8PtrTy, {int8PtrTy, int32Ty}, false);
@@ -373,6 +376,9 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     function_types["get_group_sum_int"] = get_group_sum_int_ty;
     function_types["get_group_sum_double"] = get_group_sum_double_ty;
     function_types["get_group_sum_uint"] = get_group_sum_uint_ty;
+
+    function_types["append_to_tuple"] = append_to_tuple_ty;
+    function_types["get_qr_tuple"] = get_qr_tuple_ty;
 
 }
 

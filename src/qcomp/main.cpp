@@ -15,6 +15,15 @@ bool fct(int* np) {
 	return cnt++ % 2 ? 1 : 0;
 }
 
+thread_local query_result qr;
+query_result *afunc(qr_tuple &qrt) {
+	auto i = boost::get<int>(qrt[1]);
+	auto j = boost::get<int>(qrt[2]);
+	auto k = i - j;
+	qr = query_result(k);
+	return &qr;
+}
+
 const std::string test_path = poseidon::gPmemPath + "jit_qcomp";
 
 #ifdef USE_PMDK
@@ -105,7 +114,10 @@ int main() {
 		return boost::get<uint64_t>(q1[2]) < boost::get<uint64_t>(q2[2]); 
 	};
 
-	auto fev = Scan("Person", Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}}, GroupBy({0, 1}, Aggr({{"avg", 2}, {"count", 2}, {"pcount", 2}}, Collect()))));
+	auto fev = Scan("Person", 
+				Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}}, 
+					Append(afunc, FTYPE::INT,
+						Collect())));
 	scan_task::callee_ = &scan_task::scan;	
 	queryEngine.generate(fev, false);
 	

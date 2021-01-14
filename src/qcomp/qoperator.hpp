@@ -26,6 +26,7 @@ class create_op;
 class group_op;
 class aggr_op;
 class connected_op;
+class append_op;
 
 class op_visitor {
 public:
@@ -58,6 +59,8 @@ public:
     virtual void visit(std::shared_ptr<aggr_op> op) = 0;
 
     virtual void visit(std::shared_ptr<connected_op> op) = 0;
+
+    virtual void visit(std::shared_ptr<append_op> op) = 0;
 };
 
 using algebra_optr = std::shared_ptr<base_op>;
@@ -498,6 +501,21 @@ public:
     std::pair<int, int> src_des_;
 };
 inline algebra_optr Connected(std::pair<int, int> src_des, bool b, algebra_optr inp) { return std::make_shared<connected_op>(src_des, b, inp); }
+
+class append_op : public base_op, public std::enable_shared_from_this<append_op> {
+public:
+    typedef query_result* (*append_func)(qr_tuple&);
+
+    append_op(append_func func, FTYPE type, algebra_optr inp) : func_(func), type_(type) {
+        inputs_.push_back(inp);
+    }
+
+    void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
+
+    append_func func_;
+    FTYPE type_;
+};
+inline algebra_optr Append(append_op::append_func func, FTYPE type, algebra_optr inp) { return std::make_shared<append_op>(func, type, inp); }
 
 struct FExp {
     FExp(PContext &ctx, FOP fop, FTYPE type, std::string property, std::string value) : fop_(fop), type_(type),

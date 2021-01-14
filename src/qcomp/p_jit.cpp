@@ -164,6 +164,10 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&get_group_sum_uint), JITSymbolFlags::Exported);
         M[Mangle("get_total_group_cnt")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_total_group_count), JITSymbolFlags::Exported);
+        M[Mangle("append_to_tuple")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&append_to_tuple), JITSymbolFlags::Exported);
+        M[Mangle("get_qr_tuple")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_qr_tuple), JITSymbolFlags::Exported);
         ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
     }
 }
