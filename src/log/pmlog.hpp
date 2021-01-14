@@ -273,6 +273,7 @@ private:
   log_chunk *ulog_;
 #endif
   p<std::size_t> nlogs_;
+  std::mutex lmtx_;
 };
 
 #endif
