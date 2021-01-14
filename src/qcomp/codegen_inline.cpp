@@ -612,8 +612,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
 
     ctx.getBuilder().CreateBr(main_return);
 
-    pre_tuple_mat->dump();
-
     // complete the finish call
     ctx.getBuilder().SetInsertPoint(df_finish_bb);
     ctx.getBuilder().CreateRetVoid();
