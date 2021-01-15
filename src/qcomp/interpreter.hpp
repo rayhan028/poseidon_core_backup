@@ -8,12 +8,12 @@
 
 
 class interprete_visitor : public op_visitor {
-    query query_;
     graph_db_ptr gdb_;
-    result_set *rs_;
-    interprete_filter_visitor ifv_;
-    projection::expr_list pexpr_;
+    query query_;
     arg_builder args_;
+    interprete_filter_visitor ifv_;
+    result_set *rs_;
+    projection::expr_list pexpr_;
 
     std::vector<query> queries_;
 public:

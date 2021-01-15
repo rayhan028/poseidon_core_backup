@@ -4,18 +4,18 @@
 
 boost::barrier pipeline_barrier(24);
 
-extern "C" chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
+ chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
     //pipeline_barrier.wait();
 
     return new chunked_vec<node, NODE_CHUNK_SIZE>::range_iter(vec->as_vec(), first, last);
 }
 
-extern "C" chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
+ chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
     //std::cout << "Get next" << std::endl;
     return &it->operator++();;
 }
 
-extern "C" bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
+ bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
     //std::cout << "test end" << std::endl;
     return !it->operator bool();
 }
@@ -35,45 +35,45 @@ bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_C
     return !(it != vec.as_vec().end());
 }
 
-extern "C" dcode_t dict_lookup_label(graph_db *gdb, char *label) {
+ dcode_t dict_lookup_label(graph_db *gdb, char *label) {
     return gdb->get_code(label);
 }
 
-extern "C" node *get_node_from_it(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
+ node *get_node_from_it(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
     return &it->operator*();
 }
 
-extern "C" relationship *get_rship_from_it(chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *it) {
+ relationship *get_rship_from_it(chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *it) {
     //std::cout << "get rship" << std::endl;
     return &it->operator*();
 }
 
-extern "C" chunked_vec<node, NODE_CHUNK_SIZE> *gdb_get_nodes(graph_db *gdb) {
+ chunked_vec<node, NODE_CHUNK_SIZE> *gdb_get_nodes(graph_db *gdb) {
     return &gdb->get_nodes()->as_vec();
 }
 
-extern "C" chunked_vec<relationship, RSHIP_CHUNK_SIZE> *gdb_get_rships(graph_db *gdb) {
+ chunked_vec<relationship, RSHIP_CHUNK_SIZE> *gdb_get_rships(graph_db *gdb) {
     return &gdb->get_relationships()->as_vec();
 }
 
-extern "C" void test_ints(uint64_t a, uint64_t b) {
+ void test_ints(uint64_t a, uint64_t b) {
     std::cout << "A: " << a << " B: " << b << "EQ: " << (a == b) << std::endl;
 }
 
-extern "C" relationship *rship_by_id(graph_db *gdb, offset_t id) {
+ relationship *rship_by_id(graph_db *gdb, offset_t id) {
     return &gdb->rship_by_id(id);
 }
 
-extern "C" node *node_by_id(graph_db *gdb, offset_t id) {
+ node *node_by_id(graph_db *gdb, offset_t id) {
     return &gdb->node_by_id(id);
 }
 
-extern "C" dcode_t gdb_get_dcode(graph_db *gdb, char *property) {
+ dcode_t gdb_get_dcode(graph_db *gdb, char *property) {
     //std::cout << "Search for property: " << property  << " with code: " << gdb->get_code(property) << std::endl;
     return gdb->get_code(property);
 }
 
-extern "C" const property_set *pset_get_item_at(graph_db *gdb, offset_t id) {
+ const property_set *pset_get_item_at(graph_db *gdb, offset_t id) {
     //std::cout << "Get property at: " << id << std::endl;
     return &gdb->get_node_properties()->get(id);
 }
@@ -88,15 +88,15 @@ thread_local std::map<int, rship_description> rdescs;
 
 std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
 
-extern "C" xid_t get_tx(transaction_ptr tx) {
+ xid_t get_tx(transaction_ptr tx) {
     return tx->xid();
 }
 
-extern "C" node * get_valid_node(graph_db *gdb, node * n, transaction_ptr tx) {
+ node * get_valid_node(graph_db *gdb, node * n, transaction_ptr tx) {
     return &gdb->get_valid_node_version(*n, tx->xid());
 }
 
-extern "C" char* get_str_property(const properties_t &p, const std::string &key) {
+ char* get_str_property(const properties_t &p, const std::string &key) {
     auto it = p.find(key);
     if (it == p.end()) {
         spdlog::info("unknown property: {}", key);
@@ -180,7 +180,7 @@ void apply_pexpr_rship(graph_db *gdb, const char *key, FTYPE val_type, int *qr, 
 
 std::mutex prj_mutex;
 
-extern "C" void apply_pexpr(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int idx, std::vector<int> types, int *ret) {
+ void apply_pexpr(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int idx, std::vector<int> types, int *ret) {
     std::lock_guard<std::mutex> lock(prj_mutex);
     if(types.at(idx) == 0) { // is node
         apply_pexpr_node(gdb, key, val_type, qr, ret);
@@ -192,40 +192,40 @@ extern "C" void apply_pexpr(graph_db *gdb, const char *key, FTYPE val_type, int 
     }
 }
 
-extern "C" const char* lookup_dc(graph_db *gdb, dcode_t dc) {
+ const char* lookup_dc(graph_db *gdb, dcode_t dc) {
     return gdb->get_string(dc);
 }
 
-extern "C" node* create_node(graph_db *gdb, char *label, properties_t *props) {
+ node* create_node(graph_db *gdb, char *label, properties_t *props) {
     auto node_id = gdb->add_node(std::string(label), *props, true);
     return &gdb->node_by_id(node_id);
 }
 
-extern "C" relationship* create_rship(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props) {
+ relationship* create_rship(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props) {
     auto rid = gdb->add_relationship(n1->id(), n2->id(), label, *props, true);
     return &gdb->rship_by_id(rid);
 }
 
-extern "C" void foreach_variable_from(graph_db *gdb, dcode_t label, int min, int max, consumer_fct_type consumer,
+ void foreach_variable_from(graph_db *gdb, dcode_t label, int min, int max, consumer_fct_type consumer,
                                       int oid, int **qr, int *rs, int size, int *ty, int **call_map_arg, int offset) {
     auto prev_pos = size + offset;
     auto insert_pos = prev_pos + 1;
     auto n = (node*)qr[prev_pos];
     auto nsize = size++;
-    *qr[0]++;
+    //*qr[0]++;
     gdb->foreach_variable_from_relationship_of_node(*n, label, min, max, [&](relationship &r) {
         qr[insert_pos] = (int*)&r;
         consumer(gdb, oid, qr, rs, nsize, ty, call_map_arg, offset);
     });
 }
 
-extern "C" void foreach_variable_to(graph_db *gdb, dcode_t label, int min, int max, consumer_fct_type consumer,
+ void foreach_variable_to(graph_db *gdb, dcode_t label, int min, int max, consumer_fct_type consumer,
                                       int oid, int **qr, int *rs, int size, int *ty, int **call_map_arg, int offset) {
     auto prev_pos = size + offset;
     auto insert_pos = prev_pos + 1;
     auto n = (node*)qr[prev_pos];
     auto nsize = size++;
-    *qr[0]++;
+    //*qr[0]++;
     gdb->foreach_variable_to_relationship_of_node(*n, label, min, max, [&](relationship &r) {
         qr[insert_pos] = (int*)&r;
         consumer(gdb, oid, qr, rs, nsize, ty, call_map_arg, offset);
@@ -235,7 +235,7 @@ extern "C" void foreach_variable_to(graph_db *gdb, dcode_t label, int min, int m
 thread_local qr_tuple tp;
 
 std::mutex mat_reg_mut;
-extern "C" void mat_reg_value(graph_db *gdb, int *reg, int type) {
+ void mat_reg_value(graph_db *gdb, int *reg, int type) {
     std::lock_guard<std::mutex> lck(mat_reg_mut);
     if(type == 2) {
         int res = std::stoi(con_map[type](gdb, reg));
@@ -249,16 +249,16 @@ extern "C" void mat_reg_value(graph_db *gdb, int *reg, int type) {
     }
 }
 
-extern "C" void append_to_tuple(query_result qr) {
+ void append_to_tuple(query_result qr) {
     tp.push_back(qr);
 }
 
-extern "C" qr_tuple &get_qr_tuple() {
+qr_tuple &get_qr_tuple() {
     return tp;
 }
 
 std::mutex ct_mut;
-extern "C" void collect_tuple(result_set *rs, bool print) {
+ void collect_tuple(result_set *rs, bool print) {
     std::lock_guard<std::mutex> lck(ct_mut);
     rs->data.push_back(tp);
 
@@ -285,41 +285,41 @@ extern "C" void collect_tuple(result_set *rs, bool print) {
 
 thread_local qr_tuple mat_tuple;
 
-extern "C" qr_tuple *obtain_mat_tuple() {
+ qr_tuple *obtain_mat_tuple() {
     //auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
     //return &joiner::mat_tuple_[tid];
     return &mat_tuple;
 }
 
-extern "C" void mat_node(node *n, qr_tuple *qr) {
+ void mat_node(node *n, qr_tuple *qr) {
     qr->push_back(n);
 }
 
-extern "C" void mat_rship(relationship *r, qr_tuple *qr) {
+ void mat_rship(relationship *r, qr_tuple *qr) {
     qr->push_back(r);
 }
 
-extern "C" void collect_tuple_join(int jid, qr_tuple *qr) {
+ void collect_tuple_join(int jid, qr_tuple *qr) {
     joiner::materialize_rhs(jid, qr);
 }
 
-extern "C" qr_tuple *get_join_tp_at(int jid, int pos) {
+ qr_tuple *get_join_tp_at(int jid, int pos) {
     return &joiner::rhs_input_[jid].at(pos);
 }
 
-extern "C" node *get_node_res_at(qr_tuple *tuple, int pos) {
+ node *get_node_res_at(qr_tuple *tuple, int pos) {
     return boost::get<node*>(tuple->at(pos));
 }
 
-extern "C" relationship *get_rship_res_at(qr_tuple *tuple, int pos) {
+ relationship *get_rship_res_at(qr_tuple *tuple, int pos) {
     return boost::get<relationship*>(tuple->at(pos));
 }
 
-extern "C" int get_mat_res_size(int jid) {
+ int get_mat_res_size(int jid) {
     return joiner::rhs_input_[jid].size();
 }
 
-extern "C" node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t value) {
+ node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t value) {
     auto idx = gdb->get_index(std::string(label), std::string(prop));
 
     node *n_ptr;
@@ -331,7 +331,7 @@ extern "C" node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t
     return n_ptr;
 }
 
-extern "C" int count_potential_o_hop(graph_db *gdb, offset_t rship_id) {
+ int count_potential_o_hop(graph_db *gdb, offset_t rship_id) {
     auto cnt = 0;
     while(rship_id != UNKNOWN) {
         cnt++;
@@ -341,15 +341,15 @@ extern "C" int count_potential_o_hop(graph_db *gdb, offset_t rship_id) {
 }
 
 
-extern "C" std::list<std::pair<relationship::id_t, std::size_t>> retrieve_fev_queue() {
+ std::list<std::pair<relationship::id_t, std::size_t>> retrieve_fev_queue() {
     return std::list<std::pair<relationship::id_t, std::size_t>>();
 }
 
-extern "C" void insert_fev_rship(std::list<std::pair<relationship::id_t, std::size_t>> &queue, relationship::id_t rid, std::size_t hop) {
+ void insert_fev_rship(std::list<std::pair<relationship::id_t, std::size_t>> &queue, relationship::id_t rid, std::size_t hop) {
     queue.push_back(std::make_pair(rid, hop));
 }
 
-extern "C" bool fev_queue_empty(std::list<std::pair<relationship::id_t, std::size_t>> &queue) {
+ bool fev_queue_empty(std::list<std::pair<relationship::id_t, std::size_t>> &queue) {
     return queue.empty();
 }
 
@@ -357,120 +357,120 @@ thread_local std::vector<relationship*> fev_rship_list;
 thread_local std::vector<relationship*>::iterator fev_list_iter;
 thread_local std::string grpkey_buffer;
 
-extern "C" void foreach_from_variable_rship(graph_db *gdb, dcode_t lcode, node *n, std::size_t min, std::size_t max) {
+ void foreach_from_variable_rship(graph_db *gdb, dcode_t lcode, node *n, std::size_t min, std::size_t max) {
     gdb->foreach_variable_from_relationship_of_node(*n, lcode, min, max, [&](relationship &r) {
         fev_rship_list.push_back(&r);
     });
     fev_list_iter = fev_rship_list.begin();
 }
 
- extern "C" relationship *get_next_rship_fev() {
+  relationship *get_next_rship_fev() {
     auto rship = *fev_list_iter;
     fev_list_iter++;
     return rship;
 }
 
-extern "C" bool fev_list_end() {
+ bool fev_list_end() {
     auto is_end = fev_list_iter == fev_rship_list.end();
     if(is_end)
         fev_rship_list.clear();
     return is_end;
 }
 std::set<unsigned> pos_set;
-extern "C" void get_node_grpkey(node* n, unsigned pos) {
+ void get_node_grpkey(node* n, unsigned pos) {
     pos_set.insert(pos);
     grpkey_buffer += std::to_string(n->id());
 }
 
-extern "C" void get_rship_grpkey(relationship* r, unsigned pos) {
+ void get_rship_grpkey(relationship* r, unsigned pos) {
     pos_set.insert(pos);
     grpkey_buffer += std::to_string(r->id());
 }
 
-extern "C" void get_int_grpkey(int i, unsigned pos) {
+ void get_int_grpkey(int i, unsigned pos) {
     pos_set.insert(pos);
     grpkey_buffer += std::to_string(i);
 }
 
-extern "C" void get_double_grpkey(int* d_ptr, unsigned pos) {
+ void get_double_grpkey(int* d_ptr, unsigned pos) {
     //TODO: implement double handling
 }
 
-extern "C" void get_string_grpkey(int* str_ptr, unsigned pos) {
+ void get_string_grpkey(int* str_ptr, unsigned pos) {
     pos_set.insert(pos);
     grpkey_buffer += str_result[*str_ptr];
 }
 
-extern "C" void get_time_grpkey(int* time_ptr, unsigned pos) {
+ void get_time_grpkey(int* time_ptr, unsigned pos) {
     pos_set.insert(pos);
     grpkey_buffer += to_iso_extended_string(time_result[*time_ptr]);
 }
 
-extern "C" void add_to_group() {
+ void add_to_group() {
     grouper::add_to_group(grpkey_buffer, tp, pos_set);
     grpkey_buffer = "";
     pos_set.clear();
     tp.clear();
 }
 
-extern "C" void finish_group_by(result_set* rs) {
+ void finish_group_by(result_set* rs) {
     grouper::finish(rs);
 }
 
-extern "C" void clear_mat_tuple() {
+ void clear_mat_tuple() {
     tp.clear();
 }
 
-extern "C" qr_tuple* grp_demat_at(int index) {
+ qr_tuple* grp_demat_at(int index) {
     return grouper::demat_tuple(index);
 }
 
-extern "C" int int_to_reg(qr_tuple* qr, int pos) {
+ int int_to_reg(qr_tuple* qr, int pos) {
     return boost::get<int>(qr->at(pos));
 }
 
-extern "C" int str_to_reg(qr_tuple* qr, int pos) {
+ int str_to_reg(qr_tuple* qr, int pos) {
     str_result[str_res_ctr] = boost::get<std::string>(qr->at(pos));
     return str_res_ctr++;
 }
 
-extern "C" node* node_to_reg(qr_tuple* qr, int pos) {
+ node* node_to_reg(qr_tuple* qr, int pos) {
     return boost::get<node*>(qr->at(pos));
 }
 
-extern "C" relationship* rship_to_reg(qr_tuple* qr, int pos) {
+ relationship* rship_to_reg(qr_tuple* qr, int pos) {
     return boost::get<relationship*>(qr->at(pos));
 }
 
-extern "C" int time_to_reg(qr_tuple* qr, int pos) {
+ int time_to_reg(qr_tuple* qr, int pos) {
     time_result[str_res_ctr] = boost::get<boost::posix_time::ptime>(qr->at(pos));
     return str_res_ctr++;
 }
 
-extern "C" int get_grp_rs_count() {
+ int get_grp_rs_count() {
     return grouper::get_rs_count();
 }
 
-extern "C" void init_grp_aggr() {
+ void init_grp_aggr() {
     grouper::init_grp_aggr();
 }
 
-extern "C" int get_group_count() {
+ int get_group_count() {
     return grouper::get_group_cnt();
 }
 
-extern "C" int get_total_group_count() {
+ int get_total_group_count() {
     return grouper::get_total_group_cnt();
 }
 
-extern "C" int get_group_sum_int(int pos) {
+ int get_group_sum_int(int pos) {
     return grouper::get_group_sum_int(pos);
 }
 
-extern "C" double get_group_sum_double(int pos) {
+ double get_group_sum_double(int pos) {
     return grouper::get_group_sum_double(pos);
 }
 
-extern "C" uint64_t get_group_sum_uint(int pos) {
+ uint64_t get_group_sum_uint(int pos) {
     return grouper::get_group_sum_uint(pos);
 }

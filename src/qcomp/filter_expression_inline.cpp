@@ -5,9 +5,9 @@ std::map<int, Value*> expr_register;
 fep_visitor_inline::fep_visitor_inline(PContext *ctx, Function *parent, std::vector<codegen_inline_visitor::QR_VALUE> &qr, BasicBlock *next, BasicBlock *end, Value *item_arr, Value *item, Value *pset,
                                        Value *unknown_id, Value *plist_id, Value *loop_cnt, Value *max_cnt, Value *pitem,
         Value *arg)
-        : ctx_(ctx),
+        : qr_regs_(qr),
+          ctx_(ctx),
           fct_(parent),
-          qr_regs_(qr),
           next_(next),
           end_(end) {
     cur_item = item;
@@ -194,7 +194,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<eq_predicate> eq)  {
     expr_stack.insert(expr_stack.begin(), eq);
 
     // obtain the evaluation stack values
-    auto opd_it = expr_stack.begin();
+    //auto opd_it = expr_stack.begin();
     auto rhs_it = expr_stack.begin() + 1;
     auto lhs_it = expr_stack.begin() + 2;
 
@@ -219,15 +219,22 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<eq_predicate> eq)  {
             auto cmp_pitem = ctx_->getBuilder().CreateICmpEQ(int_value, val_rhs);
 
             expr_register[opd_cnt] = cmp_pitem;
-        }
             break;
+        }
         case FOP_TYPE::DOUBLE: {
             auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
             auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
             auto cmp_pitem = ctx_->getBuilder().CreateFCmpOEQ(int_value, val_rhs);
             gen_vals_[opd_cnt] = alloc("cmp_eq_res_" + std::to_string(eq->opd_num), ctx_->boolTy, cmp_pitem);
+            break;
         }
-
+        case FOP_TYPE::DATE:
+        case FOP_TYPE::STRING:
+        case FOP_TYPE::TIME:
+        case FOP_TYPE::UINT64:
+        case FOP_TYPE::BOOL_OP:
+        case FOP_TYPE::OP:
+        case FOP_TYPE::KEY:
             break;
     }
 
@@ -247,7 +254,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<and_predicate> andpr) {
     andpr->opd_num = opd_cnt;
     expr_stack.insert(expr_stack.begin(), andpr);
 
-    auto bopd_it = expr_stack.begin();
+    //auto bopd_it = expr_stack.begin();
     auto rhs_it = expr_stack.begin() + 1;
     auto cit = expr_stack.begin() + 1;
     auto offset = 0;
@@ -286,7 +293,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<or_predicate> orpr) {
     orpr->opd_num = opd_cnt;
     expr_stack.insert(expr_stack.begin(), orpr);
 
-    auto bopd_it = expr_stack.begin();
+    //auto bopd_it = expr_stack.begin();
     auto rhs_it = expr_stack.begin() + 1;
     auto cit = expr_stack.begin() + 1;
     auto offset = 0;

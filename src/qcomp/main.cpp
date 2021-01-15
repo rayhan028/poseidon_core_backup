@@ -58,7 +58,6 @@ int main() {
 	auto tx = graph->begin_transaction();
 
 	int PERSONS = 100;
-	int NO_PERSONS = 42;
 	int add = 0;
 	int j = 1;
 	for (int i = 0; i < PERSONS; i++) {
@@ -78,8 +77,8 @@ int main() {
 				{"Age", boost::any(42)},
 				{"id", boost::any(i)}},
 				false);
-		auto x = graph->add_relationship(p, b, ":HAS_READ", {}, false);
-		auto y = graph->add_relationship(b, p, ":HAS_READ", {}, false);
+		graph->add_relationship(p, b, ":HAS_READ", {}, false);
+		graph->add_relationship(b, p, ":HAS_READ", {}, false);
 	}
 
 	graph->commit_transaction();
@@ -98,8 +97,6 @@ int main() {
 #ifdef USE_PMDK
 	});
 #endif
-
-    queryc qlc;
 	
 	//algebra_optr op = qlc.compile_to_plan("Project([$0.name:string, $0.num:uint64], NodeScan('Person'))");
 
@@ -109,10 +106,6 @@ int main() {
                         Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}
                                   /*{3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {0, "id", FTYPE::INT}, {0, "name", FTYPE::STRING}*/}, 
 							Collect()), r_expr));
-
-	auto sort_fct = [&](const qr_tuple &q1, const qr_tuple &q2) -> bool {
-		return boost::get<uint64_t>(q1[2]) < boost::get<uint64_t>(q2[2]); 
-	};
 
 	auto fev = Scan("Person", 
 				Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}}, 

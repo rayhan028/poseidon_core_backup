@@ -161,9 +161,9 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
     BasicBlock *consume = BasicBlock::Create(ctx.getContext(), "consume", fct);
     BasicBlock *foreach_rship = BasicBlock::Create(ctx.getContext(), "foreach_rship", fct);
     BasicBlock *next_rship = BasicBlock::Create(ctx.getContext(), "next_rship", fct);
-    BasicBlock *consume_next = BasicBlock::Create(ctx.getContext(), "consume_next_left", fct);
-    BasicBlock *for_each_rship = BasicBlock::Create(ctx.getContext(), "for_each_rship", fct);
-    BasicBlock *for_each_next = BasicBlock::Create(ctx.getContext(), "for_each_next_rship", fct);
+    //BasicBlock *consume_next = BasicBlock::Create(ctx.getContext(), "consume_next_left", fct);
+    //BasicBlock *for_each_rship = BasicBlock::Create(ctx.getContext(), "for_each_rship", fct);
+    //BasicBlock *for_each_next = BasicBlock::Create(ctx.getContext(), "for_each_next_rship", fct);
     BasicBlock *end = BasicBlock::Create(ctx.getContext(), "end", fct);
 
     Value *left_pos = nullptr;
@@ -181,13 +181,13 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
     auto gdb = fct->args().begin();
     auto oid = fct->args().begin() + 1;
     auto qr_tuple_list = fct->args().begin() + 2;
-    auto rs = fct->args().begin() + 3;
+    //auto rs = fct->args().begin() + 3;
     auto prev_size = fct->args().begin() + 4;
-    auto call_map_arg = fct->args().begin() + 6;
+    //auto call_map_arg = fct->args().begin() + 6;
     auto call_map = ctx.getBuilder().CreateBitCast(fct->args().begin() + 6, ctx.callMapPtrTy);
 
     auto lhs_qr_arr = ctx.getBuilder().CreateBitCast(qr_tuple_list, ctx.res_arr_type->getPointerTo());
-    auto lhs_size_field = ctx.getBuilder().CreateInBoundsGEP(lhs_qr_arr, {ctx.LLVM_ZERO, ctx.LLVM_ZERO});
+    //auto lhs_size_field = ctx.getBuilder().CreateInBoundsGEP(lhs_qr_arr, {ctx.LLVM_ZERO, ctx.LLVM_ZERO});
 
     auto lhs_alloca = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     auto rhs_alloca = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
@@ -210,8 +210,8 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
 
     auto cpy_size = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
 
-    auto noid = ctx.getBuilder().CreateAdd(oid, ctx.LLVM_ONE);
-    auto fct_ptr = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(call_map, {ctx.LLVM_ZERO, oid}));
+    //auto noid = ctx.getBuilder().CreateAdd(oid, ctx.LLVM_ONE);
+    //auto fct_ptr = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(call_map, {ctx.LLVM_ZERO, oid}));
 
     //auto ql = ctx.getBuilder().CreateCall(get_join_vec, {inputs_vec, ctx.LLVM_TWO});
     auto loop_body = ctx.while_loop_condition(fct, cur_idx, max_idx, PContext::WHILE_COND::LT, end,
@@ -293,7 +293,7 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
     ctx.getBuilder().CreateStore(prev_size, cpy_size);
 
     auto offset_rhs = ctx.getBuilder().CreateAdd(rhs_size, ctx.LLVM_ONE);
-    auto nsize = ctx.getBuilder().CreateAdd(prev_size, offset_rhs);
+    //auto nsize = ctx.getBuilder().CreateAdd(prev_size, offset_rhs);
 
     // copy each element from rhs to lhs
     auto copy_body = ctx.while_loop_condition(fct, cur_lhs_pos, rhs_pos_max, PContext::WHILE_COND::LE, consume,

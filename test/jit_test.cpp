@@ -90,7 +90,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
   tx = graph->begin_transaction();
 #endif
 
-  auto idx = graph->create_index("Person", "id");
+  graph->create_index("Person", "id");
 
 #ifdef USE_TX
   graph->commit_transaction();

@@ -106,7 +106,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     }
 
     // obtain all relevant function callees for the scan operator
-    FunctionCallee dict_lookup_label = ctx.extern_func("dict_lookup_label");
+    //FunctionCallee dict_lookup_label = ctx.extern_func("dict_lookup_label");
     FunctionCallee get_valid_node = ctx.extern_func("get_valid_node");
     FunctionCallee gdb_get_nodes = ctx.extern_func("gdb_get_nodes");
     FunctionCallee gdb_get_node_from_it = ctx.extern_func("get_node_from_it");
@@ -146,7 +146,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     auto first = main_function->args().begin() + 1;
     auto last = main_function->args().begin() + 2;
     auto tx_ptr = main_function->args().begin() + 3;
-    auto oid = main_function->args().begin() + 4;
+    //auto oid = main_function->args().begin() + 4;
     ty = main_function->args().begin() + 5;
     rs = main_function->args().begin() + 6;
     finish = main_function->args().begin() + 8;
@@ -260,10 +260,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
 
     // obtain the FunctionCallees for the operator processing
     FunctionCallee rship_by_id = ctx.extern_func("rship_by_id");
-    FunctionCallee gdb_get_rships = ctx.extern_func("gdb_get_rships");
-    FunctionCallee ohop_count = ctx.extern_func("count_potential_o_hop");
-    FunctionCallee get_rship_queue = ctx.extern_func("retrieve_fev_queue");
-    FunctionCallee insert_to_queue = ctx.extern_func("insert_fev_rship");
+    //FunctionCallee gdb_get_rships = ctx.extern_func("gdb_get_rships");
+    //FunctionCallee ohop_count = ctx.extern_func("count_potential_o_hop");
+    //FunctionCallee get_rship_queue = ctx.extern_func("retrieve_fev_queue");
+    //FunctionCallee insert_to_queue = ctx.extern_func("insert_fev_rship");
 
     FunctionCallee retrieve_rships = ctx.extern_func("foreach_from_variable_rship");
     FunctionCallee get_next_rship = ctx.extern_func("get_next_rship_fev");
@@ -278,7 +278,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     // basic blocks for the fev operator
     BasicBlock *loop_head = BasicBlock::Create(ctx.getContext(), "fev_loop_head", main_function);
     BasicBlock *loop_body = BasicBlock::Create(ctx.getContext(), "fev_loop_body", main_function);
-    BasicBlock *loop_next = BasicBlock::Create(ctx.getContext(), "fev_loop_next", main_function);
+    //BasicBlock *loop_next = BasicBlock::Create(ctx.getContext(), "fev_loop_next", main_function);
 
     // link the entry point with the block of the previous operator
     ctx.getBuilder().SetInsertPoint(prev_bb);
@@ -309,7 +309,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     // register value for the current relationship
     Value *rship;
 
-    Value *hop_cnt;
     // generate code depending on variable traversion or single
     if(op->is_variable()) {
         // for variable traversion
@@ -391,7 +390,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
     op->name_ = "";
 
     // obtain FunctionCallee for apply_pexpr
-    auto apply_pexpr = ctx.extern_func("apply_pexpr");
+    //auto apply_pexpr = ctx.extern_func("apply_pexpr");
     auto apply_pexpr_node = ctx.extern_func("apply_pexpr_node");
     auto apply_pexpr_rship = ctx.extern_func("apply_pexpr_rship");
 
@@ -411,8 +410,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
             nqrv.push_back(reg_query_results[pe.id]);
         } else {
             // get id of tuple for projection
-            auto id = ConstantInt::get(ctx.int64Ty, APInt(64, pe.id));
-            auto idx = ConstantInt::get(ctx.int64Ty, APInt(64, pe.id+1));
+            //auto id = ConstantInt::get(ctx.int64Ty, APInt(64, pe.id));
+            //auto idx = ConstantInt::get(ctx.int64Ty, APInt(64, pe.id+1));
             //auto qrp = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(qrl, {ctx.LLVM_ZERO, idx}));
 
             // get register value of tuple for projection
@@ -422,8 +421,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
             // get the appropriate type of the tuple
             auto type = ConstantInt::get(ctx.int64Ty, APInt(64, static_cast<int>(pe.type)));
 
-            auto nidx = ConstantInt::get(ctx.int64Ty, i);
-            auto dest = ctx.getBuilder().CreateInBoundsGEP(newResAlloc, {ctx.LLVM_ZERO, nidx});
+            //auto nidx = ConstantInt::get(ctx.int64Ty, i);
+            //auto dest = ctx.getBuilder().CreateInBoundsGEP(newResAlloc, {ctx.LLVM_ZERO, nidx});
 
             // apply the projection in an external function
             if(r.type == 0) {
@@ -552,7 +551,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<filter_op> op) {
     auto arg = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(queryArgs, {ctx.LLVM_ZERO, opid})));
     
     // obtain the last query result
-    auto pres = reg_query_results.back().reg_val;
+    //auto pres = reg_query_results.back().reg_val;
     
     // generate code for each filter expression
     auto vis = fep_visitor_inline(&ctx, main_function, reg_query_results, consume, 
@@ -924,14 +923,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<limit_op> op) {
  */
 void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     op->name_ = "";
-    auto join_insert_left = ctx.extern_func("join_insert_left");
+    //auto join_insert_left = ctx.extern_func("join_insert_left");
 
     auto obtain_mat_tuple = ctx.extern_func("obtain_mat_tuple");
     auto mat_node = ctx.extern_func("mat_node");
     auto mat_rship = ctx.extern_func("mat_rship");
     auto collect_tuple_join = ctx.extern_func("collect_tuple_join");
 
-    FunctionCallee mat_reg = ctx.extern_func("mat_reg_value");
+    //FunctionCallee mat_reg = ctx.extern_func("mat_reg_value");
     BasicBlock *bb = BasicBlock::Create(ctx.getContext(), "entry_join_rhs", main_function);
 
     ctx.getBuilder().SetInsertPoint(prev_bb);
@@ -943,7 +942,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
 
     // materialize each result from registers
     for(auto & res : reg_query_results) {
-        auto type = ConstantInt::get(ctx.int64Ty, res.type);
+        //auto type = ConstantInt::get(ctx.int64Ty, res.type);
 
         if(res.type == 0) {
             ctx.getBuilder().CreateCall(mat_node, {res.reg_val, tp});
@@ -1142,24 +1141,35 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
     std::vector<QR_VALUE> new_query_res;
     for(auto & pt : pos_type) {
         auto pos = ConstantInt::get(ctx.int64Ty, pt.first);
-        Value *demat;
+        Value *demat = nullptr;
         switch(pt.second) {
-            case 0:
-            case 1:
+            case 0: {
+                auto n = ctx.getBuilder().CreateCall(node_to_reg, {tuple, pos});
+                new_query_res.push_back({n, pt.second});
+                continue;
+            }
+            case 1: {
+                auto r = ctx.getBuilder().CreateCall(rship_to_reg, {tuple, pos});
+                new_query_res.push_back({r, pt.second});
+                continue;
+            }
             case 2: {
                 auto i = ctx.getBuilder().CreateCall(int_to_reg, {tuple, pos});
                 demat = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
                 ctx.getBuilder().CreateStore(i, demat);
                 break;
             }
-            case 3:
+            case 3: continue;
             case 4: {
                 auto str = ctx.getBuilder().CreateCall(str_to_reg, {tuple, pos});
                 demat = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
                 ctx.getBuilder().CreateStore(str, demat);
             }
-            case 5:
-                break;
+            case 5: {
+                auto t = ctx.getBuilder().CreateCall(time_to_reg, {tuple, pos});
+                demat = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                ctx.getBuilder().CreateStore(t, demat);
+            }
         }
         new_query_res.push_back({demat, pt.second});
     }
@@ -1278,7 +1288,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<connected_op> op) {
     BasicBlock *connected_body = BasicBlock::Create(ctx.getContext(), "connected_body", main_function);
     BasicBlock *connected_exit = BasicBlock::Create(ctx.getContext(), "connected_exit", main_function);
     BasicBlock *consume = BasicBlock::Create(ctx.getContext(), "consume", main_function);
-    BasicBlock *append_null = BasicBlock::Create(ctx.getContext(), "consume", main_function);
+    //BasicBlock *append_null = BasicBlock::Create(ctx.getContext(), "consume", main_function);
 
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(connected_entry);
@@ -1338,6 +1348,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<append_op> op) {
     auto append_to_tuple = ctx.extern_func("append_to_tuple");
     auto get_qr_tuple = ctx.extern_func("get_qr_tuple");
 
+    // insert the append processing before the tuples get materialized
     ctx.getBuilder().SetInsertPoint(pre_tuple_mat);
     auto fct_raw = ConstantInt::get(ctx.int64Ty, (int64_t )op->func_);
     auto fct_ptr = ctx.getBuilder().CreateIntToPtr(fct_raw, ctx.int64PtrTy);

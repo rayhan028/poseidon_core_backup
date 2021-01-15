@@ -225,8 +225,11 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
     } else {
     auto chunksz = graph_->get_nodes()->num_chunks() / thread_num;
     auto max_chunksz = graph_->get_nodes()->num_chunks();
-    if(compile_th.joinable())
+
+    if(compile_th.joinable()) {
         compile_th.join();
+    }
+    
 	//prepare();
 	type_vec_[0].push_back(7);
         std::vector<std::thread> query_threads;

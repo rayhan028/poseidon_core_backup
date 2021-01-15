@@ -8,8 +8,8 @@
 class interprete_filter_visitor : public expression_visitor {
     dcode_t dict_value_;
     uint64_t int_value_;
-    uint64_t ui_value_;
-    double fp_value_;
+    //uint64_t ui_value_;
+    //double fp_value_;
 
     enum class value_type {
         dcodev,

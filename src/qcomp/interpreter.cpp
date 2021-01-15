@@ -5,7 +5,12 @@
 
 unsigned int op_id_ = 1;
 
-interprete_visitor::interprete_visitor(graph_db_ptr gdb, arg_builder & args, result_set *rs) : gdb_(gdb), query_(query(gdb)), args_(args), ifv_(gdb, args), rs_(rs) {
+interprete_visitor::interprete_visitor(graph_db_ptr gdb, arg_builder & args, result_set *rs) : 
+    gdb_(gdb), 
+    query_(query(gdb)), 
+    args_(args), 
+    ifv_(gdb, args), 
+    rs_(rs) {
 }
 
 void interprete_visitor::visit(std::shared_ptr<scan_op> op) {
@@ -113,6 +118,8 @@ void interprete_visitor::visit(std::shared_ptr<project> op) {
                 pe = PExpr_(p.id, builtin::ptime_property(res, p.key));
                 break;
             }
+            case FTYPE::BOOLEAN:
+                continue;
         }
 
         pexpr_.push_back(pe);
@@ -157,8 +164,8 @@ void interprete_visitor::visit(std::shared_ptr<end_op> op) {
 
 void interprete_visitor::visit(std::shared_ptr<create_op> op) {
     if(op->ctype_ == create_type::rship) {
-        auto src = op->src_des_.first;
-        auto dst = op->src_des_.second;
+        //auto src = op->src_des_.first;
+        //auto dst = op->src_des_.second;
         //query_ = query_.create_rship({src, dst},)
     } else {
 

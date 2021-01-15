@@ -278,6 +278,9 @@ public:
                 case FTYPE::DATE:
                     projection->new_types.push_back(6);
                     break;
+                case FTYPE::BOOLEAN:
+                case FTYPE::UINT64:
+                    continue; //TODO
             }
         }
 

@@ -497,8 +497,8 @@ public:
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
-    bool append_null_;
     std::pair<int, int> src_des_;
+    bool append_null_;
 };
 inline algebra_optr Connected(std::pair<int, int> src_des, bool b, algebra_optr inp) { return std::make_shared<connected_op>(src_des, b, inp); }
 
