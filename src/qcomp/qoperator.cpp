@@ -179,12 +179,12 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
     }
 
     auto gdb = fct->args().begin();
-    auto oid = fct->args().begin() + 1;
+    //auto oid = fct->args().begin() + 1;
     auto qr_tuple_list = fct->args().begin() + 2;
     //auto rs = fct->args().begin() + 3;
     auto prev_size = fct->args().begin() + 4;
     //auto call_map_arg = fct->args().begin() + 6;
-    auto call_map = ctx.getBuilder().CreateBitCast(fct->args().begin() + 6, ctx.callMapPtrTy);
+    //auto call_map = ctx.getBuilder().CreateBitCast(fct->args().begin() + 6, ctx.callMapPtrTy);
 
     auto lhs_qr_arr = ctx.getBuilder().CreateBitCast(qr_tuple_list, ctx.res_arr_type->getPointerTo());
     //auto lhs_size_field = ctx.getBuilder().CreateInBoundsGEP(lhs_qr_arr, {ctx.LLVM_ZERO, ctx.LLVM_ZERO});
@@ -292,7 +292,7 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
 
     ctx.getBuilder().CreateStore(prev_size, cpy_size);
 
-    auto offset_rhs = ctx.getBuilder().CreateAdd(rhs_size, ctx.LLVM_ONE);
+    //auto offset_rhs = ctx.getBuilder().CreateAdd(rhs_size, ctx.LLVM_ONE);
     //auto nsize = ctx.getBuilder().CreateAdd(prev_size, offset_rhs);
 
     // copy each element from rhs to lhs

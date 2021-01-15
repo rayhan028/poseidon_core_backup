@@ -77,8 +77,8 @@ int main() {
 				{"Age", boost::any(42)},
 				{"id", boost::any(i)}},
 				false);
-		graph->add_relationship(p, b, ":HAS_READ", {}, false);
-		graph->add_relationship(b, p, ":HAS_READ", {}, false);
+		//graph->add_relationship(p, b, ":HAS_READ", {}, false);
+		//graph->add_relationship(b, p, ":HAS_READ", {}, false);
 	}
 
 	graph->commit_transaction();
@@ -107,10 +107,10 @@ int main() {
                                   /*{3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {0, "id", FTYPE::INT}, {0, "name", FTYPE::STRING}*/}, 
 							Collect()), r_expr));
 
-	auto fev = Scan("Person", 
+	auto fev = Scan("Person", Join(JOIN_OP::NESTED_LOOP, {0,0},
 				Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}}, 
 					Append(afunc, FTYPE::INT,
-						Collect())));
+						Collect())), r_expr));
 	scan_task::callee_ = &scan_task::scan;	
 	queryEngine.generate(fev, false);
 	

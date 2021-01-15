@@ -242,7 +242,10 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     get_group_sum_uint_ty = FunctionType::get(int64Ty, {int64Ty}, false);
 
     append_to_tuple_ty = FunctionType::get(voidTy, {int8PtrTy}, false);
-    get_qr_tuple_ty = FunctionType::get(int8PtrTy, {});
+    get_qr_tuple_ty = FunctionType::get(int8PtrTy, {}, false);
+
+    insert_join_id_input_ty = FunctionType::get(voidTy, {int64Ty, int64Ty}, false);
+    get_join_id_at_ty = FunctionType::get(int64Ty, {int64Ty, int64Ty}, false);
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     lookup_label_type = FunctionType::get(int32Ty, {int8PtrTy, int8PtrTy}, false);
     lookup_dcode_type = FunctionType::get(int8PtrTy, {int8PtrTy, int32Ty}, false);
@@ -269,8 +272,8 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     getValidNodeFctTy = FunctionType::get(nodePtrTy, {int8PtrTy, nodePtrTy, int8PtrTy}, false);
 
 //++++++++++++++++++ BODY DEFINITIONS + ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    nodeAtomicIdTy->setBody({int64Ty});
-    rshipAtomicIdTy->setBody({int64Ty});
+    nodeAtomicIdTy->setBody(int64Ty);
+    rshipAtomicIdTy->setBody(int64Ty);
     nodeTxnBaseTy->setBody({nodeAtomicIdTy, int8PtrTy});
     nodeTy->setBody({nodeTxnBaseTy, int64Ty, int64Ty, int64Ty, int64Ty, int32Ty}); // TODO: check type size
 
@@ -278,7 +281,7 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     rshipTy->setBody({rshipTxnBaseTy, int64Ty, int64Ty, int64Ty, int64Ty, int64Ty, int64Ty, int32Ty});
 
     pitemTy->setBody({pitemValueArrTy, int32Ty, int8Ty}); // value, key, flags
-    pItemListTy->setBody({pSetRawArrTy});
+    pItemListTy->setBody(pSetRawArrTy);
     propertySetTy->setBody({int64Ty, int64Ty, pItemListTy, int8Ty}); // next, owner, items, flags
 
     qrResultTy->setBody({int8PtrTy, int64Ty, int8Ty}); // actual result, type, is null
@@ -380,6 +383,8 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     function_types["append_to_tuple"] = append_to_tuple_ty;
     function_types["get_qr_tuple"] = get_qr_tuple_ty;
 
+    function_types["insert_join_id_input"] = insert_join_id_input_ty;
+    function_types["get_join_id_at"] = get_join_id_at_ty;
 }
 
 
@@ -391,7 +396,7 @@ PContext::while_loop_condition(Function *parent, Value *cond_lhs, Value *cond_rh
     BasicBlock *condition = BasicBlock::Create(getContext(), "while_condition");
     BasicBlock *body = BasicBlock::Create(getContext(), "while_body");
     BasicBlock *body_epilog = BasicBlock::Create(getContext(), "while_body_epilog");
-    BasicBlock *end = BasicBlock::Create(getContext(), "while_end");
+    //BasicBlock *end = BasicBlock::Create(getContext(), "while_end");
 
     // branch to the loop header for condition evaluation
     Builder->CreateBr(condition);
@@ -532,7 +537,7 @@ BasicBlock * PContext::while_rship_exist(Function *parent, Value *gdb, Value *no
     Value *rship_id = Builder->CreateLoad(Builder->CreateStructGEP(node, nodeGEPidx));
     auto UNKNOWN_REL_ID = ConstantInt::get(int64Ty, std::numeric_limits<int64_t>::max());
     Value *rship;
-    auto cmp_false = ConstantInt::get(boolTy, 0);
+    //auto cmp_false = ConstantInt::get(boolTy, 0);
     Builder->CreateBr(condition);
 
     parent->getBasicBlockList().push_back(condition);
@@ -609,7 +614,7 @@ Value * PContext::create_qr_node(Value *qr_element, Value *qr_prev,
         Builder->CreateStore(qr_prev, qr_field_prev);
     } else {
         auto null = Constant::getNullValue(queryResultNodePtrTy);
-        auto x = Builder->CreateStore(null, qr_field_prev);
+        Builder->CreateStore(null, qr_field_prev);
     }
 
 
@@ -617,7 +622,7 @@ Value * PContext::create_qr_node(Value *qr_element, Value *qr_prev,
         Builder->CreateStore(qr_next, qr_field_next);
     } else {
         auto null = Constant::getNullValue(queryResultNodePtrTy);
-        auto x = Builder->CreateStore(null, qr_field_next);
+        Builder->CreateStore(null, qr_field_next);
     }
     Builder->CreateStore(ConstantInt::get(int64Ty, 22401), check);
     return qr_node_alloca;
@@ -656,11 +661,11 @@ Value *PContext::create_qr_list(Value *firstElement) {
 
 Function *PContext::qr_list_add_end() {
     auto fct = Function::Create(add_qr_list_end, Function::InternalLinkage, "qr_list_add_end", getModule());
-    FunctionCallee ls_fct = getModule().getOrInsertFunction("list_size", list_size);
+    //FunctionCallee ls_fct = getModule().getOrInsertFunction("list_size", list_size);
     gen_funcs["qr_list_add_end"] = fct;
     auto entry = BasicBlock::Create(getContext(), "entry", fct);
-    auto qr_list = fct->arg_begin(); //qr_list*
-    auto qr_element = fct->arg_begin() + 1;
+    //auto qr_list = fct->arg_begin(); //qr_list*
+    //auto qr_element = fct->arg_begin() + 1;
     Builder->SetInsertPoint(entry);
     Builder->CreateRet(nullptr);
     return fct;
@@ -998,9 +1003,9 @@ BasicBlock *PContext::while_qr_list(Function *parent, Value *qr_list, AllocaInst
 Function *PContext::qr_list_append() {
     auto fct = Function::Create(append_qr_list, Function::InternalLinkage, "qr_list_append", getModule());
     gen_funcs["qr_list_append"] = fct;
-    auto add_end = gen_funcs["qr_list_add_end"];
+    //auto add_end = gen_funcs["qr_list_add_end"];
     auto llist = fct->args().begin();
-    auto qr_el = fct->args().begin() + 1;
+    //auto qr_el = fct->args().begin() + 1;
 
     BasicBlock *entry = BasicBlock::Create(getContext(), "entry", fct);
     BasicBlock *end = BasicBlock::Create(getContext(), "end", fct);
@@ -1009,13 +1014,13 @@ Function *PContext::qr_list_append() {
     auto nlist = create_qr_list();
 
     auto cur_node = Builder->CreateAlloca(queryResultNodePtrTy);
-    auto loop = while_qr_list(fct, llist, cur_node, end, [&](BasicBlock *loop, BasicBlock *epilog) {
+    while_qr_list(fct, llist, cur_node, end, [&](BasicBlock *loop, BasicBlock *epilog) {
         // 1 extract qr from node
         auto lnode = Builder->CreateLoad(cur_node);
         auto qr = Builder->CreateLoad(Builder->CreateStructGEP(lnode, 3));
 
         // 2 create new node
-        auto nnode = create_qr_node(qr);
+        //auto nnode = create_qr_node(qr);
 
         // 3 add to new list
         //Builder->CreateCall(add_end, {nlist, qr});
@@ -1045,7 +1050,7 @@ Function *PContext::qr_list_at() {
     auto cur_pos_alloca = Builder->CreateAlloca(int64Ty);
     Builder->CreateStore(LLVM_ZERO, cur_pos_alloca);
     auto cur_node = Builder->CreateAlloca(queryResultNodePtrTy);
-    auto loop = while_qr_list(fct, llist, cur_node, end, [&](BasicBlock *loop, BasicBlock *epilog) {
+    while_qr_list(fct, llist, cur_node, end, [&](BasicBlock *loop, BasicBlock *epilog) {
         // load current it pos
         auto cur_pos = Builder->CreateLoad(cur_pos_alloca);
 
@@ -1070,9 +1075,9 @@ Function *PContext::qr_list_concat() {
     auto fct = Function::Create(concat_qr_list, Function::InternalLinkage, "qr_list_concat", getModule());
     auto qrl1 = fct->args().begin();
     auto qrl2 = fct->args().begin() + 1;
-    auto qr_el = fct->args().begin() + 2;
+    //auto qr_el = fct->args().begin() + 2;
 
-    auto add_end = gen_funcs["qr_list_add_end"];
+    //auto add_end = gen_funcs["qr_list_add_end"];
     BasicBlock *entry = BasicBlock::Create(getContext(), "entry", fct);
     BasicBlock *r_list = BasicBlock::Create(getContext(), "right_list", fct);
     BasicBlock *end = BasicBlock::Create(getContext(), "end", fct);
@@ -1081,13 +1086,13 @@ Function *PContext::qr_list_concat() {
     auto nlist = create_qr_list();
 
     auto cur_node = Builder->CreateAlloca(queryResultNodePtrTy);
-    auto l_loop = while_qr_list(fct, qrl1, cur_node, r_list, [&](BasicBlock *loop, BasicBlock *epilog) {
+    while_qr_list(fct, qrl1, cur_node, r_list, [&](BasicBlock *loop, BasicBlock *epilog) {
         // 1 extract qr from node
         auto lnode = Builder->CreateLoad(cur_node);
         auto qr = Builder->CreateLoad(Builder->CreateStructGEP(lnode, 3));
 
         // 2 create new node
-        auto nnode = create_qr_node(qr);
+        //auto nnode = create_qr_node(qr);
 
         // 3 add to new list
         //Builder->CreateCall(add_end, {nlist, qr});
@@ -1096,13 +1101,13 @@ Function *PContext::qr_list_concat() {
 
 
     Builder->SetInsertPoint(r_list);
-    auto r_loop = while_qr_list(fct, qrl2, cur_node, r_list, [&](BasicBlock *loop, BasicBlock *epilog) {
+    while_qr_list(fct, qrl2, cur_node, r_list, [&](BasicBlock *loop, BasicBlock *epilog) {
         // 1 extract qr from node
         auto lnode = Builder->CreateLoad(cur_node);
         auto qr = Builder->CreateLoad(Builder->CreateStructGEP(lnode, 3));
 
         // 2 create new node
-        auto nnode = create_qr_node(qr);
+        //auto nnode = create_qr_node(qr);
 
         // 3 add to new list
         //Builder->CreateCall(add_end, {nlist, qr});

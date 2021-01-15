@@ -36,7 +36,7 @@ void number_token::accept(int rank, expression_visitor &fep) {
     fep.visit(rank, shared_from_this());
 }
 
-key_token::key_token(unsigned qr_id, std::string key) : qr_id_(qr_id), key_(key) {
+key_token::key_token(unsigned qr_id, std::string key) : key_(key), qr_id_(qr_id) {
     name_ = "KEY";
     ftype_ = FOP_TYPE::KEY;
 }
@@ -75,7 +75,7 @@ std::string fct_call::operator()() const {
 }
 
 binary_predicate::binary_predicate(FOP fop, const expr left, const expr right, bool prec, bool is_bool)
-        : left_(left), right_(right), fop_(fop), prec_(prec), is_bool_(is_bool) {}
+        : left_(left), right_(right), fop_(fop), is_bool_(is_bool), prec_(prec) {}
 
 std::string binary_predicate::operator()() const {
     auto lhs = (*left_)();
@@ -268,7 +268,7 @@ void fep_visitor::visit(int rank, std::shared_ptr<eq_predicate> eq)  {
     eq->opd_num = opd_cnt;
     expr_stack.insert(expr_stack.begin(), eq);
 
-    auto opd_it = expr_stack.begin();
+    //auto opd_it = expr_stack.begin();
     auto rhs_it = expr_stack.begin() + 1;
     auto lhs_it = expr_stack.begin() + 2;
 
@@ -285,16 +285,23 @@ void fep_visitor::visit(int rank, std::shared_ptr<eq_predicate> eq)  {
             auto int_value = ctx_->getBuilder().CreateLoad(
                     ctx_->getBuilder().CreateBitCast(value_arr, ctx_->int64PtrTy));
             auto cmp_pitem = ctx_->getBuilder().CreateICmpEQ(int_value, val_rhs);
-            gen_vals_[opd_cnt] = alloc("cmp_eq_res_" + std::to_string(eq->opd_num), ctx_->boolTy, cmp_pitem);
-        }
+            gen_vals_[opd_cnt] = alloc("cmp_eq_res_" + std::to_string(eq->opd_num), ctx_->boolTy, cmp_pitem);;
             break;
+        }
         case FOP_TYPE::DOUBLE: {
             auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
             auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
             auto cmp_pitem = ctx_->getBuilder().CreateFCmpOEQ(int_value, val_rhs);
             gen_vals_[opd_cnt] = alloc("cmp_eq_res_" + std::to_string(eq->opd_num), ctx_->boolTy, cmp_pitem);
+            break;
         }
-
+        case FOP_TYPE::STRING:
+        case FOP_TYPE::DATE:
+        case FOP_TYPE::KEY:
+        case FOP_TYPE::TIME:
+        case FOP_TYPE::BOOL_OP:
+        case FOP_TYPE::OP:
+        case FOP_TYPE::UINT64:
             break;
     }
 

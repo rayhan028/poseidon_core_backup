@@ -461,7 +461,7 @@ std::set<unsigned> pos_set;
 
  int get_total_group_count() {
     return grouper::get_total_group_cnt();
-}
+}   
 
  int get_group_sum_int(int pos) {
     return grouper::get_group_sum_int(pos);
@@ -473,4 +473,12 @@ std::set<unsigned> pos_set;
 
  uint64_t get_group_sum_uint(int pos) {
     return grouper::get_group_sum_uint(pos);
+}
+
+void insert_join_id_input(int jid, offset_t id) {
+    joiner::materialize_rhs_id(jid, id);
+}
+
+offset_t get_join_id_at(int jid, int pos) {
+    return joiner::id_input_[jid][pos];
 }

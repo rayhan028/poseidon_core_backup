@@ -423,15 +423,24 @@ public:
     end_op() {
         name_ = "End";
         type_ = qop_type::none;
+        qr_pos_ = produced_type_ = -1;
+    }
+
+    end_op(JOIN_OP jop, int qr_pos) : join_op_(jop), qr_pos_(qr_pos) {
+        name_ = "End";
+        type_ = qop_type::none;
         produced_type_ = -1;
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
     std::vector<std::array<int*, 100>> *join_inputs_;
+    JOIN_OP join_op_;
+    int qr_pos_;
 };
 
 inline algebra_optr End() { return std::make_shared<end_op>(); }
+inline algebra_optr End(JOIN_OP jop, int qr_pos) { return std::make_shared<end_op>(jop, qr_pos); }
 
 class create_op : public base_op, public std::enable_shared_from_this<create_op> {
 public:

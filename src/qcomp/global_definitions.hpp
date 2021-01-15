@@ -310,4 +310,7 @@ extern thread_local std::string grpkey_buffer;
 
  void append_to_tuple(query_result qr);
 
+void insert_join_id_input(int jid, offset_t id);
+offset_t get_join_id_at(int jid, int pos);
+
 #endif //PJIT_GLOBAL_DEFINITIONS_HPP

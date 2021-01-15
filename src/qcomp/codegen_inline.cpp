@@ -650,7 +650,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     // create all basic blocks for the join processing
     BasicBlock *join_lhs_entry = BasicBlock::Create(ctx.getContext(), "entry_join_lhs", main_function);
     BasicBlock *left_outer = BasicBlock::Create(ctx.getContext(), "left_outer", main_function);
-    //BasicBlock *nested_loop = BasicBlock::Create(ctx.getContext(), "nested_loop", main_function);
+    BasicBlock *nested_loop = BasicBlock::Create(ctx.getContext(), "nested_loop", main_function);
+    BasicBlock *nested_head = BasicBlock::Create(ctx.getContext(), "nested_head", main_function);
+    BasicBlock *nested_body = BasicBlock::Create(ctx.getContext(), "nested_body", main_function);
+    BasicBlock *nested_joinable = BasicBlock::Create(ctx.getContext(), "nested_loop_joinable", main_function);
+
     //BasicBlock *hash_join = BasicBlock::Create(ctx.getContext(), "hash_join_probe", main_function);
 
     BasicBlock *for_each_next = BasicBlock::Create(ctx.getContext(), "for_each_next_rship", main_function);
@@ -667,6 +671,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     auto rship_reg = ctx.extern_func("get_rship_res_at");
     auto rship_by_id = ctx.extern_func("rship_by_id");
     auto get_size = ctx.extern_func("get_mat_res_size");
+    auto insert_join_id_input = ctx.extern_func("insert_join_id_input");
+    auto get_join_id_at = ctx.extern_func("get_join_id_at");
+
     // link with previous operator
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(join_lhs_entry);
@@ -699,6 +706,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
                                                   } else if(op->jop_ == JOIN_OP::LEFT_OUTER) {
                                                       // process cross join
                                                       ctx.getBuilder().CreateBr(left_outer);
+                                                  } else if(op->jop_ == JOIN_OP::NESTED_LOOP) {
+                                                      // process nested loop
+                                                      ctx.getBuilder().CreateBr(nested_loop);
                                                   }
 
                                               });
@@ -767,14 +777,31 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         ctx.getBuilder().CreateCondBr(is_reached, for_each_next, loop_body);
 
     } else if(op->jop_ == JOIN_OP::NESTED_LOOP) {
-        /*// for nested loop join
+        // for nested loop join
         ctx.getBuilder().SetInsertPoint(nested_loop);
 
         // get lhs tuple at id -> direct register value
         auto lhs = reg_query_results.at(op->join_pos_.first).reg_val;
         // extract the lhs id with GEP instruction
         auto lhs_id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(lhs, 1));
+        
+        auto cur_pos = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+        ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, cur_pos);
+        ctx.getBuilder().CreateBr(nested_head);
 
+        ctx.getBuilder().SetInsertPoint(nested_head);
+        auto pos = ctx.getBuilder().CreateLoad(cur_pos);
+        auto id = ctx.getBuilder().CreateCall(get_join_id_at, {jid, pos});
+        auto cmp_id = ctx.getBuilder().CreateICmpEQ(lhs_id, id);
+        ctx.getBuilder().CreateCondBr(cmp_id, nested_joinable, nested_body);
+        
+        ctx.getBuilder().SetInsertPoint(nested_body);
+        auto old_pos = ctx.getBuilder().CreateLoad(cur_pos);
+        auto new_pos = ctx.getBuilder().CreateAdd(old_pos, ctx.LLVM_ONE);
+        ctx.getBuilder().CreateStore(new_pos, cur_pos);
+        ctx.getBuilder().CreateBr(nested_head);
+
+        ctx.getBuilder().SetInsertPoint(nested_joinable);
         // rhs is materialized, call extern function to obtain tuple at idx
         auto idx = ConstantInt::get(ctx.int64Ty, op->join_pos_.second);
         auto rhs = ctx.getBuilder().CreateCall(node_reg, {tp, idx});
@@ -783,7 +810,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
 
         // compare the node ids and branch 
         auto id_cmp = ctx.getBuilder().CreateICmpEQ(lhs_id, rhs_id);
-        ctx.getBuilder().CreateCondBr(id_cmp, concat_qrl, incr_loop);*/
+        ctx.getBuilder().CreateCondBr(id_cmp, concat_qrl, incr_loop);
 
     } else if(op->jop_ == JOIN_OP::HASH_JOIN) {
         /*// for hash join
@@ -929,6 +956,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     auto mat_node = ctx.extern_func("mat_node");
     auto mat_rship = ctx.extern_func("mat_rship");
     auto collect_tuple_join = ctx.extern_func("collect_tuple_join");
+    auto insert_join_id_input = ctx.extern_func("insert_join_id_input");
 
     //FunctionCallee mat_reg = ctx.extern_func("mat_reg_value");
     BasicBlock *bb = BasicBlock::Create(ctx.getContext(), "entry_join_rhs", main_function);
@@ -936,6 +964,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(bb);
     ctx.getBuilder().SetInsertPoint(bb);
+
+    if(op->join_op_ == JOIN_OP::NESTED_LOOP) {
+        auto n = reg_query_results[op->qr_pos_].reg_val;
+        auto id = ctx.getBuilder().CreateStructGEP(n, 1);
+        ctx.getBuilder().CreateCall(insert_join_id_input, {id});
+    }
 
     // obtain tuple object for materialization -> joiner mat_tuple
     auto tp = ctx.getBuilder().CreateCall(obtain_mat_tuple, {});

@@ -168,6 +168,11 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&append_to_tuple), JITSymbolFlags::Exported);
         M[Mangle("get_qr_tuple")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_qr_tuple), JITSymbolFlags::Exported);
+        M[Mangle("insert_join_id_input")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&insert_join_id_input), JITSymbolFlags::Exported);
+        M[Mangle("get_join_id_at")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_join_id_at), JITSymbolFlags::Exported);
+
         ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
     }
 }

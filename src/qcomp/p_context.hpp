@@ -249,6 +249,8 @@ public:
     FunctionType *append_to_tuple_ty;
     FunctionType *get_qr_tuple_ty;
 
+    FunctionType *insert_join_id_input_ty;
+    FunctionType *get_join_id_at_ty;
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     FunctionType *lookup_label_type;
     FunctionType *lookup_dcode_type;
