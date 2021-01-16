@@ -84,9 +84,10 @@ public:
   bool abort_transaction();
 
   /**
-   * Performs initialization steps after starting the database.
+   * Encapsulated code for execution a transaction. If body returns true then
+   * the transaction is committed, otherwise the transaction is aborted.
    */
-  void runtime_initialize();
+  bool run_transaction(std::function<bool()> body);
 
   /* ---------------- graph construction ---------------- */
 
@@ -240,6 +241,11 @@ public:
                                             char delim, const mapping_t &m, const std::string& rship_type = "");
 
   /* ---------------- helper ---------------- */
+
+  /**
+   * Performs initialization steps after starting the database.
+   */
+  void runtime_initialize();
 
   /**
    * Returns a reference to the dictionary of string codes.

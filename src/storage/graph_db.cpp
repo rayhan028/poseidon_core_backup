@@ -72,6 +72,11 @@ void graph_db::runtime_initialize() {
   garbage_ = new gc_list();
 }
 
+bool graph_db::run_transaction(std::function<bool()> body) {
+  auto tx = begin_transaction();
+  return body() ? commit_transaction() : abort_transaction();
+}
+
 transaction_ptr graph_db::begin_transaction() {
   if (current_transaction_)
     throw invalid_nested_transaction();

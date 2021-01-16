@@ -90,6 +90,26 @@ graph_db_ptr create_graph_db() { return p_make_ptr<graph_db>(); }
 
 #endif
 
+TEST_CASE("Test transaction execution"  "[transaction]") {  
+	#ifdef USE_PMDK
+	  auto pop = prepare_pool();
+	  auto gdb = create_graph_db(pop);
+	#else
+	  auto gdb = create_graph_db();
+	#endif
+
+  gdb->run_transaction([&]() {
+    gdb->add_node("Actor",
+		                {{"name", boost::any(std::string("Mark Wahlberg"))},
+		                  {"age", boost::any(48)}});
+    return true;
+  });
+
+	#ifdef USE_PMDK
+	  drop_graph_db(pop, gdb);
+	#endif  
+}
+
 TEST_CASE("Test concurrency: update during read"  "[transaction]") {  
 	#ifdef USE_PMDK
 	  auto pop = prepare_pool();
