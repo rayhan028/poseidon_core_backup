@@ -50,6 +50,26 @@ using rship_weight = std::function<double(relationship&)>;
 struct path_item {
     path_item() : hops_(0), weight_(0.0) {}
 
+    void trace_path(std::vector<uint64_t> &parent, uint64_t v) {
+        if (parent[v] == (UNKNOWN - 1))
+            return;
+        trace_path(parent, parent[v]);
+        path_.push_back(v);
+    }
+    void set_path(path &p) {
+        path_ = p;
+    }
+    void set_hops(uint64_t h) {
+        hops_ = h;
+    }
+    void set_weight(double w) {
+        weight_ = w;
+    }
+    path get_path() { return path_; }
+    uint64_t get_hops() { return hops_; }
+    double get_weight() { return weight_; }
+
+private:
     path path_;
     uint64_t hops_;
     double weight_;
@@ -76,7 +96,10 @@ bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
 bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool unidirectional,
                         rship_predicate rpred, rship_weight weight_func, path_visitor visit, path_item &spath);
 
-double weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool unidirectional,
-                        rship_predicate rpred, rship_weight weight_func, path_visitor visit);
+/**
+ * A sequential implementation of first k shortest path search on the given graph.
+ */
+bool k_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool unidirectional,
+                        rship_predicate rpred, rship_weight weight_func, path_visitor visit, path_item* spaths);
 
 #endif

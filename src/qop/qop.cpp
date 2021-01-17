@@ -538,9 +538,9 @@ void shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
   unweighted_shortest_path(gdb, start, stop, bidirectional_, rpred_, pv, spath);
 
   auto res = v;
-  array_t nids(spath.path_);
+  array_t nids(spath.get_path());
   res.push_back(query_result(nids));
-  res.push_back(query_result(spath.hops_));
+  res.push_back(query_result(spath.get_hops()));
 
   consume_(gdb, res);
 }
@@ -559,12 +559,11 @@ void weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
   auto start = a->id();
   auto stop = b->id();
 
-  // path_item spath;
-  path_visitor pv = [&](node &n, const path &p) { return; }; // TODO
-  auto weight = weighted_shortest_path(gdb, start, stop, bidirectional_,
-                          rpred_, rweight_, pv);
-
   auto res = v;
+  path_item spath;
+  path_visitor pv = [&](node &n, const path &p) { return; }; // TODO
+  double weight = weighted_shortest_path(gdb, start, stop, bidirectional_,
+                          rpred_, rweight_, pv, spath) ? spath.get_weight() : 0.0;
   res.push_back(query_result(weight));
 
   consume_(gdb, res);

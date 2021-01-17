@@ -494,8 +494,8 @@ TEST_CASE("Finding Unweighted Shortest Path", "[shortest_path]") {
   bool found = unweighted_shortest_path(graph, a, d, true, rpred, path_vis, ss_path);
 
   REQUIRE(found);
-  REQUIRE(ss_path.hops_ == 2);
-  REQUIRE(ss_path.path_ == exp_path);
+  REQUIRE(ss_path.get_hops() == 2);
+  REQUIRE(ss_path.get_path() == exp_path);
 
   graph->commit_transaction();
 
@@ -506,6 +506,7 @@ TEST_CASE("Weighted Shortest Path", "[shortest_path]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
+  path_item ss_path;
   path_visitor path_vis = [&](node &n, const path &p) { return; };
   auto rpred = [&](relationship &r) {
                 return std::string(graph->get_string(r.rship_label)) == ":knows"; };
@@ -540,9 +541,9 @@ TEST_CASE("Weighted Shortest Path", "[shortest_path]") {
   graph->add_relationship(a, e, ":knows", {});
   graph->add_relationship(d, e, ":knows", {});
 
-  auto weight = weighted_shortest_path(graph, a, d, true, rpred, rweight, path_vis);
+  weighted_shortest_path(graph, a, d, true, rpred, rweight, path_vis, ss_path);
 
-  REQUIRE(weight == 149.0);
+  REQUIRE(ss_path.get_weight() == 238.0);
 
   graph->commit_transaction();
 

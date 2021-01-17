@@ -937,14 +937,14 @@ void graph_db::detach_delete_node(node::id_t id) {
 
   auto &n = this->node_by_id(id);
 
-  // if we don't own the lock and cannot acquire a lock, we have to abort
-  if (!n.is_locked_by(txid) && !n.try_lock(txid))
-    throw transaction_abort();
-
   // make sure we don't overwrite an object that was read by 
   // a more recent transaction
   if (n.rts() > txid)
    throw transaction_abort();
+
+  // if we don't own the lock and cannot acquire a lock, we have to abort
+  if (!n.is_locked_by(txid) && !n.try_lock(txid))
+    throw transaction_abort();
 
   // we collect the ids of all relationships in which n is involved
   std::list<relationship::id_t> rships;
