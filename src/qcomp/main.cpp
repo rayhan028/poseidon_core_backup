@@ -100,7 +100,7 @@ int main() {
 	
 	//algebra_optr op = qlc.compile_to_plan("Project([$0.name:string, $0.num:uint64], NodeScan('Person'))");
 
-	auto r_expr = Scan("Book", End());
+	auto r_expr = Scan("Person", End(JOIN_OP::NESTED_LOOP, 0));
 
     auto l_expr = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0, 0}, 
                         Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}
@@ -108,15 +108,13 @@ int main() {
 							Collect()), r_expr));
 
 	auto fev = Scan("Person", Join(JOIN_OP::NESTED_LOOP, {0,0},
-				Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}}, 
-					Append(afunc, FTYPE::INT,
-						Collect())), r_expr));
+						Collect(), r_expr));
 	scan_task::callee_ = &scan_task::scan;	
 	queryEngine.generate(fev, false);
 	
 	arg_builder ab;
-	ab.arg(1, "Person");
-	ab.arg(2, ":HAS_READ");
+	ab.arg(1, "Book");
+	ab.arg(2, "Book");
 	ab.arg(3, "Book");
 	ab.arg(4, "Book");
 	ab.arg(5, ":HAS_READ");
