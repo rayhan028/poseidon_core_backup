@@ -331,6 +331,7 @@ set(src_files
   src/qop/join.cpp
   src/qop/query.cpp
   src/qop/bfs.cpp
+  src/qop/shortest_path.cpp
   src/qop/thread_pool.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
@@ -483,6 +484,11 @@ add_executable(qlc
  )
 
 target_link_libraries(qlc
+add_executable(run_ldbc_bi_reads
+  src/ldbc/ldbc_bi_reads.cpp
+)
+
+target_link_libraries(run_ldbc_bi_reads
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options

@@ -83,6 +83,37 @@ void graph_db::nodes_by_label(const std::string &label,
   }
 }
 
+void graph_db::nodes_by_label(const std::vector<std::string> &labels,
+                              node_consumer_func consumer) {
+#ifdef USE_TX
+  check_tx_context();
+  xid_t txid = current_transaction()->xid();
+#endif
+  for (auto &n : nodes_->as_vec()) {
+    dcode_t lc = 0;
+#ifdef USE_TX
+    if (n.is_valid()) {
+      auto &nv = get_valid_node_version(n, txid);
+      for (auto &label : labels) {
+        lc = dict_->lookup_string(label);
+        if (nv.node_label == lc) {
+          consumer(nv);
+          break;
+        }
+      }
+    }
+#else
+    for (auto &label : labels) {
+      lc = dict_->lookup_string(label);
+      if (n.node_label == lc) {
+        consumer(n);
+        break;
+      }
+    }
+#endif
+  }
+}
+
 void graph_db::parallel_nodes(node_consumer_func consumer) {
 #ifdef USE_TX
   check_tx_context();
@@ -315,23 +346,73 @@ void graph_db::foreach_variable_to_relationship_of_node(
   std::list<std::pair<relationship::id_t, std::size_t>> rship_queue;
   rship_queue.push_back(std::make_pair(n.to_rship_list, 1));
 
+  // keep track of potential n-hop rship matches starting 
+  // with 1-hop rship matches (n = 1)
+
+  // count all potential 1-hop rship matches
+  auto n_hop_rship_cnt = 0;
+  auto n_hop_rship_id = n.to_rship_list; 
+  while (n_hop_rship_id != UNKNOWN){
+    n_hop_rship_cnt++;
+    n_hop_rship_id = rship_by_id(n_hop_rship_id).next_dest_rship;
+  }
+  std::size_t mr_n_hop = 1;
+  auto mr_n_hop_rship_id = n.to_rship_list;
+  
   while (!rship_queue.empty()) {
     auto p = rship_queue.front();
     rship_queue.pop_front();
     auto relship_id = p.first;
     auto hops = p.second;
+    
+    // keep track of the most recently accessed rship and update count 
+    if (hops == mr_n_hop){
+      mr_n_hop_rship_id = relship_id;
+      n_hop_rship_cnt--;
+    }
+
     if (relship_id == UNKNOWN || hops > max)
       continue;
 
     auto &relship = rship_by_id(relship_id);
 
+    // just about to exit the while loop
+    if (rship_queue.empty() && (relship.rship_label != lcode)){
+      // check if any potential n-hop rship match still exists 
+      if (n_hop_rship_cnt > 0) {
+        mr_n_hop_rship_id = rship_by_id(mr_n_hop_rship_id).next_dest_rship;
+        rship_queue.push_back(std::make_pair(mr_n_hop_rship_id, mr_n_hop));
+        continue;
+      } 
+      // recursively check if any potential (n+1)-hop rship exists
+      else if (relship.next_dest_rship != UNKNOWN){
+        rship_queue.push_back(std::make_pair(relship.next_dest_rship, hops));
+
+        // keep track of potential (n+1)-hop rship matches 
+
+        // count all potential (n+1)-hop rship matches
+        n_hop_rship_cnt = 0;
+        n_hop_rship_id = relship.next_dest_rship;
+        while (n_hop_rship_id != UNKNOWN){
+          n_hop_rship_cnt++;
+          n_hop_rship_id = rship_by_id(n_hop_rship_id).next_dest_rship;
+        }
+        mr_n_hop = hops;
+        mr_n_hop_rship_id = relship.next_dest_rship;
+        continue;
+      }
+      // finally exit the while loop if no potential rship exists
+      else 
+        continue;
+    }
+    
     if (relship.rship_label != lcode)
       continue;
 
     if (hops >= min)
       consumer(relship);
 
-    // Tscan recursively!!
+    // scan recursively!!
     rship_queue.push_back(std::make_pair(relship.next_dest_rship, hops));
 
     auto &src = node_by_id(relship.src_node);

@@ -42,30 +42,10 @@ private:
 };
 
   /**
-   * left_outerjoin implements a left outerjoin operator for merging tuples
-   * of two queries if there exists a relationship defined by an object 
-   * (at a given position) in the left tuple as the source node and an 
-   * object (at a given position) in the right tuple as the destination 
-   * node. Dangling tuples are padded with "[0]{}" 
-   */
-struct left_outerjoin : public qop {
-  left_outerjoin(std::pair<int, int> src_des) : src_des_nodes_(src_des) {} 
-  ~left_outerjoin() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
-  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
-
-  void finish(graph_db_ptr &gdb);
-
-private:
-  std::list<qr_tuple> input_;
-  std::pair<int, int> src_des_nodes_;
-};
-
-  /**
-   * TODO
+   * hash_join implements a nested loop join operator for merging tuples of two
+   * query pipelines if the node at a given position in the left tuple
+   * is the same as the node at another given position in the right tuple.
+   * The node positions are specified by the pos pair.
    */
 struct nested_loop_join : public qop {
   nested_loop_join(std::pair<int, int> pos) : left_right_nodes_(pos) {} 
@@ -85,7 +65,10 @@ private:
 };
 
   /**
-   * TODO
+   * hash_join implements a hashjoin operator for merging tuples of two
+   * query pipelines if the node at a given position in the left tuple
+   * is the same as the node at another given position in the right tuple.
+   * The node positions are specified by the pos pair.
    */
 struct hash_join : public qop {
   hash_join(std::pair<int, int> pos) : left_right_nodes_(pos) {} 
@@ -104,6 +87,75 @@ private:
   std::vector<qr_tuple> input_[BUCKETS];
   std::vector<node::id_t> join_ids_[BUCKETS];
   std::pair<int, int> left_right_nodes_;
+};
+
+/**
+ * left_outerjoin_on_node implements a left outerjoin operator for merging tuples
+ * of two queries if the node at a given position in the left tuple is the same as
+ * the node at another given position in the right tuple. The node positions are
+ * specified by the pos pair. Dangling tuples are padded with "NULL" 
+ */
+struct left_outerjoin_on_node : public qop {
+  left_outerjoin_on_node(const std::pair<int, int> &pos) : left_right_nodes_(pos) {} 
+  ~left_outerjoin_on_node() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+private:
+  std::vector<qr_tuple> input_;
+  std::vector<node::id_t> join_ids_;
+  std::pair<int, int> left_right_nodes_;
+};
+
+/**
+ * rship_join implements a join operator for merging tuples
+ * of two queries if there exists a relationship defined by an object 
+ * (at a given position) in the left tuple as the source node and an 
+ * object (at a given position) in the right tuple as the destination 
+ * node.
+ */
+struct rship_join : public qop {
+  rship_join(std::pair<int, int> src_des) : src_des_nodes_(src_des) {} 
+  ~rship_join() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+private:
+  std::list<qr_tuple> input_;
+  std::pair<int, int> src_des_nodes_;
+};
+
+/**
+ * left_outerjoin_on_rship implements a left outerjoin operator for merging tuples
+ * of two queries if there exists a relationship defined by an object 
+ * (at a given position) in the left tuple as the source node and an 
+ * object (at a given position) in the right tuple as the destination 
+ * node. Dangling tuples are padded with "NULL" 
+ */
+struct left_outerjoin_on_rship : public qop {
+  left_outerjoin_on_rship(std::pair<int, int> src_des) : src_des_nodes_(src_des) {} 
+  ~left_outerjoin_on_rship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+private:
+  std::list<qr_tuple> input_;
+  std::pair<int, int> src_des_nodes_;
 };
 
 #endif

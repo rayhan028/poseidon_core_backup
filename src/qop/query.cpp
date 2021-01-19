@@ -57,36 +57,55 @@ query &query::nodes_where(const std::string &label, const std::string &key,
                    std::bind(&is_property::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::nodes_where(const std::vector<std::string> &labels, const std::string &key,
+                          std::function<bool(const p_item &)> pred) {
+  plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(labels);
+  auto op = std::make_shared<is_property>(key, pred);
+  return append_op(op,
+                   std::bind(&is_property::process, op.get(), ph::_1, ph::_2));
+}
+
 query &query::nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val) {
   auto idx = graph_db_->get_index(label, prop);
   plan_head_ = plan_tail_ = std::make_shared<index_scan>(idx, val);
   return *this;
 }
 
-query &query::to_relationships(const std::string &label) {
-  auto op = std::make_shared<foreach_to_relationship>(label);
+query &query::nodes_where_indexed(const std::vector<std::string> &labels,
+                                  const std::string &prop, uint64_t val) {
+  std::list<index_id> idxs;
+  for (auto &label : labels) {
+    auto idx = graph_db_->get_index(label, prop);
+    idxs.push_back(idx);
+  }
+  plan_head_ = plan_tail_ = std::make_shared<index_scan>(idxs, val);
+  return *this;
+}
+
+query &query::to_relationships(const std::string &label, int pos) {
+  auto op = std::make_shared<foreach_to_relationship>(label, pos);
   return append_op(op, std::bind(&foreach_to_relationship::process, op.get(),
                                  ph::_1, ph::_2));
 }
 
 query &query::to_relationships(std::pair<int, int> range,
-                               const std::string &label) {
+                               const std::string &label, int pos) {
   auto op = std::make_shared<foreach_variable_to_relationship>(
-      label, range.first, range.second);
+      label, range.first, range.second, pos);
   return append_op(op, std::bind(&foreach_variable_to_relationship::process,
                                  op.get(), ph::_1, ph::_2));
 }
 
-query &query::from_relationships(const std::string &label) {
-  auto op = std::make_shared<foreach_from_relationship>(label);
+query &query::from_relationships(const std::string &label, int pos) {
+  auto op = std::make_shared<foreach_from_relationship>(label, pos);
   return append_op(op, std::bind(&foreach_from_relationship::process, op.get(),
                                  ph::_1, ph::_2));
 }
 
 query &query::from_relationships(std::pair<int, int> range,
-                                 const std::string &label) {
+                                 const std::string &label, int pos) {
   auto op = std::make_shared<foreach_variable_from_relationship>(
-      label, range.first, range.second);
+      label, range.first, range.second, pos);
   return append_op(op, std::bind(&foreach_variable_from_relationship::process,
                                  op.get(), ph::_1, ph::_2));
 }
@@ -109,6 +128,14 @@ query &query::to_node(const std::string &label) {
   return *this;
 }
 
+query &query::to_node(const std::vector<std::string> &labels) {
+  auto op = std::make_shared<get_to_node>();
+  append_op(op, std::bind(&get_to_node::process, op.get(), ph::_1, ph::_2));
+  auto op2 = std::make_shared<node_has_label>(labels);
+  return append_op(
+      op2, std::bind(&node_has_label::process, op2.get(), ph::_1, ph::_2));
+}
+
 query &query::from_node(const std::string &label) {
   auto op = std::make_shared<get_from_node>();
   append_op(op, std::bind(&get_from_node::process, op.get(), ph::_1, ph::_2));
@@ -120,8 +147,22 @@ query &query::from_node(const std::string &label) {
   return *this;
 }
 
+query &query::from_node(const std::vector<std::string> &labels) {
+  auto op = std::make_shared<get_from_node>();
+  append_op(op, std::bind(&get_from_node::process, op.get(), ph::_1, ph::_2));
+  auto op2 = std::make_shared<node_has_label>(labels);
+  return append_op(
+      op2, std::bind(&node_has_label::process, op2.get(), ph::_1, ph::_2));
+}
+
 query &query::has_label(const std::string &label) {
   auto op = std::make_shared<node_has_label>(label);
+  return append_op(
+      op, std::bind(&node_has_label::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::has_label(const std::vector<std::string> &labels) {
+  auto op = std::make_shared<node_has_label>(labels);
   return append_op(
       op, std::bind(&node_has_label::process, op.get(), ph::_1, ph::_2));
 }
@@ -132,8 +173,8 @@ query &query::limit(std::size_t n) {
                    std::bind(&limit_result::process, op.get(), ph::_1, ph::_2));
 }
 
-query &query::rship_exists(std::pair<int, int> src_des) {
-  auto op = std::make_shared<nodes_connected>(src_des);
+query &query::rship_exists(std::pair<int, int> src_des, bool append_null) {
+  auto op = std::make_shared<nodes_connected>(src_des, append_null);
   return append_op(op,
                    std::bind(&nodes_connected::process, op.get(), ph::_1, ph::_2));
 }
@@ -168,6 +209,53 @@ query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
                    std::bind(&order_by::finish, op.get(), ph::_1));
 }
 
+query &
+query::group(std::vector<result_set> &grps, const std::vector<int> &pos) {
+  auto op = std::make_shared<group_by>(grps, pos);
+  return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
+                   std::bind(&group_by::finish, op.get(), ph::_1));
+}
+
+query &
+query::aggregate(const std::vector<result_set> &grps,
+              const std::vector<std::pair<std::string, int>> &aggrs) {
+  auto op = std::make_shared<aggr_ops>(grps, aggrs);
+  return append_op(op, std::bind(&aggr_ops::process, op.get(), ph::_1, ph::_2));
+}
+
+query &
+query::where_qr_tuple(std::function<bool(const qr_tuple &)> pred) {
+  auto op = std::make_shared<filter_tuple>(pred);
+  return append_op(op,
+                   std::bind(&filter_tuple::process, op.get(), ph::_1, ph::_2));
+}
+
+query &
+query::append_to_qr_tuple(std::function<query_result(qr_tuple &)> func) {
+  auto op = std::make_shared<qr_tuple_append>(func);
+  return append_op(op,
+                   std::bind(&qr_tuple_append::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::union_all(query &other) {
+  auto op = std::make_shared<union_all_qres>();
+  other.append_op(
+      op, std::bind(&union_all_qres::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&union_all_qres::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&union_all_qres::finish, op.get(), ph::_1));
+}
+
+query &query::union_all(std::initializer_list<query *> queries) {
+  auto op = std::make_shared<union_all_qres>();
+  for (auto &q : queries)
+    q->append_op(
+        op, std::bind(&union_all_qres::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&union_all_qres::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&union_all_qres::finish, op.get(), ph::_1));
+}
+
 query &query::crossjoin(query &other) {
   auto op = std::make_shared<cross_join>();
   other.append_op(
@@ -175,15 +263,6 @@ query &query::crossjoin(query &other) {
   return append_op(
       op, std::bind(&cross_join::process_left, op.get(), ph::_1, ph::_2),
       std::bind(&cross_join::finish, op.get(), ph::_1));
-}
-
-query &query::outerjoin(std::pair<int, int> src_des, query &other) {
-  auto op = std::make_shared<left_outerjoin>(src_des);
-  other.append_op(
-      op, std::bind(&left_outerjoin::process_right, op.get(), ph::_1, ph::_2));
-  return append_op(
-      op, std::bind(&left_outerjoin::process_left, op.get(), ph::_1, ph::_2),
-      std::bind(&left_outerjoin::finish, op.get(), ph::_1));
 }
 
 query &query::join_on_node(std::pair<int, int> left_right, query &other) {
@@ -202,6 +281,54 @@ query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
   return append_op(
       op, std::bind(&hash_join::probe_phase, op.get(), ph::_1, ph::_2),
       std::bind(&hash_join::finish, op.get(), ph::_1));
+}
+
+query &query::outerjoin_on_node(const std::pair<int, int> &left_right, query &other) {
+  auto op = std::make_shared<left_outerjoin_on_node>(left_right);
+  other.append_op(
+      op, std::bind(&left_outerjoin_on_node::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&left_outerjoin_on_node::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&left_outerjoin_on_node::finish, op.get(), ph::_1));
+}
+
+query &query::join_on_rship(std::pair<int, int> src_des, query &other) {
+  auto op = std::make_shared<rship_join>(src_des);
+  other.append_op(
+      op, std::bind(&rship_join::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&rship_join::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&rship_join::finish, op.get(), ph::_1));
+}
+
+query &query::outerjoin_on_rship(std::pair<int, int> src_des, query &other) {
+  auto op = std::make_shared<left_outerjoin_on_rship>(src_des);
+  other.append_op(
+      op, std::bind(&left_outerjoin_on_rship::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&left_outerjoin_on_rship::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&left_outerjoin_on_rship::finish, op.get(), ph::_1));
+}
+
+query &query::algo_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+                            rship_predicate rpred, bool bidirectional) {
+  auto op = std::make_shared<shortest_path_opr>(start_stop, rpred, bidirectional);
+  return append_op(op,
+                   std::bind(&shortest_path_opr::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::algo_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+            rship_predicate rpred, rship_weight weight, bool bidirectional) {
+  auto op = std::make_shared<weighted_shortest_path_opr>(start_stop, rpred, weight, bidirectional);
+  return append_op(op,
+                   std::bind(&weighted_shortest_path_opr::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::algo_k_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+      std::size_t k, rship_predicate rpred, rship_weight weight, bool bidirectional) {
+  auto op = std::make_shared<k_weighted_shortest_path_opr>(start_stop, k, rpred, weight, bidirectional);
+  return append_op(op,
+                   std::bind(&k_weighted_shortest_path_opr::process, op.get(), ph::_1, ph::_2));
 }
 
 /*
@@ -240,6 +367,24 @@ query &query::update(std::size_t var, properties_t &props) {
   auto op = std::make_shared<update_node>(var, props);
   return append_op(op,
                    std::bind(&update_node::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::delete_detach(const std::size_t pos) {
+  auto op = std::make_shared<detach_node>(pos);
+  return append_op(op,
+                   std::bind(&detach_node::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::delete_node(const std::size_t pos) {
+  auto op = std::make_shared<remove_node>(pos);
+  return append_op(op,
+                   std::bind(&remove_node::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::delete_rship(const std::size_t pos) {
+  auto op = std::make_shared<remove_rship>(pos);
+  return append_op(op,
+                   std::bind(&remove_rship::process, op.get(), ph::_1, ph::_2));
 }
 
 void query::start() { plan_head_->start(graph_db_); }

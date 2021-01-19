@@ -81,3 +81,14 @@ void graph_db::index_lookup(index_id idx_ptr, uint64_t key, node_consumer_func c
     consumer(n);
   }
 }
+
+void graph_db::index_lookup(std::list<index_id> &idx_ptrs, uint64_t key, node_consumer_func consumer) {
+  for (auto &idx_ptr : idx_ptrs) {
+    offset_t val = 0;
+    if (idx_ptr->lookup(key, &val)) {
+      auto& n = node_by_id(val);
+      consumer(n);
+      break;
+    }
+  }
+}

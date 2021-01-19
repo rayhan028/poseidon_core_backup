@@ -1743,7 +1743,7 @@ void run_ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs) {
                   .from_node("Comment")
 				          .from_relationships(":hasCreator")
 				          .to_node("Person")
-                  .outerjoin({4, 2}, q1)
+                  .outerjoin_on_rship({4, 2}, q1)
 				          .project({PExpr_(2, pj::int_property(res, "id")),
                             PExpr_(2, pj::string_property(res, "content")),
                             PExpr_(2, pj::int_to_dtimestring(pj::int_property(res, "creationDate"))),
