@@ -109,11 +109,14 @@ int main() {
 
 	auto fev = Scan("Person", Join(JOIN_OP::HASH_JOIN, {0,0},
 						Collect(), r_expr));
+
+	std::vector<std::string> labels = {"Book", "Person"};
+	auto multi = Scan(labels, Collect());
 	scan_task::callee_ = &scan_task::scan;	
-	queryEngine.generate(fev, false);
+	queryEngine.generate(multi, false);
 	
 	arg_builder ab;
-	ab.arg(1, "Book");
+	ab.arg(1, "Person");
 	ab.arg(2, "Book");
 	ab.arg(3, "Book");
 	ab.arg(4, "Book");

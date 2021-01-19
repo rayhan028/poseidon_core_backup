@@ -134,19 +134,19 @@ public:
 
 class scan_op : public base_op, public std::enable_shared_from_this<scan_op> {
 public:
-    std::string label_;
-
     scan_op(algebra_optr inp) {
         inputs_.push_back(inp);
     }
 
     scan_op(std::string label, bool indexed, algebra_optr inp) : label_(label), indexed_(indexed) {
         inputs_.push_back(inp);
-        if (label.empty()) {
-            name_ = "Scan_All";
-        } else {
-            name_ = "Scan_" + label_;
-        }
+
+        type_ = qop_type::scan;
+        produced_type_ = 0;
+    }
+
+    scan_op(std::vector<std::string> labels, bool indexed, algebra_optr inp) : labels_(labels), indexed_(indexed) {
+        inputs_.push_back(inp);
 
         type_ = qop_type::scan;
         produced_type_ = 0;
@@ -154,10 +154,13 @@ public:
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
+    std::string label_;
+    std::vector<std::string> labels_;
     bool indexed_;
 };
 
 inline algebra_optr Scan(std::string label, algebra_optr op) { return std::make_shared<scan_op>(label, false, op); }
+inline algebra_optr Scan(std::vector<std::string> labels, algebra_optr op) { return std::make_shared<scan_op>(labels, false, op); }
 inline algebra_optr IndexScan(algebra_optr op) { return std::make_shared<scan_op>("", true, op); }
 
 enum class RSHIP_DIR {

@@ -465,6 +465,18 @@ target_link_libraries(run_ldbc_jit_reads
   Boost::program_options
 )
 
+# The program for executing jitted bi queries.
+#
+add_executable(run_ldbc_jit_bi
+  src/ldbc/ldbc_jit_bi.cpp
+ )
+
+target_link_libraries(run_ldbc_jit_bi
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
 # The program for executing the LLVM query compiler
 add_executable(qcomp
 	  src/qcomp/main.cpp
