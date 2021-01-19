@@ -483,7 +483,12 @@ add_executable(qlc
   src/ql/qlc.cpp
  )
 
-target_link_libraries(qlc
+ target_link_libraries(qlc
+ poseidon_core
+ ${PMDK_LIBRARIES}
+ Boost::program_options
+)
+
 add_executable(run_ldbc_bi_reads
   src/ldbc/ldbc_bi_reads.cpp
 )
