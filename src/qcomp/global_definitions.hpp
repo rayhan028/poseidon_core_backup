@@ -313,4 +313,11 @@ extern thread_local std::string grpkey_buffer;
 void insert_join_id_input(int jid, offset_t id);
 offset_t get_join_id_at(int jid, int pos);
 
+void collect_tuple_hash_join(int jid, int remainder, qr_tuple *qr);
+void insert_join_bucket_input(int jid, int remainder, int id);
+
+int get_hj_input_size(int jid, int bucket);
+int get_hj_input_id(int jid, int bucket, int idx);
+qr_tuple * get_query_result(int jid, int bucket, int idx);
+
 #endif //PJIT_GLOBAL_DEFINITIONS_HPP

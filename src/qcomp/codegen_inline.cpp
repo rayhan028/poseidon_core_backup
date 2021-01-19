@@ -635,6 +635,9 @@ void get_rhs_type(std::shared_ptr<base_op>  &qop, std::vector<int> &typv) {
         } else if(op->type_ == qop_type::nest_loop_join) {
             auto jop = std::dynamic_pointer_cast<join_op>(op);
             get_rhs_type(jop->inputs_[1], typv);
+        } else if(op->type_ == qop_type::hash_join) {
+            auto jop = std::dynamic_pointer_cast<join_op>(op);
+            get_rhs_type(jop->inputs_[1], typv);
         }
         op = op->inputs_[0];
     }
@@ -658,8 +661,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     BasicBlock *nested_body = BasicBlock::Create(ctx.getContext(), "nested_body", main_function);
     BasicBlock *nested_joinable = BasicBlock::Create(ctx.getContext(), "nested_loop_joinable", main_function);
 
-    //BasicBlock *hash_join = BasicBlock::Create(ctx.getContext(), "hash_join_probe", main_function);
-
+    BasicBlock *hash_join = BasicBlock::Create(ctx.getContext(), "hash_join_probe", main_function);
+    BasicBlock *hj_body = BasicBlock::Create(ctx.getContext(), "hj_body", main_function);
+    BasicBlock *hj_joinable = BasicBlock::Create(ctx.getContext(), "hj_joinable", main_function);
     BasicBlock *for_each_next = BasicBlock::Create(ctx.getContext(), "for_each_next_rship", main_function);
     BasicBlock *concat_qrl = BasicBlock::Create(ctx.getContext(), "concat_qrl", main_function);
     BasicBlock *incr_loop = BasicBlock::Create(ctx.getContext(), "incr_loop", main_function);
@@ -698,12 +702,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     Value *rhs_id;
     BasicBlock *loop_body;
     if(op->jop_ == JOIN_OP::NESTED_LOOP) {
-                loop_body = ctx.while_loop_condition(main_function, cur_idx, max_idx, PContext::WHILE_COND::LT, end,
-                                                [&](BasicBlock *body, BasicBlock *epilog) {
-                                                    auto pos = ctx.getBuilder().CreateLoad(cur_idx);
-                                                    rhs_id = ctx.getBuilder().CreateCall(get_join_id_at, {jid, pos});
-                                                    ctx.getBuilder().CreateBr(nested_loop); 
-                                                });  
+            loop_body = ctx.while_loop_condition(main_function, cur_idx, max_idx, PContext::WHILE_COND::LT, end,
+                                            [&](BasicBlock *body, BasicBlock *epilog) {
+                                                auto pos = ctx.getBuilder().CreateLoad(cur_idx);
+                                                rhs_id = ctx.getBuilder().CreateCall(get_join_id_at, {jid, pos});
+                                                ctx.getBuilder().CreateBr(nested_loop); 
+                                            });  
+    } else if(op->jop_ == JOIN_OP::HASH_JOIN) {
+        ctx.getBuilder().CreateBr(hash_join);
     } else {
         // iterate through the join list
         loop_body = ctx.while_loop_condition(main_function, cur_idx, max_idx, PContext::WHILE_COND::LT, end,
@@ -804,7 +810,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         tp = ctx.getBuilder().CreateCall(get_join_tp_at, {jid, idx});
         ctx.getBuilder().CreateBr(concat_qrl);
     } else if(op->jop_ == JOIN_OP::HASH_JOIN) {
-        /*// for hash join
         ctx.getBuilder().SetInsertPoint(hash_join);
         
         // get lhs tuple at id -> direct register value
@@ -816,13 +821,32 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         auto bucket_size = ConstantInt::get(ctx.int64Ty, 10);
         auto bucket_id = ctx.getBuilder().CreateSRem(lhs_id, bucket_size);
 
-        // iterate through buckets to find matches
-        auto cur_rhs_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
-        ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, cur_rhs_idx);*/
+        auto get_hj_input_size = ctx.extern_func("get_hj_input_size");
+        auto get_hj_input_id = ctx.extern_func("get_hj_input_id");
+        auto get_query_result = ctx.extern_func("get_query_result");
 
-        // iteration 
-        // TODO:
-        
+        loop_body = BasicBlock::Create(ctx.getContext(), "hj_head", main_function);
+
+        auto input_size = ctx.getBuilder().CreateCall(get_hj_input_size, {jid, bucket_id});
+        auto cur_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+        ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, cur_idx);
+        ctx.getBuilder().CreateBr(loop_body);
+
+        ctx.getBuilder().SetInsertPoint(loop_body);
+        auto idx = ctx.getBuilder().CreateLoad(cur_idx);
+        auto hj_lt = ctx.getBuilder().CreateICmpULT(idx, input_size);
+        ctx.getBuilder().CreateCondBr(hj_lt, hj_body, end);
+
+        ctx.getBuilder().SetInsertPoint(hj_body);
+        auto id = ctx.getBuilder().CreateCall(get_hj_input_id, {jid, bucket_id, idx});
+        auto incr_hj_id = ctx.getBuilder().CreateAdd(idx, ctx.LLVM_ONE);
+        ctx.getBuilder().CreateStore(incr_hj_id, cur_idx);
+        auto hj_eq = ctx.getBuilder().CreateICmpEQ(lhs_id, idx);
+        ctx.getBuilder().CreateCondBr(hj_eq, hj_joinable, loop_body);
+
+        ctx.getBuilder().SetInsertPoint(hj_joinable);
+        tp = ctx.getBuilder().CreateCall(get_query_result, {jid, bucket_id, idx});
+        ctx.getBuilder().CreateBr(concat_qrl);
     }
 
     // increment the outer loop counter for next query result
@@ -831,7 +855,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         auto i = ctx.getBuilder().CreateLoad(cur_idx);
         ctx.getBuilder().CreateStore(ctx.getBuilder().CreateAdd(i, ctx.LLVM_ONE), cur_idx);
 
-        if(op->jop_ != JOIN_OP::NESTED_LOOP) {
+        if(op->jop_ != JOIN_OP::NESTED_LOOP || op->jop_ != JOIN_OP::HASH_JOIN) {
             auto dang = ctx.getBuilder().CreateLoad(dangling);
             auto is_dangling = ctx.getBuilder().CreateICmpEQ(dang, ctx.LLVM_ONE);
             ctx.getBuilder().CreateCondBr(is_dangling, concat_qrl, loop_body);
@@ -873,7 +897,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         ctx.getBuilder().CreateBr(main_return);
     }
 
-    if(op->jop_ == JOIN_OP::CROSS || op->jop_ == JOIN_OP::NESTED_LOOP)
+    if(op->jop_ == JOIN_OP::CROSS || op->jop_ == JOIN_OP::NESTED_LOOP || op->jop_ == JOIN_OP::HASH_JOIN)
         main_return = loop_body;
     else if(op->jop_ == JOIN_OP::LEFT_OUTER)
         main_return = return_handle;
@@ -951,7 +975,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     auto mat_node = ctx.extern_func("mat_node");
     auto mat_rship = ctx.extern_func("mat_rship");
     auto collect_tuple_join = ctx.extern_func("collect_tuple_join");
+    auto collect_tuple_hash_join = ctx.extern_func("collect_tuple_hash_join");
     auto insert_join_id_input = ctx.extern_func("insert_join_id_input");
+    auto insert_join_bucket_input = ctx.extern_func("insert_join_bucket_input");
 
     //FunctionCallee mat_reg = ctx.extern_func("mat_reg_value");
     BasicBlock *bb = BasicBlock::Create(ctx.getContext(), "entry_join_rhs", main_function);
@@ -964,11 +990,17 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     auto last_jid = jids.front();
     jids.pop_front();
     auto jid = ConstantInt::get(ctx.int64Ty, last_jid);
-
+    auto n = reg_query_results[op->qr_pos_].reg_val;
+    auto id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(n, 1));
+    Value *remainder;
     if(op->join_op_ == JOIN_OP::NESTED_LOOP) {
         auto n = reg_query_results[op->qr_pos_].reg_val;
-        auto id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(n, 1));
         ctx.getBuilder().CreateCall(insert_join_id_input, {jid, id});
+    } else if(op->join_op_ == JOIN_OP::HASH_JOIN) {
+        auto n = reg_query_results[op->qr_pos_].reg_val;
+        auto num_bucket = ConstantInt::get(ctx.int64Ty, 10);
+        remainder = ctx.getBuilder().CreateSRem(id, num_bucket);
+        ctx.getBuilder().CreateCall(insert_join_bucket_input, {jid, remainder, id});
     }
 
     // obtain tuple object for materialization -> joiner mat_tuple
@@ -985,7 +1017,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
         }
     }
 
-    ctx.getBuilder().CreateCall(collect_tuple_join, {jid, tp});
+    if(op->join_op_ == JOIN_OP::HASH_JOIN) {
+        ctx.getBuilder().CreateCall(collect_tuple_hash_join, {jid, remainder, tp});
+    } else {
+        ctx.getBuilder().CreateCall(collect_tuple_join, {jid, tp});
+    }
     ctx.getBuilder().CreateBr(main_return);
 
     ctx.getBuilder().SetInsertPoint(df_finish_bb);

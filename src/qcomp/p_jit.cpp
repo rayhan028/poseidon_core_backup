@@ -172,6 +172,16 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&insert_join_id_input), JITSymbolFlags::Exported);
         M[Mangle("get_join_id_at")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_join_id_at), JITSymbolFlags::Exported);
+        M[Mangle("collect_tuple_hash_join")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&collect_tuple_hash_join), JITSymbolFlags::Exported);
+        M[Mangle("insert_join_bucket_input")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&insert_join_bucket_input), JITSymbolFlags::Exported);
+        M[Mangle("get_hj_input_size")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_hj_input_size), JITSymbolFlags::Exported);
+        M[Mangle("get_hj_input_id")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_hj_input_id), JITSymbolFlags::Exported);
+        M[Mangle("get_query_result")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_query_result), JITSymbolFlags::Exported);
 
         ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
     }

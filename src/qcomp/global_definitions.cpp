@@ -482,3 +482,22 @@ void insert_join_id_input(int jid, offset_t id) {
 offset_t get_join_id_at(int jid, int pos) {
     return joiner::id_input_[jid][pos];
 }
+
+void collect_tuple_hash_join(int jid, int remainder, qr_tuple *qr) {
+    joiner::materialize_rhs_hash_join(jid, remainder, qr);
+}
+
+void insert_join_bucket_input(int jid, int remainder, int id) {
+    joiner::materialize_rhs_id_hash_join(jid, remainder, id);
+}
+
+int get_hj_input_size(int jid, int bucket) {
+    return joiner::get_input_size(jid, bucket);
+}
+int get_hj_input_id(int jid, int bucket, int idx) {
+    return joiner::get_input_id(jid, bucket, idx);
+}
+
+qr_tuple * get_query_result(int jid, int bucket, int idx) {
+    return joiner::get_query_result(jid, bucket, idx);
+}

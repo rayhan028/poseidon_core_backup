@@ -251,6 +251,12 @@ public:
 
     FunctionType *insert_join_id_input_ty;
     FunctionType *get_join_id_at_ty;
+
+    FunctionType *collect_tuple_hash_join_ty;
+    FunctionType *insert_join_bucket_input_ty;
+    FunctionType *get_hj_input_size_ty;
+    FunctionType *get_hj_input_id_ty;
+    FunctionType *get_query_result_ty;
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     FunctionType *lookup_label_type;
     FunctionType *lookup_dcode_type;

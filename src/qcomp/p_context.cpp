@@ -246,6 +246,12 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
 
     insert_join_id_input_ty = FunctionType::get(voidTy, {int64Ty, int64Ty}, false);
     get_join_id_at_ty = FunctionType::get(int64Ty, {int64Ty, int64Ty}, false);
+
+    collect_tuple_hash_join_ty = FunctionType::get(voidTy, {int64Ty, int64Ty, int8PtrTy}, false);
+    insert_join_bucket_input_ty = FunctionType::get(voidTy, {int64Ty, int64Ty, int64Ty}, false);
+    get_hj_input_size_ty = FunctionType::get(int64Ty, {int64Ty, int64Ty}, false);
+    get_hj_input_id_ty = FunctionType::get(int64Ty, {int64Ty, int64Ty, int64Ty}, false);
+    get_query_result_ty = FunctionType::get(int8PtrTy, {int64Ty, int64Ty, int64Ty}, false);
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     lookup_label_type = FunctionType::get(int32Ty, {int8PtrTy, int8PtrTy}, false);
     lookup_dcode_type = FunctionType::get(int8PtrTy, {int8PtrTy, int32Ty}, false);
@@ -385,6 +391,12 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
 
     function_types["insert_join_id_input"] = insert_join_id_input_ty;
     function_types["get_join_id_at"] = get_join_id_at_ty;
+
+    function_types["collect_tuple_hash_join"] = collect_tuple_hash_join_ty;
+    function_types["insert_join_bucket_input"] = insert_join_bucket_input_ty;
+    function_types["get_hj_input_size"] = get_hj_input_size_ty;
+    function_types["get_hj_input_id"] = get_hj_input_id_ty;
+    function_types["get_query_result"] = get_query_result_ty;
 }
 
 
