@@ -65,7 +65,7 @@ struct path_item {
     void set_weight(double w) {
         weight_ = w;
     }
-    path get_path() { return path_; }
+    path &get_path() { return path_; }
     uint64_t get_hops() { return hops_; }
     double get_weight() { return weight_; }
 
@@ -78,28 +78,28 @@ private:
 /**
  * A sequential implementation of unweighted shortest path search on the given graph. The search starts at the
  * given start node and follows all relationships satisfying the predicate rpred. For each visited
- * node, the node_visitor callback is invoked. The unidirectional flag determines whether only outgoing 
- * relationships are considered (unidirectional = false) or both outgoing and incoming relationships 
- * (unidirectional = true).
+ * node, the node_visitor callback is invoked. The bidirectional flag determines whether only outgoing 
+ * relationships are considered (bidirectional = false) or both outgoing and incoming relationships 
+ * (bidirectional = true).
  */
 bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
-            bool unidirectional, rship_predicate rpred, path_visitor visit, path_item &spath);
+            bool bidirectional, rship_predicate rpred, path_visitor visit, path_item &spath);
 
 /**
  * A sequential implementation of weighted shortest path search on the given graph. The search starts at the
  * given start node and follows all relationships satisfying the predicate rpred. The weight of a traversed
  * relationship is calculated from the weight function. For each visited node, the node_visitor callback 
  * is invoked. 
- * The unidirectional flag determines whether only outgoing relationships are considered 
- * (unidirectional = false) or both outgoing and incoming relationships (unidirectional = true).
+ * The bidirectional flag determines whether only outgoing relationships are considered 
+ * (bidirectional = false) or both outgoing and incoming relationships (bidirectional = true).
  */
-bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool unidirectional,
+bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool bidirectional,
                         rship_predicate rpred, rship_weight weight_func, path_visitor visit, path_item &spath);
 
 /**
  * A sequential implementation of first k shortest path search on the given graph.
  */
-bool k_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool unidirectional,
-                        rship_predicate rpred, rship_weight weight_func, path_visitor visit, path_item* spaths);
+bool k_weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, std::size_t k, bool bidirectional,
+                rship_predicate rpred, rship_weight weight_func, path_visitor visit, std::vector<path_item> &spaths);
 
 #endif

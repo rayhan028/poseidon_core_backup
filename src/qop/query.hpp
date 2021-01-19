@@ -272,7 +272,7 @@ public:
    * The operator appends an array of IDs of the nodes along the shortest
    * path.
   */
-  query &find_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+  query &algo_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
                             rship_predicate rpred, bool bidirectional = false);
 
   /**
@@ -282,11 +282,24 @@ public:
    * set using the flag, bidirectional.
    * rpred is a predicate for checking if a relationship is traversed.
    * weight is a function that computes the weight of a relationship.
-   * The operator appends an array of IDs of the nodes along the shortest
-   * path.
+   * The operator appends the total weight of the shortest path to the
+   * query tuple.
   */
-  query &find_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+  query &algo_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
         rship_predicate rpred, rship_weight weight, bool bidirectional = false);
+
+  /**
+   * Add an operator to find the top k weighted shortest path between the pair 
+   * of nodes given their positions in the query tuple. Bidirectional 
+   * search (i.e. via outgoing and incoming relationships) is optionally 
+   * set using the flag, bidirectional.
+   * rpred is a predicate for checking if a relationship is traversed.
+   * weight is a function that computes the weight of a relationship.
+   * The operator appends the total weight of the shortest path to the
+   * query tuple.
+  */
+  query &algo_k_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+      std::size_t k, rship_predicate rpred, rship_weight weight, bool bidirectional = false);
 
   /**
    * Add an operator for invoking a LUA function as part of the query.

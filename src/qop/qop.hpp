@@ -598,6 +598,28 @@ struct weighted_shortest_path_opr : public qop {
 };
 
 /**
+ * k_weighted_shortest_path_opr implements an operator that finds the
+ * top k weighted shortest path between two nodes.
+ */
+struct k_weighted_shortest_path_opr : public qop {
+  k_weighted_shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
+    std::size_t k, rship_predicate pred, rship_weight weight, bool b) : 
+    k_(k), bidirectional_(b), rpred_(pred), rweight_(weight), start_stop_(uv) {}
+  ~k_weighted_shortest_path_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t k_;
+  path_item path_;
+  bool bidirectional_;
+  rship_predicate rpred_;
+  rship_weight rweight_;
+  std::pair<std::size_t, std::size_t> start_stop_;
+};
+
+/**
  * Operator for printing the content of a result set.
  */
 std::ostream &operator<<(std::ostream &os, const result_set &rs);

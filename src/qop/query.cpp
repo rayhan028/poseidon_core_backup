@@ -310,18 +310,25 @@ query &query::outerjoin_on_rship(std::pair<int, int> src_des, query &other) {
       std::bind(&left_outerjoin_on_rship::finish, op.get(), ph::_1));
 }
 
-query &query::find_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+query &query::algo_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
                             rship_predicate rpred, bool bidirectional) {
   auto op = std::make_shared<shortest_path_opr>(start_stop, rpred, bidirectional);
   return append_op(op,
                    std::bind(&shortest_path_opr::process, op.get(), ph::_1, ph::_2));
 }
 
-query &query::find_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+query &query::algo_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
             rship_predicate rpred, rship_weight weight, bool bidirectional) {
   auto op = std::make_shared<weighted_shortest_path_opr>(start_stop, rpred, weight, bidirectional);
   return append_op(op,
                    std::bind(&weighted_shortest_path_opr::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::algo_k_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+      std::size_t k, rship_predicate rpred, rship_weight weight, bool bidirectional) {
+  auto op = std::make_shared<k_weighted_shortest_path_opr>(start_stop, k, rpred, weight, bidirectional);
+  return append_op(op,
+                   std::bind(&k_weighted_shortest_path_opr::process, op.get(), ph::_1, ph::_2));
 }
 
 /*

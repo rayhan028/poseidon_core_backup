@@ -1247,7 +1247,7 @@ void ldbc_bi_query_15(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
               .to_node("Person")
               .property("id", [&](auto &prop) {
                 return prop.equal(boost::get<uint64_t>(params[1])); })
-              .find_shortest_path({0, 2}, [&](relationship &r) {
+              .algo_shortest_path({0, 2}, [&](relationship &r) {
                 return std::string(gdb->get_string(r.rship_label)) == ":knows"; }, true)
               .append_to_qr_tuple([&](qr_tuple v) {
                 double weight = 0.0;
@@ -1937,7 +1937,7 @@ void ldbc_bi_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
               .from_node("Person")
               .crossjoin(q1)
               .limit(10) // TODO
-              .find_weighted_shortest_path({2, 5}, rpred, rweight, true)
+              .algo_weighted_shortest_path({2, 5}, rpred, rweight, true)
               .project({PExpr_(2, pj::uint64_property(res, "id")),
                         PExpr_(5, pj::uint64_property(res, "id")),
                         PVar_(6) })
@@ -1948,6 +1948,73 @@ void ldbc_bi_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
                   return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);
                 }
                 return boost::get<double>(q1[2]) > boost::get<double>(q2[2]); })
+              .collect(rs);
+
+    query::start({&q1, &q2});
+    rs.wait();
+}
+
+void ldbc_bi_query_20(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+
+    rship_predicate rpred = [&](relationship &r) {
+        return std::string(gdb->get_string(r.rship_label)) == ":knows"; };
+
+    rship_weight rweight = [&](relationship &r) {
+        double w = 0.0;
+        node::id_t src_uni;
+        node::id_t des_uni;
+        int src_yr;
+        int des_yr;
+        auto &src = gdb->node_by_id(r.from_node_id());
+        auto &des = gdb->node_by_id(r.to_node_id());
+        gdb->foreach_from_relationship_of_node(src, ":studyAt", [&](relationship &r1) {
+          src_uni = r1.to_node_id();
+          auto descr = gdb->get_rship_description(r1.id());
+          src_yr = get_property<int>(descr.properties, std::string("classYear")).value();
+        });
+        gdb->foreach_from_relationship_of_node(des, ":studyAt", [&](relationship &r2) {
+          des_uni = r2.to_node_id();
+          auto descr = gdb->get_rship_description(r2.id());
+          des_yr = get_property<int>(descr.properties, std::string("classYear")).value();
+        });
+        if (src_uni == des_uni)
+          w = std::abs(src_yr - des_yr) + 1;
+        return w;   };
+
+    // Query pipelines
+    auto q1 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Person")
+              .property("id", [&](auto &prop) {
+                return prop.equal(boost::get<uint64_t>(params[1])); });
+#else
+              .nodes_where("Person", "id", [&](auto &prop) {
+                return prop.equal(boost::get<uint64_t>(params[1])); });
+#endif
+
+    auto q2 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Organisation")
+              .property("name", [&](auto &prop) {
+                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
+                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
+#else
+              .nodes_where("Organisation", "name", [&](auto &prop) {
+                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
+                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
+#endif
+              .to_relationships(":workAt")
+              .from_node("Person")
+              .crossjoin(q1)
+              .limit(5) // TODO
+              .algo_k_weighted_shortest_path({2, 3}, 20, rpred, rweight, true)
+              // .algo_weighted_shortest_path({2, 3}, rpred, rweight, true)
+              .project({PExpr_(2, pj::uint64_property(res, "id")),
+                        PVar_(4) })
+              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
+                return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]); })
               .collect(rs);
 
     query::start({&q1, &q2});
@@ -2410,6 +2477,29 @@ double run_query_19(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
+double run_query_20(graph_db_ptr gdb) {
+    std::vector<params_tuple> params = {{"Kam_Air", (uint64_t)2199023256684}};
+
+    std::vector<double> runtimes(params.size());
+
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        auto tx = gdb->begin_transaction();
+        ldbc_bi_query_20(gdb, rs, params[i]);
+        gdb->commit_transaction();
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return calc_avg_time(runtimes);
+}
+
 void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
     t = run_query_1(gdb);
@@ -2450,6 +2540,8 @@ void run_benchmark(graph_db_ptr gdb) {
     spdlog::info("Query #18: {} msecs", t);
     t = run_query_19(gdb);
     spdlog::info("Query #19: {} msecs", t);
+    t = run_query_20(gdb);
+    spdlog::info("Query #20: {} msecs", t);
 }
 
 /* ---------------------------------------------------------------------------- */

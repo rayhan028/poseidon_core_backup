@@ -571,6 +571,35 @@ void weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
 
 /* ------------------------------------------------------------------------ */
 
+void k_weighted_shortest_path_opr::dump(std::ostream &os) const {
+  os << "k_weighted_shortest_path_opr([])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void k_weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  auto a = boost::get<node *>(v[start_stop_.first]);
+  auto b = boost::get<node *>(v[start_stop_.second]);
+  auto start = a->id();
+  auto stop = b->id();
+
+  auto res = v;
+  std::vector<path_item> spaths;
+  path_visitor pv = [&](node &n, const path &p) { return; }; // TODO
+  bool found = k_weighted_shortest_path(gdb, start, stop, k_, bidirectional_,
+                          rpred_, rweight_, pv, spaths);
+  for (auto &spath : spaths) {
+    if (found)
+      res.push_back(query_result(spath.get_weight()));
+    else
+      res.push_back(query_result(0.0));    
+  }
+
+  consume_(gdb, res);
+}
+
+/* ------------------------------------------------------------------------ */
+
 void result_set::wait() {
   std::unique_lock<std::mutex> lock(m);
   cond_var.wait(lock, [&] { return ready.load(); });
