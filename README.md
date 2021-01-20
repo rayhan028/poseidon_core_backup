@@ -18,6 +18,18 @@ make
 
 Make sure you have the Intel PMDK installed. If PMDK is not installed, Poseidon runs as in-memory database only.
 
+We also provide a Dockerfile to build your own image with the poseidon_core source. Just build the image in the root directory of the source tree:
+
+```
+docker build --tag poseidon .
+```
+
+Then, you can run it:
+
+```
+docker run -it poseidon
+```
+
 ## Using Poseidon Core
 
 Poseidon is implemented as a C++ library `libposeidon_core` which can be used to implement applications for accessing the graph data stored in persistent memory and executing queries such as Poseidon CLI provided in a separate module.
@@ -49,6 +61,21 @@ auto p2 = graph->add_node(":Person",
                                {"age", boost::any(38)}});
 graph->add_relationship(p1, p2, ":KNOWS", {});
 graph->commit_transaction();
+```
+
+There is an alternative way to implement transactions:
+
+```c++
+graph->run_transaction([&]() {
+  auto p1 = graph->add_node(":Person",
+                              {{"name", boost::any(std::string("John Doe"))},
+                               {"age", boost::any(42)}});
+  auto p2 = graph->add_node(":Person",
+                              {{"name", boost::any(std::string("Sarah Jones"))},
+                               {"age", boost::any(38)}});
+  graph->add_relationship(p1, p2, ":KNOWS", {});
+  return true; // commit the transaction
+});
 ```
 
 As shown in the example, properties are passed as `boost::any` types. However, internally property values are always typed. Thus, make sure that you always use the correct type when you create the `any` values.

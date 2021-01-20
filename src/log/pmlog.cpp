@@ -87,6 +87,19 @@ pmlog::~pmlog() {
 #endif
 }
 
+void pmlog::log_chunk::clear() {
+  // delete all additional log_chunks in ulog_[log_id]
+  // TODO
+#ifdef USE_PMDK
+  pop.memset_persist(&ulog_[log_id], 0, 4096);
+#else
+  memset((uint8_t *)data_, 0, 4076);
+  txid_ = 0;
+  used_ = 0;
+  next_ = nullptr;
+#endif
+}
+
 pmlog::id_t pmlog::transaction_begin(xid_t txid) {
 #ifdef USE_PMDK
   auto pop = pmem::obj::pool_by_vptr(this);
@@ -117,16 +130,9 @@ void pmlog::transaction_end(pmlog::id_t log_id) {
 #ifdef USE_PMDK
   auto pop = pmem::obj::pool_by_vptr(this);
 #endif
-  // delete all additional log_chunks in ulog_[log_id]
-  // TODO
-
   // finally, mark the slot as available
   std::lock_guard<std::mutex> guard(lmtx_);
-#ifdef USE_PMDK
-  pop.memset_persist(&ulog_[log_id], 0, 4096);
-#else
-  memset(&(ulog_[log_id]), 0, 4096);
-#endif
+  ulog_[log_id].clear();
 }
 
 void pmlog::append(id_t log_id, void *log_entry, uint32_t lsize) {
