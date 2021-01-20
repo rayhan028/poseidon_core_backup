@@ -78,10 +78,11 @@ Project | [ projection list ], input | Projects query results based on the given
 Limit | number of tuples, input | Limits the input list to the given number of tuples
 ForeachRelationship | TO or FROM, RelationshipType, input | Traverses all incoming or outgoing relationships of the given type
 Sort |  sort function, input | Orders tuples according to the sorting function
-Group | [ GroupKey list ], input | Group all tuples based on grouping key(s)
-Aggregate | [ AggregateType list ], input | Apply aggregate function(s) and appends the output to tuple
-AppendToTuple | [ result function ], input | Computes a query result and appends it to tuple
+Group | [ GroupKey list ], input | Groups all tuples based on grouping key(s)
+Aggregate | [ AggregateType list ], input | Applies aggregate function(s) and appends the output to tuple
+AppendToTuple | result function, input | Computes a query result and appends it to tuple
 Union | [ query list ], input | Combines the tuples of multiple queries
+AlgoShortestPath | SPATHTYPE, relationship predicate, weight function, input | Performs a uni/bi-directional search for the weighted/unweighted or top-k shortest paths between node pairs and appends the paths and/or their weights to tuple
 Create | (n:NodeType { key: val, ...} ), input | Creates a new node from the literals or the input
 Create | ($1)-[r:RelationshipType { key: val, ...} ]->($2), input | Creates a new relationship from the literals or the input
 
@@ -99,13 +100,12 @@ auto q = query(gdb)
           .project(
               {PExpr_(0, pj::string_property(res, "firstName")),
                PExpr_(0, pj::string_property(res, "lastName")),
-               PExpr_(0, pj::int_to_datestring(pj::int_property(res, "birthday"))),
+               PExpr_(0, pj::pr_date(res, "birthday")),
                PExpr_(0, pj::string_property(res, "locationIP")),
-               PExpr_(0, pj::string_property(res, "browser")),
-               PExpr_(2, pj::int_property(res, "id")),
+               PExpr_(0, pj::string_property(res, "browserUsed")),
+               PExpr_(2, pj::uint64_property(res, "id")),
                PExpr_(0, pj::string_property(res, "gender")),
-               PExpr_(0, pj::int_to_datetimestring(
-                   pj::int_property(res, "creationDate"))) })
+               PExpr_(0, pj::ptime_property(res, "creationDate")) })
           .print();
   q.start();
 ```
