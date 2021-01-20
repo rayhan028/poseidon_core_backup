@@ -679,6 +679,7 @@ struct projection : public qop {
   struct expr {
     std::size_t vidx;
     std::function<query_result(pr_result)> func;
+    expr() = default;
     expr(std::size_t i, std::function<query_result(pr_result)> f) : vidx(i), func(f) {}
   };
 

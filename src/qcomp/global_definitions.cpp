@@ -261,6 +261,11 @@ extern "C" void collect_tuple(result_set *rs, bool print) {
             [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
             [&](const std::string &s) { std::cout << s; }, [&](uint64_t ll) { std::cout << ll; },
             [&](null_t n) { std::cout << "NULL"; },
+            [&](array_t arr) {
+                std::cout << "[ ";
+                for (auto elem : arr.elems)
+                std::cout << elem << " ";
+                std::cout << " ]"; },
             [&](boost::posix_time::ptime dt) { std::cout << dt; }); 
 
         auto i = 0u;
