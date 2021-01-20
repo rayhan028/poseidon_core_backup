@@ -91,7 +91,8 @@ void pmlog::log_chunk::clear() {
   // delete all additional log_chunks in ulog_[log_id]
   // TODO
 #ifdef USE_PMDK
-  pop.memset_persist(&ulog_[log_id], 0, 4096);
+  auto pop = pmem::obj::pool_by_vptr(this);
+  pop.memset_persist((uint8_t *)data_, 0, 4096);
 #else
   memset((uint8_t *)data_, 0, 4076);
   txid_ = 0;
