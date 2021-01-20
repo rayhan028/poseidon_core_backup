@@ -123,6 +123,8 @@ class pmlog {
     xid_t txid_;            // the id of the transaction of these log records
     uint32_t used_;         // the number of bytes occupied already
     p_ptr<log_chunk> next_; // the address of the next log_chunk belonging to this transaction
+
+    void clear();
   };
 
   using chunk_ptr = p_ptr<log_chunk>;
