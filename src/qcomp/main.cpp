@@ -115,7 +115,7 @@ int main() {
 						Collect(), r_expr));
 
 	std::vector<std::string> labels = {"Book", "Person"};
-	auto multi = Scan(labels, Project({{0, nodefunc}, {0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}}, Collect()));
+	auto multi = Scan(labels, Project({{0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}, {0}}, Collect()));
 	scan_task::callee_ = &scan_task::scan;	
 	queryEngine.generate(multi, false);
 	

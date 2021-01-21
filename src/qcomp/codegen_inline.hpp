@@ -263,6 +263,9 @@ public:
             projection->name_ = projection->name_ + e.key;
             project_string.push_back(e.key);
             switch(e.type) {
+                case FTYPE::NONE:
+                    projection->new_types.push_back(0);
+                    break;
                 case FTYPE::INT:
                     projection->new_types.push_back(2);
                     break;

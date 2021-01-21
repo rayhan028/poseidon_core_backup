@@ -476,7 +476,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
                         auto exists = ctx.getBuilder().CreateCall(rship_has_property, {gdb, r.reg_val, project_keys[i-1]});
                     } 
                 } else if(pe.int_node_func != nullptr && pe.key.empty()) {
-
                     auto fc_raw = ConstantInt::get(ctx.int64Ty, (int64_t)pe.int_node_func);
                     auto fc_ptr = ctx.getBuilder().CreateIntToPtr(fc_raw, ctx.int64PtrTy);
                     auto fc_ty = FunctionType::get(ctx.int64Ty, {ctx.nodePtrTy}, false);
@@ -485,7 +484,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
                     auto i_pr = ctx.getBuilder().CreateCall(fc_ty, fc, {r.reg_val});
                     ctx.getBuilder().CreateStore(i_pr, pv[i]);
 
-                }else {
+                } else if(pe.key.empty() && pe.type == FTYPE::NONE) {
+                    nqrv.push_back({r.reg_val, r.type});
+                    i++;
+                    continue;
+                } else {
                     // apply the projection in an external function
                     if(r.type == 0) {
                         ctx.getBuilder().CreateCall(apply_pexpr_node, {gdb, project_keys[i-1], type, qrp, pv[i]});

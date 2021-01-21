@@ -218,9 +218,8 @@ struct pr_expr {
     std::pair<std::string, std::string> then_else;
     
     int_prj_func_node int_node_func;
+    pr_expr(std::size_t i) : id(i), type(FTYPE::NONE), int_node_func(nullptr) {}
     pr_expr(std::size_t i, int_prj_func_node func) : id(i), int_node_func(func) {}
-
-
     pr_expr(std::size_t i, std::string k, FTYPE t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist) {}
     pr_expr(std::size_t i, std::vector<std::string> properties, std::pair<std::string, std::string> then) : 
         id(i), has_properties(properties), then_else(then) {}

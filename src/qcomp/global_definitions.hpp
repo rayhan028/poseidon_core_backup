@@ -37,7 +37,8 @@ enum class FTYPE {
     DATE = 3,
     TIME = 4,
     BOOLEAN = 5,
-    UINT64 = 6
+    UINT64 = 6,
+    NONE = 7
 };
 
 /**

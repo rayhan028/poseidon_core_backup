@@ -19,6 +19,7 @@
 
 #include "ldbc_jit_reads.hpp"
 
+namespace pj = builtin;
 using namespace boost::program_options;
 using namespace boost::posix_time;
 
@@ -27,5 +28,17 @@ using params_tuple_bi = std::vector<param_val>;
 
 //std::vector<params_tuple_bi> q1_params = {{time_from_string(std::string("2017-04-14 01:51:21.746"))}};
 //std::vector<params_tuple_bi> q2_params = {{time_from_string(std::string("2011-04-14 01:51:21.746"))}};
+
+int q1_get_node_property(projection::pr_result pr) {
+    return boost::get<int>(pj::int_property(pr, "length"));
+}
+
+int q1_group_msg_len(node * n) {
+    auto len = q1_get_node_property(n);
+    return (len >= 0 && len < 40) ? 0 :
+                (len >= 40 && len < 80) ? 1 :
+                    (len >= 80 && len < 160) ? 2 : 3; 
+}
+
 
 #endif
