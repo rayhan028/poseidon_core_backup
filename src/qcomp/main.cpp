@@ -26,6 +26,10 @@ query_result *afunc(qr_tuple &qrt) {
 
 const std::string test_path = poseidon::gPmemPath + "jit_qcomp";
 
+int nodefunc(node *n) {
+	return n->id();
+}
+
 #ifdef USE_PMDK
 
 #define PMEMOBJ_POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull))
@@ -73,7 +77,7 @@ int main() {
 				{"dummy2", boost::any(1.2345)}},
 				false);
 		auto b = graph->add_node("Book",
-				{{"title", boost::any(std::string("Title"))},
+				{{"name", boost::any(std::string("Title"))},
 				{"Age", boost::any(42)},
 				{"id", boost::any(i)}},
 				false);
@@ -111,7 +115,7 @@ int main() {
 						Collect(), r_expr));
 
 	std::vector<std::string> labels = {"Book", "Person"};
-	auto multi = Scan(labels, Collect());
+	auto multi = Scan(labels, Project({{0, nodefunc}, {0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}}, Collect()));
 	scan_task::callee_ = &scan_task::scan;	
 	queryEngine.generate(multi, false);
 	

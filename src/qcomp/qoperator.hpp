@@ -1,5 +1,5 @@
-#ifndef ART_QOPERATOR_HPP
-#define ART_QOPERATOR_HPP
+#ifndef QOPERATOR_HPP
+#define QOPERATOR_HPP
 
 #include <iostream>
 
@@ -208,9 +208,22 @@ inline algebra_optr ForeachRship(RSHIP_DIR dir, std::pair<int, int> hops, std::s
 
 
 struct pr_expr {
+    typedef int (*int_prj_func_node)(node *n);
+
     std::size_t id;
     std::string key;
     FTYPE type;
+    bool if_exist_;
+    std::vector<std::string> has_properties;
+    std::pair<std::string, std::string> then_else;
+    
+    int_prj_func_node int_node_func;
+    pr_expr(std::size_t i, int_prj_func_node func) : id(i), int_node_func(func) {}
+
+
+    pr_expr(std::size_t i, std::string k, FTYPE t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist) {}
+    pr_expr(std::size_t i, std::vector<std::string> properties, std::pair<std::string, std::string> then) : 
+        id(i), has_properties(properties), then_else(then) {}
 };
 
 class project : public base_op, public std::enable_shared_from_this<project> {

@@ -257,6 +257,10 @@ public:
     FunctionType *get_hj_input_size_ty;
     FunctionType *get_hj_input_id_ty;
     FunctionType *get_query_result_ty;
+
+    FunctionType *node_has_property_ty;
+    FunctionType *rship_has_property_ty;
+    FunctionType *apply_has_property_ty;
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     FunctionType *lookup_label_type;
     FunctionType *lookup_dcode_type;

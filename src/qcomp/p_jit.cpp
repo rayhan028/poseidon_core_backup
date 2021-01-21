@@ -182,6 +182,12 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&get_hj_input_id), JITSymbolFlags::Exported);
         M[Mangle("get_query_result")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_query_result), JITSymbolFlags::Exported);
+        M[Mangle("node_has_property")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&node_has_property), JITSymbolFlags::Exported);
+        M[Mangle("rship_has_property")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&rship_has_property), JITSymbolFlags::Exported);
+        M[Mangle("apply_has_property")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&apply_has_property), JITSymbolFlags::Exported);
 
         ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
     }

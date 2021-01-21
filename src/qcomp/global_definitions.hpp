@@ -320,4 +320,9 @@ int get_hj_input_size(int jid, int bucket);
 int get_hj_input_id(int jid, int bucket, int idx);
 qr_tuple * get_query_result(int jid, int bucket, int idx);
 
+int node_has_property(graph_db *gdb, node *n, char *property);
+int rship_has_property(graph_db *gdb, relationship *r, char *property);
+void apply_has_property(int has_properties_cnt, char *then_res, char *else_res, int *result);
+void apply_if_property_exist(int has_property, char *property, int *result);
+
 #endif //PJIT_GLOBAL_DEFINITIONS_HPP

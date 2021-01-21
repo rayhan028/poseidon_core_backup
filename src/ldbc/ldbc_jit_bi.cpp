@@ -1,28 +1,8 @@
-#include <iostream>
-#include <numeric>
-#include <boost/program_options.hpp>
-#include <boost/algorithm/string.hpp>
+#include "ldbc_jit_bi.hpp"
 
-#include "defs.hpp"
-#include "graph_db.hpp"
-#include "graph_pool.hpp"
-#include "ldbc.hpp"
-#include "config.h"
 
-#include "threadsafe_queue.hpp"
-
-#include "spdlog/sinks/basic_file_sink.h"
-#include "spdlog/spdlog.h"
-
-#include "ldbc_jit_reads.hpp"
-#include "ldbc.hpp"
-
-using namespace boost::program_options;
 bool compiled = false;
 std::vector<int64_t> runtimes;
-
-//using param_val = boost::variant<uint64_t, std::string, int, boost::posix_time::ptime>;
-//using params_tuple = std::vector<param_val>;
 
 double calc_avg() {
   auto avg = std::accumulate(runtimes.begin(), runtimes.end(), 0) / runtimes.size();
@@ -32,21 +12,88 @@ double calc_avg() {
   return avg;
 }
 
-bool dummy(int *) {
-    return true;
+bool q1_filter_cdate(int *prop_ptr) {
+    auto prop = (p_item*)prop_ptr;
+    return (*reinterpret_cast<const ptime *>(prop->value_)) < time_from_string(std::string("2017-04-14 01:51:21.746"));
+    
 }
 
-void ldbc_jit_is_query_1(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
-    auto q = Scan("Post", 
-                Filter(Fct(dummy),
-                    Project({},
-                        GroupBy({},
-                            Aggr({},
+bool q2_filter_cdate_1(int *prop_ptr) {
+    auto prop = (p_item*)prop_ptr;
+    auto d = *reinterpret_cast<const ptime *>(prop->value_);
+    auto dt = time_from_string(std::string("2011-04-14 01:51:21.746"));
+    time_period duration(dt, hours(24*100));
+    return duration.contains(d) ? true : false;
+}
+
+bool q2_filter_cdate_2(int *prop_ptr) {
+    auto prop = (p_item*)prop_ptr;
+    auto d = *reinterpret_cast<const ptime *>(prop->value_);
+    auto dt1 = time_from_string(std::string("2011-04-14 01:51:21.746"));
+    time_period duration1(dt1, hours(24*100));
+    auto dt2 = duration1.last();
+    time_period duration2(dt2, hours(24*100));
+    return duration2.contains(d) ? true : false;
+}
+
+bool q2_compute_diff(qr_tuple *q) {
+    
+}
+
+std::vector<std::string> message = {"Post", "Comment"};
+
+int dummy(node *n) {
+
+}
+
+void ldbc_jit_bi_query_1(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive) {
+    auto q = Scan(message, 
+                Filter(Fct(q1_filter_cdate),
+                    Project({{0, "creationDate", FTYPE::DATE}, 
+                             {0, {"language", "imageFile"}, {"true", "false"}},
+                             {0, "length", FTYPE::INT},
+                             {0, dummy}},
+                        GroupBy({0, 1, 3},
+                            Aggr({{"count", 0}, {"avg", 2}, {"sum", 2}, {"pcount", 0}},
+                                //Sort()
                                 Collect())))));
+
+    arg_builder ab;
+    ab.arg(1, message[0]);
+    ab.arg(2, message[1]);
+
+    if(!compiled) {
+        auto c_s = std::chrono::steady_clock::now();
+        qeng.generate(q, adaptive);
+        compiled = true;
+        auto c_e = std::chrono::steady_clock::now();
+        std::cout << "Compilation: " 
+            << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count() 
+            << " ms" << std::endl;
+    
+    }
+
+    auto e_s = std::chrono::steady_clock::now();
+    qeng.run(&rs, ab.args, false);
+    auto e_e = std::chrono::steady_clock::now();
+    
+    std::cout << "Execution: " 
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl;
+}
+
+void ldbc_jit_bi_query_2(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive) {
 
 }
 
 void run_is_1(graph_db_ptr gdb, query_engine &qeng) {
+    
+    
+    for(auto i = 0u; i < 1; i++) {
+        result_set rs;
+        ldbc_jit_bi_query_1(gdb, qeng, rs, false);
+        std::cout << rs << std::endl;
+    }
 
 }
 

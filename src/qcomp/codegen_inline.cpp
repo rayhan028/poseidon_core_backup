@@ -440,6 +440,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
     //auto apply_pexpr = ctx.extern_func("apply_pexpr");
     auto apply_pexpr_node = ctx.extern_func("apply_pexpr_node");
     auto apply_pexpr_rship = ctx.extern_func("apply_pexpr_rship");
+    auto node_has_property = ctx.extern_func("node_has_property");
+    auto rship_has_property = ctx.extern_func("rship_has_property");
+    auto apply_has_property = ctx.extern_func("apply_has_property");
 
     // create entry block and link with the previous operator
     BasicBlock *entry = BasicBlock::Create(ctx.getContext(), "project_entry", main_function);
@@ -453,36 +456,79 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
     // add new projection variables to registers
     std::vector<QR_VALUE> nqrv;
     for(auto & pe : op->prexpr_) {
-        if(pe.type == FTYPE::BOOLEAN) {
-            nqrv.push_back(reg_query_results[pe.id]);
-        } else {
-            // get id of tuple for projection
-            //auto id = ConstantInt::get(ctx.int64Ty, APInt(64, pe.id));
-            //auto idx = ConstantInt::get(ctx.int64Ty, APInt(64, pe.id+1));
-            //auto qrp = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(qrl, {ctx.LLVM_ZERO, idx}));
-
-            // get register value of tuple for projection
-            auto r = reg_query_results[pe.id];
-            auto qrp = ctx.getBuilder().CreateBitCast(r.reg_val, ctx.int64PtrTy);
-
-            // get the appropriate type of the tuple
-            auto type = ConstantInt::get(ctx.int64Ty, APInt(64, static_cast<int>(pe.type)));
-
-            //auto nidx = ConstantInt::get(ctx.int64Ty, i);
-            //auto dest = ctx.getBuilder().CreateInBoundsGEP(newResAlloc, {ctx.LLVM_ZERO, nidx});
-
-            // apply the projection in an external function
-            if(r.type == 0) {
-                ctx.getBuilder().CreateCall(apply_pexpr_node, {gdb, project_keys[i-1], type, qrp, pv[i]});
+        if(pe.has_properties.empty()) {
+            if(pe.type == FTYPE::BOOLEAN) {
+                nqrv.push_back(reg_query_results[pe.id]);
             } else {
-                ctx.getBuilder().CreateCall(apply_pexpr_rship, {gdb, project_keys[i-1], type, qrp, pv[i]});
+                
+                // get register value of tuple for projection
+                auto r = reg_query_results[pe.id];
+                auto qrp = ctx.getBuilder().CreateBitCast(r.reg_val, ctx.int64PtrTy);
+
+                // get the appropriate type of the tuple
+                auto type = ConstantInt::get(ctx.int64Ty, APInt(64, static_cast<int>(pe.type)));
+
+                if(pe.if_exist_) {
+                    if(r.type == 0) {
+                        auto exists = ctx.getBuilder().CreateCall(node_has_property, {gdb, r.reg_val, project_keys[i-1]});
+
+                    } else {
+                        auto exists = ctx.getBuilder().CreateCall(rship_has_property, {gdb, r.reg_val, project_keys[i-1]});
+                    } 
+                } else if(pe.int_node_func != nullptr && pe.key.empty()) {
+
+                    auto fc_raw = ConstantInt::get(ctx.int64Ty, (int64_t)pe.int_node_func);
+                    auto fc_ptr = ctx.getBuilder().CreateIntToPtr(fc_raw, ctx.int64PtrTy);
+                    auto fc_ty = FunctionType::get(ctx.int64Ty, {ctx.nodePtrTy}, false);
+                    auto fc = ctx.getBuilder().CreateBitCast(fc_ptr, fc_ty->getPointerTo());
+
+                    auto i_pr = ctx.getBuilder().CreateCall(fc_ty, fc, {r.reg_val});
+                    ctx.getBuilder().CreateStore(i_pr, pv[i]);
+
+                }else {
+                    // apply the projection in an external function
+                    if(r.type == 0) {
+                        ctx.getBuilder().CreateCall(apply_pexpr_node, {gdb, project_keys[i-1], type, qrp, pv[i]});
+                    } else {
+                        ctx.getBuilder().CreateCall(apply_pexpr_rship, {gdb, project_keys[i-1], type, qrp, pv[i]});
+                    }
+                }
+
+                // add new register value to global list
+                nqrv.push_back({pv[i], static_cast<int>(pe.type)+2});
+
+            }
+        } else {
+            std::vector<Value*> prop_exists;
+            std::vector<Value*> then_else;
+
+            auto r  = reg_query_results[pe.id];
+
+            for(auto & prop_str : pe.has_properties) {
+                auto str_ptr = ctx.getBuilder().CreateGlobalStringPtr(prop_str);
+
+                if(r.type == 0) {
+                    prop_exists.emplace_back(
+                        ctx.getBuilder().CreateCall(node_has_property, {gdb, r.reg_val, str_ptr}));
+                } else {
+                    prop_exists.emplace_back(
+                        ctx.getBuilder().CreateCall(rship_has_property, {gdb, r.reg_val, str_ptr}));
+                }
             }
 
-            //ctx.getBuilder().CreateCall(apply_pexpr, {gdb, project_keys[i-1], type, qrp, id, ty, pv[i]});
 
-            // add new register value to global list
-            nqrv.push_back({pv[i], static_cast<int>(pe.type)+2});
-
+            std::vector<Value*> add_sum;
+            add_sum.push_back(ctx.LLVM_ZERO);
+            for(auto p : prop_exists) {
+                auto lhs = add_sum.back();
+                add_sum.push_back(ctx.getBuilder().CreateAdd(lhs,p));
+            }
+            
+            auto str_ptr_st = ctx.getBuilder().CreateGlobalStringPtr(pe.then_else.first);
+            auto str_ptr_nd = ctx.getBuilder().CreateGlobalStringPtr(pe.then_else.second);
+            
+            ctx.getBuilder().CreateCall(apply_has_property, {add_sum.back(), str_ptr_st, str_ptr_nd, pv[i]});
+            nqrv.push_back({pv[i], static_cast<int>(pe.type)+4});
         }
         i++;
     }

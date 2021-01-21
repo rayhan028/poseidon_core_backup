@@ -269,6 +269,9 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     foreach_variable_from_type = FunctionType::get(voidTy, {int8PtrTy, int32Ty, int64Ty, int64Ty, consumerFctTy->getPointerTo(),
                                                             int64Ty, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64Ty}, false);
 
+    node_has_property_ty = FunctionType::get(int64Ty, {int8PtrTy, nodePtrTy, int8PtrTy}, false);
+    rship_has_property_ty = FunctionType::get(int64Ty, {int8PtrTy, rshipPtrTy, int8PtrTy}, false);
+    apply_has_property_ty = FunctionType::get(voidTy, {int64Ty, int8PtrTy, int8PtrTy, int64PtrTy}, false );
 //++++++++++++++++++ PROPERTY FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     pset_get_item_at_type = FunctionType::get(propertySetPtrTy, {int8PtrTy, int64Ty}, false);
 
@@ -397,6 +400,10 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     function_types["get_hj_input_size"] = get_hj_input_size_ty;
     function_types["get_hj_input_id"] = get_hj_input_id_ty;
     function_types["get_query_result"] = get_query_result_ty;
+
+    function_types["node_has_property"] = node_has_property_ty;
+    function_types["rship_has_property"] = rship_has_property_ty;
+    function_types["apply_has_property"] = apply_has_property_ty;
 }
 
 

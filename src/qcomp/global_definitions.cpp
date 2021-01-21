@@ -501,3 +501,23 @@ int get_hj_input_id(int jid, int bucket, int idx) {
 qr_tuple * get_query_result(int jid, int bucket, int idx) {
     return joiner::get_query_result(jid, bucket, idx);
 }
+
+int node_has_property(graph_db *gdb, node *n, char *property) {
+    auto nd = gdb->get_node_description(n->id());
+    return nd.has_property(std::string(property));
+}
+
+int rship_has_property(graph_db *gdb, relationship *r, char *property) {
+    auto rd = gdb->get_rship_description(r->id());
+    return rd.has_property(std::string(property));
+}
+
+void apply_has_property(int has_properties_cnt, char *then_res, char *else_res, int *result) {
+    if(has_properties_cnt > 0) {
+        *result = str_res_ctr;
+        str_result[str_res_ctr++] = std::string(then_res);
+    } else {
+        *result = str_res_ctr;
+        str_result[str_res_ctr++] = std::string(else_res);
+    }
+}
