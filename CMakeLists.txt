@@ -15,6 +15,7 @@ option(USE_PMDK       "Use Intel PMDK"                         ON)
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
 option(BUILD_PYTHON   "Build python interface for poseidon"    OFF)
+option(QOP_PROFILING  "Enable query profiling"                 ON)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -59,6 +60,9 @@ if(USE_LOGGING MATCHES ON)
   add_definitions( "-DUSE_LOGGING" )
 endif()
 
+if(QOP_PROFILING MATCHES ON)
+  add_definitions( "-DQOP_PROFILING" )
+endif()
 configure_file(
   ${PROJECT_SOURCE_DIR}/src/config.h.in
   ${PROJECT_BINARY_DIR}/generated/config.h
@@ -326,6 +330,7 @@ set(src_files
   src/storage/graph_db_recovery.cpp
   src/storage/graph_db_gc.cpp
   src/btree/index_map.cpp
+  src/qop/profiling.cpp
   src/qop/qop.cpp
   src/qop/update.cpp
   src/qop/join.cpp

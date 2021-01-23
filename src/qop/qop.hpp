@@ -30,10 +30,12 @@
 #include <condition_variable>
 #include <unordered_map>
 
+#include "defs.hpp"
 #include "graph_db.hpp"
 #include "nodes.hpp"
 #include "relationships.hpp"
 #include "shortest_path.hpp"
+#include "profiling.hpp"
 
 template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
   std::vector<T> v2;
@@ -142,12 +144,15 @@ struct qop {
    */
   inline qop_ptr subscriber() { return subscriber_; }
 
+  PROF_ACCESSOR;
+
 protected:
   qop_ptr subscriber_; // pointer to the subsequent operator which receives and
                        // processes the results
 
   consume_func consume_; // pointer to the subscriber's consume function
   finish_func finish_;   // pointer to the subscriber's finish function
+  PROF_DATA;
 };
 
 /**

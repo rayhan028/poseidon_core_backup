@@ -27,6 +27,7 @@
 #include <boost/hana.hpp>
 
 #include "qop.hpp"
+#include "profiling.hpp"
 
 using namespace boost::posix_time;
 
@@ -36,15 +37,15 @@ void scan_nodes::start(graph_db_ptr &gdb) {
   if (label.empty() && labels.empty())
     gdb->parallel_nodes([&](node &n) { consume_(gdb, {&n}); });
   else if (!label.empty())
-    gdb->nodes_by_label(label, [&](node &n) { consume_(gdb, {&n}); });
+    gdb->nodes_by_label(label, [&](node &n) { PROF_PRE; consume_(gdb, {&n}); PROF_POST(1); });
   // TODO: in case of calling parallel_nodes we should handle this differently
   else
-    gdb->nodes_by_label(labels, [&](node &n) { consume_(gdb, {&n}); });
+    gdb->nodes_by_label(labels, [&](node &n) { PROF_PRE; consume_(gdb, {&n}); PROF_POST(1); });
   qop::default_finish(gdb);
 }
 
 void scan_nodes::dump(std::ostream &os) const {
-  os << "scan_nodes([" << label << "])=>";
+  os << "scan_nodes([" << label << "]" << PROF_DUMP << ")=>";
   if (subscriber_)
     subscriber_->dump(os);
 }
@@ -69,6 +70,7 @@ void index_scan::dump(std::ostream &os) const {
 /* ------------------------------------------------------------------------ */
 
 void foreach_from_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
   node *n = nullptr;
   if (npos == std::numeric_limits<int>::max())
     n = boost::get<node *>(v.back());
@@ -78,14 +80,17 @@ void foreach_from_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
   if (lcode == 0)
     lcode = gdb->get_code(label);
 
+  uint64_t num = 0;
   gdb->foreach_from_relationship_of_node(*n, lcode, [&](relationship &r) {
     auto v2 = append(v, query_result(&r));
     consume_(gdb, v2);
+    num++;
   });
+  PROF_POST(num);
 }
 
 void foreach_from_relationship::dump(std::ostream &os) const {
-  os << "foreach_from_relationship([" << label << "])=>";
+  os << "foreach_from_relationship([" << label << "]" << PROF_DUMP << ")=>";
   if (subscriber_)
     subscriber_->dump(os);
 }
@@ -94,6 +99,7 @@ void foreach_from_relationship::dump(std::ostream &os) const {
 
 void foreach_variable_from_relationship::process(graph_db_ptr &gdb,
                                                  const qr_tuple &v) {
+  PROF_PRE;
   node *n = nullptr;
   if (npos == std::numeric_limits<int>::max())
     n = boost::get<node *>(v.back());
@@ -103,16 +109,19 @@ void foreach_variable_from_relationship::process(graph_db_ptr &gdb,
   if (lcode == 0)
     lcode = gdb->get_code(label);
 
+  uint64_t num = 0;
   gdb->foreach_variable_from_relationship_of_node(
       *n, lcode, min_range, max_range, [&](relationship &r) {
         auto v2 = append(v, query_result(&r));
         consume_(gdb, v2);
+        num++;
       });
+  PROF_POST(num);
 }
 
 void foreach_variable_from_relationship::dump(std::ostream &os) const {
   os << "foreach_variable_from_relationship([" << label << ", (" << min_range
-     << "," << max_range << ")])=>";
+     << "," << max_range << ")]" << PROF_DUMP << ")=>";
   if (subscriber_)
     subscriber_->dump(os);
 }
@@ -169,41 +178,51 @@ void foreach_variable_to_relationship::dump(std::ostream &os) const {
 /* ------------------------------------------------------------------------ */
 
 void is_property::dump(std::ostream &os) const {
-  os << "is_property([" << property << "])=>";
+  os << "is_property([" << property << "]" << PROF_DUMP << ")=>";
   if (subscriber_)
     subscriber_->dump(os);
 }
 
 void is_property::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
+  bool success = false;
   auto n = v.back();
   if (pcode == 0)
     pcode = gdb->get_code(property);
 
   if (n.type() == typeid(node *)) {
-    if (gdb->is_node_property(*(boost::get<node *>(n)), pcode, predicate))
+    if (gdb->is_node_property(*(boost::get<node *>(n)), pcode, predicate)) {
       consume_(gdb, v);
+      success = true;
+    }
   } else if (n.type() == typeid(relationship *)) {
     if (gdb->is_relationship_property(*(boost::get<relationship *>(n)), pcode,
-                                      predicate))
+                                      predicate)) {
       consume_(gdb, v);
+      success = true;
+    }
   }
+  PROF_POST(success ? 1 : 0);
 }
 
 /* ------------------------------------------------------------------------ */
 
 void node_has_label::dump(std::ostream &os) const {
-  os << "node_has_label([" << label << "])=>";
+  os << "node_has_label([" << label << "]" << PROF_DUMP << ")=>";
   if (subscriber_)
     subscriber_->dump(os);
 }
 
 void node_has_label::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
+  bool success = false;
   auto n = boost::get<node *>(v.back());
   if (labels.empty()) {
     if (lcode == 0)
       lcode = gdb->get_code(label);
     if (n->node_label == lcode) {
       consume_(gdb, v);
+      success = true;
     }
   }
   else {
@@ -211,22 +230,26 @@ void node_has_label::process(graph_db_ptr &gdb, const qr_tuple &v) {
       lcode = gdb->get_code(label);
       if (n->node_label == lcode) {
         consume_(gdb, v);
+        success = true;
         break;
       }
     }
   }
+  PROF_POST(success ? 1 : 0);
 }
 
 /* ------------------------------------------------------------------------ */
 
 void get_from_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
   auto rship = boost::get<relationship *>(v.back());
   auto v2 = append(v, query_result(&(gdb->node_by_id(rship->src_node))));
   consume_(gdb, v2);
+  PROF_POST(1);
 }
 
 void get_from_node::dump(std::ostream &os) const {
-  os << "get_from_node()=>";
+  os << "get_from_node(" << PROF_DUMP << ")=>";
   if (subscriber_)
     subscriber_->dump(os);
 }
@@ -234,13 +257,15 @@ void get_from_node::dump(std::ostream &os) const {
 /* ------------------------------------------------------------------------ */
 
 void get_to_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
   auto rship = boost::get<relationship *>(v.back());
   auto v2 = append(v, query_result(&(gdb->node_by_id(rship->dest_node))));
   consume_(gdb, v2);
+  PROF_POST(1);
 }
 
 void get_to_node::dump(std::ostream &os) const {
-  os << "get_to_node()=>";
+  os << "get_to_node(" << PROF_DUMP << ")=>";
   if (subscriber_)
     subscriber_->dump(os);
 }
@@ -663,12 +688,13 @@ std::ostream &operator<<(std::ostream &os, const result_set &rs) {
 /* ------------------------------------------------------------------------ */
 
 void collect_result::dump(std::ostream &os) const {
-  os << "collect_result()";
+  os << "collect_result(" << PROF_DUMP << ")";
   if (subscriber_)
     subscriber_->dump(os);
 }
 
 void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
   // we transform node and relationship into their string representations ...
   qr_tuple res(v.size());
 
@@ -694,6 +720,7 @@ void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
   }
 
   results_.data.push_back(res);
+  PROF_POST(1);
 }
 
 void collect_result::finish(graph_db_ptr &gdb) { results_.notify(); }

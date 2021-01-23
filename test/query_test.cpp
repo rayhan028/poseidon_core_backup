@@ -604,3 +604,22 @@ TEST_CASE("Top K Weighted Shortest Paths", "[shortest_path]") {
 
   graph_pool::destroy(pool);
 }
+
+TEST_CASE("Testing query profiling", "[qop]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  create_data(graph);
+  auto dc = graph->get_code("aaa3");
+  graph->run_transaction([&]() {
+    result_set rs;
+    auto q = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(dc); })
+              .collect(rs);
+    q.start();
+    rs.wait();
+    q.dump(std::cout);
+    return true;
+  });
+}
