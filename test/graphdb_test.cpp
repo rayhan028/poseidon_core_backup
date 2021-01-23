@@ -421,7 +421,6 @@ TEST_CASE("Checking node with properties", "[graph_db]") {
   graph->commit_transaction();
   tx = graph->begin_transaction();
 
-  auto &n1 = graph->node_by_id(p1);
   auto ndescr = graph->get_node_description(p1);
 
   REQUIRE(ndescr.id == p1);
@@ -500,7 +499,6 @@ TEST_CASE("Checking a node update", "[graph_db]") {
                             {"city", boost::any(std::string("Munich"))},
                             {"zipcode", boost::any(12345)}});
     // and check whether the updates are available within the transaction
-    auto &n2 = graph->node_by_id(p1);
     auto ndescr = graph->get_node_description(p1);
 
     REQUIRE(ndescr.id == p1);
@@ -522,7 +520,6 @@ TEST_CASE("Checking a node update", "[graph_db]") {
     REQUIRE_THROWS(check_tx_context());
     auto tx = graph->begin_transaction();
 
-    auto &n2 = graph->node_by_id(p1);
     auto ndescr = graph->get_node_description(p1);
 
     REQUIRE(ndescr.id == p1);
@@ -578,7 +575,6 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
                             {"zipcode", boost::any(12345)}});
     // and check whether the updates are available within the transaction
     {
-    auto &n2 = graph->node_by_id(p1);
     auto ndescr = graph->get_node_description(p1);
 
     REQUIRE(ndescr.id == p1);
@@ -599,7 +595,6 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
                             {"zipcode", boost::any(12346)}}, ":Actor");
     // and check whether the updates are available within the transaction
     {
-    auto &n2 = graph->node_by_id(p1);
     auto ndescr = graph->get_node_description(p1);
 
     REQUIRE(ndescr.id == p1);
@@ -622,7 +617,6 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
     REQUIRE_THROWS(check_tx_context());
     auto tx = graph->begin_transaction();
 
-    auto &n2 = graph->node_by_id(p1);
     auto ndescr = graph->get_node_description(p1);
 
     REQUIRE(ndescr.id == p1);

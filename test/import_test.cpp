@@ -61,7 +61,6 @@ TEST_CASE("Importing a node", "[graph_db]") {
                                   {"age", boost::any(42)}});
 
   auto tx = graph->begin_transaction();
-  auto& n = graph->node_by_id(nid);
   auto nd = graph->get_node_description(nid);
     REQUIRE(nd.label == ":Actor");
     REQUIRE(nd.id == nid);
@@ -105,7 +104,6 @@ TEST_CASE("Importing a typed node", "[graph_db]") {
     { boost::any(val), boost::any(42)});
 
   auto tx = graph->begin_transaction();
-  auto& n = graph->node_by_id(nid);
   auto nd = graph->get_node_description(nid);
     REQUIRE(nd.label == "Actor");
     REQUIRE(nd.id == nid);

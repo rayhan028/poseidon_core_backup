@@ -151,14 +151,13 @@ void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
 
   auto end_qp = std::chrono::steady_clock::now();
 
-  std::cout << "Query executed in "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
-                                                                     start_qp)
-                   .count()
-            << " ms" << std::endl;
   std::cout << "Query compiled in "
             << std::chrono::duration_cast<std::chrono::milliseconds>(end_qc -
                                                                      start_qp)
+                   .count()
+            << " ms and executed in "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                     end_qc)
                    .count()
             << " ms" << std::endl;
 }
@@ -299,7 +298,7 @@ int main(int argc, char* argv[]) {
     run_shell(graph);
   }
 
-  exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
+  // exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
 
   if (!query_string.empty()) {
     exec_query(graph, query_string);
