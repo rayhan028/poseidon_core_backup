@@ -45,9 +45,7 @@ void scan_nodes::start(graph_db_ptr &gdb) {
 }
 
 void scan_nodes::dump(std::ostream &os) const {
-  os << "scan_nodes([" << label << "]" << PROF_DUMP << ")=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "scan_nodes([" << label << "]) - " << PROF_DUMP;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -62,9 +60,7 @@ void index_scan::start(graph_db_ptr &gdb) {
 }
 
 void index_scan::dump(std::ostream &os) const {
-  os << "index_scan([" << key << "])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "index_scan([" << key << "]) - " << PROF_DUMP;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -90,9 +86,7 @@ void foreach_from_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
 }
 
 void foreach_from_relationship::dump(std::ostream &os) const {
-  os << "foreach_from_relationship([" << label << "]" << PROF_DUMP << ")=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "foreach_from_relationship([" << label << "]) - " << PROF_DUMP;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -121,9 +115,7 @@ void foreach_variable_from_relationship::process(graph_db_ptr &gdb,
 
 void foreach_variable_from_relationship::dump(std::ostream &os) const {
   os << "foreach_variable_from_relationship([" << label << ", (" << min_range
-     << "," << max_range << ")]" << PROF_DUMP << ")=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+     << "," << max_range << ")]) - " << PROF_DUMP;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -144,9 +136,7 @@ void foreach_to_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
 }
 
 void foreach_to_relationship::dump(std::ostream &os) const {
-  os << "foreach_to_relationship([" << label << "])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "foreach_to_relationship([" << label << "]) - " << PROF_DUMP;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -170,17 +160,13 @@ void foreach_variable_to_relationship::process(graph_db_ptr &gdb,
 
 void foreach_variable_to_relationship::dump(std::ostream &os) const {
   os << "foreach_variable_to_relationship([" << label << ", (" << min_range
-     << "," << max_range << ")])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+     << "," << max_range << ")]) - " << PROF_DUMP;
 }
 
 /* ------------------------------------------------------------------------ */
 
 void is_property::dump(std::ostream &os) const {
-  os << "is_property([" << property << "]" << PROF_DUMP << ")=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "is_property([" << property << "]) - " << PROF_DUMP;
 }
 
 void is_property::process(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -208,9 +194,7 @@ void is_property::process(graph_db_ptr &gdb, const qr_tuple &v) {
 /* ------------------------------------------------------------------------ */
 
 void node_has_label::dump(std::ostream &os) const {
-  os << "node_has_label([" << label << "]" << PROF_DUMP << ")=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "node_has_label([" << label << "]) - " << PROF_DUMP;
 }
 
 void node_has_label::process(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -249,9 +233,8 @@ void get_from_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
 }
 
 void get_from_node::dump(std::ostream &os) const {
-  os << "get_from_node(" << PROF_DUMP << ")=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "get_from_node() - " << PROF_DUMP;
+
 }
 
 /* ------------------------------------------------------------------------ */
@@ -265,9 +248,7 @@ void get_to_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
 }
 
 void get_to_node::dump(std::ostream &os) const {
-  os << "get_to_node(" << PROF_DUMP << ")=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "get_to_node()" << PROF_DUMP;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -298,9 +279,7 @@ void printer::process(graph_db_ptr &gdb, const qr_tuple &v) {
 /* ------------------------------------------------------------------------ */
 
 void limit_result::dump(std::ostream &os) const {
-  os << "limit([" << num_ << "])";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "limit([" << num_ << "]) - " << PROF_DUMP;
 }
 
 void limit_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -313,9 +292,7 @@ void limit_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
 /* ------------------------------------------------------------------------ */
 
 void nodes_connected::dump(std::ostream &os) const {
-  os << "nodes_connected([" "])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "nodes_connected([" "]) - " << PROF_DUMP;
 }
 
 void nodes_connected::process(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -340,9 +317,7 @@ void nodes_connected::process(graph_db_ptr &gdb, const qr_tuple &v) {
 /* ------------------------------------------------------------------------ */
 
 void order_by::dump(std::ostream &os) const {
-  os << "order_by([])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "order_by([]) - " << PROF_DUMP;
 }
 
 void order_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -363,9 +338,7 @@ void order_by::finish(graph_db_ptr &gdb) {
 /* ------------------------------------------------------------------------ */
 
 void group_by::dump(std::ostream &os) const {
-  os << "group_by([])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "group_by([]) - " << PROF_DUMP;
 }
 
 void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -417,9 +390,7 @@ aggr_ops::aggr_ops(const std::vector<result_set> &grps,
                     grpkey_cnt_(0), total_(false), total_cnt_(0), aggrs_(aggrs), res_set_vec_(grps) {}
 
 void aggr_ops::dump(std::ostream &os) const {
-  os << "aggr_ops([])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "aggr_ops([]) - " << PROF_DUMP;
 }
 
 void aggr_ops::process(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -495,38 +466,38 @@ void aggr_ops::process(graph_db_ptr &gdb, const qr_tuple &v) {
 /* ------------------------------------------------------------------------ */
 
 void filter_tuple::dump(std::ostream &os) const {
-  os << "filter_tuple([])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "filter_tuple([]) - " << PROF_DUMP;
 }
 
 void filter_tuple::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
   bool tp = pred_func_(v);
-  if (tp)
+  if (tp) {
     consume_(gdb, v);
+    PROF_POST(1);
+  }
+  else PROF_POST(0);
 }
 
 /* ------------------------------------------------------------------------ */
 
 void qr_tuple_append::dump(std::ostream &os) const {
-  os << "qr_tuple_append([])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "qr_tuple_append([]) - " << PROF_DUMP;
 }
 
 void qr_tuple_append::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
   auto v1 = v;
   auto res = func_(v1);
   auto v2 = append(v1, res);
   consume_(gdb, v2);
+  PROF_POST(1);
 }
 
 /* ------------------------------------------------------------------------ */
 
 void union_all_qres::dump(std::ostream &os) const { // TODO
-  os << "union_all_qres()=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "union_all_qres() - " << PROF_DUMP;
 }
 
 void union_all_qres::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -547,12 +518,11 @@ void union_all_qres::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
 /* ------------------------------------------------------------------------ */
 
 void shortest_path_opr::dump(std::ostream &os) const {
-  os << "shortest_path_opr([])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "shortest_path_opr([]) - " << PROF_DUMP;
 }
 
 void shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
   auto a = boost::get<node *>(v[start_stop_.first]);
   auto b = boost::get<node *>(v[start_stop_.second]);
   auto start = a->id();
@@ -568,17 +538,17 @@ void shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
   res.push_back(query_result(spath.get_hops()));
 
   consume_(gdb, res);
+  PROF_POST(1); // ??
 }
 
 /* ------------------------------------------------------------------------ */
 
 void weighted_shortest_path_opr::dump(std::ostream &os) const {
-  os << "weighted_shortest_path_opr([])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "weighted_shortest_path_opr([]) - " << PROF_DUMP;
 }
 
 void weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
   auto a = boost::get<node *>(v[start_stop_.first]);
   auto b = boost::get<node *>(v[start_stop_.second]);
   auto start = a->id();
@@ -592,17 +562,17 @@ void weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
   res.push_back(query_result(weight));
 
   consume_(gdb, res);
+  PROF_POST(1);
 }
 
 /* ------------------------------------------------------------------------ */
 
 void k_weighted_shortest_path_opr::dump(std::ostream &os) const {
-  os << "k_weighted_shortest_path_opr([])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "k_weighted_shortest_path_opr([]) - " << PROF_DUMP;
 }
 
 void k_weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
   auto a = boost::get<node *>(v[start_stop_.first]);
   auto b = boost::get<node *>(v[start_stop_.second]);
   auto start = a->id();
@@ -621,6 +591,7 @@ void k_weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v)
   }
 
   consume_(gdb, res);
+  PROF_POST(1);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -688,9 +659,7 @@ std::ostream &operator<<(std::ostream &os, const result_set &rs) {
 /* ------------------------------------------------------------------------ */
 
 void collect_result::dump(std::ostream &os) const {
-  os << "collect_result(" << PROF_DUMP << ")";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "collect_result() - " << PROF_DUMP;
 }
 
 void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -767,15 +736,13 @@ void projection::dump(std::ostream &os) const {
     if (ex.func != nullptr)
       os << "+";
   }
-  os << " ])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << " ]) - " << PROF_DUMP;
 }
 
 void projection::process(graph_db_ptr &gdb, const qr_tuple &v) {
   // First, we build a list of all node_/rship_description objects which appear
   // in the query result. This list is used as a cache for property functions.
-
+  PROF_PRE;
   auto i = 0;
   auto num_accessed_vars = accessed_vars_.size();
   std::vector<projection::pr_result> pv(num_accessed_vars * 2);
@@ -810,6 +777,7 @@ void projection::process(graph_db_ptr &gdb, const qr_tuple &v) {
   }
 
   consume_(gdb, res);
+  PROF_POST(1);
 }
 
 /* --------------------------------------------------------------------- */

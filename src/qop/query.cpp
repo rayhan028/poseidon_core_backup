@@ -389,8 +389,6 @@ query &query::delete_rship(const std::size_t pos) {
 
 void query::start() { plan_head_->start(graph_db_); }
 
-void query::dump(std::ostream &os) { plan_head_->dump(os); }
-
 void query::start(std::initializer_list<query *> queries) {
   for (auto &q : queries) {
     q->start();
@@ -403,8 +401,3 @@ void query_set::start() {
   }
 }
 
-void query_set::dump(std::ostream &os) {
-  for (auto &q : queries_) {
-    q.dump(os);
-  }
-}

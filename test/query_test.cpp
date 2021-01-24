@@ -619,7 +619,7 @@ TEST_CASE("Testing query profiling", "[qop]") {
               .collect(rs);
     q.start();
     rs.wait();
-    q.dump(std::cout);
+    q.print_plan();
     return true;
   });
 }

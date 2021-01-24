@@ -1573,6 +1573,7 @@ void run_ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs) {
                .collect(rs);
   q.start();
   rs.wait();
+  q.print_plan();
 }
 
 void run_ldbc_is_query_2(graph_db_ptr &gdb, result_set &rs) {
@@ -1655,6 +1656,7 @@ void run_ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs) {
   
   q.start();
   rs.wait();
+  q.print_plan();
 }
 
 void run_ldbc_is_query_4(graph_db_ptr &gdb, result_set &rs) {
@@ -1670,6 +1672,7 @@ void run_ldbc_is_query_4(graph_db_ptr &gdb, result_set &rs) {
 				
 	q.start();
 	rs.wait();
+  q.print_plan();
 }
 
 void run_ldbc_is_query_5(graph_db_ptr &gdb, result_set &rs) {
@@ -1686,6 +1689,7 @@ void run_ldbc_is_query_5(graph_db_ptr &gdb, result_set &rs) {
                 .collect(rs);
 	q.start();
 	rs.wait();
+  q.print_plan();
 }
 
 void run_ldbc_is_query_6(graph_db_ptr &gdb, result_set &rs) {

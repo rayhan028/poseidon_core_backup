@@ -335,6 +335,7 @@ set(src_files
   src/qop/update.cpp
   src/qop/join.cpp
   src/qop/query.cpp
+  src/qop/query_printer.cpp
   src/qop/bfs.cpp
   src/qop/shortest_path.cpp
   src/qop/thread_pool.cpp

@@ -369,9 +369,10 @@ public:
   /**
    * Print the query plan.
    */
-  void dump(std::ostream &os = std::cout);
+  void print_plan(std::ostream& os = std::cout);
 
   static void start(std::initializer_list<query *> queries);
+  static void print_plans(std::initializer_list<query *> queries, std::ostream& os = std::cout);
 
   /**
    * Return the pointer to the graph database.
@@ -404,11 +405,6 @@ public:
    * Start the execution of the query.
    */
   void start();
-
-  /**
-   * Print the query plan.
-   */
-  void dump(std::ostream &os = std::cout);
 
 private:
   std::vector<query> queries_;
