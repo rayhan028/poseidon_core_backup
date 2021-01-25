@@ -1573,6 +1573,7 @@ void run_ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs) {
                .collect(rs);
   q.start();
   rs.wait();
+  std::cout << "ldbc_is_1\n";
   q.print_plan();
 }
 
@@ -1631,6 +1632,7 @@ void run_ldbc_is_query_2(graph_db_ptr &gdb, result_set &rs) {
 
   query::start({&q2, &q1});
   rs.wait();
+  std::cout << "ldbc_is_2\n";
   query::print_plans({&q1, &q2});  
 }
 
@@ -1657,6 +1659,7 @@ void run_ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs) {
   
   q.start();
   rs.wait();
+  std::cout << "ldbc_is_3\n";
   q.print_plan();
 }
 
@@ -1673,6 +1676,7 @@ void run_ldbc_is_query_4(graph_db_ptr &gdb, result_set &rs) {
 				
 	q.start();
 	rs.wait();
+  std::cout << "ldbc_is_4\n";
   q.print_plan();
 }
 
@@ -1690,6 +1694,7 @@ void run_ldbc_is_query_5(graph_db_ptr &gdb, result_set &rs) {
                 .collect(rs);
 	q.start();
 	rs.wait();
+  std::cout << "ldbc_is_5\n";
   q.print_plan();
 }
 
@@ -1730,6 +1735,7 @@ void run_ldbc_is_query_6(graph_db_ptr &gdb, result_set &rs) {
 	
 	query::start({&q1, &q2});
 	rs.wait();   
+  std::cout << "ldbc_is_6\n";
   query::print_plans({&q1, &q2});  
 }
 
@@ -1768,6 +1774,7 @@ void run_ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs) {
 
 	query::start({&q1, &q2});
 	rs.wait();
+  std::cout << "ldbc_is_7\n";
   query::print_plans({&q1, &q2});  
 }
 
@@ -1823,6 +1830,7 @@ void run_ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs) {
                       .collect(rs);
 
   query::start({&q1, &q2, &q3, &q4, &q5});
+  std::cout << "ldbc_iu_1\n";
   query::print_plans({&q1, &q2, &q3, &q4, &q5});
 }
 
@@ -1843,6 +1851,7 @@ void run_ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs) {
           .collect(rs);
 
   query::start({&q1, &q2});
+  std::cout << "ldbc_iu_2\n";
   query::print_plans({&q1, &q2});  
 }
 
@@ -1861,6 +1870,7 @@ void run_ldbc_iu_query_3(graph_db_ptr &gdb, result_set &rs) {
           .create_rship({0, 1}, ":LIKES", {{"creationDate", boost::any(creationDate)}})
           .collect(rs);
   query::start({&q1, &q2});
+  std::cout << "ldbc_iu_3\n";
   query::print_plans({&q1, &q2});
 }
 
@@ -1888,6 +1898,8 @@ void run_ldbc_iu_query_4(graph_db_ptr &gdb, result_set &rs) {
                       .collect(rs);
 
   query::start({&q1, &q2, &q3});
+  std::cout << "ldbc_iu_4\n";
+  query::print_plans({&q1, &q2, &q3});
 }
 
 void run_ldbc_iu_query_5(graph_db_ptr &gdb, result_set &rs) {
@@ -1906,6 +1918,8 @@ void run_ldbc_iu_query_5(graph_db_ptr &gdb, result_set &rs) {
           .collect(rs);
 
   query::start({&q1, &q2});
+  std::cout << "ldbc_iu_5\n";
+  query::print_plans({&q1, &q2});
 }
 
 void run_ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs) {
@@ -1955,6 +1969,8 @@ void run_ldbc_iu_query_6(graph_db_ptr &gdb, result_set &rs) {
                       .collect(rs);
 
   query::start({&q1, &q2, &q3, &q4, &q5});
+  std::cout << "ldbc_iu_6\n";
+  query::print_plans({&q1, &q2, &q3, &q4, &q5});
 }
 
 void run_ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs) {
@@ -1999,6 +2015,8 @@ void run_ldbc_iu_query_7(graph_db_ptr &gdb, result_set &rs) {
                       .collect(rs);
 
   query::start({&q1, &q2, &q3, &q4, &q5});
+  std::cout << "ldbc_iu_7\n";
+  query::print_plans({&q1, &q2, &q3, &q4, &q5});
 }
 
 void run_ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs) {
@@ -2017,6 +2035,9 @@ void run_ldbc_iu_query_8(graph_db_ptr &gdb, result_set &rs) {
           .collect(rs);
 
   query::start({&q1, &q2});
+  std::cout << "ldbc_iu_8\n";  
+  query::print_plans({&q1, &q2});
+
 }
 
 void run_all_ldbc_queries(graph_db_ptr &gdb, graph_db_ptr &gdb2) {

@@ -18,13 +18,12 @@
  */
 
 #include "join.hpp"
+#include "profiling.hpp"
 
 #define HASHER
 
-void cross_join::dump(std::ostream &os) const { // TODO
-  os << "cross_join()=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+void cross_join::dump(std::ostream &os) const { 
+  os << "cross_join() - " << PROF_DUMP;
 }
 
 void cross_join::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -43,9 +42,7 @@ void cross_join::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
 /* ------------------------------------------------------------------------ */
 
 void nested_loop_join::dump(std::ostream &os) const { // TODO
-  os << "nested_loop_join()=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "nested_loop_join() - " << PROF_DUMP;
 }
 
 void nested_loop_join::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -74,9 +71,7 @@ void nested_loop_join::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
 /* ------------------------------------------------------------------------ */
 
 void hash_join::dump(std::ostream &os) const { // TODO
-  os << "hash_join()=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "hash_join() - " << PROF_DUMP;
 }
 
 void hash_join::probe_phase(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -122,9 +117,7 @@ void hash_join::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
 /* ------------------------------------------------------------------------ */
 
 void left_outerjoin_on_node::dump(std::ostream &os) const { // TODO
-  os << "left_outerjoin_on_node()=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "left_outerjoin_on_node() - " << PROF_DUMP;
 }
 
 void left_outerjoin_on_node::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -160,9 +153,7 @@ void left_outerjoin_on_node::finish(graph_db_ptr &gdb) { qop::default_finish(gdb
 /* ------------------------------------------------------------------------ */
 
 void left_outerjoin_on_rship::dump(std::ostream &os) const { // TODO
-  os << "left_outerjoin()=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "left_outerjoin() - " << PROF_DUMP;
 }
 
 void left_outerjoin_on_rship::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
@@ -195,9 +186,7 @@ void left_outerjoin_on_rship::finish(graph_db_ptr &gdb) { qop::default_finish(gd
 /* ------------------------------------------------------------------------ */
 
 void rship_join::dump(std::ostream &os) const { // TODO
-  os << "rship_join()=>";
-  if (subscriber_)
-    subscriber_->dump(os);
+  os << "rship_join() - " << PROF_DUMP;
 }
 
 void rship_join::process_left(graph_db_ptr &gdb, const qr_tuple &v) {

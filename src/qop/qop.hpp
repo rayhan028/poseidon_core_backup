@@ -652,8 +652,6 @@ struct collect_result : public qop {
 
   void finish(graph_db_ptr &gdb);
 
-  // bool is_binary() const override { return true; }
-
   result_set &results_;
 };
 
