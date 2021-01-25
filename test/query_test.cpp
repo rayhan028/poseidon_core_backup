@@ -622,4 +622,41 @@ TEST_CASE("Testing query profiling", "[qop]") {
     q.print_plan();
     return true;
   });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing union_all operator", "[qop]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  namespace pj = builtin;
+
+  create_data(graph);
+  auto ab = graph->get_code("aaa3");
+  auto cd = graph->get_code("aaa7");
+  graph->run_transaction([&]() {
+    result_set rs, expected;
+    expected.append({query_result("aaa3")});
+    expected.append({query_result("aaa7")});
+
+    auto q1 = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(ab); })
+              .project({PExpr_(0, pj::string_property(res, "name"))});
+    
+    auto q2 = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(cd); })
+              .project({PExpr_(0, pj::string_property(res, "name"))})
+              .union_all(q1)
+              .collect(rs);
+
+    query::start({&q1, &q2});
+    rs.wait();
+    query::print_plans({&q1, &q2});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
 }
