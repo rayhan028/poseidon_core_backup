@@ -260,7 +260,7 @@ qr_tuple &get_qr_tuple() {
 std::mutex ct_mut;
  void collect_tuple(result_set *rs, bool print) {
     std::lock_guard<std::mutex> lck(ct_mut);
-    rs->data.push_back(tp);
+    rs->append(tp);
 
     if(print) {
         std::cout << "{";

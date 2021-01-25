@@ -24,6 +24,10 @@ void interprete_filter_visitor::visit(int rank, std::shared_ptr<str_token> str) 
     dict_value_ = dc;
 }
 
+void interprete_filter_visitor::visit(int rank, std::shared_ptr<time_token> time) {
+
+}
+
 void interprete_filter_visitor::visit(int rank, std::shared_ptr<fct_call> fct) {
     //TODO: implement
 }
@@ -38,6 +42,10 @@ void interprete_filter_visitor::visit(int rank, std::shared_ptr<and_predicate> a
 
 void interprete_filter_visitor::visit(int rank, std::shared_ptr<or_predicate> orpr) {
 
+}
+
+void interprete_filter_visitor::visit(int rank, std::shared_ptr<call_predicate> orpr) {
+    
 }
 
 std::function<bool(const p_item &)> interprete_filter_visitor::get_pred() {

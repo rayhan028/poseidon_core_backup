@@ -30,6 +30,12 @@ int nodefunc(node *n) {
 	return n->id();
 }
 
+bool int_fct(int *i) {
+	int in = *i;
+	return in % 2 == 0; 
+}
+
+
 #ifdef USE_PMDK
 
 #define PMEMOBJ_POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull))
@@ -76,13 +82,23 @@ int main() {
 				{"dummy1", boost::any(std::string("Dummy"))},
 				{"dummy2", boost::any(1.2345)}},
 				false);
+		auto p2 = graph->add_node("Person",
+				{{"name", boost::any(std::string("John Moe"))},
+				{"age", boost::any(42+add)},
+				{"id", boost::any(i)},
+				{"num", boost::any(uint64_t(1234567890123412)+uint64_t(i))},
+				{"dummy1", boost::any(std::string("Dummy"))},
+				{"dummy2", boost::any(1.2345)}},
+				false);
 		auto b = graph->add_node("Book",
 				{{"name", boost::any(std::string("Title"))},
 				{"Age", boost::any(42)},
 				{"id", boost::any(i)}},
 				false);
-		//graph->add_relationship(p, b, ":HAS_READ", {}, false);
-		//graph->add_relationship(b, p, ":HAS_READ", {}, false);
+		graph->add_relationship(p, b, ":likes", {}, false);
+		graph->add_relationship(p, p2, ":likes", {}, false);
+		graph->add_relationship(p, b, ":HAS_READ", {}, false);
+		graph->add_relationship(b, p, ":HAS_READ", {}, false);
 	}
 
 	graph->commit_transaction();
@@ -116,13 +132,18 @@ int main() {
 
 	std::vector<std::string> labels = {"Book", "Person"};
 	auto multi = Scan(labels, Project({{0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}, {0}}, Collect()));
+	auto multi_exp = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, labels, Project({{0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0}}, Collect()))));
+
+
+	auto filter_exp = Scan("Person", Filter(Call(Key(0, "id"), Fct(int_fct)), Project({{0, nodefunc}}, Collect())));
+
 	scan_task::callee_ = &scan_task::scan;	
-	queryEngine.generate(multi, false);
+	queryEngine.generate(filter_exp, false);
 	
 	arg_builder ab;
 	ab.arg(1, "Person");
-	ab.arg(2, "Book");
-	ab.arg(3, "Book");
+	ab.arg(2, ":likes");
+	ab.arg(3, "Person");
 	ab.arg(4, "Book");
 	ab.arg(5, ":HAS_READ");
 	ab.arg(6, "Person");

@@ -332,8 +332,13 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     ctx.getBuilder().CreateBr(fe_entry);
     ctx.getBuilder().SetInsertPoint(fe_entry);
 
+
+    Value *node;
     // get the previous tuple result
-    auto node = reg_query_results.back().reg_val;
+    if(op->node_pos_ == std::numeric_limits<int>::max())
+        node = reg_query_results.back().reg_val;
+    else
+        node = reg_query_results.at(op->node_pos_).reg_val;
 
     auto UNKNOWN_REL_ID = ConstantInt::get(ctx.int64Ty,
                                            std::numeric_limits<int64_t>::max()); // TODO: UNKNOWN VALUE = std::numeric_limits<int64_t>::max()
@@ -476,6 +481,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
                         auto exists = ctx.getBuilder().CreateCall(rship_has_property, {gdb, r.reg_val, project_keys[i-1]});
                     } 
                 } else if(pe.int_node_func != nullptr && pe.key.empty()) {
+                    pe.type = FTYPE::INT;
                     auto fc_raw = ConstantInt::get(ctx.int64Ty, (int64_t)pe.int_node_func);
                     auto fc_ptr = ctx.getBuilder().CreateIntToPtr(fc_raw, ctx.int64PtrTy);
                     auto fc_ty = FunctionType::get(ctx.int64Ty, {ctx.nodePtrTy}, false);
@@ -609,6 +615,39 @@ void codegen_inline_visitor::visit(std::shared_ptr<expand_op> op) {
             // branch to appropriate block
             ctx.getBuilder().CreateCondBr(cond, consume, null);
         }
+    } else if(!op->labels_.empty()) {        
+        FunctionCallee dict_lookup_label = ctx.extern_func("dict_lookup_label");
+        ctx.getBuilder().SetInsertPoint(check_label);
+        auto opid = ConstantInt::get(ctx.int64Ty, op->op_id_);
+            
+        std::vector<Value*> label_codes;
+        std::vector<BasicBlock*> multi_label_conds;
+        auto i = 0u;
+        Value *id = opid;
+        for(auto & label : op->labels_) {
+            auto str = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(queryArgs, {ctx.LLVM_ZERO, id}));
+            label_codes.push_back(ctx.getBuilder().
+                                     CreateCall(dict_lookup_label, 
+                                        {gdb, ctx.getBuilder().CreateBitCast(str, ctx.int8PtrTy)}
+                                        ));
+            id = ctx.getBuilder().CreateAdd(id, ctx.LLVM_ONE);
+            multi_label_conds.push_back(BasicBlock::Create(ctx.getModule().getContext(), "condition_"+label, main_function));
+        }
+
+        ctx.getBuilder().CreateBr(multi_label_conds.front());
+
+        i = 0;
+        for(auto cond : multi_label_conds) {
+            ctx.getBuilder().SetInsertPoint(cond);
+            auto label_cmp = ctx.node_cmp_label(node, label_codes[i++]);
+            if(i == multi_label_conds.size()) {
+                ctx.getBuilder().CreateCondBr(label_cmp, consume, null);
+            } else {
+                ctx.getBuilder().CreateCondBr(label_cmp, consume, multi_label_conds[i]);
+            }
+
+        }
+
     }
 
     // add result to register list 

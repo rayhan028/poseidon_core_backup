@@ -29,6 +29,12 @@ using params_tuple_bi = std::vector<param_val>;
 //std::vector<params_tuple_bi> q1_params = {{time_from_string(std::string("2017-04-14 01:51:21.746"))}};
 //std::vector<params_tuple_bi> q2_params = {{time_from_string(std::string("2011-04-14 01:51:21.746"))}};
 
+bool q1_filter_cdate(int *prop_ptr) {
+    auto prop = (p_item*)prop_ptr;
+    return (*reinterpret_cast<const ptime *>(prop->value_)) < time_from_string(std::string("2017-04-14 01:51:21.746"));
+    
+}
+
 int q1_get_node_property(projection::pr_result pr) {
     return boost::get<int>(pj::int_property(pr, "length"));
 }
@@ -38,6 +44,33 @@ int q1_group_msg_len(node * n) {
     return (len >= 0 && len < 40) ? 0 :
                 (len >= 40 && len < 80) ? 1 :
                     (len >= 80 && len < 160) ? 2 : 3; 
+}
+
+bool q2_filter_cdate_1(int *prop_ptr) {
+    auto prop = (p_item*)prop_ptr;
+    auto d = *reinterpret_cast<const ptime *>(prop->value_);
+    auto dt = time_from_string(std::string("2011-04-14 01:51:21.746"));
+    time_period duration(dt, hours(24*100));
+    return duration.contains(d) ? true : false;
+}
+
+bool q2_filter_cdate_2(int *prop_ptr) {
+    auto prop = (p_item*)prop_ptr;
+    auto d = *reinterpret_cast<const ptime *>(prop->value_);
+    auto dt1 = time_from_string(std::string("2011-04-14 01:51:21.746"));
+    time_period duration1(dt1, hours(24*100));
+    auto dt2 = duration1.last();
+    time_period duration2(dt2, hours(24*100));
+    return duration2.contains(d) ? true : false;
+}
+
+thread_local query_result qr;
+query_result* q2_compute_diff(qr_tuple &q) {
+    auto cnt = boost::get<uint64_t>(q.at(1));
+    auto nxt_cnt = boost::get<uint64_t>(q.at(2));
+    uint64_t diff = cnt > nxt_cnt ? cnt - nxt_cnt : nxt_cnt - cnt;
+    qr = query_result(diff);
+    return &qr;        
 }
 
 

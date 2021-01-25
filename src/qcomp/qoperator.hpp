@@ -2,11 +2,11 @@
 #define QOPERATOR_HPP
 
 #include <iostream>
+#include <limits>
 
 #include "p_context.hpp"
 #include "filter_expression.hpp"
 #include "global_definitions.hpp"
-
 #include "query_engine.hpp"
 
 using namespace llvm;
@@ -183,7 +183,14 @@ public:
         inputs_.push_back(inp);
     }
 
-    foreach_rship_op(RSHIP_DIR dir, std::pair<int, int> hops, std::string label, algebra_optr inp) : dir_(dir), label_(label), hops_(hops) {
+    foreach_rship_op(RSHIP_DIR dir, std::pair<int, int> hops, std::string label, algebra_optr inp) : dir_(dir), label_(label), hops_(hops), node_pos_(std::numeric_limits<int>::max()) {
+        name_ = "ForeachRelationship";
+        inputs_.push_back(inp);
+        produced_type_ = 1;
+        type_ = qop_type::foreach_rship;
+    }
+
+    foreach_rship_op(RSHIP_DIR dir, std::string label, int node_pos, algebra_optr inp) : dir_(dir), label_(label), node_pos_(node_pos) {
         name_ = "ForeachRelationship";
         inputs_.push_back(inp);
         produced_type_ = 1;
@@ -199,11 +206,17 @@ public:
     RSHIP_DIR dir_;
     std::string label_;
     std::pair<int, int> hops_;
+    int node_pos_;
 };
 
 inline algebra_optr ForeachRship(RSHIP_DIR dir, std::pair<int, int> hops, std::string label, algebra_optr op) {
     return std::make_shared<foreach_rship_op>(dir, hops, label, op);
 }
+
+inline algebra_optr ForeachRship(RSHIP_DIR dir, std::string label, int node_pos, algebra_optr op) {
+    return std::make_shared<foreach_rship_op>(dir, label, node_pos, op);
+}
+
 
 
 
@@ -277,14 +290,22 @@ public:
         produced_type_ = 0;
     }
 
+    expand_op(EXPAND exp, std::vector<std::string> labels, algebra_optr inp) : exp_(exp), labels_(labels) {
+        name_ = "Expand";
+        inputs_.push_back(inp);
+        type_ = qop_type::expand;
+        produced_type_ = 0;
+    }
+
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
     EXPAND exp_;
     std::string label_;
+    std::vector<std::string> labels_;
 };
 
 inline algebra_optr Expand(EXPAND exp, std::string label, algebra_optr op) { return std::make_shared<expand_op>(exp, label, op); }
-
+inline algebra_optr Expand(EXPAND exp, std::vector<std::string> labels, algebra_optr op) { return std::make_shared<expand_op>(exp, labels, op); }
 
 enum class JOIN_OP {
     CROSS,

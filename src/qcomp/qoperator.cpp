@@ -37,7 +37,7 @@ int query_id = 0;
 void scan_op::codegen(op_visitor & vis, unsigned & op_id, bool interpreted) {
     pipeline_types[query_id].push_back(0);
     op_id_ = op_id;
-    auto next_offset = indexed_ ? 3 : 1;
+    auto next_offset = indexed_ ? 3 : labels_.empty() ? 1 : labels_.size();
 
     vis.visit(shared_from_this());
 
@@ -85,12 +85,12 @@ void project::codegen(op_visitor & vis, unsigned & op_id, bool interpreted) {
 void expand_op::codegen(op_visitor & vis, unsigned & op_id, bool interpreted) {
     pipeline_types[query_id].push_back(0);
     op_id_ = op_id;
-
+    auto next_offset = labels_.empty() ? 1 : labels_.size();
 
     vis.visit(shared_from_this());
 
     for(auto & inp : inputs_) {
-        inp->codegen(vis, op_id+=1,interpreted);
+        inp->codegen(vis, op_id+=next_offset,interpreted);
     }
 }
 

@@ -12,47 +12,18 @@ double calc_avg() {
   return avg;
 }
 
-bool q1_filter_cdate(int *prop_ptr) {
-    auto prop = (p_item*)prop_ptr;
-    return (*reinterpret_cast<const ptime *>(prop->value_)) < time_from_string(std::string("2017-04-14 01:51:21.746"));
-    
-}
 
-bool q2_filter_cdate_1(int *prop_ptr) {
-    auto prop = (p_item*)prop_ptr;
-    auto d = *reinterpret_cast<const ptime *>(prop->value_);
-    auto dt = time_from_string(std::string("2011-04-14 01:51:21.746"));
-    time_period duration(dt, hours(24*100));
-    return duration.contains(d) ? true : false;
-}
-
-bool q2_filter_cdate_2(int *prop_ptr) {
-    auto prop = (p_item*)prop_ptr;
-    auto d = *reinterpret_cast<const ptime *>(prop->value_);
-    auto dt1 = time_from_string(std::string("2011-04-14 01:51:21.746"));
-    time_period duration1(dt1, hours(24*100));
-    auto dt2 = duration1.last();
-    time_period duration2(dt2, hours(24*100));
-    return duration2.contains(d) ? true : false;
-}
-
-bool q2_compute_diff(qr_tuple *q) {
-    
-}
 
 std::vector<std::string> message = {"Post", "Comment"};
-
-int dummy(node *n) {
-
-}
-
+/*
 void ldbc_jit_bi_query_1(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive) {
     auto q = Scan(message, 
                 Filter(Fct(q1_filter_cdate),
                     Project({{0, "creationDate", FTYPE::DATE}, 
                              {0, {"language", "imageFile"}, {"true", "false"}},
                              {0, "length", FTYPE::INT},
-                             {0, dummy}},
+                             {0},
+                             {0, q1_group_msg_len}},
                         GroupBy({0, 1, 3},
                             Aggr({{"count", 0}, {"avg", 2}, {"sum", 2}, {"pcount", 0}},
                                 //Sort()
@@ -83,7 +54,53 @@ void ldbc_jit_bi_query_1(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
 }
 
 void ldbc_jit_bi_query_2(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive) {
+    auto q2 = Scan(message,
+                Filter(Fct(q2_filter_cdate_2),
+                  ForeachRship(RSHIP_DIR::FROM, ":hasTag", 0,
+                    Expand(EXPAND::OUT, "Tag",
+                      GroupBy({2},
+                        Aggr({{"count", 0}},
+                          End()))))));
+    auto q1 = Scan(message,
+                Filter(Fct(q2_filter_cdate_1),
+                  ForeachRship(RSHIP_DIR::FROM, {}, ":hasTag",
+                    Expand(EXPAND::OUT, "Tag",
+                      GroupBy({2},
+                        Aggr({{"count", 0}},
+                          Join(JOIN_OP::NESTED_LOOP, {0,0}, 
+                            Project({{0, "name", FTYPE::STRING}, {1}, {3}}, 
+                              Append(q2_compute_diff, FTYPE::INT,
+                              //Sort(),
+                                Collect())), q2)))))));
+    
+    arg_builder ab;
+    ab.arg(1, message[0]);
+    ab.arg(2, message[1]);
+    ab.arg(3, ":hasTag");
+    ab.arg(4, "Tag");
+    ab.arg(5, message[0]);
+    ab.arg(6, message[1]);
+    ab.arg(7, ":hasTag");
+    ab.arg(8, "Tag");
 
+    if(!compiled) {
+        auto c_s = std::chrono::steady_clock::now();
+        qeng.generate(q1, adaptive);
+        compiled = true;
+        auto c_e = std::chrono::steady_clock::now();
+        std::cout << "Compilation: " 
+            << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count() 
+            << " ms" << std::endl;
+    
+    }
+
+    auto e_s = std::chrono::steady_clock::now();
+    qeng.run(&rs, ab.args, false);
+    auto e_e = std::chrono::steady_clock::now();
+    
+    std::cout << "Execution: " 
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl; 
 }
 
 void run_is_1(graph_db_ptr gdb, query_engine &qeng) {
@@ -96,6 +113,243 @@ void run_is_1(graph_db_ptr gdb, query_engine &qeng) {
     }
 
 }
+
+void ldbc_jit_bi_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive) {
+    auto q = Scan("Place", 
+              Filter(Fct(q3_filter_cntry),
+              ForeachRship(RSHIP_DIR::TO, {}, ":isPartOf",
+                  Expand(EXPAND::IN, "Place",
+                    ForeachRship(RSHIP_DIR::TO, {}, ":isLocatedIn",
+                      Expand(EXPAND::IN, "Person",
+                        ForeachRship(RSHIP_DIR::TO, {}, ":hasModerator",
+                          Expand(EXPAND::IN, "Forum", 
+                            ForeachRship(RSHIP_DIR::FROM, {}, ":containerOf",
+                              Expand(EXPAND::OUT, message,
+                                ForeachRship(RSHIP_DIR::FROM, {}, ":hasTag",
+                                  Expand(EXPAND::OUT, "Tag",
+                                    ForeachRship(RSHIP_DIR::FROM, {}, ":hasType", 
+                                      Expand(EXPAND::OUT, "Tagclass",
+                                        Filter(Fct(q3_filter_tgclass),
+                                          GroupBy({6, 4},
+                                            Aggr({{"count", 0}},
+                                              Project({{0, "id", FTYPE::UINT64}, {0, "title", FTYPE::STRING}, {0, "creationDate", FTYPE::TIME}, {1, "id", FTYPE::UINT64}, {2}},
+                                                //Sort
+                                                  Limit(20,
+                                                    Collect())))))))))))))))))));
+
+    arg_builder ab;
+    ab.arg(1, "Place");
+    ab.arg(2, ":isPartOf");
+    ab.arg(3, "Place");
+    ab.arg(4, ":isLocatedIn");
+    ab.arg(5, "Person");
+    ab.arg(6, ":hasModerator");
+    ab.arg(7, "Forum");
+    ab.arg(8, ":containerOf");
+    ab.arg(9, message[0]);
+    ab.arg(10, message[1]);
+    ab.arg(11, ":hasTag");
+    ab.arg(12, "Tag");
+    ab.arg(13, ":hasType");
+    ab.arg(14, "Tagclass");
+
+    if(!compiled) {
+        auto c_s = std::chrono::steady_clock::now();
+        qeng.generate(q, adaptive);
+        compiled = true;
+        auto c_e = std::chrono::steady_clock::now();
+        std::cout << "Compilation: " 
+            << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count() 
+            << " ms" << std::endl;
+    
+    }
+
+    auto e_s = std::chrono::steady_clock::now();
+    qeng.run(&rs, ab.args, false);
+    auto e_e = std::chrono::steady_clock::now();
+    
+    std::cout << "Execution: " 
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl; 
+}
+
+void ldbc_jit_bi_query_4(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive) {
+    auto sort_fct1 = [&](const qr_tuple &q1, const qr_tuple &q2) {
+                return boost::get<uint64_t>(q1[1]) > boost::get<uint64_t>(q2[1]); };
+
+    auto sort_fct2 = [&](const qr_tuple &q1, const qr_tuple &q2) {
+                if (boost::get<uint64_t>(q1[4]) == boost::get<uint64_t>(q2[4]))
+                  return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);
+                return boost::get<uint64_t>(q1[4]) > boost::get<uint64_t>(q2[4]); };
+
+
+
+    auto q1 = Scan("Place",
+                Filter(Fct(q3_filter_cntry),
+                  ForeachRship(RSHIP_DIR::TO, {}, ":isPartOf",
+                    Expand(EXPAND::IN, "Place",
+                      ForeachRship(RSHIP_DIR::TO, {}, ":isLocatedIn",
+                        Expand(EXPAND::IN, "Person",
+                          ForeachRship(RSHIP_DIR::TO, {}, ":hasMember",
+                            Expand(EXPAND::IN, "Forum",
+                              Project({{6}, {6, "creationDate", FTYPE::TIME}},
+                                Filter(GT(Tuple(1), Time(q4_params[1])),
+                                  GroupBy({0},
+                                    Aggr({{"count", 0}},
+                                      //Sort()
+                                        Limit(100,
+                                          End(JOIN_OP::HASH_JOIN, 0))))))))))))));
+
+    auto q2 = Scan("Place",
+                Filter(Fct(q3_filter_cntry),
+                  ForeachRship(RSHIP_DIR::TO, {}, ":isPartOf",
+                    Expand(EXPAND::IN, "Place",
+                      ForeachRship(RSHIP_DIR::TO, {}, ":isLocatedIn",
+                        Expand(EXPAND::IN, "Person",
+                          ForeachRship(RSHIP_DIR::TO, {}, ":hasMember",
+                            Expand(EXPAND::IN, "Forum",
+                              Project({{6}, {6, "creationDate", FTYPE::TIME}},
+                                Filter(GT(Tuple(1), Time(q4_params[1])),
+                                  GroupBy({0},
+                                    Aggr({{"count", 0}},
+                                      Sort(sort_fct1,
+                                        Limit(100,
+                                          ForeachRship(RSHIP_DIR::FROM, ":hasMember", 2
+                                            Expand(EXPAND::OUT, "Person",
+                                              ForeachRship(RSHIP_DIR::TO, {}, ":hasCreator",
+                                                Expand(EXPAND::IN, "Post",
+                                                  ForeachRship(RSHIP_DIR::TO, {}, ":containerOf",
+                                                    Expand(EXPAND::IN, "Forum",
+                                                      Join(JOIN_OP::HASH_JOIN, {7,0}, 
+                                                        GroupBy({3},
+                                                          Aggr({{"count", 0}},
+                                                            Project({{0, "id", FTYPE::UINT64}, {0, "firstName", FTYPE::STRING}, {0, "lastName", FTYPE::STRING}, {0, "creationDate", FTYPE::TIME}, {1}},
+                                                              Sort(sort_fct2,
+                                                                Collect())))), q1)))))))))))))))))))));
+
+    arg_builder ab;
+    ab.arg(1, "Place");
+    ab.arg(2, ":isPartOf");
+    ab.arg(3, "Place");
+    ab.arg(4, ":isLocatedIn");
+    ab.arg(5, "Person");
+    ab.arg(6, ":hasMember");
+    ab.arg(7, "Forum");
+    ab.arg(8, ":hasMember");
+    ab.arg(9, "Person");
+    ab.arg(10, ":hasCreator");
+    ab.arg(11, "Post");
+    ab.arg(12, ":containerOf");
+    ab.arg(13, "Forum");
+
+    if(!compiled) {
+        auto c_s = std::chrono::steady_clock::now();
+        qeng.generate(q2, adaptive);
+        compiled = true;
+        auto c_e = std::chrono::steady_clock::now();
+        std::cout << "Compilation: " 
+            << std::chrono::duration_cast<std::chrono::milliseconds>(c_e-c_s).count() 
+            << " ms" << std::endl;
+    
+    }
+
+    auto e_s = std::chrono::steady_clock::now();
+    qeng.run(&rs, ab.args, false);
+    auto e_e = std::chrono::steady_clock::now();
+    
+    std::cout << "Execution: " 
+        << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
+        << " ms" << std::endl; 
+}
+
+void ldbc_bi_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+
+    auto q3 = Scan("Tag",
+                Filter(Fct(q5_filter_tag), 
+                  ForeachRship(RSHIP_DIR::TO, {}, ":hasTag",
+                    Expand(EXPAND::IN, "",
+                      ForeachRship(RSHIP_DIR::FROM, {}, ":hasCreator",
+                        Expand(EXPAND::OUT, "Person",
+                          GroupBy({4},
+                            Aggr({{"count", 0}},
+                              End(JOIN_OP::NESTED_LOOP, 0)))))))));
+
+    auto q2 = Scan("Tag",
+                Filter(Fct(q5_filter_tag),
+                  ForeachRship(RSHIP_DIR::TO, {}, ":hasTag",
+                    Expand(EXPAND::IN, "", 
+                      ForeachRship(RSHIP_DIR::FROM, {}, ":hasCreator",
+                        Expand(EXPAND::OUT, "Person",
+                          ForeachRship(RSHIP_DIR::TO, ":likes", 2,
+                            Expand(EXPAND::IN, "Person",
+                              GroupBy({4},
+                                Aggr({{"count", 0}},
+                                  Join(JOIN_OP::NESTED_LOOP, {0,0}, 
+                                    End(JOIN_OP::NESTED_LOOP, 0),
+                                  q3)))))))))));
+    auto q1 = Scan("Tag",
+                Filter(Fct(q5_filter_tag),
+                  ForeachRship(RSHIP_DIR::TO, {}, ":hasTag",
+                    Expand(EXPAND::IN, "",
+                      ForeachRship(RSHIP_DIR::FROM, {}, ":hasCreator",
+                        Expand(EXPAND::OUT, "Person",
+                          ForeachRship(RSHIP_DIR::TO, ":replyOf", 2,
+                            Expand(EXPAND::IN, "Comment",
+                              GroupBy({4},
+                                Aggr({{"count", 0}},
+                                  Join(JOIN_OP::NESTED_LOOP, {0,0},
+                                    Append(q5_score_func, FTYPE::INT,
+                                      Limit(100,
+                                        Project({{0, "id", FTYPE::STRING},
+                                                {1},
+                                                {3},
+                                                {5},
+                                                {6}},
+                                          Sort(q5_sort_fct,
+                                            Collect())))), 
+                                  q2)))))))))));
+}
+
+void ldbc_bi_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+    auto q2 = Scan("Tag",
+                Filter(Fct(q6_filter_tag),
+                  ForeachRship(RSHIP_DIR::TO, {}, ":hasTag",
+                    Expand(EXPAND::IN, message,
+                      ForeachRship(RSHIP_DIR::FROM, {}, ":hasCreator",
+                        Expand(EXPAND::OUT, "Person",
+                          ForeachRship(RSHIP_DIR::TO, {}, ":hasCreator",
+                            Expand(EXPAND::IN, message,
+                              ForeachRship(RSHIP_DIR::TO, {}, ":likes",
+                                Expand(EXPAND::IN, "Person",
+                                  Project({8},
+                                    ForeachRship(RSHIP_DIR::TO, {}, ":hasCreator",
+                                      Expand(EXPAND::IN, message,
+                                        ForeachRship(RSHIP_DIR::TO, {}, ":likes",
+                                          Expand(EXPAND::IN, "Person",
+                                            GroupBy({0},
+                                              Aggr({{"count", 0}},
+                                                End(JOIN_OP::NESTED_LOOP, 0))))))))))))))))));
+    auto q1 = Scan("Tag",
+                Filter(Fct(q6_filter_tag),
+                  ForeachRship(RSHIP_DIR::TO, {}, ":hasTag",
+                    Expand(EXPAND::IN, message,
+                      ForeachRship(RSHIP_DIR::FROM, {}, ":hasCreator",
+                        Expand(EXPAND::OUT, "Person",
+                          ForeachRship(RSHIP_DIR::TO, {}, ":hasCreator",
+                            Expand(EXPAND::IN, message,
+                              ForeachRship(RSHIP_DIR::TO, {}, ":likes",
+                                Expand(EXPAND::IN, "Person",
+                                  Project({{4}, {8}},
+                                    Join(JOIN_OP::HASH_JOIN, {1, 0}, 
+                                      GroupBy({0}, 
+                                        Aggr({{"sum", 3}},
+                                          Project({{0, "id", FTYPE::UINT64}, {1}},
+                                            Limit(100,
+                                              Sort(q6_sort_fct,
+                                                Collect()))))),
+                                    q2))))))))))));
+}
+*/
 
 void run_benchmark(graph_db_ptr gdb, query_engine &qeng) {
 
