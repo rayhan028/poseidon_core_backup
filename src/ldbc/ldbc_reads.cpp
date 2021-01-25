@@ -946,9 +946,6 @@ int main(int argc, char **argv) {
   load_snb_data(graph, snb_home);
 #endif
   graph->print_stats();
-
-  for (auto i = 0; i < 10; i++) {
-          std::cout << "Run: " << i << "\n";
-    run_benchmark(graph);
-  }
+  
+  run_benchmark(graph);
 }

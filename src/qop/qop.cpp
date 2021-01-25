@@ -501,16 +501,11 @@ void union_all_qres::dump(std::ostream &os) const { // TODO
 }
 
 void union_all_qres::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
-  if (init) {
-    for (auto &r : res_)
-      consume_(gdb, r);
-    init = false;
-  }
   consume_(gdb, v);
 }
 
 void union_all_qres::process_right(graph_db_ptr &gdb, const qr_tuple &v) {
-  res_.push_back(v);
+  consume_(gdb, v);
 }
 
 void union_all_qres::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }

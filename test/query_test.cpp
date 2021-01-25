@@ -660,3 +660,53 @@ TEST_CASE("Testing union_all operator", "[qop]") {
   });
   graph_pool::destroy(pool);
 }
+
+TEST_CASE("Testing union_all operator 2", "[qop]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  namespace pj = builtin;
+
+  create_data(graph);
+  auto a = graph->get_code("aaa1");
+  auto b = graph->get_code("aaa2");
+  auto c = graph->get_code("aaa3");
+  auto d = graph->get_code("aaa4");
+  graph->run_transaction([&]() {
+    result_set rs, expected;
+    expected.append({query_result("aaa1")});
+    expected.append({query_result("aaa2")});
+    expected.append({query_result("aaa3")});
+    expected.append({query_result("aaa4")});
+
+    auto q1 = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(a); })
+              .project({PExpr_(0, pj::string_property(res, "name"))});
+
+    auto q2 = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(b); })
+              .project({PExpr_(0, pj::string_property(res, "name"))});
+
+    auto q3 = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(c); })
+              .project({PExpr_(0, pj::string_property(res, "name"))});
+    
+    auto q4 = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(d); })
+              .project({PExpr_(0, pj::string_property(res, "name"))})
+              .union_all({&q1, &q2, &q3})
+              .collect(rs);
+
+    query::start({&q1, &q2, &q3, &q4});
+    rs.wait();
+    query::print_plans({&q1, &q2, &q3, &q4});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}

@@ -665,7 +665,7 @@ void ldbc_is_query_5_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
 void ldbc_is_query_6(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
   auto maxHops = 100;
 
-  auto q1 = query(gdb)
+    auto q1 = query(gdb)
 #ifdef RUN_INDEXED
                .nodes_where_indexed("Post", "id", messageId)
 #elif defined(RUN_PARALLEL)
@@ -685,8 +685,7 @@ void ldbc_is_query_6(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(2, pj::string_property(res, "title")),
                           PExpr_(4, pj::uint64_property(res, "id")),
                           PExpr_(4, pj::string_property(res, "firstName")),
-                          PExpr_(4, pj::string_property(res, "lastName")) })
-                .collect(rs);
+                          PExpr_(4, pj::string_property(res, "lastName")) });
 
   auto q2 = query(gdb)
 #ifdef RUN_INDEXED
@@ -711,6 +710,7 @@ void ldbc_is_query_6(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(6, pj::uint64_property(res, "id")),
                           PExpr_(6, pj::string_property(res, "firstName")),
                           PExpr_(6, pj::string_property(res, "lastName")) })
+                .union_all(q1)
                 .collect(rs);
 
   query::start({&q1, &q2});
@@ -1979,11 +1979,11 @@ void fptree_recovery(graph_db_ptr &graph){
   indexes.push_back(graph->get_index("Person", "id"));
   indexes.push_back(graph->get_index("Post", "id"));
   indexes.push_back(graph->get_index("Comment", "id"));
-/*  indexes.push_back(graph->get_index("Place", "id"));
+  indexes.push_back(graph->get_index("Place", "id"));
   indexes.push_back(graph->get_index("Tag", "id"));
   indexes.push_back(graph->get_index("Tagclass", "id"));
   indexes.push_back(graph->get_index("Organisation", "id"));
-  indexes.push_back(graph->get_index("Forum", "id"));*/
+  indexes.push_back(graph->get_index("Forum", "id"));
   graph->commit_transaction();
   for (auto idx_ptr : indexes)
     idx_ptr->recover();
