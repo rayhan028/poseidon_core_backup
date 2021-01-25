@@ -1631,6 +1631,7 @@ void run_ldbc_is_query_2(graph_db_ptr &gdb, result_set &rs) {
 
   query::start({&q2, &q1});
   rs.wait();
+  query::print_plans({&q1, &q2});  
 }
 
 void run_ldbc_is_query_3(graph_db_ptr &gdb, result_set &rs) {
@@ -1728,7 +1729,8 @@ void run_ldbc_is_query_6(graph_db_ptr &gdb, result_set &rs) {
                 .collect(rs);
 	
 	query::start({&q1, &q2});
-	rs.wait(); 
+	rs.wait();   
+  query::print_plans({&q1, &q2});  
 }
 
 void run_ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs) {
@@ -1766,6 +1768,7 @@ void run_ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs) {
 
 	query::start({&q1, &q2});
 	rs.wait();
+  query::print_plans({&q1, &q2});  
 }
 
 void run_ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs) {
@@ -1820,6 +1823,7 @@ void run_ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs) {
                       .collect(rs);
 
   query::start({&q1, &q2, &q3, &q4, &q5});
+  query::print_plans({&q1, &q2, &q3, &q4, &q5});
 }
 
 void run_ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs) {
@@ -1839,6 +1843,7 @@ void run_ldbc_iu_query_2(graph_db_ptr &gdb, result_set &rs) {
           .collect(rs);
 
   query::start({&q1, &q2});
+  query::print_plans({&q1, &q2});  
 }
 
 void run_ldbc_iu_query_3(graph_db_ptr &gdb, result_set &rs) {
@@ -1855,8 +1860,8 @@ void run_ldbc_iu_query_3(graph_db_ptr &gdb, result_set &rs) {
           .crossjoin(q1)
           .create_rship({0, 1}, ":LIKES", {{"creationDate", boost::any(creationDate)}})
           .collect(rs);
-
   query::start({&q1, &q2});
+  query::print_plans({&q1, &q2});
 }
 
 void run_ldbc_iu_query_4(graph_db_ptr &gdb, result_set &rs) {

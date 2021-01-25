@@ -14,6 +14,8 @@ struct qop_node {
 
     qop_node(qop_ptr p) : qop_(p) {}
 
+    bool is_binary() const { return qop_->is_binary(); }
+
     void print(std::ostream& os) {
         qop_->dump(os); 
         os << std::endl;
@@ -35,6 +37,43 @@ std::pair<qop_node_ptr, qop_node_ptr> build_qop_tree(qop_ptr root) {
     np.second->children_.push_back(rn);
     return std::make_pair(np.first, rn);
 }
+
+qop_node_ptr find_binary_qop(qop_node_ptr tree) {
+    // we know that this tree is only a list!
+    while (tree != nullptr) {
+        if (tree->is_binary()) 
+            return tree;
+        assert(tree->children_.size() <= 1);
+        tree = tree->children_.empty() ? nullptr : tree->children_.front();
+    }
+    return nullptr;
+}
+
+qop_node_ptr find_matching_qop(qop_node_ptr tree, qop_node_ptr node) {
+    if (tree->qop_ == node->qop_)
+        return tree;
+    for (auto& qp : tree->children_) {
+        auto tp = find_matching_qop(qp, node);
+        if (tp)
+            return tp;
+    }
+    return nullptr;
+}
+
+void merge_qop_trees(qop_node_ptr master, qop_node_ptr tree) {
+    // 1. find the first binary operator in tree
+    qop_node_ptr bin_op = find_binary_qop(tree);
+    if (! bin_op)
+        return;
+
+    // 2. try to find the same operator in master
+    qop_node_ptr master_bin_op = find_matching_qop(master, bin_op);
+
+    // 3. merge both trees on this operator
+    master_bin_op->children_.push_back(bin_op);
+}
+
+// --------------------------------------------------------------------------------------
 
 void print_plan_helper(std::ostream& os, qop_node_ptr root, const std::string& prefix) {
     bool hasFirst = (root->children_.size() >= 1);
@@ -76,5 +115,13 @@ void query::print_plans(std::initializer_list<query *> queries, std::ostream& os
         auto qop_tree = build_qop_tree(q->plan_head_);
         trees.push_back(qop_tree.first);
     }
-    // TODO: merge trees
+    // merge trees
+    for (auto i = 1u; i < trees.size(); i++) {
+        merge_qop_trees(trees[0], trees[1]);
+    }
+    os << "##----------------------------------------------------------------------\n";
+    trees[0]->print(os);
+    print_plan_helper(os, trees[0], "");
+    os << "##----------------------------------------------------------------------\n";
+
 }

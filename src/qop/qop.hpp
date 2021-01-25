@@ -139,10 +139,16 @@ struct qop {
    * Returns true if the operator has already a subscriber.
    */
   inline bool has_subscriber() const { return subscriber_.get() != nullptr; }
+
   /**
    * Return the current subscriber.
    */
   inline qop_ptr subscriber() { return subscriber_; }
+
+  /**
+   * Return true if this operator is a binary operator (join, union etc.)
+   */
+  virtual bool is_binary() const { return false; }
 
   PROF_ACCESSOR;
 
@@ -555,6 +561,8 @@ struct union_all_qres : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  bool is_binary() const override { return true; }
+  
   bool init;
   std::list<qr_tuple> res_;
 };
@@ -643,6 +651,8 @@ struct collect_result : public qop {
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  // bool is_binary() const override { return true; }
 
   result_set &results_;
 };

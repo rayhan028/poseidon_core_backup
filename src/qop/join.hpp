@@ -37,6 +37,8 @@ struct cross_join : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  bool is_binary() const override { return true; }
+
 private:
   std::list<qr_tuple> input_;
 };
@@ -58,6 +60,8 @@ struct nested_loop_join : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  bool is_binary() const override { return true; }
+  
 private:
   std::vector<qr_tuple> input_;
   std::vector<node::id_t> join_ids_;
@@ -82,6 +86,8 @@ struct hash_join : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  bool is_binary() const override { return true; }
+  
 private:
   const static int BUCKETS = 10;
   std::vector<qr_tuple> input_[BUCKETS];
@@ -105,7 +111,9 @@ struct left_outerjoin_on_node : public qop {
   void process_right(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
-
+  
+  bool is_binary() const override { return true; }
+  
 private:
   std::vector<qr_tuple> input_;
   std::vector<node::id_t> join_ids_;
@@ -130,6 +138,8 @@ struct rship_join : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  bool is_binary() const override { return true; }
+  
 private:
   std::list<qr_tuple> input_;
   std::pair<int, int> src_des_nodes_;
@@ -153,6 +163,8 @@ struct left_outerjoin_on_rship : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  bool is_binary() const override { return true; }
+  
 private:
   std::list<qr_tuple> input_;
   std::pair<int, int> src_des_nodes_;
