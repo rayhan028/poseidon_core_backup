@@ -92,6 +92,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     rs.wait();
 
     REQUIRE(rs.data.size() == 3);
+    q.print_plan();
   }
 
   SECTION("order by") {
@@ -110,6 +111,7 @@ TEST_CASE("Testing query operators", "[qop]") {
       expected.data.push_back({query_result(std::to_string(i))});
     }
     REQUIRE(rs == expected);
+    q.print_plan();
   }
 
   SECTION("has string property") {
@@ -127,6 +129,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     rs.wait();
     expected.append({query_result(std::to_string(4)), query_result("aaa4")});
     REQUIRE(rs == expected);
+    q.print_plan();
   }
 
   SECTION("use index") {
@@ -147,6 +150,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     rs.wait();
     expected.append({query_result(std::to_string(3)), query_result("aaa3")});
     REQUIRE(rs == expected);
+    q.print_plan();
   }
   graph->abort_transaction();
 
@@ -182,6 +186,7 @@ TEST_CASE("Testing join operators", "[qop]") {
     expected.data.push_back({query_result("2"), query_result("3")});
     expected.data.push_back({query_result("2"), query_result("4")});
     REQUIRE(rs == expected);
+    query::print_plans({&q1, &q2});
   }
 
   graph->abort_transaction();
