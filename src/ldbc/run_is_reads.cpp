@@ -13,6 +13,7 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
+/* ------------------------------------------------------------------------ */
 
 double calc_avg_time(const std::vector<double>& vec) {
     double d = 0.0;

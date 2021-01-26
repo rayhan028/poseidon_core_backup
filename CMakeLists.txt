@@ -83,6 +83,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/pool)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
 include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
 include_directories(${PROJECT_SOURCE_DIR}/src/ql)
+include_directories(${PROJECT_SOURCE_DIR}/src/analytics)
 
 #---------------------------------------------------------------------------
 
@@ -336,13 +337,19 @@ set(src_files
   src/qop/join.cpp
   src/qop/query.cpp
   src/qop/query_printer.cpp
-  src/qop/bfs.cpp
-  src/qop/shortest_path.cpp
   src/qop/thread_pool.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
-  src/ldbc/ldbc.cpp
+  src/ldbc/ldbc_graphalytics.cpp
+  src/ldbc/ldbc_bi_reads.cpp
+  src/ldbc/ldbc_is_reads.cpp
+  src/ldbc/ldbc_updates.cpp
+  src/ldbc/ldbc_loader.cpp
+  src/ldbc/qps/ldbc_is_reads_qp2.cpp
+  src/ldbc/qps/ldbc_is_reads_qp3.cpp
+  src/ldbc/qps/ldbc_is_reads_qp4.cpp
+  src/ldbc/qps/ldbc_is_reads_qp5.cpp
   src/qcomp/codegen_inline.cpp
   src/qcomp/filter_expression.cpp
   src/qcomp/filter_expression_inline.cpp
@@ -359,6 +366,8 @@ set(src_files
   src/qcomp/interprete_filter_visitor.cpp
   src/ql/queryc.cpp
   src/ql/ast.cpp
+  src/analytics/bfs.cpp
+  src/analytics/shortest_path.cpp
   )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -414,7 +423,7 @@ endif()
 # The program for loading CSV files into PMem.
 #
 add_executable(ldbc_loader
-  src/ldbc/loader.cpp
+  src/ldbc/run_loader.cpp
  )
 
 target_link_libraries(ldbc_loader
@@ -423,13 +432,25 @@ target_link_libraries(ldbc_loader
   Boost::program_options
 )
 
+# The program for executing BI queries.
+#
+add_executable(run_ldbc_bi_reads
+  src/ldbc/run_bi_reads.cpp
+)
+
+target_link_libraries(run_ldbc_bi_reads
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
 # The program for executing short read queries.
 #
-add_executable(run_ldbc_reads
-  src/ldbc/ldbc_reads.cpp
+add_executable(run_ldbc_is_reads
+  src/ldbc/run_is_reads.cpp
  )
 
-target_link_libraries(run_ldbc_reads
+target_link_libraries(run_ldbc_is_reads
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -438,7 +459,7 @@ target_link_libraries(run_ldbc_reads
 # The program for executing interactive update queries.
 #
 add_executable(run_ldbc_updates
-  src/ldbc/ldbc_updates.cpp
+  src/ldbc/run_updates.cpp
  )
 
 target_link_libraries(run_ldbc_updates
@@ -450,7 +471,7 @@ target_link_libraries(run_ldbc_updates
 # The program for executing graphalytics.
 #
 add_executable(run_ldbc_graphalytics
-  src/ldbc/ldbc_graphalytics.cpp
+  src/ldbc/run_graphalytics.cpp
  )
 
 target_link_libraries(run_ldbc_graphalytics
@@ -495,15 +516,6 @@ add_executable(qlc
  Boost::program_options
 )
 
-add_executable(run_ldbc_bi_reads
-  src/ldbc/ldbc_bi_reads.cpp
-)
-
-target_link_libraries(run_ldbc_bi_reads
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
 #-----------------------------------------------------------------------------------------
 #
 # Unit tests using Catch
