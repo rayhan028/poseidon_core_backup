@@ -124,7 +124,7 @@ class pmlog {
     uint32_t used_;         // the number of bytes occupied already
     p_ptr<log_chunk> next_; // the address of the next log_chunk belonging to this transaction
 
-    void clear();
+    log_chunk();
   };
 
   using chunk_ptr = p_ptr<log_chunk>;
