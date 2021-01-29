@@ -130,6 +130,7 @@ void pmlog::transaction_end(pmlog::id_t log_id) {
   std::lock_guard<std::mutex> guard(lmtx_);
 
 #ifdef USE_PMDK
+  auto pop = pmem::obj::pool_by_vptr(this);
   pop.memset_persist(&ulog_[log_id], 0, sizeof(pmlog::log_chunk));
 #else
   memset(&(ulog_[log_id].data_), 0, 4076);
