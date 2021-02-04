@@ -15,6 +15,8 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
+#define IU_RESULT
+
 // ------------------------------------------------------------------------------------------------------------------------
 
 void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {

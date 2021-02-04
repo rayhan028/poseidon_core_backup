@@ -14,8 +14,7 @@
 
 #define RUN_INDEXED
 // #define RUN_PARALLEL
-// #define PRINT_RESULT
-#define IU_RESULT
+#define PRINT_RESULT
 
 namespace pj = builtin;
 
