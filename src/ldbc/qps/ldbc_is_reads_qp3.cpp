@@ -107,14 +107,16 @@ void ldbc_is_qp3_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId
                           return boost::get<uint64_t>(qr1[2]) > boost::get<uint64_t>(qr2[2]);
                         return boost::get<boost::posix_time::ptime>(qr1[3]) < boost::get<boost::posix_time::ptime>(qr2[3]); })
                 .outerjoin_on_rship({1, 2}, q1)
+                .append_to_qr_tuple([&](qr_tuple &v) {
+                  return v[5].type() == typeid(null_val) ?
+                    query_result(std::string("false")) : query_result(std::string("true")); })
                 .project({PVar_(2),
                           PExpr_(0, pj::string_property(res, "content")),
                           PVar_(3),
                           PExpr_(1, pj::uint64_property(res, "id")),
                           PExpr_(1, pj::string_property(res, "firstName")),
                           PExpr_(1, pj::string_property(res, "lastName")),
-                          PExpr_(5, pj::string_rep(res) == "NULL" ?
-                                      std::string("false") : std::string("true")) })
+                          PVar_(6) })
                 .collect(rs);
 
   query::start({&q1, &q2});
@@ -165,14 +167,16 @@ void ldbc_is_qp3_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId
                           return boost::get<uint64_t>(qr1[2]) > boost::get<uint64_t>(qr2[2]);
                         return boost::get<boost::posix_time::ptime>(qr1[3]) < boost::get<boost::posix_time::ptime>(qr2[3]); })
                 .outerjoin_on_rship({1, 2}, q1)
+                .append_to_qr_tuple([&](qr_tuple &v) {
+                  return v[5].type() == typeid(null_val) ?
+                    query_result(std::string("false")) : query_result(std::string("true")); })
                 .project({PVar_(2),
                           PExpr_(0, pj::string_property(res, "content")),
                           PVar_(3),
                           PExpr_(1, pj::uint64_property(res, "id")),
                           PExpr_(1, pj::string_property(res, "firstName")),
                           PExpr_(1, pj::string_property(res, "lastName")),
-                          PExpr_(5, pj::string_rep(res) == "NULL" ?
-                                      std::string("false") : std::string("true")) })
+                          PVar_(6) })
                 .collect(rs);
 
   query::start({&q1, &q2});

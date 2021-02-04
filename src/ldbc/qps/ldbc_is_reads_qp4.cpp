@@ -89,14 +89,16 @@ void ldbc_is_qp4_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId
                 .from_relationships(":hasCreator")
                 .to_node("Person")
                 .rship_exists({6, 0}, true)
+                .append_to_qr_tuple([&](qr_tuple &v) {
+                  return v[7].type() == typeid(null_val) ?
+                    query_result(std::string("false")) : query_result(std::string("true")); })
                 .project({PExpr_(4, pj::uint64_property(res, "id")),
                           PExpr_(4, pj::string_property(res, "content")),
                           PExpr_(4, pj::ptime_property(res, "creationDate")),
                           PExpr_(6, pj::uint64_property(res, "id")),
                           PExpr_(6, pj::string_property(res, "firstName")),
                           PExpr_(6, pj::string_property(res, "lastName")),
-                          PExpr_(7, pj::string_rep(res) == "NULL" ?
-                                      std::string("false") : std::string("true")) })
+                          PVar_(7) })
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
@@ -128,14 +130,16 @@ void ldbc_is_qp4_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId
                 .from_relationships(":hasCreator")
                 .to_node("Person")
                 .rship_exists({6, 0}, true)
+                .append_to_qr_tuple([&](qr_tuple &v) {
+                  return v[7].type() == typeid(null_val) ?
+                    query_result(std::string("false")) : query_result(std::string("true")); })
                 .project({PExpr_(4, pj::uint64_property(res, "id")),
                           PExpr_(4, pj::string_property(res, "content")),
                           PExpr_(4, pj::ptime_property(res, "creationDate")),
                           PExpr_(6, pj::uint64_property(res, "id")),
                           PExpr_(6, pj::string_property(res, "firstName")),
                           PExpr_(6, pj::string_property(res, "lastName")),
-                          PExpr_(7, pj::string_rep(res) == "NULL" ?
-                                      std::string("false") : std::string("true")) })
+                          PVar_(7) })
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);

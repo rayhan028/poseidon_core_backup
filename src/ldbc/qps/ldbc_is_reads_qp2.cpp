@@ -69,8 +69,8 @@ void ldbc_is_qp2_query_2_p(graph_db_ptr &gdb, result_set &rs, uint64_t personId)
                         return boost::get<boost::posix_time::ptime>(qr1[3]) > boost::get<boost::posix_time::ptime>(qr2[3]); })
                .limit(10)
                .project({PVar_(2),
-                        PExpr_(1, pj::has_property(res, "imageFile") ?
-                            pj::string_property(res, "imageFile") : pj::string_property(res, "content")),
+                        PExpr_(1, boost::get<std::string>(pj::string_property(res, "imageFile")).empty() ?
+                          pj::string_property(res, "content") : pj::string_property(res, "imageFile")),
                         PVar_(3),
                         PExpr_(1, pj::uint64_property(res, "id")),
                         PExpr_(0, pj::uint64_property(res, "id")),
@@ -199,9 +199,12 @@ void ldbc_is_qp2_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId
                 .from_relationships(":hasCreator")
                 .to_node("Person")
                 .outerjoin_on_rship({4, 2}, q1)
+                .append_to_qr_tuple([&](qr_tuple &v) {
+                  return v[8].type() == typeid(null_val) ?
+                    query_result(std::string("false")) : query_result(std::string("true")); })
                 .project({PVar_(2),
                           PVar_(4),
-                          PVar_(8),
+                          PVar_(9),
                           PExpr_(2, pj::uint64_property(res, "id")),
                           PExpr_(2, pj::ptime_property(res, "creationDate")) })
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
@@ -214,8 +217,7 @@ void ldbc_is_qp2_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId
                           PExpr_(1, pj::uint64_property(res, "id")),
                           PExpr_(1, pj::string_property(res, "firstName")),
                           PExpr_(1, pj::string_property(res, "lastName")),
-                          PExpr_(2, pj::string_rep(res) == "NULL" ?
-                                      std::string("false") : std::string("true")) })
+                          PVar_(2)})
                 .collect(rs);
 
   query::start({&q1, &q2});
@@ -258,9 +260,12 @@ void ldbc_is_qp2_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId
                 .from_relationships(":hasCreator")
                 .to_node("Person")
                 .outerjoin_on_rship({4, 2}, q1)
+                .append_to_qr_tuple([&](qr_tuple &v) {
+                  return v[8].type() == typeid(null_val) ?
+                    query_result(std::string("false")) : query_result(std::string("true")); })
                 .project({PVar_(2),
                           PVar_(4),
-                          PVar_(8),
+                          PVar_(9),
                           PExpr_(2, pj::uint64_property(res, "id")),
                           PExpr_(2, pj::ptime_property(res, "creationDate"))})
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
@@ -273,8 +278,7 @@ void ldbc_is_qp2_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId
                           PExpr_(1, pj::uint64_property(res, "id")),
                           PExpr_(1, pj::string_property(res, "firstName")),
                           PExpr_(1, pj::string_property(res, "lastName")),
-                          PExpr_(2, pj::string_rep(res) == "NULL" ?
-                                      std::string("false") : std::string("true")) })
+                          PVar_(2)})
                 .collect(rs);
 
   query::start({&q1, &q2});
