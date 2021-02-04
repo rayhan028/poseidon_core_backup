@@ -58,6 +58,8 @@ TEST_CASE("Recovery of aborted inserts", "[graph_db]") {
     auto nid = graph->add_node(":Person", {{"number", boost::any(56)}});
     REQUIRE(nid == 1);
     graph->abort_transaction();
+
+    graph_pool::destroy(pool);
 }
 
  #endif
