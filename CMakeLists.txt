@@ -84,6 +84,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/log)
 include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
 include_directories(${PROJECT_SOURCE_DIR}/src/ql)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics)
+include_directories(${PROJECT_SOURCE_DIR}/src/gtpc)
 
 #---------------------------------------------------------------------------
 
@@ -342,14 +343,14 @@ set(src_files
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
   src/ldbc/ldbc_graphalytics.cpp
-  src/ldbc/ldbc_bi_reads.cpp
-  src/ldbc/ldbc_is_reads.cpp
+  src/ldbc/ldbc_bi.cpp
+  src/ldbc/ldbc_is.cpp
   src/ldbc/ldbc_updates.cpp
   src/ldbc/ldbc_loader.cpp
-  src/ldbc/qps/ldbc_is_reads_qp2.cpp
-  src/ldbc/qps/ldbc_is_reads_qp3.cpp
-  src/ldbc/qps/ldbc_is_reads_qp4.cpp
-  src/ldbc/qps/ldbc_is_reads_qp5.cpp
+  src/ldbc/qps/ldbc_is_qp2.cpp
+  src/ldbc/qps/ldbc_is_qp3.cpp
+  src/ldbc/qps/ldbc_is_qp4.cpp
+  src/ldbc/qps/ldbc_is_qp5.cpp
   src/qcomp/codegen_inline.cpp
   src/qcomp/filter_expression.cpp
   src/qcomp/filter_expression_inline.cpp
@@ -368,6 +369,7 @@ set(src_files
   src/ql/ast.cpp
   src/analytics/bfs.cpp
   src/analytics/shortest_path.cpp
+  src/gtpc/gtpcc_loader.cpp
   )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -422,11 +424,11 @@ endif()
 
 # The program for loading CSV files into PMem.
 #
-add_executable(ldbc_loader
-  src/ldbc/run_loader.cpp
+add_executable(run_ldbc_loader
+  src/ldbc/run_ldbc_loader.cpp
  )
 
-target_link_libraries(ldbc_loader
+target_link_libraries(run_ldbc_loader
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -434,11 +436,11 @@ target_link_libraries(ldbc_loader
 
 # The program for executing BI queries.
 #
-add_executable(run_ldbc_bi_reads
-  src/ldbc/run_bi_reads.cpp
+add_executable(run_ldbc_bi
+  src/ldbc/run_ldbc_bi.cpp
 )
 
-target_link_libraries(run_ldbc_bi_reads
+target_link_libraries(run_ldbc_bi
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -446,11 +448,11 @@ target_link_libraries(run_ldbc_bi_reads
 
 # The program for executing short read queries.
 #
-add_executable(run_ldbc_is_reads
-  src/ldbc/run_is_reads.cpp
+add_executable(run_ldbc_is
+  src/ldbc/run_ldbc_is.cpp
  )
 
-target_link_libraries(run_ldbc_is_reads
+target_link_libraries(run_ldbc_is
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -459,7 +461,7 @@ target_link_libraries(run_ldbc_is_reads
 # The program for executing interactive update queries.
 #
 add_executable(run_ldbc_updates
-  src/ldbc/run_updates.cpp
+  src/ldbc/run_ldbc_updates.cpp
  )
 
 target_link_libraries(run_ldbc_updates
@@ -468,17 +470,29 @@ target_link_libraries(run_ldbc_updates
   Boost::program_options
 )
 
+# The program for executing interactive delete queries.
+#
+# add_executable(run_ldbc_deletes
+#   src/ldbc/run_ldbc_deletes.cpp
+#  )
+
+# target_link_libraries(run_ldbc_deletes
+#   poseidon_core
+#   ${PMDK_LIBRARIES}
+#   Boost::program_options
+# )
+
 # The program for executing graphalytics.
 #
-add_executable(run_ldbc_graphalytics
-  src/ldbc/run_graphalytics.cpp
- )
+# add_executable(run_ldbc_graphalytics
+#   src/ldbc/run_ldbc_graphalytics.cpp
+#  )
 
-target_link_libraries(run_ldbc_graphalytics
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
+# target_link_libraries(run_ldbc_graphalytics
+#   poseidon_core
+#   ${PMDK_LIBRARIES}
+#   Boost::program_options
+# )
 
 # The program for executing jitted short read queries.
 #
@@ -492,6 +506,24 @@ target_link_libraries(run_ldbc_jit_reads
   Boost::program_options
 )
 
+#-----------------------------------------------------------------------------------------
+#
+# Some programs for LDBC benchmarking.
+#
+
+# The program for loading CSV files into PMem.
+#
+add_executable(run_gtpcc_loader
+  src/gtpc/run_gtpcc_loader.cpp
+ )
+
+target_link_libraries(run_gtpcc_loader
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
+#-----------------------------------------------------------------------------------------
 # The program for executing the LLVM query compiler
 add_executable(qcomp
 	  src/qcomp/main.cpp
