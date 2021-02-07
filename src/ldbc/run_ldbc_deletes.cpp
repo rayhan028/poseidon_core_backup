@@ -1,4 +1,5 @@
 #include <iostream>
+#include <boost/variant.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 
@@ -8,12 +9,33 @@
 #include "ldbc.hpp"
 #include "config.h"
 
+#include <cassert>
 #include "threadsafe_queue.hpp"
 
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
-// TODO
+/* ------------------------------------------------------------------------ */
+
+double calc_avg_time(const std::vector<double>& vec) {
+    double d = 0.0;
+    for (auto v : vec) {
+        std::cout << v << ", ";
+        d += v;
+    }
+    std::cout << "\n";
+    return d / (double)(vec.size() * 1000);
+}
+
+double run_query_1(graph_db_ptr gdb) {
+    ;
+}
+
+void run_benchmark(graph_db_ptr gdb) {
+    double t = 0.0;
+    t = run_query_1(gdb);
+    spdlog::info("Query #1: {} msecs", t);
+}
 
 /* ---------------------------------------------------------------------------- */
 
@@ -34,9 +56,9 @@ int main(int argc, char **argv) {
     desc.add_options()
         ("help,h", "Help")
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
+        ("import,i", value<std::string>(&snb_home), "Path to directories containing SNB CSV files")
         ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
         ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem pool")
-        ("import,i", value<std::string>(&snb_home), "Path to directories containing SNB CSV files")
         ("db,d", value<std::string>(&db_name)->required(),"Database name (required)");
 
     variables_map vm;
@@ -53,7 +75,7 @@ int main(int argc, char **argv) {
 
     if (vm.count("strict"))
       strict = vm["strict"].as<bool>();
-
+    
     if (vm.count("db_name"))
       db_name = vm["db_name"].as<std::string>();
 
@@ -73,13 +95,11 @@ int main(int argc, char **argv) {
     #ifdef FPTree
     fptree_recovery(graph);
     #endif
-#else
+ #else
   auto pool = graph_pool::create(pool_path);
   auto graph = pool->create_graph(db_name);
 
   load_snb_data(graph, snb_home);
 #endif
   graph->print_stats();
-  
-//   run_benchmark(graph);
 }

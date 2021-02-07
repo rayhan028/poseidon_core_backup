@@ -596,7 +596,7 @@ int main(int argc, char **argv) {
 #ifdef USE_PMDK
     auto pool = graph_pool::open(pool_path);
     auto graph = pool->open_graph(db_name);
-    #ifdef FPTree
+    #if defined(RUN_INDEXED) && defined(FPTree)
     fptree_recovery(graph);
     #endif
 #else

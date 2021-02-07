@@ -843,43 +843,18 @@ void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
     t = run_query_1(gdb);
     spdlog::info("Query #1: {} msecs", t);
-    t = run_query_2_p(gdb);
-    spdlog::info("Query #2p: {} msecs", t);
-    t = run_query_2_c(gdb);
-    spdlog::info("Query #2c: {} msecs", t);
+    t = run_query_2(gdb);
+    spdlog::info("Query #2: {} msecs", t);
     t = run_query_3(gdb);
     spdlog::info("Query #3: {} msecs", t);
-    t = run_query_4_p(gdb);
-    spdlog::info("Query #4p: {} msecs", t);
-    t = run_query_4_c(gdb);
-    spdlog::info("Query #4c: {} msecs", t);
-    t = run_query_5_p(gdb);
-    spdlog::info("Query #5p: {} msecs", t);
-    t = run_query_5_c(gdb);
-    spdlog::info("Query #5c: {} msecs", t);
-    t = run_query_6_p(gdb);
-    spdlog::info("Query #6p: {} msecs", t);
-    t = run_query_6_c(gdb);
-    spdlog::info("Query #6c: {} msecs", t);
-    t = run_query_7_p(gdb);
-    spdlog::info("Query #7p: {} msecs", t);
-    t = run_query_7_c(gdb);
-    spdlog::info("Query #7c: {} msecs", t);
-
-//     t = run_query_1(gdb);
-//     spdlog::info("Query #1: {} msecs", t);
-//     t = run_query_2(gdb);
-//     spdlog::info("Query #2: {} msecs", t);
-//     t = run_query_3(gdb);
-//     spdlog::info("Query #3: {} msecs", t);
-//     t = run_query_4(gdb);
-//     spdlog::info("Query #4: {} msecs", t);
-//     t = run_query_5(gdb);
-//     spdlog::info("Query #5: {} msecs", t);
-//     t = run_query_6(gdb);
-//     spdlog::info("Query #6: {} msecs", t);
-//     t = run_query_7(gdb);
-//     spdlog::info("Query #7: {} msecs", t);
+    t = run_query_4(gdb);
+    spdlog::info("Query #4: {} msecs", t);
+    t = run_query_5(gdb);
+    spdlog::info("Query #5: {} msecs", t);
+    t = run_query_6(gdb);
+    spdlog::info("Query #6: {} msecs", t);
+    t = run_query_7(gdb);
+    spdlog::info("Query #7: {} msecs", t);
 }
 
 /* ---------------------------------------------------------------------------- */

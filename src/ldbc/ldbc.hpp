@@ -72,6 +72,16 @@ void ldbc_bi_query_18(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 void ldbc_bi_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 void ldbc_bi_query_20(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 
+/* interactive delete queries */
+void ldbc_del_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void ldbc_del_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void ldbc_del_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void ldbc_del_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void ldbc_del_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void ldbc_del_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void ldbc_del_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void ldbc_del_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+
 /* data */
 void load_snb_data(graph_db_ptr &graph, const std::string& path, bool strict = true);
 void load_snb_data(graph_db_ptr &graph,

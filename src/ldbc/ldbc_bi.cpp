@@ -24,38 +24,30 @@ static std::vector<std::string> message = {"Post", "Comment"};
 /* ------------------------------------------------------------------------ */
 
 void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
-
     std::vector<result_set> grps;
 
-    auto filter_cdate =
-      [&](auto &prop) {
-          return (*(reinterpret_cast<const ptime *>(prop.value_))) <
-                    boost::get<ptime>(params[0]);
-      };
-
-    auto group_msg_len =
-      [&](auto res) {
-        auto len = boost::get<int>(pj::int_property(res, "length"));
-        return (len >= 0 && len < 40) ? query_result(std::string("0")) :
-                (len >= 40 && len < 80) ? query_result(std::string("1")) :
-                (len >= 80 && len < 160) ? query_result(std::string("2")) :
-                query_result(std::string("3")); 
-      };
-
-    // Query pipeline
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label(message)
-              .property( "creationDate", filter_cdate)
+              .property( "creationDate", [&](auto &prop) {
+                return (*(reinterpret_cast<const ptime *>(prop.value_))) <
+                    boost::get<ptime>(params[0]); })
 #else
-              .nodes_where(message, "creationDate", filter_cdate)
+              .nodes_where(message, "creationDate", [&](auto &prop) {
+                return (*(reinterpret_cast<const ptime *>(prop.value_))) <
+                    boost::get<ptime>(params[0]); })
 #endif
               .project({PExpr_(0, pj::pr_year(res, "creationDate")),
                         PExpr_(0, (pj::has_property(res, "language") || pj::has_property(res, "imageFile")) ?
                                     std::string("False") : std::string("True")),
                         PExpr_(0, pj::int_property(res, "length")),
-                        projection::expr(0, group_msg_len) })
+                        projection::expr(0, [&](auto res) {
+                          auto len = boost::get<int>(pj::int_property(res, "length"));
+                          return (len >= 0 && len < 40) ? query_result(std::string("0")) :
+                                  (len >= 40 && len < 80) ? query_result(std::string("1")) :
+                                  (len >= 80 && len < 160) ? query_result(std::string("2")) :
+                                  query_result(std::string("3")); }) })
               .group(grps, {0, 1, 3})
               .aggregate(grps, {{"count", 0}, {"avg", 2}, {"sum", 2}, {"pcount", 0}})
               .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
