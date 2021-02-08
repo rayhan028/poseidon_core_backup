@@ -21,13 +21,15 @@ Optimizer::operator()(ThreadSafeModule TSM,
                       const MaterializationResponsibility &) {
     Module &M = *TSM.getModuleUnlocked();
 
+    //M.dump();
+
     legacy::FunctionPassManager FPM(&M);
     FPM.add(createPromoteMemoryToRegisterPass());
-    FPM.add(createCFGSimplificationPass());
-    FPM.add(createLCSSAPass());
-    FPM.add(createDeadStoreEliminationPass());
-    FPM.add(createLoopDeletionPass());
-    FPM.add(createInstructionCombiningPass());
+    //FPM.add(createCFGSimplificationPass());
+    //FPM.add(createLCSSAPass());
+    //FPM.add(createDeadStoreEliminationPass());
+    //FPM.add(createLoopDeletionPass());
+    //FPM.add(createInstructionCombiningPass());
     B.populateFunctionPassManager(FPM);
     FPM.doInitialization();
 

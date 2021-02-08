@@ -87,7 +87,6 @@ public:
 
     std::map<int, std::vector<std::string>> operator_names_;
     std::map<int, std::vector<int>> type_vec_;
-    static std::map<int, std::vector<consumer_fct_type>> operator_functions_;
     static std::map<int, finish_fct_type> finish_;
 
 

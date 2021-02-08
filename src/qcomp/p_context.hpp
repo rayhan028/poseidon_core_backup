@@ -99,6 +99,11 @@ public:
     StructType *qrResultTy;
     PointerType *qrResultPtrTy;
 
+    StructType *queryContextTy;
+    PointerType *queryContextPtrTy;
+
+    StructType *queryTimePointTy;
+
 //++++++++++++++++++ RSHIP TYPE ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     StructType *rshipTy;
     PointerType *rshipPtrTy;
@@ -218,6 +223,9 @@ public:
     FunctionType *get_node_res_at_ty;
     FunctionType *get_rship_res_at_ty;
     FunctionType *get_mat_res_size_ty;
+
+    FunctionType *get_now_ty;
+    FunctionType *add_time_diff_ty;
 
 //++++++++++++++++++ GROUP_BY FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
     FunctionType *get_node_grpkey_ty;

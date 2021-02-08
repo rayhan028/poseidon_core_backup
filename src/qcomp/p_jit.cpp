@@ -80,10 +80,6 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&create_node), JITSymbolFlags::Exported);
         M[Mangle("create_ship")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&create_rship), JITSymbolFlags::Exported);
-        M[Mangle("foreach_variable_from")] = JITEvaluatedSymbol(
-                pointerToJITTargetAddress(&foreach_variable_from), JITSymbolFlags::Exported);
-        M[Mangle("foreach_variable_from")] = JITEvaluatedSymbol(
-                pointerToJITTargetAddress(&foreach_variable_from), JITSymbolFlags::Exported);
         M[Mangle("mat_reg_value")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&mat_reg_value), JITSymbolFlags::Exported);
         M[Mangle("collect_tuple")] = JITEvaluatedSymbol(
@@ -188,6 +184,10 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&rship_has_property), JITSymbolFlags::Exported);
         M[Mangle("apply_has_property")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&apply_has_property), JITSymbolFlags::Exported);
+        M[Mangle("get_now")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_now), JITSymbolFlags::Exported);
+        M[Mangle("add_time_diff")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&add_time_diff), JITSymbolFlags::Exported);
 
         ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
     }

@@ -4,19 +4,24 @@
 
 boost::barrier pipeline_barrier(24);
 
+query_time_point get_now() {
+    return std::chrono::high_resolution_clock::now();
+}
+
+void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_time_point t2) {
+    qtx->add_time(op_id, t1, t2);
+}
+
  chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
     //pipeline_barrier.wait();
-
     return new chunked_vec<node, NODE_CHUNK_SIZE>::range_iter(vec->as_vec(), first, last);
 }
 
  chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
-    //std::cout << "Get next" << std::endl;
     return &it->operator++();;
 }
 
  bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
-    //std::cout << "test end" << std::endl;
     return !it->operator bool();
 }
 
@@ -25,13 +30,10 @@ chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter get_vec_begin_r(relationship_l
 }
 
 chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *get_vec_next_r(chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *it) {
-    //std::cout << "Next called" << std::endl;
-    //std::cout << "it get" << std::endl;
     return &it->operator++();
 }
 
 bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter it) {
-    //std::cout << "vec_end_reached: " << std::endl;
     return !(it != vec.as_vec().end());
 }
 
@@ -39,12 +41,11 @@ bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_C
     return gdb->get_code(label);
 }
 
- node *get_node_from_it(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
+ node *get_node_from_it(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) { 
     return &it->operator*();
 }
 
  relationship *get_rship_from_it(chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *it) {
-    //std::cout << "get rship" << std::endl;
     return &it->operator*();
 }
 
@@ -69,12 +70,10 @@ bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_C
 }
 
  dcode_t gdb_get_dcode(graph_db *gdb, char *property) {
-    //std::cout << "Search for property: " << property  << " with code: " << gdb->get_code(property) << std::endl;
     return gdb->get_code(property);
 }
 
  const property_set *pset_get_item_at(graph_db *gdb, offset_t id) {
-    //std::cout << "Get property at: " << id << std::endl;
     return &gdb->get_node_properties()->get(id);
 }
 
@@ -93,7 +92,7 @@ std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
 }
 
  node * get_valid_node(graph_db *gdb, node * n, transaction_ptr tx) {
-    return &gdb->get_valid_node_version(*n, tx->xid());
+    return &gdb->get_valid_node_version(*n, current_transaction_->xid());
 }
 
  char* get_str_property(const properties_t &p, const std::string &key) {
@@ -206,32 +205,6 @@ std::mutex prj_mutex;
     return &gdb->rship_by_id(rid);
 }
 
- void foreach_variable_from(graph_db *gdb, dcode_t label, int min, int max, consumer_fct_type consumer,
-                                      int oid, int **qr, int *rs, int size, int *ty, int **call_map_arg, int offset) {
-    auto prev_pos = size + offset;
-    auto insert_pos = prev_pos + 1;
-    auto n = (node*)qr[prev_pos];
-    auto nsize = size++;
-    //*qr[0]++;
-    gdb->foreach_variable_from_relationship_of_node(*n, label, min, max, [&](relationship &r) {
-        qr[insert_pos] = (int*)&r;
-        consumer(gdb, oid, qr, rs, nsize, ty, call_map_arg, offset);
-    });
-}
-
- void foreach_variable_to(graph_db *gdb, dcode_t label, int min, int max, consumer_fct_type consumer,
-                                      int oid, int **qr, int *rs, int size, int *ty, int **call_map_arg, int offset) {
-    auto prev_pos = size + offset;
-    auto insert_pos = prev_pos + 1;
-    auto n = (node*)qr[prev_pos];
-    auto nsize = size++;
-    //*qr[0]++;
-    gdb->foreach_variable_to_relationship_of_node(*n, label, min, max, [&](relationship &r) {
-        qr[insert_pos] = (int*)&r;
-        consumer(gdb, oid, qr, rs, nsize, ty, call_map_arg, offset);
-    });
-}
-
 thread_local qr_tuple tp;
 
 std::mutex mat_reg_mut;
@@ -261,7 +234,6 @@ std::mutex ct_mut;
  void collect_tuple(result_set *rs, bool print) {
     std::lock_guard<std::mutex> lck(ct_mut);
     rs->append(tp);
-
     if(print) {
         std::cout << "{";
         auto my_visitor = boost::hana::overload(
@@ -442,7 +414,7 @@ std::set<unsigned> pos_set;
     return boost::get<relationship*>(qr->at(pos));
 }
 
- int time_to_reg(qr_tuple* qr, int pos) {
+ int time_to_reg(qr_tuple* qr, int pos) { 
     time_result[str_res_ctr] = boost::get<boost::posix_time::ptime>(qr->at(pos));
     return str_res_ctr++;
 }

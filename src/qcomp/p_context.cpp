@@ -68,6 +68,8 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
 
     list_size = FunctionType::get(Type::getVoidTy(*ctx_), {queryResultListPtrTy}, false);
 
+    queryContextTy = StructType::create(*ctx_, "jit_args");
+    
 //++++++++++++++++++ NODE TYPE +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     opaqueListTy = StructType::create(*ctx_, "opaque_list");
     nodeAtomicIdTy = StructType::create(*ctx_, "node_atomic_id");
@@ -106,7 +108,8 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     graphDbPtrTy = PointerType::get(graphDbTy, 0);
 
     graphDbCVecTy = StructType::create(*ctx_, "chunk_vec_iter");
-
+    queryContextTy = StructType::create(*ctx_, "queryContext");
+    queryTimePointTy = StructType::create(*ctx_, "queryTimePoint");
 //++++++++++++++++++ NODE SCAN FCT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     nodeConsumerFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {nodePtrTy}, false);
     nodeConsumerFctPtrTy = PointerType::getUnqual(nodeConsumerFctTy);
@@ -163,7 +166,9 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     finishFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int64PtrTy}, false);
 
     // gdb, first, last, tx, oid, typevec, resultset, callmap, finish, result_offset
-    startFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, int64Ty, int8PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64PtrTy, finishFctTy->getPointerTo(), int64Ty, queryArgTy->getPointerTo()}, false);
+    //startFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, int64Ty, int8PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64PtrTy, finishFctTy->getPointerTo(), int64Ty, queryArgTy->getPointerTo()}, false);
+    
+    
     collectFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy}, false);
     limitFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy}, false);
 
@@ -252,6 +257,8 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     get_hj_input_size_ty = FunctionType::get(int64Ty, {int64Ty, int64Ty}, false);
     get_hj_input_id_ty = FunctionType::get(int64Ty, {int64Ty, int64Ty, int64Ty}, false);
     get_query_result_ty = FunctionType::get(int8PtrTy, {int64Ty, int64Ty, int64Ty}, false);
+
+
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     lookup_label_type = FunctionType::get(int32Ty, {int8PtrTy, int8PtrTy}, false);
     lookup_dcode_type = FunctionType::get(int8PtrTy, {int8PtrTy, int32Ty}, false);
@@ -281,6 +288,15 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     getValidNodeFctTy = FunctionType::get(nodePtrTy, {int8PtrTy, nodePtrTy, int8PtrTy}, false);
 
 //++++++++++++++++++ BODY DEFINITIONS + ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    queryContextTy->setBody({int8PtrTy, int64Ty, int64Ty, int8PtrTy}); // gdb, start, end, tx, result_set, arguments
+    queryContextPtrTy = PointerType::get(queryContextTy, 0);
+    queryTimePointTy->setBody(int64Ty);
+
+    get_now_ty = FunctionType::get(queryTimePointTy, {}, false);
+    add_time_diff_ty = FunctionType::get(voidTy, {queryContextPtrTy, int64Ty, queryTimePointTy, queryTimePointTy}, false);
+
+    startFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {queryContextPtrTy, queryArgTy->getPointerTo(), int64PtrTy}, false);
+
     nodeAtomicIdTy->setBody(int64Ty);
     rshipAtomicIdTy->setBody(int64Ty);
     nodeTxnBaseTy->setBody({nodeAtomicIdTy, int8PtrTy});
@@ -404,6 +420,9 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     function_types["node_has_property"] = node_has_property_ty;
     function_types["rship_has_property"] = rship_has_property_ty;
     function_types["apply_has_property"] = apply_has_property_ty;
+
+    function_types["get_now"] = get_now_ty;
+    function_types["add_time_diff"] = add_time_diff_ty;
 }
 
 

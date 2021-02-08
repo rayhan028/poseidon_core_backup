@@ -32,7 +32,7 @@ int nodefunc(node *n) {
 
 bool int_fct(int *i) {
 	int in = *i;
-	return in % 2 == 0; 
+	return in % 2 != 0; 
 }
 
 
@@ -67,9 +67,10 @@ int main() {
 
 	auto tx = graph->begin_transaction();
 
-	int PERSONS = 100;
+	int PERSONS = 1;
 	int add = 0;
 	int j = 1;
+	auto id = 0;
 	for (int i = 0; i < PERSONS; i++) {
 		add = i % j++;
 		if(j == 10)
@@ -77,7 +78,7 @@ int main() {
 		auto p = graph->add_node("Person",
 				{{"name", boost::any(std::string("John Doe"))},
 				{"age", boost::any(42+add)},
-				{"id", boost::any(i)},
+				{"id", boost::any(id++)},
 				{"num", boost::any(uint64_t(1234567890123412)+uint64_t(i))},
 				{"dummy1", boost::any(std::string("Dummy"))},
 				{"dummy2", boost::any(1.2345)}},
@@ -85,7 +86,7 @@ int main() {
 		auto p2 = graph->add_node("Person",
 				{{"name", boost::any(std::string("John Moe"))},
 				{"age", boost::any(42+add)},
-				{"id", boost::any(i)},
+				{"id", boost::any(id++)},
 				{"num", boost::any(uint64_t(1234567890123412)+uint64_t(i))},
 				{"dummy1", boost::any(std::string("Dummy"))},
 				{"dummy2", boost::any(1.2345)}},
@@ -93,7 +94,7 @@ int main() {
 		auto b = graph->add_node("Book",
 				{{"name", boost::any(std::string("Title"))},
 				{"Age", boost::any(42)},
-				{"id", boost::any(i)}},
+				{"id", boost::any(id++)}},
 				false);
 		graph->add_relationship(p, b, ":likes", {}, false);
 		graph->add_relationship(p, p2, ":likes", {}, false);
@@ -120,33 +121,37 @@ int main() {
 	
 	//algebra_optr op = qlc.compile_to_plan("Project([$0.name:string, $0.num:uint64], NodeScan('Person'))");
 
-	auto r_expr = Scan("Person", End(JOIN_OP::HASH_JOIN, 0));
+	auto r_expr = Scan("Person", End());
 
-    auto l_expr = Scan("Person", Join(JOIN_OP::HASH_JOIN, {0, 0}, 
+    auto l_expr = Scan("Person", Join(JOIN_OP::CROSS, {}, 
                         Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}
                                   /*{3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {0, "id", FTYPE::INT}, {0, "name", FTYPE::STRING}*/}, 
 							Collect()), r_expr));
 
-	auto fev = Scan("Person", Join(JOIN_OP::HASH_JOIN, {0,0},
+	auto fev = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0,0},
 						Collect(), r_expr));
 
 	std::vector<std::string> labels = {"Book", "Person"};
 	auto multi = Scan(labels, Project({{0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}, {0}}, Collect()));
-	auto multi_exp = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, labels, Project({{0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0}}, Collect()))));
+	auto multi_exp = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", 
+	Expand(EXPAND::OUT, labels, 
+	Project({{0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0}}, Collect()))));
 
-
-	auto filter_exp = Scan("Person", Filter(Call(Key(0, "id"), Fct(int_fct)), Project({{0, nodefunc}}, Collect())));
-
+	//auto filter_exp = Scan("Person", Filter(Call(Key(0, "id"), Fct(int_fct)), ForeachRship(RSHIP_DIR::TO, {}, ":likes", Expand(EXPAND::IN, "Person", Project({{0, nodefunc}}, Collect())))));
+	auto filter_exp = Scan("Person", Filter(Call(Key(0, "id"), Fct(int_fct)), ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Person", 
+			Project({{0, "name", FTYPE::STRING}, {2, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}}, Collect())))));
 	scan_task::callee_ = &scan_task::scan;	
-	queryEngine.generate(filter_exp, false);
+	queryEngine.generate(fev, false);
 	
 	arg_builder ab;
+	ab.arg(0, "Person");
 	ab.arg(1, "Person");
-	ab.arg(2, ":likes");
+	ab.arg(2, "Person");
 	ab.arg(3, "Person");
-	ab.arg(4, "Book");
-	ab.arg(5, ":HAS_READ");
-	ab.arg(6, "Person");
+	ab.arg(4, "Person");
+	ab.arg(5, "Person");
+	ab.arg(6, ":HAS_READ");
+	ab.arg(7, "Person");
 
 	result_set rs;
 

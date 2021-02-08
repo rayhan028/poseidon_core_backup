@@ -221,6 +221,13 @@ inline algebra_optr ForeachRship(RSHIP_DIR dir, std::string label, int node_pos,
 
 
 struct pr_expr {
+    enum PROJECTION_TYPE {
+        PROPERTY_PR,
+        FORWARD_PR,
+        FUNCTIONAL_VAL,
+        CONDITIONAL_VAL,
+    };
+
     typedef int (*int_prj_func_node)(node *n);
 
     std::size_t id;
@@ -229,13 +236,14 @@ struct pr_expr {
     bool if_exist_;
     std::vector<std::string> has_properties;
     std::pair<std::string, std::string> then_else;
-    
+    PROJECTION_TYPE prt;
+
     int_prj_func_node int_node_func;
-    pr_expr(std::size_t i) : id(i), type(FTYPE::NONE), int_node_func(nullptr) {}
-    pr_expr(std::size_t i, int_prj_func_node func) : id(i), int_node_func(func) {}
-    pr_expr(std::size_t i, std::string k, FTYPE t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist) {}
+    pr_expr(std::size_t i) : id(i), type(FTYPE::NONE), int_node_func(nullptr), prt(PROJECTION_TYPE::FORWARD_PR)  {}
+    pr_expr(std::size_t i, int_prj_func_node func) : id(i), int_node_func(func), prt(PROJECTION_TYPE::FUNCTIONAL_VAL) {}
+    pr_expr(std::size_t i, std::string k, FTYPE t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist), prt(PROJECTION_TYPE::PROPERTY_PR) {}
     pr_expr(std::size_t i, std::vector<std::string> properties, std::pair<std::string, std::string> then) : 
-        id(i), has_properties(properties), then_else(then) {}
+        id(i), has_properties(properties), then_else(then), prt(PROJECTION_TYPE::CONDITIONAL_VAL) {}
 };
 
 class project : public base_op, public std::enable_shared_from_this<project> {
@@ -460,6 +468,7 @@ public:
         name_ = "End";
         type_ = qop_type::none;
         qr_pos_ = produced_type_ = -1;
+        qr_pos_ = 0;
     }
 
     end_op(JOIN_OP jop, int qr_pos) : join_op_(jop), qr_pos_(qr_pos) {

@@ -16,14 +16,42 @@
 #include <boost/hana.hpp>
 
 
-using consumer_ty = std::function<void(graph_db*, int, int**, int*, int, int*)>;
-using consumer_fct_type = void(*)(graph_db*, int, int**, int*, int, int*, int**, int);
+//using consumer_ty = std::function<void(graph_db*, int, int**, int*, int, int*)>;
+//using consumer_fct_type = void(*)(graph_db*, int, int**, int*, int, int*, int**, int);
 using finish_fct_type = void(*)(result_set*);
+using query_time_point = std::chrono::time_point<std::chrono::high_resolution_clock>;
+struct query_context {
+    graph_db* gdb;
+    std::size_t first_chunk;
+    std::size_t last_chunk;
+    transaction_ptr tx;
+    result_set** rs;
+    uint64_t** args;
+
+    std::vector<std::pair<int,size_t>> profiling_time;
+    std::map<int, size_t> profiling_count;
+
+    query_context(graph_db *g, std::size_t first, std::size_t last, transaction_ptr t, result_set** r, uint64_t **qargs) :
+        gdb(g), first_chunk(first), last_chunk(last), tx(t), rs(r), args(qargs) {}
+
+    void add_time(int operator_id,  query_time_point start, query_time_point end) {
+        auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+        profiling_time.push_back({operator_id, diff.count()});
+    }
+
+    void incr_count(int operator_id) {
+        profiling_count[operator_id]++;
+    }   
+};
+
+query_time_point get_now();
+void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_time_point t2);
 
 /**
  * The type for the generated query function.
  */ 
-using start_ty = void(*)(graph_db*, int, int, transaction_ptr, int, std::vector<int>*, result_set*, int**, finish_fct_type, uint64_t, uint64_t**);
+//using start_ty = void(*)(graph_db*, int, int, transaction_ptr, int, std::vector<int>*, result_set*, int**, finish_fct_type, uint64_t, uint64_t**);
+using start_ty = void(*)(query_context*, uint64_t**, result_set* rs);
 
 
 /**
@@ -179,19 +207,6 @@ bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_C
  * Function for the creation of a relationship with given properties
  */
  relationship* create_rship(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props);
-
-/**
- * Functions to handle the variable from relationship operator
- */
- void foreach_variable_from(graph_db *gdb, dcode_t label, int min, int max, consumer_fct_type consumer,
-                                 int oid, int **qr, int *rs, int size, int *ty, int **call_map_arg, int offset);
-
-/**
- * Functions to handle the variable to relationship operator
- */
- void foreach_variable_to(graph_db *gdb, dcode_t label, int min, int max, consumer_fct_type consumer,
-                                      int oid, int **qr, int *rs, int size, int *ty, int **call_map_arg, int offset);
-
 
 extern std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
 

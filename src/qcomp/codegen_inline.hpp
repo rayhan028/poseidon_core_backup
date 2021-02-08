@@ -88,6 +88,10 @@ public:
      */
     BasicBlock *global_end;
 
+    BasicBlock *entry;
+
+    BasicBlock *inits;
+
     /*
      * The actual graph object
      */
@@ -308,6 +312,19 @@ public:
         return count;
     }
 
+    Value *first;
+    Value *last;
+    Value *tx_ptr;
+    Value *query_context;
+
+    void extract_query_context(Value* context_arg) {
+        gdb = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 0));
+        first = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 1));
+        last = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 2));
+        tx_ptr = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 3));
+    }
+
+    AllocaInst *insert_alloca(Type *ty);
 };
 
 

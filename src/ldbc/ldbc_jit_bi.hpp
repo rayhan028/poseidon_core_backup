@@ -25,7 +25,7 @@ using namespace boost::posix_time;
 
 using param_val_bi = boost::variant<uint64_t, std::string, int, boost::posix_time::ptime>;
 using params_tuple_bi = std::vector<param_val>;
-
+graph_db_ptr g;
 //std::vector<params_tuple_bi> q1_params = {{time_from_string(std::string("2017-04-14 01:51:21.746"))}};
 //std::vector<params_tuple_bi> q2_params = {{time_from_string(std::string("2011-04-14 01:51:21.746"))}};
 
@@ -35,8 +35,9 @@ bool q1_filter_cdate(int *prop_ptr) {
     
 }
 
-int q1_get_node_property(projection::pr_result pr) {
-    return boost::get<int>(pj::int_property(pr, "length"));
+int q1_get_node_property(node* pr) {
+    auto nd = g->get_node_description(pr->id()); 
+    return get_property<int>(nd.properties, "length").value();
 }
 
 int q1_group_msg_len(node * n) {
@@ -71,6 +72,21 @@ query_result* q2_compute_diff(qr_tuple &q) {
     uint64_t diff = cnt > nxt_cnt ? cnt - nxt_cnt : nxt_cnt - cnt;
     qr = query_result(diff);
     return &qr;        
+}
+
+bool q3_filter_cntry(int *prop_ptr) {
+    auto prop = (p_item*)prop_ptr;
+    auto c1 = *(reinterpret_cast<const dcode_t *>(prop->value_));
+    auto c2 = g->get_dictionary()->lookup_string("United_States");
+    return c1 == c2;
+}
+
+bool q3_filter_tgclass(int *prop_ptr) {
+    auto prop = (p_item*)prop_ptr;
+    auto c1 = *(reinterpret_cast<const dcode_t *>(prop->value_));
+    auto c2 = g->get_dictionary()->lookup_string("TennisPlayer");
+    return c1 == c2;
+
 }
 
 

@@ -81,6 +81,8 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<key_token> key)  {
     Value *item_arr;
     Value *cur_item_reg;
 
+    auto gdb = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateStructGEP(fct_->args().begin(), 0));
+
     // iterate through property list of node
     auto loop_body = ctx_->while_loop_condition(fct_, plist_id_, unknown_id_, ctx_->WHILE_COND::LT, end_,
                                                 [&](BasicBlock *body, BasicBlock *epilog) {
@@ -91,7 +93,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<key_token> key)  {
                                                     // load property list
                                                     auto pset = ctx_->getBuilder().CreateCall(
                                                             ctx_->extern_func("pset_get_item_at"),
-                                                            {fct_->args().begin(), pid});
+                                                            {gdb, pid});
                                                     ctx_->getBuilder().CreateStore(pset, cur_pset);
 
                                                     // get pitem set

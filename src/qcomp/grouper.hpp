@@ -15,6 +15,12 @@ class grouper {
     static std::set<unsigned> pos_set_;
     static result_set intermediate_rs_;
     static qr_tuple current_tp_;
+
+    static bool total_grp_cnt_calc;
+    static unsigned total_grp_cnt;
+
+    static bool grp_cnt_int;
+    static unsigned tota_grp_cnt_int;
 public:
     grouper() {
 
@@ -30,6 +36,7 @@ public:
     static unsigned get_group_sum_int(int pos);
     static double get_group_sum_double(int pos);
     static uint64_t get_group_sum_uint(int pos);
+
 
 };
 

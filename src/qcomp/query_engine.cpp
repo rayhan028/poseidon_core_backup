@@ -86,7 +86,7 @@ using call_map = std::array<int*, 32>;
 void query_engine::cleanup() {
     start_.clear();
     operator_names_.clear();
-    operator_functions_.clear();
+    //operator_functions_.clear();
     finish_.clear();
     type_vec_.clear();
     complete_.store(false);
@@ -166,13 +166,32 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args, bool cleanu
 
     //int offset = 0;
     auto start_idx = start_.size()-1;
-
+    auto last = graph_->get_nodes()->num_chunks();
+    query_context qtx = {graph_.get(), 0, last, tx, &rs, args.data()};
+    qtx.gdb = graph_.get();
+    qtx.rs = &rs;
+    *qtx.args = *args.data();
+    qtx.tx = tx;
     for(i = start_idx; i >= 0; i--) {
-        start_[i](graph_.get(), 0, graph_->get_nodes()->num_chunks(), tx, 1, &type_vec_[start_idx], rs, nullptr, finish_[0], 0, args.data());
+        //start_[i](graph_.get(), 0, graph_->get_nodes()->num_chunks(), tx, 1, &type_vec_[start_idx], rs, nullptr, finish_[0], 0, args.data());
+        start_[i](&qtx, args.data(), rs);
         //offset += offsets[i];
     }
     graph_->commit_transaction();
 
+    auto bench = qtx.profiling_time;
+
+    std::map<int, int> operator_exec_times;
+    for(auto & b : bench) {
+        if(operator_exec_times.find(b.first) == operator_exec_times.end())
+            operator_exec_times[b.first] = b.second;    
+        else
+            operator_exec_times[b.first] += b.second;
+    }
+
+    for(auto & t : operator_exec_times) {
+        std::cout << "Operator: " << t.first << " : " << t.second << " ns" << std::endl;
+    }
 
     if(cleanup_query)
         cleanup();
@@ -182,7 +201,7 @@ void query_engine::run(result_set * rs) {
     run(rs, query_args.args);
 }
 
-std::map<int, std::vector<consumer_fct_type>> query_engine::operator_functions_ = {};
+//std::map<int, std::vector<consumer_fct_type>> query_engine::operator_functions_ = {};
 std::map<int, finish_fct_type> query_engine::finish_ = {};
 
 bool has_join(algebra_optr expr) {
@@ -214,7 +233,7 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
 	    //prepare();
             task_callee_ = [&](transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer) {
                 current_transaction_ = tx;
-                start_[0](gdb, first, last, tx, 1, &type_vec_[0], rs, nullptr, finish_[0], 0, args.args.data());
+                //start_[0](gdb, first, last, tx, 1, &type_vec_[0], rs, nullptr, finish_[0], 0, args.args.data());
             };
 
             scan_task::callee_ = task_callee_;
@@ -244,7 +263,7 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
                 end = cur_start + chunksz - 1;
             query_threads.push_back(std::thread([&, cur_start, end]{
                 current_transaction_ = tx;
-                start_[0](graph_.get(), cur_start, end, current_transaction_, 1, &type_vec_[0], rs, nullptr, finish_[0], 0, args.args.data());
+                //start_[0](graph_.get(), cur_start, end, current_transaction_, 1, &type_vec_[0], rs, nullptr, finish_[0], 0, args.args.data());
             }));
             cur_start += chunksz;
         }
@@ -321,14 +340,14 @@ void compile_task::operator()() {
     query_id = 0;
 
     //3. get all generated function pointers
-    for(int q = 0; q <= query_id; q++) {
+    /*for(int q = 0; q <= query_id; q++) {
         for(auto i = 1u; i < qeng_.operator_names_[q].size(); i++) {
             auto op_name = qeng_.operator_names_[q].at(i);
             auto fc = jit_.getFunctionRaw<consumer_fct_type>(op_name);
             if(fc)
                 query_engine::operator_functions_[q].push_back(*fc);
         }
-    }
+    }*/
 
     for(int q = 0; q <= query_id; q++) {
         /*auto finish_fc = jit_.getFunctionRaw<finish_fct_type>(finish_name);

@@ -8,10 +8,10 @@
 /*
 * Function initialisation at first access path
 */
-void codegen_inline_visitor::init_function(BasicBlock *entry) {
+void codegen_inline_visitor::init_function(BasicBlock *bb) {
 
     // create function entry block
-    ctx.getBuilder().SetInsertPoint(entry);
+    ctx.getBuilder().SetInsertPoint(bb);
 
     // allocate result counter and initialize with 0
     res_counter = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
@@ -70,7 +70,17 @@ void codegen_inline_visitor::init_function(BasicBlock *entry) {
     dangling = ctx.getBuilder().CreateAlloca(ctx.int64Ty);    
 }
 
+AllocaInst *codegen_inline_visitor::insert_alloca(Type *ty) {
+    auto cur_bb = ctx.getBuilder().GetInsertBlock();
+    ctx.getBuilder().SetInsertPoint(inits);
+    auto alloc = ctx.getBuilder().CreateAlloca(ty);
+    ctx.getBuilder().SetInsertPoint(cur_bb);
+    return alloc;
+}
+
 BasicBlock *df_finish_bb;
+
+bool profiling = false;
 
 /*
 * Generates code for a scan operator.
@@ -107,12 +117,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
 
     // obtain all relevant function callees for the scan operator
     //FunctionCallee dict_lookup_label = ctx.extern_func("dict_lookup_label");
-    FunctionCallee get_valid_node = ctx.extern_func("get_valid_node");
-    FunctionCallee gdb_get_nodes = ctx.extern_func("gdb_get_nodes");
-    FunctionCallee gdb_get_node_from_it = ctx.extern_func("get_node_from_it");
-    FunctionCallee get_begin = ctx.extern_func("get_vec_begin");
-    FunctionCallee get_next = ctx.extern_func("get_vec_next");
-    FunctionCallee is_end = ctx.extern_func("vec_end_reached");
+    auto get_valid_node = ctx.extern_func("get_valid_node");
+    auto gdb_get_nodes = ctx.extern_func("gdb_get_nodes");
+    auto gdb_get_node_from_it = ctx.extern_func("get_node_from_it");
+    auto get_begin = ctx.extern_func("get_vec_begin");
+    auto get_next = ctx.extern_func("get_vec_next");
+    auto is_end = ctx.extern_func("vec_end_reached");
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
 
     /*
     * When a previous access path already exists, push the new entry block as the first block into the
@@ -121,42 +133,63 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     BasicBlock *bb;
     BasicBlock *next_op;
     if(!access) {
-        next_op = &main_function->getEntryBlock();
-        next_op->setName("next_op");
+        //next_op = &main_function->getEntryBlock();
+        next_op = entry;
+        next_op->setName("next_pipeline");
         op->name_ = "";
     } else {
+        inits = BasicBlock::Create(ctx.getModule().getContext(), "inits_entry", main_function);
         bb = BasicBlock::Create(ctx.getModule().getContext(), "entry", main_function);
         pre_tuple_mat = BasicBlock::Create(ctx.getModule().getContext(), "pre_tuple_mat", main_function);
+        entry = bb;
+
+        // initialize all relevant functions
+        init_function(inits);
     }
 
     if(!access) {
-        bb = BasicBlock::Create(ctx.getModule().getContext(), "entry");
-        main_function->getBasicBlockList().push_front(bb);
+        bb = BasicBlock::Create(ctx.getModule().getContext(), "entry", main_function);
+        entry = bb;
+        //main_function->getBasicBlockList().push_front(bb);
+        //auto bb_front = main_function->getBasicBlockList().begin();
+        //main_function->getBasicBlockList().insertAfter(bb_front, bb);
+
+        //auto init_term = inits->getTerminator();
+        //init_term->removeFromParent();
+
+        // initialize all relevant functions
+        init_function(inits);
+
+        ctx.getBuilder().SetInsertPoint(inits);
+        ctx.getBuilder().CreateBr(bb);
     }
     scan_nodes_end = BasicBlock::Create(ctx.getModule().getContext(), "scan_nodes_end", main_function);
     BasicBlock *consumeBB = BasicBlock::Create(ctx.getModule().getContext(), "consume_node", main_function);
 
-    // initialize all relevant functions
-    init_function(bb);
     df_finish_bb = BasicBlock::Create(ctx.getContext(), "finish_entry", main_function);
         // node
 
-    // obtain the query function arguments
-    gdb = main_function->args().begin();
-    auto first = main_function->args().begin() + 1;
-    auto last = main_function->args().begin() + 2;
-    auto tx_ptr = main_function->args().begin() + 3;
-    //auto oid = main_function->args().begin() + 4;
-    ty = main_function->args().begin() + 5;
-    rs = main_function->args().begin() + 6;
-    finish = main_function->args().begin() + 8;
-    offset = main_function->args().begin() + 9;
-    queryArgs = main_function->args().begin() + 10;
+    // obtain the query context & function arguments
+
+    query_context = main_function->args().begin();
+    queryArgs = main_function->args().begin() + 1;
+    rs = main_function->args().begin() + 2;
 
     BasicBlock *curBB;
 
+    if(access)
+        //ctx.getBuilder().CreateBr(bb);
+    //else 
+        extract_query_context(query_context);
+
+    ctx.getBuilder().SetInsertPoint(bb);
+    
+    
     // register for the current node
     Value *node;
+
+    Value *t_start;
+    Value *t_end;
 
     // scan all
     if(!op->indexed_) {
@@ -174,6 +207,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
             // 4 iterate through node list
             curBB = ctx.while_loop(main_function, get_begin, get_next, is_end, node_begin_it, nodes_vec,
                                             scan_nodes_end, [&](BasicBlock *curBB, BasicBlock *epilog) {
+                        if(profiling)
+                            t_start = ctx.getBuilder().CreateCall(fadd_now, {});
                         // 5 obtain node from iterator
                         auto node_raw = ctx.getBuilder().CreateCall(gdb_get_node_from_it, {node_begin_it});
 
@@ -262,6 +297,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     // branch to the next oeprator
     ctx.getBuilder().SetInsertPoint(consumeBB);
     {
+        if(profiling) {
+            t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+            ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+        }
         // add current node to register
         reg_query_results.push_back({node, 0});
         main_return = curBB;
@@ -270,7 +309,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
 
     // branch to the finish function
     ctx.getBuilder().SetInsertPoint(scan_nodes_end);
-    {
+    {   
         if(!access) {
             ctx.getBuilder().CreateBr(next_op);
         } else {
@@ -306,15 +345,17 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     }
 
     // obtain the FunctionCallees for the operator processing
-    FunctionCallee rship_by_id = ctx.extern_func("rship_by_id");
+    auto rship_by_id = ctx.extern_func("rship_by_id");
     //FunctionCallee gdb_get_rships = ctx.extern_func("gdb_get_rships");
     //FunctionCallee ohop_count = ctx.extern_func("count_potential_o_hop");
     //FunctionCallee get_rship_queue = ctx.extern_func("retrieve_fev_queue");
     //FunctionCallee insert_to_queue = ctx.extern_func("insert_fev_rship");
 
-    FunctionCallee retrieve_rships = ctx.extern_func("foreach_from_variable_rship");
-    FunctionCallee get_next_rship = ctx.extern_func("get_next_rship_fev");
-    FunctionCallee fev_list_end = ctx.extern_func("fev_list_end");
+    auto retrieve_rships = ctx.extern_func("foreach_from_variable_rship");
+    auto get_next_rship = ctx.extern_func("get_next_rship_fev");
+    auto fev_list_end = ctx.extern_func("fev_list_end");
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
 
     // create the basic blocks for the operator processing
     BasicBlock *fe_entry = BasicBlock::Create(ctx.getContext(), "fe_entry", main_function);
@@ -332,6 +373,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     ctx.getBuilder().CreateBr(fe_entry);
     ctx.getBuilder().SetInsertPoint(fe_entry);
 
+    Value *t_start;
+    Value *t_end;
 
     Value *node;
     // get the previous tuple result
@@ -390,6 +433,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
         // iterate through the relationship list of the node
         auto loop_body = ctx.while_loop_condition(main_function, lhs_alloca, rhs_alloca, PContext::WHILE_COND::LT, foreach_rship_end,
                                                 [&](BasicBlock *, BasicBlock *) {
+                                                    if(profiling)
+                                                        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
+
                                                     // extract relationship id from alloca
                                                     auto lhs = ctx.getBuilder().CreateLoad(lhs_alloca);
 
@@ -415,6 +461,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     // consume the given relationship
     ctx.getBuilder().SetInsertPoint(consumeBB);
     {
+        if(profiling) {
+            t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+            ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+        }
+
         reg_query_results.push_back({rship, 1});
         prev_bb = consumeBB;
     }
@@ -448,6 +499,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
     auto node_has_property = ctx.extern_func("node_has_property");
     auto rship_has_property = ctx.extern_func("rship_has_property");
     auto apply_has_property = ctx.extern_func("apply_has_property");
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
 
     // create entry block and link with the previous operator
     BasicBlock *entry = BasicBlock::Create(ctx.getContext(), "project_entry", main_function);
@@ -456,58 +509,54 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
     ctx.getBuilder().SetInsertPoint(entry);
     std::map<std::size_t, Value*> vmap;
 
+    Value *t_start;
+    Value *t_end;
+
     auto i = 1;
 
+    if(profiling)
+        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
     // add new projection variables to registers
     std::vector<QR_VALUE> nqrv;
     for(auto & pe : op->prexpr_) {
-        if(pe.has_properties.empty()) {
+        auto r = reg_query_results[pe.id];
+        if(pe.prt == pr_expr::PROJECTION_TYPE::PROPERTY_PR) {
             if(pe.type == FTYPE::BOOLEAN) {
                 nqrv.push_back(reg_query_results[pe.id]);
             } else {
                 
                 // get register value of tuple for projection
-                auto r = reg_query_results[pe.id];
                 auto qrp = ctx.getBuilder().CreateBitCast(r.reg_val, ctx.int64PtrTy);
 
                 // get the appropriate type of the tuple
                 auto type = ConstantInt::get(ctx.int64Ty, APInt(64, static_cast<int>(pe.type)));
 
-                if(pe.if_exist_) {
-                    if(r.type == 0) {
-                        auto exists = ctx.getBuilder().CreateCall(node_has_property, {gdb, r.reg_val, project_keys[i-1]});
-
-                    } else {
-                        auto exists = ctx.getBuilder().CreateCall(rship_has_property, {gdb, r.reg_val, project_keys[i-1]});
-                    } 
-                } else if(pe.int_node_func != nullptr && pe.key.empty()) {
-                    pe.type = FTYPE::INT;
-                    auto fc_raw = ConstantInt::get(ctx.int64Ty, (int64_t)pe.int_node_func);
-                    auto fc_ptr = ctx.getBuilder().CreateIntToPtr(fc_raw, ctx.int64PtrTy);
-                    auto fc_ty = FunctionType::get(ctx.int64Ty, {ctx.nodePtrTy}, false);
-                    auto fc = ctx.getBuilder().CreateBitCast(fc_ptr, fc_ty->getPointerTo());
-
-                    auto i_pr = ctx.getBuilder().CreateCall(fc_ty, fc, {r.reg_val});
-                    ctx.getBuilder().CreateStore(i_pr, pv[i]);
-
-                } else if(pe.key.empty() && pe.type == FTYPE::NONE) {
-                    nqrv.push_back({r.reg_val, r.type});
-                    i++;
-                    continue;
+                // apply the projection in an external function
+                if(r.type == 0) {
+                    ctx.getBuilder().CreateCall(apply_pexpr_node, {gdb, project_keys[i-1], type, qrp, pv[i]});
                 } else {
-                    // apply the projection in an external function
-                    if(r.type == 0) {
-                        ctx.getBuilder().CreateCall(apply_pexpr_node, {gdb, project_keys[i-1], type, qrp, pv[i]});
-                    } else {
-                        ctx.getBuilder().CreateCall(apply_pexpr_rship, {gdb, project_keys[i-1], type, qrp, pv[i]});
-                    }
+                    ctx.getBuilder().CreateCall(apply_pexpr_rship, {gdb, project_keys[i-1], type, qrp, pv[i]});
                 }
 
                 // add new register value to global list
                 nqrv.push_back({pv[i], static_cast<int>(pe.type)+2});
 
             }
-        } else {
+        } else if(pe.prt == pr_expr::PROJECTION_TYPE::FORWARD_PR) {
+            nqrv.push_back({r.reg_val, r.type});
+            i++;
+            continue;
+        } else if(pe.prt == pr_expr::PROJECTION_TYPE::FUNCTIONAL_VAL) {
+            pe.type = FTYPE::INT;
+            auto fc_raw = ConstantInt::get(ctx.int64Ty, (int64_t)pe.int_node_func);
+            auto fc_ptr = ctx.getBuilder().CreateIntToPtr(fc_raw, ctx.int64PtrTy);
+            auto fc_ty = FunctionType::get(ctx.int64Ty, {ctx.nodePtrTy}, false);
+            auto fc = ctx.getBuilder().CreateBitCast(fc_ptr, fc_ty->getPointerTo());
+
+            auto i_pr = ctx.getBuilder().CreateCall(fc_ty, fc, {r.reg_val});
+            ctx.getBuilder().CreateStore(i_pr, pv[i]);
+            nqrv.push_back({pv[i], static_cast<int>(FTYPE::INT)+2});
+        } else if(pe.prt == pr_expr::PROJECTION_TYPE::CONDITIONAL_VAL) {
             std::vector<Value*> prop_exists;
             std::vector<Value*> then_else;
 
@@ -537,9 +586,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
             auto str_ptr_nd = ctx.getBuilder().CreateGlobalStringPtr(pe.then_else.second);
             
             ctx.getBuilder().CreateCall(apply_has_property, {add_sum.back(), str_ptr_st, str_ptr_nd, pv[i]});
-            nqrv.push_back({pv[i], static_cast<int>(pe.type)+4});
+            nqrv.push_back({pv[i], 4});
         }
         i++;
+    }
+
+    if(profiling) {
+        t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
     }
 
     // switch old register list with the new one
@@ -571,14 +625,21 @@ void codegen_inline_visitor::visit(std::shared_ptr<expand_op> op) {
     BasicBlock *check_label = BasicBlock::Create(ctx.getContext(), "check_label", main_function);
 
     Value *label_code;
+    Value *t_start;
+    Value *t_end;
 
     // get the relevant FunctionCallee
     auto get_node_by_id = ctx.extern_func("node_by_id");
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
 
     // link with the previous operator
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(entry);
     ctx.getBuilder().SetInsertPoint(entry);
+
+    if(profiling)
+        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
 
     // obtain the last query result from register -> relationship
     auto rship = reg_query_results.back().reg_val;
@@ -653,6 +714,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<expand_op> op) {
     // add result to register list 
     ctx.getBuilder().SetInsertPoint(consume);
     {
+        if(profiling) {
+            t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+            ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+        }
         reg_query_results.push_back({node, 0});
 
         prev_bb = consume;
@@ -676,10 +741,19 @@ void codegen_inline_visitor::visit(std::shared_ptr<filter_op> op) {
     BasicBlock *consume = BasicBlock::Create(ctx.getContext(), "filter_consume", main_function);
     BasicBlock *false_pred = BasicBlock::Create(ctx.getContext(), "filter_false", main_function);
 
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
+
     // link with the previous operator
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(entry);
     ctx.getBuilder().SetInsertPoint(entry);
+
+    Value* t_start;
+    Value* t_end;
+
+    if(profiling)
+        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
 
     // extract the argument from the argument desc
     auto opid = ConstantInt::get(ctx.int64Ty, op->op_id_);
@@ -698,6 +772,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<filter_op> op) {
 
     ctx.getBuilder().SetInsertPoint(consume);
     {
+        if(profiling) {
+            t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+            ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+        }
         // next operator
         prev_bb = consume;
     }
@@ -717,14 +795,22 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
     op->name_ = "";
 
     // obtain all relevant FunctionCallees
-    FunctionCallee mat_reg = ctx.extern_func("mat_reg_value");
-    FunctionCallee collect_regs = ctx.extern_func("collect_tuple");
+    auto mat_reg = ctx.extern_func("mat_reg_value");
+    auto collect_regs = ctx.extern_func("collect_tuple");
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
 
     // link with previous operator
     BasicBlock *entry = BasicBlock::Create(ctx.getContext(), "collect_entry", main_function);
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(entry);
     ctx.getBuilder().SetInsertPoint(entry);
+
+    Value* t_start;
+    Value* t_end;
+
+    if(profiling) 
+        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
 
     auto print_tuple = ConstantInt::get(ctx.boolTy, op->print_on_collect_);
 
@@ -743,12 +829,21 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
     ctx.getBuilder().SetInsertPoint(pre_tuple_mat);
     // materialize the complete thread local storage into a global list
     ctx.getBuilder().CreateCall(collect_regs, {rs, print_tuple});
+
+    if(profiling) {
+        t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+    }
     
     ctx.getBuilder().CreateBr(main_return);
 
     // complete the finish call
     ctx.getBuilder().SetInsertPoint(df_finish_bb);
     ctx.getBuilder().CreateRetVoid();
+
+    // complete init->entry
+    //ctx.getBuilder().SetInsertPoint(inits);
+    //ctx.getBuilder().CreateBr(this->entry);
 }
 
 // process recursively the type vector of the rhs of a join
@@ -782,6 +877,8 @@ void get_rhs_type(std::shared_ptr<base_op>  &qop, std::vector<int> &typv) {
  * Generate code for the join operator
  */
 void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
+    jids.push_back(query_id_inline);
+    
     // obtain types of rhs
     std::vector<int> types;
     get_rhs_type(op->inputs_[1], types);
@@ -814,10 +911,20 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     auto insert_join_id_input = ctx.extern_func("insert_join_id_input");
     auto get_join_id_at = ctx.extern_func("get_join_id_at");
 
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
+
     // link with previous operator
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(join_lhs_entry);
     ctx.getBuilder().SetInsertPoint(join_lhs_entry);
+
+    Value* t_start;
+    Value* t_end;
+
+    if(profiling) 
+        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
+
 
     // init idx and dangling flag
     ctx.getBuilder().CreateStore(ctx.LLVM_ONE, dangling);
@@ -829,7 +936,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     auto jid = ConstantInt::get(ctx.int64Ty, query_id_inline);
     auto ma = ctx.getBuilder().CreateCall(get_size, {jid});
     ctx.getBuilder().CreateStore(ma, max_idx);
-    jids.push_back(query_id_inline);
     query_id_inline++;
 
     Value *rhs_id;
@@ -1023,6 +1129,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     ctx.getBuilder().CreateBr(consume);
 
     ctx.getBuilder().SetInsertPoint(consume);
+    if(profiling) {
+        t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+    }
     prev_bb = consume;
 
     ctx.getBuilder().SetInsertPoint(end);
@@ -1047,7 +1157,16 @@ void codegen_inline_visitor::visit(std::shared_ptr<sort_op> op) {
 
     BasicBlock *sort_entry = BasicBlock::Create(ctx.getContext(), "entry", df_finish);
 
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
+
     ctx.getBuilder().SetInsertPoint(sort_entry);
+
+    Value* t_start;
+    Value* t_end;
+
+    if(profiling) 
+        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
 
     auto res = df_finish->args().begin();
 
@@ -1056,6 +1175,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<sort_op> op) {
     auto sort_fc = ctx.getBuilder().CreateBitCast(sort_fc_ptr, ctx.finishFctTy->getPointerTo());
 
     ctx.getBuilder().CreateCall(ctx.finishFctTy, sort_fc, {res});
+
+    if(profiling) {
+        t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+    }
 
     ctx.getBuilder().CreateRetVoid();
 }
@@ -1069,10 +1193,19 @@ void codegen_inline_visitor::visit(std::shared_ptr<limit_op> op) {
     BasicBlock *limit_reached = BasicBlock::Create(ctx.getContext(), "limit_entry", main_function);
     BasicBlock *limit_cont = BasicBlock::Create(ctx.getContext(), "limit_entry", main_function);
 
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
+
     // link with previous operator
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(limit);
     ctx.getBuilder().SetInsertPoint(limit);
+
+    Value* t_start;
+    Value* t_end;
+
+    if(profiling) 
+        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
 
     // get the given limit
     auto res_limit = ConstantInt::get(ctx.int64Ty, op->limit_);
@@ -1086,6 +1219,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<limit_op> op) {
 
     // if the limit is reached branch to the global end block
     ctx.getBuilder().SetInsertPoint(limit_reached);
+
+    if(profiling) {
+        t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+    }
+
     ctx.getBuilder().CreateBr(scan_nodes_end);
 
 
@@ -1093,6 +1232,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<limit_op> op) {
     ctx.getBuilder().SetInsertPoint(limit_cont);
     auto incr = ctx.getBuilder().CreateAdd(cur_cnt, ctx.LLVM_ONE);
     ctx.getBuilder().CreateStore(incr, res_counter);
+    if(profiling) {
+        t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+    }
     prev_bb = limit_cont;
 
 }
@@ -1112,6 +1255,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     auto insert_join_id_input = ctx.extern_func("insert_join_id_input");
     auto insert_join_bucket_input = ctx.extern_func("insert_join_bucket_input");
 
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
+
     //FunctionCallee mat_reg = ctx.extern_func("mat_reg_value");
     BasicBlock *bb = BasicBlock::Create(ctx.getContext(), "entry_join_rhs", main_function);
 
@@ -1119,12 +1265,20 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     ctx.getBuilder().CreateBr(bb);
     ctx.getBuilder().SetInsertPoint(bb);
 
+    Value* t_start;
+    Value* t_end;
+
+    if(profiling) 
+        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
+
     // collect materialized tuple -> joiner rhs_input @ join id
     auto last_jid = jids.front();
     jids.pop_front();
     auto jid = ConstantInt::get(ctx.int64Ty, last_jid);
+
     auto n = reg_query_results[op->qr_pos_].reg_val;
     auto id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(n, 1));
+
     Value *remainder;
     if(op->join_op_ == JOIN_OP::NESTED_LOOP) {
         ctx.getBuilder().CreateCall(insert_join_id_input, {jid, id});
@@ -1133,7 +1287,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
         remainder = ctx.getBuilder().CreateSRem(id, num_bucket);
         ctx.getBuilder().CreateCall(insert_join_bucket_input, {jid, remainder, id});
     }
-
+    
     // obtain tuple object for materialization -> joiner mat_tuple
     auto tp = ctx.getBuilder().CreateCall(obtain_mat_tuple, {});
 
@@ -1153,6 +1307,13 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     } else {
         ctx.getBuilder().CreateCall(collect_tuple_join, {jid, tp});
     }
+    
+
+    if(profiling) {
+        t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+    }
+
     ctx.getBuilder().CreateBr(main_return);
 
     ctx.getBuilder().SetInsertPoint(df_finish_bb);
@@ -1247,11 +1408,20 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
     auto get_time_grpkey = ctx.extern_func("get_time_grpkey");
     auto add_to_group = ctx.extern_func("add_to_group");
 
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
+
     BasicBlock *group_entry = BasicBlock::Create(ctx.getContext(), "group_entry", main_function);
 
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(group_entry);
     ctx.getBuilder().SetInsertPoint(group_entry);
+
+    Value* t_start;
+    Value* t_end;
+
+    if(profiling) 
+        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
 
     // materialize tuple
     FunctionCallee mat_reg = ctx.extern_func("mat_reg_value");
@@ -1288,7 +1458,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
                 ctx.getBuilder().CreateCall(get_string_grpkey, {qr.reg_val, pos_val});
                 break;
             }
-            case 5: {
+            case 6: {
                 ctx.getBuilder().CreateCall(get_time_grpkey, {qr.reg_val, pos_val});
                 break;
             } 
@@ -1297,6 +1467,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
         pos_type.push_back({i++, qr.type});
     }
     ctx.getBuilder().CreateCall(add_to_group, {});
+
+    if(profiling) {
+        t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+    }
+
     ctx.getBuilder().CreateBr(main_return);
     prev_bb = group_entry;
 
@@ -1354,20 +1530,22 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
             }
             case 2: {
                 auto i = ctx.getBuilder().CreateCall(int_to_reg, {tuple, pos});
-                demat = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                demat = insert_alloca(ctx.int64Ty);
                 ctx.getBuilder().CreateStore(i, demat);
                 break;
             }
             case 3: continue;
             case 4: {
                 auto str = ctx.getBuilder().CreateCall(str_to_reg, {tuple, pos});
-                demat = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                demat = insert_alloca(ctx.int64Ty);
                 ctx.getBuilder().CreateStore(str, demat);
+                break;
             }
-            case 5: {
+            case 6: {
                 auto t = ctx.getBuilder().CreateCall(time_to_reg, {tuple, pos});
-                demat = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                demat = insert_alloca(ctx.int64Ty);
                 ctx.getBuilder().CreateStore(t, demat);
+                break;
             }
         }
         new_query_res.push_back({demat, pt.second});
@@ -1394,20 +1572,30 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
     auto get_group_sum_double = ctx.extern_func("get_group_sum_double");
     auto get_group_sum_uint = ctx.extern_func("get_group_sum_uint");  
 
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
+
     //modify the finish processing -> add to last basic block of pipeline
     BasicBlock *aggr_finish = BasicBlock::Create(ctx.getContext(), "aggr_finish", main_function);
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(aggr_finish);
     ctx.getBuilder().SetInsertPoint(aggr_finish);
+
+    Value* t_start;
+    Value* t_end;
+
+    if(profiling) 
+        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
+
     ctx.getBuilder().CreateCall(init_grp_aggr, {});
     for(auto &aggr: op->aggrs_) {
         if(aggr.first.compare("count") == 0) {
-            auto cnt_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+            auto cnt_alloc = insert_alloca(ctx.int64Ty);
             auto cnt = ctx.getBuilder().CreateCall(grp_cnt, {});
             ctx.getBuilder().CreateStore(cnt, cnt_alloc);
             reg_query_results.push_back({cnt_alloc, 2});
         } else if(aggr.first.compare("pcount") == 0) {
-            auto pcnt_alloc = ctx.getBuilder().CreateAlloca(ctx.doubleTy);
+            auto pcnt_alloc = insert_alloca(ctx.doubleTy);
             auto cnt = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(grp_cnt, {}), ctx.doubleTy);
             auto total_cnt = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(grp_total_cnt, {}), ctx.doubleTy);
             auto cnt_div = ctx.getBuilder().CreateFDiv(cnt, total_cnt);
@@ -1418,21 +1606,22 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
             auto pos = ConstantInt::get(ctx.int64Ty, aggr.second);
             switch(reg_query_results[aggr.second].type) {
                 case 2: {
-                    auto sum_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                    //auto sum_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                    auto sum_alloc = insert_alloca(ctx.int64Ty);
                     auto sum = ctx.getBuilder().CreateCall(get_group_sum_int, {pos});
                     ctx.getBuilder().CreateStore(sum, sum_alloc);
                     reg_query_results.push_back({sum_alloc, 2});
                     break;
                 }
                 case 3: {
-                    auto sum_alloc = ctx.getBuilder().CreateAlloca(ctx.doubleTy);
+                    auto sum_alloc = insert_alloca(ctx.doubleTy);
                     auto sum = ctx.getBuilder().CreateCall(get_group_sum_double, {pos});
                     ctx.getBuilder().CreateStore(sum, sum_alloc);
                     reg_query_results.push_back({sum_alloc, 3});
                     break;
                 }
                 case 5: {
-                    auto sum_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                    auto sum_alloc = insert_alloca(ctx.int64Ty);
                     auto sum = ctx.getBuilder().CreateCall(get_group_sum_uint, {pos});
                     ctx.getBuilder().CreateStore(sum, sum_alloc);
                     reg_query_results.push_back({sum_alloc, 5});
@@ -1444,7 +1633,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
             auto pos = ConstantInt::get(ctx.int64Ty, aggr.second);
             switch(reg_query_results[aggr.second].type) {
                 case 2: {
-                    auto avg_alloc = ctx.getBuilder().CreateAlloca(ctx.doubleTy);
+                    auto avg_alloc = insert_alloca(ctx.doubleTy);
                     auto cnt = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(grp_cnt, {}), ctx.doubleTy);
                     auto sum = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(get_group_sum_int, {pos}), ctx.doubleTy);
                     auto avg = ctx.getBuilder().CreateFDiv(sum, cnt);
@@ -1453,7 +1642,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
                     break;
                 }
                 case 3: {
-                    auto avg_alloc = ctx.getBuilder().CreateAlloca(ctx.doubleTy);
+                    auto avg_alloc = insert_alloca(ctx.doubleTy);
                     auto cnt = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(grp_cnt, {}), ctx.doubleTy);
                     auto sum = ctx.getBuilder().CreateCall(get_group_sum_double, {pos});
                     auto avg = ctx.getBuilder().CreateUDiv(sum, cnt);
@@ -1462,7 +1651,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
                     break;
                 }
                 case 5: {
-                    auto avg_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                    auto avg_alloc = insert_alloca(ctx.int64Ty);
                     auto cnt = ctx.getBuilder().CreateCall(grp_cnt, {});
                     auto sum = ctx.getBuilder().CreateCall(get_group_sum_uint, {pos});
                     auto avg = ctx.getBuilder().CreateUDiv(sum, cnt);
@@ -1474,6 +1663,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
         }
     }
 
+    if(profiling) {
+        t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+    }
+
     prev_bb = aggr_finish;
 
 }
@@ -1481,6 +1675,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
 void codegen_inline_visitor::visit(std::shared_ptr<connected_op> op) {
     op->name_ = "";
     auto rship_by_id = ctx.extern_func("rship_by_id");
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
 
     BasicBlock *connected_entry = BasicBlock::Create(ctx.getContext(), "connected_entry", main_function);
     BasicBlock *connected_head = BasicBlock::Create(ctx.getContext(), "connected_head", main_function);
@@ -1492,6 +1688,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<connected_op> op) {
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(connected_entry);
     ctx.getBuilder().SetInsertPoint(connected_entry);
+
+    Value* t_start;
+    Value* t_end;
+
+    if(profiling) 
+        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
 
     auto found = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, found);
@@ -1535,6 +1737,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<connected_op> op) {
     }
 
     ctx.getBuilder().SetInsertPoint(consume);
+
+    if(profiling) {
+        t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+    }
+
     ctx.getBuilder().CreateStore(ctx.LLVM_ONE, consume);
 
     prev_bb = consume;
@@ -1546,9 +1754,17 @@ void codegen_inline_visitor::visit(std::shared_ptr<append_op> op) {
 
     auto append_to_tuple = ctx.extern_func("append_to_tuple");
     auto get_qr_tuple = ctx.extern_func("get_qr_tuple");
-
+    auto fadd_now = ctx.extern_func("get_now");
+    auto fadd_time_diff = ctx.extern_func("add_time_diff");
     // insert the append processing before the tuples get materialized
     ctx.getBuilder().SetInsertPoint(pre_tuple_mat);
+
+    Value* t_start;
+    Value* t_end;
+
+    if(profiling) 
+        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
+
     auto fct_raw = ConstantInt::get(ctx.int64Ty, (int64_t )op->func_);
     auto fct_ptr = ctx.getBuilder().CreateIntToPtr(fct_raw, ctx.int64PtrTy);
     auto fct_callee_type = FunctionType::get(ctx.int8PtrTy, {ctx.int8PtrTy}, false);
@@ -1559,6 +1775,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<append_op> op) {
 
     // execute op func
     auto qr = ctx.getBuilder().CreateCall(fct_callee_type, fct_callee, {qrt});
+
+    if(profiling) {
+        t_end = ctx.getBuilder().CreateCall(fadd_now, {});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+    }
 
     // append to result
     ctx.getBuilder().CreateCall(append_to_tuple, {qr});
