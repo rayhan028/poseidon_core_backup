@@ -360,7 +360,6 @@ set(src_files
   src/ql/ast.cpp
   src/analytics/bfs.cpp
   src/analytics/shortest_path.cpp
-  src/gtpc/gtpcc_loader.cpp
   )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -394,6 +393,7 @@ set(ldbc_files
   src/ldbc/ldbc_is.cpp
   src/ldbc/ldbc_updates.cpp
   src/ldbc/ldbc_loader.cpp
+  src/ldbc/ldbc_deletes.cpp
   src/ldbc/qps/ldbc_is_qp2.cpp
   src/ldbc/qps/ldbc_is_qp3.cpp
   src/ldbc/qps/ldbc_is_qp4.cpp
@@ -415,6 +415,28 @@ add_library(poseidon_ldbc SHARED
 )
 
 target_link_libraries(poseidon_ldbc
+  poseidon_core
+)
+
+set(gtpc_files
+  src/gtpc/gtpcc_loader.cpp
+)
+
+# Using OBJECT to avoid to build object files multiple times due to inclusion
+# in different libraries.
+# macOS doesn't like SHARED, Linux needs it
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+add_library(poseidon_gtpc_obj OBJECT ${gtpc_files})
+else()
+add_library(poseidon_gtpc_obj OBJECT SHARED ${gtpc_files})
+endif()
+
+# Poseidon LDBC library for building C++ applications
+add_library(poseidon_gtpc SHARED
+  $<TARGET_OBJECTS:poseidon_gtpc_obj>
+)
+
+target_link_libraries(poseidon_gtpc
   poseidon_core
 )
 
@@ -534,7 +556,7 @@ target_link_libraries(run_ldbc_jit_reads
 
 #-----------------------------------------------------------------------------------------
 #
-# Some programs for LDBC benchmarking.
+# Some programs for GTPC benchmarking.
 #
 
 # The program for loading CSV files into PMem.
@@ -544,6 +566,7 @@ add_executable(run_gtpcc_loader
  )
 
 target_link_libraries(run_gtpcc_loader
+  poseidon_gtpc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
