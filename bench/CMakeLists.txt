@@ -12,6 +12,7 @@ foreach(ONE_BENCH_CPP ${ALL_BENCH_CPP})
    include_directories("${BENCHMARK_INCLUDE_DIR}")
 
    target_link_libraries(${TARGET_NAME} 
+         poseidon_ldbc
         poseidon_core
         benchmark
          ${PMDK_LIBRARIES}

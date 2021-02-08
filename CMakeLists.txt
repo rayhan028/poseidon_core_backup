@@ -342,15 +342,6 @@ set(src_files
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
-  src/ldbc/ldbc_graphalytics.cpp
-  src/ldbc/ldbc_bi.cpp
-  src/ldbc/ldbc_is.cpp
-  src/ldbc/ldbc_updates.cpp
-  src/ldbc/ldbc_loader.cpp
-  src/ldbc/qps/ldbc_is_qp2.cpp
-  src/ldbc/qps/ldbc_is_qp3.cpp
-  src/ldbc/qps/ldbc_is_qp4.cpp
-  src/ldbc/qps/ldbc_is_qp5.cpp
   src/qcomp/codegen_inline.cpp
   src/qcomp/filter_expression.cpp
   src/qcomp/filter_expression_inline.cpp
@@ -397,6 +388,36 @@ target_include_directories( ${PROJECT_NAME}
     PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
 
+set(ldbc_files
+  src/ldbc/ldbc_graphalytics.cpp
+  src/ldbc/ldbc_bi.cpp
+  src/ldbc/ldbc_is.cpp
+  src/ldbc/ldbc_updates.cpp
+  src/ldbc/ldbc_loader.cpp
+  src/ldbc/qps/ldbc_is_qp2.cpp
+  src/ldbc/qps/ldbc_is_qp3.cpp
+  src/ldbc/qps/ldbc_is_qp4.cpp
+  src/ldbc/qps/ldbc_is_qp5.cpp
+)
+
+# Using OBJECT to avoid to build object files multiple times due to inclusion
+# in different libraries.
+# macOS doesn't like SHARED, Linux needs it
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+add_library(poseidon_ldbc_obj OBJECT ${ldbc_files})
+else()
+add_library(poseidon_ldbc_obj OBJECT SHARED ${ldbc_files})
+endif()
+
+# Poseidon LDBC library for building C++ applications
+add_library(poseidon_ldbc SHARED
+  $<TARGET_OBJECTS:poseidon_ldbc_obj>
+)
+
+target_link_libraries(poseidon_ldbc
+  poseidon_core
+)
+
 if (BUILD_PYTHON)
 # Python Poseidon library for loading a module into the python3 interpreter
 add_library(poseidon SHARED
@@ -429,6 +450,7 @@ add_executable(run_ldbc_loader
  )
 
 target_link_libraries(run_ldbc_loader
+  poseidon_ldbc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -441,6 +463,7 @@ add_executable(run_ldbc_bi
 )
 
 target_link_libraries(run_ldbc_bi
+  poseidon_ldbc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -453,6 +476,7 @@ add_executable(run_ldbc_is
  )
 
 target_link_libraries(run_ldbc_is
+  poseidon_ldbc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -465,6 +489,7 @@ add_executable(run_ldbc_updates
  )
 
 target_link_libraries(run_ldbc_updates
+  poseidon_ldbc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -501,6 +526,7 @@ add_executable(run_ldbc_jit_reads
  )
 
 target_link_libraries(run_ldbc_jit_reads
+  poseidon_ldbc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
