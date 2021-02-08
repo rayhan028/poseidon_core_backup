@@ -266,8 +266,6 @@ class BPTree {
     }
   }
 
-  void recover() { /* makes no sense for in-memory */ }
-  
 #ifndef UNIT_TESTS
  private:
 #endif

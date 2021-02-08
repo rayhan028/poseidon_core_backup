@@ -20,28 +20,27 @@
 using namespace boost::program_options;
 
 void load_gtpcc_data(graph_db_ptr &graph, const std::string& path, bool strict) {
-  std::string data = path;
   std::string post_fix = "_0_0.csv";
 
   std::vector<std::string> node_files =
-    {data + "warehouse" + post_fix,
-    data + "district" + post_fix,
-    data + "item" + post_fix,
-    data + "stock" + post_fix,
-    data + "customer" + post_fix,
-    data + "order" + post_fix,
-    data + "orderLine" + post_fix};
+    {path + "warehouse" + post_fix,
+    path + "district" + post_fix,
+    path + "item" + post_fix,
+    path + "stock" + post_fix,
+    path + "customer" + post_fix,
+    path + "order" + post_fix,
+    path + "orderLine" + post_fix};
 
   std::vector<std::string> rship_files =
-    {data + "warehouse_covers_district" + post_fix,
-    data + "warehouse_hasStock_stock" + post_fix,
-    data + "item_hasStock_stock" + post_fix,
-    data + "orderLine_hasItem_item" + post_fix,
-    data + "order_contains_orderLine" + post_fix,
-    data + "district_serves_customer" + post_fix,
-    data + "customer_hasPlaced_order" + post_fix};
+    {path + "warehouse_covers_district" + post_fix,
+    path + "warehouse_hasStock_stock" + post_fix,
+    path + "item_hasStock_stock" + post_fix,
+    path + "orderLine_hasItem_item" + post_fix,
+    path + "order_contains_orderLine" + post_fix,
+    path + "district_serves_customer" + post_fix,
+    path + "customer_hasPlaced_order" + post_fix};
 
-  spdlog::info("trying to load data from {}", data);
+  spdlog::info("trying to load data from {}", path);
   load_gtpcc_data(graph, node_files, rship_files, strict);
 }
 
@@ -177,6 +176,7 @@ void create_gtpcc_index(graph_db_ptr &graph) {
   });
 }
 
+#ifdef FPTree
 void gtpcc_fptree_recovery(graph_db_ptr &graph) {
   std::vector<index_id> indexes;
   graph->run_transaction([&]() {
@@ -186,3 +186,4 @@ void gtpcc_fptree_recovery(graph_db_ptr &graph) {
   for (auto idx_ptr : indexes)
     idx_ptr->recover();
 }
+#endif
