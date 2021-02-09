@@ -16,7 +16,7 @@ struct qop_node {
 
     bool is_binary() const { return qop_->is_binary(); }
 
-    void print(std::ostream& os) {
+    void print(std::ostream& os = std::cout) {
         qop_->dump(os); 
         os << std::endl;
     }
@@ -28,6 +28,7 @@ struct qop_node {
  * The function returns a pair of (root node, current node).
  */
 std::pair<qop_node_ptr, qop_node_ptr> build_qop_tree(qop_ptr root) {
+    // std::cout << "build_qop_tree: "; root->dump(std::cout); std::cout << std::endl;
     if (!root->has_subscriber()) {
         auto troot = std::make_shared<qop_node>(root);
         return std::make_pair(troot, troot);
@@ -38,6 +39,10 @@ std::pair<qop_node_ptr, qop_node_ptr> build_qop_tree(qop_ptr root) {
     return std::make_pair(np.first, rn);
 }
 
+/**
+ * Try to find the first binary operator in the tree.
+ * We assume that the tree is actually only a list.
+ */
 qop_node_ptr find_binary_qop(qop_node_ptr tree) {
     // we know that this tree is only a list!
     while (tree != nullptr) {
@@ -61,16 +66,28 @@ qop_node_ptr find_matching_qop(qop_node_ptr tree, qop_node_ptr node) {
 }
 
 void merge_qop_trees(qop_node_ptr master, qop_node_ptr tree) {
+    // std::cout << "merge_qop_trees... "; master->print(); tree->print(); 
     // 1. find the first binary operator in tree
     qop_node_ptr bin_op = find_binary_qop(tree);
     if (! bin_op)
         return;
 
-    // 2. try to find the same operator in master
+    // std::cout << "merge_qop_trees: found .."; bin_op->print();
+    // 2. try to find the corresponding operator in master
     qop_node_ptr master_bin_op = find_matching_qop(master, bin_op);
 
     // 3. merge both trees on this operator
-    master_bin_op->children_.push_back(bin_op);
+    if (!master_bin_op)
+        return;
+
+    // std::cout << "merge_qop_trees: found .."; master_bin_op->print();
+    
+    // std::cout << "merge: ";
+    // bin_op->children_.front()->print();
+    // std::cout << " --- ";
+    // master_bin_op->print();
+
+    master_bin_op->children_.push_back(bin_op->children_.front());
 }
 
 // --------------------------------------------------------------------------------------
@@ -117,7 +134,7 @@ void query::print_plans(std::initializer_list<query *> queries, std::ostream& os
     }
     // merge trees
     for (auto i = 1u; i < trees.size(); i++) {
-        merge_qop_trees(trees[0], trees[1]);
+        merge_qop_trees(trees[0], trees[i]);
     }
     os << "##----------------------------------------------------------------------\n";
     trees[0]->print(os);
