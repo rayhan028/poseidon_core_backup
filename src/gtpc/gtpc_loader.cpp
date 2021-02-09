@@ -19,32 +19,41 @@
 
 using namespace boost::program_options;
 
-void load_gtpcc_data(graph_db_ptr &graph, const std::string& path, bool strict) {
+void load_gtpc_data(graph_db_ptr &graph, const std::string& path, bool strict) {
   std::string post_fix = "_0_0.csv";
 
   std::vector<std::string> node_files =
-    {path + "warehouse" + post_fix,
+    {path + "customer" + post_fix,
     path + "district" + post_fix,
     path + "item" + post_fix,
-    path + "stock" + post_fix,
-    path + "customer" + post_fix,
+    path + "nation" + post_fix,
     path + "order" + post_fix,
-    path + "orderLine" + post_fix};
+    path + "orderLine" + post_fix,
+    path + "region" + post_fix,
+    path + "stock" + post_fix,
+    path + "supplier" + post_fix,
+    path + "warehouse" + post_fix
+    };
 
   std::vector<std::string> rship_files =
-    {path + "warehouse_covers_district" + post_fix,
-    path + "warehouse_hasStock_stock" + post_fix,
-    path + "item_hasStock_stock" + post_fix,
-    path + "orderLine_hasItem_item" + post_fix,
-    path + "order_contains_orderLine" + post_fix,
+    {path + "customer_hasPlaced_order" + post_fix,
+    path + "customer_isLocatedIn_nation" + post_fix,
     path + "district_serves_customer" + post_fix,
-    path + "customer_hasPlaced_order" + post_fix};
+    path + "item_hasStock_stock" + post_fix,
+    path + "nation_isPartOf_region" + post_fix,
+    path + "order_contains_orderLine" + post_fix,
+    path + "orderLine_hasItem_item" + post_fix,
+    path + "stock_hasSupplier_supplier" + post_fix,
+    path + "supplier_isLocatedIn_nation" + post_fix,
+    path + "warehouse_covers_district" + post_fix,
+    path + "warehouse_hasStock_stock" + post_fix,
+    };
 
   spdlog::info("trying to load data from {}", path);
-  load_gtpcc_data(graph, node_files, rship_files, strict);
+  load_gtpc_data(graph, node_files, rship_files, strict);
 }
 
-void load_gtpcc_data(graph_db_ptr &graph,
+void load_gtpc_data(graph_db_ptr &graph,
                     std::vector<std::string> &node_files,
                     std::vector<std::string> &rship_files, bool strict) {
   if (strict)
@@ -169,7 +178,7 @@ void load_gtpcc_data(graph_db_ptr &graph,
   }
 }
 
-void create_gtpcc_index(graph_db_ptr &graph) {
+void create_gtpc_index(graph_db_ptr &graph) {
   graph->run_transaction([&]() {
     // graph->create_index("Customer", "id");
     return true;
@@ -177,7 +186,7 @@ void create_gtpcc_index(graph_db_ptr &graph) {
 }
 
 #ifdef FPTree
-void gtpcc_fptree_recovery(graph_db_ptr &graph) {
+void gtpc_fptree_recovery(graph_db_ptr &graph) {
   std::vector<index_id> indexes;
   graph->run_transaction([&]() {
     // indexes.push_back(graph->get_index("Customer", "id"));

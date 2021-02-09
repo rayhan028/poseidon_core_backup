@@ -17,13 +17,13 @@
 namespace pj = builtin;
 
 /* data */
-void load_gtpcc_data(graph_db_ptr &graph, const std::string& path, bool strict = true);
-void load_gtpcc_data(graph_db_ptr &graph,
+void load_gtpc_data(graph_db_ptr &graph, const std::string& path, bool strict = true);
+void load_gtpc_data(graph_db_ptr &graph,
                     std::vector<std::string> &node_files,
                     std::vector<std::string> &rship_files, bool strict = true);
 
 /* index */
-void create_gtpcc_index(graph_db_ptr &graph);
-void gtpcc_fptree_recovery(graph_db_ptr &graph);
+void create_gtpc_index(graph_db_ptr &graph);
+void gtpc_fptree_recovery(graph_db_ptr &graph);
 
 #endif

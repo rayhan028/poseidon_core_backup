@@ -419,7 +419,7 @@ target_link_libraries(poseidon_ldbc
 )
 
 set(gtpc_files
-  src/gtpc/gtpcc_loader.cpp
+  src/gtpc/gtpc_loader.cpp
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -561,11 +561,11 @@ target_link_libraries(run_ldbc_jit_reads
 
 # The program for loading CSV files into PMem.
 #
-add_executable(run_gtpcc_loader
-  src/gtpc/run_gtpcc_loader.cpp
+add_executable(run_gtpc_loader
+  src/gtpc/run_gtpc_loader.cpp
  )
 
-target_link_libraries(run_gtpcc_loader
+target_link_libraries(run_gtpc_loader
   poseidon_gtpc
   poseidon_core
   ${PMDK_LIBRARIES}

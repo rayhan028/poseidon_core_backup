@@ -19,7 +19,7 @@ using namespace boost::program_options;
 
 int main(int argc, char **argv) {
   bool strict = false;
-  std::string pool_path, gtpcc_home, db_name, log_file;
+  std::string pool_path, gtpc_home, db_name, log_file;
 
  try {
     options_description desc{"Options"};
@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
         ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
         ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem pool")
-        ("import,i", value<std::string>(&gtpcc_home)->required(), "Path to directory containing the graph TPC-C CSV files")
+        ("import,i", value<std::string>(&gtpc_home)->required(), "Path to directory containing the graph TPC-C CSV files")
         ("log,l", value<std::string>(&log_file), "Write log messages to the given file")
         ("db,d", value<std::string>(&db_name)->required(),"Database name (required)");
 
@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
       return -1;
     }
     if (vm.count("import"))
-      gtpcc_home = vm["import"].as<std::string>();
+      gtpc_home = vm["import"].as<std::string>();
 
     if (vm.count("log"))
       log_file = vm["log"].as<std::string>();
@@ -88,9 +88,9 @@ int main(int argc, char **argv) {
  
   graph->print_stats();
   
-  load_gtpcc_data(graph, gtpcc_home);
+  load_gtpc_data(graph, gtpc_home);
   #ifdef CREATE_INDEX
-  create_gtpcc_index(graph);
+  create_gtpc_index(graph);
   #endif
 
   graph->print_stats();
