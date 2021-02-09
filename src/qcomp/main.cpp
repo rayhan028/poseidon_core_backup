@@ -121,14 +121,14 @@ int main() {
 	
 	//algebra_optr op = qlc.compile_to_plan("Project([$0.name:string, $0.num:uint64], NodeScan('Person'))");
 
-	auto r_expr = Scan("Person", End());
+	auto r_expr = Scan("Person", End(JOIN_OP::HASH_JOIN, 0));
 
     auto l_expr = Scan("Person", Join(JOIN_OP::CROSS, {}, 
                         Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}
                                   /*{3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {0, "id", FTYPE::INT}, {0, "name", FTYPE::STRING}*/}, 
 							Collect()), r_expr));
 
-	auto fev = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0,0},
+	auto fev = Scan("Person", Join(JOIN_OP::HASH_JOIN, {0,0},
 						Collect(), r_expr));
 
 	std::vector<std::string> labels = {"Book", "Person"};

@@ -938,13 +938,18 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     ctx.getBuilder().CreateStore(ma, max_idx);
     query_id_inline++;
 
-    Value *rhs_id;
+    //Value *rhs_id;
+    //auto rhs_id_alloc = insert_alloca(ctx.int64Ty);
+    auto rhs_id_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     BasicBlock *loop_body;
     if(op->jop_ == JOIN_OP::NESTED_LOOP) {
             loop_body = ctx.while_loop_condition(main_function, cur_idx, max_idx, PContext::WHILE_COND::LT, end,
                                             [&](BasicBlock *body, BasicBlock *epilog) {
                                                 auto pos = ctx.getBuilder().CreateLoad(cur_idx);
-                                                rhs_id = ctx.getBuilder().CreateCall(get_join_id_at, {jid, pos});
+                                                auto rhs_id = ctx.getBuilder().CreateCall(get_join_id_at, {jid, pos});
+                                                
+                                                tp = ctx.getBuilder().CreateCall(get_join_tp_at, {jid, pos});
+                                                ctx.getBuilder().CreateStore(rhs_id, rhs_id_alloc);
                                                 ctx.getBuilder().CreateBr(nested_loop); 
                                             });  
     } else if(op->jop_ == JOIN_OP::HASH_JOIN) {
@@ -957,7 +962,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
                                                     auto idx = ctx.getBuilder().CreateLoad(cur_idx);
                                                     tp = ctx.getBuilder().CreateCall(get_join_tp_at, {jid, idx});
 
-
                                                     if(op->jop_ == JOIN_OP::CROSS) {
                                                         // process cross join
                                                         ctx.getBuilder().CreateBr(concat_qrl);
@@ -967,8 +971,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
                                                     }
                                                 });        
     }
-
-
 
     BasicBlock *loop_rship;
     if(op->jop_ == JOIN_OP::LEFT_OUTER) {
@@ -1034,20 +1036,22 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
 
     } else if(op->jop_ == JOIN_OP::NESTED_LOOP) {
         // for nested loop join
+        std::cout << "nested" << std::endl;
         ctx.getBuilder().SetInsertPoint(nested_loop);
-
+        //ctx.getBuilder().CreateBr(main_return);
+        
         // get lhs tuple at id -> direct register value
         auto lhs = reg_query_results.at(op->join_pos_.first).reg_val;
         // extract the lhs id with GEP instruction
         auto lhs_id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(lhs, 1));
         
+        auto rhs_id = ctx.getBuilder().CreateLoad(rhs_id_alloc);
         auto id_eq = ctx.getBuilder().CreateICmpEQ(lhs_id, rhs_id);
         ctx.getBuilder().CreateCondBr(id_eq, nested_joinable, incr_loop);
 
         ctx.getBuilder().SetInsertPoint(nested_joinable);
-        auto idx = ctx.getBuilder().CreateLoad(cur_idx);
-        tp = ctx.getBuilder().CreateCall(get_join_tp_at, {jid, idx});
         ctx.getBuilder().CreateBr(concat_qrl);
+
     } else if(op->jop_ == JOIN_OP::HASH_JOIN) {
         ctx.getBuilder().SetInsertPoint(hash_join);
         
@@ -1102,18 +1106,18 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
             ctx.getBuilder().CreateBr(loop_body);
         }
     }
-
+    std::cout << "nested end" << std::endl; 
     // merge the lhs and rhs    
     ctx.getBuilder().SetInsertPoint(concat_qrl);
 
     for(auto i = 0u; i < types.size(); i++) {
         if(types.at(i) == 0) {
             auto idx = ConstantInt::get(ctx.int64Ty, i);
-            Value *n = ctx.getBuilder().CreateCall(node_reg, {tp, idx});
+            auto n = ctx.getBuilder().CreateCall(node_reg, {tp, idx});
             reg_query_results.push_back({n, 0});
         } else {
             auto idx = ConstantInt::get(ctx.int64Ty, i);
-            Value *r = ctx.getBuilder().CreateCall(rship_reg, {tp, idx});
+            auto r = ctx.getBuilder().CreateCall(rship_reg, {tp, idx});
             reg_query_results.push_back({r, 1});
         }
     }
@@ -1144,6 +1148,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         main_return = loop_body;
     else if(op->jop_ == JOIN_OP::LEFT_OUTER)
         main_return = return_handle;
+    
 }
 
 /**
