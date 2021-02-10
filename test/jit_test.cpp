@@ -47,7 +47,6 @@ nvm::pool_base prepare_pool() {
 	return pop;
 }
 
-
 TEST_CASE("Query the graph", "[jit_query_read]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -100,7 +99,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
 	query_engine queryEngine(graph, 1, chunks);
 
-
+/*
     SECTION("Scan all nodes for given label") {
         auto expr = Scan("Person", Collect());
         arg_builder args;
@@ -114,7 +113,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         //REQUIRE(boost::get<std::string>(rs.data[43][0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\"}");
     }
 
-    SECTION("Using an index to retrieve a certain node") {
+   SECTION("Using an index to retrieve a certain node") {
         auto expr = IndexScan(Collect());
         arg_builder args;
         args.arg(1, "Person");
@@ -127,7 +126,8 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
         REQUIRE(rs.data.size() == 1);
     }
-/*
+*/
+ 
     SECTION("Find a outgoing relationship from each Person node") {
         auto expr = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", Collect()));
         arg_builder args;
@@ -157,7 +157,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         //REQUIRE(boost::get<std::string>(rs.data[0][1]) == "Person[0]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 0, name: \"John Doe\"}");
         //REQUIRE(boost::get<std::string>(rs.data[0][0]) == "Book[100]{title: \"Book Title\", year: 1942, id: 0}");
     }
-
+/*
     SECTION("Find the destination node for each relationship with the given label") {
         auto expr = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", Expand(EXPAND::OUT, "Book", Collect())));
         arg_builder args;
@@ -476,6 +476,5 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
 #endif
 
 }*/
-
 
 #endif

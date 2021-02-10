@@ -81,6 +81,7 @@ AllocaInst *codegen_inline_visitor::insert_alloca(Type *ty) {
 BasicBlock *df_finish_bb;
 
 bool profiling = false;
+bool pipelined = false;
 
 /*
 * Generates code for a scan operator.
@@ -842,8 +843,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
     ctx.getBuilder().CreateRetVoid();
 
     // complete init->entry
-    //ctx.getBuilder().SetInsertPoint(inits);
-    //ctx.getBuilder().CreateBr(this->entry);
+    if(!pipelined) {    
+        ctx.getBuilder().SetInsertPoint(inits);
+        ctx.getBuilder().CreateBr(this->entry);}
 }
 
 // process recursively the type vector of the rhs of a join
@@ -877,6 +879,7 @@ void get_rhs_type(std::shared_ptr<base_op>  &qop, std::vector<int> &typv) {
  * Generate code for the join operator
  */
 void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
+    pipelined = true;
     jids.push_back(query_id_inline);
     
     // obtain types of rhs
@@ -1036,7 +1039,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
 
     } else if(op->jop_ == JOIN_OP::NESTED_LOOP) {
         // for nested loop join
-        std::cout << "nested" << std::endl;
         ctx.getBuilder().SetInsertPoint(nested_loop);
         //ctx.getBuilder().CreateBr(main_return);
         
@@ -1106,7 +1108,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
             ctx.getBuilder().CreateBr(loop_body);
         }
     }
-    std::cout << "nested end" << std::endl; 
+    
     // merge the lhs and rhs    
     ctx.getBuilder().SetInsertPoint(concat_qrl);
 
