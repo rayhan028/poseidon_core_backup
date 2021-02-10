@@ -217,6 +217,10 @@ std::mutex mat_reg_mut;
         tp.push_back(time_result[*reg]);
     } else if(type == 8) {
         tp.push_back(uint64_t(std::stoull(con_map[type](gdb, reg))));
+    } else if(type == 90) { // special handling for direct node access when grouping
+        tp.push_back((node*)reg);
+    } else if(type == 92) {
+        tp.push_back(*reg);
     } else {
         tp.push_back(con_map[type](gdb, reg));
     }
@@ -260,7 +264,7 @@ thread_local qr_tuple mat_tuple;
  qr_tuple *obtain_mat_tuple() {
     //auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
     //return &joiner::mat_tuple_[tid];
-    return &mat_tuple;
+    return &tp;
 }
 
  void mat_node(node *n, qr_tuple *qr) {
@@ -407,7 +411,8 @@ std::set<unsigned> pos_set;
 }
 
  node* node_to_reg(qr_tuple* qr, int pos) {
-    return boost::get<node*>(qr->at(pos));
+    auto x =  boost::get<node*>(qr->at(pos));
+    return x;
 }
 
  relationship* rship_to_reg(qr_tuple* qr, int pos) {

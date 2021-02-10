@@ -100,7 +100,9 @@ enum class qop_type {
     sort,
     limit,
     collect,
-    create
+    create,
+    group,
+    aggr
 };
 
 enum class create_type {
@@ -520,6 +522,7 @@ inline algebra_optr CreateRship(std::pair<int, int> src_des, algebra_optr inp) {
 class group_op : public base_op, public std::enable_shared_from_this<group_op> {
 public:
     group_op(std::vector<unsigned> grpkey_pos, algebra_optr inp) : grpkey_pos_(grpkey_pos) {
+        type_ = qop_type::group;
         inputs_.push_back(inp);
     }
 
@@ -534,6 +537,7 @@ inline algebra_optr GroupBy(std::vector<unsigned> grpkey_pos, algebra_optr inp) 
 class aggr_op : public base_op, public std::enable_shared_from_this<aggr_op> {
 public:
     aggr_op(std::vector<std::pair<std::string, int>> aggrs, algebra_optr inp) : aggrs_(aggrs) {
+        type_ = qop_type::aggr;
         inputs_.push_back(inp);
     }
 

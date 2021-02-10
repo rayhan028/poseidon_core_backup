@@ -183,7 +183,7 @@ void ldbc_jit_bi_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
 void run_is_3(graph_db_ptr gdb, query_engine &qeng) {
     for(auto i = 0u; i < 1; i++) {
         result_set rs;
-        ldbc_jit_bi_query_3(gdb, qeng, rs, false);
+        ldbc_jit_bi_query_1(gdb, qeng, rs, false);
         std::cout << rs.data.size() << std::endl;
     }
 }
@@ -320,9 +320,7 @@ void ldbc_bi_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
                                         Project({{0, "id", FTYPE::STRING},
                                                 {1},
                                                 {3},
-                                                {5},
-                                                {6}},
-                                          Sort(q5_sort_fct,
+                                                {5},./run_ldbc_jit_bi --db sf1 --pool .
                                             Collect())))), 
                                   q2)))))))))));
 }

@@ -71,13 +71,34 @@ void codegen_inline_visitor::init_function(BasicBlock *bb) {
 }
 
 AllocaInst *codegen_inline_visitor::insert_alloca(Type *ty) {
+    //get and save current basic block
     auto cur_bb = ctx.getBuilder().GetInsertBlock();
+
+    // move to init basic block
     ctx.getBuilder().SetInsertPoint(inits);
+
+    // check if block has terminator
+    auto term = inits->getTerminator();
+    if(term) {
+        // unlink temrinator from basic block
+        term->removeFromParent();
+    } 
+
+    // insert new alloca
     auto alloc = ctx.getBuilder().CreateAlloca(ty);
+
+    // insert old terminator again
+    if(term) {
+        ctx.getBuilder().Insert(term);
+    }
+
+    // set insert point to saved basic block
     ctx.getBuilder().SetInsertPoint(cur_bb);
+
     return alloc;
 }
 
+BasicBlock *next_pipeline;
 BasicBlock *df_finish_bb;
 
 bool profiling = false;
@@ -312,13 +333,15 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     ctx.getBuilder().SetInsertPoint(scan_nodes_end);
     {   
         if(!access) {
-            ctx.getBuilder().CreateBr(next_op);
-        } else {
+        //    ctx.getBuilder().CreateBr(next_op);
+            next_pipeline = next_op;
+        }
+        //} else {
             global_end = scan_nodes_end;
             //ctx.getBuilder().CreateCall(ctx.finishFctTy, finish, {rs});
             //ctx.getBuilder().CreateRet(nullptr);
             ctx.getBuilder().CreateBr(df_finish_bb);
-        }
+        //}
     }
 
     // set appropriate backflow
@@ -858,6 +881,12 @@ void get_rhs_type(std::shared_ptr<base_op>  &qop, std::vector<int> &typv) {
             typv.push_back(1);
         else if(op->type_ == qop_type::expand)
             typv.push_back(0);
+        else if(op->type_ == qop_type::aggr) {
+            auto aggr = std::dynamic_pointer_cast<aggr_op>(op);
+            for(auto a : aggr->aggrs_) {
+                typv.push_back(2);
+            }
+        }
         else if(op->type_ == qop_type::cross_join) {
             auto jop = std::dynamic_pointer_cast<join_op>(op);
             get_rhs_type(jop->inputs_[1], typv);
@@ -916,6 +945,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
 
     auto fadd_now = ctx.extern_func("get_now");
     auto fadd_time_diff = ctx.extern_func("add_time_diff");
+
+    auto int_to_reg = ctx.extern_func("int_to_reg");
 
     // link with previous operator
     ctx.getBuilder().SetInsertPoint(prev_bb);
@@ -1113,12 +1144,16 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     ctx.getBuilder().SetInsertPoint(concat_qrl);
 
     for(auto i = 0u; i < types.size(); i++) {
+        auto idx = ConstantInt::get(ctx.int64Ty, i);
         if(types.at(i) == 0) {
-            auto idx = ConstantInt::get(ctx.int64Ty, i);
             auto n = ctx.getBuilder().CreateCall(node_reg, {tp, idx});
             reg_query_results.push_back({n, 0});
+        } else if(types.at(i) == 2) {
+            auto i = ctx.getBuilder().CreateCall(int_to_reg, {tp, idx});
+            auto i_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+            ctx.getBuilder().CreateStore(i, i_alloc);
+            reg_query_results.push_back({i_alloc, 2});
         } else {
-            auto idx = ConstantInt::get(ctx.int64Ty, i);
             auto r = ctx.getBuilder().CreateCall(rship_reg, {tp, idx});
             reg_query_results.push_back({r, 1});
         }
@@ -1150,7 +1185,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         main_return = loop_body;
     else if(op->jop_ == JOIN_OP::LEFT_OUTER)
         main_return = return_handle;
-    
 }
 
 /**
@@ -1262,6 +1296,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     auto insert_join_id_input = ctx.extern_func("insert_join_id_input");
     auto insert_join_bucket_input = ctx.extern_func("insert_join_bucket_input");
 
+    auto mat_reg = ctx.extern_func("mat_reg_value");
     auto fadd_now = ctx.extern_func("get_now");
     auto fadd_time_diff = ctx.extern_func("add_time_diff");
 
@@ -1285,7 +1320,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
 
     auto n = reg_query_results[op->qr_pos_].reg_val;
     auto id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(n, 1));
-
+    
     Value *remainder;
     if(op->join_op_ == JOIN_OP::NESTED_LOOP) {
         ctx.getBuilder().CreateCall(insert_join_id_input, {jid, id});
@@ -1294,18 +1329,21 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
         remainder = ctx.getBuilder().CreateSRem(id, num_bucket);
         ctx.getBuilder().CreateCall(insert_join_bucket_input, {jid, remainder, id});
     }
-    
     // obtain tuple object for materialization -> joiner mat_tuple
     auto tp = ctx.getBuilder().CreateCall(obtain_mat_tuple, {});
+
 
     // materialize each result from registers
     for(auto & res : reg_query_results) {
         //auto type = ConstantInt::get(ctx.int64Ty, res.type);
-
+        
         if(res.type == 0) {
             ctx.getBuilder().CreateCall(mat_node, {res.reg_val, tp});
-        } else {
+        } else if(res.type == 1) {
             ctx.getBuilder().CreateCall(mat_rship, {res.reg_val, tp});
+        } else if(res.type == 2) {
+            auto cv_reg = ctx.getBuilder().CreateBitCast(res.reg_val, ctx.int64PtrTy);
+            ctx.getBuilder().CreateCall(mat_reg, {gdb, cv_reg, ConstantInt::get(ctx.int64Ty, 92)});
         }
     }
 
@@ -1324,7 +1362,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     ctx.getBuilder().CreateBr(main_return);
 
     ctx.getBuilder().SetInsertPoint(df_finish_bb);
-    ctx.getBuilder().CreateRetVoid();
+    if(next_pipeline) {
+        ctx.getBuilder().CreateBr(next_pipeline);
+    } else {
+        ctx.getBuilder().CreateRetVoid();
+    }
 }
 
 /**
@@ -1435,7 +1477,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
 
     for(auto & res : reg_query_results) {
         // value type 7 => boolean, already transformed into integer
-        auto type_id = (res.type == 7 ? 2 : res.type);
+        auto type_id = (res.type == 7 ? 2 : res.type == 0 ? 90 : res.type);
         auto type = ConstantInt::get(ctx.int64Ty, type_id);
         auto cv_reg = ctx.getBuilder().CreateBitCast(res.reg_val, ctx.int64PtrTy);
         ctx.getBuilder().CreateCall(mat_reg, {gdb, cv_reg, type});
