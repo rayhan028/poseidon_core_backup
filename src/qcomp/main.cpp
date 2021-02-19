@@ -9,7 +9,7 @@
 #include "qoperator.hpp"
 #include "queryc.hpp"
 #include "query.hpp"
-
+namespace pj = builtin;
 int cnt = 0;
 bool fct(int* np) {
 	return cnt++ % 2 ? 1 : 0;
@@ -67,7 +67,7 @@ int main() {
 
 	auto tx = graph->begin_transaction();
 
-	int PERSONS = 1;
+	int PERSONS = 10;
 	int add = 0;
 	int j = 1;
 	auto id = 0;
@@ -93,7 +93,7 @@ int main() {
 				false);
 		auto b = graph->add_node("Book",
 				{{"name", boost::any(std::string("Title"))},
-				{"Age", boost::any(42)},
+				{"age", boost::any(42)},
 				{"id", boost::any(id++)}},
 				false);
 		graph->add_relationship(p, b, ":likes", {}, false);
@@ -120,18 +120,20 @@ int main() {
 #endif
 	
 	//algebra_optr op = qlc.compile_to_plan("Project([$0.name:string, $0.num:uint64], NodeScan('Person'))");
+	std::vector<std::string> labels = {"Person", "Book"};
 
-	auto r_expr = Scan("Person", GroupBy({0}, Aggr({{"count", 0}}, End())));
+	auto r_expr = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Project({{0, "age", FTYPE::INT}}, GroupBy({0}, Aggr({{"avg", 0}}, End()))))));
 
     auto l_expr = Scan("Person", Join(JOIN_OP::CROSS, {}, 
                         Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}
                                   /*{3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {0, "id", FTYPE::INT}, {0, "name", FTYPE::STRING}*/}, 
 							Collect()), r_expr));
 
-	auto fev = Scan("Person", Join(JOIN_OP::CROSS, {0,0},
-						Collect(), r_expr));
+	auto fev = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Project({{0, "age", FTYPE::INT}}, GroupBy({0}, Aggr({{"avg", 0}}, Join(JOIN_OP::CROSS, {0,0},
+						Collect(), r_expr)))))));
 
-	std::vector<std::string> labels = {"Book", "Person"};
+	auto simp = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Person", GroupBy({0}, Aggr({{"count", 0}} ,Collect())))));
+
 	auto multi = Scan(labels, Project({{0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}, {0}}, Collect()));
 	auto multi_exp = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", 
 	Expand(EXPAND::OUT, labels, 
@@ -144,14 +146,16 @@ int main() {
 	queryEngine.generate(fev, false);
 	
 	arg_builder ab;
-	ab.arg(0, "Person");
 	ab.arg(1, "Person");
-	ab.arg(2, "Person");
-	ab.arg(3, "Person");
+	ab.arg(2, "Book");
+	ab.arg(3, ":likes");
 	ab.arg(4, "Person");
-	ab.arg(5, "Person");
-	ab.arg(6, ":HAS_READ");
-	ab.arg(7, "Person");
+	ab.arg(7, "Book");
+	ab.arg(8, "Person");
+	ab.arg(9, ":likes");
+	ab.arg(10, "Person");
+	ab.arg(12, ":likes");
+	ab.arg(13, "Person");
 
 	result_set rs;
 

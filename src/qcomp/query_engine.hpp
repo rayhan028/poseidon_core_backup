@@ -59,7 +59,7 @@ class query_engine {
 
     graph_db_ptr graph_;
 public: 
-    query_engine(graph_db_ptr graph, unsigned int thread_num, unsigned cv_range);
+    query_engine(graph_db_ptr &graph, unsigned int thread_num, unsigned cv_range);
     ~query_engine();
 
     static std::unique_ptr<p_jit> initializeJitCompiler();

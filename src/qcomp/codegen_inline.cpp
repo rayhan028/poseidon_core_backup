@@ -98,11 +98,6 @@ AllocaInst *codegen_inline_visitor::insert_alloca(Type *ty) {
     return alloc;
 }
 
-BasicBlock *next_pipeline;
-BasicBlock *df_finish_bb;
-
-bool profiling = false;
-bool pipelined = false;
 
 /*
 * Generates code for a scan operator.
@@ -881,10 +876,29 @@ void get_rhs_type(std::shared_ptr<base_op>  &qop, std::vector<int> &typv) {
             typv.push_back(1);
         else if(op->type_ == qop_type::expand)
             typv.push_back(0);
-        else if(op->type_ == qop_type::aggr) {
+        else if(op->type_ == qop_type::project) {
+            auto prj = std::dynamic_pointer_cast<project>(op);
+            std::vector<int> new_types;
+            for(auto & pe : prj->prexpr_) {
+                new_types.push_back((int)pe.type + 2);
+            }
+            typv = new_types;
+        }
+        else if(op->type_ == qop_type::group) {
+            auto grp = std::dynamic_pointer_cast<group_op>(op);
+            std::vector<int> new_types;
+            for(auto g : grp->grpkey_pos_) {
+                new_types.push_back(typv[g]);
+            }
+            typv = new_types;
+        } else if(op->type_ == qop_type::aggr) {
             auto aggr = std::dynamic_pointer_cast<aggr_op>(op);
             for(auto a : aggr->aggrs_) {
-                typv.push_back(2);
+                if((a.first.compare("count") == 0) || (a.first.compare("sum") == 0) ) {
+                    typv.push_back(2);
+                } else {
+                    typv.push_back(3);
+                }
             }
         }
         else if(op->type_ == qop_type::cross_join) {
@@ -974,7 +988,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
 
     //Value *rhs_id;
     //auto rhs_id_alloc = insert_alloca(ctx.int64Ty);
-    auto rhs_id_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+    auto rhs_id_alloc = insert_alloca(ctx.int64Ty);
     BasicBlock *loop_body;
     if(op->jop_ == JOIN_OP::NESTED_LOOP) {
             loop_body = ctx.while_loop_condition(main_function, cur_idx, max_idx, PContext::WHILE_COND::LT, end,
@@ -1148,15 +1162,15 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         if(types.at(i) == 0) {
             auto n = ctx.getBuilder().CreateCall(node_reg, {tp, idx});
             reg_query_results.push_back({n, 0});
-        } else if(types.at(i) == 2) {
-            auto i = ctx.getBuilder().CreateCall(int_to_reg, {tp, idx});
-            auto i_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
-            ctx.getBuilder().CreateStore(i, i_alloc);
-            reg_query_results.push_back({i_alloc, 2});
-        } else {
+        } else if(types.at(i) == 1) {
             auto r = ctx.getBuilder().CreateCall(rship_reg, {tp, idx});
             reg_query_results.push_back({r, 1});
-        }
+        } else if(types.at(i) == 2) {
+            auto i = ctx.getBuilder().CreateCall(int_to_reg, {tp, idx});
+            auto i_alloc = insert_alloca(ctx.int64Ty);
+            ctx.getBuilder().CreateStore(i, i_alloc);
+            reg_query_results.push_back({i_alloc, 2});
+        } 
     }
     // add the dangling flag to the tuple result
     if(op->jop_ == JOIN_OP::LEFT_OUTER)
@@ -1317,14 +1331,15 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     auto last_jid = jids.front();
     jids.pop_front();
     auto jid = ConstantInt::get(ctx.int64Ty, last_jid);
-
-    auto n = reg_query_results[op->qr_pos_].reg_val;
-    auto id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(n, 1));
     
     Value *remainder;
     if(op->join_op_ == JOIN_OP::NESTED_LOOP) {
+        auto n = reg_query_results[op->qr_pos_].reg_val;
+        auto id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(n, 1));
         ctx.getBuilder().CreateCall(insert_join_id_input, {jid, id});
     } else if(op->join_op_ == JOIN_OP::HASH_JOIN) {
+        auto n = reg_query_results[op->qr_pos_].reg_val;
+        auto id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(n, 1));
         auto num_bucket = ConstantInt::get(ctx.int64Ty, 10);
         remainder = ctx.getBuilder().CreateSRem(id, num_bucket);
         ctx.getBuilder().CreateCall(insert_join_bucket_input, {jid, remainder, id});
@@ -1336,7 +1351,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     // materialize each result from registers
     for(auto & res : reg_query_results) {
         //auto type = ConstantInt::get(ctx.int64Ty, res.type);
-        
         if(res.type == 0) {
             ctx.getBuilder().CreateCall(mat_node, {res.reg_val, tp});
         } else if(res.type == 1) {
@@ -1344,6 +1358,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
         } else if(res.type == 2) {
             auto cv_reg = ctx.getBuilder().CreateBitCast(res.reg_val, ctx.int64PtrTy);
             ctx.getBuilder().CreateCall(mat_reg, {gdb, cv_reg, ConstantInt::get(ctx.int64Ty, 92)});
+        } else if(res.type == 3) {
+            auto cv_reg = ctx.getBuilder().CreateBitCast(res.reg_val, ctx.int64PtrTy);
+            ctx.getBuilder().CreateCall(mat_reg, {gdb, cv_reg, ConstantInt::get(ctx.int64Ty, 93)});
         }
     }
 
@@ -1477,7 +1494,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
 
     for(auto & res : reg_query_results) {
         // value type 7 => boolean, already transformed into integer
-        auto type_id = (res.type == 7 ? 2 : res.type == 0 ? 90 : res.type);
+        auto type_id = (res.type == 7 ? 2 : res.type == 0 ? 90 : res.type == 1 ? 91 : res.type);
         auto type = ConstantInt::get(ctx.int64Ty, type_id);
         auto cv_reg = ctx.getBuilder().CreateBitCast(res.reg_val, ctx.int64PtrTy);
         ctx.getBuilder().CreateCall(mat_reg, {gdb, cv_reg, type});
@@ -1501,8 +1518,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
                 ctx.getBuilder().CreateCall(get_int_grpkey, {ctx.getBuilder().CreateLoad(qr.reg_val), pos_val});
                 break;
             } 
-            case 3: // double
-            break;
+            case 3: {
+                
+                break;
+            }
             case 4: {
                 ctx.getBuilder().CreateCall(get_string_grpkey, {qr.reg_val, pos_val});
                 break;
@@ -1542,7 +1561,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
     auto grp_demat_at = ctx.extern_func("grp_demat_at");
 
     auto demat_results = ctx.getBuilder().CreateCall(get_grp_rs_count, {});
-    auto cur_pos = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+    auto cur_pos = insert_alloca(ctx.int64Ty);
     ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, cur_pos);
     
     BasicBlock *group_loop_head = BasicBlock::Create(ctx.getContext(), "group_loop_head", main_function);
@@ -1696,7 +1715,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
                     auto sum = ctx.getBuilder().CreateCall(get_group_sum_double, {pos});
                     auto avg = ctx.getBuilder().CreateUDiv(sum, cnt);
                     ctx.getBuilder().CreateStore(avg, avg_alloc);
-                    reg_query_results.push_back({avg_alloc, 5});
+                    reg_query_results.push_back({avg_alloc, 3});
                     break;
                 }
                 case 5: {

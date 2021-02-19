@@ -309,6 +309,7 @@ extern thread_local std::string grpkey_buffer;
  * Methods for the dematerialization of the tuple to IR registers
  */
  int int_to_reg(qr_tuple* qr, int pos);
+ int double_to_reg(qr_tuple* qr, int pos);
  int str_to_reg(qr_tuple* qr, int pos);
  node* node_to_reg(qr_tuple* qr, int pos);
  relationship* rship_to_reg(qr_tuple* qr, int pos);

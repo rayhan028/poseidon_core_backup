@@ -52,6 +52,7 @@ bool q2_filter_cdate_1(int *prop_ptr) {
     auto d = *reinterpret_cast<const ptime *>(prop->value_);
     auto dt = time_from_string(std::string("2011-04-14 01:51:21.746"));
     time_period duration(dt, hours(24*100));
+    if(duration.contains(d)) std::cout << "TRUE1" << std::endl;
     return duration.contains(d) ? true : false;
 }
 
@@ -62,6 +63,7 @@ bool q2_filter_cdate_2(int *prop_ptr) {
     time_period duration1(dt1, hours(24*100));
     auto dt2 = duration1.last();
     time_period duration2(dt2, hours(24*100));
+    //if(duration2.contains(d)) std::cout << "TRUE2" << std::endl;
     return duration2.contains(d) ? true : false;
 }
 
@@ -78,6 +80,8 @@ bool q3_filter_cntry(int *prop_ptr) {
     auto prop = (p_item*)prop_ptr;
     auto c1 = *(reinterpret_cast<const dcode_t *>(prop->value_));
     auto c2 = g->get_dictionary()->lookup_string("United_States");
+    if(c1 == c2)
+        std::cout << "Found" << std::endl;
     return c1 == c2;
 }
 

@@ -15,6 +15,17 @@ unsigned grouper::total_grp_cnt = 0;
 bool grouper::grp_cnt_int = false;
 unsigned grouper::tota_grp_cnt_int = 0;
 
+void grouper::clear() {
+    grp_cnt_ = 0;
+    aggr_grp_cnt_ = -1;
+    grps_.clear();
+    grpkey_set_.clear();
+    grpkey_map_.clear();
+    pos_set_.clear();
+    intermediate_rs_.data.clear();
+    current_tp_.clear();
+}
+
 void grouper::add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos_set) {
     pos_set_ = pos_set;
 

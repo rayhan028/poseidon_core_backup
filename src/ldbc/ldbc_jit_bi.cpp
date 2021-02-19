@@ -56,13 +56,14 @@ void ldbc_jit_bi_query_1(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
 
 
 void ldbc_jit_bi_query_2(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive) {
+  std::cout << "Q2" << std::endl;
     auto q2 = Scan(message,
                 Filter(Call(Key(0, "creationDate"), Fct(q2_filter_cdate_2)),
-                  ForeachRship(RSHIP_DIR::FROM, ":hasTag", 0,
+                  ForeachRship(RSHIP_DIR::FROM, {}, ":hasTag", 
                     Expand(EXPAND::OUT, "Tag",
                       GroupBy({2},
                         Aggr({{"count", 0}},
-                          End()))))));
+                          End(JOIN_OP::NESTED_LOOP, 0)))))));
     auto q1 = Scan(message,
                 Filter(Call(Key(0, "creationDate"), Fct(q2_filter_cdate_1)),
                   ForeachRship(RSHIP_DIR::FROM, {}, ":hasTag",
@@ -71,19 +72,20 @@ void ldbc_jit_bi_query_2(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
                         Aggr({{"count", 0}},
                           Join(JOIN_OP::NESTED_LOOP, {0,0}, 
                             Project({{0, "name", FTYPE::STRING}, {1}, {3}}, 
-                              Append(q2_compute_diff, FTYPE::INT,
+                              //Append(q2_compute_diff, FTYPE::INT,
                               //Sort(),
-                                Collect())), q2)))))));
+                                Collect()), q2)))))));
     
     arg_builder ab;
     ab.arg(1, message[0]);
     ab.arg(2, message[1]);
+    ab.arg(3, "creationDate");
     ab.arg(4, ":hasTag");
     ab.arg(5, "Tag");
-    ab.arg(6, message[0]);
-    ab.arg(7, message[1]);
-    ab.arg(9, ":hasTag");
-    ab.arg(10, "Tag");
+    ab.arg(8, message[0]);
+    ab.arg(9, message[1]);
+    ab.arg(11, ":hasTag");
+    ab.arg(12, "Tag");
 
     if(!compiled) {
         auto c_s = std::chrono::steady_clock::now();
@@ -124,9 +126,9 @@ void run_is_2(graph_db_ptr gdb, query_engine &qeng) {
 
 void ldbc_jit_bi_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive) {
     auto q = Scan("Place", 
-              Filter(Call(Key(0, "name"), Fct(q3_filter_cntry)),
-              ForeachRship(RSHIP_DIR::TO, {}, ":isPartOf",
-                  Expand(EXPAND::IN, "Place",
+              //Filter(Call(Key(0, "name"), Fct(q3_filter_cntry)),
+                ForeachRship(RSHIP_DIR::TO, {}, ":isPartOf",
+                  /*Expand(EXPAND::IN, "Place",
                     ForeachRship(RSHIP_DIR::TO, {}, ":isLocatedIn",
                       Expand(EXPAND::IN, "Person",
                         ForeachRship(RSHIP_DIR::TO, {}, ":hasModerator",
@@ -139,13 +141,14 @@ void ldbc_jit_bi_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
                                       Expand(EXPAND::OUT, "Tagclass",
                                         Filter(Call(Key(12, "name"), Fct(q3_filter_tgclass)),
                                             GroupBy({6, 4},
-                                              Aggr({{"count", 0}},
-                                                Project({{0, "id", FTYPE::UINT64}, {0, "title", FTYPE::STRING}, {0, "creationDate", FTYPE::TIME}, {1, "id", FTYPE::UINT64}, {2}},
+                                              Aggr({{"count", 0}},*/
+                                                //Project({/*{0, "id", FTYPE::UINT64},*/ {0, "title", FTYPE::STRING}/*, {0, "creationDate", FTYPE::TIME}, {1, "id", FTYPE::UINT64}, {2}*/},
                                                   //Sort
-                                                      Collect()))))))))))))))))));
+                                                      Collect()));
 
     arg_builder ab;
     ab.arg(1, "Place");
+    ab.arg(2, "name");
     ab.arg(3, ":isPartOf");
     ab.arg(4, "Place");
     ab.arg(5, ":isLocatedIn");
@@ -159,6 +162,7 @@ void ldbc_jit_bi_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
     ab.arg(13, "Tag");
     ab.arg(14, ":hasType");
     ab.arg(15, "Tagclass");
+    ab.arg(16, "name");
 
     if(!compiled) {
         auto c_s = std::chrono::steady_clock::now();
@@ -183,8 +187,8 @@ void ldbc_jit_bi_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
 void run_is_3(graph_db_ptr gdb, query_engine &qeng) {
     for(auto i = 0u; i < 1; i++) {
         result_set rs;
-        ldbc_jit_bi_query_1(gdb, qeng, rs, false);
-        std::cout << rs.data.size() << std::endl;
+        ldbc_jit_bi_query_3(gdb, qeng, rs, false);
+        std::cout << rs << std::endl;
     }
 }
 
@@ -368,8 +372,12 @@ void ldbc_bi_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 
 void run_benchmark(graph_db_ptr gdb, query_engine &qeng) {
   g = gdb;
-  run_is_1(gdb, qeng);
+  //run_is_1(gdb, qeng);
+  //compiled = false;
+  //qeng.cleanup();
+  run_is_2(gdb, qeng);
   compiled = false;
+  qeng.cleanup();
   run_is_3(gdb, qeng);
 }
 

@@ -18,7 +18,7 @@ std::unique_ptr<p_jit> query_engine::initializeJitCompiler() {
     return std::make_unique<p_jit>(exitOnError);
 }
 
-query_engine::query_engine(graph_db_ptr graph, unsigned int thread_num, unsigned cv_range) 
+query_engine::query_engine(graph_db_ptr &graph, unsigned int thread_num, unsigned cv_range) 
     : thread_num_(thread_num), 
     ctx_(PContext(graph)), 
     jit_(initializeJitCompiler()), 

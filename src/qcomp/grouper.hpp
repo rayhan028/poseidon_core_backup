@@ -37,7 +37,7 @@ public:
     static double get_group_sum_double(int pos);
     static uint64_t get_group_sum_uint(int pos);
 
-
+    static void clear();
 };
 
 #endif

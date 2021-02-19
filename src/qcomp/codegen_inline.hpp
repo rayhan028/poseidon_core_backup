@@ -316,7 +316,12 @@ public:
     Value *last;
     Value *tx_ptr;
     Value *query_context;
+    BasicBlock *next_pipeline;
+    BasicBlock *df_finish_bb;
 
+    bool profiling = false;
+    bool pipelined = false;
+    
     void extract_query_context(Value* context_arg) {
         gdb = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 0));
         first = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 1));

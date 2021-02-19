@@ -13,6 +13,7 @@ void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_tim
 }
 
  chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
+    grouper::clear(); // TODO: fix and replace with pipeline context
     //pipeline_barrier.wait();
     return new chunked_vec<node, NODE_CHUNK_SIZE>::range_iter(vec->as_vec(), first, last);
 }
@@ -219,8 +220,12 @@ std::mutex mat_reg_mut;
         tp.push_back(uint64_t(std::stoull(con_map[type](gdb, reg))));
     } else if(type == 90) { // special handling for direct node access when grouping
         tp.push_back((node*)reg);
+    } else if(type == 91) { // special handling for direct rship access when grouping
+        tp.push_back((relationship*)reg);
     } else if(type == 92) {
         tp.push_back(*reg);
+    } else if(type == 93) {
+        tp.push_back(*(double*)reg);
     } else {
         tp.push_back(con_map[type](gdb, reg));
     }
@@ -288,7 +293,8 @@ thread_local qr_tuple mat_tuple;
 }
 
  relationship *get_rship_res_at(qr_tuple *tuple, int pos) {
-    return boost::get<relationship*>(tuple->at(pos));
+    auto x = boost::get<relationship*>(tuple->at(pos));
+    return x;
 }
 
  int get_mat_res_size(int jid) {
@@ -410,9 +416,12 @@ std::set<unsigned> pos_set;
     return str_res_ctr++;
 }
 
+int double_to_reg(qr_tuple* qr, int pos) {
+    
+}
+
  node* node_to_reg(qr_tuple* qr, int pos) {
-    auto x =  boost::get<node*>(qr->at(pos));
-    return x;
+    return boost::get<node*>(qr->at(pos));
 }
 
  relationship* rship_to_reg(qr_tuple* qr, int pos) {
