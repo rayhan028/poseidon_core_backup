@@ -200,8 +200,21 @@ void run_shell(graph_db_ptr &gdb) {
 
 }
 
+std::string read_from_file(const std::string& qfile) {
+  std::string qstr, line;
+
+  std::ifstream myfile(qfile);
+  if (myfile.is_open()) {
+    while (getline(myfile, line))
+      qstr.append(line);
+    myfile.close();
+  }
+  spdlog::info("execute query {}", qstr);
+  return qstr;
+}
+
 int main(int argc, char* argv[]) {
-  std::string db_name, query_string, dot_file;
+  std::string db_name, query_file, dot_file;
   std::vector<std::string> import_files;
   bool start_shell = false;
   bool n4j_mode = false;
@@ -221,7 +234,7 @@ int main(int argc, char* argv[]) {
         "Import files in CSV format (either nodes:<node type>:<filename> or "
         "relationships:<rship type>:<filename>")
         ("n4j", bool_switch()->default_value(false), "Import CSV data in Neo4j format")
-        ("query,q", value<std::string>(&query_string), "Execute the given query")
+        ("query,q", value<std::string>(&query_file), "Execute the query from the given file")
         ("shell,s", bool_switch()->default_value(false), "Start the interactive shell");
 
     variables_map vm;
@@ -252,7 +265,7 @@ int main(int argc, char* argv[]) {
     if (vm.count("shell"))
       start_shell = vm["shell"].as<bool>();
 
-    if (start_shell && !query_string.empty()) {
+    if (start_shell && !query_file.empty()) {
       std::cout
           << "ERROR: options --shell and --query cannot be used together.\n";
       return -1;
@@ -300,7 +313,9 @@ int main(int argc, char* argv[]) {
 
   // exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
 
-  if (!query_string.empty()) {
+  if (!query_file.empty()) {
+    // load the query from the file
+    auto query_string = read_from_file(query_file);
     exec_query(graph, query_string);
   }
 }

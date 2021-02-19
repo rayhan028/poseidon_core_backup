@@ -18,6 +18,15 @@ std::string trim_string(const std::string& s) {
   return s2;
 }
 
+std::string trim_ws(const std::string& str) {
+  auto first = str.find_first_not_of(' ');
+  if (std::string::npos == first) {
+    return str;
+  }
+  auto last = str.find_last_not_of(' ');
+  return str.substr(first, (last - first + 1));
+}
+
 void queryc::compile(const std::string &query) {
     auto ast = parse(query);
     if (ast) {
@@ -41,8 +50,10 @@ ast_op_ptr queryc::parse(const std::string &query) {
   try {
     ptree = pegtl::parse_tree::parse<qlang::qoperator,
                                     qlang::my_selector, qlang::my_control>(in);
-   /* if (ptree)
-  	  pegtl::parse_tree::print_dot( std::cout, *ptree); */
+    if (ptree)
+  	  pegtl::parse_tree::print_dot( std::cout, *ptree); 
+    else
+      std::cerr << "PARSE TREE EMPTY: " << query << std::endl;
   } catch (const pegtl::parse_error &e) {
     const auto p = e.positions.front();
     std::cerr << e.what() << std::endl

@@ -53,6 +53,9 @@ template< typename D, typename E >
 
 struct decimal : numeral_one< digit, one< 'e', 'E' > > {};
 
+
+struct ws : opt<tao::pegtl::star<space>> {};
+
 struct str_or : TAO_PEGTL_STRING("or") {};
 struct str_and : TAO_PEGTL_STRING("and") {};
 struct str_not : TAO_PEGTL_STRING("not") {};
@@ -130,11 +133,11 @@ struct dtype : sor< key_int, key_uint64, key_float, key_string, key_dtime> {};
 
 struct proj_expr : seq< variable_name, one<':'>, dtype> {};
 
-struct proj_array : seq< one<'['>, opt<space>, list<proj_expr, comma>, opt<space>, one<']'> > {};
+struct proj_array : seq< one<'['>, ws, list<proj_expr, comma>, ws, one<']'> > {};
 
 struct property : seq< name, opt<space>, one<':'>, opt<space>, sor<decimal, literal_string> > {};
 
-struct prop_list : seq<one<'{'>, opt<space>, list<property, comma>, opt<space>, one<'}'> > {};
+struct prop_list : seq<one<'{'>, ws, list<property, comma>, ws, one<'}'> > {};
 
 struct node_or_rship_label : seq<name, opt<space>, one<':'>, opt<space>, name> {};
 struct node_or_rship_pattern : seq<node_or_rship_label, opt<space>, opt<prop_list> > {};
@@ -157,7 +160,7 @@ struct param : sor<literal_string, qoperator, directions, integer, expression, p
 
 struct param_list : list<param, comma> {};
 
-struct qoperator : seq<op_name, opt<space>, one<'('>, opt<space>, opt<param_list>, opt<space>, one<')'>> {};
+struct qoperator : seq<ws, op_name, ws, one<'('>, ws, opt<param_list>, ws, one<')'>, ws> {};
 
 /* ------------------------------------------------------------- */
 
