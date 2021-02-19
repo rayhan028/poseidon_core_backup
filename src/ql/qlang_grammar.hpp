@@ -184,6 +184,7 @@ template <> struct my_selector<right_rship_dir> : std::true_type {};
 template <> struct my_selector<node_or_rship_label> : std::true_type {};
 template <> struct my_selector<node_pattern> : std::true_type {};
 template <> struct my_selector<rship_pattern> : std::true_type {};
+template <> struct my_selector<directions> : std::true_type {};
 
 /* ------------------------------------------------------------- */
 

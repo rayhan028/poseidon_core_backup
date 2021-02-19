@@ -52,8 +52,6 @@ ast_op_ptr queryc::parse(const std::string &query) {
                                     qlang::my_selector, qlang::my_control>(in);
     if (ptree)
   	  pegtl::parse_tree::print_dot( std::cout, *ptree); 
-    else
-      std::cerr << "PARSE TREE EMPTY: " << query << std::endl;
   } catch (const pegtl::parse_error &e) {
     const auto p = e.positions.front();
     std::cerr << e.what() << std::endl
@@ -61,7 +59,6 @@ ast_op_ptr queryc::parse(const std::string &query) {
               << std::string(p.byte_in_line, ' ') << '^' << std::endl;
     return nullptr;
   }
-
   auto ast_node = ptree_to_ast(ptree->children.front());
   print_ast(ast_node);
   return ast_node;
@@ -105,10 +102,12 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
 }
 
 ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
+  assert(pn->is<qlang::qoperator>());
   ast_op::op_type otype = get_op_type(pn);
   auto nptr = std::make_shared<ast_op>(otype);  
   for (auto &n : pn->children) {
     if (n->is<qlang::param>()) {
+      assert(n->children.size() > 0);
       auto& param = n->children.front();
       if (param->is<qlang::qoperator>()) {
         nptr->add_child(ptree_to_ast(param));
