@@ -298,10 +298,10 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       auto rship_dir_str = ast->get_param<std::string>(0);
       RSHIP_DIR rship_dir = RSHIP_DIR::FROM;
 
-      if(boost::iequals(rship_dir_str, "'FROM'")) {
+      if(boost::iequals(rship_dir_str, "FROM")) {
         rship_dir = RSHIP_DIR::FROM;
       }
-      else if(boost::iequals(rship_dir_str, "'TO'")) {
+      else if(boost::iequals(rship_dir_str, "TO")) {
         rship_dir = RSHIP_DIR::TO;
       }
 
@@ -315,9 +315,9 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       auto expand_dir_str = ast->get_param<std::string>(0);
       EXPAND expand_dir = EXPAND::IN;
 
-      if(boost::iequals(expand_dir_str, "'IN'")) {
+      if(boost::iequals(expand_dir_str, "IN")) {
         expand_dir = EXPAND::IN;
-      } else if(boost::iequals(expand_dir_str, "'OUT'")) {
+      } else if(boost::iequals(expand_dir_str, "OUT")) {
         expand_dir = EXPAND::OUT;
       }
 
