@@ -65,7 +65,7 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
     }
 
     SECTION("Transform a ForeachRship FROM query into a valid graph algebra expression") {
-        std::string scan_query = "ForeachRelationship('FROM', ':HAS_READ', NodeScan('Person'))";
+        std::string scan_query = "ForeachRelationship(FROM, ':HAS_READ', NodeScan('Person'))";
         auto op = qlc.compile_to_plan(scan_query);
 
         REQUIRE(op->type_ == qop_type::scan);
@@ -81,7 +81,7 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
     }
 
     SECTION("Transform a ForeachRship TO query into a valid graph algebra expression") {
-        std::string scan_query = "ForeachRelationship('TO', ':HAS_READ', NodeScan('Person'))";
+        std::string scan_query = "ForeachRelationship(TO, ':HAS_READ', NodeScan('Person'))";
         auto op = qlc.compile_to_plan(scan_query);
 
         REQUIRE(op->type_ == qop_type::scan);
@@ -97,7 +97,7 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
     }
 
     SECTION("Transform a ExpandIn query into a valid graph algebra expression") {
-        std::string scan_query = "Expand('IN', 'Book', ForeachRelationship('FROM', ':HAS_READ', NodeScan('Person')))";
+        std::string scan_query = "Expand(IN, 'Book', ForeachRelationship('FROM', ':HAS_READ', NodeScan('Person')))";
         auto op = qlc.compile_to_plan(scan_query);
 
         REQUIRE(op->type_ == qop_type::scan);
@@ -120,7 +120,7 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
     }
 
     SECTION("Transform a ExpandOut query into a valid graph algebra expression") {
-        std::string scan_query = "Expand('OUT', 'Book', ForeachRelationship('FROM', ':HAS_READ', NodeScan('Person')))";
+        std::string scan_query = "Expand(OUT, 'Book', ForeachRelationship(FROM, ':HAS_READ', NodeScan('Person')))";
         auto op = qlc.compile_to_plan(scan_query);
 
         REQUIRE(op->type_ == qop_type::scan);

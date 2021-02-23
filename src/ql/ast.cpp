@@ -74,7 +74,7 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
 
    for (auto& p : op.params_) {
         boost::apply_visitor(my_visitor, p);
-        std::cout << ", ";
+        std::cout << " ";
     }
     os << ")";
     return os;
