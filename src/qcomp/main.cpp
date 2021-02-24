@@ -17,8 +17,8 @@ bool fct(int* np) {
 
 thread_local query_result qr;
 query_result *afunc(qr_tuple &qrt) {
-	auto i = boost::get<int>(qrt[1]);
-	auto j = boost::get<int>(qrt[2]);
+	auto i = boost::get<int>(qrt[0]);
+	auto j = boost::get<int>(qrt[1]);
 	auto k = i - j;
 	qr = query_result(k);
 	return &qr;
@@ -67,7 +67,7 @@ int main() {
 
 	auto tx = graph->begin_transaction();
 
-	int PERSONS = 10;
+	int PERSONS = 2;
 	int add = 0;
 	int j = 1;
 	auto id = 0;
@@ -122,17 +122,19 @@ int main() {
 	//algebra_optr op = qlc.compile_to_plan("Project([$0.name:string, $0.num:uint64], NodeScan('Person'))");
 	std::vector<std::string> labels = {"Person", "Book"};
 
-	auto r_expr = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Project({{0, "age", FTYPE::INT}}, GroupBy({0}, Aggr({{"avg", 0}}, End()))))));
+	auto qq  = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Book", End())));
+
+	auto r_expr = Scan(labels, End(JOIN_OP::NESTED_LOOP, 0));
 
     auto l_expr = Scan("Person", Join(JOIN_OP::CROSS, {}, 
                         Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}
                                   /*{3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {0, "id", FTYPE::INT}, {0, "name", FTYPE::STRING}*/}, 
 							Collect()), r_expr));
 
-	auto fev = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Project({{0, "age", FTYPE::INT}}, GroupBy({0}, Aggr({{"avg", 0}}, Join(JOIN_OP::CROSS, {0,0},
-						Collect(), r_expr)))))));
+	auto fev = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, 
+						GroupBy({0}, Aggr({{"count", 0}}, ForeachRship(RSHIP_DIR::FROM, ":likes", 0, Collect()))), r_expr))));
 
-	auto simp = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Person", GroupBy({0}, Aggr({{"count", 0}} ,Collect())))));
+	auto simp = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Project({{0, "age", FTYPE::INT}, {0, "age", FTYPE::INT}}, Append(afunc, FTYPE::INT, Collect()))));
 
 	auto multi = Scan(labels, Project({{0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}, {0}}, Collect()));
 	auto multi_exp = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", 
@@ -150,12 +152,15 @@ int main() {
 	ab.arg(2, "Book");
 	ab.arg(3, ":likes");
 	ab.arg(4, "Person");
-	ab.arg(7, "Book");
+	ab.arg(7, ":likes");
 	ab.arg(8, "Person");
-	ab.arg(9, ":likes");
-	ab.arg(10, "Person");
+	ab.arg(9, "Book");
+	ab.arg(10, ":likes");
+	ab.arg(11, "Person");
 	ab.arg(12, ":likes");
 	ab.arg(13, "Person");
+	ab.arg(14, ":HAS_READ");
+	ab.arg(15, "Book");
 
 	result_set rs;
 

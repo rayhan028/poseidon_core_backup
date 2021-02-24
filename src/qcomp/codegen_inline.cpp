@@ -98,7 +98,7 @@ AllocaInst *codegen_inline_visitor::insert_alloca(Type *ty) {
     return alloc;
 }
 
-
+int qcnt = 0;
 /*
 * Generates code for a scan operator.
 */
@@ -109,7 +109,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     query_length(op);
 
     // check if this operator is the first access path
-    if(!main_function) {
+    //if(!main_function) {
         // if it is the first access path -> intialize finish function
         /*df_finish = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, "default_finish_"+qid_,
                                                ctx.getModule());*/
@@ -121,16 +121,16 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
             func_name = op->name_+std::to_string(++cnt);
         }
 
-        op->name_ = func_name+qid_;
-    }
+        op->name_ = func_name+qid_+std::to_string(qcnt++);
+    //}
 
     // check for previous access
-    bool access = false;
-    if(!main_function) {
+    //bool access = false;
+    //if(!main_function) {
         // create IR function if no previous access path exists
-        access = true;
+        //access = true;
         main_function = Function::Create(ctx.startFctTy, Function::ExternalLinkage, op->name_, ctx.getModule());
-    }
+    //}
 
     // obtain all relevant function callees for the scan operator
     //FunctionCallee dict_lookup_label = ctx.extern_func("dict_lookup_label");
@@ -149,12 +149,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     */
     BasicBlock *bb;
     BasicBlock *next_op;
-    if(!access) {
+    /*if(!access) {
         //next_op = &main_function->getEntryBlock();
         next_op = entry;
-        next_op->setName("next_pipeline");
+        next_op->setName("next_pipeline_"+std::to_string(qcnt++));
         op->name_ = "";
-    } else {
+    } else {*/
         inits = BasicBlock::Create(ctx.getModule().getContext(), "inits_entry", main_function);
         bb = BasicBlock::Create(ctx.getModule().getContext(), "entry", main_function);
         pre_tuple_mat = BasicBlock::Create(ctx.getModule().getContext(), "pre_tuple_mat", main_function);
@@ -162,10 +162,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
 
         // initialize all relevant functions
         init_function(inits);
-    }
+    //}
 
-    if(!access) {
-        bb = BasicBlock::Create(ctx.getModule().getContext(), "entry", main_function);
+    /*if(!access) {
+        bb = BasicBlock::Create(ctx.getModule().getContext(), "entry_"+std::to_string(qcnt++), main_function);
         entry = bb;
         //main_function->getBasicBlockList().push_front(bb);
         //auto bb_front = main_function->getBasicBlockList().begin();
@@ -175,11 +175,19 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
         //init_term->removeFromParent();
 
         // initialize all relevant functions
+
+        auto init_term = inits->getTerminator();
+        if(init_term) {
+            //next_op->removePredecessor(inits);
+            init_term->removeFromParent();
+        }
+
         init_function(inits);
 
         ctx.getBuilder().SetInsertPoint(inits);
         ctx.getBuilder().CreateBr(bb);
-    }
+    }*/
+
     scan_nodes_end = BasicBlock::Create(ctx.getModule().getContext(), "scan_nodes_end", main_function);
     BasicBlock *consumeBB = BasicBlock::Create(ctx.getModule().getContext(), "consume_node", main_function);
 
@@ -194,10 +202,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
 
     BasicBlock *curBB;
 
-    if(access)
-        //ctx.getBuilder().CreateBr(bb);
+    //if(access)
     //else 
-        extract_query_context(query_context);
+    extract_query_context(query_context);
+    ctx.getBuilder().CreateBr(bb);
 
     ctx.getBuilder().SetInsertPoint(bb);
     
@@ -861,9 +869,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
     ctx.getBuilder().CreateRetVoid();
 
     // complete init->entry
-    if(!pipelined) {    
-        ctx.getBuilder().SetInsertPoint(inits);
-        ctx.getBuilder().CreateBr(this->entry);}
+    //if(!pipelined) {    
+    //    ctx.getBuilder().SetInsertPoint(inits);
+    //    ctx.getBuilder().CreateBr(this->entry);}
 }
 
 // process recursively the type vector of the rhs of a join

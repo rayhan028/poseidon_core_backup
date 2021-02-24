@@ -160,11 +160,7 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args, bool cleanu
     
     int i = 0;
 
-    //std::vector<int> offsets;
-    //offsets.resize(start_.size());
-    //offsets[0] = type_vec_[0].size();
 
-    //int offset = 0;
     auto start_idx = start_.size()-1;
     auto last = graph_->get_nodes()->num_chunks();
     query_context qtx = {graph_.get(), 0, last, tx, &rs, args.data()};
@@ -172,10 +168,9 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args, bool cleanu
     qtx.rs = &rs;
     *qtx.args = *args.data();
     qtx.tx = tx;
+
     for(i = start_idx; i >= 0; i--) {
-        //start_[i](graph_.get(), 0, graph_->get_nodes()->num_chunks(), tx, 1, &type_vec_[start_idx], rs, nullptr, finish_[0], 0, args.data());
         start_[i](&qtx, args.data(), rs);
-        //offset += offsets[i];
     }
     graph_->commit_transaction();
 
@@ -315,7 +310,7 @@ void compile_task::operator()() {
         if(cur_op->inputs_.empty()) {
             cur_op = recur_list.back();
             recur_list.pop_back();
-            //query_id++;
+            query_id++;
         }
 
         if(cur_op->type_ == qop_type::sort) {
@@ -323,21 +318,25 @@ void compile_task::operator()() {
             cur_op = cur_op->inputs_[0];
             continue;
         }
-        if(cur_op->type_ == qop_type::cross_join || cur_op->type_ == qop_type::left_join) {
+        if(cur_op->type_ == qop_type::cross_join || 
+           cur_op->type_ == qop_type::left_join || 
+           cur_op->type_ == qop_type::nest_loop_join ||
+           cur_op->type_ == qop_type::hash_join) {
             recur_list.push_back(cur_op->inputs_[1]);
         }
 
         if(cur_op->produced_type_ != -1)
             qeng_.type_vec_[query_id].push_back(cur_op->produced_type_);
 
-        if(!cur_op->name_.empty())
+        if(!cur_op->name_.empty()) {
             qeng_.operator_names_[query_id].push_back(cur_op->name_);
+        }
         cur_op = cur_op->inputs_[0];
     }
     if(cur_op->type_ == qop_type::none && !cur_op->name_.empty()) {
         qeng_.operator_names_[query_id].push_back(cur_op->name_);
     }
-    query_id = 0;
+    //query_id = 0;
 
     //3. get all generated function pointers
     /*for(int q = 0; q <= query_id; q++) {
@@ -353,7 +352,6 @@ void compile_task::operator()() {
         /*auto finish_fc = jit_.getFunctionRaw<finish_fct_type>(finish_name);
         if(finish_fc)
             qeng_.finish_[q] = *finish_fc;*/
-
         auto start_fc = jit_.getFunctionRaw<start_ty>(qeng_.operator_names_[q].at(0));
         if(start_fc)
             qeng_.start_[q] = *start_fc;
