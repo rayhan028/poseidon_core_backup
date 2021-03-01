@@ -72,9 +72,9 @@ void ldbc_jit_bi_query_2(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
                         Aggr({{"count", 0}},
                           Join(JOIN_OP::NESTED_LOOP, {0,0}, 
                             Project({{0, "name", FTYPE::STRING}, {1}, {3}}, 
-                              //Append(q2_compute_diff, FTYPE::INT,
+                              Append(q2_compute_diff, FTYPE::INT,
                               //Sort(),
-                                Collect()), q2)))))));
+                                Collect())), q2)))))));
     
     arg_builder ab;
     ab.arg(1, message[0]);
@@ -82,10 +82,10 @@ void ldbc_jit_bi_query_2(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
     ab.arg(3, "creationDate");
     ab.arg(4, ":hasTag");
     ab.arg(5, "Tag");
-    ab.arg(8, message[0]);
-    ab.arg(9, message[1]);
-    ab.arg(11, ":hasTag");
-    ab.arg(12, "Tag");
+    ab.arg(9, message[0]);
+    ab.arg(10, message[1]);
+    ab.arg(12, ":hasTag");
+    ab.arg(13, "Tag");
 
     if(!compiled) {
         auto c_s = std::chrono::steady_clock::now();
@@ -192,9 +192,11 @@ void run_is_3(graph_db_ptr gdb, query_engine &qeng) {
     }
 }
 
-/*
+
 
 void ldbc_jit_bi_query_4(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive) {
+  //std::vector<params_tuple> q4_params = {{"Turkey", time_from_string(std::string("2011-04-14 01:51:21.746"))}};
+
     auto sort_fct1 = [&](const qr_tuple &q1, const qr_tuple &q2) {
                 return boost::get<uint64_t>(q1[1]) > boost::get<uint64_t>(q2[1]); };
 
@@ -214,12 +216,12 @@ void ldbc_jit_bi_query_4(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
                           ForeachRship(RSHIP_DIR::TO, {}, ":hasMember",
                             Expand(EXPAND::IN, "Forum",
                               Project({{6}, {6, "creationDate", FTYPE::TIME}},
-                                Filter(GT(Tuple(1), Time(q4_params[1])),
+                                //Filter(GT(Tuple(1), Time(q4_params[1])),
                                   GroupBy({0},
                                     Aggr({{"count", 0}},
                                       //Sort()
                                         Limit(100,
-                                          End(JOIN_OP::HASH_JOIN, 0))))))))))))));
+                                          End(JOIN_OP::HASH_JOIN, 0)))))))))))));
 
     auto q2 = Scan("Place",
                 Filter(Fct(q3_filter_cntry),
@@ -230,12 +232,12 @@ void ldbc_jit_bi_query_4(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
                           ForeachRship(RSHIP_DIR::TO, {}, ":hasMember",
                             Expand(EXPAND::IN, "Forum",
                               Project({{6}, {6, "creationDate", FTYPE::TIME}},
-                                Filter(GT(Tuple(1), Time(q4_params[1])),
+                                //Filter(GT(Tuple(1), Time(q4_params[1])),
                                   GroupBy({0},
                                     Aggr({{"count", 0}},
                                       Sort(sort_fct1,
                                         Limit(100,
-                                          ForeachRship(RSHIP_DIR::FROM, ":hasMember", 2
+                                          ForeachRship(RSHIP_DIR::FROM, ":hasMember", 0,
                                             Expand(EXPAND::OUT, "Person",
                                               ForeachRship(RSHIP_DIR::TO, {}, ":hasCreator",
                                                 Expand(EXPAND::IN, "Post",
@@ -246,22 +248,22 @@ void ldbc_jit_bi_query_4(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
                                                           Aggr({{"count", 0}},
                                                             Project({{0, "id", FTYPE::UINT64}, {0, "firstName", FTYPE::STRING}, {0, "lastName", FTYPE::STRING}, {0, "creationDate", FTYPE::TIME}, {1}},
                                                               Sort(sort_fct2,
-                                                                Collect())))), q1)))))))))))))))))))));
+                                                                Collect())))), q1))))))))))))))))))));
 
     arg_builder ab;
     ab.arg(1, "Place");
-    ab.arg(2, ":isPartOf");
-    ab.arg(3, "Place");
-    ab.arg(4, ":isLocatedIn");
-    ab.arg(5, "Person");
-    ab.arg(6, ":hasMember");
-    ab.arg(7, "Forum");
-    ab.arg(8, ":hasMember");
-    ab.arg(9, "Person");
-    ab.arg(10, ":hasCreator");
-    ab.arg(11, "Post");
-    ab.arg(12, ":containerOf");
-    ab.arg(13, "Forum");
+    ab.arg(3, ":isPartOf");
+    ab.arg(4, "Place");
+    ab.arg(5, ":isLocatedIn");
+    ab.arg(6, "Person");
+    ab.arg(7, ":hasMember");
+    ab.arg(8, "Forum");
+    ab.arg(9, ":hasMember");
+    ab.arg(10, "Person");
+    ab.arg(11, ":hasCreator");
+    ab.arg(12, "Post");
+    ab.arg(13, ":containerOf");
+    ab.arg(14, "Forum");
 
     if(!compiled) {
         auto c_s = std::chrono::steady_clock::now();
@@ -283,6 +285,15 @@ void ldbc_jit_bi_query_4(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
         << " ms" << std::endl; 
 }
 
+void run_is_4(graph_db_ptr gdb, query_engine &qeng) {
+    for(auto i = 0u; i < 1; i++) {
+        result_set rs;
+        ldbc_jit_bi_query_4(gdb, qeng, rs, false);
+        std::cout << rs.data.size() << std::endl;
+    }
+}
+
+/*
 void ldbc_bi_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
 
     auto q3 = Scan("Tag",
@@ -375,7 +386,7 @@ void run_benchmark(graph_db_ptr gdb, query_engine &qeng) {
   //run_is_1(gdb, qeng);
   //compiled = false;
   //qeng.cleanup();
-  run_is_2(gdb, qeng);
+  run_is_4(gdb, qeng);
   compiled = false;
   qeng.cleanup();
   run_is_3(gdb, qeng);

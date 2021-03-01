@@ -13,7 +13,7 @@ void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_tim
 }
 
  chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
-    grouper::clear(); // TODO: fix and replace with pipeline context
+    //grouper::clear(); // TODO: fix and replace with pipeline context
     //pipeline_barrier.wait();
     return new chunked_vec<node, NODE_CHUNK_SIZE>::range_iter(vec->as_vec(), first, last);
 }

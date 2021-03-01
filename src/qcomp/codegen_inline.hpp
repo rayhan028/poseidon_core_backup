@@ -330,6 +330,7 @@ public:
     }
 
     AllocaInst *insert_alloca(Type *ty);
+    
 };
 
 

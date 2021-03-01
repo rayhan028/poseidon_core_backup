@@ -97,7 +97,6 @@ AllocaInst *codegen_inline_visitor::insert_alloca(Type *ty) {
 
     return alloc;
 }
-
 int qcnt = 0;
 /*
 * Generates code for a scan operator.
@@ -116,12 +115,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
 
         // create unique function name for the JIT instance
         int cnt = 0;
-        auto func_name = op->name_;
-        while(ctx.gen_funcs.find(func_name) != ctx.gen_funcs.end()) {
+        //auto func_name = op->name_;
+        /*while(ctx.gen_funcs.find(func_name) != ctx.gen_funcs.end()) {
             func_name = op->name_+std::to_string(++cnt);
-        }
+        }*/
 
-        op->name_ = func_name+qid_+std::to_string(qcnt++);
+        op->name_ = qid_+std::to_string(qcnt++);
     //}
 
     // check for previous access

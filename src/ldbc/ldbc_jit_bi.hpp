@@ -52,7 +52,6 @@ bool q2_filter_cdate_1(int *prop_ptr) {
     auto d = *reinterpret_cast<const ptime *>(prop->value_);
     auto dt = time_from_string(std::string("2011-04-14 01:51:21.746"));
     time_period duration(dt, hours(24*100));
-    if(duration.contains(d)) std::cout << "TRUE1" << std::endl;
     return duration.contains(d) ? true : false;
 }
 
@@ -69,8 +68,8 @@ bool q2_filter_cdate_2(int *prop_ptr) {
 
 thread_local query_result qr;
 query_result* q2_compute_diff(qr_tuple &q) {
-    auto cnt = boost::get<uint64_t>(q.at(1));
-    auto nxt_cnt = boost::get<uint64_t>(q.at(2));
+    auto cnt = boost::get<int>(q.at(1));
+    auto nxt_cnt = boost::get<int>(q.at(2));
     uint64_t diff = cnt > nxt_cnt ? cnt - nxt_cnt : nxt_cnt - cnt;
     qr = query_result(diff);
     return &qr;        

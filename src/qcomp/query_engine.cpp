@@ -6,6 +6,7 @@
 #include "interpreter.hpp"
 #include "qid_generator.hpp"
 #include "codegen_inline.hpp"
+#include "thread_pool.hpp"
 
 using namespace std::placeholders;
 
@@ -216,57 +217,49 @@ bool has_join(algebra_optr expr) {
     return join_found;
 }
 
+void create_tasks() {
+
+}
+
+void consumer_dummy(node &n) {
+
+}
+
 void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned thread_num) {
-    if(!has_join(cur_query_)) {
-        interprete_visitor iv(graph_, args, rs);
-        auto start = 1u;
-        cur_query_->codegen(iv, start, false);
+    bool interprete_started = false;
+    scan_task::callee_ = scan_task::scan;
+    interprete_visitor iv(graph_, args, rs);
+    auto start = 1u;
+    cur_query_->codegen(iv, start, false);
+
+    auto pipeline_num = 1;
+
+    for(auto pipeline = pipeline_num - 1; pipeline >= 0; pipeline--) {
+        auto ctx = current_transaction_;
+        std::thread interpreter_thread([&]{
+            current_transaction_ = ctx;
+            iv.start();
+        });
         std::thread t1([&] {
-	    if(compile_th.joinable())
-            	compile_th.join();
-	
-	    //prepare();
+            if(compile_th.joinable())
+                    compile_th.join();
+           
             task_callee_ = [&](transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer) {
                 current_transaction_ = tx;
-                //start_[0](gdb, first, last, tx, 1, &type_vec_[0], rs, nullptr, finish_[0], 0, args.args.data());
+                query_context qtx = {gdb, first, last, tx, &rs, args.args.data()};
+                start_[pipeline](&qtx, args.args.data(), rs);
             };
 
             scan_task::callee_ = task_callee_;
             compiled_.store(true);
         });
-        iv.start();
-        t1.join();
-    } else {
-    auto chunksz = graph_->get_nodes()->num_chunks() / thread_num;
-    auto max_chunksz = graph_->get_nodes()->num_chunks();
-
-    if(compile_th.joinable()) {
-        compile_th.join();
-    }
-    
-	//prepare();
-	type_vec_[0].push_back(7);
-        std::vector<std::thread> query_threads;
-        auto cur_start = 0;
-        auto end = chunksz - 1;
-        auto tx = graph_->begin_transaction();
-        for(auto i = 0u; i < thread_num; i++) {
-            current_transaction_ = tx;
-            if(i == thread_num - 1)
-                end = max_chunksz;
-            else
-                end = cur_start + chunksz - 1;
-            query_threads.push_back(std::thread([&, cur_start, end]{
-                current_transaction_ = tx;
-                //start_[0](graph_.get(), cur_start, end, current_transaction_, 1, &type_vec_[0], rs, nullptr, finish_[0], 0, args.args.data());
-            }));
-            cur_start += chunksz;
+        if(t1.joinable())
+            t1.join();
+        if(interpreter_thread.joinable())
+            interpreter_thread.join();
+        if(has_join(cur_query_) && (pipeline != pipeline_num-1)) {
+            graph_->parallel_nodes(consumer_dummy);
         }
-
-        for(auto & t : query_threads) {
-            t.join();
-        }
-        graph_->commit_transaction();
     }
 }
 
@@ -282,8 +275,8 @@ void compile_task::operator()() {
     unsigned int op_start = 1;
     unsigned int cg_start = 1;
     query_->codegen(qd, op_start, true);
-
-    auto internal_qid = qd.qid+std::to_string(query_cnt);
+    
+    auto internal_qid = qd.qid;//+std::to_string(query_cnt);
     query_cnt++;
 
     //1. generate LLVM IR code & compile into machine code
@@ -297,7 +290,7 @@ void compile_task::operator()() {
 
     ctx_.createNewModule();
     ctx_.getModule().setDataLayout(jit_.getDataLayout());
-
+    qeng_.operator_names_.clear();
     //3. extract all operator names from query and generate type vec
     //first function name == scan => start function
     auto query_id = 0;

@@ -23,10 +23,11 @@ void grouper::clear() {
     grpkey_map_.clear();
     pos_set_.clear();
     intermediate_rs_.data.clear();
-    current_tp_.clear();
+    //current_tp_.clear();
 }
 
 void grouper::add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos_set) {
+    std::cout << "Add to group" << std::endl;
     pos_set_ = pos_set;
 
     const auto itr = grpkey_map_.find(key);
@@ -41,6 +42,7 @@ void grouper::add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos_
 }
 
 void grouper::finish(result_set* rs) {
+    std::cout << "Finish" << std::endl;
     rs->data.clear();
     for(auto &grp : grpkey_set_) {
         qr_tuple res;
@@ -55,8 +57,13 @@ void grouper::finish(result_set* rs) {
 }
 
 qr_tuple* grouper::demat_tuple(int index) {
+    std::cout << "demat" << std::endl;
     current_tp_ = intermediate_rs_.data.front();
     intermediate_rs_.data.pop_front();
+    if(intermediate_rs_.data.empty()) {
+        std::cout << "Mepty" << std::endl;
+        clear();
+    }
     return &current_tp_;
 }
 

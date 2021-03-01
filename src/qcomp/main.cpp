@@ -67,7 +67,7 @@ int main() {
 
 	auto tx = graph->begin_transaction();
 
-	int PERSONS = 2;
+	int PERSONS = 1000000;
 	int add = 0;
 	int j = 1;
 	auto id = 0;
@@ -131,10 +131,9 @@ int main() {
                                   /*{3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {0, "id", FTYPE::INT}, {0, "name", FTYPE::STRING}*/}, 
 							Collect()), r_expr));
 
-	auto fev = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, 
-						GroupBy({0}, Aggr({{"count", 0}}, ForeachRship(RSHIP_DIR::FROM, ":likes", 0, Collect()))), r_expr))));
+	auto fev = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr))));
 
-	auto simp = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Project({{0, "age", FTYPE::INT}, {0, "age", FTYPE::INT}}, Append(afunc, FTYPE::INT, Collect()))));
+	auto simp = Scan("Person", Collect());
 
 	auto multi = Scan(labels, Project({{0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}, {0}}, Collect()));
 	auto multi_exp = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", 
@@ -145,36 +144,80 @@ int main() {
 	auto filter_exp = Scan("Person", Filter(Call(Key(0, "id"), Fct(int_fct)), ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Person", 
 			Project({{0, "name", FTYPE::STRING}, {2, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}}, Collect())))));
 	scan_task::callee_ = &scan_task::scan;	
-	queryEngine.generate(fev, false);
+
+	auto cs1 = std::chrono::steady_clock::now();
+	queryEngine.generate(simp, true);
+	auto ce1 = std::chrono::steady_clock::now();
 	
 	arg_builder ab;
 	ab.arg(1, "Person");
 	ab.arg(2, "Book");
 	ab.arg(3, ":likes");
 	ab.arg(4, "Person");
-	ab.arg(7, ":likes");
-	ab.arg(8, "Person");
+	ab.arg(5, "Book");
+	ab.arg(6, "Person");
 	ab.arg(9, "Book");
-	ab.arg(10, ":likes");
+	ab.arg(10, "Person");
 	ab.arg(11, "Person");
-	ab.arg(12, ":likes");
-	ab.arg(13, "Person");
-	ab.arg(14, ":HAS_READ");
+	ab.arg(12, "Book");
+	ab.arg(13, ":HAS_READ");
+	ab.arg(14, "Book");
 	ab.arg(15, "Book");
 
 	result_set rs;
 
   	auto js = std::chrono::steady_clock::now();
-	queryEngine.run(&rs, ab.args);
+	graph->begin_transaction();
+	queryEngine.run_parallel(&rs, ab, 24);
+	graph->commit_transaction();
 	auto je = std::chrono::steady_clock::now();
 
-	std::cout << rs << std::endl;
-	  std::cout << "JIT: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(je -
-                                                                     js)
-                   .count()
-            << " ms" << std::endl;
+	std::cout << rs.data.size() << std::endl;
+	std::cout << "JIT: "
+		<< std::chrono::duration_cast<std::chrono::milliseconds>(je -
+																	js)
+				.count()
+		<< " CT: "
+		<< std::chrono::duration_cast<std::chrono::milliseconds>(ce1 -
+																	cs1)
+				.count()
+		<< " ms" << std::endl;
 
+/*
+	std::cout << "Cached" << std::endl;
+	
+	rs.data.clear();
+
+//#ifndef USE_PMDK
+	queryEngine.~query_engine();
+//#endif 
+
+	std::cout << "deleted" << std::endl;
+	query_engine queryEngine2(graph, THREAD_NUM, cv_range);
+
+	auto r_expr2 = Scan(labels, End(JOIN_OP::NESTED_LOOP, 0));
+
+	auto fev2 = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr))));
+
+	auto cs2 = std::chrono::steady_clock::now();
+	queryEngine2.generate(fev, false);
+	auto ce2 = std::chrono::steady_clock::now();
+
+  	auto js2 = std::chrono::steady_clock::now();
+	queryEngine2.run(&rs, ab.args);
+	auto je2 = std::chrono::steady_clock::now();
+
+	std::cout << rs << std::endl;
+	std::cout << "JIT: "
+		<< std::chrono::duration_cast<std::chrono::milliseconds>(je2 -
+																	js2)
+				.count()
+		<< " CT: "
+		<< std::chrono::duration_cast<std::chrono::milliseconds>(ce2 -
+																	cs2)
+				.count()
+		<< " ms" << std::endl;
+*/
 #ifdef USE_PMDK
 	//nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
 	pop.close();

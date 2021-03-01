@@ -28,7 +28,7 @@ p_jit::p_jit(ExitOnError ExitOnErr)
 #else
         ObjCache(std::make_unique<PJitObjectCache>()),
 #endif
-          CompileLayer(*ES, ObjLinkingLayer, std::make_unique<SimpleCompiler>(*TM)),
+          CompileLayer(*ES, ObjLinkingLayer, std::make_unique<SimpleCompiler>(*TM, ObjCache.get())),
           OptimizeLayer(*ES, CompileLayer) {
     //ObjLinkingLayer.setNotifyLoaded(createNotifyLoadedFtor());
     auto exp_jit_dylib = ES->createJITDylib("Main");
@@ -198,7 +198,7 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
     auto K = ES->allocateVModule();
     ModuleKeys.push_back(K);
 
-    /*auto obj = ObjCache->getCachedObject(*M);
+    auto obj = ObjCache->getCachedObject(*M);
     if(!obj) {
         M.~unique_ptr();
         return obj.takeError();
@@ -208,7 +208,7 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
     if(obj->hasValue()) {
         M.~unique_ptr();
         return ObjLinkingLayer.add(*ES->getJITDylibByName("Main"), std::move(obj->getValue()));
-    }*/
+    }
 
     OptimizeLayer.setTransform(Optimizer(3));
 
@@ -276,5 +276,6 @@ std::unique_ptr<DynamicLibrarySearchGenerator> p_jit::createHostProcessResolver(
     if(!*R) {
         return nullptr;
     }
+
     return std::move(*R);
 }

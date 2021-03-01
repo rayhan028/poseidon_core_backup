@@ -87,7 +87,7 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
 #ifdef USE_TX
   check_tx_context();
 #endif
-  const int nchunks = 25;
+  const int nchunks = 1;
   spdlog::debug("Start parallel query with {} threads",
                 nodes_->num_chunks() / nchunks + 1);
 

@@ -59,7 +59,7 @@
  * Cache for generated LLVM IR code.
  *
 */
-
+extern std::map<std::string, std::string> code_cache_;
 
 class PJitObjectCache : public llvm::ObjectCache {
 #ifdef USE_PMDK
@@ -71,15 +71,18 @@ class PJitObjectCache : public llvm::ObjectCache {
     pmem::obj::pool<PCache> cache_pool_;
     std::string dir_;
 #else
-    std::map<std::string, const char*> code_cache_;
+   
 #endif
 
 public:
 #ifdef USE_PMDK
     PJitObjectCache(std::string dir);
+#else
+    PJitObjectCache() {
+    }
 #endif
 
-    PJitObjectCache() = default;
+
 
     /*
      * Method invoked by the JIT compiler after IR code compilation.
