@@ -19,6 +19,9 @@ std::unique_ptr<p_jit> query_engine::initializeJitCompiler() {
     return std::make_unique<p_jit>(exitOnError);
 }
 
+std::mutex tp_mut;
+
+
 query_engine::query_engine(graph_db_ptr &graph, unsigned int thread_num, unsigned cv_range) 
     : thread_num_(thread_num), 
     ctx_(PContext(graph)), 
@@ -228,7 +231,8 @@ void consumer_dummy(node &n) {
 void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned thread_num) {
     bool interprete_started = false;
     scan_task::callee_ = scan_task::scan;
-    interprete_visitor iv(graph_, args, rs);
+    result_set rs2;
+    interprete_visitor iv(graph_, args, &rs2);
     auto start = 1u;
     cur_query_->codegen(iv, start, false);
 
@@ -261,6 +265,7 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
             graph_->parallel_nodes(consumer_dummy);
         }
     }
+    std::cout << rs2.data.size() << std::endl;
 }
 
 

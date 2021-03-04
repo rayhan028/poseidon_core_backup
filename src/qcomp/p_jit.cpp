@@ -28,7 +28,11 @@ p_jit::p_jit(ExitOnError ExitOnErr)
 #else
         ObjCache(std::make_unique<PJitObjectCache>()),
 #endif
+#if USE_CACHE
           CompileLayer(*ES, ObjLinkingLayer, std::make_unique<SimpleCompiler>(*TM, ObjCache.get())),
+#else
+          CompileLayer(*ES, ObjLinkingLayer, std::make_unique<SimpleCompiler>(*TM)),
+#endif
           OptimizeLayer(*ES, CompileLayer) {
     //ObjLinkingLayer.setNotifyLoaded(createNotifyLoadedFtor());
     auto exp_jit_dylib = ES->createJITDylib("Main");
@@ -188,6 +192,8 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&get_now), JITSymbolFlags::Exported);
         M[Mangle("add_time_diff")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&add_time_diff), JITSymbolFlags::Exported);
+        M[Mangle("end_notify")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&end_notify), JITSymbolFlags::Exported);
 
         ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
     }
@@ -198,6 +204,7 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
     auto K = ES->allocateVModule();
     ModuleKeys.push_back(K);
 
+#if USE_CACHE
     auto obj = ObjCache->getCachedObject(*M);
     if(!obj) {
         M.~unique_ptr();
@@ -209,6 +216,7 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
         M.~unique_ptr();
         return ObjLinkingLayer.add(*ES->getJITDylibByName("Main"), std::move(obj->getValue()));
     }
+#endif
 
     OptimizeLayer.setTransform(Optimizer(3));
 

@@ -14,7 +14,6 @@ void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_tim
 
  chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
     //grouper::clear(); // TODO: fix and replace with pipeline context
-    //pipeline_barrier.wait();
     return new chunked_vec<node, NODE_CHUNK_SIZE>::range_iter(vec->as_vec(), first, last);
 }
 
@@ -206,62 +205,71 @@ std::mutex prj_mutex;
     return &gdb->rship_by_id(rid);
 }
 
-thread_local qr_tuple tp;
-
+//thread_local qr_tuple tp;
+std::map<std::thread::id, qr_tuple> tp_m;
+int tcnt = 0;
 std::mutex mat_reg_mut;
  void mat_reg_value(graph_db *gdb, int *reg, int type) {
     std::lock_guard<std::mutex> lck(mat_reg_mut);
-    if(type == 2) {
-        int res = std::stoi(con_map[type](gdb, reg));
-        tp.push_back(res);
-    } else if(type == 5 || type == 6) {
-        tp.push_back(time_result[*reg]);
-    } else if(type == 8) {
-        tp.push_back(uint64_t(std::stoull(con_map[type](gdb, reg))));
-    } else if(type == 90) { // special handling for direct node access when grouping
-        tp.push_back((node*)reg);
-    } else if(type == 91) { // special handling for direct rship access when grouping
-        tp.push_back((relationship*)reg);
-    } else if(type == 92) {
-        tp.push_back(*reg);
-    } else if(type == 93) {
-        tp.push_back(*(double*)reg);
-    } else {
-        tp.push_back(con_map[type](gdb, reg));
+    auto & tp = tp_m[std::this_thread::get_id()];
+    {
+        if(type == 2) {
+            int res = std::stoi(con_map[type](gdb, reg));
+            tp.push_back(res);
+        } else if(type == 5 || type == 6) {
+            tp.push_back(time_result[*reg]);
+        } else if(type == 8) {
+            tp.push_back(uint64_t(std::stoull(con_map[type](gdb, reg))));
+        } else if(type == 90) { // special handling for direct node access when grouping
+            tp.push_back((node*)reg);
+        } else if(type == 91) { // special handling for direct rship access when grouping
+            tp.push_back((relationship*)reg);
+        } else if(type == 92) {
+            tp.push_back(*reg);
+        } else if(type == 93) {
+            tp.push_back(*(double*)reg);
+        } else {
+            tp.push_back(con_map[type](gdb, reg));
+        }
     }
 }
 
  void append_to_tuple(query_result qr) {
+    auto & tp = tp_m[std::this_thread::get_id()];
     tp.push_back(qr);
 }
 
 qr_tuple &get_qr_tuple() {
+    auto & tp = tp_m[std::this_thread::get_id()];
     return tp;
 }
 
 std::mutex ct_mut;
  void collect_tuple(result_set *rs, bool print) {
-    std::lock_guard<std::mutex> lck(ct_mut);
-    rs->append(tp);
-    if(print) {
-        std::cout << "{";
-        auto my_visitor = boost::hana::overload(
-            [&](node *n) { /*os << gdb->get_node_description(*n); */ },
-            [&](relationship *r) { /* os << gdb->get_relationship_label(*r); */ },
-            [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
-            [&](const std::string &s) { std::cout << s; }, [&](uint64_t ll) { std::cout << ll; },
-            [&](null_t n) { std::cout << "NULL"; },
-            [&](boost::posix_time::ptime dt) { std::cout << dt; }); 
+    std::lock_guard<std::mutex> lck(mat_reg_mut);
+    auto & tp = tp_m[std::this_thread::get_id()];
+    {
+        rs->append(tp);
+        if(print) {
+            std::cout << "{";
+            auto my_visitor = boost::hana::overload(
+                [&](node *n) { /*os << gdb->get_node_description(*n); */ },
+                [&](relationship *r) { /* os << gdb->get_relationship_label(*r); */ },
+                [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
+                [&](const std::string &s) { std::cout << s; }, [&](uint64_t ll) { std::cout << ll; },
+                [&](null_t n) { std::cout << "NULL"; },
+                [&](boost::posix_time::ptime dt) { std::cout << dt; }); 
 
-        auto i = 0u;
-        for (const auto &qr : tp) {
-            boost::apply_visitor(my_visitor, qr);
-            if (++i < tp.size())
-                std::cout << ", ";
+            auto i = 0u;
+            for (const auto &qr : tp) {
+                boost::apply_visitor(my_visitor, qr);
+                if (++i < tp.size())
+                    std::cout << ", ";
+            }
+            std::cout << "}" << std::endl;
         }
-        std::cout << "}" << std::endl;
+        tp.clear();
     }
-    tp.clear();
 }
 
 thread_local qr_tuple mat_tuple;
@@ -269,6 +277,7 @@ thread_local qr_tuple mat_tuple;
  qr_tuple *obtain_mat_tuple() {
     //auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
     //return &joiner::mat_tuple_[tid];
+    auto & tp = tp_m[std::this_thread::get_id()];
     return &tp;
 }
 
@@ -389,6 +398,7 @@ std::set<unsigned> pos_set;
 }
 
  void add_to_group() {
+    auto & tp = tp_m[std::this_thread::get_id()];
     grouper::add_to_group(grpkey_buffer, tp, pos_set);
     grpkey_buffer = "";
     pos_set.clear();
@@ -400,6 +410,7 @@ std::set<unsigned> pos_set;
 }
 
  void clear_mat_tuple() {
+    auto & tp = tp_m[std::this_thread::get_id()];
     tp.clear();
 }
 
@@ -442,7 +453,8 @@ int double_to_reg(qr_tuple* qr, int pos) {
 }
 
  int get_group_count() {
-    return grouper::get_group_cnt();
+    auto gcnt = grouper::get_group_cnt();
+    return gcnt;
 }
 
  int get_total_group_count() {
@@ -506,4 +518,8 @@ void apply_has_property(int has_properties_cnt, char *then_res, char *else_res, 
         *result = str_res_ctr;
         str_result[str_res_ctr++] = std::string(else_res);
     }
+}
+
+void end_notify(result_set *rs) {
+    rs->notify();
 }

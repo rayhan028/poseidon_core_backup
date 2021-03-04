@@ -219,7 +219,17 @@ inline algebra_optr ForeachRship(RSHIP_DIR dir, std::string label, int node_pos,
     return std::make_shared<foreach_rship_op>(dir, label, node_pos, op);
 }
 
+inline algebra_optr FromRships(std::string label, algebra_optr op) {
+    auto dir = RSHIP_DIR::FROM;
+    std::pair<int, int> p = {};
+    return std::make_shared<foreach_rship_op>(dir, p, label, op);
+}
 
+inline algebra_optr ToRships(std::string label, algebra_optr op) {
+    auto dir = RSHIP_DIR::TO;
+    std::pair<int, int> p = {};
+    return std::make_shared<foreach_rship_op>(dir, p, label, op);
+}
 
 
 struct pr_expr {
@@ -316,6 +326,10 @@ public:
 
 inline algebra_optr Expand(EXPAND exp, std::string label, algebra_optr op) { return std::make_shared<expand_op>(exp, label, op); }
 inline algebra_optr Expand(EXPAND exp, std::vector<std::string> labels, algebra_optr op) { return std::make_shared<expand_op>(exp, labels, op); }
+inline algebra_optr ExpandIn(std::string label, algebra_optr op) { return std::make_shared<expand_op>(EXPAND::IN, label, op); }
+inline algebra_optr ExpandIn(std::vector<std::string> labels, algebra_optr op) { return std::make_shared<expand_op>(EXPAND::IN, labels, op); }
+inline algebra_optr ExpandOut(std::string label, algebra_optr op) { return std::make_shared<expand_op>(EXPAND::OUT, label, op); }
+inline algebra_optr ExpandOut(std::vector<std::string> labels, algebra_optr op) { return std::make_shared<expand_op>(EXPAND::OUT, labels, op); }
 
 enum class JOIN_OP {
     CROSS,

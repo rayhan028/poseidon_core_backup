@@ -286,6 +286,7 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
 //++++++++++++++++++ TX FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     getTxFctTy = FunctionType::get(int64Ty, {int8PtrTy}, false);
     getValidNodeFctTy = FunctionType::get(nodePtrTy, {int8PtrTy, nodePtrTy, int8PtrTy}, false);
+    notifyFctTy = FunctionType::get(voidTy, {int8PtrTy}, false);
 
 //++++++++++++++++++ BODY DEFINITIONS + ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     queryContextTy->setBody({int8PtrTy, int64Ty, int64Ty, int8PtrTy}); // gdb, start, end, tx, result_set, arguments
@@ -423,6 +424,8 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
 
     function_types["get_now"] = get_now_ty;
     function_types["add_time_diff"] = add_time_diff_ty;
+
+    function_types["end_notify"] = notifyFctTy;
 }
 
 

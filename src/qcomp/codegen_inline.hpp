@@ -327,6 +327,7 @@ public:
         first = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 1));
         last = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 2));
         tx_ptr = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 3));
+        //rs->getType()->dump();
     }
 
     AllocaInst *insert_alloca(Type *ty);

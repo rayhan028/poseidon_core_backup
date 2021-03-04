@@ -5,6 +5,8 @@
 #include "codegen_inline.hpp"
 #include "filter_expression_inline.hpp"
 
+bool finishing = false;
+
 /*
 * Function initialisation at first access path
 */
@@ -825,6 +827,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
     auto collect_regs = ctx.extern_func("collect_tuple");
     auto fadd_now = ctx.extern_func("get_now");
     auto fadd_time_diff = ctx.extern_func("add_time_diff");
+    auto endnotify = ctx.extern_func("end_notify");
 
     // link with previous operator
     BasicBlock *entry = BasicBlock::Create(ctx.getContext(), "collect_entry", main_function);
@@ -865,6 +868,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
 
     // complete the finish call
     ctx.getBuilder().SetInsertPoint(df_finish_bb);
+    //ctx.getBuilder().CreateCall(endnotify, {rs});
     ctx.getBuilder().CreateRetVoid();
 
     // complete init->entry

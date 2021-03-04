@@ -101,9 +101,11 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
     start = end + 1;
     end += nchunks;
   }
+  
   // std::cout << "waiting ..." << std::endl;
-  for (auto &f : res)
+  for (auto &f : res) {
     f.get();
+  }
 }
 
 void graph_db::nodes(node_consumer_func consumer) {

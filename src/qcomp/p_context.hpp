@@ -226,7 +226,7 @@ public:
 
     FunctionType *get_now_ty;
     FunctionType *add_time_diff_ty;
-
+    FunctionType *notifyFctTy;
 //++++++++++++++++++ GROUP_BY FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
     FunctionType *get_node_grpkey_ty;
     FunctionType *get_rship_grpkey_ty;

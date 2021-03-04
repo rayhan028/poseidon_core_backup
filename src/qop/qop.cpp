@@ -33,7 +33,6 @@ using namespace boost::posix_time;
 
 void scan_nodes::start(graph_db_ptr &gdb) {
   if (label.empty()) {
-    std::cout << "Start parallel" << std::endl;
     gdb->parallel_nodes([&](node &n) { consume_(gdb, {&n}); });
   }
   else

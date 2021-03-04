@@ -26,10 +26,10 @@ Optimizer::operator()(ThreadSafeModule TSM,
     legacy::FunctionPassManager FPM(&M);
     FPM.add(createPromoteMemoryToRegisterPass());
     FPM.add(createCFGSimplificationPass());
-    //FPM.add(createLCSSAPass());
-    //FPM.add(createDeadStoreEliminationPass());
-    //FPM.add(createLoopDeletionPass());
-    //FPM.add(createInstructionCombiningPass());
+    FPM.add(createLCSSAPass());
+    FPM.add(createDeadStoreEliminationPass());
+    FPM.add(createLoopDeletionPass());
+    FPM.add(createInstructionCombiningPass());
     B.populateFunctionPassManager(FPM);
     FPM.doInitialization();
 

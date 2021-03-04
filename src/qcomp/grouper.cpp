@@ -15,19 +15,26 @@ unsigned grouper::total_grp_cnt = 0;
 bool grouper::grp_cnt_int = false;
 unsigned grouper::tota_grp_cnt_int = 0;
 
+bool clear_ir = false;
+
 void grouper::clear() {
     grp_cnt_ = 0;
     aggr_grp_cnt_ = -1;
-    grps_.clear();
-    grpkey_set_.clear();
-    grpkey_map_.clear();
+    //grps_.clear();
+    //grpkey_set_.clear();
+    //grpkey_map_.clear();
     pos_set_.clear();
-    intermediate_rs_.data.clear();
-    //current_tp_.clear();
+    //intermediate_rs_.data.clear();
+    total_grp_cnt_calc = false;
+    grp_cnt_int = false;
+    current_tp_.clear();
 }
 
 void grouper::add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos_set) {
-    std::cout << "Add to group" << std::endl;
+    if(clear_ir) {
+        clear();
+        clear_ir = false;
+    }
     pos_set_ = pos_set;
 
     const auto itr = grpkey_map_.find(key);
@@ -42,7 +49,6 @@ void grouper::add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos_
 }
 
 void grouper::finish(result_set* rs) {
-    std::cout << "Finish" << std::endl;
     rs->data.clear();
     for(auto &grp : grpkey_set_) {
         qr_tuple res;
@@ -57,12 +63,12 @@ void grouper::finish(result_set* rs) {
 }
 
 qr_tuple* grouper::demat_tuple(int index) {
-    std::cout << "demat" << std::endl;
     current_tp_ = intermediate_rs_.data.front();
     intermediate_rs_.data.pop_front();
     if(intermediate_rs_.data.empty()) {
-        std::cout << "Mepty" << std::endl;
-        clear();
+        //clear();
+        clear_ir = true;
+        //aggr_grp_cnt_ = -1;
     }
     return &current_tp_;
 }
@@ -77,7 +83,9 @@ void grouper::init_grp_aggr() {
 
 unsigned grouper::get_group_cnt() {
     auto &grp_data = grps_[aggr_grp_cnt_].data;
-    return grp_data.size();
+    auto ccnt = grp_data.size();
+    grps_[aggr_grp_cnt_].data.clear();
+    return ccnt;
 }
 
 unsigned grouper::get_total_group_cnt() {

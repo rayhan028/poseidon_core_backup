@@ -379,15 +379,75 @@ void ldbc_bi_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
                                                 Collect()))))),
                                     q2))))))))))));
 }
+
+
+void ldbc_bi_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+      auto filter_tag =
+      [&](auto &prop) {
+        auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+        auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+        return c1 == c2;
+      };
+
+  auto q2 = Scan("Tag",
+              Filter(Fct(filter_tag),
+                FromRships(":hasTag",
+                  ExpandIn(message,
+                    FromRships(":hasCreator",
+                      ExpandOut("Person",
+                        ToRships(":hasCreator",
+                          ExpandIn(message,
+                            ToRships(":likes",
+                              ExpandIn("Person",
+                                Project({{8}},
+                                  ToRships(":likes",
+                                    ExpandIn(message,
+                                      ToRships(":likes",
+                                        ExpandIn("Person",
+                                          GroupBy({0},
+                                            Aggr({{"count", 0}},
+                                              End()))))))))))))))));
+
+  auto q1 = Scan("Tag",
+              Filter(Fct(filter_tag),
+                ToRships(":hasTag",
+                  ExpandIn(message,
+                    FromRships(":hasCreator",
+                      ExpandOut("Person",
+                        ToRships(":hasCreator",
+                          ExpandIn(message,
+                            ToRships(":likes",
+                              ExpandIn("Person",
+                                Project({{4}, {8}},
+                                  Join(JOIN_OP::HASH_JOIN, {1, 0}, GroupBy({0}, Aggr({{"sum", 3}}, Project({{0, "id", FTYPE::UINT}, {1}}, Limit(100, Collect())))), q2))))))))))));
+}
+
+void ldbc_bi_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple params) {
+    auto filter_tag =
+      [&](auto &prop) {
+        auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+        auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+        return c1 == c2;
+      };
+
+    auto drop_tag =
+      [&](auto &prop) {
+        auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+        auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+        return c1 != c2;
+      };
+
+
+}
 */
 
 void run_benchmark(graph_db_ptr gdb, query_engine &qeng) {
   g = gdb;
-  //run_is_1(gdb, qeng);
-  //compiled = false;
-  //qeng.cleanup();
-  run_is_4(gdb, qeng);
+  run_is_1(gdb, qeng);
   compiled = false;
+  //qeng.cleanup();
+  //run_is_4(gdb, qeng);
+  //compiled = false;
   qeng.cleanup();
   run_is_3(gdb, qeng);
 }

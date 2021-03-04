@@ -32,7 +32,7 @@ int nodefunc(node *n) {
 
 bool int_fct(int *i) {
 	int in = *i;
-	return in % 2 != 0; 
+	return in % 2 == 0; 
 }
 
 
@@ -67,7 +67,7 @@ int main() {
 
 	auto tx = graph->begin_transaction();
 
-	int PERSONS = 1000000;
+	int PERSONS = 5;
 	int add = 0;
 	int j = 1;
 	auto id = 0;
@@ -101,13 +101,23 @@ int main() {
 		graph->add_relationship(p, b, ":HAS_READ", {}, false);
 		graph->add_relationship(b, p, ":HAS_READ", {}, false);
 	}
-
+	auto l = graph->add_node("Peter",
+				{{"name", boost::any(std::string("Title"))},
+				{"age", boost::any(42)},
+				{"id", boost::any(id++)}},
+				true);
+	auto d = graph->add_node("Uwe",
+				{{"name", boost::any(std::string("Title"))},
+				{"age", boost::any(42)},
+				{"id", boost::any(id++)}},
+				true);
+	graph->add_relationship(l, d, ":likes", {}, false);
 	graph->commit_transaction();
 
 	auto THREAD_NUM = 4;
 	auto chunks = graph->get_nodes()->num_chunks();
 	auto cv_range = chunks / THREAD_NUM;
-
+	std::cout << "Chunks: " << chunks << std::endl;
 	query_engine queryEngine(graph, THREAD_NUM, cv_range);
 
 	p_ptr<dict> dct;
@@ -133,7 +143,24 @@ int main() {
 
 	auto fev = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr))));
 
-	auto simp = Scan("Person", Collect());
+	auto lamdat = [](int*) -> bool {
+		return true;
+	};
+
+	auto simp = Scan("Person", 
+					Filter(Call(Key(0, "id"), Fct(lamdat)), 
+						ForeachRship(RSHIP_DIR::FROM, {}, ":likes", 
+								GroupBy({0},
+                            		Aggr({{"count", 0}, {"avg", 0}}, 
+										ForeachRship(RSHIP_DIR::FROM, ":likes", 0,
+											ExpandOut("Book",
+												GroupBy({0},
+                            						Aggr({{"count", 0}}, 
+														ForeachRship(RSHIP_DIR::FROM, ":likes", 0,
+															ExpandOut("Book",
+																Collect())))))))))));
+
+
 
 	auto multi = Scan(labels, Project({{0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}, {0}}, Collect()));
 	auto multi_exp = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", 
@@ -146,18 +173,18 @@ int main() {
 	scan_task::callee_ = &scan_task::scan;	
 
 	auto cs1 = std::chrono::steady_clock::now();
-	queryEngine.generate(simp, true);
+	queryEngine.generate(simp, false);
 	auto ce1 = std::chrono::steady_clock::now();
 	
 	arg_builder ab;
 	ab.arg(1, "Person");
-	ab.arg(2, "Book");
+	ab.arg(2, "id");
 	ab.arg(3, ":likes");
 	ab.arg(4, "Person");
 	ab.arg(5, "Book");
-	ab.arg(6, "Person");
-	ab.arg(9, "Book");
-	ab.arg(10, "Person");
+	ab.arg(6, ":likes");
+	ab.arg(7, "Book");
+	ab.arg(10, ":likes");
 	ab.arg(11, "Person");
 	ab.arg(12, "Book");
 	ab.arg(13, ":HAS_READ");
@@ -167,12 +194,13 @@ int main() {
 	result_set rs;
 
   	auto js = std::chrono::steady_clock::now();
-	graph->begin_transaction();
-	queryEngine.run_parallel(&rs, ab, 24);
-	graph->commit_transaction();
+	//graph->begin_transaction();
+	queryEngine.run(&rs, ab.args, 24);
+	//graph->commit_transaction();
 	auto je = std::chrono::steady_clock::now();
+	
 
-	std::cout << rs.data.size() << std::endl;
+	std::cout << rs << std::endl;
 	std::cout << "JIT: "
 		<< std::chrono::duration_cast<std::chrono::milliseconds>(je -
 																	js)

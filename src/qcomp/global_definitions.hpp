@@ -15,7 +15,6 @@
 #include <boost/thread/barrier.hpp>
 #include <boost/hana.hpp>
 
-
 //using consumer_ty = std::function<void(graph_db*, int, int**, int*, int, int*)>;
 //using consumer_fct_type = void(*)(graph_db*, int, int**, int*, int, int*, int**, int);
 using finish_fct_type = void(*)(result_set*);
@@ -341,5 +340,7 @@ int node_has_property(graph_db *gdb, node *n, char *property);
 int rship_has_property(graph_db *gdb, relationship *r, char *property);
 void apply_has_property(int has_properties_cnt, char *then_res, char *else_res, int *result);
 void apply_if_property_exist(int has_property, char *property, int *result);
+
+void end_notify(result_set *rs);
 
 #endif //PJIT_GLOBAL_DEFINITIONS_HPP
