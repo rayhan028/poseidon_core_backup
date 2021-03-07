@@ -720,7 +720,13 @@ query_result forward(projection::pr_result &res);
  * the key. Otherwise, return false.
  */	
 bool has_property(projection::pr_result &pv, const std::string &key);
-	
+
+/**
+ * Returns true if the node/relationship has the given label specified. 
+ * Otherwise, return false.
+ */	
+bool has_label(projection::pr_result &pv, const std::string &l);
+
 /**
  * Return the integer value of the property of a node/relationship stored in
  * projection_result res and identified by the given key.

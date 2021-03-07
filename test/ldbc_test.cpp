@@ -10,7 +10,7 @@
 #include "graph_pool.hpp"
 
 using namespace boost::posix_time;
-const std::string test_path = poseidon::gPmemPath + "ldbc_test";
+const std::string test_path = poseidon::gPmemPath + "bi";
 
 graph_db_ptr create_is_data(graph_db_ptr &graph) {
   graph->run_transaction([&]() {
@@ -317,6 +317,211 @@ graph_db_ptr create_iu_data(graph_db_ptr &graph) {
   });
   #endif
 
+  return graph;
+}
+
+graph_db_ptr create_bi_data(graph_db_ptr &graph) {
+  graph->run_transaction([&]() {
+
+    // Persons
+    auto pA = graph->add_node("Person",
+      {{"id", boost::any((uint64_t)1)},
+       {"firstName", boost::any(std::string("Amelie"))},
+       {"lastName", boost::any(std::string(""))},
+       {"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
+    auto pB = graph->add_node("Person",
+      {{"id", boost::any((uint64_t)2)},
+       {"firstName", boost::any(std::string("Bernardo"))},
+       {"lastName", boost::any(std::string(""))},
+       {"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
+    auto pC = graph->add_node("Person",
+      {{"id", boost::any((uint64_t)3)},
+       {"firstName", boost::any(std::string("Cedric"))},
+       {"lastName", boost::any(std::string(""))},
+       {"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
+    auto pD = graph->add_node("Person",
+      {{"id", boost::any((uint64_t)4)},
+       {"firstName", boost::any(std::string("Diane"))},
+       {"lastName", boost::any(std::string(""))},
+       {"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
+    auto pE = graph->add_node("Person",
+      {{"id", boost::any((uint64_t)5)},
+       {"firstName", boost::any(std::string("Eve"))},
+       {"lastName", boost::any(std::string(""))},
+       {"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
+
+    graph->add_relationship(pA, pC, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
+    graph->add_relationship(pA, pD, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
+    graph->add_relationship(pB, pC, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
+    graph->add_relationship(pC, pD, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
+    graph->add_relationship(pD, pE, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
+
+    // Organisations
+    auto cambridge = graph->add_node("Organisation",
+      {{"id", boost::any((uint64_t)1)},
+        {"type", boost::any(std::string("university"))},
+        {"name", boost::any(std::string("Cambridge"))}});
+    auto softEngCo = graph->add_node("Organisation",
+      {{"id", boost::any((uint64_t)2)},
+        {"type", boost::any(std::string("company"))},
+        {"name", boost::any(std::string("SoftEngCo"))}});
+
+    graph->add_relationship(pA, cambridge, ":studyAt", {{"classYear", boost::any(2008)}});
+    graph->add_relationship(pD, cambridge, ":studyAt", {{"classYear", boost::any(2006)}});
+    graph->add_relationship(pE, cambridge, ":studyAt", {{"classYear", boost::any(2008)}});
+    graph->add_relationship(pA, softEngCo, ":workAt", {});
+
+    // Places
+    auto spain = graph->add_node("Place",
+      {{"id", boost::any((uint64_t)1)},
+        {"type", boost::any(std::string("country"))},
+        {"name", boost::any(std::string("Spain"))}});
+    auto madrid = graph->add_node("Place",
+      {{"id", boost::any((uint64_t)2)},
+        {"type", boost::any(std::string("city"))},
+        {"name", boost::any(std::string("Madrid"))}});
+    auto france = graph->add_node("Place",
+      {{"id", boost::any((uint64_t)3)},
+        {"type", boost::any(std::string("country"))},
+        {"name", boost::any(std::string("France"))}});
+    auto paris = graph->add_node("Place",
+      {{"id", boost::any((uint64_t)4)},
+        {"type", boost::any(std::string("city"))},
+        {"name", boost::any(std::string("Paris"))}});
+    auto lyon = graph->add_node("Place",
+      {{"id", boost::any((uint64_t)5)},
+        {"type", boost::any(std::string("city"))},
+        {"name", boost::any(std::string("Lyon"))}});
+
+    graph->add_relationship(madrid, spain, ":isPartOf", {});
+    graph->add_relationship(paris, france, ":isPartOf", {});
+    graph->add_relationship(lyon, france, ":isPartOf", {});
+    graph->add_relationship(pA, paris, ":isLocatedIn", {});
+    graph->add_relationship(pB, madrid, ":isLocatedIn", {});
+    graph->add_relationship(pC, lyon, ":isLocatedIn", {});
+    graph->add_relationship(pD, paris, ":isLocatedIn", {});
+
+    // TagClasses
+    auto tc1 = graph->add_node("TagClass",
+      {{"id", boost::any((uint64_t)1)},
+        {"name", boost::any(std::string("Holiday resorts"))}});
+    auto tc2 = graph->add_node("TagClass",
+      {{"id", boost::any((uint64_t)2)},
+        {"name", boost::any(std::string("Ski resorts"))}});
+    auto tc3 = graph->add_node("TagClass",
+      {{"id", boost::any((uint64_t)3)},
+        {"name", boost::any(std::string("Sports"))}});
+
+    graph->add_relationship(tc2, tc1, ":isSubclassOf", {});
+
+    // Tags
+    auto t1 = graph->add_node("Tag",
+      {{"id", boost::any((uint64_t)1)},
+        {"name", boost::any(std::string("Pyrenees"))}});
+    auto t2 = graph->add_node("Tag",
+      {{"id", boost::any((uint64_t)2)},
+        {"name", boost::any(std::string("Snowboard"))}});
+
+    graph->add_relationship(pB, t1, ":hasInterest", {});
+    graph->add_relationship(pD, t2, ":hasInterest", {});
+    graph->add_relationship(t1, tc2, ":hasType", {});
+    graph->add_relationship(t2, tc3, ":hasType", {});
+
+    // Forums
+    auto forum1 = graph->add_node("Forum",
+      {{"id", boost::any((uint64_t)1)},
+        {"creationDate", boost::any(time_from_string(std::string("2011-10-10 11:01:47.000")))},
+        {"title", boost::any(std::string("Skiing trips"))}});
+    auto forum2 = graph->add_node("Forum",
+      {{"id", boost::any((uint64_t)2)},
+        {"creationDate", boost::any(time_from_string(std::string("2012-02-01 13:07:26.000")))},
+        {"title", boost::any(std::string("Cinéma"))}});
+
+    graph->add_relationship(forum1, t1, ":hasTag", {});
+    graph->add_relationship(forum1, pA, ":hasMember", {});
+    graph->add_relationship(forum1, pB, ":hasMember", {});
+    graph->add_relationship(forum1, pC, ":hasMember", {});
+    graph->add_relationship(forum2, pC, ":hasMember", {});
+    graph->add_relationship(forum2, pA, ":hasMember", {});
+    graph->add_relationship(forum1, pB, ":hasModerator", {});
+    graph->add_relationship(forum2, pC, ":hasModerator", {});
+
+    // Messages
+    auto p1 = graph->add_node("Post",
+      {{"id", boost::any((uint64_t)10)},
+        {"creationDate", boost::any(time_from_string(std::string("2011-10-10 11:05:56.000")))},
+        {"length", boost::any(24)},
+        {"content", boost::any(std::string("We should go to Hautacam"))},
+        {"content", boost::any(std::string("en"))}});
+    auto p2 = graph->add_node("Post",
+      {{"id", boost::any((uint64_t)20)},
+        {"creationDate", boost::any(time_from_string(std::string("2012-03-04 13:41:23.000")))},
+        {"length", boost::any(38)},
+        {"content", boost::any(std::string("Voici un film de snowboard intéressant"))},
+        {"content", boost::any(std::string("fr"))}});
+    auto c1 = graph->add_node("Comment",
+      {{"id", boost::any((uint64_t)1)},
+        {"creationDate", boost::any(time_from_string(std::string("2011-10-10 11:08:01.000")))},
+        {"length", boost::any(24)},
+        {"content", boost::any(std::string("Yes, I like the Pyrenees"))}});
+    auto c2 = graph->add_node("Comment",
+      {{"id", boost::any((uint64_t)2)},
+        {"creationDate", boost::any(time_from_string(std::string("2011-10-10 11:07:42.000")))},
+        {"length", boost::any(57)},
+        {"content", boost::any(std::string("We should go to a place with better options for snowboard"))}});
+    auto c3 = graph->add_node("Comment",
+      {{"id", boost::any((uint64_t)3)},
+        {"creationDate", boost::any(time_from_string(std::string("2011-10-10 11:20:37.000")))},
+        {"length", boost::any(34)},
+        {"content", boost::any(std::string("Hautacam is great for snowboarding"))}});
+    auto c4 = graph->add_node("Comment",
+      {{"id", boost::any((uint64_t)4)},
+        {"creationDate", boost::any(time_from_string(std::string("2012-02-15 09:47:23.000")))},
+        {"length", boost::any(58)},
+        {"content", boost::any(std::string("It was a great place for snowboarding. Glad we went there!"))}});
+    auto c5 = graph->add_node("Comment",
+      {{"id", boost::any((uint64_t)5)},
+        {"creationDate", boost::any(time_from_string(std::string("2012-02-15 10:24:26.000")))},
+        {"length", boost::any(13)},
+        {"content", boost::any(std::string("It was great!"))}});
+    auto c6 = graph->add_node("Comment",
+      {{"id", boost::any((uint64_t)6)},
+        {"creationDate", boost::any(time_from_string(std::string("2012-03-04 10:24:26.000")))},
+        {"length", boost::any(38)},
+        {"content", boost::any(std::string("Merci, j'adore les films de snowboard"))}});
+
+    graph->add_relationship(forum1, p1, ":containerOf", {});
+    graph->add_relationship(forum2, p2, ":containerOf", {});
+    graph->add_relationship(c1, p1, ":replyOf", {});
+    graph->add_relationship(c2, p1, ":replyOf", {});
+    graph->add_relationship(c3, c2, ":replyOf", {});
+    graph->add_relationship(c4, c3, ":replyOf", {});
+    graph->add_relationship(c5, c4, ":replyOf", {});
+    graph->add_relationship(c6, p2, ":replyOf", {});
+    graph->add_relationship(pA, p1, ":likes", {});
+    graph->add_relationship(pB, c2, ":likes", {});
+    graph->add_relationship(pB, c3, ":likes", {});
+    graph->add_relationship(pC, p1, ":likes", {});
+    graph->add_relationship(pC, c4, ":likes", {});
+    graph->add_relationship(p1, pB, ":hasCreator", {});
+    graph->add_relationship(c1, pC, ":hasCreator", {});
+    graph->add_relationship(c2, pA, ":hasCreator", {});
+    graph->add_relationship(c3, pC, ":hasCreator", {});
+    graph->add_relationship(c4, pA, ":hasCreator", {});
+    graph->add_relationship(c5, pD, ":hasCreator", {});
+    graph->add_relationship(p2, pC, ":hasCreator", {});
+    graph->add_relationship(c6, pA, ":hasCreator", {});
+    graph->add_relationship(p1, t1, ":hasTag", {});
+    graph->add_relationship(c1, t1, ":hasTag", {});
+    graph->add_relationship(c3, t1, ":hasTag", {});
+    graph->add_relationship(c2, t2, ":hasTag", {});
+    graph->add_relationship(c3, t2, ":hasTag", {});
+    graph->add_relationship(c4, t2, ":hasTag", {});
+    graph->add_relationship(p2, t2, ":hasTag", {});
+    graph->add_relationship(c6, t2, ":hasTag", {});
+
+    return true;
+  });
   return graph;
 }
 
@@ -779,6 +984,118 @@ TEST_CASE("Testing LDBC IU Query 8", "[ldbc_iu]") {
         {query_result("Person[5]{id: 10027}"),
         query_result("Person[8]{id: 1043}"),
          query_result("::knows[0]{creationDate: \"2010-02-23 09:10:15.466\"}")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 1", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters =
+        {{time_from_string(std::string("2011-12-01 00:00:00.000"))}};
+    result_set rs, expected;
+    ldbc_bi_query_1(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("2011"), query_result("False"), query_result("0"), query_result("1"),
+      query_result("24.000000"), query_result("24"), query_result("25.000000")});
+    expected.data.push_back(
+      {query_result("2011"), query_result("True"), query_result("0"), query_result("2"),
+      query_result("29.000000"), query_result("58"), query_result("50.000000")});
+    expected.data.push_back(
+      {query_result("2011"), query_result("True"), query_result("1"), query_result("1"),
+      query_result("57.000000"), query_result("57"), query_result("25.000000")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 2", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters =
+        {{time_from_string(std::string("2011-10-01 00:00:00.000"))}};
+    result_set rs, expected;
+    ldbc_bi_query_2(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("Snowboard"), query_result("2"), query_result("3"), query_result("1")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 3", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{"Ski resorts", "Spain"}};
+    result_set rs, expected;
+    ldbc_bi_query_3(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("1"), query_result("Skiing trips"),
+      query_result("2011-10-10T11:01:47"), query_result("2"),
+      query_result("1")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 4", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters =
+      {{"Spain", time_from_string(std::string("2009-04-14 01:51:21.746"))}};
+    result_set rs, expected;
+    ldbc_bi_query_4(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("2"), query_result("Bernardo"), query_result(""),
+      query_result("2010-06-10T11:05:56"), query_result("1")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 5", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{"Snowboard"}};
+    result_set rs, expected;
+    ldbc_bi_query_5(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("1"), query_result("2"), query_result("2"),
+      query_result("3"), query_result("27")});
+    expected.data.push_back(
+      {query_result("3"), query_result("2"), query_result("1"),
+      query_result("2"), query_result("16")});
 
     REQUIRE(rs == expected);
     return true;

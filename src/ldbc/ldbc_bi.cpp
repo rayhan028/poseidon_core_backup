@@ -39,8 +39,8 @@ void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                     boost::get<ptime>(params[0]); })
 #endif
               .project({PExpr_(0, pj::pr_year(res, "creationDate")),
-                        PExpr_(0, (pj::has_property(res, "language") || pj::has_property(res, "imageFile")) ?
-                                    std::string("False") : std::string("True")),
+                        PExpr_(0, (pj::has_label(res, "Comment") ?
+                                    std::string("True") : std::string("False"))),
                         PExpr_(0, pj::int_property(res, "length")),
                         projection::expr(0, [&](auto res) {
                           auto len = boost::get<int>(pj::int_property(res, "length"));
@@ -68,40 +68,26 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
     std::vector<result_set> grps1;
     std::vector<result_set> grps2;
 
-    auto filter_cdate_1 =
-      [&](auto &p) {
-        auto d = *(reinterpret_cast<const ptime *>(p.value_));
-        auto dt = boost::get<ptime>(params[0]);
-        time_period duration(dt, hours(24*100));
-        return duration.contains(d) ? true : false;
-      };
-
-    auto filter_cdate_2 =
-      [&](auto &p) {
-        auto d = *(reinterpret_cast<const ptime *>(p.value_));
-        auto dt1 = boost::get<ptime>(params[0]);
-        time_period duration1(dt1, hours(24*100));
-        auto dt2 = duration1.last();
-        time_period duration2(dt2, hours(24*100));
-        return duration2.contains(d) ? true : false; 
-      };
-
-    auto compute_diff =
-      [&](qr_tuple &v) {
-        auto cnt = boost::get<uint64_t>(v[1]);
-        auto nxt_cnt = boost::get<uint64_t>(v[2]);
-        uint64_t diff = cnt > nxt_cnt ? cnt - nxt_cnt : nxt_cnt - cnt;
-        return query_result(diff);
-      };
-
     // Query pipelines
     auto q2 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label(message)
-              .property( "creationDate", filter_cdate_2)
+              .property( "creationDate", [&](auto &p) {
+                auto d = *(reinterpret_cast<const ptime *>(p.value_));
+                auto dt1 = boost::get<ptime>(params[0]);
+                time_period duration1(dt1, hours(24*100));
+                auto dt2 = duration1.last();
+                time_period duration2(dt2, hours(24*100));
+                return duration2.contains(d) ? true : false; })
 #else
-              .nodes_where(message, "creationDate", filter_cdate_2)
+              .nodes_where(message, "creationDate", [&](auto &p) {
+                auto d = *(reinterpret_cast<const ptime *>(p.value_));
+                auto dt1 = boost::get<ptime>(params[0]);
+                time_period duration1(dt1, hours(24*100));
+                auto dt2 = duration1.last();
+                time_period duration2(dt2, hours(24*100));
+                return duration2.contains(d) ? true : false; })
 #endif
               .from_relationships(":hasTag", 0)
               .to_node("Tag")
@@ -112,20 +98,31 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label(message)
-              .property( "creationDate", filter_cdate_1)
+              .property( "creationDate", [&](auto &p) {
+                auto d = *(reinterpret_cast<const ptime *>(p.value_));
+                auto dt = boost::get<ptime>(params[0]);
+                time_period duration(dt, hours(24*100));
+                return duration.contains(d) ? true : false; })
 #else
-              .nodes_where(message, "creationDate", filter_cdate_1)
+              .nodes_where(message, "creationDate", [&](auto &p) {
+                auto d = *(reinterpret_cast<const ptime *>(p.value_));
+                auto dt = boost::get<ptime>(params[0]);
+                time_period duration(dt, hours(24*100));
+                return duration.contains(d) ? true : false; })
 #endif
               .from_relationships(":hasTag", 0)
               .to_node("Tag")
               .group(grps1, {2})
               .aggregate(grps1, {{"count", 0}})
               .hashjoin_on_node({0, 0}, q2)
-              // .join_on_node({0, 0}, q2)
               .project({PExpr_(0, pj::string_property(res, "name")),
                         PVar_(1),
-                        PVar_(3)})
-              .append_to_qr_tuple(compute_diff)
+                        PVar_(3) })
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                auto cnt = boost::get<uint64_t>(v[1]);
+                auto nxt_cnt = boost::get<uint64_t>(v[2]);
+                uint64_t diff = cnt > nxt_cnt ? cnt - nxt_cnt : nxt_cnt - cnt;
+                return query_result(diff); })
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
                 if (boost::get<uint64_t>(q1[3]) == boost::get<uint64_t>(q2[3]))
                   return boost::get<std::string>(q1[0]) < boost::get<std::string>(q2[0]);
@@ -141,28 +138,20 @@ void ldbc_bi_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
     std::vector<result_set> grps;
 
-    auto filter_cntry =
-      [&](auto &prop) {
-        auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
-        auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1]));
-        return c1 == c2;
-      };
-    
-    auto filter_tgclass =
-      [&](auto &prop) {
-        auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
-        auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-        return c1 == c2;
-      };
-
     // Query pipeline
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Place")
-              .property("name", filter_cntry)
+              .property("name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1]));
+                return c1 == c2; })
 #else
-              .nodes_where("Place", "name", filter_cntry)
+              .nodes_where("Place", "name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1]));
+                return c1 == c2; })
 #endif
               .to_relationships(":isPartOf")
               .from_node("Place")
@@ -175,8 +164,11 @@ void ldbc_bi_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .from_relationships(":hasTag")
               .to_node("Tag")
               .from_relationships(":hasType")
-              .to_node("Tagclass")
-              .property("name", filter_tgclass)
+              .to_node("TagClass")
+              .property("name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return c1 == c2; })
               .group(grps, {6, 4})
               .aggregate(grps, {{"count", 0}})
               .project({PExpr_(0, pj::uint64_property(res, "id")),
@@ -201,22 +193,21 @@ void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
     std::vector<result_set> grps2;
     std::vector<result_set> grps3;
 
-    auto filter_cntry =
-      [&](auto &prop) {
-        auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
-        auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-        return c1 == c2;
-      };
-
     // Query pipelines
-    auto q1 = query(gdb)
-#ifdef RUN_PARALLEL
+        auto q1 = query(gdb)
+  #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Place")
-              .property("name", filter_cntry)
-#else
-              .nodes_where("Place", "name", filter_cntry)
-#endif
+              .property("name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return c1 == c2; })
+  #else
+              .nodes_where("Place", "name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return c1 == c2; })
+  #endif
               .to_relationships(":isPartOf")
               .from_node("Place")
               .to_relationships(":isLocatedIn")
@@ -224,56 +215,71 @@ void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_relationships(":hasMember")
               .from_node("Forum")
               .project({PVar_(6),
-                        PExpr_(6, pj::ptime_property(res, "creationDate"))
-                        })
+                        PExpr_(6, pj::uint64_property(res, "id")),
+                        PExpr_(6, pj::ptime_property(res, "creationDate")) })
               .where_qr_tuple([&](auto &v) {
-                return boost::get<ptime>(v[1]) > boost::get<ptime>(params[1]);})
-              .group(grps1, {0})
-              .aggregate(grps1, {{"count", 0}})
-              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
-                return boost::get<uint64_t>(q1[1]) > boost::get<uint64_t>(q2[1]); })
-              .limit(100)
-              .collect(rs);
-
-    auto q2 = query(gdb)
-#ifdef RUN_PARALLEL
-              .all_nodes()
-              .has_label("Place")
-              .property("name", filter_cntry)
-#else
-              .nodes_where("Place", "name", filter_cntry)
-#endif
-              .to_relationships(":isPartOf")
-              .from_node("Place")
-              .to_relationships(":isLocatedIn")
-              .from_node("Person")
-              .to_relationships(":hasMember")
-              .from_node("Forum")
-              .project({PVar_(6),
-                        PExpr_(6, pj::ptime_property(res, "creationDate"))
-                        })
-              .where_qr_tuple([&](auto &v) {
-                return boost::get<ptime>(v[1]) > boost::get<ptime>(params[1]);})
-              .group(grps2, {0})
+                return boost::get<ptime>(v[2]) > boost::get<ptime>(params[1]);})
+              .group(grps2, {0, 1})
               .aggregate(grps2, {{"count", 0}})
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
-                return boost::get<uint64_t>(q1[1]) > boost::get<uint64_t>(q2[1]); })
+                if (boost::get<uint64_t>(q1[2]) == boost::get<uint64_t>(q2[2]))
+                  return boost::get<uint64_t>(q1[1]) < boost::get<uint64_t>(q2[1]);
+                return boost::get<uint64_t>(q1[2]) > boost::get<uint64_t>(q2[2]); })
+              .limit(100);
+
+        auto q2 = query(gdb)
+  #ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Place")
+              .property("name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return c1 == c2; })
+  #else
+              .nodes_where("Place", "name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return c1 == c2; })
+  #endif
+              .to_relationships(":isPartOf")
+              .from_node("Place")
+              .to_relationships(":isLocatedIn")
+              .from_node("Person")
+              .to_relationships(":hasMember")
+              .from_node("Forum")
+              .project({PVar_(6),
+                        PExpr_(6, pj::uint64_property(res, "id")),
+                        PExpr_(6, pj::ptime_property(res, "creationDate"))
+                        })
+              .where_qr_tuple([&](auto &v) {
+                return boost::get<ptime>(v[2]) > boost::get<ptime>(params[1]);})
+              .group(grps2, {0, 1})
+              .aggregate(grps2, {{"count", 0}})
+              .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
+                if (boost::get<uint64_t>(q1[2]) == boost::get<uint64_t>(q2[2]))
+                  return boost::get<uint64_t>(q1[1]) < boost::get<uint64_t>(q2[1]);
+                return boost::get<uint64_t>(q1[2]) > boost::get<uint64_t>(q2[2]); })
               .limit(100)
               .from_relationships(":hasMember", 0)
               .to_node("Person")
               .to_relationships(":hasCreator")
-              .from_node("Post")
+              .from_node(message)
               .to_relationships(":containerOf")
               .from_node("Forum")
-              .hashjoin_on_node({7, 0}, q1)
-              .group(grps3, {3})
+              .project({PVar_(4),
+                        PVar_(6),
+                        PExpr_(6, pj::ptime_property(res, "creationDate")),
+                        PVar_(8) })
+              .where_qr_tuple([&](auto &v) {
+                return boost::get<ptime>(v[2]) > boost::get<ptime>(params[1]);})
+              .hashjoin_on_node({3, 0}, q1)
+              .group(grps3, {0})
               .aggregate(grps3, {{"count", 0}})
               .project({PExpr_(0, pj::uint64_property(res, "id")),
                         PExpr_(0, pj::string_property(res, "firstName")),
                         PExpr_(0, pj::string_property(res, "lastName")),
                         PExpr_(0, pj::ptime_property(res, "creationDate")),
-                        PVar_(1)
-                        })
+                        PVar_(1) })
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
                 if (boost::get<uint64_t>(q1[4]) == boost::get<uint64_t>(q2[4]))
                   return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);
@@ -290,30 +296,20 @@ void ldbc_bi_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
     std::vector<result_set> grps2;
     std::vector<result_set> grps3;
 
-    auto filter_tag =
-      [&](auto &prop) {
-        auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
-        auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-        return c1 == c2;
-      };
-
-    auto score_func =
-      [&](qr_tuple &v) {
-        auto reply_cnt = boost::get<uint64_t>(v[1]);
-        auto like_cnt = boost::get<uint64_t>(v[1]);
-        auto msg_cnt = boost::get<uint64_t>(v[1]);
-        auto score = msg_cnt + 2 * reply_cnt + 10 * like_cnt;
-        return query_result(score);
-      };
-
     // Query pipelines
     auto q3 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Tag")
-              .property("name", filter_tag)
+              .property("name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return c1 == c2; })
 #else
-              .nodes_where("Tag", "name", filter_tag)
+              .nodes_where("Tag", "name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return c1 == c2; })
 #endif
               .to_relationships(":hasTag")
               .from_node("")
@@ -326,9 +322,15 @@ void ldbc_bi_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Tag")
-              .property("name", filter_tag)
+              .property("name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return c1 == c2; })
 #else
-              .nodes_where("Tag", "name", filter_tag)
+              .nodes_where("Tag", "name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return c1 == c2; })
 #endif
               .to_relationships(":hasTag")
               .from_node("")
@@ -344,9 +346,15 @@ void ldbc_bi_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Tag")
-              .property("name", filter_tag)
+              .property("name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return c1 == c2; })
 #else
-              .nodes_where("Tag", "name", filter_tag)
+              .nodes_where("Tag", "name", [&](auto &prop) {
+                auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return c1 == c2; })
 #endif
               .to_relationships(":hasTag")
               .from_node("")
@@ -357,13 +365,17 @@ void ldbc_bi_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .group(grps1, {4})
               .aggregate(grps1, {{"count", 0}})
               .join_on_node({0, 0}, q2)
-              .append_to_qr_tuple(score_func)
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                auto reply_cnt = boost::get<uint64_t>(v[1]);
+                auto like_cnt = boost::get<uint64_t>(v[3]);
+                auto msg_cnt = boost::get<uint64_t>(v[5 ]);
+                auto score = msg_cnt + 2 * reply_cnt + 10 * like_cnt;
+                return query_result(score); })
               .project({PExpr_(0, pj::uint64_property(res, "id")),
                         PVar_(1),
                         PVar_(3),
                         PVar_(5),
-                        PVar_(6)
-                        })
+                        PVar_(6) })
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
                 if (boost::get<uint64_t>(q1[4]) == boost::get<uint64_t>(q2[4]))
                   return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);

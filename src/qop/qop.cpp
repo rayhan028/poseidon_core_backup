@@ -815,7 +815,18 @@ bool has_property(projection::pr_result &pv, const std::string &key) {
   }
   return false; 
 }
-	
+
+bool has_label(projection::pr_result &pv, const std::string &l) {
+  if (pv.type() == typeid(node_description &)) {
+    auto nd = boost::get<node_description &>(pv);
+    return nd.label == l;
+  } else if (pv.type() == typeid(rship_description &)) {
+    auto rd = boost::get<rship_description &>(pv);
+    return rd.label == l;
+  }
+  return false; 
+}
+
 query_result int_property(projection::pr_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
