@@ -301,7 +301,13 @@ void graph_db::foreach_variable_from_relationship_of_node(
     rship_queue.push_back(std::make_pair(relship.next_src_rship, hops));
 
     auto &dest = node_by_id(relship.dest_node);
-    rship_queue.push_back(std::make_pair(dest.from_rship_list, hops + 1));
+    auto path_rship_id = dest.from_rship_list;
+    rship_queue.push_back(std::make_pair(path_rship_id, hops + 1));
+    // rship_queue might not be empty after path_rship_id is processed
+    while (path_rship_id != UNKNOWN){
+      path_rship_id = rship_by_id(path_rship_id).next_src_rship;
+      rship_queue.push_back(std::make_pair(path_rship_id, hops + 1));
+    }
   }
 }
 
@@ -416,7 +422,13 @@ void graph_db::foreach_variable_to_relationship_of_node(
     rship_queue.push_back(std::make_pair(relship.next_dest_rship, hops));
 
     auto &src = node_by_id(relship.src_node);
-    rship_queue.push_back(std::make_pair(src.to_rship_list, hops + 1));
+    auto path_rship_id = src.to_rship_list;
+    rship_queue.push_back(std::make_pair(path_rship_id, hops + 1));
+    // rship_queue might not be empty after path_rship_id is processed
+    while (path_rship_id != UNKNOWN){
+      path_rship_id = rship_by_id(path_rship_id).next_dest_rship;
+      rship_queue.push_back(std::make_pair(path_rship_id, hops + 1));
+    }
   }
 }
 
