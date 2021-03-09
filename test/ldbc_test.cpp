@@ -10,7 +10,7 @@
 #include "graph_pool.hpp"
 
 using namespace boost::posix_time;
-const std::string test_path = poseidon::gPmemPath + "bi";
+const std::string test_path = poseidon::gPmemPath + "ldbc_test";
 
 graph_db_ptr create_is_data(graph_db_ptr &graph) {
   graph->run_transaction([&]() {
@@ -1096,6 +1096,87 @@ TEST_CASE("Testing LDBC BI Query 5", "[ldbc_bi]") {
     expected.data.push_back(
       {query_result("3"), query_result("2"), query_result("1"),
       query_result("2"), query_result("16")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 6", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{"Pyrenees"}};
+    result_set rs, expected;
+    ldbc_bi_query_6(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("2"), query_result("3")});
+    expected.data.push_back(
+      {query_result("3"), query_result("2")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 7", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{"Pyrenees"}};
+    result_set rs, expected;
+    ldbc_bi_query_7(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("Snowboard"), query_result("2")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 9", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters =
+        {{time_from_string(std::string("2011-10-01 00:00:00.000")),
+        time_from_string(std::string("2011-10-15 00:00:00.000"))}};
+    result_set rs, expected;
+    ldbc_bi_query_9(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("2"), query_result("Bernardo"), query_result(""),
+      query_result("1"), query_result("4")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 11", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters =
+        {{"France", time_from_string(std::string("2010-05-01 00:00:00.000"))}};
+    result_set rs, expected;
+    ldbc_bi_query_11(graph, rs, parameters[0]);
+
+    // expected.data.push_back({query_result("")});
 
     REQUIRE(rs == expected);
     return true;
