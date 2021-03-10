@@ -1,27 +1,23 @@
-Join(RIGHT, HASHJOIN_ON_NODE,
-    Aggregate([$0:COUNT],
-        Group([$4],
-            Expand(OUT, "Person",
-                ForeachRelationship(FROM, ":hasCreator",
-                    Filter($2.creationDate > %date,
-                        Expand(IN, ["Post", "Comment"],
-                            ForeachRelationship(TO, ":hasTag",
-                                Filter($0.name == %tag,
-                                    NodeScan("Tag")
+Project([$0, $3],
+    AppendToTuple(Lambda1,
+        Join(HASHJOIN_ON_NODE, {2, 0},
+            Aggregate([$0:COUNT],
+                Group([$4],
+                    Expand(OUT, "Person",
+                        ForeachRelationship(FROM, ":hasCreator",
+                            Filter($2.creationDate > %date,
+                                Expand(IN, ["Post", "Comment"],
+                                    ForeachRelationship(TO, ":hasTag",
+                                        Filter($0.name == %tag,
+                                            NodeScan("Tag")
+                                        )
+                                    )
                                 )
                             )
                         )
                     )
                 )
-            )
-        )
-    )
-)
-
-
-Project([$0, $3],
-    AppendToTuple(Lambda1,
-        Join(LEFT, HASHJOIN_ON_NODE, [$2, $0],
+            ),
             Expand(IN, "Person",
                 ForeachRelationship(TO, ":hasInterest",
                     Filter($0.name == %tag,

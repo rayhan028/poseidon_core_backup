@@ -21,7 +21,9 @@ Limit(100,
                                                                                 ForeachRelationship(FROM, ":isLocatedIn",
                                                                                     Expand(OUT, "Person",
                                                                                         ForeachRelationship(FROM, [1, 100], ":knows",
-                                                                                            NodeScan("Person")
+                                                                                            Filter($0.id == %pid,
+                                                                                                NodeScan("Person")
+                                                                                            )
                                                                                         )
                                                                                     )
                                                                                 )
