@@ -29,8 +29,9 @@ void grouper::clear() {
     grp_cnt_int = false;
     current_tp_.clear();
 }
-
+std::mutex group_mtx; 
 void grouper::add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos_set) {
+    std::lock_guard<std::mutex> lck(group_mtx);
     if(clear_ir) {
         clear();
         clear_ir = false;
@@ -49,6 +50,7 @@ void grouper::add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos_
 }
 
 void grouper::finish(result_set* rs) {
+    std::lock_guard<std::mutex> lck(group_mtx);
     rs->data.clear();
     for(auto &grp : grpkey_set_) {
         qr_tuple res;
@@ -63,6 +65,7 @@ void grouper::finish(result_set* rs) {
 }
 
 qr_tuple* grouper::demat_tuple(int index) {
+    std::lock_guard<std::mutex> lck(group_mtx);
     current_tp_ = intermediate_rs_.data.front();
     intermediate_rs_.data.pop_front();
     if(intermediate_rs_.data.empty()) {

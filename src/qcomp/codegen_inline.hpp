@@ -52,15 +52,25 @@ public:
     void visit(std::shared_ptr<append_op> op) override;
 
     /*
-     * Initializer for the function
+     * Initializer for the main function
      */
     void init_function(BasicBlock *entry);
+
+    /*
+     * Initializer for the finish function
+     */
+    void init_finish(BasicBlock *entry);
 
     /*
      * The actual main function which emits the
      * JITed start function
      */
     Function *main_function = nullptr;
+
+    /*
+     * The query finish function
+    */
+    Function *main_finish = nullptr;
 
     /*
      * Return basic block for returning to the previous

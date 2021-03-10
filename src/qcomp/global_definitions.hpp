@@ -17,7 +17,7 @@
 
 //using consumer_ty = std::function<void(graph_db*, int, int**, int*, int, int*)>;
 //using consumer_fct_type = void(*)(graph_db*, int, int**, int*, int, int*, int**, int);
-using finish_fct_type = void(*)(result_set*);
+using finish_fct_type = void(*)(result_set*, graph_db*);
 using query_time_point = std::chrono::time_point<std::chrono::high_resolution_clock>;
 struct query_context {
     graph_db* gdb;

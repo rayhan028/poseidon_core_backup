@@ -163,7 +163,7 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     applyRshipProjectionFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int8PtrTy, int64Ty, int64PtrTy, int64PtrTy}, false);
 //++++++++++++++++++ START FCT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    finishFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int64PtrTy}, false);
+    finishFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int64PtrTy, int8PtrTy}, false);
 
     // gdb, first, last, tx, oid, typevec, resultset, callmap, finish, result_offset
     //startFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, int64Ty, int8PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64PtrTy, finishFctTy->getPointerTo(), int64Ty, queryArgTy->getPointerTo()}, false);

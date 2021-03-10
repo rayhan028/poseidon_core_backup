@@ -148,17 +148,16 @@ int main() {
 	};
 
 	auto simp = Scan("Person", 
-					Filter(Call(Key(0, "id"), Fct(lamdat)), 
 						ForeachRship(RSHIP_DIR::FROM, {}, ":likes", 
-								GroupBy({0},
-                            		Aggr({{"count", 0}, {"avg", 0}}, 
-										ForeachRship(RSHIP_DIR::FROM, ":likes", 0,
+								//GroupBy({0},
+                            		//Aggr({{"count", 0}}, 
+										/*ForeachRship(RSHIP_DIR::FROM, ":likes", 0,
 											ExpandOut("Book",
 												GroupBy({0},
                             						Aggr({{"count", 0}}, 
 														ForeachRship(RSHIP_DIR::FROM, ":likes", 0,
-															ExpandOut("Book",
-																Collect())))))))))));
+															ExpandOut("Book",*/
+																Collect()));
 
 
 
@@ -173,18 +172,17 @@ int main() {
 	scan_task::callee_ = &scan_task::scan;	
 
 	auto cs1 = std::chrono::steady_clock::now();
-	queryEngine.generate(simp, false);
+	queryEngine.generate(simp, true);
 	auto ce1 = std::chrono::steady_clock::now();
 	
 	arg_builder ab;
 	ab.arg(1, "Person");
-	ab.arg(2, "id");
-	ab.arg(3, ":likes");
-	ab.arg(4, "Person");
-	ab.arg(5, "Book");
-	ab.arg(6, ":likes");
-	ab.arg(7, "Book");
-	ab.arg(10, ":likes");
+	ab.arg(2, ":likes");
+	ab.arg(3, "Person");
+	ab.arg(4, "Book");
+	ab.arg(5, ":likes");
+	ab.arg(6, "Book");
+	ab.arg(7, ":likes");
 	ab.arg(11, "Person");
 	ab.arg(12, "Book");
 	ab.arg(13, ":HAS_READ");
@@ -194,9 +192,10 @@ int main() {
 	result_set rs;
 
   	auto js = std::chrono::steady_clock::now();
-	//graph->begin_transaction();
-	queryEngine.run(&rs, ab.args, 24);
-	//graph->commit_transaction();
+	graph->begin_transaction();
+	queryEngine.run_parallel(&rs, ab, 24);
+	queryEngine.finish(&rs);
+	graph->commit_transaction();
 	auto je = std::chrono::steady_clock::now();
 	
 

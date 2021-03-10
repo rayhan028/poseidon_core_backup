@@ -72,6 +72,12 @@ void codegen_inline_visitor::init_function(BasicBlock *bb) {
     dangling = ctx.getBuilder().CreateAlloca(ctx.int64Ty);    
 }
 
+void codegen_inline_visitor::init_finish(BasicBlock *bb) {
+    // create function entry block
+    ctx.getBuilder().SetInsertPoint(bb);
+}
+
+
 AllocaInst *codegen_inline_visitor::insert_alloca(Type *ty) {
     //get and save current basic block
     auto cur_bb = ctx.getBuilder().GetInsertBlock();
@@ -100,6 +106,7 @@ AllocaInst *codegen_inline_visitor::insert_alloca(Type *ty) {
     return alloc;
 }
 int qcnt = 0;
+bool pipelined_finish = false;
 /*
 * Generates code for a scan operator.
 */
@@ -109,30 +116,16 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     // process the appropriate query length
     query_length(op);
 
-    // check if this operator is the first access path
-    //if(!main_function) {
-        // if it is the first access path -> intialize finish function
-        /*df_finish = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, "default_finish_"+qid_,
-                                               ctx.getModule());*/
+    // create unique function name for the JIT instance
+    int cnt = 0;
 
-        // create unique function name for the JIT instance
-        int cnt = 0;
-        //auto func_name = op->name_;
-        /*while(ctx.gen_funcs.find(func_name) != ctx.gen_funcs.end()) {
-            func_name = op->name_+std::to_string(++cnt);
-        }*/
-
-        op->name_ = qid_+std::to_string(qcnt++);
+    op->name_ = qid_+std::to_string(qcnt++);
+    std::string finish_name = "finish_"+op->name_;
     //}
 
-    // check for previous access
-    //bool access = false;
-    //if(!main_function) {
-        // create IR function if no previous access path exists
-        //access = true;
-        main_function = Function::Create(ctx.startFctTy, Function::ExternalLinkage, op->name_, ctx.getModule());
-    //}
-
+    main_function = Function::Create(ctx.startFctTy, Function::ExternalLinkage, op->name_, ctx.getModule());
+    main_finish   = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, finish_name, ctx.getModule());
+    
     // obtain all relevant function callees for the scan operator
     //FunctionCallee dict_lookup_label = ctx.extern_func("dict_lookup_label");
     auto get_valid_node = ctx.extern_func("get_valid_node");
@@ -150,50 +143,19 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     */
     BasicBlock *bb;
     BasicBlock *next_op;
-    /*if(!access) {
-        //next_op = &main_function->getEntryBlock();
-        next_op = entry;
-        next_op->setName("next_pipeline_"+std::to_string(qcnt++));
-        op->name_ = "";
-    } else {*/
-        inits = BasicBlock::Create(ctx.getModule().getContext(), "inits_entry", main_function);
-        bb = BasicBlock::Create(ctx.getModule().getContext(), "entry", main_function);
-        pre_tuple_mat = BasicBlock::Create(ctx.getModule().getContext(), "pre_tuple_mat", main_function);
-        entry = bb;
 
-        // initialize all relevant functions
-        init_function(inits);
-    //}
+    inits = BasicBlock::Create(ctx.getModule().getContext(), "inits_entry", main_function);
+    bb = BasicBlock::Create(ctx.getModule().getContext(), "entry", main_function);
 
-    /*if(!access) {
-        bb = BasicBlock::Create(ctx.getModule().getContext(), "entry_"+std::to_string(qcnt++), main_function);
-        entry = bb;
-        //main_function->getBasicBlockList().push_front(bb);
-        //auto bb_front = main_function->getBasicBlockList().begin();
-        //main_function->getBasicBlockList().insertAfter(bb_front, bb);
+    entry = bb;
 
-        //auto init_term = inits->getTerminator();
-        //init_term->removeFromParent();
-
-        // initialize all relevant functions
-
-        auto init_term = inits->getTerminator();
-        if(init_term) {
-            //next_op->removePredecessor(inits);
-            init_term->removeFromParent();
-        }
-
-        init_function(inits);
-
-        ctx.getBuilder().SetInsertPoint(inits);
-        ctx.getBuilder().CreateBr(bb);
-    }*/
+    // initialize all relevant functions
+    init_function(inits);
 
     scan_nodes_end = BasicBlock::Create(ctx.getModule().getContext(), "scan_nodes_end", main_function);
     BasicBlock *consumeBB = BasicBlock::Create(ctx.getModule().getContext(), "consume_node", main_function);
 
-    df_finish_bb = BasicBlock::Create(ctx.getContext(), "finish_entry", main_function);
-        // node
+    df_finish_bb = BasicBlock::Create(ctx.getContext(), "finish_entry", main_finish);
 
     // obtain the query context & function arguments
 
@@ -336,16 +298,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     // branch to the finish function
     ctx.getBuilder().SetInsertPoint(scan_nodes_end);
     {   
-        if(!access) {
-        //    ctx.getBuilder().CreateBr(next_op);
-            next_pipeline = next_op;
-        }
-        //} else {
-            global_end = scan_nodes_end;
-            //ctx.getBuilder().CreateCall(ctx.finishFctTy, finish, {rs});
-            //ctx.getBuilder().CreateRet(nullptr);
-            ctx.getBuilder().CreateBr(df_finish_bb);
-        //}
+        global_end = scan_nodes_end;
+        //ctx.getBuilder().CreateCall(ctx.finishFctTy, finish, {rs});
+        ctx.getBuilder().CreateRetVoid();
+        //ctx.getBuilder().CreateBr(df_finish_bb);
     }
 
     // set appropriate backflow
@@ -829,8 +785,23 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
     auto fadd_time_diff = ctx.extern_func("add_time_diff");
     auto endnotify = ctx.extern_func("end_notify");
 
+    Value *gdb_ptr;
+    Value *rs_arg;
+    Function *collect_fct;
+
+    if(pipelined_finish) {
+        collect_fct = main_finish;
+        rs_arg = main_finish->args().begin();
+        gdb_ptr = main_finish->args().begin()+1;
+    } else {
+        collect_fct = main_function;
+        rs_arg = rs;
+        gdb_ptr = gdb;
+    }
+
     // link with previous operator
-    BasicBlock *entry = BasicBlock::Create(ctx.getContext(), "collect_entry", main_function);
+    BasicBlock *entry = BasicBlock::Create(ctx.getContext(), "collect_entry", collect_fct);
+    pre_tuple_mat = BasicBlock::Create(ctx.getModule().getContext(), "pre_tuple_mat", collect_fct);
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(entry);
     ctx.getBuilder().SetInsertPoint(entry);
@@ -850,14 +821,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
         auto type_id = (res.type == 7 ? 2 : res.type);
         auto type = ConstantInt::get(ctx.int64Ty, type_id);
         auto cv_reg = ctx.getBuilder().CreateBitCast(res.reg_val, ctx.int64PtrTy);
-        ctx.getBuilder().CreateCall(mat_reg, {gdb, cv_reg, type});
+        ctx.getBuilder().CreateCall(mat_reg, {gdb_ptr, cv_reg, type});
     }
 
     ctx.getBuilder().CreateBr(pre_tuple_mat);
 
     ctx.getBuilder().SetInsertPoint(pre_tuple_mat);
     // materialize the complete thread local storage into a global list
-    ctx.getBuilder().CreateCall(collect_regs, {rs, print_tuple});
+    ctx.getBuilder().CreateCall(collect_regs, {rs_arg, print_tuple});
 
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
@@ -1477,6 +1448,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<create_op> op) {
  */
 void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
     op->name_ = "";
+    pipelined_finish = true;
 
     auto get_node_grpkey = ctx.extern_func("get_node_grpkey");
     auto get_rship_grpkey = ctx.extern_func("get_rship_grpkey");
@@ -1556,12 +1528,13 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
     prev_bb = group_entry;
 
     //modify the finish processing -> add to last basic block of pipeline
-    BasicBlock *group_finish = BasicBlock::Create(ctx.getContext(), "group_finish", main_function);
+    BasicBlock *group_finish = BasicBlock::Create(ctx.getContext(), "group_finish", main_finish);
     ctx.getBuilder().SetInsertPoint(df_finish_bb);
     ctx.getBuilder().CreateBr(group_finish);
     ctx.getBuilder().SetInsertPoint(group_finish);
     auto finish_group_by = ctx.extern_func("finish_group_by");
-    ctx.getBuilder().CreateCall(finish_group_by, {rs});
+    auto rs_arg = main_finish->args().begin();
+    ctx.getBuilder().CreateCall(finish_group_by, {rs_arg});
 
     auto int_to_reg = ctx.extern_func("int_to_reg");
     auto str_to_reg = ctx.extern_func("str_to_reg");
@@ -1572,12 +1545,13 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
     auto grp_demat_at = ctx.extern_func("grp_demat_at");
 
     auto demat_results = ctx.getBuilder().CreateCall(get_grp_rs_count, {});
-    auto cur_pos = insert_alloca(ctx.int64Ty);
+    //auto cur_pos = insert_alloca(ctx.int64Ty);
+    auto cur_pos = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, cur_pos);
     
-    BasicBlock *group_loop_head = BasicBlock::Create(ctx.getContext(), "group_loop_head", main_function);
-    BasicBlock *group_loop_body = BasicBlock::Create(ctx.getContext(), "group_loop_body", main_function);
-    BasicBlock *group_loop_exit = BasicBlock::Create(ctx.getContext(), "group_loop_exit", main_function);
+    BasicBlock *group_loop_head = BasicBlock::Create(ctx.getContext(), "group_loop_head", main_finish);
+    BasicBlock *group_loop_body = BasicBlock::Create(ctx.getContext(), "group_loop_body", main_finish);
+    BasicBlock *group_loop_exit = BasicBlock::Create(ctx.getContext(), "group_loop_exit", main_finish);
 
     // demat all grouped intermediate result again to registers
     ctx.getBuilder().CreateBr(group_loop_head);
@@ -1609,20 +1583,23 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
             }
             case 2: {
                 auto i = ctx.getBuilder().CreateCall(int_to_reg, {tuple, pos});
-                demat = insert_alloca(ctx.int64Ty);
+                //demat = insert_alloca(ctx.int64Ty);
+                demat = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
                 ctx.getBuilder().CreateStore(i, demat);
                 break;
             }
             case 3: continue;
             case 4: {
                 auto str = ctx.getBuilder().CreateCall(str_to_reg, {tuple, pos});
-                demat = insert_alloca(ctx.int64Ty);
+                //demat = insert_alloca(ctx.int64Ty);
+                demat = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
                 ctx.getBuilder().CreateStore(str, demat);
                 break;
             }
             case 6: {
                 auto t = ctx.getBuilder().CreateCall(time_to_reg, {tuple, pos});
-                demat = insert_alloca(ctx.int64Ty);
+                //demat = insert_alloca(ctx.int64Ty);
+                demat = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
                 ctx.getBuilder().CreateStore(t, demat);
                 break;
             }
@@ -1632,7 +1609,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
     reg_query_results = new_query_res;
     //ctx.getBuilder().CreateBr(group_loop_head);
 
-    //ctx.getBuilder().SetInsertPoint(group_loop_exit);
+    ctx.getBuilder().SetInsertPoint(group_loop_exit);
     df_finish_bb = group_loop_exit;
     main_return = group_loop_head;
     prev_bb = group_loop_body;
@@ -1655,7 +1632,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
     auto fadd_time_diff = ctx.extern_func("add_time_diff");
 
     //modify the finish processing -> add to last basic block of pipeline
-    BasicBlock *aggr_finish = BasicBlock::Create(ctx.getContext(), "aggr_finish", main_function);
+    BasicBlock *aggr_finish = BasicBlock::Create(ctx.getContext(), "aggr_finish", main_finish);
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(aggr_finish);
     ctx.getBuilder().SetInsertPoint(aggr_finish);
@@ -1669,12 +1646,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
     ctx.getBuilder().CreateCall(init_grp_aggr, {});
     for(auto &aggr: op->aggrs_) {
         if(aggr.first.compare("count") == 0) {
-            auto cnt_alloc = insert_alloca(ctx.int64Ty);
+            //auto cnt_alloc = insert_alloca(ctx.int64Ty);
+            auto cnt_alloc =  ctx.getBuilder().CreateAlloca(ctx.int64Ty);
             auto cnt = ctx.getBuilder().CreateCall(grp_cnt, {});
             ctx.getBuilder().CreateStore(cnt, cnt_alloc);
             reg_query_results.push_back({cnt_alloc, 2});
         } else if(aggr.first.compare("pcount") == 0) {
-            auto pcnt_alloc = insert_alloca(ctx.doubleTy);
+            //auto pcnt_alloc = insert_alloca(ctx.doubleTy);
+            auto pcnt_alloc = ctx.getBuilder().CreateAlloca(ctx.doubleTy);
             auto cnt = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(grp_cnt, {}), ctx.doubleTy);
             auto total_cnt = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(grp_total_cnt, {}), ctx.doubleTy);
             auto cnt_div = ctx.getBuilder().CreateFDiv(cnt, total_cnt);
@@ -1748,7 +1727,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
     }
 
     prev_bb = aggr_finish;
-
+    //df_finish = aggr_finish;
 }
 
 void codegen_inline_visitor::visit(std::shared_ptr<connected_op> op) {

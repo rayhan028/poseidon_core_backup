@@ -175,6 +175,7 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args, bool cleanu
 
     for(i = start_idx; i >= 0; i--) {
         start_[i](&qtx, args.data(), rs);
+        finish_[i](rs, graph_.get());
     }
     graph_->commit_transaction();
 
@@ -227,11 +228,10 @@ void create_tasks() {
 void consumer_dummy(node &n) {
 
 }
-
+result_set rs2;
 void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned thread_num) {
     bool interprete_started = false;
     scan_task::callee_ = scan_task::scan;
-    result_set rs2;
     interprete_visitor iv(graph_, args, &rs2);
     auto start = 1u;
     cur_query_->codegen(iv, start, false);
@@ -265,9 +265,16 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
             graph_->parallel_nodes(consumer_dummy);
         }
     }
-    std::cout << rs2.data.size() << std::endl;
 }
 
+void query_engine::finish(result_set *rs) {
+    for(auto & t : rs2.data) {
+        rs->append(t);
+    }
+    for(int i = start_.size()-1; i >= 0; i--) {
+        finish_[i](rs, graph_.get());
+    }
+}
 
 compile_task::compile_task(query_engine & qeng, PContext &ctx, p_jit &jit, std::shared_ptr<base_op> query) 
     : ctx_(ctx), jit_(jit), query_(query), qeng_(qeng) {}
@@ -347,11 +354,13 @@ void compile_task::operator()() {
     }*/
 
     for(int q = 0; q <= query_id; q++) {
-        /*auto finish_fc = jit_.getFunctionRaw<finish_fct_type>(finish_name);
-        if(finish_fc)
-            qeng_.finish_[q] = *finish_fc;*/
         auto start_fc = jit_.getFunctionRaw<start_ty>(qeng_.operator_names_[q].at(0));
         if(start_fc)
             qeng_.start_[q] = *start_fc;
+        auto ffct = jit_.getFunctionRaw<finish_fct_type>(("finish_"+qeng_.operator_names_[q].at(0)));
+        if(ffct) {
+            qeng_.finish_[q] = *ffct;
+        }
+        // 
     }
 }
