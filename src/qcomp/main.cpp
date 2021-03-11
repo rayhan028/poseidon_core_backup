@@ -149,15 +149,13 @@ int main() {
 
 	auto simp = Scan("Person", 
 						ForeachRship(RSHIP_DIR::FROM, {}, ":likes", 
-								//GroupBy({0},
-                            		//Aggr({{"count", 0}}, 
-										/*ForeachRship(RSHIP_DIR::FROM, ":likes", 0,
-											ExpandOut("Book",
-												GroupBy({0},
-                            						Aggr({{"count", 0}}, 
-														ForeachRship(RSHIP_DIR::FROM, ":likes", 0,
-															ExpandOut("Book",*/
-																Collect()));
+								Project({{0, "id", FTYPE::INT}},
+									Sort([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+											auto lhs = std::stoi(boost::get<std::string>(qr1[0]));
+											auto rhs = std::stoi(boost::get<std::string>(qr2[0]));
+                                  			return rhs < lhs;
+										},
+										Collect()))));
 
 
 

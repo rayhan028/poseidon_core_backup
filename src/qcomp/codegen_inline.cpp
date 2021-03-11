@@ -1192,11 +1192,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<sort_op> op) {
     Function *df_finish = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, op->name_,
                                            ctx.getModule());
 
-    BasicBlock *sort_entry = BasicBlock::Create(ctx.getContext(), "entry", df_finish);
+    BasicBlock *sort_entry = BasicBlock::Create(ctx.getContext(), "entry", main_finish);
 
     auto fadd_now = ctx.extern_func("get_now");
     auto fadd_time_diff = ctx.extern_func("add_time_diff");
-
+    ctx.getBuilder().SetInsertPoint(df_finish_bb);
+    ctx.getBuilder().CreateBr(sort_entry);
     ctx.getBuilder().SetInsertPoint(sort_entry);
 
     Value* t_start;
@@ -1209,16 +1210,16 @@ void codegen_inline_visitor::visit(std::shared_ptr<sort_op> op) {
 
     auto sort_fc_raw = ConstantInt::get(ctx.int64Ty, (int64_t)sort_op::sort);
     auto sort_fc_ptr = ctx.getBuilder().CreateIntToPtr(sort_fc_raw, ctx.int64PtrTy);
-    auto sort_fc = ctx.getBuilder().CreateBitCast(sort_fc_ptr, ctx.finishFctTy->getPointerTo());
+    auto sort_fc = ctx.getBuilder().CreateBitCast(sort_fc_ptr, FunctionType::get(ctx.voidTy, {ctx.int64PtrTy}, false)->getPointerTo());
 
-    ctx.getBuilder().CreateCall(ctx.finishFctTy, sort_fc, {res});
+    ctx.getBuilder().CreateCall(FunctionType::get(ctx.voidTy, {ctx.int64PtrTy}, false), sort_fc, {main_finish->arg_begin()});
 
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
         ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
     }
-
-    ctx.getBuilder().CreateRetVoid();
+    df_finish_bb = sort_entry;
+    //ctx.getBuilder().CreateRetVoid();
 }
 
 /**
