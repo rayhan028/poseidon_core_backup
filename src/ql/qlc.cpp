@@ -162,6 +162,18 @@ void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
             << " ms" << std::endl;
 }
 
+std::string read_from_file(const std::string& qfile) {
+  std::string qstr, line;
+
+  std::ifstream myfile(qfile);
+  if (myfile.is_open()) {
+    while (getline(myfile, line))
+      qstr.append(line);
+    myfile.close();
+  }
+  spdlog::info("execute query {}", qstr);
+  return qstr;
+}
 
 /**
  * Run an interactive shell for entering and executing queries.
@@ -189,7 +201,12 @@ void run_shell(graph_db_ptr &gdb) {
     if (line.length() == 0)
       continue;
 
-    exec_query(gdb, line);
+    if (line.rfind("@", 0) == 0) {
+      auto query_string = read_from_file(line.substr(1));
+      exec_query(gdb, query_string);
+    }
+    else
+      exec_query(gdb, line);
 
     // Add line to history
     linenoise::AddHistory(line.c_str());
@@ -198,19 +215,6 @@ void run_shell(graph_db_ptr &gdb) {
     linenoise::SaveHistory(path);
   }
 
-}
-
-std::string read_from_file(const std::string& qfile) {
-  std::string qstr, line;
-
-  std::ifstream myfile(qfile);
-  if (myfile.is_open()) {
-    while (getline(myfile, line))
-      qstr.append(line);
-    myfile.close();
-  }
-  spdlog::info("execute query {}", qstr);
-  return qstr;
 }
 
 int main(int argc, char* argv[]) {
