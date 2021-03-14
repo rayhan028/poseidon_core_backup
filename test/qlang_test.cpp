@@ -65,7 +65,7 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
   REQUIRE(pegtl::parse<qlang::proj_expr, pegtl::nothing>(
       pegtl::string_input<>("$1.Age:int", "")));
   REQUIRE(pegtl::parse<qlang::proj_array, pegtl::nothing>(
-      pegtl::string_input<>("[$1.Age:int, $1.Name:string]", "")));
+      pegtl::string_input<>("[$1.Age:int, $1.Name:string, $0:node]", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Project([$1.Age:int, $1.Name:string])", "")));
   REQUIRE(pegtl::parse<qlang::prop_list, pegtl::nothing>(
@@ -86,6 +86,10 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
       pegtl::string_input<>("Create((n:Label { name1: 'Val1', name2: 42 }))", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Create((n:Label { name1: 'Val1', name2: 42 }), NodeScan('Person'))", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("GroupBy([$0.Id:int, $1.Name:string, $3.Age:int], [count($0.Name:string), avg($3.Age:int)])", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("Limit(20, Sort([$4.Age:int DESC, $1.Name:string ASC]))", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("      Project([$0.firstName:string, $0.lastName:string, $0.birthday:datetime, $0.locationIP:string, $0.browserUsed:string, $2.id:uint64, $0.gender:string, $0.creationDate:datetime],ForeachRelationship(FROM, ':isLocatedIn', Filter($0.id == 42, NodeScan('Person'))))", "")));
  }
