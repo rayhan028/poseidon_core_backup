@@ -166,19 +166,15 @@ public:
   query &orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp);
 
   /**
-   * Add an operator for grouping. The positions of the grouping keys in the query result
-   * tuple are specified by the positions in the vector pos. Each group is stored in a 
-   * result_set object in the vector grps.
+   * Add an operator for grouping and optional aggregation. The positions of the 
+   * grouping keys in the query result tuple are specified by the positions in 
+   * the vector pos. The aggregation function name(s) and the position(s) of the 
+   * attribute(s) (in the tuple) to be aggregated are given as the vector of 
+   * string-int pairs aggrs.
    */
-  query &group(std::vector<result_set> &grps, const std::vector<int> &pos);
-
-  /**
-   * Add an operator for applying an aggregation function on the tuples in each group from 
-   * the grouping operator. The aggregation function name and the position of the attribute
-   * (in the tuple) to be aggregated are given by the string-int pair.
-   */
-  query &aggregate(const std::vector<result_set> &grps,
-                    const std::vector<std::pair<std::string, int>> &aggrs);
+  query &groupby(const std::vector<std::size_t> &pos);
+  query &groupby(const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
 
   /**
    * Add an operator to filter projected result tuples based on the pred function.

@@ -337,6 +337,13 @@ void order_by::finish(graph_db_ptr &gdb) {
 
 /* ------------------------------------------------------------------------ */
 
+group_by::group_by(const std::vector<std::size_t> &pos) :
+    grpkey_cnt_(0), grpkey_pos_(pos) {}
+
+group_by::group_by(const std::vector<std::size_t> &pos, 
+  const std::vector<std::pair<std::string, std::size_t>> &aggrs) :
+    grpkey_cnt_(0), grpkey_pos_(pos), aggrs_(aggrs) {}
+
 void group_by::dump(std::ostream &os) const {
   os << "group_by([]) - " << PROF_DUMP;
 }
@@ -359,108 +366,102 @@ void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
     }
   }
 
-  // building a map of grouping keys and position in result_set vector
-  const auto itr = grpkey_map_.find(grpkeys);
-  if (itr != grpkey_map_.end())
-    res_set_vec_[itr->second].append(v);
-  else {
-    grpkey_map_.emplace(grpkeys, grpkey_cnt_);
-    grpkey_set_.push_back(grpkeys);
-    res_set_vec_.emplace_back();
-    res_set_vec_[grpkey_cnt_++].append(v);
+  std::size_t gpos;
+  const auto gitr = grpkey_map_.find(grpkeys);
+  if (gitr != grpkey_map_.end()) {
+    gpos = gitr->second;
+    grp_size_map_[gpos]++;
   }
+  else {
+    gpos = grpkey_cnt_;
+    grpkey_set_.push_back(grpkeys);
+    grp_size_map_.emplace(gpos, 1);
+    grpkey_map_.emplace(grpkeys, gpos);
+
+    qr_tuple gtpl;
+    for (auto pos : grpkey_pos_)
+      gtpl.push_back(v[pos]);
+    for (auto &aggr : aggrs_) {
+      if (aggr.first == "count")
+        gtpl.push_back(query_result((uint64_t)0));
+      else if (aggr.first == "sum") {
+        if (v[aggr.second].type() == typeid(uint64_t))
+          gtpl.push_back(query_result((uint64_t)0));
+        else if (v[aggr.second].type() == typeid(int))
+          gtpl.push_back(query_result(0));
+        else if (v[aggr.second].type() == typeid(double))
+          gtpl.push_back(query_result(0.0));
+      }
+      else if (aggr.first == "avg" || aggr.first == "pcount")
+        gtpl.push_back(query_result(0.0));
+    }
+
+    grp_tpl_map_.emplace(gpos, gtpl);
+    grpkey_cnt_++;
+  }
+
+  auto &aggr_tpl = grp_tpl_map_[gpos];
+  auto aggr_pos = grpkey_pos_.size();
+
+  for (auto &aggr : aggrs_) {
+    if (aggr.first == "count") {
+      boost::get<uint64_t>(aggr_tpl[aggr_pos])++;
+    }
+    else if (aggr.first == "sum") {
+      if (v[aggr.second].type() == typeid(uint64_t)) {
+        uint64_t &gsum = boost::get<uint64_t>(aggr_tpl[aggr_pos]);
+        gsum += boost::get<uint64_t>(v[aggr.second]);
+      }
+      else if (v[aggr.second].type() == typeid(int)) {
+        int &gsum = boost::get<int>(aggr_tpl[aggr_pos]);
+        gsum += boost::get<int>(v[aggr.second]);
+      }
+      else if (v[aggr.second].type() == typeid(double)) {
+        double &gsum = boost::get<double>(aggr_tpl[aggr_pos]);
+        gsum += boost::get<double>(v[aggr.second]);
+      }
+    }
+    else if (aggr.first == "avg") {
+      double &gavg = boost::get<double>(aggr_tpl[aggr_pos]);
+      auto gsize = grp_size_map_[gpos];
+      auto val = (v[aggr.second].type() == typeid(uint64_t)) ?
+                    boost::get<uint64_t>(v[aggr.second]) :
+                  (v[aggr.second].type() == typeid(int)) ?
+                    boost::get<int>(v[aggr.second]) :
+                  (v[aggr.second].type() == typeid(double)) ?
+                    boost::get<double>(v[aggr.second]) : 0;
+      gavg = (gsize == 1) ? (double)val :
+              (gavg * (gsize-1) + (double)val) / (double)gsize;
+    } // process pcount (percentage count) in group_by::finish
+    aggr_pos++;
+  }
+
 }
 
 void group_by::finish(graph_db_ptr &gdb) {
+  auto aggr_pos = grpkey_pos_.size();
+  for (auto &aggr : aggrs_) {
+    if (aggr.first == "pcount"){
+      std::size_t tsize = 0;
+      for (auto &elem : grp_size_map_)
+        tsize += elem.second;
+      for (auto &grp : grpkey_set_) {
+        auto gpos = grpkey_map_[grp];
+        auto gsize = grp_size_map_[gpos];
+        auto &aggr_tpl = grp_tpl_map_[gpos];
+        double &gpcount = boost::get<double>(aggr_tpl[aggr_pos]);
+        gpcount = (gsize / (double)tsize) * 100;
+      }
+    }
+    aggr_pos++;
+  }
+
   for (auto &grp : grpkey_set_) {
-    qr_tuple res;
     auto gpos = grpkey_map_[grp];
-    auto tpl = res_set_vec_[gpos].data.front();
-    for (auto pos : grpkey_pos_)
-      res.push_back(tpl[pos]);
-    consume_(gdb, res);
+    auto &gtpl = grp_tpl_map_[gpos];
+    consume_(gdb, gtpl);
   }
   finish_(gdb);
-}
-
-/* ------------------------------------------------------------------------ */
-
-aggr_ops::aggr_ops(const std::vector<result_set> &grps,
-                    const std::vector<std::pair<std::string, int>> &aggrs) :
-                    grpkey_cnt_(0), total_(false), total_cnt_(0), aggrs_(aggrs), res_set_vec_(grps) {}
-
-void aggr_ops::dump(std::ostream &os) const {
-  os << "aggr_ops([]) - " << PROF_DUMP;
-}
-
-void aggr_ops::process(graph_db_ptr &gdb, const qr_tuple &v) {
-  auto res = v;
-  auto &grp_data = res_set_vec_[grpkey_cnt_++].data;
-
-  for (auto &aggr : aggrs_) {
-    if (aggr.first.compare("count") == 0) {
-      uint64_t gcnt = grp_data.size();
-      res = append(res, query_result(gcnt));
-    }
-    else if (aggr.first.compare("pcount") == 0) {
-      if (!total_) {
-        for (auto &res : res_set_vec_)
-          total_cnt_ += res.data.size();
-        total_ = true;
-      }
-      uint64_t gcnt = grp_data.size();
-      double p_gcnt = (gcnt / (double)total_cnt_) * 100;
-      res = append(res, query_result(p_gcnt));
-    }
-    else if (aggr.first.compare("sum") == 0) {
-      auto key = grp_data.front()[aggr.second];
-      if (key.type() == typeid(int)) {
-        int gsum = 0;
-        for (auto &tpl : grp_data)
-          gsum += boost::get<int>(tpl[aggr.second]);
-        res = append(res, query_result(gsum));
-      }
-      else if (key.type() == typeid(uint64_t)) {
-        uint64_t gsum = 0;
-        for (auto &tpl : grp_data)
-          gsum += boost::get<uint64_t>(tpl[aggr.second]);
-        res = append(res, query_result(gsum));
-      }
-      else if (key.type() == typeid(double)) {
-        double gsum = 0.0;
-        for (auto &tpl : grp_data)
-          gsum += boost::get<double>(tpl[aggr.second]);
-        res = append(res, query_result(gsum));
-      }
-    }
-    else if (aggr.first.compare("avg") == 0) {
-      uint64_t gcnt = grp_data.size();
-      auto key = grp_data.front()[aggr.second];
-      if (key.type() == typeid(int)) {
-        int gsum = 0;
-        for (auto &tpl : grp_data)
-          gsum += boost::get<int>(tpl[aggr.second]);
-        double g_avg = gsum / gcnt;
-        res = append(res, query_result(g_avg));
-      }
-      else if (key.type() == typeid(uint64_t)) {
-        uint64_t gsum = 0;
-        for (auto &tpl : grp_data)
-          gsum += boost::get<uint64_t>(tpl[aggr.second]);
-        double g_avg = gsum / gcnt;
-        res = append(res, query_result(g_avg));
-      }
-      else if (key.type() == typeid(double)) {
-        double gsum = 0.0;
-        for (auto &tpl : grp_data)
-          gsum += boost::get<double>(tpl[aggr.second]);
-        double g_avg = gsum / gcnt;
-        res = append(res, query_result(g_avg));
-      }
-    }
-  }
-
-  consume_(gdb, res); 
 }
 
 /* ------------------------------------------------------------------------ */

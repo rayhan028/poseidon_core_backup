@@ -24,7 +24,6 @@ static std::vector<std::string> message = {"Post", "Comment"};
 /* ------------------------------------------------------------------------ */
 
 void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
-    std::vector<result_set> grps;
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -48,8 +47,7 @@ void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                                   (len >= 40 && len < 80) ? query_result(std::string("1")) :
                                   (len >= 80 && len < 160) ? query_result(std::string("2")) :
                                   query_result(std::string("3")); }) })
-              .group(grps, {0, 1, 3})
-              .aggregate(grps, {{"count", 0}, {"avg", 2}, {"sum", 2}, {"pcount", 0}})
+              .groupby({0, 1, 3}, {{"count", 0}, {"avg", 2}, {"sum", 2}, {"pcount", 0}})
               .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                 if (boost::get<int>(qr1[0]) == boost::get<int>(qr2[0])) {
                   if (boost::get<std::string>(qr1[1]) == boost::get<std::string>(qr2[1]))
@@ -65,10 +63,6 @@ void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
-    std::vector<result_set> grps1;
-    std::vector<result_set> grps2;
-
-    // Query pipelines
     auto q2 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -91,8 +85,7 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #endif
               .from_relationships(":hasTag", 0)
               .to_node("Tag")
-              .group(grps2, {2})
-              .aggregate(grps2, {{"count", 0}});
+              .groupby({2}, {{"count", 0}});
 
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -112,8 +105,7 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #endif
               .from_relationships(":hasTag", 0)
               .to_node("Tag")
-              .group(grps1, {2})
-              .aggregate(grps1, {{"count", 0}})
+              .groupby({2}, {{"count", 0}})
               .hashjoin_on_node({0, 0}, q2)
               .project({PExpr_(0, pj::string_property(res, "name")),
                         PVar_(1),
@@ -136,9 +128,6 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 void ldbc_bi_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
-    std::vector<result_set> grps;
-
-    // Query pipeline
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -169,8 +158,7 @@ void ldbc_bi_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
                 return c1 == c2; })
-              .group(grps, {6, 4})
-              .aggregate(grps, {{"count", 0}})
+              .groupby({6, 4}, {{"count", 0}})
               .project({PExpr_(0, pj::uint64_property(res, "id")),
                         PExpr_(0, pj::string_property(res, "title")),
                         PExpr_(0, pj::ptime_property(res, "creationDate")),
@@ -189,11 +177,6 @@ void ldbc_bi_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
-    std::vector<result_set> grps1;
-    std::vector<result_set> grps2;
-    std::vector<result_set> grps3;
-
-    // Query pipelines
         auto q1 = query(gdb)
   #ifdef RUN_PARALLEL
               .all_nodes()
@@ -219,8 +202,7 @@ void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         PExpr_(6, pj::ptime_property(res, "creationDate")) })
               .where_qr_tuple([&](auto &v) {
                 return boost::get<ptime>(v[2]) > boost::get<ptime>(params[1]);})
-              .group(grps2, {0, 1})
-              .aggregate(grps2, {{"count", 0}})
+              .groupby({0, 1}, {{"count", 0}})
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
                 if (boost::get<uint64_t>(q1[2]) == boost::get<uint64_t>(q2[2]))
                   return boost::get<uint64_t>(q1[1]) < boost::get<uint64_t>(q2[1]);
@@ -253,8 +235,7 @@ void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         })
               .where_qr_tuple([&](auto &v) {
                 return boost::get<ptime>(v[2]) > boost::get<ptime>(params[1]);})
-              .group(grps2, {0, 1})
-              .aggregate(grps2, {{"count", 0}})
+              .groupby({0, 1}, {{"count", 0}})
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
                 if (boost::get<uint64_t>(q1[2]) == boost::get<uint64_t>(q2[2]))
                   return boost::get<uint64_t>(q1[1]) < boost::get<uint64_t>(q2[1]);
@@ -273,8 +254,7 @@ void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .where_qr_tuple([&](auto &v) {
                 return boost::get<ptime>(v[2]) > boost::get<ptime>(params[1]); })
               .hashjoin_on_node({3, 0}, q1)
-              .group(grps3, {0})
-              .aggregate(grps3, {{"count", 0}})
+              .groupby({0}, {{"count", 0}})
               .project({PExpr_(0, pj::uint64_property(res, "id")),
                         PExpr_(0, pj::string_property(res, "firstName")),
                         PExpr_(0, pj::string_property(res, "lastName")),
@@ -292,11 +272,6 @@ void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 void ldbc_bi_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
-    std::vector<result_set> grps1;
-    std::vector<result_set> grps2;
-    std::vector<result_set> grps3;
-
-    // Query pipelines
     auto q3 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -312,11 +287,10 @@ void ldbc_bi_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 return c1 == c2; })
 #endif
               .to_relationships(":hasTag")
-              .from_node("")
+              .from_node(message)
               .from_relationships(":hasCreator")
               .to_node("Person")
-              .group(grps3, {4})
-              .aggregate(grps3, {{"count", 0}});
+              .groupby({4}, {{"count", 0}});
 
     auto q2 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -333,13 +307,12 @@ void ldbc_bi_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 return c1 == c2; })
 #endif
               .to_relationships(":hasTag")
-              .from_node("")
+              .from_node(message)
               .from_relationships(":hasCreator")
               .to_node("Person")
               .to_relationships(":likes", 2)
               .from_node("Person")
-              .group(grps2, {4})
-              .aggregate(grps2, {{"count", 0}})
+              .groupby({4}, {{"count", 0}})
               .join_on_node({0, 0}, q3);
 
     auto q1 = query(gdb)
@@ -357,13 +330,12 @@ void ldbc_bi_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 return c1 == c2; })
 #endif
               .to_relationships(":hasTag")
-              .from_node("")
+              .from_node(message)
               .from_relationships(":hasCreator")
               .to_node("Person")
               .to_relationships(":replyOf", 2)
               .from_node("Comment")
-              .group(grps1, {4})
-              .aggregate(grps1, {{"count", 0}})
+              .groupby({4}, {{"count", 0}})
               .join_on_node({0, 0}, q2)
               .append_to_qr_tuple([&](qr_tuple &v) {
                 auto reply_cnt = boost::get<uint64_t>(v[1]);
@@ -389,11 +361,6 @@ void ldbc_bi_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 void ldbc_bi_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
-    std::vector<result_set> grps1;
-    std::vector<result_set> grps2;
-    std::vector<result_set> grps3;
-
-    // Query pipeline
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -414,15 +381,13 @@ void ldbc_bi_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_node("Person")
               .to_relationships(":likes", 2)
               .from_node("Person")
-              .group(grps1, {4, 6})
+              .groupby({4, 6})
               .to_relationships(":hasCreator")
               .from_node(message)
               .to_relationships(":likes")
               .from_node("Person")
-              .group(grps2, {0, 1})
-              .aggregate(grps2, {{"count", 0}})
-              .group(grps3, {0})
-              .aggregate(grps3, {{"sum", 2}})
+              .groupby({0, 1}, {{"count", 0}})
+              .groupby({0}, {{"sum", 2}})
               .project({PExpr_(0, pj::uint64_property(res, "id")),
                         PVar_(1) })
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
@@ -438,9 +403,6 @@ void ldbc_bi_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 void ldbc_bi_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
-    std::vector<result_set> grps;
-
-    // Query pipeline
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -465,8 +427,7 @@ void ldbc_bi_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto c1 = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto c2 = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
                 return c1 != c2; })
-              .group(grps, {6})
-              .aggregate(grps, {{"count", 0}})
+              .groupby({6}, {{"count", 0}})
               .project({PExpr_(0, pj::string_property(res, "name")),
                         PVar_(1) })
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
@@ -481,9 +442,6 @@ void ldbc_bi_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 }
 
 void ldbc_bi_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
-
-    std::vector<result_set> grps2;
-    std::vector<result_set> grps4;
 
     auto fltr_tag =
       [&](auto &prop) {
@@ -583,8 +541,7 @@ void ldbc_bi_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .property("creationDate", fltr_cdate)
               .from_relationships(":hasCreator")
               .to_node("Person")
-              .group(grps4, {4})
-              .aggregate(grps4, {{"count", 0}});
+              .groupby({4}, {{"count", 0}});
 
     auto q3 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -618,8 +575,7 @@ void ldbc_bi_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .property("creationDate", fltr_cdate)
               .from_relationships(":hasCreator")
               .to_node("Person")
-              .group(grps2, {4})
-              .aggregate(grps2, {{"count", 0}})
+              .groupby({4}, {{"count", 0}})
               .where_qr_tuple(msg_only);
 
     auto q1 = query(gdb)
@@ -660,8 +616,6 @@ void ldbc_bi_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 }
 
 void ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
-  std::vector<result_set> grps1;
-  std::vector<result_set> grps2;
 
   auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -687,14 +641,12 @@ void ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .where_qr_tuple([&](const qr_tuple &v) {
                 return boost::get<ptime>(v[3]) >= boost::get<ptime>(params[0]) &&
                         boost::get<ptime>(v[3]) <= boost::get<ptime>(params[1]); })
-              .group(grps1, {0, 1})
-              .aggregate(grps1, {{"count", 0}})
+              .groupby({0, 1}, {{"count", 0}})
               .append_to_qr_tuple([&](qr_tuple &v) {
                 auto msg_cnt = boost::get<uint64_t>(v[2]);
                 msg_cnt++;
                 return query_result(msg_cnt); })
-              .group(grps2, {0})
-              .aggregate(grps2, {{"count", 0}, {"sum", 3}})
+              .groupby({0}, {{"count", 0}, {"sum", 3}})
               .project({PExpr_(0, pj::uint64_property(res, "id")),
                         PExpr_(0, pj::string_property(res, "firstName")),
                         PExpr_(0, pj::string_property(res, "lastName")),
@@ -714,7 +666,6 @@ void ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 void ldbc_bi_query_10(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
   auto min_hop = boost::get<int>(params[3]);
   auto max_hop = boost::get<int>(params[4]);
-  std::vector<result_set> grps;
 
   auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -749,8 +700,7 @@ void ldbc_bi_query_10(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         PVar_(2)} )
               .from_relationships(":hasTag")
               .to_node("Tag")
-              .group(grps, {0, 3})
-              .aggregate(grps, {{"count", 0}})
+              .groupby({0, 3}, {{"count", 0}})
               .project({PExpr_(0, pj::uint64_property(res, "id")),
                         PExpr_(1, pj::string_property(res, "name")),
                         PVar_(2) })
@@ -769,7 +719,6 @@ void ldbc_bi_query_10(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 }
 
 void ldbc_bi_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
-  std::vector<result_set> grps;
 
   auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -835,8 +784,7 @@ void ldbc_bi_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .where_qr_tuple([&](auto &v) {
                 return boost::get<ptime>(v[3]) > boost::get<ptime>(params[1]); })
               .rship_exists({2, 0})
-              .group(grps, {0})
-              .aggregate(grps, {{"count", 0}})
+              .groupby({0}, {{"count", 0}})
               .project({PVar_(1)})
               .collect(rs);
 
@@ -871,8 +819,7 @@ void ldbc_bi_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         boost::get<int>(v[4]) >= boost::get<int>(params[1]) ? false :
                         boost::get<ptime>(v[5]) <= boost::get<ptime>(params[0]) ? false :
                         boost::get<std::string>(v[6]).compare(boost::get<std::string>(params[2])) != 0 ? false : true; })
-              .group(grps1, {0})
-              .aggregate(grps1, {{"count", 0}});
+              .groupby({0}, {{"count", 0}});
 
   auto q2 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -902,13 +849,11 @@ void ldbc_bi_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         PExpr_(7, pj::string_property(res, "language")) })
               .where_qr_tuple([&](const qr_tuple &v) {
                 return boost::get<std::string>(v[4]).compare(boost::get<std::string>(params[2])) != 0 ? false : true; })
-              .group(grps2, {0})
-              .aggregate(grps2, {{"count", 0}})
+              .groupby({0}, {{"count", 0}})
               .hashjoin_on_node({0, 0}, q1)
               .append_to_qr_tuple([&](qr_tuple &v) {
                 return boost::get<uint64_t>(v[1]) + boost::get<uint64_t>(v[3]); })
-              .group(grps3, {4})
-              .aggregate(grps3, {{"count", 0}})
+              .groupby({4}, {{"count", 0}})
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
                 if (boost::get<uint64_t>(q1[1]) == boost::get<uint64_t>(q2[1]))
                   return boost::get<uint64_t>(q1[0]) > boost::get<uint64_t>(q2[0]);
@@ -920,12 +865,7 @@ void ldbc_bi_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 }
 
 void ldbc_bi_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
-    std::vector<result_set> grps1;
-    std::vector<result_set> grps2;
-    std::vector<result_set> grps3;
-    std::vector<result_set> grps4;
 
-    // Query pipeline
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -947,8 +887,7 @@ void ldbc_bi_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         boost::get<ptime>(params[1]); })
               .to_relationships(":hasCreator")
               .from_node(message)
-              .group(grps1, {4})
-              .aggregate(grps1, {{"count", 0}})
+              .groupby({4}, {{"count", 0}})
               .project({PVar_(0),
                         PVar_(1),
                         PExpr_(0, pj::ptime_property(res, "creationDate")) })
@@ -978,8 +917,7 @@ void ldbc_bi_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         boost::get<ptime>(params[1]); })
               .to_relationships(":hasCreator")
               .from_node(message)
-              .group(grps2, {4})
-              .aggregate(grps2, {{"count", 0}})
+              .groupby({4}, {{"count", 0}})
               .project({PVar_(0),
                         PVar_(1),
                         PExpr_(0, pj::ptime_property(res, "creationDate")) })
@@ -992,14 +930,12 @@ void ldbc_bi_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_relationships(":likes")
               .from_node("Person")
               .hashjoin_on_node({6, 0}, q1)
-              .group(grps3, {0})
-              .aggregate(grps3, {{"count", 0}})
+              .groupby({0}, {{"count", 0}})
               .to_relationships(":hasCreator", 0)
               .from_node(message)
               .to_relationships(":likes")
               .from_node("Person")
-              .group(grps4, {0, 1})
-              .aggregate(grps4, {{"count", 0}})
+              .groupby({0, 1}, {{"count", 0}})
               .append_to_qr_tuple([&](qr_tuple &v) {
                 auto score = boost::get<uint64_t>(v[2]) == 0 ?
                       0 : boost::get<uint64_t>(v[1]) / (double)boost::get<uint64_t>(v[2]);
@@ -1260,16 +1196,7 @@ void ldbc_bi_query_15(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 }
 
 void ldbc_bi_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
-    std::vector<result_set> grps1;
-    std::vector<result_set> grps2;
-    std::vector<result_set> grps3;
-    std::vector<result_set> grps4;
-    std::vector<result_set> grps5;
-    std::vector<result_set> grps6;
-    std::vector<result_set> grps7;
-    std::vector<result_set> grps8;
 
-    // Query pipelines
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -1306,12 +1233,10 @@ void ldbc_bi_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
                 return gtg == etg; })
-              .group(grps1, {2, 4})
-              .aggregate(grps1, {{"count", 0}})
+              .groupby({2, 4}, {{"count", 0}})
               .where_qr_tuple([&](const qr_tuple v) {
                 return boost::get<uint64_t>(v[2]) <= (uint64_t)boost::get<int>(params[4]); })
-              .group(grps2, {1})
-              .aggregate(grps2, {{"count", 0}})
+              .groupby({1}, {{"count", 0}})
               .from_relationships(":knows", 0)
               .to_node("Person")
               .to_relationships(":hasCreator")
@@ -1340,12 +1265,10 @@ void ldbc_bi_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
                 return gtg == etg; })
-              .group(grps3, {0, 1, 3, 5})
-              .aggregate(grps3, {{"count", 0}})
+              .groupby({0, 1, 3, 5}, {{"count", 0}})
               .where_qr_tuple([&](const qr_tuple v) {
                 return boost::get<uint64_t>(v[4]) <= (uint64_t)boost::get<int>(params[4]); })
-              .group(grps4, {0, 1, 2})
-              .aggregate(grps4, {{"count", 0}});
+              .groupby({0, 1, 2}, {{"count", 0}});
 
     auto q2 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -1383,12 +1306,10 @@ void ldbc_bi_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
                 return gtg == etg; })
-              .group(grps5, {2, 4})
-              .aggregate(grps5, {{"count", 0}})
+              .groupby({2, 4}, {{"count", 0}})
               .where_qr_tuple([&](const qr_tuple v) {
                 return boost::get<uint64_t>(v[2]) <= (uint64_t)boost::get<int>(params[4]); })
-              .group(grps6, {1})
-              .aggregate(grps6, {{"count", 0}})
+              .groupby({1}, {{"count", 0}})
               .from_relationships(":knows", 0)
               .to_node("Person")
               .to_relationships(":hasCreator")
@@ -1417,12 +1338,10 @@ void ldbc_bi_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
                 return gtg == etg; })
-              .group(grps7, {0, 1, 3, 5})
-              .aggregate(grps7, {{"count", 0}})
+              .groupby({0, 1, 3, 5}, {{"count", 0}})
               .where_qr_tuple([&](const qr_tuple v) {
                 return boost::get<uint64_t>(v[4]) <= (uint64_t)boost::get<int>(params[4]); })
-              .group(grps8, {0, 1, 2})
-              .aggregate(grps8, {{"count", 0}})
+              .groupby({0, 1, 2}, {{"count", 0}})
               .hashjoin_on_node({0, 0}, q1)
               .append_to_qr_tuple([&](qr_tuple v) {
                 uint64_t cnt = boost::get<uint64_t>(v[1]) + boost::get<uint64_t>(v[4]);
@@ -1441,12 +1360,7 @@ void ldbc_bi_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 }
 
 void ldbc_bi_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
-    std::vector<result_set> grps1;
-    std::vector<result_set> grps2;
-    std::vector<result_set> grps3;
-    std::vector<result_set> grps4;
 
-    // Query pipelines
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -1531,8 +1445,7 @@ void ldbc_bi_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto p1 = boost::get<node *>(v[6]);
                 auto p2 = boost::get<node *>(v[17]);
                 return p1->id() != p2->id(); })
-              .group(grps1, {3})
-              .aggregate(grps1, {{"count", 0}});
+              .groupby({3}, {{"count", 0}});
 
     auto q3 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -1620,8 +1533,7 @@ void ldbc_bi_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto p1 = boost::get<node *>(v[6]);
                 auto p2 = boost::get<node *>(v[19]);
                 return p1->id() != p2->id(); })
-              .group(grps2, {3})
-              .aggregate(grps2, {{"count", 0}});
+              .groupby({3}, {{"count", 0}});
 
     auto q5 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -1711,8 +1623,7 @@ void ldbc_bi_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto p1 = boost::get<node *>(v[6]);
                 auto p2 = boost::get<node *>(v[17]);
                 return p1->id() != p2->id(); })
-              .group(grps3, {3})
-              .aggregate(grps3, {{"count", 0}});
+              .groupby({3}, {{"count", 0}});
 
     auto q7 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -1804,8 +1715,7 @@ void ldbc_bi_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto p1 = boost::get<node *>(v[6]);
                 auto p2 = boost::get<node *>(v[19]);
                 return p1->id() != p2->id(); })
-              .group(grps4, {3})
-              .aggregate(grps4, {{"count", 0}})
+              .groupby({3}, {{"count", 0}})
               .union_all({&q2, &q4, &q6})
               .project({PExpr_(0, pj::uint64_property(res, "id")),
                         PVar_(1) })
@@ -1818,9 +1728,7 @@ void ldbc_bi_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 }
 
 void ldbc_bi_query_18(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
-    std::vector<result_set> grps;
 
-    // Query pipeline
   auto q = query(gdb)
 #ifdef RUN_PARALLEL
                .all_nodes()
@@ -1844,8 +1752,7 @@ void ldbc_bi_query_18(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1]));
                 return gtg == etg; })
-              .group(grps, {4})
-              .aggregate(grps, {{"count", 0}})
+              .groupby({4}, {{"count", 0}})
               .project({PExpr_(0, pj::uint64_property(res, "id")),
                         PVar_(1) })
               .orderby([&] (const qr_tuple q1, const qr_tuple q2) {
@@ -2010,9 +1917,6 @@ void ldbc_bi_query_20(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
-    std::vector<result_set> grps;
-    std::vector<std::string> message = {"Post", "Comment"};
-
     auto filter_cdate =
       [&](auto &prop) {
         if ((prop.flags_ & 0xe0) == prop.p_ptime) {
@@ -2030,7 +1934,7 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
         return c == c1 || c == c2; 
       };
 
-    auto group_age =
+    auto groupby_age =
       [&](auto res) {
         auto edt = time_from_string(std::string("2013-01-01 00:00:00.000"));
         auto dt = boost::get<std::string>(pj::pr_date(res, "birthday"));
@@ -2060,10 +1964,9 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .project({PExpr_(6, pj::string_property(res, "name")),
                         PExpr_(0, pj::pr_month(res, "creationDate")),
                         PExpr_(2, pj::string_property(res, "gender")),
-                        projection::expr(2, group_age),
+                        projection::expr(2, groupby_age),
                         PExpr_(8, pj::string_property(res, "name")), })
-              .group(grps, {0, 1, 2, 3, 4})
-              .aggregate(grps, {{"count", 0}})
+              .groupby(grps, {0, 1, 2, 3, 4}, {{"count", 0}})
               .where_qr_tuple([&](const qr_tuple &v) { return boost::get<uint64_t>(v[5]) > 100; })
               .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                 if (boost::get<uint64_t>(qr1[5]) == boost::get<uint64_t>(qr2[5])) {
@@ -2088,10 +1991,6 @@ void ldbc_bi_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 }
 
 void ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
-
-    std::vector<result_set> grps1;
-    std::vector<result_set> grps2;
-    std::vector<result_set> grps3;
 
     auto fltr_tclass1 =
       [&](auto &prop) {
@@ -2135,8 +2034,7 @@ void ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .from_node("Post")
               .to_relationships(":containerOf")
               .from_node("Forum")
-              .group(grps2, {6})
-              .aggregate(grps2, {{"count", 0}});
+              .groupby({6}, {{"count", 0}});
 
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -2152,13 +2050,11 @@ void ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .from_node("Post")
               .to_relationships(":containerOf")
               .from_node("Forum")
-              .group(grps1, {6})
-              .aggregate(grps1, {{"count", 0}})
+              .groupby({6}, {{"count", 0}})
               .hashjoin_on_node({0, 0}, q2)
               .from_relationships(":hasMember", 0)
               .to_node("Person")
-              .group(grps3, {0, 1, 3})
-              .aggregate(grps3, {{"count", 0}})
+              .groupby({0, 1, 3}, {{"count", 0}})
               .where_qr_tuple(fltr_forum)
               .append_to_qr_tuple(abs_diff)
               .project({PExpr_(0, pj::uint64_property(res, "id")),
@@ -2180,9 +2076,6 @@ void ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 }
 
 void ldbc_bi_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
-
-    std::vector<result_set> grps1;
-    std::vector<result_set> grps2;
 
     auto filter_cntry =
       [&](auto &prop) {
@@ -2252,8 +2145,7 @@ void ldbc_bi_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .where_qr_tuple(fltr_blist)
               .from_relationships(":hasTag", 1)
               .to_node("Tag")
-              .group(grps1, {4})
-              .aggregate(grps1, {{"count", 0}});
+              .groupby({4}, {{"count", 0}});
 
     auto q2 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -2280,8 +2172,7 @@ void ldbc_bi_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_node("Tag")
               .to_relationships(":likes", 1)
               .from_node("Person")
-              .group(grps2, {4})
-              .aggregate(grps2, {{"count", 0}})
+              .groupby({4}, {{"count", 0}})
               .hashjoin_on_node({0, 0}, q1);
 
     auto q3 = query(gdb)
@@ -2328,9 +2219,6 @@ void ldbc_bi_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 void ldbc_bi_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
-    std::vector<result_set> grps;
-
-    // Query pipeline
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -2345,8 +2233,7 @@ void ldbc_bi_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #endif
               .to_relationships(":likes")
               .from_node("Person")
-              .group(grps, {0})
-              .aggregate(grps, {{"count", 0}})
+              .groupby({0}, {{"count", 0}})
               .where_qr_tuple([&](const auto &v) {
                 return boost::get<uint64_t>(v[1]) > boost::get<uint64_t>(params[1]); })
               .from_relationships(":hasCreator", 0)
@@ -2368,10 +2255,6 @@ void ldbc_bi_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 }
 
 void ldbc_bi_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
-
-    std::vector<result_set> grps1;
-    std::vector<result_set> grps2;
-    std::vector<result_set> grps3;
 
     auto filter_cntry =
       [&](auto &prop) {
@@ -2395,8 +2278,7 @@ void ldbc_bi_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_node("Tag")
               // .to_relationships(":hasMember")
               // .from_node("Forum")
-              // .group(grps2, {6})
-              // .aggregate(grps2, {{"count", 0}})
+              // .groupby({6}, {{"count", 0}})
               // .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
               //   return boost::get<uint64_t>(q1[1]) > boost::get<uint64_t>(q2[1]); })
               // .limit(100);
@@ -2416,8 +2298,7 @@ void ldbc_bi_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 //               .from_node("Person")
 //               .to_relationships(":hasMember")
 //               .from_node("Forum")
-//               .group(grps1, {6})
-//               .aggregate(grps1, {{"count", 0}})
+//               .groupby({6}, {{"count", 0}})
 //               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
 //                 return boost::get<uint64_t>(q1[1]) > boost::get<uint64_t>(q2[1]); })
 //               .limit(100)
@@ -2428,8 +2309,7 @@ void ldbc_bi_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 //               .to_relationships(":containerOf")
 //               .from_node("Forum")
 //               .join_on_node({7, 0}, q2)
-//               .group(grps3, {3})
-//               .aggregate(grps3, {{"count", 0}})
+//               .groupby({3}, {{"count", 0}})
 //               .project({PExpr_(0, pj::uint64_property(res, "id")),
 //                         PExpr_(0, pj::string_property(res, "firstName")),
 //                         PExpr_(0, pj::string_property(res, "lastName")),

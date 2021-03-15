@@ -458,14 +458,18 @@ struct order_by : public qop {
 };
 
 /**
- * group_by implements an operator for grouping tuples. The grouping
- * keys are query result(s) given by their positions in the query tuple.
- * Each group of tuples with the same grouping key is stored as a result_set.
- * The vector grps stores all the grouped tuples.
+ * group_by implements an operator for grouping tuples and optional aggregations
+ * like count, sum, average, and percentage count.
+ * The grouping keys are query result(s) given by their positions in the query tuple.
+ * The aggregate type(s) and aggregate attribute(s) are given
+ * as a string-integer pair. The aggregate types above are specified as "count",
+ * "sum", "avg" and "pcount" respectively. The integer denotes the position of the
+ * aggregate attribute in the tuples of grps. 
  */
 struct group_by : public qop {
-  group_by(std::vector<result_set> &grps, const std::vector<int> &pos) : 
-    grpkey_cnt_(0), res_set_vec_(grps), grpkey_pos_(pos) {}
+  group_by(const std::vector<std::size_t> &pos);
+  group_by(const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
   ~group_by() = default;
 
   void dump(std::ostream &os) const override;
@@ -474,38 +478,13 @@ struct group_by : public qop {
 
   void finish(graph_db_ptr &gdb);
 
-  int grpkey_cnt_;
-  std::vector<result_set> &res_set_vec_;
+  std::size_t grpkey_cnt_;
   std::vector<std::string> grpkey_set_;
-  std::vector<int> grpkey_pos_;
-  std::unordered_map<std::string, int> grpkey_map_;
-};
-
-/**
- * aggr_ops imlements different aggregate operations: count, sum, average,
- * percentage count. It is used after a group_by operator, which stores the
- * grouped tuples in the vector grps.
- * The aggregate type(s) and aggregate attribute(s) are given
- * as a string-integer pair. The aggregate types above are specified as "count",
- * "sum", "avg" and "pcount" respectively. The integer denotes the position of the
- * aggregate attribute in the tuples of grps.
- */
-struct aggr_ops : public qop {
-  aggr_ops(const std::vector<result_set> &grps,
-            const std::vector<std::pair<std::string, int>> &aggrs);
-  ~aggr_ops() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(graph_db_ptr &gdb, const qr_tuple &v);
-
-  void finish(graph_db_ptr &gdb);
-
-  int grpkey_cnt_;
-  bool total_;
-  uint64_t total_cnt_;
-  std::vector<std::pair<std::string, int>> aggrs_;
-  const std::vector<result_set> &res_set_vec_;
+  std::vector<std::size_t> grpkey_pos_;
+  std::unordered_map<std::string, std::size_t> grpkey_map_;
+  std::unordered_map<std::size_t, qr_tuple> grp_tpl_map_;
+  std::vector<std::pair<std::string, std::size_t>> aggrs_;
+  std::unordered_map<std::size_t, std::size_t> grp_size_map_;
 };
 
 /**

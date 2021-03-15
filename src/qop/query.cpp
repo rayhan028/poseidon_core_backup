@@ -210,17 +210,18 @@ query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
 }
 
 query &
-query::group(std::vector<result_set> &grps, const std::vector<int> &pos) {
-  auto op = std::make_shared<group_by>(grps, pos);
+query::groupby(const std::vector<std::size_t> &pos) {
+  auto op = std::make_shared<group_by>(pos);
   return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
                    std::bind(&group_by::finish, op.get(), ph::_1));
 }
 
 query &
-query::aggregate(const std::vector<result_set> &grps,
-              const std::vector<std::pair<std::string, int>> &aggrs) {
-  auto op = std::make_shared<aggr_ops>(grps, aggrs);
-  return append_op(op, std::bind(&aggr_ops::process, op.get(), ph::_1, ph::_2));
+query::groupby(const std::vector<std::size_t> &pos,
+  const std::vector<std::pair<std::string, std::size_t>> &aggrs) {
+  auto op = std::make_shared<group_by>(pos, aggrs);
+  return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
+                   std::bind(&group_by::finish, op.get(), ph::_1));
 }
 
 query &
