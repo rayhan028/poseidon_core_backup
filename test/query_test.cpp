@@ -715,3 +715,64 @@ TEST_CASE("Testing union_all operator 2", "[qop]") {
   });
   graph_pool::destroy(pool);
 }
+
+TEST_CASE("Testing Groupby operator", "[qop]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  namespace pj = builtin;
+
+  graph->run_transaction([&]() {
+
+    graph->add_node("Person", {{"age", boost::any(42)},
+                              {"firstName", boost::any(std::string("John"))},
+                              {"lastName", boost::any(std::string("Doe"))}});
+
+    graph->add_node("Person", {{"age", boost::any(77)},
+                              {"firstName", boost::any(std::string("Michael"))},
+                              {"lastName", boost::any(std::string("Stonebreaker"))}});
+
+    graph->add_node("Person", {{"age", boost::any(48)},
+                              {"firstName", boost::any(std::string("Anastasia"))},
+                              {"lastName", boost::any(std::string("Ailamaki"))}});
+
+    graph->add_node("Person", {{"age", boost::any(37)},
+                              {"firstName", boost::any(std::string("John"))},
+                              {"lastName", boost::any(std::string("Jones"))}});
+
+    graph->add_node("Person", {{"age", boost::any(20)},
+                              {"firstName", boost::any(std::string("John"))},
+                              {"lastName", boost::any(std::string(""))}});
+
+    graph->add_node("Person", {{"age", boost::any(100)},
+                              {"firstName", boost::any(std::string("Michael"))},
+                              {"lastName", boost::any(std::string("G."))}});
+
+    result_set rs, expected;
+    auto q = query(graph)
+              .all_nodes("Person")
+              .project({PExpr_(0, pj::int_property(res, "age")),
+                        PExpr_(0, pj::string_property(res, "firstName")),
+                        PExpr_(0, pj::string_property(res, "lastName"))})
+              .groupby({1}, {{"count", 0}, {"pcount", 0}, {"avg", 0}, {"sum", 0}})
+              .collect(rs);
+
+    q.start();
+    rs.wait();
+    q.print_plan();
+
+    expected.data.push_back(
+      {query_result("John"), query_result("3"), query_result("50.000000"),
+        query_result("33.000000"), query_result("99")});
+    expected.data.push_back(
+      {query_result("Michael"), query_result("2"), query_result("33.333333"),
+        query_result("88.500000"), query_result("177")});
+    expected.data.push_back(
+      {query_result("Anastasia"), query_result("1"), query_result("16.666667"),
+        query_result("48.000000"), query_result("48")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
