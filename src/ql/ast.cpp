@@ -56,8 +56,14 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
             os << "Project("; break;
         case ast_op::limit:
             os << "Limit("; break;
-        case ast_op::join:
-            os << "Join("; break;
+        case ast_op::sort:
+            os << "Sort("; break;
+        case ast_op::group_by:
+            os << "GroupBy("; break;
+        case ast_op::hash_join:
+            os << "HashJoin("; break;
+        case ast_op::leftouter_join:
+            os << "LeftOuterJoin("; break;
         case ast_op::create_node:
             os << "CreateNode("; break;
         case ast_op::create_rship:

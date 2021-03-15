@@ -78,8 +78,14 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
         return ast_op::node_scan;
       else if (name == "Limit")
         return ast_op::limit;
-      else if (name == "Join")
-        return ast_op::join;
+      else if (name == "Sort")
+        return ast_op::sort;
+      else if (name == "GroupBy")
+        return ast_op::group_by;
+      else if (name == "HashJoin")
+        return ast_op::hash_join;
+      else if (name == "LeftOuterJoin")
+        return ast_op::leftouter_join;
       else if (name == "ForeachRelationship")
         return ast_op::foreach_rship;
       else if (name == "Expand")
@@ -357,13 +363,24 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
         }
         
         op = Project(pr_exprs, parent);
-    }
       break;
-    case ast_op::join:
+    }
+    case ast_op::hash_join:
     {
-        
+      break;        
     }
-      break;
+    case ast_op::leftouter_join:
+    {
+      break;        
+    }    
+    case ast_op::sort:
+    {
+      break;        
+    }  
+    case ast_op::group_by:
+    {
+      break;        
+    }     
     default:
       break;
   }

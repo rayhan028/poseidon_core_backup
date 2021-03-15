@@ -106,7 +106,8 @@ struct key_expand : TAO_PEGTL_KEYWORD("Expand") {};
 struct key_project : TAO_PEGTL_KEYWORD("Project") {};
 struct key_limit : TAO_PEGTL_KEYWORD("Limit") {};
 struct key_foreach_rship : TAO_PEGTL_KEYWORD("ForeachRelationship") {};
-struct key_join : TAO_PEGTL_KEYWORD("Join") {};
+struct key_lojoin : TAO_PEGTL_KEYWORD("LeftOuterJoin") {};
+struct key_hashjoin : TAO_PEGTL_KEYWORD("HashJoin") {};
 struct key_aggregate : TAO_PEGTL_KEYWORD("Aggregate") {};
 struct key_groupby : TAO_PEGTL_KEYWORD("GroupBy") {};
 struct key_sort : TAO_PEGTL_KEYWORD("Sort") {};
@@ -119,7 +120,8 @@ struct op_name : sor< key_node_scan,
                     key_project,
                     key_limit,
                     key_foreach_rship,
-                    key_join,
+                    key_hashjoin,
+                    key_lojoin,
                     key_groupby,
                     key_sort,
                     key_create

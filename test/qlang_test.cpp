@@ -91,5 +91,9 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Limit(20, Sort([$4.Age:int DESC, $1.Name:string ASC]))", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("LeftOuterJoin($0.Id == $1.PId, NodeScan('Person'), NodeScan('Order'))", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("HashJoin($0.Id == $1.PId, NodeScan('Person'), NodeScan('Order'))", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("      Project([$0.firstName:string, $0.lastName:string, $0.birthday:datetime, $0.locationIP:string, $0.browserUsed:string, $2.id:uint64, $0.gender:string, $0.creationDate:datetime],ForeachRelationship(FROM, ':isLocatedIn', Filter($0.id == 42, NodeScan('Person'))))", "")));
  }
