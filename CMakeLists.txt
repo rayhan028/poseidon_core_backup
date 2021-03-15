@@ -115,7 +115,7 @@ include(FetchContent REQUIRED)
 FetchContent_Declare(
   catch
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v2.9.1
+  GIT_TAG        v2.13.4
 )
 # FetchContent_GetProperties(catch)
 if(NOT catch_POPULATED)
@@ -153,7 +153,7 @@ include(FetchContent REQUIRED)
  FetchContent_Declare(
   spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog.git
-   GIT_TAG        v1.5.0
+   GIT_TAG        v1.8.2
   )
 FetchContent_GetProperties(spdlog)
 
@@ -199,7 +199,7 @@ include(FetchContent REQUIRED)
  FetchContent_Declare(
   pegtl
   GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
-  GIT_TAG        2.8.3
+  GIT_TAG       3.2.0
   )
 FetchContent_GetProperties(pegtl)
 if(NOT pegtl_POPULATED)

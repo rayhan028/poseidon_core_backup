@@ -57,10 +57,10 @@ ast_op_ptr queryc::parse(const std::string &query) {
       return nullptr;
     }
   } catch (const pegtl::parse_error &e) {
-    const auto p = e.positions.front();
+    const auto p = e.positions().front();
     std::cerr << e.what() << std::endl
               << in.line_at(p) << std::endl
-              << std::string(p.byte_in_line, ' ') << '^' << std::endl;
+              << std::string(p.column, ' ') << '^' << std::endl;
     return nullptr;
   }
   auto ast_node = ptree_to_ast(ptree->children.front());
@@ -70,7 +70,7 @@ ast_op_ptr queryc::parse(const std::string &query) {
 
 ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
   for (auto& n : pn->children) {
-    if (n->is<qlang::op_name>()) {
+    if (n->is_type<qlang::op_name>()) {
       auto name = n->string();
       if (name == "Filter")
         return ast_op::filter;
@@ -90,10 +90,10 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
         if (pn->children.size() > 1) {
           auto& sibling = pn->children[1];
           auto& pattern = sibling->children.front();
-          if (pattern->is<qlang::node_pattern>()) {
+          if (pattern->is_type<qlang::node_pattern>()) {
             return ast_op::create_node;
           }
-          else if (pattern->is<qlang::rship_pattern>()) {
+          else if (pattern->is_type<qlang::rship_pattern>()) {
             return ast_op::create_rship;
           }
         }
@@ -106,29 +106,29 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
 }
 
 ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
-  assert(pn->is<qlang::qoperator>());
+  assert(pn->is_type<qlang::qoperator>());
   ast_op::op_type otype = get_op_type(pn);
   auto nptr = std::make_shared<ast_op>(otype);  
   for (auto &n : pn->children) {
-    if (n->is<qlang::param>()) {
+    if (n->is_type<qlang::param>()) {
       assert(n->children.size() > 0);
       auto& param = n->children.front();
-      if (param->is<qlang::qoperator>()) {
+      if (param->is_type<qlang::qoperator>()) {
         nptr->add_child(ptree_to_ast(param));
       }
-      else if (param->is<qlang::literal_string>()) {
+      else if (param->is_type<qlang::literal_string>()) {
         nptr->add_param(param->string());
       }
-      else if (param->is<qlang::directions>()) {
+      else if (param->is_type<qlang::directions>()) {
         nptr->add_param(param->string());
       }
-      else if (param->is<qlang::integer>()) {
+      else if (param->is_type<qlang::integer>()) {
         nptr->add_param(std::stoi(param->string()));
       }
-      else if (param->is<qlang::expression>()) {
+      else if (param->is_type<qlang::expression>()) {
         nptr->add_param(std::move(param));
       }
-      else if (param->is<qlang::proj_array>()) {
+      else if (param->is_type<qlang::proj_array>()) {
         proj_spec_list plist;
         for (auto& p : param->children) {
           auto pspec = get_property_spec(p);
@@ -136,7 +136,7 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
         }
         nptr->add_param(plist);
       }
-      else if (param->is<qlang::node_pattern>()) {
+      else if (param->is_type<qlang::node_pattern>()) {
         auto& p = param->children.front();
         // p->children[0] > node_or_rship_label
         nptr->add_param(p->children[0]->string());
@@ -148,7 +148,7 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
         }
         nptr->add_param(plist);
       }  
-      else if (param->is<qlang::rship_pattern>()) {
+      else if (param->is_type<qlang::rship_pattern>()) {
         auto d1 = param->children[1]->string();
         auto d2 = param->children[3]->string();
         if (d1 == "-" && d2 == "->")
@@ -183,16 +183,16 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
 }
 
 proj_spec queryc::get_property_spec(parse_tree_ptr& pn) {
-  assert (pn->is<qlang::proj_expr>());
+  assert (pn->is_type<qlang::proj_expr>());
   std::vector<std::string> s;
-  boost::split(s, pn->content(), boost::is_any_of(":"));
+  boost::split(s, pn->string(), boost::is_any_of(":"));
   return proj_spec{ s[0], s[1] };
 }
 
 jproperty queryc::get_json_property(parse_tree_ptr& pn) {
-  assert (pn->is<qlang::property>());
+  assert (pn->is_type<qlang::property>());
   std::vector<std::string> s;
-  boost::split(s, pn->content(), boost::is_any_of(":"));
+  boost::split(s, pn->string(), boost::is_any_of(":"));
   return jproperty{ s[0], s[1] };
 }
 
@@ -255,32 +255,32 @@ expr parse_filter_expression(ast_op_ptr &ast) {
   
   unsigned int lhs_qr_id = 0;
 
-  if(lhs_key->is<qlang::variable_name>()) {
+  if(lhs_key->is_type<qlang::variable_name>()) {
       auto lhs_id = std::move(lhs_key->children[0]);
-      lhs_qr_id = std::stoi(lhs_id->content());
+      lhs_qr_id = std::stoi(lhs_id->string());
   }
 
   // extract the actual key after $X. in string
-  auto lhs_var_name = parse_variable_name(lhs_key->content());
+  auto lhs_var_name = parse_variable_name(lhs_key->string());
   auto key_se = Key(lhs_qr_id, lhs_var_name);
 
 
   auto rhs_value = std::move(fe_expr->children[2]);
   expr value_se;
-  if(is_int(rhs_value->content())) {
-      auto n = std::stoi(rhs_value->content()); // TODO: find better solution
+  if (is_int(rhs_value->string())) {
+      auto n = std::stoi(rhs_value->string()); // TODO: find better solution
       value_se = Int(n);
-  } else if(rhs_value->is<qlang::variable_name>()){
-      auto rhs_var_name = parse_variable_name(lhs_key->content());
+  } else if(rhs_value->is_type<qlang::variable_name>()){
+      auto rhs_var_name = parse_variable_name(lhs_key->string());
       auto rhs_id = std::move(rhs_value->children[0]);
-      auto rhs_qr_id = std::stoi(rhs_id->content());
+      auto rhs_qr_id = std::stoi(rhs_id->string());
       value_se = Key(rhs_qr_id, rhs_var_name);
   }
 
   auto fe_op = std::move(fe_expr->children[1]);
   expr op_se;
 
-  if(boost::equals(fe_op->content(), "==")) {
+  if (boost::equals(fe_op->string(), "==")) {
       op_se = EQ(key_se, value_se);
   }
 
