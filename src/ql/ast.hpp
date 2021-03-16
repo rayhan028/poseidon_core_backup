@@ -101,7 +101,7 @@ struct ast_op {
     /**
      * Add an expression as parameter (used for conditions).
      */
-    void add_param(parse_tree_ptr expr) { params_.push_back(std::move(expr)); }
+    void add_param(parse_tree_ptr& expr) { params_.push_back(std::move(expr)); }
 
     /**
      * Add a projection specification list as parameter (used for projection).
@@ -132,5 +132,6 @@ struct ast_op {
 std::ostream& operator<<(std::ostream& os, ast_op& op);
 
 void print_ast(ast_op_ptr root);
+void ast_to_stream(ast_op_ptr root, std::ostream& os);
 
 #endif

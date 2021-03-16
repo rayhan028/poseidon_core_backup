@@ -51,7 +51,7 @@ ast_op_ptr queryc::parse(const std::string &query) {
     ptree = pegtl::parse_tree::parse<qlang::qoperator,
                                     qlang::my_selector, qlang::my_control>(in);
     if (ptree)
-  	  pegtl::parse_tree::print_dot(std::cout, *ptree); 
+  	  ;//  pegtl::parse_tree::print_dot(std::cout, *ptree); 
     else {
       std::cerr << "uknown parse error" << std::endl;
       return nullptr;
@@ -132,7 +132,8 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
         nptr->add_param(std::stoi(param->string()));
       }
       else if (param->is_type<qlang::expression>()) {
-        nptr->add_param(std::move(param));
+        // nptr->add_param(std::move(param));
+        nptr->add_param(param);
       }
       else if (param->is_type<qlang::proj_array>()) {
         proj_spec_list plist;

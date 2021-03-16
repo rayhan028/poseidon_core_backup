@@ -78,15 +78,15 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
       [&](const proj_spec_list& plist) { os << plist; },
       [&](const jproperty_list& plist) { os << plist; });
 
-   for (auto& p : op.params_) {
+   for (const auto& p : op.params_) {
         boost::apply_visitor(my_visitor, p);
-        std::cout << " ";
+        os << " ";
     }
     os << ")";
     return os;
 }
 
-void _print_ast(ast_op_ptr root, const std::string& prefix) {
+void _print_ast(std::ostream& os, ast_op_ptr root, const std::string& prefix) {
     if (!root) return;
 
     bool hasFirst = (root->children_.size() >= 1);
@@ -95,27 +95,32 @@ void _print_ast(ast_op_ptr root, const std::string& prefix) {
     if (!hasFirst && !hasSecond)
         return;
 
-    std::cout << prefix;
-    std::cout << ((hasFirst  && hasSecond) ? "├── " : "");
-    std::cout << ((!hasFirst && hasSecond) ? "└── " : "");
+    os << prefix;
+    os << ((hasFirst  && hasSecond) ? "├── " : "");
+    os << ((!hasFirst && hasSecond) ? "└── " : "");
 
     if (hasSecond) {
         auto& rchild = root->children_[1];
         bool printStrand = (hasFirst && hasSecond && (rchild->children_.size() > 0));
         std::string newPrefix = prefix + (printStrand ? "│   " : "    ");
-        std::cout << *rchild << std::endl;
-        _print_ast(rchild, newPrefix);
+        os << *rchild << std::endl;
+        _print_ast(os, rchild, newPrefix);
     }
 
     if (hasFirst) {
-        std::cout << (hasSecond ? prefix : "") << "└── " << *(root->children_[0]) << std::endl;
-        _print_ast(root->children_[0], prefix + "    ");
+        os << (hasSecond ? prefix : "") << "└── " << *(root->children_[0]) << std::endl;
+        _print_ast(os, root->children_[0], prefix + "    ");
     }
 }
 
 
 void print_ast(ast_op_ptr root) {
     std::cout << *root << std::endl;
-    _print_ast(root, "");
+    _print_ast(std::cout, root, "");
     std::cout << std::endl;
+}
+
+void ast_to_stream(ast_op_ptr root, std::ostream& os) {
+    os << *root << std::endl;
+    _print_ast(os, root, "");
 }

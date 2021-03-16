@@ -25,12 +25,12 @@ public:
 
   algebra_optr ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent);
 
-private:
   /**
    * Parses the given query string and returns an AST.
    */
   ast_op_ptr parse(const std::string &query);
 
+private:
   /**
    * Constructs a query execution plan from the given AST and
    * returns the root node.
