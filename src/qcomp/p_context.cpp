@@ -209,7 +209,7 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     get_join_vec_size_ty = FunctionType::get(int64Ty, {int64PtrTy}, false);
 
     mat_reg_val_ty = FunctionType::get(voidTy, {int8PtrTy, int64PtrTy, int64Ty}, false);
-    collect_reg_ty = FunctionType::get(voidTy, {int64PtrTy, boolTy}, false);
+    collect_reg_ty = FunctionType::get(voidTy, {int8PtrTy, int64PtrTy, boolTy}, false);
 
     obtain_mat_tuple_ty = FunctionType::get(int8PtrTy, {}, false);
     mat_node_ty = FunctionType::get(voidTy, {nodePtrTy, int8PtrTy}, false);
@@ -279,6 +279,7 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     node_has_property_ty = FunctionType::get(int64Ty, {int8PtrTy, nodePtrTy, int8PtrTy}, false);
     rship_has_property_ty = FunctionType::get(int64Ty, {int8PtrTy, rshipPtrTy, int8PtrTy}, false);
     apply_has_property_ty = FunctionType::get(voidTy, {int64Ty, int8PtrTy, int8PtrTy, int64PtrTy}, false );
+    persis_tuple_type = FunctionType::get(voidTy, {int8PtrTy, int8PtrTy}, false);
 //++++++++++++++++++ PROPERTY FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     pset_get_item_at_type = FunctionType::get(propertySetPtrTy, {int8PtrTy, int64Ty}, false);
 
@@ -426,6 +427,7 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     function_types["add_time_diff"] = add_time_diff_ty;
 
     function_types["end_notify"] = notifyFctTy;
+    function_types["persist_tuple"] = persis_tuple_type;
 }
 
 

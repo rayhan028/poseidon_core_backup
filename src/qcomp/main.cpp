@@ -45,9 +45,9 @@ namespace nvm = pmem::obj;
 nvm::pool_base prepare_pool() {
 	nvm::pool_base pop;
 	if (access(test_path.c_str(), F_OK) != 0) {
-    	pop = nvm::pool_base::create(test_path, "jit_qcomp", PMEMOBJ_POOL_SIZE);
+    	pop = nvm::pool_base::create(test_path, "poseidon", PMEMOBJ_POOL_SIZE);
   	} else {
-    	pop = nvm::pool_base::open(test_path, "jit_qcomp");
+    	pop = nvm::pool_base::open(test_path, "poseidon");
   	}
 
 	//auto pop = nvm::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
@@ -57,62 +57,81 @@ nvm::pool_base prepare_pool() {
 
 int main() {
 #ifdef USE_PMDK
-	auto pop = prepare_pool();
+	graph_pool_ptr pool;
 	graph_db_ptr graph;
-	nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
+	bool init = false;
+	auto p1 = std::chrono::steady_clock::now();
+	if (access(test_path.c_str(), F_OK) != 0) {
+    	pool = graph_pool::create(test_path);
+		graph = pool->create_graph("jit_qcomp");
+		init = true;
+  	} else {
+    	pool = graph_pool::open(test_path);
+		graph = pool->open_graph("jit_qcomp");
+  	}
+
+	auto p2 = std::chrono::steady_clock::now();
+
+	std::cout << "POOL: "
+		<< std::chrono::duration_cast<std::chrono::milliseconds>(p2 -
+																	p1)
+				.count()
+		<< " ms" << std::endl;
 #else
-  auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("jit_qcomp");
+  auto pool = graph_pool::open(test_path);
+  auto graph = pool->open_graph("jit_qcomp");
+  init = true;
 #endif
+	if(init) {
+		auto tx = graph->begin_transaction();
 
-	auto tx = graph->begin_transaction();
-
-	int PERSONS = 5;
-	int add = 0;
-	int j = 1;
-	auto id = 0;
-	for (int i = 0; i < PERSONS; i++) {
-		add = i % j++;
-		if(j == 10)
-			j = 1;
-		auto p = graph->add_node("Person",
-				{{"name", boost::any(std::string("John Doe"))},
-				{"age", boost::any(42+add)},
-				{"id", boost::any(id++)},
-				{"num", boost::any(uint64_t(1234567890123412)+uint64_t(i))},
-				{"dummy1", boost::any(std::string("Dummy"))},
-				{"dummy2", boost::any(1.2345)}},
-				false);
-		auto p2 = graph->add_node("Person",
-				{{"name", boost::any(std::string("John Moe"))},
-				{"age", boost::any(42+add)},
-				{"id", boost::any(id++)},
-				{"num", boost::any(uint64_t(1234567890123412)+uint64_t(i))},
-				{"dummy1", boost::any(std::string("Dummy"))},
-				{"dummy2", boost::any(1.2345)}},
-				false);
-		auto b = graph->add_node("Book",
-				{{"name", boost::any(std::string("Title"))},
-				{"age", boost::any(42)},
-				{"id", boost::any(id++)}},
-				false);
-		graph->add_relationship(p, b, ":likes", {}, false);
-		graph->add_relationship(p, p2, ":likes", {}, false);
-		graph->add_relationship(p, b, ":HAS_READ", {}, false);
-		graph->add_relationship(b, p, ":HAS_READ", {}, false);
+		int PERSONS = 50000;
+		int add = 0;
+		int j = 1;
+		auto id = 0;
+		for (int i = 0; i < PERSONS; i++) {
+			add = i % j++;
+			if(j == 10)
+				j = 1;
+			auto p = graph->add_node("Person",
+					{{"name", boost::any(std::string("John Doe"))},
+					{"age", boost::any(42+add)},
+					{"id", boost::any(id++)},
+					{"num", boost::any(uint64_t(1234567890123412)+uint64_t(i))},
+					{"dummy1", boost::any(std::string("Dummy"))},
+					{"dummy2", boost::any(1.2345)}},
+					false);
+			auto p2 = graph->add_node("Person",
+					{{"name", boost::any(std::string("John Moe"))},
+					{"age", boost::any(42+add)},
+					{"id", boost::any(id++)},
+					{"num", boost::any(uint64_t(1234567890123412)+uint64_t(i))},
+					{"dummy1", boost::any(std::string("Dummy"))},
+					{"dummy2", boost::any(1.2345)}},
+					false);
+			auto b = graph->add_node("Book",
+					{{"name", boost::any(std::string("Title"))},
+					{"age", boost::any(42)},
+					{"id", boost::any(id++)}},
+					false);
+			graph->add_relationship(p, b, ":likes", {{"id", boost::any(id++)}}, false);
+			graph->add_relationship(p, p2, ":likes", {}, false);
+			graph->add_relationship(p, b, ":HAS_READ", {}, false);
+			graph->add_relationship(b, p, ":HAS_READ", {}, false);
+		}
+		auto l = graph->add_node("Peter",
+					{{"name", boost::any(std::string("Title"))},
+					{"age", boost::any(42)},
+					{"id", boost::any(id++)}},
+					true);
+		auto d = graph->add_node("Uwe",
+					{{"name", boost::any(std::string("Title"))},
+					{"age", boost::any(42)},
+					{"id", boost::any(id++)}},
+					true);
+		graph->add_relationship(l, d, ":likes", {}, false);
+		graph->commit_transaction();
 	}
-	auto l = graph->add_node("Peter",
-				{{"name", boost::any(std::string("Title"))},
-				{"age", boost::any(42)},
-				{"id", boost::any(id++)}},
-				true);
-	auto d = graph->add_node("Uwe",
-				{{"name", boost::any(std::string("Title"))},
-				{"age", boost::any(42)},
-				{"id", boost::any(id++)}},
-				true);
-	graph->add_relationship(l, d, ":likes", {}, false);
-	graph->commit_transaction();
 
 	auto THREAD_NUM = 4;
 	auto chunks = graph->get_nodes()->num_chunks();
@@ -120,15 +139,6 @@ int main() {
 	std::cout << "Chunks: " << chunks << std::endl;
 	query_engine queryEngine(graph, THREAD_NUM, cv_range);
 
-	p_ptr<dict> dct;
-#ifdef USE_PMDK
-	nvm::transaction::run(pop, [&] {
-#endif
-		dct = p_make_ptr<dict>();
-#ifdef USE_PMDK
-	});
-#endif
-	
 	//algebra_optr op = qlc.compile_to_plan("Project([$0.name:string, $0.num:uint64], NodeScan('Person'))");
 	std::vector<std::string> labels = {"Person", "Book"};
 
@@ -149,13 +159,10 @@ int main() {
 
 	auto simp = Scan("Person", 
 						ForeachRship(RSHIP_DIR::FROM, {}, ":likes", 
-								Project({{0, "id", FTYPE::INT}},
-									Sort([&](const qr_tuple &qr1, const qr_tuple &qr2) {
-											auto lhs = std::stoi(boost::get<std::string>(qr1[0]));
-											auto rhs = std::stoi(boost::get<std::string>(qr2[0]));
-                                  			return rhs < lhs;
-										},
-										Collect()))));
+							Expand(EXPAND::IN, "Person",
+								Project({{0, "id", FTYPE::INT}, {2, "id", FTYPE::INT}},
+									Store(
+										Collect())))));
 
 
 
@@ -170,7 +177,7 @@ int main() {
 	scan_task::callee_ = &scan_task::scan;	
 
 	auto cs1 = std::chrono::steady_clock::now();
-	queryEngine.generate(simp, true);
+	queryEngine.generate(simp, false);
 	auto ce1 = std::chrono::steady_clock::now();
 	
 	arg_builder ab;
@@ -188,16 +195,18 @@ int main() {
 	ab.arg(15, "Book");
 
 	result_set rs;
-
+	auto q = query(graph).all_nodes().has_label("Person").to_relationships(":likes").to_node("Person").persist().collect(rs);
   	auto js = std::chrono::steady_clock::now();
 	graph->begin_transaction();
-	queryEngine.run_parallel(&rs, ab, 24);
-	queryEngine.finish(&rs);
+	//queryEngine.run(&rs, ab.args, 24);
+	//queryEngine.finish(&rs);
+	//query::start({&q});
+	//rs.wait();
+	graph->restore_results(rs.data);
 	graph->commit_transaction();
 	auto je = std::chrono::steady_clock::now();
 	
-
-	std::cout << rs << std::endl;
+	std::cout << rs.data.size() << std::endl;
 	std::cout << "JIT: "
 		<< std::chrono::duration_cast<std::chrono::milliseconds>(je -
 																	js)
@@ -245,7 +254,7 @@ int main() {
 */
 #ifdef USE_PMDK
 	//nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-	pop.close();
+	//pop.close();
 	//remove(test_path.c_str());
 #endif
 	return 0;

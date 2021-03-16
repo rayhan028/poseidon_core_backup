@@ -464,6 +464,17 @@ struct end_pipeline : public qop {
 };
 
 /**
+ * persist is a query operator to persist intermediate results to storage for recovery
+ */
+struct persist_result : public qop {
+  persist_result() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+};
+
+/**
  * Macro to simplify definition of arguments in project etc.
  * Usage: Instead of requiring to define a lambda expression
  *        we simply use PExpr_(my_func(res, ...))

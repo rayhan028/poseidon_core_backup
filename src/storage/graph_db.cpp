@@ -34,6 +34,7 @@ graph_db::graph_db(const std::string &db_name) {
   rships_ = p_make_ptr<relationship_list>();
   node_properties_ = p_make_ptr<property_list>();
   rship_properties_ = p_make_ptr<property_list>();
+  recovery_results_ = p_make_ptr<recovery_list>();
   dict_ = p_make_ptr<dict>();
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
@@ -60,6 +61,7 @@ graph_db::~graph_db() {
 void graph_db::runtime_initialize() {
   nodes_->runtime_initialize();
   rships_->runtime_initialize();
+  recovery_results_->runtime_initialize();
   // make sure the dictionary is initialized
   dict_->initialize();
   // perform recovery using the undo log
@@ -1214,4 +1216,36 @@ bool graph_db::has_valid_to_rships(node &n, xid_t xid) {
     relship_id = relship.next_dest_rship;
   }
   return false;
+}
+
+void graph_db::store_query_result(qr_tuple &qr, std::size_t chunk) {
+  recovery_results_->add(std::move(qr), chunk);
+}
+
+void graph_db::restore_results(std::list<qr_tuple> &result_list) {
+  std::map<int, qr_tuple> result_map;
+
+  for(auto & res : recovery_results_->as_vec()) {
+    if(res.type_ == 0) {
+      auto & n = node_by_id(res.res_);
+      result_map[res.tuple_id_].push_back(&n);
+    } else if(res.type_ == 1) {
+      auto & r = rship_by_id(res.res_);
+      result_map[res.tuple_id_].push_back(&r);
+    } else if(res.type_ == 2) {
+      result_map[res.tuple_id_].push_back((int)res.res_);
+    } else if(res.type_ == 3) {
+      std::string str = dict_->lookup_code(res.res_);
+      result_map[res.tuple_id_].push_back(str);
+    } else if(res.type_ == 4) {
+      double d;
+      std::memcpy(&d, &res.res_, sizeof(d));
+      result_map[res.tuple_id_].push_back(d);
+    }
+  }
+
+  for(auto & res : result_map) {
+    result_list.push_back(res.second);
+  }
+
 }

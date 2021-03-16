@@ -187,3 +187,7 @@ void interprete_visitor::visit(std::shared_ptr<connected_op> op) {
 void interprete_visitor::visit(std::shared_ptr<append_op> op) {
 
 }
+
+void interprete_visitor::visit(std::shared_ptr<store_op> op) {
+
+}

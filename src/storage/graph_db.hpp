@@ -30,6 +30,7 @@
 #include "nodes.hpp"
 #include "properties.hpp"
 #include "relationships.hpp"
+#include "recovery.hpp"
 #include "transaction.hpp"
 #include "btree.hpp"
 #include "index_map.hpp"
@@ -476,6 +477,8 @@ public:
    */
   node &get_valid_node_version(node &n, xid_t xid);
 
+  void store_query_result(qr_tuple &qr, std::size_t chunk);
+  void restore_results(std::list<qr_tuple> &result_list);
 private:
   friend struct scan_task;
 
@@ -545,7 +548,7 @@ private:
 
   p_ptr<index_map> index_map_; // the list of all exisiting indexes
   p_ptr<pmlog> ulog_; // the undo log 
-
+  p_ptr<recovery_list> recovery_results_; // stored intermediate results
   /**
    * These member variables are volatile and have to be reinitialized
    * during startup.

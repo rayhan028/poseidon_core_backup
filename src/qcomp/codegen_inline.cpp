@@ -828,7 +828,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
 
     ctx.getBuilder().SetInsertPoint(pre_tuple_mat);
     // materialize the complete thread local storage into a global list
-    ctx.getBuilder().CreateCall(collect_regs, {rs_arg, print_tuple});
+    ctx.getBuilder().CreateCall(collect_regs, {gdb_ptr, rs_arg, print_tuple});
 
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
@@ -1843,4 +1843,36 @@ void codegen_inline_visitor::visit(std::shared_ptr<append_op> op) {
     // append to result
     ctx.getBuilder().CreateCall(append_to_tuple, {qr});
 
+}
+
+void codegen_inline_visitor::visit(std::shared_ptr<store_op> op) {
+    auto obtain_mat_tuple = ctx.extern_func("obtain_mat_tuple");
+    auto mat_node = ctx.extern_func("mat_node");
+    auto mat_rship = ctx.extern_func("mat_rship");
+    auto persist = ctx.extern_func("persist_tuple");
+    auto mat_reg = ctx.extern_func("mat_reg_value");
+
+    auto store_entry = BasicBlock::Create(ctx.getContext(), "store_entry", main_function);
+    ctx.getBuilder().SetInsertPoint(prev_bb);
+    ctx.getBuilder().CreateBr(store_entry);
+    ctx.getBuilder().SetInsertPoint(store_entry);
+
+    auto tp = ctx.getBuilder().CreateCall(obtain_mat_tuple, {});
+    for(auto & res : reg_query_results) {
+        //auto type = ConstantInt::get(ctx.int64Ty, res.type);
+        if(res.type == 0) {
+            ctx.getBuilder().CreateCall(mat_node, {res.reg_val, tp});
+        } else if(res.type == 1) {
+            ctx.getBuilder().CreateCall(mat_rship, {res.reg_val, tp});
+        } else if(res.type == 2) {
+            auto cv_reg = ctx.getBuilder().CreateBitCast(res.reg_val, ctx.int64PtrTy);
+            ctx.getBuilder().CreateCall(mat_reg, {gdb, cv_reg, ConstantInt::get(ctx.int64Ty, 92)});
+        } else if(res.type == 3) {
+            auto cv_reg = ctx.getBuilder().CreateBitCast(res.reg_val, ctx.int64PtrTy);
+            ctx.getBuilder().CreateCall(mat_reg, {gdb, cv_reg, ConstantInt::get(ctx.int64Ty, 93)});
+        }
+    }
+
+    ctx.getBuilder().CreateCall(persist, {gdb, tp});
+    prev_bb = store_entry;
 }

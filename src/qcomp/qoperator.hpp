@@ -27,6 +27,7 @@ class group_op;
 class aggr_op;
 class connected_op;
 class append_op;
+class store_op;
 
 class op_visitor {
 public:
@@ -61,6 +62,8 @@ public:
     virtual void visit(std::shared_ptr<connected_op> op) = 0;
 
     virtual void visit(std::shared_ptr<append_op> op) = 0;
+
+    virtual void visit(std::shared_ptr<store_op> op) = 0;
 };
 
 using algebra_optr = std::shared_ptr<base_op>;
@@ -102,7 +105,8 @@ enum class qop_type {
     collect,
     create,
     group,
-    aggr
+    aggr,
+    store
 };
 
 enum class create_type {
@@ -588,6 +592,17 @@ public:
     FTYPE type_;
 };
 inline algebra_optr Append(append_op::append_func func, FTYPE type, algebra_optr inp) { return std::make_shared<append_op>(func, type, inp); }
+
+class store_op : public base_op, public std::enable_shared_from_this<store_op> {
+public:
+
+    store_op(algebra_optr inp) {
+        inputs_.push_back(inp);
+    }
+
+    void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
+};
+inline algebra_optr Store(algebra_optr inp) { return std::make_shared<store_op>(inp); }
 
 struct FExp {
     FExp(PContext &ctx, FOP fop, FTYPE type, std::string property, std::string value) : fop_(fop), type_(type),

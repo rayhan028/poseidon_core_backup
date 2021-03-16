@@ -155,14 +155,19 @@ query &query::finish() {
   return append_op(op, std::bind(&end_pipeline::process, op.get()));
 }
 
+query &query::persist() {
+  auto op = std::make_shared<persist_result>();
+  return append_op(op,
+                   std::bind(&persist_result::process, op.get(), ph::_1, ph::_2));
+}
+
 query &query::project(const projection::expr_list &exprs) {
   auto op = std::make_shared<projection>(exprs);
   return append_op(op,
                    std::bind(&projection::process, op.get(), ph::_1, ph::_2));
 }
 
-query &
-query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
+query &query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
   auto op = std::make_shared<order_by>(cmp);
   return append_op(op, std::bind(&order_by::process, op.get(), ph::_1, ph::_2),
                    std::bind(&order_by::finish, op.get(), ph::_1));

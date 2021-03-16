@@ -65,6 +65,9 @@ public:
     virtual void visit(std::shared_ptr<append_op> op) {
         qid += "+";
     }
-
+    
+    virtual void visit(std::shared_ptr<store_op> op) {
+        qid += "$";
+    }
 };
 #endif //POSEIDON_CORE_QID_GENERATOR_HPP

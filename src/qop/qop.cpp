@@ -390,6 +390,17 @@ void end_pipeline::process() { return; }
 
 /* ------------------------------------------------------------------------ */
 
+void persist_result::dump(std::ostream &os) const { os << "persist()"; }
+
+void persist_result::process(graph_db_ptr &gdb, const qr_tuple &v) { 
+  qr_tuple t = v;
+  gdb->store_query_result(t, 0);
+  consume_(gdb, v);
+}
+
+
+/* ------------------------------------------------------------------------ */
+
 projection::projection(const expr_list &exprs) : exprs_(exprs) {
   // we build a mapping table where for each expression variable refering to a
   // property a new index is created

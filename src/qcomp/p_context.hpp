@@ -283,6 +283,7 @@ public:
     FunctionType *create_rship_type;
 
     FunctionType *foreach_variable_from_type;
+    FunctionType *persis_tuple_type;
 
 //++++++++++++++++++ PROPERTY FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     FunctionType *pset_get_item_at_type;

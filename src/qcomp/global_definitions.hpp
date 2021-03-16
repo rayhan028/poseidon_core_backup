@@ -228,7 +228,9 @@ extern thread_local std::map<int, boost::posix_time::ptime> time_result;
  * collect_tuple inserts the tuple from thread_local storage into the given result_set.  
  * If print is true, the tuple will be printed to the standard output
  */
- void collect_tuple(result_set *rs, bool print);
+ void collect_tuple(graph_db *gdb, result_set *rs, bool print);
+
+ void persist_tuple(graph_db *gdb, qr_tuple *qr);
 
 qr_tuple &get_qr_tuple();
 

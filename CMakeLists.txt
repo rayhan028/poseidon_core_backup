@@ -319,6 +319,7 @@ set(src_files
   src/storage/nodes.cpp
   src/storage/relationships.cpp
   src/storage/properties.cpp
+  src/storage/recovery.cpp
   src/storage/graph_db.cpp
   src/storage/graph_db_import.cpp
   src/storage/graph_db_index.cpp

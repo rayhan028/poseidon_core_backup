@@ -206,7 +206,7 @@ std::mutex prj_mutex;
     return &gdb->rship_by_id(rid);
 }
 
-//thread_local qr_tuple tp;
+thread_local qr_tuple rec;
 std::map<std::thread::id, qr_tuple> tp_m;
 int tcnt = 0;
 std::mutex mat_reg_mut;
@@ -246,9 +246,10 @@ qr_tuple &get_qr_tuple() {
 }
 
 std::mutex ct_mut;
- void collect_tuple(result_set *rs, bool print) {
+ void collect_tuple(graph_db *gdb, result_set *rs, bool print) {
     std::lock_guard<std::mutex> lck(mat_reg_mut);
     auto & tp = tp_m[std::this_thread::get_id()];
+    
     {
         rs->append(tp);
         if(print) {
@@ -271,6 +272,11 @@ std::mutex ct_mut;
         }
         tp.clear();
     }
+}
+
+void persist_tuple(graph_db *gdb, qr_tuple *qr) {
+    gdb->store_query_result(*qr, 0);
+    qr->clear();
 }
 
 thread_local qr_tuple mat_tuple;

@@ -151,6 +151,11 @@ public:
   query &finish();
 
   /**
+   * Perists intermediate tuple results
+   */
+  query &persist();
+
+  /**
    * TODO
    */
   query &crossjoin(query &other);

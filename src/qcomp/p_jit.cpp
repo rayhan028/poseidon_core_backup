@@ -194,6 +194,8 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&add_time_diff), JITSymbolFlags::Exported);
         M[Mangle("end_notify")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&end_notify), JITSymbolFlags::Exported);
+        M[Mangle("persist_tuple")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&persist_tuple), JITSymbolFlags::Exported);
 
         ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
     }
