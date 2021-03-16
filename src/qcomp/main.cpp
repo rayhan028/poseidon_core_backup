@@ -56,10 +56,12 @@ nvm::pool_base prepare_pool() {
 #endif
 
 int main() {
+	bool init;
 #ifdef USE_PMDK
+	init = false;
 	graph_pool_ptr pool;
 	graph_db_ptr graph;
-	bool init = false;
+	
 	auto p1 = std::chrono::steady_clock::now();
 	if (access(test_path.c_str(), F_OK) != 0) {
     	pool = graph_pool::create(test_path);
@@ -119,17 +121,7 @@ int main() {
 			graph->add_relationship(p, b, ":HAS_READ", {}, false);
 			graph->add_relationship(b, p, ":HAS_READ", {}, false);
 		}
-		auto l = graph->add_node("Peter",
-					{{"name", boost::any(std::string("Title"))},
-					{"age", boost::any(42)},
-					{"id", boost::any(id++)}},
-					true);
-		auto d = graph->add_node("Uwe",
-					{{"name", boost::any(std::string("Title"))},
-					{"age", boost::any(42)},
-					{"id", boost::any(id++)}},
-					true);
-		graph->add_relationship(l, d, ":likes", {}, false);
+		
 		graph->commit_transaction();
 	}
 
