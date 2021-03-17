@@ -26,28 +26,28 @@ TEST_CASE("Constructing an AST from a query string", "[qlang]") {
         auto ast = qc.parse("Filter($0.id == 42)");
         std::ostringstream os;
         ast_to_stream(ast, os);
-        REQUIRE(os.str() == "Filter($0.id == 42 )\n");
+        REQUIRE(os.str() == "Filter($0.id==42 )\n");
     }
 
     SECTION("filter, projection") {
         auto ast = qc.parse("Project([$0.firstName:string, $0.lastName:string], Filter($0.id == 42))");
         std::ostringstream os;
         ast_to_stream(ast, os);
-        REQUIRE(os.str() == "Project([ $0.firstName, $0.lastName ] )\n└── Filter($0.id == 42 )\n");
+        REQUIRE(os.str() == "Project([ $0.firstName, $0.lastName ] )\n└── Filter($0.id==42 )\n");
     }
 
     SECTION("filter, projection + scan") {
         auto ast = qc.parse("Project([$0.firstName:string, $0.lastName:string], Filter($0.id == 42, NodeScan('Person')))");
         std::ostringstream os;
         ast_to_stream(ast, os);
-        REQUIRE(os.str() == "Project([ $0.firstName, $0.lastName ] )\n└── Filter($0.id == 42 )\n    └── NodeScan('Person' )\n");
+        REQUIRE(os.str() == "Project([ $0.firstName, $0.lastName ] )\n└── Filter($0.id==42 )\n    └── NodeScan('Person' )\n");
     }
 
     SECTION("filter + scan") {
         auto ast = qc.parse("Filter($0.id == 42, NodeScan('Person'))");
         std::ostringstream os;
         ast_to_stream(ast, os);
-        REQUIRE(os.str() == "Filter($0.id == 42 )\n└── NodeScan('Person' )\n");
+        REQUIRE(os.str() == "Filter($0.id==42 )\n└── NodeScan('Person' )\n");
     }
 
     SECTION("expand + foreach") {
@@ -61,7 +61,7 @@ TEST_CASE("Constructing an AST from a query string", "[qlang]") {
         auto ast = qc.parse("LeftOuterJoin($0.id == $0.id, NodeScan('Person'), NodeScan('Post'))");
         std::ostringstream os;
         ast_to_stream(ast, os);
-        REQUIRE(os.str() == "LeftOuterJoin($0.id == $0.id )\n├── NodeScan('Post' )\n└── NodeScan('Person' )\n");
+        REQUIRE(os.str() == "LeftOuterJoin($0.id==$0.id )\n├── NodeScan('Post' )\n└── NodeScan('Person' )\n");
     }
 
 }

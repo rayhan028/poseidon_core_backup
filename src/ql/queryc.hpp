@@ -10,6 +10,9 @@
 #include <tao/pegtl.hpp>
 #include <tao/pegtl/contrib/parse_tree.hpp>
 
+
+using parse_tree_ptr = std::unique_ptr<tao::pegtl::parse_tree::node>;
+
 class queryc {
 
 public:

@@ -11,6 +11,8 @@
 namespace pegtl = tao::pegtl;
 namespace ph = std::placeholders;
 
+expr parse_expression(parse_tree_ptr& tree);
+
 std::string trim_string(const std::string& s) {
   std::string s2 = s;
   if (s2[0] == '\'' || s2[0] == '"')
@@ -64,7 +66,7 @@ ast_op_ptr queryc::parse(const std::string &query) {
     return nullptr;
   }
   auto ast_node = ptree_to_ast(ptree->children.front());
-  print_ast(ast_node);
+  // print_ast(ast_node);
   return ast_node;
 }
 
@@ -133,7 +135,7 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
       }
       else if (param->is_type<qlang::expression>()) {
         // nptr->add_param(std::move(param));
-        nptr->add_param(param);
+        nptr->add_param(parse_expression(param));
       }
       else if (param->is_type<qlang::proj_array>()) {
         proj_spec_list plist;
@@ -249,6 +251,40 @@ unsigned parse_tuple_id(std::string var_name) {
   return std::stoi(var_name.substr(1, dot_pos-1));
 }
 
+expr parse_expression(parse_tree_ptr& tree) {
+  auto& lhs_key = tree->children[0];
+  
+  unsigned int lhs_qr_id = 0;
+
+  if (lhs_key->is_type<qlang::variable_name>()) {
+      lhs_qr_id = std::stoi(lhs_key->children[0]->string());
+  }
+
+  // extract the actual key after $X. in string
+  auto lhs_var_name = parse_variable_name(lhs_key->string());
+  auto key_se = Key(lhs_qr_id, lhs_var_name);
+
+  auto& rhs_value = tree->children[2];
+  expr value_se;
+  if (is_int(rhs_value->string())) {
+      auto n = std::stoi(rhs_value->string()); // TODO: find better solution
+      value_se = Int(n);
+  } else if (rhs_value->is_type<qlang::variable_name>()){
+      auto rhs_var_name = parse_variable_name(lhs_key->string());
+      auto rhs_qr_id = std::stoi(rhs_value->children[0]->string());
+      value_se = Key(rhs_qr_id, rhs_var_name);
+  }
+
+  auto& fe_op = tree->children[1];
+  expr op_se;
+
+  if (boost::equals(fe_op->string(), "==")) {
+      op_se = EQ(key_se, value_se);
+  }
+
+  return op_se;
+}
+#if 0
 expr parse_filter_expression(ast_op_ptr &ast) {
 /* TODO: more complex filter expressions
   * currently, only simple (binary) expressions are supported
@@ -293,6 +329,7 @@ expr parse_filter_expression(ast_op_ptr &ast) {
 
   return op_se;
 }
+#endif
 
 algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
   algebra_optr op;
@@ -338,8 +375,7 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       break;
     case ast_op::filter:
     {
-      auto fexpr = parse_filter_expression(ast);
-
+      auto fexpr = ast->get_param<expr>(0);
       op = Filter(fexpr, parent);
     }
       break;

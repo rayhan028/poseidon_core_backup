@@ -3,7 +3,7 @@
 std::string expression::fop_str(FOP fop) const {
     switch (fop) {
         case FOP::EQ:
-            return "=";
+            return "==";
         case FOP::NEQ:
             return "!=";
         case FOP::LE:
@@ -42,7 +42,7 @@ key_token::key_token(unsigned qr_id, std::string key) : qr_id_(qr_id), key_(key)
 }
 
 std::string key_token::operator()() const {
-    return key_;
+    return std::string("$") + std::to_string(qr_id_) + "." + key_;
 }
 
 void key_token::accept(int rank, expression_visitor &fep) {
