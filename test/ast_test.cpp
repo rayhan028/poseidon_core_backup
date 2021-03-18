@@ -64,4 +64,18 @@ TEST_CASE("Constructing an AST from a query string", "[qlang]") {
         REQUIRE(os.str() == "LeftOuterJoin($0.id==$0.id )\n├── NodeScan('Post' )\n└── NodeScan('Person' )\n");
     }
 
+    SECTION("sort + limit") {
+        auto ast = qc.parse("Limit(20, Sort([$4.Age:int DESC, $1.Name:string ASC]))");
+        std::ostringstream os;
+        ast_to_stream(ast, os);
+        REQUIRE(os.str() == "Limit(20 )\n└── Sort([ $4.Age 2, $1.Name 1 ] )\n");
+    }
+
+   SECTION("groupby") {
+        auto ast = qc.parse("GroupBy([$0.Name:string], [count($0.Id:int), avg($0.Age:int)], NodeScan('Person'))");
+        std::ostringstream os;
+        ast_to_stream(ast, os);
+        REQUIRE(os.str() == "GroupBy([ $0.Name ] [ count($0.Id):int, avg($0.Age):int ] )\n└── NodeScan('Person' )\n");
+    }
+
 }

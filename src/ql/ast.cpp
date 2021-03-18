@@ -25,6 +25,8 @@ std::ostream& operator<<(std::ostream& os, const proj_spec_list& plist) {
     for (auto i = 0u; i < plist.size(); i++) {
         auto& pi = plist[i];
         os << pi.pname;
+        if (pi.porder != proj_spec::None)
+            os << " " << pi.porder;
         if (i < plist.size()-1) os << ", ";
     }
     os << " ]";
@@ -39,6 +41,17 @@ std::ostream& operator<<(std::ostream& os, const jproperty_list& plist) {
         if (i < plist.size()-1) os << ", ";
     }
     os << " }";
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const aggr_spec_list& alist) {
+    os << "[ ";
+    for (auto i = 0u; i < alist.size(); i++) {
+        auto& ai = alist[i];
+        os << ai.afunc << "(" << ai.aname << "):" << ai.atype;
+        if (i < alist.size()-1) os << ", ";
+    }
+    os << " ]";
     return os;
 }
 
@@ -76,6 +89,7 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
       [&](const std::string &s) { os << s; },
       [&](const expr& expr) { os << (*expr)(); },
       [&](const proj_spec_list& plist) { os << plist; },
+      [&](const aggr_spec_list& alist) { os << alist; },
       [&](const jproperty_list& plist) { os << plist; });
 
    for (const auto& p : op.params_) {

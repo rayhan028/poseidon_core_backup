@@ -105,8 +105,7 @@ Project | [ projection list ], input | Projects query results based on the given
 Limit | number of tuples, input | Limits the input list to the given number of tuples
 ForeachRelationship | TO or FROM, RelationshipType, input | Traverses all incoming or outgoing relationships of the given type
 Sort |  sort function, input | Orders tuples according to the sorting function
-Group | [ GroupKey list ], input | Groups all tuples based on grouping key(s)
-Aggregate | [ AggregateType list ], input | Applies aggregate function(s) and appends the output to tuple
+GroupBy | [ GroupKey list ], [ AggregateType list  ], input | Groups all tuples based on grouping key(s) and apply aggregate functions
 AppendToTuple | result function, input | Computes a query result and appends it to tuple
 Union | [ query list ], input | Combines the tuples of multiple queries
 AlgoShortestPath | SPATHTYPE, relationship predicate, weight function, input | Performs a uni/bi-directional search for the weighted/unweighted or top-k shortest paths between node pairs and appends the paths and/or their weights to tuple

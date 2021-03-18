@@ -29,6 +29,15 @@ std::string trim_ws(const std::string& str) {
   return str.substr(first, (last - first + 1));
 }
 
+proj_spec::sort_order parse_sort_order(const std::string &s) {
+  if (s == "ASC")
+    return proj_spec::Asc;
+  else if (s == "DESC")
+    return proj_spec::Desc;
+  else
+    return proj_spec::None;
+}
+
 void queryc::compile(const std::string &query) {
     auto ast = parse(query);
     if (ast) {
@@ -53,7 +62,7 @@ ast_op_ptr queryc::parse(const std::string &query) {
     ptree = pegtl::parse_tree::parse<qlang::qoperator,
                                     qlang::my_selector, qlang::my_control>(in);
     if (ptree)
-  	  ;//  pegtl::parse_tree::print_dot(std::cout, *ptree); 
+  	   ; // pegtl::parse_tree::print_dot(std::cout, *ptree); 
     else {
       std::cerr << "uknown parse error" << std::endl;
       return nullptr;
@@ -145,6 +154,14 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
         }
         nptr->add_param(plist);
       }
+      else if (param->is_type<qlang::func_array>()) {
+        aggr_spec_list alist;
+        for (auto& p : param->children) {
+          auto aspec = get_aggregate_spec(p);
+          alist.push_back(aspec);
+        }
+        nptr->add_param(alist);
+      }
       else if (param->is_type<qlang::node_pattern>()) {
         auto& p = param->children.front();
         // p->children[0] > node_or_rship_label
@@ -185,7 +202,7 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
         nptr->add_param(plist);
       }
       else 
-        std::cerr << "UNKNOWN param type!" << std::endl;
+        std::cerr << "UNKNOWN param type: " << param->string() << std::endl;
     }
   }
   return nptr;
@@ -194,8 +211,17 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
 proj_spec queryc::get_property_spec(parse_tree_ptr& pn) {
   assert (pn->is_type<qlang::proj_expr>());
   std::vector<std::string> s;
-  boost::split(s, pn->string(), boost::is_any_of(":"));
-  return proj_spec{ s[0], s[1] };
+  boost::split(s, pn->string(), boost::is_any_of(": "));
+  return s.size() == 2 ? proj_spec{ s[0], s[1], proj_spec::None } : proj_spec{ s[0], s[1], parse_sort_order(s[2]) };
+}
+
+aggr_spec queryc::get_aggregate_spec(parse_tree_ptr& pn) {
+  assert (pn->is_type<qlang::func_expr>());
+  assert (pn->children.size() == 3);
+  auto fname = pn->children[0]->string();
+  auto vname = pn->children[1]->string();
+  auto dtype = pn->children[2]->string();
+  return aggr_spec{ fname, vname, dtype };
 }
 
 jproperty queryc::get_json_property(parse_tree_ptr& pn) {
