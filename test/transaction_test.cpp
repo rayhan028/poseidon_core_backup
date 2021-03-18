@@ -90,23 +90,27 @@ graph_db_ptr create_graph_db() { return p_make_ptr<graph_db>(); }
 
 #endif
 
+TEST_CASE("Test transaction execution"  "[transaction]") {  
+	#ifdef USE_PMDK
+	  auto pop = prepare_pool();
+	  auto gdb = create_graph_db(pop);
+	#else
+	  auto gdb = create_graph_db();
+	#endif
 
-/*
- * Test case for issue : https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core/-/issues/25
- * Probable Minimal fix : Ensure that below lines are executed atomically
- * https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core/-/blob/master/src/storage/graph_db.cpp#L160 and
- * https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core/-/blob/master/src/storage/graph_db.cpp#L162
- *
- * Repeat the fix for Relationships, too
- * Similarly, A fix is needed during concurrent Insert and Read.
- */
+  gdb->run_transaction([&]() {
+    gdb->add_node("Actor",
+		                {{"name", boost::any(std::string("Mark Wahlberg"))},
+		                  {"age", boost::any(48)}});
+    return true;
+  });
 
+	#ifdef USE_PMDK
+	  drop_graph_db(pop, gdb);
+	#endif  
+}
 
 TEST_CASE("Test concurrency: update during read"  "[transaction]") {  
-	/*
-	* If two concurrent write Transactions are triggered, then the end result must be that there are two seperate
-	* nodes created
-	*/
 	#ifdef USE_PMDK
 	  auto pop = prepare_pool();
 	  auto gdb = create_graph_db(pop);
@@ -124,19 +128,22 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 		gdb->commit_transaction();
 
 	/*
-	 * Thread #1: read the node
+	 * Thread #1: read the node description
 	 */
 	  auto t1 = std::thread([&]() {
-			// read the node
+			// start the transaction
 			auto tx = gdb->begin_transaction();
 
-	    b1.notify();  // so that txn-3 can start.
+      // inform tx #2 that we started already
+	    b1.notify();  
+      // but wait until tx #2 has updated a node
       b2.wait();
 	    auto nd = gdb->get_node_description(nid);
 
-      // Since the Read Txn started before Update Txn, it should always read the original version.
-			REQUIRE(nd.label == "Actor"); // It fails here because this txn sees updated Actor
-			REQUIRE(get_property<int>(nd.properties, "age") == 48); //here too.. it sees 52 instead of 48
+      // Since this read txn started before the update txn, 
+      // we should always read the original version.
+			REQUIRE(nd.label == "Actor"); 
+			REQUIRE(get_property<int>(nd.properties, "age") == 48); 
 
 			gdb->commit_transaction();
     });
@@ -145,8 +152,7 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 	 * Thread #2: update the same node
 	 */
 	  auto t2 = std::thread([&]() {
-			// update the node
-			b1.wait(); // ensure that update Txn starts after read Txn
+			b1.wait(); // ensure that update txn starts after read txn
 			auto tx = gdb->begin_transaction();
 			auto &n = gdb->node_by_id(nid);
 			gdb->update_node(n,  //update
@@ -1139,6 +1145,88 @@ TEST_CASE("Checking that deleting a node works also within a transaction", "[tra
     gdb->commit_transaction();
   }
 
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that detach delete a node works", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t a, b, c, d, e;
+  {
+    // add a few nodes
+    auto tx = gdb->begin_transaction();
+      a = gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
+                                  {"age", boost::any(42)}});
+      b = gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                  {"age", boost::any(36)}});
+      c = gdb->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
+                                  {"age", boost::any(58)}});
+      d = gdb->add_relationship(a, b, ":knows", {});
+      e = gdb->add_relationship(a, c, ":knows", {});
+
+    gdb->commit_transaction();
+  }
+  {
+    // delete the node and all its relationships
+    auto tx = gdb->begin_transaction();
+    gdb->detach_delete_node(a);
+    gdb->commit_transaction();
+  }
+
+  {
+    // check that the node doesn't exist anymore
+    auto tx = gdb->begin_transaction();
+    REQUIRE_THROWS_AS(gdb->node_by_id(a), unknown_id);
+    REQUIRE_THROWS_AS(gdb->rship_by_id(d), unknown_id);
+    REQUIRE_THROWS_AS(gdb->rship_by_id(e), unknown_id);
+    gdb->abort_transaction();
+  }
+#ifdef USE_PMDK
+  drop_graph_db(pop, gdb);
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
+TEST_CASE("Checking that detach delete also works within a transaction", "[transaction]") {
+#ifdef USE_PMDK
+  auto pop = prepare_pool();
+  auto gdb = create_graph_db(pop);
+#else
+  auto gdb = create_graph_db();
+#endif
+  node::id_t a, b, c, d, e;
+  {
+    // add a few nodes
+    auto tx = gdb->begin_transaction();
+      a = gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
+                                  {"age", boost::any(42)}});
+      b = gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                  {"age", boost::any(36)}});
+      c = gdb->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
+                                  {"age", boost::any(58)}});
+      d = gdb->add_relationship(a, b, ":knows", {});
+      e = gdb->add_relationship(a, c, ":knows", {});
+
+    gdb->commit_transaction();
+  }
+  {
+    // delete the node
+    auto tx = gdb->begin_transaction();
+    gdb->detach_delete_node(a);
+    REQUIRE_THROWS_AS(gdb->node_by_id(a), unknown_id);
+    REQUIRE_THROWS_AS(gdb->rship_by_id(d), unknown_id);
+    REQUIRE_THROWS_AS(gdb->rship_by_id(e), unknown_id);
+    gdb->abort_transaction();
+  }
 #ifdef USE_PMDK
   drop_graph_db(pop, gdb);
 #endif

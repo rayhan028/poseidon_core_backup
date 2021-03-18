@@ -141,3 +141,88 @@ void update_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
   gdb->update_node(*n, props);
   consume_(gdb, v);
 }
+
+/* ------------------------------------------------------------------------ */
+
+void detach_node::dump(std::ostream &os) const {
+  os << "detach_node([" "])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void detach_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  qr_tuple res = v;
+  node * n = nullptr;
+  if (pos_ == std::numeric_limits<std::size_t>::max()) {
+    n = boost::get<node *>(v.back());
+    res[(v.size() - 1)] = query_result(null_t(-1));
+  }
+  else {
+    n = boost::get<node *>(v[pos_]);
+    res[pos_] = query_result(null_t(-1));
+  }
+
+  std::list<relationship::id_t> rships;
+  gdb->foreach_from_relationship_of_node(*n, [&](relationship &r) {
+    rships.push_back(r.id()); });
+  gdb->foreach_to_relationship_of_node(*n, [&](relationship &r) {
+    rships.push_back(r.id()); });
+
+  for (auto rid : rships)
+    gdb->delete_relationship(rid);
+
+  // for(auto rel : rels_)
+  //   res[rel] = query_result(null_t(-1));
+
+  gdb->delete_node(n->id());
+
+  consume_(gdb, res);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void remove_node::dump(std::ostream &os) const {
+  os << "remove_node([" "])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void remove_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  qr_tuple res = v;
+  node * n = nullptr;
+  if (pos_ == std::numeric_limits<std::size_t>::max()) {
+    n = boost::get<node *>(v.back());
+    res[(v.size() - 1)] = query_result(null_t(-1));
+  }
+  else {
+    n = boost::get<node *>(v[pos_]);
+    res[pos_] = query_result(null_t(-1));
+  }
+
+  gdb->delete_node(n->id());
+  consume_(gdb, res);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void remove_rship::dump(std::ostream &os) const {
+  os << "remove_rship([" "])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+void remove_rship::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  qr_tuple res = v;
+  relationship * r = nullptr;
+  if (pos_ == std::numeric_limits<std::size_t>::max()) {
+    r = boost::get<relationship *>(v.back());
+    res[(v.size() - 1)] = query_result(null_t(-1));
+  }
+  else {
+    r = boost::get<relationship *>(v[pos_]);
+    res[pos_] = query_result(null_t(-1));
+  }
+
+  gdb->delete_relationship(r->id());
+  consume_(gdb, res);
+}

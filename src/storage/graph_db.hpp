@@ -88,9 +88,10 @@ public:
   bool abort_transaction();
 
   /**
-   * Performs initialization steps after starting the database.
+   * Encapsulated code for execution a transaction. If body returns true then
+   * the transaction is committed, otherwise the transaction is aborted.
    */
-  void runtime_initialize();
+  bool run_transaction(std::function<bool()> body);
 
   /* ---------------- graph construction ---------------- */
 
@@ -246,6 +247,11 @@ public:
   /* ---------------- helper ---------------- */
 
   /**
+   * Performs initialization steps after starting the database.
+   */
+  void runtime_initialize();
+
+  /**
    * Returns a reference to the dictionary of string codes.
    */
   p_ptr<dict> &get_dictionary() { return dict_; }
@@ -327,6 +333,8 @@ public:
    */
   void index_lookup(index_id idx, uint64_t key, node_consumer_func consumer);
 
+  void index_lookup(std::list<index_id> &idxs, uint64_t key, node_consumer_func consumer);
+
   /* ---------------- query support ---------------- */
 
   /**
@@ -334,6 +342,13 @@ public:
    * these nodes the consumer function.
    */
   void nodes_by_label(const std::string &label, node_consumer_func consumer);
+
+  /**
+   * Scans all nodes of the graph with any of the given labels and invokes for each of
+   * these nodes the consumer function. This is for entity objects belonging to the same
+   * abstract entity (e.g. Post and Comment are sub-classes of Message)
+   */
+  void nodes_by_label(const std::vector<std::string> &labels, node_consumer_func consumer);
 
   /**
    * Scans all nodes of the graph and invokes for each nodes the given consumer

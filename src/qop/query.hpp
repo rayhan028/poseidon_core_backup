@@ -61,32 +61,49 @@ public:
    */
   query &nodes_where(const std::string &label, const std::string &key,
                      std::function<bool(const p_item &)> pred);
+  
+  /**
+   * Add a scan over all nodes with any of the given labels which satisfy the given predicate
+   * on the property with the given key. This is for entity objects belonging to the same
+   * abstract entity (e.g. Post and Comment are sub-classes of Message)
+   */
+  query &nodes_where(const std::vector<std::string> &labels, const std::string &key,
+                     std::function<bool(const p_item &)> pred);
 
   /**
    * Add an index scan over nodes where the key is equal to the given value. 
    */
   query &nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val);
 
-
   query &continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label = "");
+
+  query &nodes_where_indexed(const std::vector<std::string> &labels,
+                              const std::string &prop, uint64_t val);
+
   /**
    * Add an operator that scans all incoming relationships of the last node in
-   * the query result. Optionally, the given label of the relationship is
-   * checked, too.
+   * the query result. Optionally, 1) the given label of the relationship is
+   * checked, too. 2) Nodes that were already explored, i.e. other than the frontier,
+   * can also be re-explored, given their position.
    */
-  query &to_relationships(const std::string &label = "");
+  query &to_relationships(const std::string &label = "",
+                          int pos = std::numeric_limits<int>::max());
   query &to_relationships(std::pair<int, int> range,
-                          const std::string &label = "");
+                          const std::string &label = "",
+                          int pos = std::numeric_limits<int>::max());
 
   /**
    * Add an operator that scans all outgoing relationships of the last node in
-   * the query result. Optionally, the given label of the relationship is
-   * checked, too.
+   * the query result. Optionally, 1) the given label of the relationship is
+   * checked, too. 2) Nodes that were already explored, i.e. other than the frontier,
+   * can also be re-explored, given their position.
    */
-  query &from_relationships(const std::string &label = "");
+  query &from_relationships(const std::string &label = "",
+                            int pos = std::numeric_limits<int>::max());
 
   query &from_relationships(std::pair<int, int> range,
-                            const std::string &label = "");
+                            const std::string &label = "",
+                            int pos = std::numeric_limits<int>::max());
 
   /**
    * Add a filter operator for checking that the property with the given key
@@ -99,15 +116,19 @@ public:
 
   /**
    * Add an operator the retrieves the node at the destination side of the
-   * currently processed relationship with an optional filter for label.
+   * currently processed relationship with an optional filter for label(s).
    */
   query &to_node(const std::string &label = "");
 
+  query &to_node(const std::vector<std::string> &labels);
+
   /**
    * Add an operator the retrieves the node at the source side of the
-   * currently processed relationship with an optional filter for label.
+   * currently processed relationship with an optional filter for label(s).
    */
   query &from_node(const std::string &label = "");
+
+  query &from_node(const std::vector<std::string> &labels);
 
   /**
    * Add a filter operator that checks whether the last node/relationship
@@ -116,14 +137,24 @@ public:
   query &has_label(const std::string &label);
 
   /**
+   * Add a filter operator that checks whether the last node/relationship
+   * in the result has one of the given labels.
+   */
+  query &has_label(const std::vector<std::string> &labels);
+
+  /**
    * Add a limit operator that produces only the first n result elements.
    */
   query &limit(std::size_t n);
 
-/**
-   * TODO
+  /**
+   * Add an operator that appends the relationship object between a source and a
+   * destination node, whose positions in the query tuple are given by the
+   * src_des pair.
+   * When no relationship exist between them, the boolean b sets whether a
+   * null_t is appended instead (true) or not (false)
    */
-  query &rship_exists(std::pair<int, int> src_des);
+  query &rship_exists(std::pair<int, int> src_des, bool append_null = false);
 
   /**
    * Add a projection operator that applies the given list of projection
@@ -135,6 +166,36 @@ public:
    * Add an operator for sorting the results.
    */
   query &orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp);
+
+  /**
+   * Add an operator for grouping and optional aggregation. The positions of the 
+   * grouping keys in the query result tuple are specified by the positions in 
+   * the vector pos. The aggregation function name(s) and the position(s) of the 
+   * attribute(s) (in the tuple) to be aggregated are given as the vector of 
+   * string-int pairs aggrs.
+   */
+  query &groupby(const std::vector<std::size_t> &pos);
+  query &groupby(const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+
+  /**
+   * Add an operator to filter projected result tuples based on the pred function.
+   */
+  query &where_qr_tuple(std::function<bool(const qr_tuple &)> pred);
+
+  /**
+   * Add an operator that applies a function on multiple query results in the 
+   * same query tuple and appends the result to the tuple.
+   */
+  query &append_to_qr_tuple(std::function<query_result(qr_tuple &)> func);
+
+  /**
+   * Add an operator to unions all the query tuples of the left query 
+   * pipeline and the right query pipeline(s).
+   */
+  query &union_all(query &other);
+
+  query &union_all(std::initializer_list<query *> queries);
 
   /**
    * Add a print operator for outputting the query results to cout.
@@ -153,14 +214,52 @@ public:
   query &finish();
 
   /**
+<<<<<<< HEAD
    * Perists intermediate tuple results
    */
   query &persist();
 
   /**
    * TODO
+=======
+   * Add an operator for constructing the cartesian product of the query tuples 
+   * of the left and right query pipelines.
+>>>>>>> master
    */
   query &crossjoin(query &other);
+
+  /**
+   * Add a nested loop join operator for merging tuples of two
+   * query pipelines if the node at a given position in the left tuple
+   * is the same as the node at another given position in the right tuple.
+   * The node positions are specified by the pos pair. 
+   */
+  query &join_on_node(std::pair<int, int> left_right, query &other);
+
+  /**
+   * Add a hash join operator for merging tuples of two
+   * query pipelines if the node at a given position in the left tuple
+   * is the same as the node at another given position in the right tuple.
+   * The node positions are specified by the pos pair. 
+   */
+  query &hashjoin_on_node(std::pair<int, int> left_right, query &other);
+
+  /**
+   * Add a left outerjoin operator for merging tuples of two queries if the node
+   * at a given position in the left tuple is the same as the node at another
+   * given position in the right tuple. The node positions are specified by the
+   * pos pair. Dangling tuples are padded with "NULL" 
+   */
+  query &outerjoin_on_node(const std::pair<int, int> &left_right, query &other);
+
+  /**
+   * Add a join operator for merging tuples of two 
+   * queries if there exists a relationship defined by an object
+   * (at a given position) in the left tuple as the source node 
+   * and an object (at a given position) in the right tuple as 
+   * the destination node 
+   */
+  query &join_on_rship(std::pair<int, int> src_des, query &other);
 
   /**
    * Add a left outerjoin operator for merging tuples of two 
@@ -169,17 +268,45 @@ public:
    * and an object (at a given position) in the right tuple as 
    * the destination node 
    */
-  query &outerjoin(std::pair<int, int> src_des, query &other);
+  query &outerjoin_on_rship(std::pair<int, int> src_des, query &other);
 
   /**
-   * TODO 
-   */
-  query &join_on_node(std::pair<int, int> left_right, query &other);
+   * Add an operator to find the unweighted shortest path between the pair 
+   * of nodes given their positions in the query tuple. Bidirectional 
+   * search (i.e. via outgoing and incoming relationships) is optionally 
+   * set using the flag, bidirectional.
+   * rpred is a predicate for checking if a relationship is traversed.
+   * The operator appends an array of IDs of the nodes along the shortest
+   * path.
+  */
+  query &algo_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+                            rship_predicate rpred, bool bidirectional = false);
 
   /**
-   * TODO 
-   */
-  query &hashjoin_on_node(std::pair<int, int> left_right, query &other);
+   * Add an operator to find the weighted shortest path between the pair 
+   * of nodes given their positions in the query tuple. Bidirectional 
+   * search (i.e. via outgoing and incoming relationships) is optionally 
+   * set using the flag, bidirectional.
+   * rpred is a predicate for checking if a relationship is traversed.
+   * weight is a function that computes the weight of a relationship.
+   * The operator appends the total weight of the shortest path to the
+   * query tuple.
+  */
+  query &algo_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+        rship_predicate rpred, rship_weight weight, bool bidirectional = false);
+
+  /**
+   * Add an operator to find the top k weighted shortest path between the pair 
+   * of nodes given their positions in the query tuple. Bidirectional 
+   * search (i.e. via outgoing and incoming relationships) is optionally 
+   * set using the flag, bidirectional.
+   * rpred is a predicate for checking if a relationship is traversed.
+   * weight is a function that computes the weight of a relationship.
+   * The operator appends the total weight of the shortest path to the
+   * query tuple.
+  */
+  query &algo_k_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+      std::size_t k, rship_predicate rpred, rship_weight weight, bool bidirectional = false);
 
   /**
    * Add an operator for invoking a LUA function as part of the query.
@@ -217,6 +344,28 @@ public:
    */
   query &update(std::size_t var, properties_t &props);
 
+  /**
+   * Add an operator for deleting the last node in a query tuple.
+   * All relationship objects connected to the node are also deleted.
+   * The optional pos specifies a node to be deleted at other
+   * positions in the tuple.
+   */
+  query &delete_detach(const std::size_t pos = std::numeric_limits<std::size_t>::max());
+
+  /**
+   * Add an operator for deleting the last node in a query tuple.
+   * The optional pos specifies a node to be deleted at other
+   * positions in the tuple.
+   */
+  query &delete_node(const std::size_t pos = std::numeric_limits<std::size_t>::max());
+
+  /**
+   * Add an operator for deleting the last relationship in a query tuple.
+   * The optional pos specifies a relationship to be deleted at other
+   * positions in the tuple.
+   */
+  query &delete_rship(const std::size_t pos = std::numeric_limits<std::size_t>::max());
+
   /*-------------------------------------------------------------------*/
 
   /**
@@ -227,9 +376,10 @@ public:
   /**
    * Print the query plan.
    */
-  void dump(std::ostream &os = std::cout);
+  void print_plan(std::ostream& os = std::cout);
 
   static void start(std::initializer_list<query *> queries);
+  static void print_plans(std::initializer_list<query *> queries, std::ostream& os = std::cout);
 
   /**
    * Return the pointer to the graph database.
@@ -262,11 +412,6 @@ public:
    * Start the execution of the query.
    */
   void start();
-
-  /**
-   * Print the query plan.
-   */
-  void dump(std::ostream &os = std::cout);
 
 private:
   std::vector<query> queries_;

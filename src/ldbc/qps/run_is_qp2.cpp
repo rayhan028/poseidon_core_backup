@@ -13,6 +13,7 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
+// -------------------------------------------------------------------------------------------------------------------------
 
 double calc_avg_time(const std::vector<double>& vec) {
     double d = 0.0;
@@ -57,7 +58,7 @@ double run_query_1(graph_db_ptr gdb) {
         auto start_qp = std::chrono::steady_clock::now();
 
         auto tx = gdb->begin_transaction();
-        ldbc_is_query_1(gdb, rs, personIds[i]);
+        ldbc_is_qp2_query_1(gdb, rs, personIds[i]);
         gdb->commit_transaction();
 
         auto end_qp = std::chrono::steady_clock::now();
@@ -101,7 +102,7 @@ double run_query_2_p(graph_db_ptr gdb) {
         auto start_qp = std::chrono::steady_clock::now();
 
         auto tx = gdb->begin_transaction();
-        ldbc_is_query_2_p(gdb, rs, personIds[i]);
+        ldbc_is_qp2_query_2_p(gdb, rs, personIds[i]);
         gdb->commit_transaction();
 
         auto end_qp = std::chrono::steady_clock::now();
@@ -146,7 +147,7 @@ double run_query_2_c(graph_db_ptr gdb) {
         auto start_qp = std::chrono::steady_clock::now();
 
         auto tx = gdb->begin_transaction();
-        ldbc_is_query_2_c(gdb, rs, personIds[i]);
+        ldbc_is_qp2_query_2_c(gdb, rs, personIds[i]);
         gdb->commit_transaction();
 
         auto end_qp = std::chrono::steady_clock::now();
@@ -191,263 +192,7 @@ double run_query_3(graph_db_ptr gdb) {
       auto start_qp = std::chrono::steady_clock::now();
 
       auto tx = gdb->begin_transaction();
-      ldbc_is_query_3(gdb, rs, personIds[i]);
-      gdb->commit_transaction();
-
-      auto end_qp = std::chrono::steady_clock::now();
-      runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
-                                                                       start_qp).count();
-#ifdef PRINT_RESULT
-      std::cout << rs << "\n";
-#endif
-    }
-    return calc_avg_time(runtimes);
-}
-
-double run_query_4_p(graph_db_ptr gdb) {
-    std::vector<uint64_t> postIds =
-#ifdef SF_100
-        {39582418599936, 17592187092992, 65971148923702, 43980918701267, 65971018451354,
-        26388730323952, 8796096167946, 65971150117789};
-#elif defined(SF_10)
-        { 4398067251028,  2199043946640,  2199037876061,  6597090750692, 4398075704871,
-        7696589408397,  3298550269571,  4398061999667,  7696621883870,  7696591812715,
-        2748817450668,  5497571035089,  4398055319228, 8246355344067,  8246362564011,
-        1649294789710,  7146856770100,  3848300633506,  8246347114898,  5497580138363,
-        7146845964022,  7146861667978,  7146850822113,  7146851976510,  7146847600481,
-        7146833549023,  7146835916936,  2199031335329,  4947834453085,  1649269718480,
-        2748802751725,  2748809026462,  7146849576015,  6597073593366,  6047349141655,
-        3848325558344,  5497560701738,  6597099501373,  7146837110089,  5497569013304,
-        8246358234322,  549765328557,  5497595205987,  3848298086950,  2199040160941,
-        7696586176598,  8246365612544,  3298562064542,  7146853212564, 8246366297574,
-        4947814411455,  7146847681997};
-#else
-        {1374389534801, 687194926510, 1236950581577, 824633724379, 687194903818,
-        549755930326, 1649267546616, 1649267453265, 1924145376549, 1099511719169};
-#endif
-
-    std::vector<double> runtimes(postIds.size());
-
-    for (auto i = 0u; i < postIds.size(); i++) {
-      result_set rs;
-      auto start_qp = std::chrono::steady_clock::now();
-
-      auto tx = gdb->begin_transaction();
-      ldbc_is_query_4_p(gdb, rs, postIds[i]);
-      gdb->commit_transaction();
-
-      auto end_qp = std::chrono::steady_clock::now();
-      runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
-                                                                       start_qp).count();
-#ifdef PRINT_RESULT
-      std::cout << rs << "\n";
-#endif
-    }
-    return calc_avg_time(runtimes);
-}
-
-double run_query_4_c(graph_db_ptr gdb) {
-    std::vector<uint64_t> commentIds =
-#ifdef SF_100
-        {39582418599937, 17592187092993, 52776560230402, 43980918701269, 70369064968225,
-        26388730323960, 8796096167948, 8796545473432};
-#elif defined(SF_10)
-        {7146837074657,  6597103956627,  3848301802195,  7146837499403,  5497571658687,
-        7146859489686,  5497570252406,  3848303243210,  5497572320002,  5497579913092,
-        2199023675683,  3298567083043,  3298545915339, 6047340077013,  2748810494285,
-        3848304697939,  2748793590070,  7146836614405,  8246374073295,  5497575170470,
-        7696615613480,  6047342625473, 7146840311129,  5497592913303,  3848302626541,
-        549763541252, 7696594987644,  7696616449636,  1649275891208,  8246351688273,
-        6597091918954,  7696618491904,  7146831583655,  5497569640572,  6597077682727,
-        5497567744687,  4398049179630,  4398073102203,  7146860736359, 4947832362234,
-        4398067346974,  7146840849688,  4398083584372,  7146840360913,  3848306595564,
-        6047319356807, 8796112244667,  7146849550683,  6047352098252,  7696611407007,
-        7146833587239,  5497569176501};
-#else
-        {1236950581249, 1374389535139, 687194767797, 962072674365, 274877974096,
-        1374389620660, 1374389535186, 2061584302604, 1099511678319, 1099511755889};
-#endif
-
-    std::vector<double> runtimes(commentIds.size());
-
-    for (auto i = 0u; i < commentIds.size(); i++) {
-      result_set rs;
-      auto start_qp = std::chrono::steady_clock::now();
-
-      auto tx = gdb->begin_transaction();
-      ldbc_is_query_4_c(gdb, rs, commentIds[i]);
-      gdb->commit_transaction();
-
-      auto end_qp = std::chrono::steady_clock::now();
-      runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
-                                                                       start_qp).count();
-#ifdef PRINT_RESULT
-      std::cout << rs << "\n";
-#endif
-    }
-    return calc_avg_time(runtimes);
-}
-
-double run_query_5_p(graph_db_ptr gdb) {
-    std::vector<uint64_t> postIds =
-#ifdef SF_100
-        {39582418599936, 17592187092992, 65971148923702, 43980918701267, 65971018451354,
-        26388730323952, 8796096167946, 65971150117789};
-#elif defined(SF_10)
-        {6047326493568, 3298542751399, 5497579766579, 6047315801577, 7146826860796,
-        4398052411492, 6597071125408, 2748795008706, 5497565976239, 6047317955673,
-        8246349086875, 6597101144059, 5497585321851, 6047322995696, 8246343732132,
-        8246361238663, 8246371250918, 7146841642007, 4398066832413, 2748781695234,
-        7146855075933, 7696592838948, 3848319905136, 7146837661310, 7146858026094,
-        4398071981665, 7696609373164, 5497573996954, 6597079488539, 3848319718972,
-        6597087897092, 7146831804964, 8246377330827, 3848311890261, 3298536481883,
-        7696600561652, 5497573589618, 3298556456310, 6597109262960, 549756173665,
-        4947834328852, 4398075355527, 7696611725879, 5497566786379, 7696612644083,
-        6047332264718, 7146837107713, 7696607396967, 7146857933718, 2748804452443,
-        6597099130552, 6597080687795};
-#else
-        {1649267611029, 1649267641500, 1649267717129, 549756117312, 962073027971,
-        1924145709571, 1786706759766, 137439322338, 962073047211, 1786706792809};
-#endif
-
-    std::vector<double> runtimes(postIds.size());
-
-    for (auto i = 0u; i < postIds.size(); i++) {
-      result_set rs;
-      auto start_qp = std::chrono::steady_clock::now();
-
-      auto tx = gdb->begin_transaction();
-      ldbc_is_query_5_p(gdb, rs, postIds[i]);
-      gdb->commit_transaction();
-
-      auto end_qp = std::chrono::steady_clock::now();
-      runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
-                                                                       start_qp).count();
-#ifdef PRINT_RESULT
-      std::cout << rs << "\n";
-#endif
-    }
-    return calc_avg_time(runtimes);
-}
-
-double run_query_5_c(graph_db_ptr gdb) {
-    std::vector<uint64_t> commentIds =
-#ifdef SF_100
-        {39582418599937, 17592187092993, 52776560230402, 43980918701269, 70369064968225,
-        26388730323960, 8796096167948, 8796545473432};
-#elif defined(SF_10)
-        {4398085711669, 5497581697867, 8796113056132, 3298560907184, 4947822939393,
-        4398070249301, 3848312245560, 1649279381402, 1649272063101, 7696601345746,
-        1649270862758, 2199043244454, 3848330137206, 3848320714563, 7696599764981,
-        4398049076779, 3848331029634, 4947830627212, 8246345917057, 4398048176041,
-        3298555146483, 8246355037778, 3298554625423, 3848299782253, 6597072683829,
-        7146838886436, 4947839031063, 7146830729841, 4398085377321, 7146848658314,
-        6597080192231, 8246349659145, 4947810290408, 1099551056576, 6597095818102,
-        3298544696882, 1099518992300, 4398056527889, 8246365341325, 7146831228474,
-        6597103467760, 2748786865138, 7146845163780, 2199036369137, 3848292238383,
-        6047353276351, 5497561930650, 6047316621496, 3848291103926, 2199025590666,
-        4398048989441, 3298543737354};
-#else
-        {2061584429975, 1099511764068, 1511828638961, 1099511794459, 1924145529653,
-        137439153914, 1374389758562, 687194998602, 1099511869402, 1649267722310};
-#endif
-
-    std::vector<double> runtimes(commentIds.size());
-
-    for (auto i = 0u; i < commentIds.size(); i++) {
-      result_set rs;
-      auto start_qp = std::chrono::steady_clock::now();
-
-      auto tx = gdb->begin_transaction();
-      ldbc_is_query_5_c(gdb, rs, commentIds[i]);
-      gdb->commit_transaction();
-
-      auto end_qp = std::chrono::steady_clock::now();
-      runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
-                                                                       start_qp).count();
-#ifdef PRINT_RESULT
-      std::cout << rs << "\n";
-#endif
-    }
-    return calc_avg_time(runtimes);
-}
-
-double run_query_6_p(graph_db_ptr gdb) {
-    std::vector<uint64_t> postIds =
-#ifdef SF_100
-        {39582418599936, 17592187092992, 65971148923702, 43980918701267, 65971018451354,
-        26388730323952, 8796096167946, 65971150117789};
-#elif defined(SF_10)
-        {6047348850997, 5497564365221, 3848329967558, 4398047599412, 6597105769994,
-        4947821105898, 7696607613655, 5497597471779, 5497565124879, 7696587911380,
-        7696592464558, 6047339895007, 7146837287657, 7696592802214, 6047333509576,
-        6047318254791, 3298568940677, 4947820585024, 8246339385108, 3298562096579,
-        7696617491509, 5497569775062, 8246366523162, 3298574334235, 4947820310842,
-        4398085624920, 7696594106627, 5497583929848, 8246345580501, 8796110519993,
-        1649283295282, 2199051023689, 6047318362421, 6047314584628, 7696589261990,
-        6047344893312, 3298550621323, 6597092944738, 6047321024153, 4398054812559,
-        4398071972522, 3848293901086, 8246355392461, 2748800645630, 1649267888051,
-        7146857571848, 6597093766004, 4947837595380, 8246344422919, 7696611410177,
-        5497583687275, 2748794674509};
-#else
-        {1374389534795, 3, 246, 1786710746552, 1786710746860,
-        962077492609, 4818574, 137443772206, 4818783, 1649273779906,
-        1099512706784, 1924145709571, 274879100510, 2061585683162, 2061585683383,
-        824638318943, 962073868902, 962076990540, 1236955780271, 1924151699930};
-#endif
-
-    std::vector<double> runtimes(postIds.size());
-
-    for (auto i = 0u; i < postIds.size(); i++) {
-      result_set rs;
-      auto start_qp = std::chrono::steady_clock::now();
-
-      auto tx = gdb->begin_transaction();
-      ldbc_is_query_6_p(gdb, rs, postIds[i]);
-      gdb->commit_transaction();
-
-      auto end_qp = std::chrono::steady_clock::now();
-      runtimes[i] = std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
-                                                                       start_qp).count();
-#ifdef PRINT_RESULT
-      std::cout << rs << "\n";
-#endif
-    }
-    return calc_avg_time(runtimes);
-}
-
-double run_query_6_c(graph_db_ptr gdb) {
-    std::vector<uint64_t> commentIds =
-#ifdef SF_100
-        {39582418599937, 17592187092993, 52776560230402, 43980918701269, 70369064968225,
-        26388730323960, 8796096167948, 8796545473432};
-#elif defined(SF_10)
-        {7146848797209, 6047342252109, 8246377297601, 1099513403506, 1649297650520,
-        8246341221876, 8246367373329, 8246342269850, 8246340778158, 6047344491668,
-        8796115187591, 7696619489960, 1099521487215, 6047326425751, 8246351033697,
-        8246365196867, 8246343099694, 6047350744524, 5497593227720, 2748790628283,
-        2748802395151, 3298557085552, 7696621423568, 7696613855335, 8246359053718,
-        7146844090065, 8246352454414, 5497577976061, 4947829453022, 6597092286565,
-        7146831749672, 6597075028453, 8246340918420, 3848318579211, 6597085643326,
-        3298542288861, 7696613107298, 6597087895623, 6597088834693, 8246358246770,
-        7696610350084, 7696589652492, 3298570627344, 8246352772973, 8246347750453,
-        8246342872094, 6597093391156, 7146827520774, 4947816404504, 7146854504754,
-        8246373280377, 8246367726351};
-#else
-        {549756150652, 2061587049723, 1786710610862, 1924150141935, 1649271672251,
-        1099518023455, 1511835112930, 962079298952, 549762439424, 1786707596571,
-        824635086444, 2199024637100, 549762296256, 412319368884, 1924148311956,
-        687196868319, 1786710956334, 2882812, 274878321446, 687194840176};
-#endif
-
-    std::vector<double> runtimes(commentIds.size());
-
-    for (auto i = 0u; i < commentIds.size(); i++) {
-      result_set rs;
-      auto start_qp = std::chrono::steady_clock::now();
-
-      auto tx = gdb->begin_transaction();
-      ldbc_is_query_6_c(gdb, rs, commentIds[i]);
+      ldbc_is_qp2_query_3(gdb, rs, personIds[i]);
       gdb->commit_transaction();
 
       auto end_qp = std::chrono::steady_clock::now();
@@ -491,7 +236,7 @@ double run_query_7_p(graph_db_ptr gdb) {
       auto start_qp = std::chrono::steady_clock::now();
 
       auto tx = gdb->begin_transaction();
-      ldbc_is_query_7_p(gdb, rs, postIds[i]);
+      ldbc_is_qp2_query_7_p(gdb, rs, postIds[i]);
       gdb->commit_transaction();
 
       auto end_qp = std::chrono::steady_clock::now();
@@ -535,7 +280,7 @@ double run_query_7_c(graph_db_ptr gdb) {
       auto start_qp = std::chrono::steady_clock::now();
 
       auto tx = gdb->begin_transaction();
-      ldbc_is_query_7_c(gdb, rs, commentIds[i]);
+      ldbc_is_qp2_query_7_c(gdb, rs, commentIds[i]);
       gdb->commit_transaction();
 
       auto end_qp = std::chrono::steady_clock::now();
@@ -558,18 +303,6 @@ void run_benchmark(graph_db_ptr gdb) {
     spdlog::info("Query #2c: {} msecs", t);
     t = run_query_3(gdb);
     spdlog::info("Query #3: {} msecs", t);
-    t = run_query_4_p(gdb);
-    spdlog::info("Query #4p: {} msecs", t);
-    t = run_query_4_c(gdb);
-    spdlog::info("Query #4c: {} msecs", t);
-    t = run_query_5_p(gdb);
-    spdlog::info("Query #5p: {} msecs", t);
-    t = run_query_5_c(gdb);
-    spdlog::info("Query #5c: {} msecs", t);
-    t = run_query_6_p(gdb);
-    spdlog::info("Query #6p: {} msecs", t);
-    t = run_query_6_c(gdb);
-    spdlog::info("Query #6c: {} msecs", t);
     t = run_query_7_p(gdb);
     spdlog::info("Query #7p: {} msecs", t);
     t = run_query_7_c(gdb);
@@ -641,9 +374,6 @@ int main(int argc, char **argv) {
   load_snb_data(graph, snb_home);
 #endif
   graph->print_stats();
-
-  for (auto i = 0; i < 10; i++) {
-          std::cout << "Run: " << i << "\n";
-    run_benchmark(graph);
-  }
+  
+  run_benchmark(graph);
 }

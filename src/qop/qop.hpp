@@ -28,10 +28,14 @@
 #include <set>
 #include <iterator>
 #include <condition_variable>
+#include <unordered_map>
 
+#include "defs.hpp"
 #include "graph_db.hpp"
 #include "nodes.hpp"
 #include "relationships.hpp"
+#include "shortest_path.hpp"
+#include "profiling.hpp"
 
 template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
   std::vector<T> v2;
@@ -135,10 +139,18 @@ struct qop {
    * Returns true if the operator has already a subscriber.
    */
   inline bool has_subscriber() const { return subscriber_.get() != nullptr; }
+
   /**
    * Return the current subscriber.
    */
   inline qop_ptr subscriber() { return subscriber_; }
+
+  /**
+   * Return true if this operator is a binary operator (join, union etc.)
+   */
+  virtual bool is_binary() const { return false; }
+
+  PROF_ACCESSOR;
 
 protected:
   qop_ptr subscriber_; // pointer to the subsequent operator which receives and
@@ -146,6 +158,7 @@ protected:
 
   consume_func consume_; // pointer to the subscriber's consume function
   finish_func finish_;   // pointer to the subscriber's finish function
+  PROF_DATA;
 };
 
 /**
@@ -155,6 +168,7 @@ protected:
  */
 struct scan_nodes : public qop {
   scan_nodes(const std::string &l) : label(l) {}
+  scan_nodes(const std::vector<std::string> &l) : labels(l) {}
   scan_nodes() = default;
   ~scan_nodes() = default;
 
@@ -163,6 +177,7 @@ struct scan_nodes : public qop {
   virtual void start(graph_db_ptr &gdb) override;
 
   std::string label;
+  std::vector<std::string> labels;
 };
 
 struct continue_scan_nodes : public qop {
@@ -186,6 +201,7 @@ struct continue_scan_nodes : public qop {
  */
 struct index_scan : public qop {
   index_scan(index_id ix, uint64_t k) : idx(ix), key(k) {}
+  index_scan(std::list<index_id> &ixs, uint64_t k) : key(k), idxs(ixs) {}
   ~index_scan() = default;
 
   void dump(std::ostream &os) const override;
@@ -194,6 +210,7 @@ struct index_scan : public qop {
 
   index_id idx;
   uint64_t key;
+  std::list<index_id> idxs;
 };
 
 /**
@@ -202,7 +219,7 @@ struct index_scan : public qop {
  * of the consume method.
  */
 struct foreach_from_relationship : public qop {
-  foreach_from_relationship(const std::string &l) : label(l), lcode(0) {}
+  foreach_from_relationship(const std::string &l, int pos) : label(l), lcode(0), npos(pos) {}
   ~foreach_from_relationship() = default;
 
   void dump(std::ostream &os) const override;
@@ -211,6 +228,7 @@ struct foreach_from_relationship : public qop {
 
   std::string label;
   dcode_t lcode;
+  int npos;
 };
 
 /**
@@ -220,8 +238,8 @@ struct foreach_from_relationship : public qop {
  */
 struct foreach_variable_from_relationship : public qop {
   foreach_variable_from_relationship(const std::string &l, std::size_t min,
-                                     std::size_t max)
-      : label(l), lcode(0), min_range(min), max_range(max) {}
+                                     std::size_t max, int pos)
+      : label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
   ~foreach_variable_from_relationship() = default;
 
   void dump(std::ostream &os) const override;
@@ -231,6 +249,7 @@ struct foreach_variable_from_relationship : public qop {
   std::string label;
   dcode_t lcode;
   std::size_t min_range, max_range;
+  int npos;
 };
 
 /**
@@ -239,7 +258,7 @@ struct foreach_variable_from_relationship : public qop {
  * of the consume method.
  */
 struct foreach_to_relationship : public qop {
-  foreach_to_relationship(const std::string &l) : label(l), lcode(0) {}
+  foreach_to_relationship(const std::string &l, int pos) : label(l), lcode(0), npos(pos) {}
   ~foreach_to_relationship() = default;
 
   void dump(std::ostream &os) const override;
@@ -248,6 +267,7 @@ struct foreach_to_relationship : public qop {
 
   std::string label;
   dcode_t lcode;
+  int npos;
 };
 
 /**
@@ -257,8 +277,8 @@ struct foreach_to_relationship : public qop {
  */
 struct foreach_variable_to_relationship : public qop {
   foreach_variable_to_relationship(const std::string &l, std::size_t min,
-                                   std::size_t max)
-      : label(l), lcode(0), min_range(min), max_range(max) {}
+                                   std::size_t max, int pos)
+      : label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
   ~foreach_variable_to_relationship() = default;
 
   void dump(std::ostream &os) const override;
@@ -268,6 +288,7 @@ struct foreach_variable_to_relationship : public qop {
   std::string label;
   dcode_t lcode;
   std::size_t min_range, max_range;
+  int npos;
 };
 
 /**
@@ -294,6 +315,7 @@ struct is_property : public qop {
  * the given label.
  */
 struct node_has_label : public qop {
+  node_has_label(const std::vector<std::string> &l) : labels(l), lcode(0) {}
   node_has_label(const std::string &l) : label(l), lcode(0) {}
   ~node_has_label() = default;
 
@@ -301,6 +323,7 @@ struct node_has_label : public qop {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  std::vector<std::string> labels;
   std::string label;
   dcode_t lcode;
 };
@@ -357,16 +380,21 @@ struct limit_result : public qop {
 };
 
 /**
- * TODO
+ * nodes_connected appends the relationship object between a source and a
+ * destination node, whose positions in the query tuple are given by the
+ * src_des pair.
+ * When no relationship exist between them, the boolean b sets whether a
+ * null_t is appended instead (true) or not (false)
  */
 struct nodes_connected : public qop {
-  nodes_connected(std::pair<int, int> src_des)  : src_des_nodes_(src_des) {} 
+  nodes_connected(std::pair<int, int> src_des, bool b)  : append_null_(b), src_des_nodes_(src_des) {} 
   ~nodes_connected() = default;
 
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  bool append_null_;
   std::pair<int, int> src_des_nodes_;
 };
 
@@ -444,6 +472,157 @@ struct order_by : public qop {
 };
 
 /**
+ * group_by implements an operator for grouping tuples and optional aggregations
+ * like count, sum, average, and percentage count.
+ * The grouping keys are query result(s) given by their positions in the query tuple.
+ * The aggregate type(s) and aggregate attribute(s) are given
+ * as a string-integer pair. The aggregate types above are specified as "count",
+ * "sum", "avg" and "pcount" respectively. The integer denotes the position of the
+ * aggregate attribute in the tuples of grps. 
+ */
+struct group_by : public qop {
+  group_by(const std::vector<std::size_t> &pos);
+  group_by(const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+  ~group_by() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  std::size_t grpkey_cnt_;
+  std::vector<std::string> grpkey_set_;
+  std::vector<std::size_t> grpkey_pos_;
+  std::unordered_map<std::string, std::size_t> grpkey_map_;
+  std::unordered_map<std::size_t, qr_tuple> grp_tpl_map_;
+  std::vector<std::pair<std::string, std::size_t>> aggrs_;
+  std::unordered_map<std::size_t, std::size_t> grp_size_map_;
+};
+
+/**
+ * filter_tuple implements an operator that filters a tuple
+ * based on a predicate function.
+ */
+struct filter_tuple : public qop {
+  filter_tuple(std::function<bool(const qr_tuple &)> func)
+      : pred_func_(func) {}
+  ~filter_tuple() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  std::function<bool(const qr_tuple &)> pred_func_;
+};
+
+/**
+ * qr_tuple_append implements an operator that appends a query
+ * result to a query tuple. The query result is computed from
+ * already existing query results in the tuple.
+ */
+struct qr_tuple_append : public qop {
+  qr_tuple_append(std::function<query_result(qr_tuple &)> func)
+      : func_(func) {}
+  ~qr_tuple_append() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  std::function<query_result(qr_tuple &)> func_;
+};
+
+/**
+ * union_all_qres implements an operator that unions all the
+ * query tuples of the left query pipeline and the right query
+ * pipeline(s).
+ */
+struct union_all_qres : public qop {
+  union_all_qres() = default;
+  ~union_all_qres() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  bool is_binary() const override { return true; }
+};
+
+/**
+ * shortest_path_opr implements an operator that finds the
+ * unweighted shortest path between two nodes.
+ */
+struct shortest_path_opr : public qop {
+  shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
+    rship_predicate pred, bool b) : bidirectional_(b),
+                  rpred_(pred), start_stop_(uv) {}
+  ~shortest_path_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  path_item path_;
+  bool bidirectional_;
+  rship_predicate rpred_;
+  std::pair<std::size_t, std::size_t> start_stop_;
+};
+
+/**
+ * weighted_shortest_path_opr implements an operator that finds the
+ * weighted shortest path between two nodes.
+ */
+struct weighted_shortest_path_opr : public qop {
+  weighted_shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
+    rship_predicate pred, rship_weight weight, bool b) : bidirectional_(b),
+                  rpred_(pred), rweight_(weight), start_stop_(uv) {}
+  ~weighted_shortest_path_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  path_item path_;
+  bool bidirectional_;
+  rship_predicate rpred_;
+  rship_weight rweight_;
+  std::pair<std::size_t, std::size_t> start_stop_;
+};
+
+/**
+ * k_weighted_shortest_path_opr implements an operator that finds the
+ * top k weighted shortest path between two nodes.
+ */
+struct k_weighted_shortest_path_opr : public qop {
+  k_weighted_shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
+    std::size_t k, rship_predicate pred, rship_weight weight, bool b) : 
+    k_(k), bidirectional_(b), rpred_(pred), rweight_(weight), start_stop_(uv) {}
+  ~k_weighted_shortest_path_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t k_;
+  path_item path_;
+  bool bidirectional_;
+  rship_predicate rpred_;
+  rship_weight rweight_;
+  std::pair<std::size_t, std::size_t> start_stop_;
+};
+
+/**
  * Operator for printing the content of a result set.
  */
 std::ostream &operator<<(std::ostream &os, const result_set &rs);
@@ -467,7 +646,8 @@ struct collect_result : public qop {
 };
 
 /**
- * end_pipeline is a query operator to end a query pipeline.
+ * end_pipeline is a query operator to end a query pipeline without
+ * collecting the query results.
  */
 struct end_pipeline : public qop {
   end_pipeline() = default;
@@ -508,11 +688,13 @@ struct persist_result : public qop {
 struct projection : public qop {
   using pr_result = boost::variant<node_description, node *, rship_description,
                                    relationship *, int, double, 
-                                   std::string, uint64_t, boost::posix_time::ptime, null_t>;
+                                   std::string, uint64_t, boost::posix_time::ptime, array_t, null_t>;
 
   struct expr {
     std::size_t vidx;
     std::function<query_result(pr_result)> func;
+    expr() = default;
+    expr(std::size_t i, std::function<query_result(pr_result)> f) : vidx(i), func(f) {}
   };
 
   using expr_list = std::vector<expr>;
@@ -542,7 +724,13 @@ query_result forward(projection::pr_result &res);
  * the key. Otherwise, return false.
  */	
 bool has_property(projection::pr_result &pv, const std::string &key);
-	
+
+/**
+ * Returns true if the node/relationship has the given label specified. 
+ * Otherwise, return false.
+ */	
+bool has_label(projection::pr_result &pv, const std::string &l);
+
 /**
  * Return the integer value of the property of a node/relationship stored in
  * projection_result res and identified by the given key.
@@ -583,6 +771,20 @@ query_result ptime_property(projection::pr_result &res,
  * stored in projection_result res and identified by the given key.
  */
 query_result pr_date(projection::pr_result &pv, 
+                 const std::string &key);
+
+/**
+ * Return the year of the date property of a node/relationship 
+ * stored in projection_result res and identified by the given key.
+ */
+query_result pr_year(projection::pr_result &pv, 
+                 const std::string &key);
+
+/**
+ * Return the month of the date property of a node/relationship 
+ * stored in projection_result res and identified by the given key.
+ */
+query_result pr_month(projection::pr_result &pv, 
                  const std::string &key);
 
 /**

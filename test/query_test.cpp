@@ -92,6 +92,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     rs.wait();
 
     REQUIRE(rs.data.size() == 3);
+    q.print_plan();
   }
 
   SECTION("order by") {
@@ -110,6 +111,7 @@ TEST_CASE("Testing query operators", "[qop]") {
       expected.data.push_back({query_result(std::to_string(i))});
     }
     REQUIRE(rs == expected);
+    q.print_plan();
   }
 
   SECTION("has string property") {
@@ -127,6 +129,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     rs.wait();
     expected.append({query_result(std::to_string(4)), query_result("aaa4")});
     REQUIRE(rs == expected);
+    q.print_plan();
   }
 
   SECTION("use index") {
@@ -147,6 +150,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     rs.wait();
     expected.append({query_result(std::to_string(3)), query_result("aaa3")});
     REQUIRE(rs == expected);
+    q.print_plan();
   }
   graph->abort_transaction();
 
@@ -182,6 +186,7 @@ TEST_CASE("Testing join operators", "[qop]") {
     expected.data.push_back({query_result("2"), query_result("3")});
     expected.data.push_back({query_result("2"), query_result("4")});
     REQUIRE(rs == expected);
+    query::print_plans({&q1, &q2});
   }
 
   graph->abort_transaction();
@@ -462,3 +467,312 @@ graph->add_relationship(comment3_id, amin_id, ":hasCreator", {});
   graph_pool::destroy(pool);
 } 
 
+TEST_CASE("Finding Unweighted Shortest Path", "[shortest_path]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  path_item ss_path;
+  path_visitor path_vis = [&](node &n, const path &p) { return; };
+  auto rpred = [&](relationship &r) {
+                return std::string(graph->get_string(r.rship_label)) == ":knows"; };
+
+  auto tx = graph->begin_transaction();
+
+  auto a = graph->add_node(":Person", {{"name",
+            boost::any(std::string("John"))}, {"age", boost::any(42)}});
+  auto b = graph->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                {"age", boost::any(36)}});
+  auto c = graph->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
+                                {"age", boost::any(58)}});
+  auto d = graph->add_node(":Person", {{"name", boost::any(std::string("Han"))},
+                                {"age", boost::any(13)}});
+  auto e = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
+                                {"age", boost::any(47)}});
+
+  graph->add_relationship(a, b, ":knows", {});
+  graph->add_relationship(b, c, ":knows", {});
+  graph->add_relationship(c, d, ":knows", {});
+  graph->add_relationship(a, e, ":knows", {});
+  graph->add_relationship(d, e, ":knows", {});
+
+  std::vector<uint64_t> exp_path = {0, 4, 3};
+  bool found = unweighted_shortest_path(graph, a, d, true, rpred, path_vis, ss_path);
+
+  REQUIRE(found);
+  REQUIRE(ss_path.get_hops() == 2);
+  REQUIRE(ss_path.get_path() == exp_path);
+
+  graph->commit_transaction();
+
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Weighted Shortest Path", "[shortest_path]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  path_item ss_path;
+  path_visitor path_vis = [&](node &n, const path &p) { return; };
+  auto rpred = [&](relationship &r) {
+                return std::string(graph->get_string(r.rship_label)) == ":knows"; };
+
+  auto rweight = [&](relationship &r) {
+        auto &src = graph->node_by_id(r.from_node_id());
+        auto &des = graph->node_by_id(r.to_node_id());
+        auto src_descr = graph->get_node_description(r.from_node_id());
+        auto des_descr = graph->get_node_description(r.to_node_id());
+        auto src_age = get_property<int>(src_descr.properties, 
+                                      std::string("age")).value();
+        auto des_age = get_property<int>(des_descr.properties, 
+                                      std::string("age")).value();
+        return (double)(src_age + des_age); };
+
+  auto tx = graph->begin_transaction();
+
+  auto a = graph->add_node(":Person", {{"name",
+            boost::any(std::string("John"))}, {"age", boost::any(42)}});
+  auto b = graph->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                {"age", boost::any(36)}});
+  auto c = graph->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
+                                {"age", boost::any(58)}});
+  auto d = graph->add_node(":Person", {{"name", boost::any(std::string("Han"))},
+                                {"age", boost::any(13)}});
+  auto e = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
+                                {"age", boost::any(47)}});
+
+  graph->add_relationship(a, b, ":knows", {});
+  graph->add_relationship(b, c, ":knows", {});
+  graph->add_relationship(c, d, ":knows", {});
+  graph->add_relationship(a, e, ":knows", {});
+  graph->add_relationship(d, e, ":knows", {});
+
+  weighted_shortest_path(graph, a, d, true, rpred, rweight, path_vis, ss_path);
+
+  REQUIRE(ss_path.get_weight() == 238.0);
+
+  graph->commit_transaction();
+
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Top K Weighted Shortest Paths", "[shortest_path]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  std::size_t k = 2;
+  std::vector<path_item> k_spath;
+  path_visitor path_vis = [&](node &n, const path &p) { return; };
+  auto rpred = [&](relationship &r) {
+                return std::string(graph->get_string(r.rship_label)) == ":knows"; };
+
+  auto rweight = [&](relationship &r) {
+        auto &src = graph->node_by_id(r.from_node_id());
+        auto &des = graph->node_by_id(r.to_node_id());
+        auto src_descr = graph->get_node_description(r.from_node_id());
+        auto des_descr = graph->get_node_description(r.to_node_id());
+        auto src_age = get_property<int>(src_descr.properties, 
+                                      std::string("age")).value();
+        auto des_age = get_property<int>(des_descr.properties, 
+                                      std::string("age")).value();
+        return (double)(src_age + des_age); };
+
+  auto tx = graph->begin_transaction();
+
+  auto a = graph->add_node(":Person", {{"name",
+            boost::any(std::string("John"))}, {"age", boost::any(42)}});
+  auto b = graph->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
+                                {"age", boost::any(36)}});
+  auto c = graph->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
+                                {"age", boost::any(58)}});
+  auto d = graph->add_node(":Person", {{"name", boost::any(std::string("Han"))},
+                                {"age", boost::any(13)}});
+  auto e = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
+                                {"age", boost::any(47)}});
+  auto f = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
+                                {"age", boost::any(81)}});
+  auto g = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
+                                {"age", boost::any(23)}});
+
+  graph->add_relationship(a, b, ":knows", {});
+  graph->add_relationship(b, c, ":knows", {});
+  graph->add_relationship(c, d, ":knows", {});
+  graph->add_relationship(e, d, ":knows", {});
+  graph->add_relationship(f, e, ":knows", {});
+  graph->add_relationship(a, g, ":knows", {});
+  graph->add_relationship(g, f, ":knows", {});
+
+  k_weighted_shortest_path(graph, a, d, k, true, rpred, rweight, path_vis, k_spath);
+
+  REQUIRE(k_spath.size() == 2);
+
+  graph->commit_transaction();
+
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing query profiling", "[qop]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  create_data(graph);
+  auto dc = graph->get_code("aaa3");
+  graph->run_transaction([&]() {
+    result_set rs;
+    auto q = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(dc); })
+              .collect(rs);
+    q.start();
+    rs.wait();
+    q.print_plan();
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing union_all operator", "[qop]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  namespace pj = builtin;
+
+  create_data(graph);
+  auto ab = graph->get_code("aaa3");
+  auto cd = graph->get_code("aaa7");
+  graph->run_transaction([&]() {
+    result_set rs, expected;
+    expected.append({query_result("aaa3")});
+    expected.append({query_result("aaa7")});
+
+    auto q1 = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(ab); })
+              .project({PExpr_(0, pj::string_property(res, "name"))});
+    
+    auto q2 = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(cd); })
+              .project({PExpr_(0, pj::string_property(res, "name"))})
+              .union_all(q1)
+              .collect(rs);
+
+    query::start({&q1, &q2});
+    rs.wait();
+    query::print_plans({&q1, &q2});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing union_all operator 2", "[qop]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  namespace pj = builtin;
+
+  create_data(graph);
+  auto a = graph->get_code("aaa1");
+  auto b = graph->get_code("aaa2");
+  auto c = graph->get_code("aaa3");
+  auto d = graph->get_code("aaa4");
+  graph->run_transaction([&]() {
+    result_set rs, expected;
+    expected.append({query_result("aaa1")});
+    expected.append({query_result("aaa2")});
+    expected.append({query_result("aaa3")});
+    expected.append({query_result("aaa4")});
+
+    auto q1 = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(a); })
+              .project({PExpr_(0, pj::string_property(res, "name"))});
+
+    auto q2 = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(b); })
+              .project({PExpr_(0, pj::string_property(res, "name"))});
+
+    auto q3 = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(c); })
+              .project({PExpr_(0, pj::string_property(res, "name"))});
+    
+    auto q4 = query(graph)
+              .all_nodes("Node")
+              .property("name", [&](auto &p) { return p.equal(d); })
+              .project({PExpr_(0, pj::string_property(res, "name"))})
+              .union_all({&q1, &q2, &q3})
+              .collect(rs);
+
+    query::start({&q1, &q2, &q3, &q4});
+    rs.wait();
+    query::print_plans({&q1, &q2, &q3, &q4});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing Groupby operator", "[qop]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  namespace pj = builtin;
+
+  graph->run_transaction([&]() {
+
+    graph->add_node("Person", {{"age", boost::any(42)},
+                              {"firstName", boost::any(std::string("John"))},
+                              {"lastName", boost::any(std::string("Doe"))}});
+
+    graph->add_node("Person", {{"age", boost::any(77)},
+                              {"firstName", boost::any(std::string("Michael"))},
+                              {"lastName", boost::any(std::string("Stonebreaker"))}});
+
+    graph->add_node("Person", {{"age", boost::any(48)},
+                              {"firstName", boost::any(std::string("Anastasia"))},
+                              {"lastName", boost::any(std::string("Ailamaki"))}});
+
+    graph->add_node("Person", {{"age", boost::any(37)},
+                              {"firstName", boost::any(std::string("John"))},
+                              {"lastName", boost::any(std::string("Jones"))}});
+
+    graph->add_node("Person", {{"age", boost::any(20)},
+                              {"firstName", boost::any(std::string("John"))},
+                              {"lastName", boost::any(std::string(""))}});
+
+    graph->add_node("Person", {{"age", boost::any(100)},
+                              {"firstName", boost::any(std::string("Michael"))},
+                              {"lastName", boost::any(std::string("G."))}});
+
+    result_set rs, expected;
+    auto q = query(graph)
+              .all_nodes("Person")
+              .project({PExpr_(0, pj::int_property(res, "age")),
+                        PExpr_(0, pj::string_property(res, "firstName")),
+                        PExpr_(0, pj::string_property(res, "lastName"))})
+              .groupby({1}, {{"count", 0}, {"pcount", 0}, {"avg", 0}, {"sum", 0}})
+              .collect(rs);
+
+    q.start();
+    rs.wait();
+    q.print_plan();
+
+    expected.data.push_back(
+      {query_result("John"), query_result("3"), query_result("50.000000"),
+        query_result("33.000000"), query_result("99")});
+    expected.data.push_back(
+      {query_result("Michael"), query_result("2"), query_result("33.333333"),
+        query_result("88.500000"), query_result("177")});
+    expected.data.push_back(
+      {query_result("Anastasia"), query_result("1"), query_result("16.666667"),
+        query_result("48.000000"), query_result("48")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}

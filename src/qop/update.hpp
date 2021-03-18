@@ -107,4 +107,52 @@ struct update_node : public qop {
   properties_t props;
 };
 
+/**
+ * detach_node implements an operator for deleting the last node in a query tuple.
+ * All relationship objects connected to the node are also deleted.
+ * The optional p specifies a node to be deleted at other positions in the tuple.
+ */
+struct detach_node : public qop {
+  // detach_node(const std::vector<std::size_t> &r, std::size_t p)  : pos_(p), /*rels_(r)*/ {} 
+  detach_node(std::size_t p)  : pos_(p) {}
+  ~detach_node() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t pos_;
+  // std::vector<std::size_t> rels_;
+};
+
+/**
+ * remove_node implements an operator for deleting the last node in a query tuple.
+ * The optional p specifies a node to be deleted at other positions in the tuple.
+ */
+struct remove_node : public qop {
+  remove_node(std::size_t p)  : pos_(p) {} 
+  ~remove_node() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t pos_;
+};
+
+/**
+ * remove_rship implements an operator for deleting the last relationship in a query tuple.
+ * The optional p specifies a relationship to be deleted at other positions in the tuple.
+ */
+struct remove_rship : public qop {
+  remove_rship(std::size_t p)  : pos_(p) {} 
+  ~remove_rship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t pos_;
+};
+
 #endif

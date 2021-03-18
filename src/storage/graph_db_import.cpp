@@ -342,8 +342,9 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
       auto i = 0;
       for (auto &field : row) {
         //auto pos = field.find(":ID"); // neo4j
-        auto pos = field.find("id");
-        if (pos != std::string::npos) {
+        // auto pos = field.find("id");
+        // if (pos != std::string::npos) {
+        if (field == "id") {
           // <name>:ID is a special field // neo4j
           id_column = i;
           //columns.push_back(field.substr(0, pos)); // neo4j
@@ -371,7 +372,7 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
 
         // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
         if (const auto& col {columns[i]}; !col.empty() && !field.empty()) {
-          if (col == "id") {
+          if (col == "id" || col == "c_phone" || col == "su_phone") {
             prop_types[i] = p_item::p_uint64;     
           }
           else {   

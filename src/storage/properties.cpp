@@ -186,6 +186,13 @@ p_item::p_item(const boost::any &v, dict_ptr &dct) : key_(0), flags_(0) {
     // do nothing, just continue
   }
   try {
+    ptime dt = boost::any_cast<ptime>(v);
+    set<ptime>(dt);
+    return;
+  } catch (boost::bad_any_cast &e) {
+    // do nothing, just continue
+  }
+  try {
     double d = boost::any_cast<double>(v);
     set<double>(d);
     return;

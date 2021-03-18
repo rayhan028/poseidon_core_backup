@@ -7,7 +7,7 @@
 #include "defs.hpp"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
-#include "ldbc.hpp"
+#include "gtpc.hpp"
 #include "config.h"
 
 #include "thread_pool.hpp"
@@ -19,8 +19,7 @@ using namespace boost::program_options;
 
 int main(int argc, char **argv) {
   bool strict = false;
-  std::string pool_path, db_name, log_file;
-  std::string snb_home = ".";
+  std::string pool_path, gtpc_home, db_name, log_file;
 
  try {
     options_description desc{"Options"};
@@ -29,7 +28,7 @@ int main(int argc, char **argv) {
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
         ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
         ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem pool")
-        ("import,i", value<std::string>(&snb_home), "Path to directories containing SNB CSV files")
+        ("import,i", value<std::string>(&gtpc_home)->required(), "Path to directory containing the graph TPC-C CSV files")
         ("log,l", value<std::string>(&log_file), "Write log messages to the given file")
         ("db,d", value<std::string>(&db_name)->required(),"Database name (required)");
 
@@ -37,13 +36,13 @@ int main(int argc, char **argv) {
     store(parse_command_line(argc, argv, desc), vm);
 
     if (vm.count("help")) {
-      std::cout << "Poseidon Graph Database LDBC Importer Version " << POSEIDON_VERSION
+      std::cout << "Poseidon Graph Database G-TPC Importer Version " << POSEIDON_VERSION
                 << "\n"
                 << desc << '\n';
       return -1;
     }
     if (vm.count("import"))
-      snb_home = vm["import"].as<std::string>();
+      gtpc_home = vm["import"].as<std::string>();
 
     if (vm.count("log"))
       log_file = vm["log"].as<std::string>();
@@ -89,9 +88,10 @@ int main(int argc, char **argv) {
  
   graph->print_stats();
   
-  load_snb_data(graph, snb_home);
+  load_gtpc_data(graph, gtpc_home);
+  #ifdef CREATE_INDEX
+  create_gtpc_index(graph);
+  #endif
 
   graph->print_stats();
-
-
 }

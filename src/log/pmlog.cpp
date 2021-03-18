@@ -72,6 +72,17 @@ bool pmlog::log_rec_iter::valid() const {
 
 /* -------------------------------------------------------------------------- */
 
+pmlog::log_chunk::log_chunk() : txid_(0), used_(0) {
+#ifdef USE_PMDK
+  auto pop = pmem::obj::pool_by_vptr(this);
+  pop.memset_persist(data_, 0, 4076);
+#else
+  memset(data_, 0, 4076);
+#endif
+}
+
+/* -------------------------------------------------------------------------- */
+
 pmlog::pmlog() {
   nlogs_ = 50;
 #ifdef USE_PMDK
@@ -87,47 +98,51 @@ pmlog::~pmlog() {
 #endif
 }
 
+
 pmlog::id_t pmlog::transaction_begin(xid_t txid) {
 #ifdef USE_PMDK
   auto pop = pmem::obj::pool_by_vptr(this);
   // find the first empty slot in ulog_ and return its index as log_id
-  for (std::size_t i = 0; i < nlogs_; i++)
+  for (std::size_t i = 0; i < nlogs_; i++) {
+    std::lock_guard<std::mutex> guard(lmtx_);
     if (ulog_[i].txid_ == 0) {
-      // TODO: use mutex!!
       ulog_[i].txid_ = txid;
       pop.persist(&(ulog_[i].txid_), sizeof(xid_t));
       return i;
     }
+  }
     // TODO: handle the case of more than 50 active transactions
 #else
-  for (std::size_t i = 0; i < nlogs_; i++)
+  for (std::size_t i = 0; i < nlogs_; i++) {
+    std::lock_guard<std::mutex> guard(lmtx_);
     if (ulog_[i].txid_ == 0) {
-      // TODO: use mutex!!
       ulog_[i].txid_ = txid;
       return i;
     }
+  }
     // TODO: handle the case of more than 50 active transactions
 #endif
   return std::numeric_limits<std::size_t>::max();
 }
 
 void pmlog::transaction_end(pmlog::id_t log_id) {
+  // finally, mark the slot as available
+  std::lock_guard<std::mutex> guard(lmtx_);
+
 #ifdef USE_PMDK
   auto pop = pmem::obj::pool_by_vptr(this);
-#endif
-  // delete all additional log_chunks in ulog_[log_id]
-  // TODO
-
-  // finally, mark the slot as available
-  // TODO: use mutex!!
-#ifdef USE_PMDK
-  pop.memset_persist(&ulog_[log_id], 0, 4096);
+  pop.memset_persist(&ulog_[log_id], 0, sizeof(pmlog::log_chunk));
 #else
-  memset(&(ulog_[log_id]), 0, 4096);
+  memset(&(ulog_[log_id].data_), 0, 4076);
+  ulog_[log_id].next_ = nullptr;
+  ulog_[log_id].used_ = 0;
+  ulog_[log_id].txid_ = 0;
 #endif
 }
 
 void pmlog::append(id_t log_id, void *log_entry, uint32_t lsize) {
+  std::lock_guard<std::mutex> guard(lmtx_);
+  assert(log_id < nlogs_);
   auto entry = &(ulog_[log_id]);
 #ifdef USE_PMDK
   auto pop = pmem::obj::pool_by_vptr(this);

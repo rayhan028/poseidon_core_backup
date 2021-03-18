@@ -139,7 +139,8 @@ void interprete_visitor::visit(std::shared_ptr<join_op> op) {
     if(op->jop_ == JOIN_OP::CROSS) {
         lhs = lhs.crossjoin(rhs);
     } else {
-        lhs = lhs.outerjoin(op->join_pos_, rhs);
+        // lhs = lhs.outerjoin(op->join_pos_, rhs);
+        lhs = lhs.outerjoin_on_rship(op->join_pos_, rhs);
     }
     queries_.push_back(rhs);
     queries_.push_back(lhs);

@@ -246,32 +246,32 @@ qr_tuple &get_qr_tuple() {
 }
 
 std::mutex ct_mut;
- void collect_tuple(graph_db *gdb, result_set *rs, bool print) {
-    std::lock_guard<std::mutex> lck(mat_reg_mut);
-    auto & tp = tp_m[std::this_thread::get_id()];
-    
-    {
-        rs->append(tp);
-        if(print) {
-            std::cout << "{";
-            auto my_visitor = boost::hana::overload(
-                [&](node *n) { /*os << gdb->get_node_description(*n); */ },
-                [&](relationship *r) { /* os << gdb->get_relationship_label(*r); */ },
-                [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
-                [&](const std::string &s) { std::cout << s; }, [&](uint64_t ll) { std::cout << ll; },
-                [&](null_t n) { std::cout << "NULL"; },
-                [&](boost::posix_time::ptime dt) { std::cout << dt; }); 
+void collect_tuple(graph_db *gdb, result_set *rs, bool print) {
+std::lock_guard<std::mutex> lck(mat_reg_mut);
+auto & tp = tp_m[std::this_thread::get_id()];
 
-            auto i = 0u;
-            for (const auto &qr : tp) {
-                boost::apply_visitor(my_visitor, qr);
-                if (++i < tp.size())
-                    std::cout << ", ";
-            }
-            std::cout << "}" << std::endl;
+{
+    rs->append(tp);
+    /*if(print) {
+        std::cout << "{";
+        auto my_visitor = boost::hana::overload(
+            [&](node *n) { /*os << gdb->get_node_description(*n);  },
+            [&](relationship *r) { /* os << gdb->get_relationship_label(*r);  },
+            [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
+            [&](const std::string &s) { std::cout << s; }, [&](uint64_t ll) { std::cout << ll; },
+            [&](null_t n) { std::cout << "NULL"; },
+            [&](boost::posix_time::ptime dt) { std::cout << dt; }); 
+
+        auto i = 0u;
+        for (const auto &qr : tp) {
+            boost::apply_visitor(my_visitor, qr);
+            if (++i < tp.size())
+                std::cout << ", ";
         }
-        tp.clear();
-    }
+        std::cout << "}" << std::endl;
+    } */
+    tp.clear();
+}
 }
 
 void persist_tuple(graph_db *gdb, qr_tuple *qr) {

@@ -65,13 +65,20 @@ struct null_t {
 
 inline constexpr null_t null_val(-1);
 
+struct array_t {
+  array_t(std::vector<uint64_t> v) : elems(v) {}
+  inline bool operator()(const array_t& one, const array_t& two) { return true; }
+  inline bool operator==(const array_t& other) const { return true; }
+  std::vector<uint64_t> elems;
+};
+
 /**
  * Typedef for an element (node, relationship, value) that might be part of a
  * query result. null_t is used to represent NULL values.
  */
 using query_result =
     boost::variant<node *, relationship *, int, double, std::string, 
-                    uint64_t, boost::posix_time::ptime, null_t>;
+                    uint64_t, boost::posix_time::ptime, array_t, null_t>;
 
 /**
  * Typedef for a list of result elements which are passed to the next query

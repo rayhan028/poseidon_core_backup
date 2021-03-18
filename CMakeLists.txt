@@ -15,6 +15,7 @@ option(USE_PMDK       "Use Intel PMDK"                         ON)
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
 option(BUILD_PYTHON   "Build python interface for poseidon"    OFF)
+option(QOP_PROFILING  "Enable query profiling"                 ON)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -59,6 +60,9 @@ if(USE_LOGGING MATCHES ON)
   add_definitions( "-DUSE_LOGGING" )
 endif()
 
+if(QOP_PROFILING MATCHES ON)
+  add_definitions( "-DQOP_PROFILING" )
+endif()
 configure_file(
   ${PROJECT_SOURCE_DIR}/src/config.h.in
   ${PROJECT_BINARY_DIR}/generated/config.h
@@ -79,6 +83,8 @@ include_directories(${PROJECT_SOURCE_DIR}/src/pool)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
 include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
 include_directories(${PROJECT_SOURCE_DIR}/src/ql)
+include_directories(${PROJECT_SOURCE_DIR}/src/analytics)
+include_directories(${PROJECT_SOURCE_DIR}/src/gtpc)
 
 #---------------------------------------------------------------------------
 
@@ -109,7 +115,7 @@ include(FetchContent REQUIRED)
 FetchContent_Declare(
   catch
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v2.9.1
+  GIT_TAG        v2.13.4
 )
 # FetchContent_GetProperties(catch)
 if(NOT catch_POPULATED)
@@ -147,7 +153,7 @@ include(FetchContent REQUIRED)
  FetchContent_Declare(
   spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog.git
-   GIT_TAG        v1.5.0
+   GIT_TAG        v1.8.2
   )
 FetchContent_GetProperties(spdlog)
 
@@ -193,7 +199,7 @@ include(FetchContent REQUIRED)
  FetchContent_Declare(
   pegtl
   GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
-  GIT_TAG        2.8.3
+  GIT_TAG       3.2.0
   )
 FetchContent_GetProperties(pegtl)
 if(NOT pegtl_POPULATED)
@@ -327,16 +333,16 @@ set(src_files
   src/storage/graph_db_recovery.cpp
   src/storage/graph_db_gc.cpp
   src/btree/index_map.cpp
+  src/qop/profiling.cpp
   src/qop/qop.cpp
   src/qop/update.cpp
   src/qop/join.cpp
   src/qop/query.cpp
-  src/qop/bfs.cpp
+  src/qop/query_printer.cpp
   src/qop/thread_pool.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
-  src/ldbc/ldbc.cpp
   src/qcomp/codegen_inline.cpp
   src/qcomp/filter_expression.cpp
   src/qcomp/filter_expression_inline.cpp
@@ -354,6 +360,8 @@ set(src_files
   src/qcomp/interprete_filter_visitor.cpp
   src/ql/queryc.cpp
   src/ql/ast.cpp
+  src/analytics/bfs.cpp
+  src/analytics/shortest_path.cpp
   )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -379,6 +387,59 @@ target_link_libraries(poseidon_core
 
 target_include_directories( ${PROJECT_NAME}
     PUBLIC ${PROJECT_SOURCE_DIR}/include
+)
+
+set(ldbc_files
+  src/ldbc/ldbc_graphalytics.cpp
+  src/ldbc/ldbc_bi.cpp
+  src/ldbc/ldbc_is.cpp
+  src/ldbc/ldbc_updates.cpp
+  src/ldbc/ldbc_loader.cpp
+  src/ldbc/ldbc_deletes.cpp
+  src/ldbc/qps/ldbc_is_qp2.cpp
+  src/ldbc/qps/ldbc_is_qp3.cpp
+  src/ldbc/qps/ldbc_is_qp4.cpp
+  src/ldbc/qps/ldbc_is_qp5.cpp
+)
+
+# Using OBJECT to avoid to build object files multiple times due to inclusion
+# in different libraries.
+# macOS doesn't like SHARED, Linux needs it
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+add_library(poseidon_ldbc_obj OBJECT ${ldbc_files})
+else()
+add_library(poseidon_ldbc_obj OBJECT SHARED ${ldbc_files})
+endif()
+
+# Poseidon LDBC library for building C++ applications
+add_library(poseidon_ldbc SHARED
+  $<TARGET_OBJECTS:poseidon_ldbc_obj>
+)
+
+target_link_libraries(poseidon_ldbc
+  poseidon_core
+)
+
+set(gtpc_files
+  src/gtpc/gtpc_loader.cpp
+)
+
+# Using OBJECT to avoid to build object files multiple times due to inclusion
+# in different libraries.
+# macOS doesn't like SHARED, Linux needs it
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+add_library(poseidon_gtpc_obj OBJECT ${gtpc_files})
+else()
+add_library(poseidon_gtpc_obj OBJECT SHARED ${gtpc_files})
+endif()
+
+# Poseidon LDBC library for building C++ applications
+add_library(poseidon_gtpc SHARED
+  $<TARGET_OBJECTS:poseidon_gtpc_obj>
+)
+
+target_link_libraries(poseidon_gtpc
+  poseidon_core
 )
 
 if (BUILD_PYTHON)
@@ -408,11 +469,25 @@ endif()
 
 # The program for loading CSV files into PMem.
 #
-add_executable(ldbc_loader
-  src/ldbc/loader.cpp
+add_executable(run_ldbc_loader
+  src/ldbc/run_ldbc_loader.cpp
  )
 
-target_link_libraries(ldbc_loader
+target_link_libraries(run_ldbc_loader
+  poseidon_ldbc
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
+# The program for executing BI queries.
+#
+add_executable(run_ldbc_bi
+  src/ldbc/run_ldbc_bi.cpp
+)
+
+target_link_libraries(run_ldbc_bi
+  poseidon_ldbc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -420,11 +495,12 @@ target_link_libraries(ldbc_loader
 
 # The program for executing short read queries.
 #
-add_executable(run_ldbc_reads
-  src/ldbc/ldbc_reads.cpp
+add_executable(run_ldbc_is
+  src/ldbc/run_ldbc_is.cpp
  )
 
-target_link_libraries(run_ldbc_reads
+target_link_libraries(run_ldbc_is
+  poseidon_ldbc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -433,26 +509,39 @@ target_link_libraries(run_ldbc_reads
 # The program for executing interactive update queries.
 #
 add_executable(run_ldbc_updates
-  src/ldbc/ldbc_updates.cpp
+  src/ldbc/run_ldbc_updates.cpp
  )
 
 target_link_libraries(run_ldbc_updates
+  poseidon_ldbc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+
+# The program for executing interactive delete queries.
+#
+# add_executable(run_ldbc_deletes
+#   src/ldbc/run_ldbc_deletes.cpp
+#  )
+
+# target_link_libraries(run_ldbc_deletes
+#   poseidon_core
+#   ${PMDK_LIBRARIES}
+#   Boost::program_options
+# )
 
 # The program for executing graphalytics.
 #
-add_executable(run_ldbc_graphalytics
-  src/ldbc/ldbc_graphalytics.cpp
- )
+# add_executable(run_ldbc_graphalytics
+#   src/ldbc/run_ldbc_graphalytics.cpp
+#  )
 
-target_link_libraries(run_ldbc_graphalytics
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
+# target_link_libraries(run_ldbc_graphalytics
+#   poseidon_core
+#   ${PMDK_LIBRARIES}
+#   Boost::program_options
+# )
 
 # The program for executing jitted short read queries.
 #
@@ -461,10 +550,30 @@ add_executable(run_ldbc_jit_reads
  )
 
 target_link_libraries(run_ldbc_jit_reads
+  poseidon_ldbc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+
+#-----------------------------------------------------------------------------------------
+#
+# Some programs for GTPC benchmarking.
+#
+
+# The program for loading CSV files into PMem.
+#
+add_executable(run_gtpc_loader
+  src/gtpc/run_gtpc_loader.cpp
+ )
+
+target_link_libraries(run_gtpc_loader
+  poseidon_gtpc
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
 
 # The program for executing jitted bi queries.
 #
@@ -477,6 +586,8 @@ target_link_libraries(run_ldbc_jit_bi
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+
+#-----------------------------------------------------------------------------------------
 
 # The program for executing the LLVM query compiler
 add_executable(qcomp
@@ -496,11 +607,12 @@ add_executable(qlc
   src/ql/qlc.cpp
  )
 
-target_link_libraries(qlc
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
+ target_link_libraries(qlc
+ poseidon_core
+ ${PMDK_LIBRARIES}
+ Boost::program_options
 )
+
 #-----------------------------------------------------------------------------------------
 #
 # Unit tests using Catch

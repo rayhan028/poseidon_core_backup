@@ -29,11 +29,11 @@
 #include <tao/pegtl/contrib/parse_tree.hpp>
 
 #include "qlang_grammar.hpp"
+#include "filter_expression.hpp"
 
 struct ast_op;
 
 using ast_op_ptr = std::shared_ptr<ast_op>;
-using parse_tree_ptr = std::unique_ptr<tao::pegtl::parse_tree::node>;
 
 /**
  * proj_spec represents a projection specification used in a project clause.
@@ -56,8 +56,22 @@ using jproperty_list = std::vector<jproperty>;
  * ast_op is used for representing query operators in the AST.
  */
 struct ast_op {
-    enum op_type { unknown, node_scan, filter, foreach_rship, expand, project, limit, join, create_node, create_rship };
-    using param_type = boost::variant<int, std::string, parse_tree_ptr, proj_spec_list, jproperty_list>;
+    enum op_type { 
+        unknown, 
+        node_scan, 
+        filter, 
+        foreach_rship, 
+        expand, 
+        project, 
+        limit, 
+        sort,
+        group_by,
+        hash_join, 
+        leftouter_join,
+        create_node, 
+        create_rship 
+    };
+    using param_type = boost::variant<int, std::string, expr, proj_spec_list, jproperty_list>;
 
     /**
      * Constructor
@@ -87,7 +101,7 @@ struct ast_op {
     /**
      * Add an expression as parameter (used for conditions).
      */
-    void add_param(parse_tree_ptr expr) { params_.push_back(std::move(expr)); }
+    void add_param(expr ex) { params_.push_back(ex); }
 
     /**
      * Add a projection specification list as parameter (used for projection).
@@ -108,7 +122,7 @@ struct ast_op {
      */
     template<typename T>
     T get_param(std::size_t i) { return boost::get<T>(params_[i]); }
-    parse_tree_ptr get_param(std::size_t i) { return std::move(boost::get<parse_tree_ptr>(params_[i])); }
+    // parse_tree_ptr get_param(std::size_t i) { return std::move(boost::get<parse_tree_ptr>(params_[i])); }
 
     op_type op_;                       // operator type
     std::vector<ast_op_ptr> children_; // child nodes
@@ -118,5 +132,6 @@ struct ast_op {
 std::ostream& operator<<(std::ostream& os, ast_op& op);
 
 void print_ast(ast_op_ptr root);
+void ast_to_stream(ast_op_ptr root, std::ostream& os);
 
 #endif
