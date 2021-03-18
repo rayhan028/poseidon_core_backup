@@ -39,8 +39,10 @@ using ast_op_ptr = std::shared_ptr<ast_op>;
  * proj_spec represents a projection specification used in a project clause.
  */
 struct proj_spec {
+    enum sort_order { None, Asc, Desc }; // sort order - used only for the Sort operator
     std::string pname; // name in the form of $1.name
     std::string ptype; // typename
+    sort_order porder;
 };
 
 using proj_spec_list = std::vector<proj_spec>;
@@ -51,6 +53,14 @@ struct jproperty {
 };
 
 using jproperty_list = std::vector<jproperty>;
+
+struct aggr_spec {
+    std::string afunc; // aggregate function
+    std::string aname; // name in the form of $1.name
+    std::string atype; // typename
+};
+
+using aggr_spec_list = std::vector<aggr_spec>;
 
 /**
  * ast_op is used for representing query operators in the AST.
@@ -71,7 +81,7 @@ struct ast_op {
         create_node, 
         create_rship 
     };
-    using param_type = boost::variant<int, std::string, expr, proj_spec_list, jproperty_list>;
+    using param_type = boost::variant<int, std::string, expr, proj_spec_list, jproperty_list, aggr_spec_list>;
 
     /**
      * Constructor
@@ -109,9 +119,15 @@ struct ast_op {
     void add_param(proj_spec_list& plist) { params_.push_back(plist); }
 
     /**
+     * Add an aggregate specification list as parameter (used for groupby).
+     */
+    void add_param(aggr_spec_list& alist) { params_.push_back(alist); }
+
+    /**
      * Add a property list as parameter (used for create).
      */
     void add_param(jproperty_list& plist) { params_.push_back(plist); }
+
     /**
      * Return true if the AST operator is a source parameter.
      */

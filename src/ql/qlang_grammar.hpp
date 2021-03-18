@@ -202,6 +202,8 @@ template <> struct my_selector<proj_array> : std::true_type {};
 template <> struct my_selector<proj_expr> : std::true_type {};
 template <> struct my_selector<func_array> : std::true_type {};
 template <> struct my_selector<func_expr> : std::true_type {};
+template <> struct my_selector<func_name> : std::true_type {};
+template <> struct my_selector<dtype> : std::true_type {};
 template <> struct my_selector<property> : std::true_type {};
 template <> struct my_selector<prop_list> : std::true_type {};
 template <> struct my_selector<node_or_rship_pattern> : std::true_type {};

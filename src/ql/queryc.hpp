@@ -42,6 +42,7 @@ private:
 
   ast_op::op_type get_op_type(parse_tree_ptr& pn);
   proj_spec get_property_spec(parse_tree_ptr& pn);
+  aggr_spec get_aggregate_spec(parse_tree_ptr& pn);
   jproperty get_json_property(parse_tree_ptr& pn);
 
   ast_op_ptr ptree_to_ast(parse_tree_ptr& pn);
