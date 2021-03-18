@@ -9,7 +9,11 @@ recovery_list::~recovery_list() {
 }
 
 void recovery_list::runtime_initialize() {
-    std::cout << "RECOVER RESULTS" << std::endl;
+    /*std::cout << "RECOVER RESULTS" << std::endl;
+    for(auto & v : results_) {
+        std::cout << "[" << v.tuple_id_ << " "<< v.type_ << "], ";
+    }
+    std::cout << std::endl;*/
 }
 
 offset_t type_to_offset(query_result t) {

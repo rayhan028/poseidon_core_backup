@@ -192,16 +192,16 @@ int main() {
 	auto q = query(graph).continue_scan(cp).has_label("Person").to_relationships(":likes").to_node("Person").persist().collect(rs);
 	std::cout << "Start query " << std::endl;
 	auto js = std::chrono::steady_clock::now();
-	//graph->begin_transaction();
+	graph->begin_transaction();
 	//queryEngine.run(&rs, ab.args, 24);
 	//queryEngine.finish(&rs);
-	//query::start({&q});
-	//rs.wait();
+	query::start({&q});
+	rs.wait();
 	//graph->restore_results(rs.data);
-	//graph->commit_transaction();
+	graph->commit_transaction();
 	auto je = std::chrono::steady_clock::now();
 	
-	std::cout << rs.data.size() << std::endl;
+	std::cout << rs << std::endl;
 	std::cout << "JIT: "
 		<< std::chrono::duration_cast<std::chrono::milliseconds>(je -
 																	js)

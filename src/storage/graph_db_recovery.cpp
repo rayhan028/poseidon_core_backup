@@ -146,7 +146,6 @@ continue_query_task::continue_query_task(graph_db *gdb, node_list &n, std::size_
 
 
 void continue_query_task::operator()() {
-  std::cout << "continue" << std::endl;
   xid_t xid = 0;
   if (tx_) { // we need the transaction pointer in thread-local storage
 	current_transaction_ = tx_;
@@ -159,7 +158,6 @@ void continue_query_task::operator()() {
 	auto &n = *iter;
 	if (n.is_valid()) {
 	   auto &nv = graph_db_->get_valid_node_version(n, xid);
-     std::cout << "ID:" << nv.id() << std::endl;
 		consumer_(nv);
     graph_db_->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
 	}
@@ -184,6 +182,9 @@ void graph_db::continue_parallel_nodes(std::map<std::size_t, std::size_t> &check
   thread_pool pool;
   
   for(auto & cp : check_points) {
+    if(cp.second == NODE_CHUNK_SIZE) { //TODO: check
+      continue;
+    }
     res.push_back(
       pool.submit(
         continue_query_task(this, *nodes_, cp.first, cp.first, consumer, current_transaction_, cp.second)
