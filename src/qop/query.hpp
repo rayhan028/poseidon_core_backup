@@ -214,17 +214,13 @@ public:
   query &finish();
 
   /**
-<<<<<<< HEAD
    * Perists intermediate tuple results
    */
   query &persist();
 
   /**
-   * TODO
-=======
    * Add an operator for constructing the cartesian product of the query tuples 
    * of the left and right query pipelines.
->>>>>>> master
    */
   query &crossjoin(query &other);
 
@@ -381,6 +377,7 @@ public:
   static void start(std::initializer_list<query *> queries);
   static void print_plans(std::initializer_list<query *> queries, std::ostream& os = std::cout);
 
+  void extract_args();
   /**
    * Return the pointer to the graph database.
    */

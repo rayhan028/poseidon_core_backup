@@ -672,7 +672,9 @@ void collect_result::dump(std::ostream &os) const {
   os << "collect_result() - " << PROF_DUMP;
 }
 
+std::mutex collect_mtx;
 void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  std::lock_guard<std::mutex> lock(collect_mtx);
   PROF_PRE;
   // we transform node and relationship into their string representations ...
   qr_tuple res(v.size());

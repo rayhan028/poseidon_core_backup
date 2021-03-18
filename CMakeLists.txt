@@ -85,6 +85,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
 include_directories(${PROJECT_SOURCE_DIR}/src/ql)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics)
 include_directories(${PROJECT_SOURCE_DIR}/src/gtpc)
+include_directories(${PROJECT_SOURCE_DIR}/src/query_crash_and_recover)
 
 #---------------------------------------------------------------------------
 
@@ -608,6 +609,28 @@ add_executable(qlc
  )
 
  target_link_libraries(qlc
+ poseidon_core
+ ${PMDK_LIBRARIES}
+ Boost::program_options
+)
+
+add_executable(crash_query
+#  src/ql/ast.cpp
+  src/query_crash_and_recover/crash_query.cpp
+ )
+
+ target_link_libraries(crash_query
+ poseidon_core
+ ${PMDK_LIBRARIES}
+ Boost::program_options
+)
+
+add_executable(recover_query
+#  src/ql/ast.cpp
+  src/query_crash_and_recover/recover_and_continue.cpp
+ )
+
+ target_link_libraries(recover_query
  poseidon_core
  ${PMDK_LIBRARIES}
  Boost::program_options

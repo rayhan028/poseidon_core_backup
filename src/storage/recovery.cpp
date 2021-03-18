@@ -4,6 +4,14 @@
 #include "relationships.hpp"
 #include <iostream>
 
+query_argument_list::~query_argument_list() {
+
+}
+
+void query_argument_list::add(offset_t opid, offset_t value, offset_t type) {
+    args_.store({opid, value, type});
+}
+
 recovery_list::~recovery_list() {
 
 }

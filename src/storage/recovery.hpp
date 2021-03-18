@@ -16,7 +16,7 @@
 #include "txn_data.hpp"
 
  /*
-  Wrapper type for the stored intermediate query result.
+  Wrapper structure for the stored intermediate query result.
   Tuple_id_ is the identifier of the tuple to which the result belongs.
   In case of node/rship the res_ is the identifier, otherwise, the raw value.
   The type indicates the actual type of the stored result,
@@ -30,6 +30,37 @@ struct intermediate_result {
     intermediate_result() = default;
 
     intermediate_result(const intermediate_result &) = delete;
+};
+
+/*
+ Wrapper structure for storing a single argument of a query.
+ operator_id_ the position of the operator in the pipeline to which the argument belongs
+ argument_ contains the actual raw value (int, uint, double) or label_code in case of a string argument
+ type_ represents the actual type of the argument.
+*/
+struct query_argument {
+  offset_t operator_id_;
+  offset_t argument_;
+  offset_t type_;
+
+  query_argument() = default;
+
+  query_argument(const query_argument &) = delete;
+};
+
+class query_argument_list {
+public:
+  using range_iterator = chunked_vec<query_argument>::range_iter;
+
+  query_argument_list() = default;
+  query_argument_list(const query_argument_list &) = delete;
+
+  ~query_argument_list();
+
+  void add(offset_t opid, offset_t value, offset_t type);
+
+private:
+chunked_vec<query_argument> args_;
 };
 
 class recovery_list {
@@ -49,8 +80,14 @@ public:
 
   void runtime_initialize();
 
+  /**
+   * Method for adding the elements of a results tuple to the intermediate result storage 
+   */
   void add(qr_tuple &&qr, std::size_t chunk);
 
+  /*
+   * Returns the chunk vector of intermediate results
+  */
   chunked_vec<intermediate_result> &as_vec() { return results_; }
   
 private:
