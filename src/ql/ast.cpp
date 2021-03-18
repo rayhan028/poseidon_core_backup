@@ -74,7 +74,7 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
     auto my_visitor = boost::hana::overload(
       [&](int i) { os << i; },
       [&](const std::string &s) { os << s; },
-      [&](const parse_tree_ptr& expr) { os << expr->string(); },
+      [&](const expr& expr) { os << (*expr)(); },
       [&](const proj_spec_list& plist) { os << plist; },
       [&](const jproperty_list& plist) { os << plist; });
 
