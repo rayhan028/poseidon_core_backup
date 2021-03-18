@@ -235,9 +235,9 @@ class chunked_vec {
   };
 
   struct range_iter {
-    range_iter(chunked_vec &v, std::size_t first, std::size_t last)
+    range_iter(chunked_vec &v, std::size_t first, std::size_t last, std::size_t pos = 0)
         : vec_(v), range_(first, last), current_chunk_(first),
-          cptr_(nullptr), pos_(0) {
+          cptr_(nullptr), pos_(pos) {
             if (vec_.chunk_list_.size() > 0)
               cptr_ = vec_.chunk_list_[first];
         }
@@ -258,6 +258,9 @@ class chunked_vec {
                !cptr_->is_used(pos_));
       return *this;
     }
+
+    std::size_t get_cur_chunk() { return current_chunk_; }
+    std::size_t get_cur_pos() { return pos_; }
 
   private:
     chunked_vec &vec_; // reference to the actual chunked_vec
@@ -323,8 +326,8 @@ class chunked_vec {
    */
   iter end() { return iter(nullptr); }
 
-  range_iter range(std::size_t first_chunk, std::size_t last_chunk) {
-    return range_iter(*this, first_chunk, last_chunk);
+  range_iter range(std::size_t first_chunk, std::size_t last_chunk, std::size_t start_pos = 0) {
+    return range_iter(*this, first_chunk, last_chunk, start_pos);
   }
 
   /**

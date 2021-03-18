@@ -218,8 +218,8 @@ public:
    * Return a range iterator to traverse the node_list from first_chunk to
    * last_chunk.
    */
-  range_iterator range(std::size_t first_chunk, std::size_t last_chunk) {
-    return nodes_.range(first_chunk, last_chunk);
+  range_iterator range(std::size_t first_chunk, std::size_t last_chunk, std::size_t start_pos = 0) {
+    return nodes_.range(first_chunk, last_chunk, start_pos);
   }
 
   /**

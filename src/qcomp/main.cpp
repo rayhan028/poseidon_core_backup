@@ -187,15 +187,18 @@ int main() {
 	ab.arg(15, "Book");
 
 	result_set rs;
-	auto q = query(graph).all_nodes().has_label("Person").to_relationships(":likes").to_node("Person").persist().collect(rs);
-  	auto js = std::chrono::steady_clock::now();
-	graph->begin_transaction();
+	//auto q = query(graph).all_nodes().has_label("Person").to_relationships(":likes").to_node("Person").persist().collect(rs);
+	auto cp = graph->restore_positions();
+	auto q = query(graph).continue_scan(cp).has_label("Person").to_relationships(":likes").to_node("Person").persist().collect(rs);
+	std::cout << "Start query " << std::endl;
+	auto js = std::chrono::steady_clock::now();
+	//graph->begin_transaction();
 	//queryEngine.run(&rs, ab.args, 24);
 	//queryEngine.finish(&rs);
 	//query::start({&q});
 	//rs.wait();
-	graph->restore_results(rs.data);
-	graph->commit_transaction();
+	//graph->restore_results(rs.data);
+	//graph->commit_transaction();
 	auto je = std::chrono::steady_clock::now();
 	
 	std::cout << rs.data.size() << std::endl;

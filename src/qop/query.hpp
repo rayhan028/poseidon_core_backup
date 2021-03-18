@@ -67,6 +67,8 @@ public:
    */
   query &nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val);
 
+
+  query &continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label = "");
   /**
    * Add an operator that scans all incoming relationships of the last node in
    * the query result. Optionally, the given label of the relationship is

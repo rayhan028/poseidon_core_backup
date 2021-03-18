@@ -49,6 +49,20 @@ void scan_nodes::dump(std::ostream &os) const {
 
 /* ------------------------------------------------------------------------ */
 
+void continue_scan_nodes::start(graph_db_ptr &gdb) {
+  gdb->continue_parallel_nodes(check_points, [&](node &n) { consume_(gdb, {&n}); });
+
+  qop::default_finish(gdb);
+}
+
+void continue_scan_nodes::dump(std::ostream &os) const {
+  os << "continue_scan_nodes([" << label << "])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+/* ------------------------------------------------------------------------ */
+
 void index_scan::start(graph_db_ptr &gdb) {
   gdb->index_lookup(idx, key, [&](node &n) { consume_(gdb, {&n}); });
   qop::default_finish(gdb);

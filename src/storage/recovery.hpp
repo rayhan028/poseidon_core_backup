@@ -53,10 +53,10 @@ public:
 
   chunked_vec<intermediate_result> &as_vec() { return results_; }
   
-
 private:
   chunked_vec<intermediate_result> results_; // the actual list of stored intermediate_results
   std::atomic<int> tuple_cnt_;
+  
 };
 
 #endif

@@ -22,6 +22,7 @@
 
 #include <boost/any.hpp>
 // #include <map>
+#include <libpmemobj++/container/concurrent_hash_map.hpp>
 #include <mutex>
 #include <string>
 
@@ -54,6 +55,8 @@ public:
 
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;
+
+  using rec_map_t = pmem::obj::concurrent_hash_map<p<int>, p<int>>;
 
   /**
    * Constructor for a new empty graph database.
@@ -345,6 +348,8 @@ public:
    */
   void parallel_nodes(node_consumer_func consumer);
 
+  void continue_parallel_nodes(std::map<std::size_t, std::size_t> &check_points, node_consumer_func consumer);
+
   /**
    * Scans all nodes which satisfy the given predicate on the property with
    * label pkey and invokes for each of these nodes the consumer function.
@@ -478,7 +483,9 @@ public:
   node &get_valid_node_version(node &n, xid_t xid);
 
   void store_query_result(qr_tuple &qr, std::size_t chunk);
+  void store_iter(std::pair<std::size_t, std::size_t> iter_pos);
   void restore_results(std::list<qr_tuple> &result_list);
+  std::map<std::size_t, std::size_t> restore_positions();
 private:
   friend struct scan_task;
 
@@ -549,6 +556,7 @@ private:
   p_ptr<index_map> index_map_; // the list of all exisiting indexes
   p_ptr<pmlog> ulog_; // the undo log 
   p_ptr<recovery_list> recovery_results_; // stored intermediate results
+  p_ptr<rec_map_t> recovery_res_;
   /**
    * These member variables are volatile and have to be reinitialized
    * during startup.
@@ -566,7 +574,7 @@ using graph_db_ptr = p_ptr<graph_db>;
 struct scan_task {
   using range = std::pair<std::size_t, std::size_t>;
   scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last,
-	    graph_db::node_consumer_func c, transaction_ptr tp = nullptr);
+	    graph_db::node_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0);
 
   void operator()();
 
@@ -579,6 +587,8 @@ struct scan_task {
   range range_;
   graph_db::node_consumer_func consumer_;
   transaction_ptr tx_;
+  std::size_t start_pos_;
 };
+
 
 #endif

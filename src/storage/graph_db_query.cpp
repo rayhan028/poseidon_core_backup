@@ -30,8 +30,8 @@
 namespace nvm = pmem::obj;
 #endif
 
-scan_task::scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last, graph_db::node_consumer_func c, transaction_ptr tp)
-	: graph_db_(gdb), nodes_(n), range_(first, last), consumer_(c), tx_(tp) {}
+scan_task::scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last, graph_db::node_consumer_func c, transaction_ptr tp, std::size_t start_pos)
+	: graph_db_(gdb), nodes_(n), range_(first, last), consumer_(c), tx_(tp), start_pos_(start_pos) {}
 
 void scan_task::scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer) {
     xid_t xid = 0;
@@ -47,6 +47,7 @@ void scan_task::scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::
 	if (n.is_valid()) {
 	   auto &nv = gdb->get_valid_node_version(n, xid);
 		consumer(nv);
+    gdb->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
 	}
 #else
 	consumer_(*iter);

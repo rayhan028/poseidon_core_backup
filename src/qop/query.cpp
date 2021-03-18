@@ -63,6 +63,11 @@ query &query::nodes_where_indexed(const std::string &label, const std::string &p
   return *this;
 }
 
+query &query::continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label) {
+  plan_head_ = plan_tail_ = std::make_shared<continue_scan_nodes>(cp, label);
+  return *this;
+}
+
 query &query::to_relationships(const std::string &label) {
   auto op = std::make_shared<foreach_to_relationship>(label);
   return append_op(op, std::bind(&foreach_to_relationship::process, op.get(),
