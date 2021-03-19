@@ -410,7 +410,7 @@ void query::start(std::initializer_list<query *> queries) {
 }
 
 void query::extract_args() {
-/*  std::map<offset_t, offset_t> args_map;
+  std::map<offset_t, offset_t> args_map;
   offset_t opid = 0;
   if(auto ns = std::dynamic_pointer_cast<scan_nodes>(plan_head_)) {
     if(ns->labels.empty()) {
@@ -423,46 +423,18 @@ void query::extract_args() {
       }
     }
   } else if(auto fr = std::dynamic_pointer_cast<foreach_from_relationship>(plan_head_)) {
-    if(fr->labels.empty()) {
+    if(!fr->label.empty()) {
         offset_t lc = graph_db_->get_dictionary()->lookup_string(fr->label);
-        args_map[opid++] = lc;
-    } else {
-      for(auto & l : fr->labels) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(l);
-        args_map[opid++] = lc;
-      }
+        args_map[opid] = lc;
     }
+    opid++;
   } else if(auto tr = std::dynamic_pointer_cast<foreach_to_relationship>(plan_head_)) {
-    if(tr->labels.empty()) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(tr->label);
-        args_map[opid++] = lc;
-    } else {
-      for(auto & l : tr->labels) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(l);
-        args_map[opid++] = lc;
-      }
+    if(!tr->label.empty()) {
+        offset_t lc = graph_db_->get_dictionary()->lookup_string(fr->label);
+        args_map[opid] = lc;
     }
-  } else if(auto tn = std::dynamic_pointer_cast<to_node>(plan_head_)) {
-    if(tn->labels.empty()) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(tn->label);
-        args_map[opid++] = lc;
-    } else {
-      for(auto & l : tn->labels) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(l);
-        args_map[opid++] = lc;
-      }
-    }
-  } else if(auto fn = std::dynamic_pointer_cast<from_node>(plan_head_)) {
-    if(fn->labels.empty()) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(fn->label);
-        args_map[opid++] = lc;
-    } else {
-      for(auto & l : fn->labels) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(l);
-        args_map[opid++] = lc;
-      }
-    }
-  }*/
+    opid++;
+  }
 }
 
 void query_set::start() {

@@ -583,6 +583,7 @@ add_executable(run_ldbc_jit_bi
  )
 
 target_link_libraries(run_ldbc_jit_bi
+  poseidon_ldbc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options

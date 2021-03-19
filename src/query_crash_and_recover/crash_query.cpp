@@ -93,8 +93,6 @@ int main() {
     rs.wait();
     graph->commit_transaction();
 
-    usleep(30000);
-
     std::cout << "Total results: " << rs.data.size() << std::endl;
 
     return 0;
