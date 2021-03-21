@@ -87,7 +87,7 @@ int main() {
 	if(init) {
 		auto tx = graph->begin_transaction();
 
-		int PERSONS = 50000;
+		int PERSONS = 5;
 		int add = 0;
 		int j = 1;
 		auto id = 0;
@@ -187,10 +187,28 @@ int main() {
 	ab.arg(15, "Book");
 
 	result_set rs;
-	//auto q = query(graph).all_nodes().has_label("Person").to_relationships(":likes").to_node("Person").persist().collect(rs);
-	auto cp = graph->restore_positions();
-	auto q = query(graph).continue_scan(cp).has_label("Person").to_relationships(":likes").to_node("Person").persist().collect(rs);
-	std::cout << "Start query " << std::endl;
+	
+	auto o = query(graph)
+				.all_nodes("Person");
+
+	auto q = query(graph)
+				.all_nodes().
+					has_label("Person").
+						to_relationships(":likes", 0).
+							to_node("Person").
+								collect(rs);
+	//graph->clear_result_storage();
+	//auto cp = graph->restore_positions();
+	
+	auto a = query(graph).
+				recover_results().
+					to_relationships(":likes", 0).
+						to_node("Person").
+							collect(rs);
+	
+	//auto q = query(graph).continue_scan(cp).has_label("Person").to_relationships(":likes").to_node("Person").persist().collect(rs);
+	
+	std::cout << "Start Query" << std::endl;
 	auto js = std::chrono::steady_clock::now();
 	graph->begin_transaction();
 	//queryEngine.run(&rs, ab.args, 24);
