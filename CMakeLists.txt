@@ -16,6 +16,7 @@ option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
 option(BUILD_PYTHON   "Build python interface for poseidon"    OFF)
 option(QOP_PROFILING  "Enable query profiling"                 ON)
+option(USE_GUNROCK    "Use Gunrock for graph analytics"        OFF)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -109,6 +110,14 @@ if(CMAKE_BUILD_TYPE MATCHES Release)
 endif()
 
 #---------------------------------------------------------------------------
+
+# Gunrock =================================================================== #
+
+if(USE_GUNROCK MATCHES ON)
+  add_library(gunrock SHARED IMPORTED)
+  set_property(TARGET gunrock PROPERTY IMPORTED_LOCATION "/usr/lib/libgunrock.so")
+  message(STATUS "Found library gunrock")
+endif()
 
 # Catch =================================================================== #
 include(FetchContent REQUIRED)
@@ -320,6 +329,13 @@ else()
   set(dict_src src/dict/dict_bimap.cpp)
 endif()
 
+
+if(USE_GUNROCK MATCHES ON)
+  set(gunrock_analysis src/analytics/SSSP_gunrock.cpp)
+else()
+  set(gunrock_analysis "")
+endif()
+
 set(src_files 
   ${dict_src} 
   src/storage/nodes.cpp
@@ -360,6 +376,7 @@ set(src_files
   src/ql/ast.cpp
   src/analytics/bfs.cpp
   src/analytics/shortest_path.cpp
+  ${gunrock_analysis}
   )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -376,11 +393,18 @@ add_library(poseidon_core SHARED
   $<TARGET_OBJECTS:poseidon_obj>
 )
 
+if(USE_GUNROCK MATCHES ON)
+  set(gunrock_linkLib gunrock)
+else()
+  set(gunrock_linkLib "")
+endif()
+
 target_link_libraries(poseidon_core
   LLVM
   Boost::date_time
   Boost::thread
   spdlog::spdlog_header_only
+  ${gunrock_linkLib}
 )
 
 target_include_directories( ${PROJECT_NAME}
