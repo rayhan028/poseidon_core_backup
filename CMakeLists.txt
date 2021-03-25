@@ -112,11 +112,13 @@ endif()
 #---------------------------------------------------------------------------
 
 # Gunrock =================================================================== #
+# TODO: Throw exception if /usr/lib/libgunrock.so is not found. Right now cmake 
+#       will not inform you, but the linker will fail to finish building Poseidon
 
 if(USE_GUNROCK MATCHES ON)
   add_library(gunrock SHARED IMPORTED)
   set_property(TARGET gunrock PROPERTY IMPORTED_LOCATION "/usr/lib/libgunrock.so")
-  message(STATUS "Found library gunrock")
+  message(STATUS "Include library gunrock. Make sure /usr/lib/libgunrock.so exists!")
 endif()
 
 # Catch =================================================================== #
