@@ -1,0 +1,56 @@
+// COPY TO FILE {gunrock_dir}/gunrock/gunrock.h BEFORE COMPILING GUNROCK!
+
+/***********************************************************************************************/
+/***************** Cusomized versions of the public Gunrock SSSP interface *********************/
+/*************** Project: Parallel Graph Algorithms for Poseidon graph databse *****************/
+/***********************************************************************************************/
+
+/*
+ * @brief Customized interface which takes in a graph in COO format
+ * @brief EdgePairT is a struct of two uint64_t values (x & y), 16 bit alligned!
+ * @param[in]  num_nodes   Number of veritces in the input graph
+ * @param[in]  num_edges   Number of edges in the input graph
+ * @param[in]  edge_coord  COO-formatted graph input edge coordinates
+ * @param[in]  edge_values COO-formatted graph input edge weights
+ * @param[in]  source      Source to begin traverse
+ * @param[in]  mark_preds  Whether to output predecessor info
+ * @param[out] distances   Return shortest distance to source per vertex
+ * @param[out] preds       Return predecessors of each vertex
+ * \return     double      Return accumulated elapsed time
+ */
+double gunrock_sssp_COO(
+  const unsigned long long        num_nodes, 
+  const unsigned long long        num_edges, 
+  const void                      *edge_coords, 
+  const float                     *edge_values, 
+  unsigned long long              source,
+  const bool                      mark_pred, 
+  float                           *distances, 
+  unsigned long long              *preds);
+
+/*
+ * @brief Customized interface which takes in a graph in CSR format
+ * @param[out] distances Return shortest distances.
+ * @param[out] preds Return predecessor of each node
+ * @param[in] num_nodes Input graph number of nodes.
+ * @param[in] num_edges Input graph number of edges.
+ * @param[in] row_offsets Input graph row_offsets.
+ * @param[in] col_indices Input graph col_indices.
+ * @param[in] edge_values Input graph edge weight.
+ * @param[in] source Source node to start.
+ * @param[in] mark_preds Whether to mark the predecessors.
+ *
+ * \return Elapsed run time in milliseconds
+ */
+double gunrock_sssp_CSR(
+  const unsigned long long      num_nodes, 
+  const unsigned long long      num_edges, 
+  const unsigned long long      *row_offsets,
+  const unsigned long long      *col_indices, 
+  const float                   *edge_values, 
+  unsigned long long            source,
+  const bool                    mark_pred, 
+  float                         *distances, 
+  unsigned long long            *preds);
+
+/***********************************************************************************************/
