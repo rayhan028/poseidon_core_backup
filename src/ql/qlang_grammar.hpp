@@ -158,7 +158,7 @@ struct func_expr : if_must< func_name, one<'('>, ws, variable_name, one<':'>, dt
 
 struct func_array : if_must< one<'['>, ws, list<func_expr, comma>, ws, one<']'> > {};
 
-struct property : if_must< name, opt<space>, one<':'>, opt<space>, sor<decimal, literal_string> > {};
+struct property : if_must< name, opt<space>, one<':'>, opt<space>, sor<decimal, literal_string, variable_name> > {};
 
 struct prop_list : if_must<one<'{'>, ws, list<property, comma>, ws, one<'}'> > {};
 

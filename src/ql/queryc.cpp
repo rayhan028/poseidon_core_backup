@@ -194,12 +194,14 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
         // p->children[0] > node_or_rship_label
         nptr->add_param(p->children[0]->string());
         // p->children[1] -> prop_list
-        jproperty_list plist;
-        for (auto& prop : p->children[1]->children) {
-          auto pspec = get_json_property(prop);
-          plist.push_back(pspec);
+        if (p->children.size() > 1) {
+          jproperty_list plist;
+          for (auto& prop : p->children[1]->children) {
+            auto pspec = get_json_property(prop);
+            plist.push_back(pspec);
+          }
+          nptr->add_param(plist);
         }
-        nptr->add_param(plist);
       }
       else 
         std::cerr << "UNKNOWN param type: " << param->string() << std::endl;
