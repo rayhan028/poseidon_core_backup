@@ -19,8 +19,8 @@ graph.begin()
 a1 = graph.create_node("Actor", { "name": "John David Washington"})
 a2 = graph.create_node("Actor", { "name": "Elizabeth Debicki"})
 m1 = graph.create_node("Movie", { "title": "Tenet"})
-graph.create_relationship(":plays_in", a1, m1)
-graph.create_relationship(":plays_in", a2, m1)
+graph.create_relationship(a1, m1, ":plays_in", {})
+graph.create_relationship(a2, m1, ":plays_in", {})
 graph.commit()
 ```
 
@@ -28,7 +28,7 @@ Nodes and relationships can be retrieved by their id. In addition, for a given n
 
 ```python
 graph.begin()
-n = graph.node_by_id(m1)
-for r in n.get_relationships():
-    print(r.from_node(), r.to_node())
+n = graph.get_node(m1)
+for r in g.get_to_relationships(n.id):
+    print(r, g.get_node(r.from_node), "-->", g.get_node(r.to_node))
 ```

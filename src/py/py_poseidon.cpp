@@ -20,8 +20,25 @@
 #include "py_poseidon.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
+#include <pybind11/stl.h>
 #include "defs.hpp"
 #include <iostream>
+
+properties_t dict_to_props(const py::dict& props) {
+  properties_t node_props;
+  for (auto item : props) {
+    if (py::isinstance<py::str>(item.second)) {
+      node_props[std::string(py::str(item.first))] = std::string(py::str(item.second)); 
+    }
+    else if (py::isinstance<py::int_>(item.second)) {
+      node_props[std::string(py::str(item.first))] = boost::any(item.second.cast<int>());
+    }
+    else if (py::isinstance<py::float_>(item.second)) {
+      node_props[std::string(py::str(item.first))] = boost::any(item.second.cast<double>());
+    }
+  }
+  return node_props;
+}
 
 PYBIND11_MODULE(poseidon, m) {
     m.doc() = "poseidon graph database"; // optional module docstring
@@ -40,19 +57,34 @@ PYBIND11_MODULE(poseidon, m) {
       .def("commit", &graph_db::commit_transaction)
       .def("abort", &graph_db::abort_transaction)
       .def("create_node", [](graph_db_ptr gdb, const std::string &label, const py::dict &props) {
-          properties_t node_props;
-          for (auto item : props) {
-            if (py::isinstance<py::str>(item.second)) {
-              node_props[std::string(py::str(item.first))] = std::string(py::str(item.second)); 
-            }
-            else if (py::isinstance<py::int_>(item.second)) {
-              node_props[std::string(py::str(item.first))] = boost::any(item.second.cast<int>());
-            }
-            else if (py::isinstance<py::float_>(item.second)) {
-              node_props[std::string(py::str(item.first))] = boost::any(item.second.cast<double>());
-            }
-          }
+          properties_t node_props = dict_to_props(props);
           return gdb->add_node(label, node_props);
         })
-      .def("node_by_id", &graph_db::node_by_id);
+      .def("create_relationship", [](graph_db_ptr gdb, node::id_t from_node, node::id_t to_node, const std::string &label, const py::dict &props) {
+        properties_t rel_props = dict_to_props(props);
+        return gdb->add_relationship(from_node, to_node, label, rel_props);
+      })
+      .def("get_node", &graph_db::get_node_description)
+      .def("get_to_relationships", [](graph_db_ptr gdb, node::id_t to_node) {
+        auto& n = gdb->node_by_id(to_node);
+        std::vector<rship_description> rships;
+        gdb->foreach_to_relationship_of_node(n, [&](relationship& r) {
+          auto rel = gdb->get_rship_description(r.id());
+          rships.push_back(rel);
+        });
+        return rships;
+      });
+
+      py::class_<node_description>(m, "Node") 
+        .def_readonly("id", &node_description::id)
+        .def_readonly("label", &node_description::label)
+        .def("__repr__", &node_description::to_string);
+
+      py::class_<rship_description>(m, "Relationship") 
+        .def_readonly("id", &rship_description::id)
+        .def_readonly("label", &rship_description::label)
+        .def_readonly("to_node", &rship_description::to_id)
+        .def_readonly("from_node", &rship_description::from_id)
+        .def("__repr__", &rship_description::to_string);
+
 }
