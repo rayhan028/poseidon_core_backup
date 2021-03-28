@@ -121,7 +121,7 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 	  barrier  b1{}, b2{}, b3{};
 
 	  // Just create a node
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
 		nid = gdb->add_node("Actor",
 		                        {{"name", boost::any(std::string("Mark Wahlberg"))},
 		                         {"age", boost::any(48)}});
@@ -132,7 +132,7 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 	 */
 	  auto t1 = std::thread([&]() {
 			// start the transaction
-			auto tx = gdb->begin_transaction();
+			gdb->begin_transaction();
 
       // inform tx #2 that we started already
 	    b1.notify();  
@@ -153,7 +153,7 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 	 */
 	  auto t2 = std::thread([&]() {
 			b1.wait(); // ensure that update txn starts after read txn
-			auto tx = gdb->begin_transaction();
+			gdb->begin_transaction();
 			auto &n = gdb->node_by_id(nid);
 			gdb->update_node(n,  //update
 				   {
@@ -189,7 +189,7 @@ TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {
 	  barrier  b1{}, b2{}, b3{};
 
 	  // Just create a node
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
 		nid = gdb->add_node("Actor",
 		                        {{"name", boost::any(std::string("Mark Wahlberg"))},
 		                         {"age", boost::any(48)}});
@@ -200,7 +200,7 @@ TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {
 	 */
 	  auto t1 = std::thread([&]() {
 			// read the node
-			auto tx = gdb->begin_transaction();
+			gdb->begin_transaction();
 
 	    b1.notify();  // so that txn-3 can start.
 	    b2.wait(); // wait till txn-3 does a update but not yet committed
@@ -219,7 +219,7 @@ TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {
 	  auto t2 = std::thread([&]() {
 			// update the node
 			b1.wait(); // ensure that update Txn starts after read Txn
-			auto tx = gdb->begin_transaction();
+			gdb->begin_transaction();
 			auto &n = gdb->node_by_id(nid);
 			gdb->update_node(n,  //update
 				   {
@@ -257,7 +257,7 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
   barrier  b1{}, b2{}, b3{};
 
   // Just create a node
-	auto tx = gdb->begin_transaction(); 
+	gdb->begin_transaction(); 
 	nid = gdb->add_node("Actor",
 	                        {{"name", boost::any(std::string("Mark Wahlberg"))},
 	                         {"age", boost::any(48)}});
@@ -268,7 +268,7 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
   */
   auto t1 = std::thread([&]() { 
 		// read the node
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
 		b1.notify(); // Inform thread #2 to start
 		b2.wait(); // wait until thread #2 has performed the update
 		
@@ -288,7 +288,7 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
   auto t2 = std::thread([&]() { 
 		// update the node
 		b1.wait(); // ensure that update starts after the read transaction (thread #1)
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
 		auto &n = gdb->node_by_id(nid);
 		gdb->update_node(n,  
 			   {{ "age", boost::any(52)}}, "Updated Actor");
@@ -325,7 +325,7 @@ TEST_CASE("Test two concurrent transactions trying to create nodes"  "[transacti
    */
 
   auto t1 = std::thread([&]() {
-	    auto tx = gdb->begin_transaction();
+	    gdb->begin_transaction();
 	    nid1 = gdb->add_node("New Actor",
 	                        {{"name", boost::any(std::string("Mark Wahlberg"))},
 	                         {"age", boost::any(48)}});
@@ -339,7 +339,7 @@ TEST_CASE("Test two concurrent transactions trying to create nodes"  "[transacti
    */
 
 	  auto t2 = std::thread([&]() {
-		    auto tx = gdb->begin_transaction();
+		    gdb->begin_transaction();
 		    nid2 = gdb->add_node("Actor",
 		                        {{"name", boost::any(std::string("Peter"))},
 		                         {"age", boost::any(22)}});
@@ -355,7 +355,7 @@ TEST_CASE("Test two concurrent transactions trying to create nodes"  "[transacti
   //verify that two seperate nodes are created.
     {
     // check the node
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto nd1 = gdb->get_node_description(nid1);
     REQUIRE(nd1.label == "New Actor");
     REQUIRE(get_property<int>(nd1.properties, "age") == 48);
@@ -381,7 +381,7 @@ TEST_CASE("Checking that a newly inserted node exist in the transaction",
 #else
   auto gdb = create_graph_db();
 #endif
-  auto tx = gdb->begin_transaction();
+  gdb->begin_transaction();
   auto nid = gdb->add_node("Movie", {});
   auto &my_node = gdb->node_by_id(nid);
   REQUIRE(my_node.id() == nid);
@@ -402,7 +402,7 @@ TEST_CASE("Checking that a newly inserted relationship exist in the transaction"
 #else
   auto gdb = create_graph_db();
 #endif
-  auto tx = gdb->begin_transaction();
+  gdb->begin_transaction();
   auto m = gdb->add_node("Movie", {});
   auto a = gdb->add_node("Actor", {});
   auto rid = gdb->add_relationship(a, m, ":PLAYED_IN", {});
@@ -429,7 +429,7 @@ TEST_CASE("Checking that a node update is undone after abort", "[transaction]") 
   node::id_t nid = 0;
   {
     // create node
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     nid = gdb->add_node("Actor",
                         {{"name", boost::any(std::string("Mark Wahlberg"))},
                          {"age", boost::any(48)}});
@@ -438,7 +438,7 @@ TEST_CASE("Checking that a node update is undone after abort", "[transaction]") 
 
   {
     // update node
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto &n = gdb->node_by_id(nid);
     gdb->update_node(n,
                      {{
@@ -452,7 +452,7 @@ TEST_CASE("Checking that a node update is undone after abort", "[transaction]") 
 
   {
     // check the node
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto &n = gdb->node_by_id(nid);
     auto nd = gdb->get_node_description(nid);
     REQUIRE(nd.label == "Actor");
@@ -478,7 +478,7 @@ TEST_CASE("Checking that a relationship update is undone after abort", "[transac
   relationship::id_t rid = 0;
   {
     // create node
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto m = gdb->add_node("Movie", {});
     auto a = gdb->add_node("Actor", {});
     rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
@@ -488,7 +488,7 @@ TEST_CASE("Checking that a relationship update is undone after abort", "[transac
 
   {
     // update relationship
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto &r = gdb->rship_by_id(rid);
     gdb->update_relationship(r,
                      {{
@@ -502,7 +502,7 @@ TEST_CASE("Checking that a relationship update is undone after abort", "[transac
 
   {
     // check the node
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto &r = gdb->rship_by_id(rid);
     auto rd = gdb->get_rship_description(rid);
     REQUIRE(rd.label == ":PLAYED_IN");
@@ -527,13 +527,13 @@ TEST_CASE("Checking that a node insert is undone after abort", "[transaction]") 
 
   node::id_t nid = 0;
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     nid = gdb->add_node("Movie", {});
     gdb->abort_transaction();
   }
 
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
   }
 
@@ -556,21 +556,21 @@ TEST_CASE("Checking that a relationship insert is undone after abort", "[transac
   relationship::id_t rid;
 
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     m = gdb->add_node("Movie", {});
     a = gdb->add_node("Actor", {});
     gdb->commit_transaction();
   }
 
   { 
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
     gdb->abort_transaction();
   }
 
   {
     // try to access via rid
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
 
     REQUIRE_THROWS_AS(gdb->rship_by_id(rid), unknown_id);
 
@@ -612,7 +612,7 @@ TEST_CASE("Checking that a newly inserted node is not visible in another "
    * Thread #1: create a new node
    */
   auto t1 = std::thread([&]() {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     nid = gdb->add_node("Actor", {});
 
     // inform thread #2 that we have created a new node
@@ -630,7 +630,7 @@ TEST_CASE("Checking that a newly inserted node is not visible in another "
   auto t2 = std::thread([&]() {
     // wait for thread #1
     b1.wait();
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     // std::cout << "-------------------1---------------\n";
     // gdb->dump();
     REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
@@ -661,7 +661,7 @@ TEST_CASE("Checking that a newly inserted relationship is not visible in another
 #endif
   node::id_t m, a;
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     m = gdb->add_node("Movie", {});
     a = gdb->add_node("Actor", {});
     gdb->commit_transaction();
@@ -674,7 +674,7 @@ TEST_CASE("Checking that a newly inserted relationship is not visible in another
    * Thread #1: create a new relationship
    */
   auto t1 = std::thread([&]() {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
 
     // inform thread #2 that we have created a new node
@@ -692,7 +692,7 @@ TEST_CASE("Checking that a newly inserted relationship is not visible in another
   auto t2 = std::thread([&]() {
     // wait for thread #1
     b1.wait();
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     // std::cout << "-------------------1---------------\n";
     // gdb->dump();
     REQUIRE_THROWS_AS(gdb->rship_by_id(rid), unknown_id);
@@ -721,7 +721,7 @@ TEST_CASE("Checking that a newly inserted node becomes visible after commit",
 #endif
   node::id_t nid = 0;
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     nid = gdb->add_node("Movie", {});
     auto &my_node = gdb->node_by_id(nid);
     REQUIRE(my_node.id() == nid);
@@ -731,7 +731,7 @@ TEST_CASE("Checking that a newly inserted node becomes visible after commit",
   REQUIRE_THROWS(check_tx_context());
 
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto descr = gdb->get_node_description(nid);
     REQUIRE(descr.id == nid);
     REQUIRE(descr.label == "Movie");
@@ -755,7 +755,7 @@ TEST_CASE("Checking that a newly inserted relationship becomes visible after com
 #endif
   node::id_t m, a;
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     m = gdb->add_node("Movie", {});
     a = gdb->add_node("Actor", {});
     gdb->commit_transaction();
@@ -763,7 +763,7 @@ TEST_CASE("Checking that a newly inserted relationship becomes visible after com
 
   relationship::id_t rid = 0;
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
     gdb->commit_transaction();
   }
@@ -771,7 +771,7 @@ TEST_CASE("Checking that a newly inserted relationship becomes visible after com
   REQUIRE_THROWS(check_tx_context());
 
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto descr = gdb->get_rship_description(rid);
     REQUIRE(descr.id == rid);
     REQUIRE(descr.label == ":PLAYED_IN");
@@ -800,7 +800,7 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
    *  First, we create a new node.
    */
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     nid = gdb->add_node("Actor",
                         {{"name", boost::any(std::string("Mark Wahlberg"))},
                          {"age", boost::any(48)}});
@@ -811,7 +811,7 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
    * transaction.
    */
   auto t1 = std::thread([&]() {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
 
     // inform thread #2 that we have started the transaction
     b1.notify();
@@ -834,7 +834,7 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
     // wait for thread #1
     b1.wait();
 
-    auto tx = gdb->begin_transaction(); // wait until thread #1 starts
+    gdb->begin_transaction(); // wait until thread #1 starts
 
     // update the node
     auto &n = gdb->node_by_id(nid);
@@ -858,7 +858,7 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
   t2.join();
 
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto nd = gdb->get_node_description(nid);
     REQUIRE(nd.label == "Updated Actor");
     REQUIRE(get_property<int>(nd.properties, "age") == 49);
@@ -888,7 +888,7 @@ barrier b1, b2, b3;
   // 1. create a new node
   node::id_t nid = 0;
 	{
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
 		// spdlog::info("BOT #1: {}", short_ts(tx->xid()));
     nid = gdb->add_node("Actor",
                         {{"name", boost::any(std::string("Mark Wahlberg"))},
@@ -899,7 +899,7 @@ barrier b1, b2, b3;
   // 2. start a transaction to update
     auto t1 = std::thread([&]() {
 		b1.wait();
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
 		// spdlog::info("BOT #2: {}", short_ts(tx->xid()));
 		// perform update
     // spdlog::info("node_by_id #2");
@@ -920,7 +920,7 @@ barrier b1, b2, b3;
   // 3. start a concurrent transaction which tries to read the same node
     auto t2 = std::thread([&]() {
 		b1.notify();
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
 		b2.wait();
 
    		auto &n = gdb->node_by_id(nid);
@@ -954,7 +954,7 @@ TEST_CASE("Checking basic transaction level GC", "[transaction][gc]") {
   node::id_t nid = 0;
 	{
   // create a new node
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
     	nid = gdb->add_node("Actor",
                         {{"name", boost::any(std::string("Mark Wahlberg"))},
                          {"age", boost::any(48)}});
@@ -963,7 +963,7 @@ TEST_CASE("Checking basic transaction level GC", "[transaction][gc]") {
 	}
 	{
 		// try to read it - the dirty list should be empty
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
 		auto &n = gdb->node_by_id(nid);
 		REQUIRE(n.get_dirty_objects().has_value() == false);
 		gdb->abort_transaction();
@@ -987,7 +987,7 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
   node::id_t nid = 0;
 	{
   // create a new node
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
     	nid = gdb->add_node("Actor",
                         {{"name", boost::any(std::string("Mark Wahlberg"))},
                          {"age", boost::any(48)}});
@@ -999,7 +999,7 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
 	auto t1 = std::thread([&]() {
     // wait for start of tx #2 to ensure that t1 is newer
     b1.wait();
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
 		// spdlog::info("BOT #1: {}", short_ts(tx->xid()));
 
 		// perform update
@@ -1023,7 +1023,7 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
 	});
 
 	auto t2 = std::thread([&]() {
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
 		// spdlog::info("BOT #2 {}", short_ts(tx->xid()));
 
     b1.notify();
@@ -1059,7 +1059,7 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
 	t2.join();
 
 	{
-		auto tx = gdb->begin_transaction();
+		gdb->begin_transaction();
 		auto &n = gdb->node_by_id(nid);
 
 		// the dirty_list should still be empty now
@@ -1086,7 +1086,7 @@ TEST_CASE("Checking that deleting a node works", "[transaction]") {
   node::id_t nid;
   {
     // add a few nodes
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
       gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
                                   {"age", boost::any(42)}});
      nid = gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
@@ -1098,14 +1098,14 @@ TEST_CASE("Checking that deleting a node works", "[transaction]") {
   }
   {
     // delete the node
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     gdb->delete_node(nid);
     gdb->commit_transaction();
   }
 
   {
     // check that the node doesn't exist anymore
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
     gdb->abort_transaction();
   }
@@ -1126,7 +1126,7 @@ TEST_CASE("Checking that deleting a node works also within a transaction", "[tra
   node::id_t nid;
   {
     // add a few nodes
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
                                   {"age", boost::any(42)}});
     nid =
@@ -1139,7 +1139,7 @@ TEST_CASE("Checking that deleting a node works also within a transaction", "[tra
   }
   {
     // delete the node
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     gdb->delete_node(nid);
     REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
     gdb->commit_transaction();
@@ -1162,7 +1162,7 @@ TEST_CASE("Checking that detach delete a node works", "[transaction]") {
   node::id_t a, b, c, d, e;
   {
     // add a few nodes
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
       a = gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
                                   {"age", boost::any(42)}});
       b = gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
@@ -1176,14 +1176,14 @@ TEST_CASE("Checking that detach delete a node works", "[transaction]") {
   }
   {
     // delete the node and all its relationships
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     gdb->detach_delete_node(a);
     gdb->commit_transaction();
   }
 
   {
     // check that the node doesn't exist anymore
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     REQUIRE_THROWS_AS(gdb->node_by_id(a), unknown_id);
     REQUIRE_THROWS_AS(gdb->rship_by_id(d), unknown_id);
     REQUIRE_THROWS_AS(gdb->rship_by_id(e), unknown_id);
@@ -1206,7 +1206,7 @@ TEST_CASE("Checking that detach delete also works within a transaction", "[trans
   node::id_t a, b, c, d, e;
   {
     // add a few nodes
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
       a = gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
                                   {"age", boost::any(42)}});
       b = gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
@@ -1220,7 +1220,7 @@ TEST_CASE("Checking that detach delete also works within a transaction", "[trans
   }
   {
     // delete the node
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     gdb->detach_delete_node(a);
     REQUIRE_THROWS_AS(gdb->node_by_id(a), unknown_id);
     REQUIRE_THROWS_AS(gdb->rship_by_id(d), unknown_id);
@@ -1243,7 +1243,7 @@ TEST_CASE("Checking that aborting a delete transaction works", "[transaction]") 
 #endif
   node::id_t nid;
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
                                   {"age", boost::any(42)}});
     nid =
@@ -1252,12 +1252,12 @@ TEST_CASE("Checking that aborting a delete transaction works", "[transaction]") 
     gdb->commit_transaction();
   }
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     gdb->delete_node(nid);
     gdb->abort_transaction();
   }
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     REQUIRE_NOTHROW(gdb->node_by_id(nid));
     gdb->abort_transaction();
   }
@@ -1281,7 +1281,7 @@ TEST_CASE("Checking that a delete transaction does not interfer with another tra
   node::id_t nid;
 
  {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
                                   {"age", boost::any(42)}});
     nid =
@@ -1292,7 +1292,7 @@ TEST_CASE("Checking that a delete transaction does not interfer with another tra
 
   // we create a thread that tries to read "Ann"
   auto t1 = std::thread([&]() {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
 
     // inform tx #2 that we have started the transaction
     b1.notify();
@@ -1315,7 +1315,7 @@ TEST_CASE("Checking that a delete transaction does not interfer with another tra
     // make sure that tx #1 has already started 
     b1.wait();
 
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     gdb->delete_node(nid);
     
     // inform tx #1 that we have deleted the node
@@ -1344,7 +1344,7 @@ TEST_CASE("Checking two concurrent transactions trying to create node", "[transa
 
   // Thread 1: Add node
   auto t1 = std::thread([&]() {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
 
     nid1 = gdb->add_node("New Actor",
                         {{"name", boost::any(std::string("Mark Wahlberg"))},
@@ -1354,7 +1354,7 @@ TEST_CASE("Checking two concurrent transactions trying to create node", "[transa
   });
   //  Thread 2: concurrently add node
   auto t2 = std::thread([&]() {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
 
 	  nid2 = gdb->add_node("Actor",
 	                        {{"name", boost::any(std::string("Peter"))},
@@ -1395,7 +1395,7 @@ TEST_CASE("Checking the transaction level GC basic functionality",
   /** Initially, we create a new node.
    */
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     nid = gdb->add_node("Actor",
                         {{"name", boost::any(std::string("Mark Wahlberg"))},
                          {"salary", boost::any(300)}});
@@ -1405,7 +1405,7 @@ TEST_CASE("Checking the transaction level GC basic functionality",
    * Thread #1: start a transaction to write transaction.
    */
   auto t1 = std::thread([&]() {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     {
       // Notify thread #2, that it can start.
       std::lock_guard<std::mutex> lock(m);
@@ -1436,7 +1436,7 @@ TEST_CASE("Checking the transaction level GC basic functionality",
       std::unique_lock<std::mutex> lock(m);
       cond_var1.wait(lock, [&] { return ready1.load(); });
     }
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     {
       // Notify thread #3  to start
       std::lock_guard<std::mutex> lock(m);
@@ -1475,7 +1475,7 @@ TEST_CASE("Checking the transaction level GC basic functionality",
       std::unique_lock<std::mutex> lock(m);
       cond_var3.wait(lock, [&] { return ready3.load(); });
     }
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto &n = gdb->node_by_id(nid);
 
     // update
@@ -1504,7 +1504,7 @@ TEST_CASE("Checking the transaction level GC basic functionality",
     }
 
     // Read transaction
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     {
       const auto &n = gdb->node_by_id(nid);
       auto nd = gdb->get_node_description(n);
@@ -1567,7 +1567,7 @@ TEST_CASE("Checking the Garbage Collector functionality: Maintain multiple "
    *  Initially, we create a new node.
    */
   {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     nid = gdb->add_node("Director", {{"name", boost::any(std::string("John"))},
                                      {"salary", boost::any(1000)}});
     gdb->commit_transaction();
@@ -1577,7 +1577,7 @@ TEST_CASE("Checking the Garbage Collector functionality: Maintain multiple "
    *  Thread#1  will start a transaction to write
    */
   auto t1 = std::thread([&]() {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     {
       std::cout << "T1.1" << std::endl;
       // Notify thread #2, to start.
@@ -1604,7 +1604,7 @@ TEST_CASE("Checking the Garbage Collector functionality: Maintain multiple "
    * Thread #2: Start a transaction to read.
    */
   auto t2 = std::thread([&]() {
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     {
       std::cout << "T2.1" << std::endl;
       auto &n = gdb->node_by_id(nid);
@@ -1632,7 +1632,7 @@ TEST_CASE("Checking the Garbage Collector functionality: Maintain multiple "
 
   {
     std::cout << "T3.1" << std::endl;
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto &n = gdb->node_by_id(nid);
     // update transaction#3
     gdb->update_node(n, {{"salary", boost::any(3000)}});
@@ -1645,7 +1645,7 @@ TEST_CASE("Checking the Garbage Collector functionality: Maintain multiple "
 
   {
     std::cout << "T4.1" << std::endl;
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto &n = gdb->node_by_id(nid);
     // Update Transaction-4.
     gdb->update_node(n, {{"salary", boost::any(4000)}});
@@ -1658,7 +1658,7 @@ TEST_CASE("Checking the Garbage Collector functionality: Maintain multiple "
 
   {
     std::cout << "T5.1" << std::endl;
-    auto tx = gdb->begin_transaction();
+    gdb->begin_transaction();
     auto &n = gdb->node_by_id(nid);
 
     // Update Transaction-5.
@@ -1678,7 +1678,7 @@ TEST_CASE("Checking the Garbage Collector functionality: Maintain multiple "
   t2.join();
 
   // Now a new update, should clear the dirty list
-  auto tx = gdb->begin_transaction();
+  gdb->begin_transaction();
   // Then do an upate
   auto &n = gdb->node_by_id(nid);
 

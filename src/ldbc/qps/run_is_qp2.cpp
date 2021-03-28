@@ -57,7 +57,7 @@ double run_query_1(graph_db_ptr gdb) {
         result_set rs;
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         ldbc_is_qp2_query_1(gdb, rs, personIds[i]);
         gdb->commit_transaction();
 
@@ -101,7 +101,7 @@ double run_query_2_p(graph_db_ptr gdb) {
         result_set rs;
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         ldbc_is_qp2_query_2_p(gdb, rs, personIds[i]);
         gdb->commit_transaction();
 
@@ -146,7 +146,7 @@ double run_query_2_c(graph_db_ptr gdb) {
         result_set rs;
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         ldbc_is_qp2_query_2_c(gdb, rs, personIds[i]);
         gdb->commit_transaction();
 
@@ -191,7 +191,7 @@ double run_query_3(graph_db_ptr gdb) {
       result_set rs;
       auto start_qp = std::chrono::steady_clock::now();
 
-      auto tx = gdb->begin_transaction();
+      gdb->begin_transaction();
       ldbc_is_qp2_query_3(gdb, rs, personIds[i]);
       gdb->commit_transaction();
 
@@ -235,7 +235,7 @@ double run_query_7_p(graph_db_ptr gdb) {
       result_set rs;
       auto start_qp = std::chrono::steady_clock::now();
 
-      auto tx = gdb->begin_transaction();
+      gdb->begin_transaction();
       ldbc_is_qp2_query_7_p(gdb, rs, postIds[i]);
       gdb->commit_transaction();
 
@@ -279,7 +279,7 @@ double run_query_7_c(graph_db_ptr gdb) {
       result_set rs;
       auto start_qp = std::chrono::steady_clock::now();
 
-      auto tx = gdb->begin_transaction();
+      gdb->begin_transaction();
       ldbc_is_qp2_query_7_c(gdb, rs, commentIds[i]);
       gdb->commit_transaction();
 

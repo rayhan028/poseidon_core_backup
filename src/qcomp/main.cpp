@@ -42,7 +42,7 @@ int main() {
 #endif
 
 
-	auto tx = graph->begin_transaction();
+	graph->begin_transaction();
 
 	int PERSONS = 100;
 	int NO_PERSONS = 42;

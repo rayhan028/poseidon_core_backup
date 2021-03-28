@@ -56,7 +56,7 @@ double run_query_2_c(graph_db_ptr gdb) {
         result_set rs;
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         ldbc_is_qp5_query_2_c(gdb, rs, personIds[i]);
         gdb->commit_transaction();
 
