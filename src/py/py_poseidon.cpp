@@ -43,19 +43,21 @@ properties_t dict_to_props(const py::dict& props) {
 PYBIND11_MODULE(poseidon, m) {
     m.doc() = "poseidon graph database"; // optional module docstring
 
-    m.def("open_pool", &graph_pool::open, py::arg("path"), py::arg("init") = false, "A function which opens the given graph pool");
+    m.def("open_pool", &graph_pool::open, py::arg("path"), py::arg("init") = false, "Opens the given graph pool.");
+
     m.def("create_pool", &graph_pool::create, py::arg("path"), py::arg("size") = 1024*1024*40000ull, 
-      "A function which creates a new graph pool");
+      "Creates a new graph pool of the given size.");
+    // m.def("destroy_pool", &graph_pool::destroy, py::arg("pool"), "Destroys the given graph pool.");
 
     py::class_<graph_pool>(m, "GraphPool")
-      //.def(py::init_alias<>())
-      .def("open_graph", &graph_pool::open_graph)
-      .def("create_graph", &graph_pool::create_graph);
+      .def("open_graph", &graph_pool::open_graph, py::arg("name"), "Opens the graph with the given name.")
+      .def("create_graph", &graph_pool::create_graph, py::arg("name"), "Creates a new graph with the given name.")
+      .def("close", &graph_pool::close, "Closes the graph pool.");
 
     py::class_<graph_db, std::shared_ptr<graph_db> >(m, "Graph")
-      .def("begin", &graph_db::begin_transaction)
-      .def("commit", &graph_db::commit_transaction)
-      .def("abort", &graph_db::abort_transaction)
+      .def("begin", &graph_db::begin_transaction, "Begins the transaction.")
+      .def("commit", &graph_db::commit_transaction, "Commits the transaction.")
+      .def("abort", &graph_db::abort_transaction, "Aborts the transaction.")
       .def("create_node", [](graph_db_ptr gdb, const std::string &label, const py::dict &props) {
           properties_t node_props = dict_to_props(props);
           return gdb->add_node(label, node_props);
