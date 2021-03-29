@@ -40,6 +40,7 @@ coverage:
     - grouprunner
   script:
     #- dnf -y install python-pip
+    - pip install pytest --user
     - pip install gcovr --user
     - mkdir build
     - cd build
