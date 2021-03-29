@@ -26,6 +26,7 @@ test:
   tags:
     - grouprunner
   script:
+    - pip install pytest --user
     - echo pass | sudo -S mkdir -m 777 -p /mnt/pmem0/poseidon
     - cd build
     - ctest
