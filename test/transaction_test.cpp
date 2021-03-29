@@ -453,7 +453,7 @@ TEST_CASE("Checking that a node update is undone after abort", "[transaction]") 
   {
     // check the node
     auto tx = gdb->begin_transaction();
-    auto &n = gdb->node_by_id(nid);
+    // auto &n = gdb->node_by_id(nid);
     auto nd = gdb->get_node_description(nid);
     REQUIRE(nd.label == "Actor");
     REQUIRE(get_property<int>(nd.properties, "age") == 48);
@@ -503,7 +503,7 @@ TEST_CASE("Checking that a relationship update is undone after abort", "[transac
   {
     // check the node
     auto tx = gdb->begin_transaction();
-    auto &r = gdb->rship_by_id(rid);
+    // auto &r = gdb->rship_by_id(rid);
     auto rd = gdb->get_rship_description(rid);
     REQUIRE(rd.label == ":PLAYED_IN");
     REQUIRE(get_property<std::string>(rd.properties, "role") == "Killer");

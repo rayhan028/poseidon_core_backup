@@ -12,7 +12,9 @@
 // #define SF_10
 #define CREATE_INDEX
 
+#ifdef USE_PMDK
 #define RUN_INDEXED
+#endif
 // #define RUN_PARALLEL
 #define PRINT_RESULT
 
