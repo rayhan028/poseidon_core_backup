@@ -182,9 +182,10 @@ struct qoperator;
 struct param : sor<literal_string, qoperator, directions, integer, expression, proj_array, func_array, 
                     node_pattern, rship_pattern> {};
 
-struct param_list : list<param, comma> {};
+struct param_list : list<param, comma, space> {};
 
-struct qoperator : seq<ws, op_name, ws, one<'('>, ws, opt<param_list>, ws, one<')'>, ws> {};
+// struct qoperator : seq<ws, op_name, ws, one<'('>, ws, opt<param_list>, ws, one<')'>, ws> {};
+struct qoperator : if_must<op_name, ws, one<'('>, ws, opt<param_list>, ws, one<')'>, ws> {};
 
 /* ------------------------------------------------------------- */
 

@@ -54,6 +54,7 @@ TEST_CASE("Creating nodes", "[graph_db]") {
   graph_pool::destroy(pool);
 }
 
+#if 0
 /*
  * Test case for issue : https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core/-/issues/24
  * In this test only ldbc_iu_query_1() is taken as an example. 
@@ -176,6 +177,7 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
 	graph->commit_transaction();
 	graph_pool::destroy(pool);
 }
+#endif
 
 TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
   spdlog::info("size = {}", sizeof(log_ins_record));
