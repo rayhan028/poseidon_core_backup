@@ -239,6 +239,46 @@ struct foreach_variable_from_relationship : public qop {
 };
 
 /**
+ * foreach_bi_dir_relationship is a query operator that scans all outgoing
+ * and incoming relationships of a given node. This node is the last elment 
+ * in the vector v of the consume method or given by the index position pos.
+ */
+struct foreach_all_relationship : public qop {
+  foreach_all_relationship(const std::string &l, int pos) : label(l), lcode(0), npos(pos) {}
+  ~foreach_all_relationship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::string label;
+  dcode_t lcode;
+  int npos;
+};
+
+/**
+ * foreach_variable_bi_dir_relationship is a query operator that scans all
+ * outgoing and incoming relationships of a given node recursively within the given range.
+ * This node is the last elment in the vector v of the consume method or given by the
+ * position index pos.
+ */
+struct foreach_variable_all_relationship : public qop {
+  foreach_variable_all_relationship(const std::string &l, std::size_t min,
+                                     std::size_t max, int pos)
+      : label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
+  ~foreach_variable_all_relationship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::string label;
+  dcode_t lcode;
+  std::size_t min_range, max_range;
+  int npos;
+};
+
+/**
  * foreach_to_relationship is a query operator that scans all incoming
  * relationships of a given node. This node is the last elment in the vector v
  * of the consume method.
@@ -530,7 +570,8 @@ struct qr_tuple_append : public qop {
  * pipeline(s).
  */
 struct union_all_qres : public qop {
-  union_all_qres() = default;
+  union_all_qres() : init(true) {}
+  // union_all_qres() = default;
   ~union_all_qres() = default;
 
   void dump(std::ostream &os) const override;
@@ -541,6 +582,8 @@ struct union_all_qres : public qop {
   void finish(graph_db_ptr &gdb);
 
   bool is_binary() const override { return true; }
+  bool init;
+  std::list<qr_tuple> res_;
 };
 
 /**

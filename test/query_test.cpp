@@ -1186,7 +1186,7 @@ TEST_CASE("Testing the existence of relationship", "[qop]") {
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .crossjoin(q1)
-                .rship_exists({0,1})
+                .rship_exists({0,1}, false)
                 .project({PExpr_(0, pj::string_property(res, "firstName")),
                           PVar_(2),
                           PExpr_(1, pj::string_property(res, "firstName"))})
@@ -1291,6 +1291,67 @@ TEST_CASE("Testing Groupby operator", "[qop]") {
     expected.data.push_back(
       {query_result("Anastasia"), query_result("1"), query_result("16.666667"),
         query_result("48.000000"), query_result("48")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing Bi-directional traversal operator", "[qop]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  namespace pj = builtin;
+
+  graph->run_transaction([&]() {
+
+    auto A = graph->add_node("Person", {{"age", boost::any(42)},
+                              {"firstName", boost::any(std::string("AAA"))},
+                              {"lastName", boost::any(std::string("aaa"))}});
+
+    auto B = graph->add_node("Person", {{"age", boost::any(77)},
+                              {"firstName", boost::any(std::string("BBB"))},
+                              {"lastName", boost::any(std::string("bbb"))}});
+
+    auto C = graph->add_node("Person", {{"age", boost::any(48)},
+                              {"firstName", boost::any(std::string("CCC"))},
+                              {"lastName", boost::any(std::string("ccc"))}});
+
+    auto D = graph->add_node("Person", {{"age", boost::any(37)},
+                              {"firstName", boost::any(std::string("DDD"))},
+                              {"lastName", boost::any(std::string("ddd"))}});
+
+    auto E = graph->add_node("Person", {{"age", boost::any(20)},
+                              {"firstName", boost::any(std::string("EEE"))},
+                              {"lastName", boost::any(std::string("eee"))}});
+    
+    graph->add_relationship(A, C, ":knows", {});
+    graph->add_relationship(B, C, ":knows", {});
+    graph->add_relationship(C, D, ":knows", {});
+    graph->add_relationship(C, E, ":knows", {});
+
+    return true;
+  });
+
+  graph->run_transaction([&]() {
+
+    result_set rs, expected;
+    auto q = query(graph)
+              .nodes_where("Person", "age",
+                          [&](auto &p) { return p.equal(48); })
+              .all_relationships(":knows")
+              .project({PExpr_(2, pj::string_property(res, "firstName"))})
+              .collect(rs);
+
+    q.start();
+    rs.wait();
+    q.print_plan();
+
+    expected.data.push_back({query_result("EEE")});
+    expected.data.push_back({query_result("DDD")});
+    expected.data.push_back({query_result("BBB")});
+    expected.data.push_back({query_result("AAA")});
 
     REQUIRE(rs == expected);
     return true;

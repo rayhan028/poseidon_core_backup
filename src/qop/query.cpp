@@ -110,6 +110,20 @@ query &query::from_relationships(std::pair<int, int> range,
                                  op.get(), ph::_1, ph::_2));
 }
 
+query &query::all_relationships(const std::string &label, int pos) {
+  auto op = std::make_shared<foreach_all_relationship>(label, pos);
+  return append_op(op, std::bind(&foreach_all_relationship::process, op.get(),
+                                 ph::_1, ph::_2));
+}
+
+query &query::all_relationships(std::pair<int, int> range,
+                                 const std::string &label, int pos) {
+  auto op = std::make_shared<foreach_variable_all_relationship>(
+      label, range.first, range.second, pos);
+  return append_op(op, std::bind(&foreach_variable_all_relationship::process,
+                                 op.get(), ph::_1, ph::_2));
+}
+
 query &query::property(const std::string &key,
                        std::function<bool(const p_item &)> pred) {
   auto op = std::make_shared<is_property>(key, pred);

@@ -104,6 +104,19 @@ public:
                             int pos = std::numeric_limits<int>::max());
 
   /**
+   * Add an operator that scans all outgoing and incoming relationships of the last node in
+   * the query result. Optionally, 1) the given label of the relationship is
+   * checked, too. 2) Nodes that were already explored, i.e. other than the frontier,
+   * can also be re-explored, given their position.
+   */
+  query &all_relationships(const std::string &label = "",
+                            int pos = std::numeric_limits<int>::max());
+
+  query &all_relationships(std::pair<int, int> range,
+                            const std::string &label = "",
+                            int pos = std::numeric_limits<int>::max());
+
+  /**
    * Add a filter operator for checking that the property with the given key
    * satisfies the predicate. This predicate is applied to the last
    * node/relationship that was processed, i.e. in a pattern like
@@ -152,7 +165,7 @@ public:
    * When no relationship exist between them, the boolean b sets whether a
    * null_t is appended instead (true) or not (false)
    */
-  query &rship_exists(std::pair<int, int> src_des, bool append_null = false);
+  query &rship_exists(std::pair<int, int> src_des, bool append_null = true);
 
   /**
    * Add a projection operator that applies the given list of projection
