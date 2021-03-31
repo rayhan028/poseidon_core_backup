@@ -25,6 +25,7 @@
 #include "spdlog/spdlog.h"
 #include "thread_pool.hpp"
 #include <iostream>
+#include <set>
 
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
@@ -228,6 +229,7 @@ void graph_db::foreach_variable_from_relationship_of_node(
 void graph_db::foreach_variable_from_relationship_of_node(
     const node &n, dcode_t lcode, std::size_t min, std::size_t max,
     rship_consumer_func consumer) {
+  std::set<relationship::id_t> rship_set;
   std::list<std::pair<relationship::id_t, std::size_t>> rship_queue;
   rship_queue.push_back(std::make_pair(n.from_rship_list, 1));
 
@@ -294,8 +296,12 @@ void graph_db::foreach_variable_from_relationship_of_node(
     if (relship.rship_label != lcode)
       continue;
 
-    if (hops >= min)
+    if (hops >= min) {
+      if (rship_set.find(relship.id()) != rship_set.end())
+        continue;
+      rship_set.insert(relship.id());
       consumer(relship);
+    }
 
     // scan recursively!!
     rship_queue.push_back(std::make_pair(relship.next_src_rship, hops));
@@ -349,6 +355,7 @@ void graph_db::foreach_variable_to_relationship_of_node(
 void graph_db::foreach_variable_to_relationship_of_node(
     const node &n, dcode_t lcode, std::size_t min, std::size_t max,
     rship_consumer_func consumer) {
+  std::set<relationship::id_t> rship_set;
   std::list<std::pair<relationship::id_t, std::size_t>> rship_queue;
   rship_queue.push_back(std::make_pair(n.to_rship_list, 1));
 
@@ -415,8 +422,12 @@ void graph_db::foreach_variable_to_relationship_of_node(
     if (relship.rship_label != lcode)
       continue;
 
-    if (hops >= min)
+    if (hops >= min) {
+      if (rship_set.find(relship.id()) != rship_set.end())
+        continue;
+      rship_set.insert(relship.id());
       consumer(relship);
+    }
 
     // scan recursively!!
     rship_queue.push_back(std::make_pair(relship.next_dest_rship, hops));
