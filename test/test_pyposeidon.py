@@ -22,21 +22,21 @@ def teardown_function():
         os.remove(path)
 
 def test_create_pool():
-    p = poseidon.create_pool(path)
+    p = poseidon.create_pool(path, 1024 * 1024 * 80)
     assert p != None
     g = p.create_graph("mygraph")
     assert g != None
     p.close()
 
 def test_open_graph():
-    p = poseidon.create_pool(path)
+    p = poseidon.create_pool(path, 1024 * 1024 * 80)
     assert p != None
     with pytest.raises(RuntimeError):
         g = p.open_graph("mygraph")
     p.close()
 
 def test_create_node():
-    p = poseidon.create_pool(path)
+    p = poseidon.create_pool(path, 1024 * 1024 * 80)
     assert p != None
     g = p.create_graph("mygraph")
     assert g != None
