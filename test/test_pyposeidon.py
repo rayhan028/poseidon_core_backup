@@ -6,27 +6,37 @@ sys.path.append('../build')
 # import after sys.path is set!
 import poseidon
 
+path = "/mnt/pmem0/poseidon/py_test"
+
 # TODO: should contain more tests of the Python API
 
+def setup_function():
+    global path
+    if os.path.isdir('/mnt/pmem0/poseidon'):
+        path = "/mnt/pmem0/poseidon/py_test"
+    else:
+        path = "py_test_pool"
+
+def teardown_function():
+    if os.path.isdir('/mnt/pmem0/poseidon'):
+        os.remove(path)
 
 def test_create_pool():
-    p = poseidon.create_pool("/mnt/pmem0/poseidon/py_test")
+    p = poseidon.create_pool(path)
     assert p != None
     g = p.create_graph("mygraph")
     assert g != None
     p.close()
-    os.remove("/mnt/pmem0/poseidon/py_test")
 
 def test_open_graph():
-    p = poseidon.create_pool("/mnt/pmem0/poseidon/py_test")
+    p = poseidon.create_pool(path)
     assert p != None
     with pytest.raises(RuntimeError):
         g = p.open_graph("mygraph")
     p.close()
-    os.remove("/mnt/pmem0/poseidon/py_test")
 
 def test_create_node():
-    p = poseidon.create_pool("/mnt/pmem0/poseidon/py_test")
+    p = poseidon.create_pool(path)
     assert p != None
     g = p.create_graph("mygraph")
     assert g != None
@@ -39,4 +49,3 @@ def test_create_node():
     mnode = g.get_node(m1)
     g.abort()
     p.close()
-    os.remove("/mnt/pmem0/poseidon/py_test")
