@@ -65,7 +65,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_AppendNode)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-      auto tx = graph->begin_transaction();
+      graph->begin_transaction();
 #endif
       auto p1 = graph->add_node("Person",
                                 {{"name", boost::any(std::string("John Doe"))},
@@ -89,7 +89,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_CreateNode)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-      auto tx = graph->begin_transaction();
+      graph->begin_transaction();
 #endif
       auto p1 = graph->add_node("Person",
                                 {{"name", boost::any(std::string("John Doe"))},
@@ -112,7 +112,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_AppendBlankNode)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-      auto tx = graph->begin_transaction();
+      graph->begin_transaction();
 #endif
       auto p1 = graph->add_node("Person", {}, true);
 #ifdef USE_TX
@@ -130,7 +130,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_CreateBlankNode)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-      auto tx = graph->begin_transaction();
+      graph->begin_transaction();
 #endif
       auto p1 = graph->add_node("Person", {});
 #ifdef USE_TX
@@ -146,7 +146,7 @@ BENCHMARK_REGISTER_F(MyFixture, BM_CreateBlankNode)->Range(8, 8 << 12);
 
 BENCHMARK_DEFINE_F(MyFixture, BM_GetNodeById)(benchmark::State &state) {
 #ifdef USE_TX
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
   for (int i = 0u; i < 10000; i++) {
     auto p1 = graph->add_node("Person", {}, true);
@@ -157,7 +157,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_GetNodeById)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-      auto tx = graph->begin_transaction();
+      graph->begin_transaction();
 #endif
       auto &n = graph->node_by_id((node::id_t)i);
 #ifdef USE_TX
@@ -174,7 +174,7 @@ BENCHMARK_REGISTER_F(MyFixture, BM_GetNodeById)->Range(8, 8 << 10);
 BENCHMARK_DEFINE_F(MyFixture, BM_GetNodeDescription)(benchmark::State &state) {
   for (int i = 0u; i < 10000; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     auto p1 = graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
@@ -190,7 +190,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_GetNodeDescription)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-      auto tx = graph->begin_transaction();
+      graph->begin_transaction();
 #endif
       auto &n = graph->node_by_id((node::id_t)i);
       auto ndescr = graph->get_node_description((node::id_t)i);
@@ -207,7 +207,7 @@ BENCHMARK_REGISTER_F(MyFixture, BM_GetNodeDescription)->Range(8, 8 << 6);
 
 BENCHMARK_DEFINE_F(MyFixture, BM_ScanNodes)(benchmark::State &state) {
 #ifdef USE_TX
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
   for (int i = 0u; i < 10000; i++) {
     auto p1 = graph->add_node("Person",
@@ -224,7 +224,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_ScanNodes)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-      auto tx = graph->begin_transaction();
+      graph->begin_transaction();
 #endif
       graph->nodes([](node &n) { auto id_ = n.id(); });
 #ifdef USE_TX
@@ -240,7 +240,7 @@ BENCHMARK_REGISTER_F(MyFixture, BM_ScanNodes)->Range(8, 8 << 4);
 
 BENCHMARK_DEFINE_F(MyFixture, BM_ScanNodesByLabel)(benchmark::State &state) {
 #ifdef USE_TX
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
   for (int i = 0u; i < 10000; i++) {
     auto p1 = graph->add_node("Person",
@@ -257,7 +257,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_ScanNodesByLabel)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-      auto tx = graph->begin_transaction();
+      graph->begin_transaction();
 #endif
       graph->nodes_by_label("Person", [](node &n) { auto id_ = n.id(); });
 #ifdef USE_TX

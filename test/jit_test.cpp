@@ -59,7 +59,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 #endif
 
 #ifdef USE_TX
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
 
   auto num_persons = 100;
@@ -87,7 +87,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
 #ifdef USE_TX
   graph->commit_transaction();
-  tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
 
   auto idx = graph->create_index("Person", "id");
@@ -278,7 +278,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 #endif
 
 #ifdef USE_TX
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
 
   auto num_persons = 100;
@@ -408,7 +408,7 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
 #endif
 
 #ifdef USE_TX
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
 
   int num_towns = 42;
@@ -446,7 +446,7 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
   SECTION("Test the internal variable foreach relationship operator") {
         result_set rs;
 
-        auto t = graph->begin_transaction();
+        graph->begin_transaction();
         auto q = query(graph).all_nodes("Town").from_relationships({1, 2}, ":CONNECTED").collect(rs);
         q.start();
         graph->commit_transaction();
