@@ -1,4 +1,5 @@
 import pytest
+import os
 import sys
 sys.path.append('../build')
 
@@ -9,21 +10,23 @@ import poseidon
 
 
 def test_create_pool():
-    p = poseidon.create_pool("test")
+    p = poseidon.create_pool("/mnt/pmem0/poseidon/py_test")
     assert p != None
     g = p.create_graph("mygraph")
     assert g != None
     p.close()
+    os.remove("/mnt/pmem0/poseidon/py_test")
 
 def test_open_graph():
-    p = poseidon.create_pool("test")
+    p = poseidon.create_pool("/mnt/pmem0/poseidon/py_test")
     assert p != None
     with pytest.raises(RuntimeError):
         g = p.open_graph("mygraph")
     p.close()
+    os.remove("/mnt/pmem0/poseidon/py_test")
 
 def test_create_node():
-    p = poseidon.create_pool("test")
+    p = poseidon.create_pool("/mnt/pmem0/poseidon/py_test")
     assert p != None
     g = p.create_graph("mygraph")
     assert g != None
@@ -36,3 +39,4 @@ def test_create_node():
     mnode = g.get_node(m1)
     g.abort()
     p.close()
+    os.remove("/mnt/pmem0/poseidon/py_test")
