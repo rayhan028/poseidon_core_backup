@@ -360,6 +360,8 @@ set(src_files
   src/qcomp/qoperator.cpp
   src/qcomp/joiner.cpp
   src/qcomp/interprete_filter_visitor.cpp
+  src/ql/queryc_qcomp.cpp
+  src/ql/queryc_qex.cpp
   src/ql/queryc.cpp
   src/ql/ast.cpp
   src/analytics/bfs.cpp

@@ -1,3 +1,21 @@
+/*
+ * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ *
+ * This file is part of the Poseidon package.
+ *
+ * Poseidon is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Poseidon is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
+ */
 #include <iostream>
 #include <memory>
 
@@ -9,18 +27,21 @@
 #include "queryc.hpp"
 
 namespace pegtl = tao::pegtl;
-namespace ph = std::placeholders;
 
+
+/* -------------------------------------------------------------------------------- */
+/*                               Helper methods                                     */
+/* -------------------------------------------------------------------------------- */   
 expr parse_expression(parse_tree_ptr& tree);
 
-std::string trim_string(const std::string& s) {
+std::string queryc::trim_string(const std::string& s) {
   std::string s2 = s;
   if (s2[0] == '\'' || s2[0] == '"')
     s2 = s2.substr(1, s2.size()-2);
   return s2;
 }
 
-std::string trim_ws(const std::string& str) {
+std::string queryc::trim_ws(const std::string& str) {
   auto first = str.find_first_not_of(' ');
   if (std::string::npos == first) {
     return str;
@@ -29,7 +50,7 @@ std::string trim_ws(const std::string& str) {
   return str.substr(first, (last - first + 1));
 }
 
-proj_spec::sort_order parse_sort_order(const std::string &s) {
+proj_spec::sort_order queryc::parse_sort_order(const std::string &s) {
   if (s == "ASC")
     return proj_spec::Asc;
   else if (s == "DESC")
@@ -38,21 +59,54 @@ proj_spec::sort_order parse_sort_order(const std::string &s) {
     return proj_spec::None;
 }
 
-void queryc::compile(const std::string &query) {
-    auto ast = parse(query);
-    if (ast) {
-        ast_to_plan(ast);
-    }
+std::string queryc::parse_variable_name(const std::string& var_name) {
+  auto dot_pos = var_name.find(".");
+  return var_name.substr(dot_pos + 1);
 }
 
-algebra_optr queryc::compile_to_plan(const std::string &query) {
-    auto ast = parse(query);
-    if (!ast) 
-      throw query_execution_error();
-    auto collect = Collect(true);
-    return ast_to_algoptr(ast, collect);
+uint32_t queryc::parse_tuple_id(const std::string& var_name) {
+  auto dot_pos = var_name.find(".");
+  return std::stoi(var_name.substr(1, dot_pos - 1));
 }
 
+proj_spec queryc::get_property_spec(parse_tree_ptr& pn) {
+  assert (pn->is_type<qlang::proj_expr>());
+  std::vector<std::string> s;
+  boost::split(s, pn->string(), boost::is_any_of(": "));
+  return s.size() == 2 ? proj_spec{ s[0], s[1], proj_spec::None } : proj_spec{ s[0], s[1], parse_sort_order(s[2]) };
+}
+
+aggr_spec queryc::get_aggregate_spec(parse_tree_ptr& pn) {
+  assert (pn->is_type<qlang::func_expr>());
+  assert (pn->children.size() == 3);
+  auto fname = pn->children[0]->string();
+  auto vname = pn->children[1]->string();
+  auto dtype = pn->children[2]->string();
+  return aggr_spec{ fname, vname, dtype };
+}
+
+jproperty queryc::get_json_property(parse_tree_ptr& pn) {
+  assert (pn->is_type<qlang::property>());
+  std::vector<std::string> s;
+  boost::split(s, pn->string(), boost::is_any_of(":"));
+  return jproperty{ s[0], s[1] };
+}
+
+properties_t queryc::jprops_to_props(const jproperty_list& jprops) {
+  properties_t props;
+  for (auto& jp : jprops) {
+    props[jp.pname] = jp.pval;
+  }
+  return props;
+}
+
+/* -------------------------------------------------------------------------------- */
+/*                    Methods for parsing and AST construction                      */
+/* -------------------------------------------------------------------------------- */   
+
+/**
+ * Parse the given query string and construct an abstract syntax tree (AST).
+ */
 ast_op_ptr queryc::parse(const std::string &query) {
   pegtl::memory_input<> in(query, "");
 
@@ -61,9 +115,7 @@ ast_op_ptr queryc::parse(const std::string &query) {
   try {
     ptree = pegtl::parse_tree::parse<qlang::qoperator,
                                     qlang::my_selector, qlang::my_control>(in);
-    if (ptree)
-  	   ; // pegtl::parse_tree::print_dot(std::cout, *ptree); 
-    else {
+    if (!ptree) {
       std::cerr << "uknown parse error" << std::endl;
       return nullptr;
     }
@@ -74,6 +126,7 @@ ast_op_ptr queryc::parse(const std::string &query) {
               << std::string(p.column, ' ') << '^' << std::endl;
     return nullptr;
   }
+  // pegtl::parse_tree::print_dot(std::cout, *ptree); 
   auto ast_node = ptree_to_ast(ptree->children.front());
   // print_ast(ast_node);
   return ast_node;
@@ -210,76 +263,9 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
   return nptr;
 }
 
-proj_spec queryc::get_property_spec(parse_tree_ptr& pn) {
-  assert (pn->is_type<qlang::proj_expr>());
-  std::vector<std::string> s;
-  boost::split(s, pn->string(), boost::is_any_of(": "));
-  return s.size() == 2 ? proj_spec{ s[0], s[1], proj_spec::None } : proj_spec{ s[0], s[1], parse_sort_order(s[2]) };
-}
+/* -------------------------------------------------------------------------------- */
 
-aggr_spec queryc::get_aggregate_spec(parse_tree_ptr& pn) {
-  assert (pn->is_type<qlang::func_expr>());
-  assert (pn->children.size() == 3);
-  auto fname = pn->children[0]->string();
-  auto vname = pn->children[1]->string();
-  auto dtype = pn->children[2]->string();
-  return aggr_spec{ fname, vname, dtype };
-}
-
-jproperty queryc::get_json_property(parse_tree_ptr& pn) {
-  assert (pn->is_type<qlang::property>());
-  std::vector<std::string> s;
-  boost::split(s, pn->string(), boost::is_any_of(":"));
-  return jproperty{ s[0], s[1] };
-}
-
-void queryc::ast_to_plan(ast_op_ptr &ast) {
-  if (!ast)
-    return;
-
-  auto qop = ast_to_qop(ast, nullptr);
-}
-
-qop_ptr queryc::ast_to_qop(ast_op_ptr &ast, qop_ptr parent) {
-  std::cout << "ast_to_qop: " << ast->op_ << std::endl;
-  qop_ptr qop;
-  switch (ast->op_) {
-    case ast_op::node_scan:
-      qop = std::make_shared<scan_nodes>(ast->get_param<std::string>(0));
-      break;
-    case ast_op::limit:
-      qop = std::make_shared<limit_result>(ast->get_param<int>(0));
-      break;
-  /*  case ast_op::filter:
-      qop = std::make_shared<is_property>(??);
-      if (parent)
-        parent->connect(qop, std::bind(&is_property::process,
-                                dynamic_cast<is_property *>(qop.get()), ph::_1,
-                                ph::_2));
-      break;*/
-    default:
-      break;
-  } 
-  if (!ast->is_source()) {
-    auto qop1 = ast_to_qop(ast->children_[0], qop);
-    if (ast->children_.size() == 2) {
-      auto qop2 = ast_to_qop(ast->children_[1], qop);
-    }    
-  }
-  return qop;
-} 
-
-std::string parse_variable_name(std::string var_name) {
-  auto dot_pos = var_name.find(".");
-  return var_name.substr(dot_pos+1);
-}
-
-unsigned parse_tuple_id(std::string var_name) {
-  auto dot_pos = var_name.find(".");
-  return std::stoi(var_name.substr(1, dot_pos-1));
-}
-
-expr parse_expression(parse_tree_ptr& tree) {
+expr queryc::parse_expression(parse_tree_ptr& tree) {
   auto& lhs_key = tree->children[0];
   
   unsigned int lhs_qr_id = 0;
@@ -312,148 +298,4 @@ expr parse_expression(parse_tree_ptr& tree) {
 
   return op_se;
 }
-#if 0
-expr parse_filter_expression(ast_op_ptr &ast) {
-/* TODO: more complex filter expressions
-  * currently, only simple (binary) expressions are supported
-  * e.g. Age >= 42
-  */
 
-  // process lhs of expression
-  auto fe_expr = ast->get_param(0);
-
-  auto lhs_key = std::move(fe_expr->children[0]);
-  
-  unsigned int lhs_qr_id = 0;
-
-  if(lhs_key->is_type<qlang::variable_name>()) {
-      auto lhs_id = std::move(lhs_key->children[0]);
-      lhs_qr_id = std::stoi(lhs_id->string());
-  }
-
-  // extract the actual key after $X. in string
-  auto lhs_var_name = parse_variable_name(lhs_key->string());
-  auto key_se = Key(lhs_qr_id, lhs_var_name);
-
-
-  auto rhs_value = std::move(fe_expr->children[2]);
-  expr value_se;
-  if (is_int(rhs_value->string())) {
-      auto n = std::stoi(rhs_value->string()); // TODO: find better solution
-      value_se = Int(n);
-  } else if(rhs_value->is_type<qlang::variable_name>()){
-      auto rhs_var_name = parse_variable_name(lhs_key->string());
-      auto rhs_id = std::move(rhs_value->children[0]);
-      auto rhs_qr_id = std::stoi(rhs_id->string());
-      value_se = Key(rhs_qr_id, rhs_var_name);
-  }
-
-  auto fe_op = std::move(fe_expr->children[1]);
-  expr op_se;
-
-  if (boost::equals(fe_op->string(), "==")) {
-      op_se = EQ(key_se, value_se);
-  }
-
-  return op_se;
-}
-#endif
-
-algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
-  algebra_optr op;
-  switch(ast->op_) {
-    case ast_op::node_scan:
-      op = Scan(trim_string(ast->get_param<std::string>(0)), parent);
-      break;
-    case ast_op::foreach_rship:
-    {
-      auto rship_dir_str = ast->get_param<std::string>(0);
-      RSHIP_DIR rship_dir = RSHIP_DIR::FROM;
-
-      if(boost::iequals(rship_dir_str, "FROM")) {
-        rship_dir = RSHIP_DIR::FROM;
-      }
-      else if(boost::iequals(rship_dir_str, "TO")) {
-        rship_dir = RSHIP_DIR::TO;
-      }
-
-      auto rship_label = trim_string(ast->get_param<std::string>(1));
-
-      op = ForeachRship(rship_dir, {}, rship_label, parent);
-    }
-      break;
-    case ast_op::expand:
-    {
-      auto expand_dir_str = ast->get_param<std::string>(0);
-      EXPAND expand_dir = EXPAND::IN;
-
-      if(boost::iequals(expand_dir_str, "IN")) {
-        expand_dir = EXPAND::IN;
-      } else if(boost::iequals(expand_dir_str, "OUT")) {
-        expand_dir = EXPAND::OUT;
-      }
-
-      auto expand_label = trim_string(ast->get_param<std::string>(1));
-
-      op = Expand(expand_dir, expand_label, parent);
-    }
-      break;
-    case ast_op::limit:
-      op = Limit(ast->get_param<int>(0), parent);
-      break;
-    case ast_op::filter:
-    {
-      auto fexpr = ast->get_param<expr>(0);
-      op = Filter(fexpr, parent);
-    }
-      break;
-    case ast_op::project:
-    {
-        auto pr_list = ast->get_param<proj_spec_list>(0);
-        std::vector<pr_expr> pr_exprs;
-
-        for(auto & p : pr_list) {
-            FTYPE type = FTYPE::INT;
-            if (boost::iequals(p.ptype, "int")) {
-              type = FTYPE::INT;
-            } else if (boost::iequals(p.ptype, "string")) {
-              type = FTYPE::STRING;
-            } else if (boost::iequals(p.ptype, "uint64")) {
-              type = FTYPE::UINT64;
-            } /// TODO: improve type handling
-
-            auto pv_id = parse_tuple_id(p.pname);
-            auto pv_name = parse_variable_name(p.pname);
-            pr_exprs.push_back({pv_id, pv_name, type});
-        }
-        
-        op = Project(pr_exprs, parent);
-      break;
-    }
-    case ast_op::hash_join:
-    {
-      break;        
-    }
-    case ast_op::leftouter_join:
-    {
-      break;        
-    }    
-    case ast_op::sort:
-    {
-      break;        
-    }  
-    case ast_op::group_by:
-    {
-      break;        
-    }     
-    default:
-      break;
-  }
-  if(!ast->is_source()) {
-    op = ast_to_algoptr(ast->children_[0], op);
-    //if(ast->children_.size() == 2) {
-      //auto qop2 = ast_to_algoptr(ast->children_[1], op);
-    //}
-  }
-  return op;
-}

@@ -195,12 +195,12 @@ extern "C" const char* lookup_dc(graph_db *gdb, dcode_t dc) {
     return gdb->get_string(dc);
 }
 
-extern "C" node* create_node(graph_db *gdb, char *label, properties_t *props) {
+extern "C" node* create_node_func(graph_db *gdb, char *label, properties_t *props) {
     auto node_id = gdb->add_node(std::string(label), *props, true);
     return &gdb->node_by_id(node_id);
 }
 
-extern "C" relationship* create_rship(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props) {
+extern "C" relationship* create_rship_func(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props) {
     auto rid = gdb->add_relationship(n1->id(), n2->id(), label, *props, true);
     return &gdb->rship_by_id(rid);
 }
