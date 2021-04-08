@@ -83,7 +83,7 @@ private:
  * (bidirectional = true).
  */
 bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
-            bool bidirectional, rship_predicate rpred, path_visitor visit, path_item &spath);
+            bool bidirectional, rship_predicate rpred, path_visitor visit, std::list<path_item> &spaths);
 
 /**
  * A sequential implementation of weighted shortest path search on the given graph. The search starts at the

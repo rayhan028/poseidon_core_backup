@@ -1284,3 +1284,80 @@ TEST_CASE("Testing LDBC BI Query 14", "[ldbc_bi]") {
   });
   graph_pool::destroy(pool);
 }
+
+TEST_CASE("Testing LDBC BI Query 15", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{(uint64_t)2, (uint64_t)4, 
+      time_from_string(std::string("2011-06-01 00:00:00.000")),
+      time_from_string(std::string("2012-05-31 00:00:00.000"))}};
+    result_set rs, expected;
+    ldbc_bi_query_15(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("[ 2 3 4 ]"), query_result("1.000000")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 16", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters =
+    {{"Pyrenees", time_from_string(std::string("2011-10-10 00:00:00.000")),
+    "Snowboard", time_from_string(std::string("2012-03-04 00:00:00.000")), 5}};
+    result_set rs, expected;
+    ldbc_bi_query_16(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("3"), query_result("2"), query_result("1")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 17", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{"Snowboard", 10}};
+    result_set rs, expected;
+    ldbc_bi_query_17(graph, rs, parameters[0]);
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 18", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{(uint64_t)2, "Snowboard"}};
+    result_set rs, expected;
+    ldbc_bi_query_18(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("4"), query_result("1")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}

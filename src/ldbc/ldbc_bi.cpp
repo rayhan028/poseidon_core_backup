@@ -1474,7 +1474,6 @@ void ldbc_bi_query_15(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
         return w;
       };
 
-    // Query pipeline
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -1489,8 +1488,20 @@ void ldbc_bi_query_15(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_node("Person")
               .property("id", [&](auto &prop) {
                 return prop.equal(boost::get<uint64_t>(params[1])); })
+              .limit(1)
               .algo_shortest_path({0, 2}, [&](relationship &r) {
                 return std::string(gdb->get_string(r.rship_label)) == ":knows"; }, true)
+              .append_to_qr_tuple([&](qr_tuple v) {
+                auto arr = boost::get<array_t>(v[3]).elems;
+                std::vector<offset_t> ids;
+                for (std::size_t i = 0; i < arr.size(); i++) {
+                  auto &n = gdb->node_by_id(arr[i]);
+                  auto nd = gdb->get_node_description(n.id());
+                  auto p = get_property<uint64_t>(nd.properties, "id");
+                  ids.push_back(p.value());
+                }
+                array_t nids(ids);
+                return query_result(nids); })
               .append_to_qr_tuple([&](qr_tuple v) {
                 double weight = 0.0;
                 auto nids = boost::get<array_t>(v[3]).elems;
@@ -1501,14 +1512,15 @@ void ldbc_bi_query_15(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                   weight += edge_weight(n2, n1);
                 }
                 return query_result(weight); })
-              .append_to_qr_tuple([&](qr_tuple v) {
-                auto nids = boost::get<array_t>(v[3]).elems;
-                std::sort(nids.begin(), nids.end());
-                array_t res(nids);
-                return query_result(res); })
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
-                return boost::get<double>(q1[5]) < boost::get<double>(q2[5]); })
-              .project({PVar_(6),
+                if (boost::get<double>(q1[5]) == boost::get<double>(q2[5])) {
+                  auto a = boost::get<array_t>(q1[4]).elems;
+                  auto b = boost::get<array_t>(q2[4]).elems;
+                  auto m = std::mismatch(a.begin(), a.end(), b.begin(), b.end());
+                  return *(m.first) < *(m.second);
+                }
+                return boost::get<double>(q1[5]) > boost::get<double>(q2[5]); })
+              .project({PVar_(4),
                         PVar_(5) })
               .collect(rs);
 
@@ -1524,72 +1536,37 @@ void ldbc_bi_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("Tag")
               .property("name", [&](auto &prop) {
                 auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
                 return gtg == etg; })
 #else
               .nodes_where("Tag", "name", [&](auto &prop) {
                 auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
                 return gtg == etg; })
 #endif
               .to_relationships(":hasTag")
               .from_node(message)
               .property("creationDate", [&](auto &prop) {
                 auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto edt = boost::get<ptime>(params[1]);
+                auto edt = boost::get<ptime>(params[3]);
                 return gdt.date() == edt.date(); })
               .from_relationships(":hasCreator")
               .to_node("Person")
-              .from_relationships(":knows") // first of pair
-              .to_node("Person")
+              .groupby({4}, {{"count", 0}})
+              .all_relationships(":knows", 0)
               .to_relationships(":hasCreator")
               .from_node(message)
               .property("creationDate", [&](auto &prop) {
                 auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto edt = boost::get<ptime>(params[1]);
+                auto edt = boost::get<ptime>(params[3]);
                 return gdt.date() == edt.date(); })
               .from_relationships(":hasTag")
               .to_node("Tag")
               .property("name", [&](auto &prop) {
                 auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
                 return gtg == etg; })
-              .groupby({2, 4}, {{"count", 0}})
-              .where_qr_tuple([&](const qr_tuple v) {
-                return boost::get<uint64_t>(v[2]) <= (uint64_t)boost::get<int>(params[4]); })
-              .groupby({1}, {{"count", 0}})
-              .from_relationships(":knows", 0)
-              .to_node("Person")
-              .to_relationships(":hasCreator")
-              .from_node(message)
-              .property("creationDate", [&](auto &prop) {
-                auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto edt = boost::get<ptime>(params[1]);
-                return gdt.date() == edt.date(); })
-              .from_relationships(":hasTag")
-              .to_node("Tag")
-              .property("name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-                return gtg == etg; })
-              .from_relationships(":knows", 3) // Second of pair
-              .to_node("Person")
-              .to_relationships(":hasCreator")
-              .from_node(message)
-              .property("creationDate", [&](auto &prop) {
-                auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto edt = boost::get<ptime>(params[1]);
-                return gdt.date() == edt.date(); })
-              .from_relationships(":hasTag")
-              .to_node("Tag")
-              .property("name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-                return gtg == etg; })
-              .groupby({0, 1, 3, 5}, {{"count", 0}})
-              .where_qr_tuple([&](const qr_tuple v) {
-                return boost::get<uint64_t>(v[4]) <= (uint64_t)boost::get<int>(params[4]); })
-              .groupby({0, 1, 2}, {{"count", 0}});
+              .groupby({0}, {{"count", 0}});
 
     auto q2 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -1613,70 +1590,86 @@ void ldbc_bi_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 return gdt.date() == edt.date(); })
               .from_relationships(":hasCreator")
               .to_node("Person")
-              .from_relationships(":knows") // first of pair
+              .groupby({4}, {{"count", 0}})
+              .outerjoin_on_node({0, 0}, q1)
+              .where_qr_tuple([&](const qr_tuple &v) {
+                if (v[3].type() == typeid(null_val)) 
+                  return true;
+                return boost::get<uint64_t>(v[3]) <= (uint64_t)boost::get<int>(params[4]); });
+
+    auto q3 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+#else
+              .nodes_where("Tag", "name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+#endif
+              .to_relationships(":hasTag")
+              .from_node(message)
+              .property("creationDate", [&](auto &prop) {
+                auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
+                auto edt = boost::get<ptime>(params[1]);
+                return gdt.date() == edt.date(); })
+              .from_relationships(":hasCreator")
               .to_node("Person")
+              .groupby({4}, {{"count", 0}})
+              .all_relationships(":knows", 0)
               .to_relationships(":hasCreator")
               .from_node(message)
               .property("creationDate", [&](auto &prop) {
                 auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto edt = boost::get<ptime>(params[3]);
+                auto edt = boost::get<ptime>(params[1]);
                 return gdt.date() == edt.date(); })
               .from_relationships(":hasTag")
               .to_node("Tag")
               .property("name", [&](auto &prop) {
                 auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
                 return gtg == etg; })
-              .groupby({2, 4}, {{"count", 0}})
-              .where_qr_tuple([&](const qr_tuple v) {
-                return boost::get<uint64_t>(v[2]) <= (uint64_t)boost::get<int>(params[4]); })
-              .groupby({1}, {{"count", 0}})
-              .from_relationships(":knows", 0)
-              .to_node("Person")
-              .to_relationships(":hasCreator")
+              .groupby({0}, {{"count", 0}});
+
+    auto q4 = query(gdb)
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+#else
+              .nodes_where("Tag", "name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+#endif
+              .to_relationships(":hasTag")
               .from_node(message)
               .property("creationDate", [&](auto &prop) {
                 auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto edt = boost::get<ptime>(params[3]);
+                auto edt = boost::get<ptime>(params[1]);
                 return gdt.date() == edt.date(); })
-              .from_relationships(":hasTag")
-              .to_node("Tag")
-              .property("name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
-                return gtg == etg; })
-              .from_relationships(":knows", 3) // Second of pair
+              .from_relationships(":hasCreator")
               .to_node("Person")
-              .to_relationships(":hasCreator")
-              .from_node(message)
-              .property("creationDate", [&](auto &prop) {
-                auto gdt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto edt = boost::get<ptime>(params[3]);
-                return gdt.date() == edt.date(); })
-              .from_relationships(":hasTag")
-              .to_node("Tag")
-              .property("name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
-                return gtg == etg; })
-              .groupby({0, 1, 3, 5}, {{"count", 0}})
-              .where_qr_tuple([&](const qr_tuple v) {
-                return boost::get<uint64_t>(v[4]) <= (uint64_t)boost::get<int>(params[4]); })
-              .groupby({0, 1, 2}, {{"count", 0}})
-              .hashjoin_on_node({0, 0}, q1)
-              .append_to_qr_tuple([&](qr_tuple v) {
-                uint64_t cnt = boost::get<uint64_t>(v[1]) + boost::get<uint64_t>(v[4]);
-                return query_result(cnt); })
-              .project({PVar_(8),
-                        PExpr_(0, pj::uint64_property(res, "id")) })
-              .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
-                if (boost::get<uint64_t>(qr1[0]) == boost::get<uint64_t>(qr2[0]))
-                  return boost::get<uint64_t>(qr1[1]) < boost::get<uint64_t>(qr2[1]);
-                return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]); })
-              .limit(20)
+              .groupby({4}, {{"count", 0}})
+              .outerjoin_on_node({0, 0}, q3)
+              .where_qr_tuple([&](const qr_tuple &v) {
+                if (v[3].type() == typeid(null_val)) 
+                  return true;
+                return boost::get<uint64_t>(v[3]) <= (uint64_t)boost::get<int>(params[4]); })
+              .hashjoin_on_node({0, 0}, q2)
+              .project({PExpr_(0, pj::uint64_property(res, "id")),
+                        PVar_(1),
+                        PVar_(5) })
               .collect(rs);
 
-    query::start({&q1, &q2});
+    query::start({&q1, &q2, &q3, &q4});
     rs.wait();
 }
 
@@ -1697,12 +1690,61 @@ void ldbc_bi_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 return gtg == etg; })
 #endif
               .to_relationships(":hasTag")
-              .from_node("Post") // message1 (Post)
-              .to_relationships(":containerOf")
+              .from_node("Post") // message 1
+              .from_relationships(":hasCreator")
+              .to_node("Person")
+              .to_relationships(":containerOf", 2)
               .from_node("Forum")
               .from_relationships(":hasMember")
-              .to_node("Person"); // person2
-
+              .to_node("Person")
+              .where_qr_tuple([&](const qr_tuple &v) {
+                return boost::get<node *>(v[4])->id() != boost::get<node *>(v[8])->id(); })
+              .to_relationships(":hasCreator")
+              .from_node("Post") // message1 2
+              .project({PExpr_(2, pj::ptime_property(res, "creationDate")),
+                        PVar_(4),
+                        PVar_(6),
+                        PVar_(8),
+                        PVar_(10),
+                        PExpr_(10, pj::ptime_property(res, "creationDate")) })
+              .where_qr_tuple([&] (const qr_tuple v) {
+                auto msg1_dt = boost::get<ptime>(v[0]);
+                auto msg2_dt = boost::get<ptime>(v[5]);
+                auto hrs = boost::get<int>(params[1]);
+                return (msg1_dt + hours(hrs)) < msg2_dt; })
+              .from_relationships(":hasTag", 4)
+              .to_node("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+              .to_relationships(":containerOf", 4)
+              .from_node("Forum")
+              .where_qr_tuple([&](const qr_tuple &v) {
+                return boost::get<node *>(v[2])->id() != boost::get<node *>(v[9])->id(); })
+              .rship_exists({9, 1})
+              .where_qr_tuple([&](const qr_tuple &v) {
+                if (v[10].type() == typeid(null_val))
+                  return true;
+                auto r = boost::get<relationship *>(v[10]);
+                return r->rship_label == gdb->get_code(":hasMember") ? false : true; })
+              .to_relationships(":replyOf", 4)
+              .from_node("Comment")
+              .from_relationships(":hasTag")
+              .to_node("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+              .from_relationships(":hasCreator", 9)
+              .to_node("Person")
+              .rship_exists({2, 16})
+              .where_qr_tuple([&](const qr_tuple &v) {
+                if (v[17].type() == typeid(null_val))
+                  return false;
+                auto r = boost::get<relationship *>(v[17]);
+                return r->rship_label == gdb->get_code(":hasMember") ? true : false; })
+              .groupby({1}, {{"count", 0}});
 
     auto q2 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -1719,54 +1761,64 @@ void ldbc_bi_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 return gtg == etg; })
 #endif
               .to_relationships(":hasTag")
-              .from_node("Post") // message1 (Post)
+              .from_node("Post") // message 1
               .from_relationships(":hasCreator")
               .to_node("Person")
               .to_relationships(":containerOf", 2)
               .from_node("Forum")
               .from_relationships(":hasMember")
-              .to_node("Person") // person3
-              .hashjoin_on_node({6, 4}, q1)
-              .to_relationships(":hasCreator", 8)
-              .from_node("Post") // message2 (Post)
-              .project({PVar_(0), // tag
-                        PVar_(2), // message1
-                        PExpr_(2, pj::ptime_property(res, "creationDate")),
-                        PVar_(4), // person1
-                        PVar_(6), // forum1
-                        PVar_(8), // person3
-                        PVar_(15), // person2
-                        PVar_(17), // message2 (Post)
-                        PExpr_(17, pj::ptime_property(res, "creationDate")) })
+              .to_node("Person")
+              .where_qr_tuple([&](const qr_tuple &v) {
+                return boost::get<node *>(v[4])->id() != boost::get<node *>(v[8])->id(); })
+              .to_relationships(":hasCreator")
+              .from_node("Comment") // message 2
+              .from_relationships({1, 100}, ":replyOf")
+              .to_node("Post")
+              .project({PExpr_(2, pj::ptime_property(res, "creationDate")),
+                        PVar_(4),
+                        PVar_(6),
+                        PVar_(8),
+                        PVar_(10),
+                        PExpr_(10, pj::ptime_property(res, "creationDate")),
+                        PVar_(12) })
               .where_qr_tuple([&] (const qr_tuple v) {
-                auto msg1_dt = boost::get<ptime>(v[2]);
-                auto msg2_dt = boost::get<ptime>(v[8]);
+                auto msg1_dt = boost::get<ptime>(v[0]);
+                auto msg2_dt = boost::get<ptime>(v[5]);
                 auto hrs = boost::get<int>(params[1]);
                 return (msg1_dt + hours(hrs)) < msg2_dt; })
-              .from_relationships(":hasTag", 7)
+              .from_relationships(":hasTag", 4)
               .to_node("Tag")
               .property("name", [&](auto &prop) {
                 auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
                 return gtg == etg; })
-              .to_relationships(":containerOf", 7)
+              .to_relationships(":containerOf", 6)
               .from_node("Forum")
-              .where_qr_tuple([&] (const qr_tuple v) {
-                auto f1 = boost::get<node *>(v[4]);
-                auto f2 = boost::get<node *>(v[12]);
-                return f1->id() != f2->id(); })
-              .rship_exists({12, 3}, true)
-              .where_qr_tuple([&] (const qr_tuple v) {
-                return v[13].type() != typeid(null_t); })
-              .to_relationships(":replyOf", 7)
+              .where_qr_tuple([&](const qr_tuple &v) {
+                return boost::get<node *>(v[2])->id() != boost::get<node *>(v[10])->id(); })
+              .rship_exists({10, 1})
+              .where_qr_tuple([&](const qr_tuple &v) {
+                if (v[11].type() == typeid(null_val))
+                  return true;
+                auto r = boost::get<relationship *>(v[11]);
+                return r->rship_label == gdb->get_code(":hasMember") ? false : true; })
+              .to_relationships(":replyOf", 4)
               .from_node("Comment")
-              .from_relationships(":hasCreator")
+              .from_relationships(":hasTag")
+              .to_node("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+              .from_relationships(":hasCreator", 13)
               .to_node("Person")
-              .where_qr_tuple([&] (const qr_tuple v) {
-                auto p1 = boost::get<node *>(v[6]);
-                auto p2 = boost::get<node *>(v[17]);
-                return p1->id() != p2->id(); })
-              .groupby({3}, {{"count", 0}});
+              .rship_exists({2, 17})
+              .where_qr_tuple([&](const qr_tuple &v) {
+                if (v[18].type() == typeid(null_val))
+                  return false;
+                auto r = boost::get<relationship *>(v[18]);
+                return r->rship_label == gdb->get_code(":hasMember") ? true : false; })
+              .groupby({1}, {{"count", 0}});
 
     auto q3 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -1783,12 +1835,63 @@ void ldbc_bi_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 return gtg == etg; })
 #endif
               .to_relationships(":hasTag")
-              .from_node("Post") // message1 (Post)
-              .to_relationships(":containerOf")
+              .from_node("Comment") // message 1
+              .from_relationships({1, 100}, ":replyOf")
+              .to_node("Post")
+              .from_relationships(":hasCreator", 2)
+              .to_node("Person")
+              .to_relationships(":containerOf", 4)
               .from_node("Forum")
               .from_relationships(":hasMember")
-              .to_node("Person"); // person2
-
+              .to_node("Person")
+              .where_qr_tuple([&](const qr_tuple &v) {
+                return boost::get<node *>(v[6])->id() != boost::get<node *>(v[10])->id(); })
+              .to_relationships(":hasCreator")
+              .from_node("Post") // message 2
+              .project({PExpr_(2, pj::ptime_property(res, "creationDate")),
+                        PVar_(6),
+                        PVar_(8),
+                        PVar_(10),
+                        PVar_(12),
+                        PExpr_(12, pj::ptime_property(res, "creationDate")) })
+              .where_qr_tuple([&] (const qr_tuple v) {
+                auto msg1_dt = boost::get<ptime>(v[0]);
+                auto msg2_dt = boost::get<ptime>(v[5]);
+                auto hrs = boost::get<int>(params[1]);
+                return (msg1_dt + hours(hrs)) < msg2_dt; })
+              .from_relationships(":hasTag", 4)
+              .to_node("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+              .to_relationships(":containerOf", 4)
+              .from_node("Forum")
+              .where_qr_tuple([&](const qr_tuple &v) {
+                return boost::get<node *>(v[2])->id() != boost::get<node *>(v[9])->id(); })
+              .rship_exists({9, 1})
+              .where_qr_tuple([&](const qr_tuple &v) {
+                if (v[10].type() == typeid(null_val))
+                  return true;
+                auto r = boost::get<relationship *>(v[10]);
+                return r->rship_label == gdb->get_code(":hasMember") ? false : true; })
+              .to_relationships(":replyOf", 4)
+              .from_node("Comment")
+              .from_relationships(":hasTag")
+              .to_node("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+              .from_relationships(":hasCreator", 12)
+              .to_node("Person")
+              .rship_exists({2, 16})
+              .where_qr_tuple([&](const qr_tuple &v) {
+                if (v[17].type() == typeid(null_val))
+                  return false;
+                auto r = boost::get<relationship *>(v[17]);
+                return r->rship_label == gdb->get_code(":hasMember") ? true : false; })
+              .groupby({1}, {{"count", 0}});
 
     auto q4 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -1805,246 +1908,75 @@ void ldbc_bi_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 return gtg == etg; })
 #endif
               .to_relationships(":hasTag")
-              .from_node("Post") // message1 (Post)
-              .from_relationships(":hasCreator")
-              .to_node("Person")
-              .to_relationships(":containerOf", 2)
-              .from_node("Forum")
-              .from_relationships(":hasMember")
-              .to_node("Person") // person3
-              .hashjoin_on_node({6, 4}, q3)
-              .to_relationships(":hasCreator", 8)
-              .from_node("Comment") // message2 (Comment)
-              .project({PVar_(0), // tag
-                        PVar_(2), // message1
-                        PExpr_(2, pj::ptime_property(res, "creationDate")),
-                        PVar_(4), // person1
-                        PVar_(6), // forum1
-                        PVar_(8), // person3
-                        PVar_(15), // person2
-                        PVar_(17), // message2 (Comment)
-                        PExpr_(17, pj::ptime_property(res, "creationDate")) })
-              .where_qr_tuple([&] (const qr_tuple v) {
-                auto msg1_dt = boost::get<ptime>(v[2]);
-                auto msg2_dt = boost::get<ptime>(v[8]);
-                auto hrs = boost::get<int>(params[1]);
-                return (msg1_dt + hours(hrs)) < msg2_dt; })
-              .from_relationships(":hasTag", 7)
-              .to_node("Tag")
-              .property("name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-                return gtg == etg; })
-              .from_relationships({1, 100}, ":replyOf", 7)
-              .to_node("Post")
-              .to_relationships(":containerOf")
-              .from_node("Forum")
-              .where_qr_tuple([&] (const qr_tuple v) {
-                auto f1 = boost::get<node *>(v[4]);
-                auto f2 = boost::get<node *>(v[14]);
-                return f1->id() != f2->id(); })
-              .rship_exists({14, 3}, true)
-              .where_qr_tuple([&] (const qr_tuple v) {
-                return v[15].type() != typeid(null_t); })
-              .to_relationships(":replyOf", 7)
-              .from_node("Comment")
-              .from_relationships(":hasCreator")
-              .to_node("Person")
-              .where_qr_tuple([&] (const qr_tuple v) {
-                auto p1 = boost::get<node *>(v[6]);
-                auto p2 = boost::get<node *>(v[19]);
-                return p1->id() != p2->id(); })
-              .groupby({3}, {{"count", 0}});
-
-    auto q5 = query(gdb)
-#ifdef RUN_PARALLEL
-              .all_nodes()
-              .has_label("Tag")
-              .property("name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-                return gtg == etg; })
-#else
-              .nodes_where("Tag", "name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-                return gtg == etg; })
-#endif
-              .to_relationships(":hasTag")
-              .from_node("Comment") // message1 (Comment)
+              .from_node("Comment") // message 1
               .from_relationships({1, 100}, ":replyOf")
               .to_node("Post")
-              .to_relationships(":containerOf")
+              .from_relationships(":hasCreator", 2)
+              .to_node("Person")
+              .to_relationships(":containerOf", 4)
               .from_node("Forum")
               .from_relationships(":hasMember")
-              .to_node("Person"); // person2
-
-
-    auto q6 = query(gdb)
-#ifdef RUN_PARALLEL
-              .all_nodes()
-              .has_label("Tag")
-              .property("name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-                return gtg == etg; })
-#else
-              .nodes_where("Tag", "name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-                return gtg == etg; })
-#endif
-              .to_relationships(":hasTag")
-              .from_node("Comment") // message1 (Comment)
-              .from_relationships(":hasCreator")
               .to_node("Person")
-              .from_relationships({1, 100}, ":replyOf", 2)
-              .to_node("Post")
-              .to_relationships(":containerOf")
-              .from_node("Forum")
-              .from_relationships(":hasMember")
-              .to_node("Person") // person3
-              .hashjoin_on_node({8, 6}, q5)
-              .to_relationships(":hasCreator", 10)
-              .from_node("Post") // message2 (Post)
-              .project({PVar_(0), // tag
-                        PVar_(2), // message1 (Comment)
-                        PExpr_(2, pj::ptime_property(res, "creationDate")),
-                        PVar_(4), // person1
-                        PVar_(8), // forum1
-                        PVar_(10), // person3
-                        PVar_(19), // person2
-                        PVar_(21), // message2 (Post)
-                        PExpr_(21, pj::ptime_property(res, "creationDate")) })
-              .where_qr_tuple([&] (const qr_tuple v) {
-                auto msg1_dt = boost::get<ptime>(v[2]);
-                auto msg2_dt = boost::get<ptime>(v[8]);
-                auto hrs = boost::get<int>(params[1]);
-                return (msg1_dt + hours(hrs)) < msg2_dt; })
-              .from_relationships(":hasTag", 7)
-              .to_node("Tag")
-              .property("name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-                return gtg == etg; })
-              .to_relationships(":containerOf", 7)
-              .from_node("Forum")
-              .where_qr_tuple([&] (const qr_tuple v) {
-                auto f1 = boost::get<node *>(v[4]);
-                auto f2 = boost::get<node *>(v[12]);
-                return f1->id() != f2->id(); })
-              .rship_exists({12, 3}, true)
-              .where_qr_tuple([&] (const qr_tuple v) {
-                return v[13].type() != typeid(null_t); })
-              .to_relationships(":replyOf", 7)
-              .from_node("Comment")
-              .from_relationships(":hasCreator")
-              .to_node("Person")
-              .where_qr_tuple([&] (const qr_tuple v) {
-                auto p1 = boost::get<node *>(v[6]);
-                auto p2 = boost::get<node *>(v[17]);
-                return p1->id() != p2->id(); })
-              .groupby({3}, {{"count", 0}});
-
-    auto q7 = query(gdb)
-#ifdef RUN_PARALLEL
-              .all_nodes()
-              .has_label("Tag")
-              .property("name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-                return gtg == etg; })
-#else
-              .nodes_where("Tag", "name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-                return gtg == etg; })
-#endif
-              .to_relationships(":hasTag")
-              .from_node("Comment") // message1 (Comment)
+              .where_qr_tuple([&](const qr_tuple &v) {
+                return boost::get<node *>(v[6])->id() != boost::get<node *>(v[10])->id(); })
+              .to_relationships(":hasCreator")
+              .from_node("Comment") // message 2
               .from_relationships({1, 100}, ":replyOf")
               .to_node("Post")
-              .to_relationships(":containerOf")
-              .from_node("Forum")
-              .from_relationships(":hasMember")
-              .to_node("Person"); // person2
-
-
-    auto q8 = query(gdb)
-#ifdef RUN_PARALLEL
-              .all_nodes()
-              .has_label("Tag")
-              .property("name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-                return gtg == etg; })
-#else
-              .nodes_where("Tag", "name", [&](auto &prop) {
-                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
-                return gtg == etg; })
-#endif
-              .to_relationships(":hasTag")
-              .from_node("Comment") // message1 (Comment)
-              .from_relationships(":hasCreator")
-              .to_node("Person")
-              .from_relationships({1, 100}, ":replyOf", 2)
-              .to_node("Post")
-              .to_relationships(":containerOf")
-              .from_node("Forum")
-              .from_relationships(":hasMember")
-              .to_node("Person") // person3
-              .hashjoin_on_node({8, 6}, q7)
-              .to_relationships(":hasCreator", 10)
-              .from_node("Comment") // message2 (Comment)
-              .project({PVar_(0), // tag
-                        PVar_(2), // message1 (Comment)
-                        PExpr_(2, pj::ptime_property(res, "creationDate")),
-                        PVar_(4), // person1
-                        PVar_(8), // forum1
-                        PVar_(10), // person3
-                        PVar_(19), // person2
-                        PVar_(21), // message2 (Comment)
-                        PExpr_(21, pj::ptime_property(res, "creationDate")) })
+              .project({PExpr_(2, pj::ptime_property(res, "creationDate")),
+                        PVar_(6),
+                        PVar_(8),
+                        PVar_(10),
+                        PVar_(12),
+                        PExpr_(12, pj::ptime_property(res, "creationDate")),
+                        PVar_(14) })
               .where_qr_tuple([&] (const qr_tuple v) {
-                auto msg1_dt = boost::get<ptime>(v[2]);
-                auto msg2_dt = boost::get<ptime>(v[8]);
+                auto msg1_dt = boost::get<ptime>(v[0]);
+                auto msg2_dt = boost::get<ptime>(v[5]);
                 auto hrs = boost::get<int>(params[1]);
                 return (msg1_dt + hours(hrs)) < msg2_dt; })
-              .from_relationships(":hasTag", 7)
+              .from_relationships(":hasTag", 4)
               .to_node("Tag")
               .property("name", [&](auto &prop) {
                 auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
                 return gtg == etg; })
-              .from_relationships({1, 100}, ":replyOf", 7)
-              .to_node("Post")
-              .to_relationships(":containerOf")
+              .to_relationships(":containerOf", 6)
               .from_node("Forum")
-              .where_qr_tuple([&] (const qr_tuple v) {
-                auto f1 = boost::get<node *>(v[4]);
-                auto f2 = boost::get<node *>(v[12]);
-                return f1->id() != f2->id(); })
-              .rship_exists({14, 3})
-              .where_qr_tuple([&] (const qr_tuple v) {
-                return v[15].type() != typeid(null_t); })
-              .to_relationships(":replyOf", 7)
+              .where_qr_tuple([&](const qr_tuple &v) {
+                return boost::get<node *>(v[2])->id() != boost::get<node *>(v[10])->id(); })
+              .rship_exists({10, 1})
+              .where_qr_tuple([&](const qr_tuple &v) {
+                if (v[11].type() == typeid(null_val))
+                  return true;
+                auto r = boost::get<relationship *>(v[11]);
+                return r->rship_label == gdb->get_code(":hasMember") ? false : true; })
+              .to_relationships(":replyOf", 4)
               .from_node("Comment")
-              .from_relationships(":hasCreator")
+              .from_relationships(":hasTag")
+              .to_node("Tag")
+              .property("name", [&](auto &prop) {
+                auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
+                auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                return gtg == etg; })
+              .from_relationships(":hasCreator", 13)
               .to_node("Person")
-              .where_qr_tuple([&] (const qr_tuple v) {
-                auto p1 = boost::get<node *>(v[6]);
-                auto p2 = boost::get<node *>(v[19]);
-                return p1->id() != p2->id(); })
-              .groupby({3}, {{"count", 0}})
-              .union_all({&q2, &q4, &q6})
+              .rship_exists({2, 17})
+              .where_qr_tuple([&](const qr_tuple &v) {
+                if (v[18].type() == typeid(null_val))
+                  return false;
+                auto r = boost::get<relationship *>(v[18]);
+                return r->rship_label == gdb->get_code(":hasMember") ? true : false; })
+              .groupby({1}, {{"count", 0}})
+              .union_all({&q1, &q2, &q3})
+              .groupby({0}, {{"sum", 1}})
               .project({PExpr_(0, pj::uint64_property(res, "id")),
                         PVar_(1) })
               .orderby([&] (const qr_tuple q1, const qr_tuple q2) {
                 return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]); })
               .collect(rs);
 
-    query::start({&q1, &q2, &q3, &q4, &q5, &q6, &q7, &q8});
+    query::start({&q1, &q2, &q3, &q4});
     rs.wait();
 }
 
@@ -2060,13 +1992,18 @@ void ldbc_bi_query_18(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                .nodes_where("Person", "id",
                             [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); })
 #endif
-              .from_relationships(":knows")
-              .to_node("Person")
-              .from_relationships(":knows")
-              .to_node("Person")
+              .all_relationships(":knows")
+              .all_relationships(":knows")
               .rship_exists({0, 4})
+              .rship_exists({4, 0})
               .where_qr_tuple([&] (const qr_tuple v) {
-                return v[5].type() != typeid(null_t); })
+                if (boost::get<node *>(v[0])->id() == boost::get<node *>(v[4])->id())
+                  return false;
+                relationship *r = v[5].type() == typeid(relationship *) ?
+                  boost::get<relationship *>(v[5]) : v[6].type() == typeid(relationship *) ?
+                  boost::get<relationship *>(v[6]) : nullptr;
+                return !r ? true : r->rship_label == gdb->get_code(":knows") ?
+                  false : true; })
               .from_relationships(":hasInterest", 4)
               .to_node("Tag")
               .property("name", [&](auto &prop) {

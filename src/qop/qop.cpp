@@ -604,22 +604,21 @@ void shortest_path_opr::dump(std::ostream &os) const {
 
 void shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
-  auto a = boost::get<node *>(v[start_stop_.first]);
-  auto b = boost::get<node *>(v[start_stop_.second]);
-  auto start = a->id();
-  auto stop = b->id();
+  auto start = boost::get<node *>(v[start_stop_.first])->id();
+  auto stop = boost::get<node *>(v[start_stop_.second])->id();
 
-  path_item spath;
+  std::list<path_item> spaths;
   path_visitor pv = [&](node &n, const path &p) { return; }; // TODO
-  unweighted_shortest_path(gdb, start, stop, bidirectional_, rpred_, pv, spath);
+  unweighted_shortest_path(gdb, start, stop, bidirectional_, rpred_, pv, spaths);
 
-  auto res = v;
-  array_t nids(spath.get_path());
-  res.push_back(query_result(nids));
-  res.push_back(query_result(spath.get_hops()));
+  for (auto &path : spaths) {
+    auto res = v;
+    array_t nids(path.get_path());
+    res.push_back(query_result(nids));
+    consume_(gdb, res);
+  }
 
-  consume_(gdb, res);
-  PROF_POST(1); // ??
+  PROF_POST(spaths.size());
 }
 
 /* ------------------------------------------------------------------------ */

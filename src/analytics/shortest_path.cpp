@@ -24,7 +24,7 @@
 #include <boost/dynamic_bitset.hpp>
 
 bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
-        bool bidirectional, rship_predicate rpred, path_visitor visit, path_item &spath) {
+        bool bidirectional, rship_predicate rpred, path_visitor visit, std::list<path_item> &spaths) {
     bool found = false;
     std::queue<path> frontier;
     boost::dynamic_bitset<> visited(gdb->get_nodes()->as_vec().capacity());
@@ -45,7 +45,7 @@ bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
        
         gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
             auto vid = r.to_node_id();
-            if (rpred(r) && !visited[vid]) {
+            if (rpred(r) && (!visited[vid] || (vid == stop && distance[uid] < distance[stop]))) {
                 visited.set(vid);
                 distance[vid] = distance[uid] + 1;
                 path u2(u);
@@ -54,8 +54,10 @@ bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
 
                 if (vid == stop) {
                     found = true;
+                    path_item spath;
                     spath.set_path(u2);
                     spath.set_hops(distance[vid]);
+                    spaths.push_back(spath);
                 }
             }
         });
@@ -63,7 +65,7 @@ bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
         if (bidirectional) {
             gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
                 auto vid = r.from_node_id();
-                if (rpred(r) && !visited[vid]) {
+                if (rpred(r) && (!visited[vid] || (vid == stop && distance[uid] < distance[stop]))) {
                     visited.set(vid);
                     distance[vid] = distance[uid] + 1;
                     path u2(u);
@@ -72,17 +74,16 @@ bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
 
                     if (vid == stop) {
                         found = true;
+                        path_item spath;
                         spath.set_path(u2);
                         spath.set_hops(distance[vid]);
+                        spaths.push_back(spath);
                     }
                 }
             });
         }
-
-        if (found)
-            return true;
     }
-    return false;
+    return found ? true : false;
 }
 
 bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool bidirectional,
