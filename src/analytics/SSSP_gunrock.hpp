@@ -32,7 +32,8 @@
 using rship_predicate = std::function<bool(relationship&)>;
 
 /**
- * Typedef for a function that computes the weight of a relationship.
+ * Typedef for a function that computes the weight of a relationship. Return only
+ * non-negative numbers! 
  */
 using rship_weight = std::function<float(relationship&)>;
 
@@ -125,7 +126,7 @@ struct edge_coords{
  *   gdb           -> Pointer to Poseidon Graph Database
  *   bidirectional -> Set true to treat relationships bidirectionally
  *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a float weight for each relationship
+ *   weight_func   -> Function returning a non-negative float weight for each relationship
  * Output: 
  *   row_offsets   -> CSR-formatted graph row offsets, to be allocated in advance
  *   col_indices   -> CSR-formatted graph column indices, to be allocated in advance
@@ -150,7 +151,7 @@ void graph_PoseidonToCSR(graph_db_ptr gdb, bool bidirectional, rship_predicate r
  *   start         -> Source node to begin traverse
  *   bidirectional -> Set true to treat relationships bidirectionally
  *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a float weight for each relationship
+ *   weight_func   -> Function returning a non-negative float weight for each relationship
  *   quiet         -> Set true to mute std::cout outputs during execution
  * Output: 
  *   spath         -> A struct containing shortest path information
@@ -170,7 +171,7 @@ int64_t weighted_SSSP_gunrock_CSR(graph_db_ptr gdb, node::id_t start, bool bidir
  *   gdb              -> Pointer to Poseidon Graph Database
  *   bidirectional    -> Set true to treat relationships bidirectionally
  *   rpred            -> Function returning a bool for each relationship
- *   weight_func      -> Function returning a float weight for each relationship
+ *   weight_func      -> Function returning a non-negative float weight for each relationship
  * Output: 
  *   edge_coordinates -> COO-formatted graph edge coordinates, to be allocated in advance
  *   edge_values      -> COO-formatted graph edge weights, to be allocated in advance
@@ -192,7 +193,7 @@ void graph_PoseidonToCOO(graph_db_ptr gdb, bool bidirectional, rship_predicate r
  *   start         -> Source node to begin traverse
  *   bidirectional -> Set true to treat relationships bidirectionally
  *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a float weight for each relationship
+ *   weight_func   -> Function returning a non-negative float weight for each relationship
  *   quiet         -> Set true to mute std::cout outputs during execution
  * Output: 
  *   spath         -> A struct containing shortest path information
@@ -214,7 +215,7 @@ int64_t weighted_SSSP_gunrock_COO(graph_db_ptr gdb, node::id_t start, bool bidir
  *   start         -> Source node to begin traverse
  *   bidirectional -> Set true to treat relationships bidirectionally
  *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a float weight for each relationship
+ *   weight_func   -> Function returning a non-negative float weight for each relationship
  *   quiet         -> Set true to mute std::cout outputs during execution
  * Output: 
  *   spath         -> A struct containing shortest path information
