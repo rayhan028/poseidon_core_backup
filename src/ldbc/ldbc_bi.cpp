@@ -656,24 +656,7 @@ void ldbc_bi_query_10(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 void ldbc_bi_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
-  auto q1 = query(gdb)
-#ifdef RUN_PARALLEL
-              .all_nodes()
-              .has_label("Place")
-              .property("name", [&](auto &prop) {
-                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
-                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
-#else
-              .nodes_where("Place", "name", [&](auto &prop) {
-                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
-                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
-#endif
-              .to_relationships(":isPartOf")
-              .from_node("Place")
-              .to_relationships(":isLocatedIn")
-              .from_node("Person");
-
-  auto q2 = query(gdb)
+  auto q = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Place")
@@ -689,53 +672,59 @@ void ldbc_bi_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .from_node("Place")
               .to_relationships(":isLocatedIn")
               .from_node("Person")
-              .join_on_rship({4, 4}, q1)
+              .all_relationships(":knows")
               .project({PVar_(4),
-                        PVar_(9),
-                        PExpr_(10, pj::ptime_property(res, "creationDate")) })
+                        PExpr_(5, pj::ptime_property(res, "creationDate")),
+                        PVar_(6) })
               .where_qr_tuple([&](auto &v) {
-                return boost::get<ptime>(v[2]) > boost::get<ptime>(params[1]); });
-
-  auto q3 = query(gdb)
-#ifdef RUN_PARALLEL
-              .all_nodes()
-              .has_label("Place")
+                return boost::get<ptime>(v[1]) > boost::get<ptime>(params[1]); })
+              .from_relationships(":isLocatedIn")
+              .to_node("Place")
+              .from_relationships(":isPartOf")
+              .to_node("Place")
               .property("name", [&](auto &prop) {
                 return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
                         gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
-#else
-              .nodes_where("Place", "name", [&](auto &prop) {
+              .all_relationships(":knows", 2)
+              .project({PVar_(0),
+                        PVar_(2),
+                        PExpr_(7, pj::ptime_property(res, "creationDate")),
+                        PVar_(8) })
+              .where_qr_tuple([&](auto &v) {
+                return boost::get<ptime>(v[2]) > boost::get<ptime>(params[1]); })
+              .from_relationships(":isLocatedIn")
+              .to_node("Place")
+              .from_relationships(":isPartOf")
+              .to_node("Place")
+              .property("name", [&](auto &prop) {
                 return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
                         gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
-#endif
-              .to_relationships(":isPartOf")
-              .from_node("Place")
-              .to_relationships(":isLocatedIn")
-              .from_node("Person")
-              .join_on_rship({4, 0}, q2)
-              .project({PVar_(4),
-                        PVar_(5),
-                        PVar_(6),
-                        PExpr_(8, pj::ptime_property(res, "creationDate")) })
-              .where_qr_tuple([&](auto &v) {
-                return boost::get<ptime>(v[3]) > boost::get<ptime>(params[1]); })
-              .rship_exists({0, 2})
-              .where_qr_tuple([&](const qr_tuple &v) {
-                if (v[4].type() == typeid(null_val)) 
-                  return false;
-                auto r = boost::get<relationship *>(v[4]);
-                return r->rship_label == gdb->get_code(":knows") ? true : false;  })
+              .all_relationships(":knows", 3)
               .project({PVar_(0),
                         PVar_(1),
-                        PVar_(2),
-                        PExpr_(4, pj::ptime_property(res, "creationDate")) })
+                        PVar_(3),
+                        PExpr_(8, pj::ptime_property(res, "creationDate")),
+                        PVar_(9) })
               .where_qr_tuple([&](auto &v) {
-                return boost::get<ptime>(v[3]) > boost::get<ptime>(params[1]); })
-              .groupby({0}, {{"count", 0}})
-              .project({PVar_(1)})
+                return boost::get<ptime>(v[3]) > boost::get<ptime>(params[1]) &&
+                        boost::get<node *>(v[4])->id() == boost::get<node *>(v[0])->id(); })
+              .append_to_qr_tuple([&](qr_tuple &v) {
+                auto a = boost::get<node *>(v[0])->id();
+                auto b = boost::get<node *>(v[1])->id();
+                auto c = boost::get<node *>(v[2])->id();
+                if (a > c)
+                  std::swap(a, c);
+                if (a > b)
+                  std::swap(a, b);
+                if (b > c)
+                  std::swap(b, c);
+                std::string key = std::to_string(a)+ "_" + std::to_string(b) + "_" + std::to_string(c);
+                return query_result(key); })
+              .groupby({5})
+              .count()
               .collect(rs);
 
-  query::start({&q1, &q2, &q3});
+  q.start();
   rs.wait();
 }
 
