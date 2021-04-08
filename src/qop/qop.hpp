@@ -587,6 +587,23 @@ struct union_all_qres : public qop {
 };
 
 /**
+ * count_result implements an operator that counts the
+ * query tuples of the query pipeline.
+ */
+struct count_result : public qop {
+  count_result() : count_(0) {}
+  ~count_result() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  uint64_t count_;
+};
+
+/**
  * shortest_path_opr implements an operator that finds the
  * unweighted shortest path between two nodes.
  */

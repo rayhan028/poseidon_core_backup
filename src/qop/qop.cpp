@@ -583,6 +583,21 @@ void union_all_qres::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
 
 /* ------------------------------------------------------------------------ */
 
+void count_result::dump(std::ostream &os) const {
+  os << "count_result() - " << PROF_DUMP;
+}
+
+void count_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  count_++;
+}
+
+void count_result::finish(graph_db_ptr &gdb) {
+  consume_(gdb, {query_result(count_)});
+  finish_(gdb);
+}
+
+/* ------------------------------------------------------------------------ */
+
 void shortest_path_opr::dump(std::ostream &os) const {
   os << "shortest_path_opr([]) - " << PROF_DUMP;
 }

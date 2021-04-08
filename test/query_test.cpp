@@ -95,6 +95,18 @@ TEST_CASE("Testing query operators", "[qop]") {
     q.print_plan();
   }
 
+  SECTION("count") {
+    result_set rs, expected;
+    auto q = query(graph).all_nodes("Node").count().collect(rs);
+    q.start();
+
+    rs.wait();
+    expected.data.push_back({query_result("7")});
+
+    REQUIRE(rs == expected);
+    q.print_plan();
+  }
+
   SECTION("order by") {
     result_set rs, expected;
     auto q = query(graph)

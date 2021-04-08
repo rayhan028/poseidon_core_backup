@@ -271,6 +271,13 @@ query &query::union_all(std::initializer_list<query *> queries) {
       std::bind(&union_all_qres::finish, op.get(), ph::_1));
 }
 
+query &query::count() {
+  auto op = std::make_shared<count_result>();
+  return append_op(op,
+                   std::bind(&count_result::process, op.get(), ph::_1, ph::_2),
+                   std::bind(&count_result::finish, op.get(), ph::_1));
+}
+
 query &query::crossjoin(query &other) {
   auto op = std::make_shared<cross_join>();
   other.append_op(

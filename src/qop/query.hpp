@@ -209,6 +209,11 @@ public:
   query &union_all(std::initializer_list<query *> queries);
 
   /**
+   * Add an operator to count the number of tuples in the pipeline.
+   */
+  query &count();
+
+  /**
    * Add a print operator for outputting the query results to cout.
    */
   query &print();
