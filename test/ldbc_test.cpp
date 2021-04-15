@@ -1357,7 +1357,47 @@ TEST_CASE("Testing LDBC BI Query 18", "[ldbc_bi]") {
     ldbc_bi_query_18(graph, rs, parameters[0]);
 
     expected.data.push_back(
-      {query_result("4"), query_result("1")});
+      {query_result("4"), query_result("2")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 19", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{(uint64_t)2, (uint64_t)4}};
+    result_set rs, expected;
+    ldbc_bi_query_19(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("2"), query_result("1"), query_result("1.000000")});
+    expected.data.push_back(
+      {query_result("2"), query_result("4"), query_result("1.000000")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 20", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{"SoftEngCo", (uint64_t)5}};
+    result_set rs, expected;
+    ldbc_bi_query_20(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("1"), query_result("6.000000")});
 
     REQUIRE(rs == expected);
     return true;

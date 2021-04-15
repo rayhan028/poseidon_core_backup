@@ -647,18 +647,32 @@ void shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
   auto start = boost::get<node *>(v[start_stop_.first])->id();
   auto stop = boost::get<node *>(v[start_stop_.second])->id();
 
-  std::list<path_item> spaths;
   path_visitor pv = [&](node &n, const path &p) { return; }; // TODO
-  unweighted_shortest_path(gdb, start, stop, bidirectional_, rpred_, pv, spaths);
 
-  for (auto &path : spaths) {
-    auto res = v;
-    array_t nids(path.get_path());
-    res.push_back(query_result(nids));
-    consume_(gdb, res);
+  if (all_spaths_) {
+    std::list<path_item> spaths;
+    all_unweighted_shortest_paths(gdb, start, stop, bidirectional_, rpred_, pv, spaths);
+    for (auto &path : spaths) {
+      auto res = v;
+      array_t nids(path.get_path());
+      res.push_back(query_result(nids));
+      consume_(gdb, res);
+    }
+    PROF_POST(spaths.size());
   }
-
-  PROF_POST(spaths.size());
+  else {
+    path_item spath;
+    bool found = unweighted_shortest_path(gdb, start, stop, bidirectional_,
+                                          rpred_, pv, spath);
+    if (found) {
+      auto res = v;
+      array_t nids(spath.get_path());
+      res.push_back(query_result(nids));
+      consume_(gdb, res);
+      PROF_POST(1);
+    }
+    else PROF_POST(0);
+  }
 }
 
 /* ------------------------------------------------------------------------ */
@@ -669,20 +683,36 @@ void weighted_shortest_path_opr::dump(std::ostream &os) const {
 
 void weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
-  auto a = boost::get<node *>(v[start_stop_.first]);
-  auto b = boost::get<node *>(v[start_stop_.second]);
-  auto start = a->id();
-  auto stop = b->id();
+  auto start = boost::get<node *>(v[start_stop_.first])->id();
+  auto stop = boost::get<node *>(v[start_stop_.second])->id();
 
-  auto res = v;
-  path_item spath;
   path_visitor pv = [&](node &n, const path &p) { return; }; // TODO
-  double weight = weighted_shortest_path(gdb, start, stop, bidirectional_,
-                          rpred_, rweight_, pv, spath) ? spath.get_weight() : 0.0;
-  res.push_back(query_result(weight));
 
-  consume_(gdb, res);
-  PROF_POST(1);
+  if (all_spaths_) {
+    std::list<path_item> spaths;
+    all_weighted_shortest_paths(gdb, start, stop, bidirectional_,
+                            rpred_, rweight_, pv, spaths);
+    for (auto &path : spaths) {
+      auto res = v;
+      double w = path.get_weight();
+      res.push_back(query_result(w));
+      consume_(gdb, res);
+    }
+    PROF_POST(spaths.size());
+  }
+  else {
+    path_item spath;
+    bool found = weighted_shortest_path(gdb, start, stop, bidirectional_,
+                            rpred_, rweight_, pv, spath);
+    if (found) {
+      auto res = v;
+      double w = spath.get_weight();
+      res.push_back(query_result(w));
+      consume_(gdb, res);
+      PROF_POST(1);
+    }
+    else PROF_POST(0);
+  }
 }
 
 /* ------------------------------------------------------------------------ */
@@ -693,25 +723,20 @@ void k_weighted_shortest_path_opr::dump(std::ostream &os) const {
 
 void k_weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
-  auto a = boost::get<node *>(v[start_stop_.first]);
-  auto b = boost::get<node *>(v[start_stop_.second]);
-  auto start = a->id();
-  auto stop = b->id();
+  auto start = boost::get<node *>(v[start_stop_.first])->id();
+  auto stop = boost::get<node *>(v[start_stop_.second])->id();
 
-  auto res = v;
   std::vector<path_item> spaths;
   path_visitor pv = [&](node &n, const path &p) { return; }; // TODO
-  bool found = k_weighted_shortest_path(gdb, start, stop, k_, bidirectional_,
+  k_weighted_shortest_path(gdb, start, stop, k_, bidirectional_,
                           rpred_, rweight_, pv, spaths);
-  for (auto &spath : spaths) {
-    if (found)
-      res.push_back(query_result(spath.get_weight()));
-    else
-      res.push_back(query_result(0.0));    
+  for (auto &path : spaths) {
+    auto res = v;
+    double w = path.get_weight();
+    res.push_back(query_result(w));
+    consume_(gdb, res);
   }
-
-  consume_(gdb, res);
-  PROF_POST(1);
+  PROF_POST(spaths.size());
 }
 
 /* ------------------------------------------------------------------------ */

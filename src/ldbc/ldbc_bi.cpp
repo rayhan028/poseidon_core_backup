@@ -264,6 +264,7 @@ void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 if (boost::get<uint64_t>(q1[4]) == boost::get<uint64_t>(q2[4]))
                   return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);
                 return boost::get<uint64_t>(q1[4]) > boost::get<uint64_t>(q2[4]); })
+              .limit(100)
               .collect(rs);
 
     query::start({&q1, &q2});
@@ -1128,6 +1129,7 @@ void ldbc_bi_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 if (boost::get<double>(q1[3]) == boost::get<double>(q2[3]))
                   return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);
                 return boost::get<double>(q1[3]) > boost::get<double>(q2[3]); })
+              .limit(100)
               .collect(rs);
 
     query::start({&q1, &q2, &q3, &q4, &q5, &q6, &q7, &q8});
@@ -1490,12 +1492,12 @@ void ldbc_bi_query_15(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 return prop.equal(boost::get<uint64_t>(params[1])); })
               .limit(1)
               .algo_shortest_path({0, 2}, [&](relationship &r) {
-                return std::string(gdb->get_string(r.rship_label)) == ":knows"; }, true)
+                return std::string(gdb->get_string(r.rship_label)) == ":knows"; }, true, true)
               .append_to_qr_tuple([&](qr_tuple v) {
                 auto arr = boost::get<array_t>(v[3]).elems;
                 std::vector<offset_t> ids;
-                for (std::size_t i = 0; i < arr.size(); i++) {
-                  auto &n = gdb->node_by_id(arr[i]);
+                for (auto id : arr) {
+                  auto &n = gdb->node_by_id(id);
                   auto nd = gdb->get_node_description(n.id());
                   auto p = get_property<uint64_t>(nd.properties, "id");
                   ids.push_back(p.value());
@@ -1667,6 +1669,7 @@ void ldbc_bi_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .project({PExpr_(0, pj::uint64_property(res, "id")),
                         PVar_(1),
                         PVar_(5) })
+              .limit(20)
               .collect(rs);
 
     query::start({&q1, &q2, &q3, &q4});
@@ -2026,7 +2029,7 @@ void ldbc_bi_query_18(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 void ldbc_bi_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
-    auto cases = [&](const node &n1, const node &n2) {
+    auto interaction = [&](const node &n1, const node &n2) {
       auto count = 0;
       gdb->foreach_to_relationship_of_node(n1, ":hasCreator", [&](relationship &r1) {
         auto &comment = gdb->node_by_id(r1.from_node_id());
@@ -2045,28 +2048,23 @@ void ldbc_bi_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
       return count;
     };
 
-    rship_predicate rpred = [&](relationship &r) {
-        return std::string(gdb->get_string(r.rship_label)) == ":knows"; };
-
     rship_weight rweight = [&](relationship &r) {
         double w = 0.0;
         auto &src = gdb->node_by_id(r.from_node_id());
         auto &des = gdb->node_by_id(r.to_node_id());
-        auto count = cases(src, des) + cases(des, src);
-        return count == 0 ? 0 : 1 / (double)count; };
+        auto count = interaction(src, des) + interaction(des, src);
+        return count == 0 ? 0 : 1 / (double)count;
+    };
 
-    // Query pipelines
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Place")
-              .property("name", [&](auto &prop) {
-                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
-                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
+              .property("id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
 #else
-              .nodes_where("Place", "name", [&](auto &prop) {
-                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
-                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0])); })
+              .nodes_where("Place", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[1])); })
 #endif
               .to_relationships(":isLocatedIn")
               .from_node("Person");
@@ -2075,19 +2073,17 @@ void ldbc_bi_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Place")
-              .property("name", [&](auto &prop) {
-                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
-                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1])); })
+              .property("id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); })
 #else
-              .nodes_where("Place", "name", [&](auto &prop) {
-                return *(reinterpret_cast<const dcode_t *>(prop.value_)) ==
-                        gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1])); })
+              .nodes_where("Place", "id",
+                            [&](auto &p) { return p.equal(boost::get<uint64_t>(params[0])); })
 #endif
               .to_relationships(":isLocatedIn")
               .from_node("Person")
               .crossjoin(q1)
-              .limit(10) // TODO
-              .algo_weighted_shortest_path({2, 5}, rpred, rweight, true)
+              .algo_weighted_shortest_path({2, 5}, [&](relationship &r) {
+                return std::string(gdb->get_string(r.rship_label)) == ":knows"; }, rweight, true)
               .project({PExpr_(2, pj::uint64_property(res, "id")),
                         PExpr_(5, pj::uint64_property(res, "id")),
                         PVar_(6) })
@@ -2098,6 +2094,7 @@ void ldbc_bi_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                   return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);
                 }
                 return boost::get<double>(q1[2]) > boost::get<double>(q2[2]); })
+              .limit(20)
               .collect(rs);
 
     query::start({&q1, &q2});
@@ -2107,31 +2104,36 @@ void ldbc_bi_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 void ldbc_bi_query_20(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
     rship_predicate rpred = [&](relationship &r) {
-        return std::string(gdb->get_string(r.rship_label)) == ":knows"; };
+      auto &src = gdb->node_by_id(r.from_node_id());
+      auto &des = gdb->node_by_id(r.to_node_id());
+      node::id_t src_uni, des_uni;
+      gdb->foreach_from_relationship_of_node(src, ":studyAt", [&](relationship &r) {
+        src_uni = r.to_node_id();
+      });
+      gdb->foreach_from_relationship_of_node(des, ":studyAt", [&](relationship &r) {
+        des_uni = r.to_node_id();
+      });
+      bool a = std::string(gdb->get_string(r.rship_label)) == ":knows";
+      bool b = src_uni == des_uni;
+      return a && b;
+    };
 
     rship_weight rweight = [&](relationship &r) {
-        double w = 0.0;
-        node::id_t src_uni;
-        node::id_t des_uni;
-        int src_yr;
-        int des_yr;
-        auto &src = gdb->node_by_id(r.from_node_id());
-        auto &des = gdb->node_by_id(r.to_node_id());
-        gdb->foreach_from_relationship_of_node(src, ":studyAt", [&](relationship &r1) {
-          src_uni = r1.to_node_id();
-          auto descr = gdb->get_rship_description(r1.id());
-          src_yr = get_property<int>(descr.properties, std::string("classYear")).value();
-        });
-        gdb->foreach_from_relationship_of_node(des, ":studyAt", [&](relationship &r2) {
-          des_uni = r2.to_node_id();
-          auto descr = gdb->get_rship_description(r2.id());
-          des_yr = get_property<int>(descr.properties, std::string("classYear")).value();
-        });
-        if (src_uni == des_uni)
-          w = std::abs(src_yr - des_yr) + 1;
-        return w;   };
+      auto &src = gdb->node_by_id(r.from_node_id());
+      auto &des = gdb->node_by_id(r.to_node_id());
+      int src_yr, des_yr;
+      gdb->foreach_from_relationship_of_node(src, ":studyAt", [&](relationship &r1) {
+        auto descr = gdb->get_rship_description(r1.id());
+        src_yr = get_property<int>(descr.properties, std::string("classYear")).value();
+      });
+      gdb->foreach_from_relationship_of_node(des, ":studyAt", [&](relationship &r2) {
+        auto descr = gdb->get_rship_description(r2.id());
+        des_yr = get_property<int>(descr.properties, std::string("classYear")).value();
+      });
+      double w = std::abs(src_yr - des_yr) + 1;
+      return w;
+    };
 
-    // Query pipelines
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
@@ -2158,13 +2160,14 @@ void ldbc_bi_query_20(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_relationships(":workAt")
               .from_node("Person")
               .crossjoin(q1)
-              .limit(5) // TODO
-              .algo_k_weighted_shortest_path({2, 3}, 20, rpred, rweight, true)
-              // .algo_weighted_shortest_path({2, 3}, rpred, rweight, true)
+              .algo_weighted_shortest_path({2, 3}, rpred, rweight, true)
               .project({PExpr_(2, pj::uint64_property(res, "id")),
                         PVar_(4) })
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
-                return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]); })
+                if (boost::get<double>(q1[1]) == boost::get<double>(q2[1]))
+                  return boost::get<uint64_t>(q1[0]) < boost::get<uint64_t>(q2[0]);
+                return boost::get<double>(q1[1]) > boost::get<double>(q2[1]); })
+              .limit(20)
               .collect(rs);
 
     query::start({&q1, &q2});

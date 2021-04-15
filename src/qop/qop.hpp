@@ -623,11 +623,13 @@ struct count_result : public qop {
 /**
  * shortest_path_opr implements an operator that finds the
  * unweighted shortest path between two nodes.
+ * all_spaths_ specfies if all shortest path of equal 
+ * distance are searched.
  */
 struct shortest_path_opr : public qop {
   shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
-    rship_predicate pred, bool b) : bidirectional_(b),
-                  rpred_(pred), start_stop_(uv) {}
+    rship_predicate pred, bool bidir, bool all) : bidirectional_(bidir),
+          all_spaths_(all), rpred_(pred), start_stop_(uv) {}
   ~shortest_path_opr() = default;
 
   void dump(std::ostream &os) const override;
@@ -638,6 +640,7 @@ struct shortest_path_opr : public qop {
 
   path_item path_;
   bool bidirectional_;
+  bool all_spaths_;
   rship_predicate rpred_;
   std::pair<std::size_t, std::size_t> start_stop_;
 };
@@ -645,11 +648,13 @@ struct shortest_path_opr : public qop {
 /**
  * weighted_shortest_path_opr implements an operator that finds the
  * weighted shortest path between two nodes.
+ * all_spaths_ specfies if all shortest path of equal 
+ * weight are searched.
  */
 struct weighted_shortest_path_opr : public qop {
-  weighted_shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
-    rship_predicate pred, rship_weight weight, bool b) : bidirectional_(b),
-                  rpred_(pred), rweight_(weight), start_stop_(uv) {}
+  weighted_shortest_path_opr(std::pair<std::size_t, std::size_t> uv, rship_predicate pred,
+    rship_weight weight, bool bidir, bool all) : bidirectional_(bidir), all_spaths_(all),
+      rpred_(pred), rweight_(weight), start_stop_(uv) {}
   ~weighted_shortest_path_opr() = default;
 
   void dump(std::ostream &os) const override;
@@ -658,6 +663,7 @@ struct weighted_shortest_path_opr : public qop {
 
   path_item path_;
   bool bidirectional_;
+  bool all_spaths_;
   rship_predicate rpred_;
   rship_weight rweight_;
   std::pair<std::size_t, std::size_t> start_stop_;

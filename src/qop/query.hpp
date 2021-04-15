@@ -291,9 +291,10 @@ public:
    * rpred is a predicate for checking if a relationship is traversed.
    * The operator appends an array of IDs of the nodes along the shortest
    * path.
+   * all_spaths specfies if all shortest path of equal distance are searched.
   */
   query &algo_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
-                            rship_predicate rpred, bool bidirectional = false);
+        rship_predicate rpred, bool bidirectional = false, bool all_spaths = false);
 
   /**
    * Add an operator to find the weighted shortest path between the pair 
@@ -304,9 +305,11 @@ public:
    * weight is a function that computes the weight of a relationship.
    * The operator appends the total weight of the shortest path to the
    * query tuple.
+   * all_spaths specfies if all shortest path of equal weight are searched.
   */
   query &algo_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
-        rship_predicate rpred, rship_weight weight, bool bidirectional = false);
+        rship_predicate rpred, rship_weight weight, bool bidirectional = false,
+        bool all_spaths = false);
 
   /**
    * Add an operator to find the top k weighted shortest path between the pair 
