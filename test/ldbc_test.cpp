@@ -350,6 +350,7 @@ graph_db_ptr create_bi_data(graph_db_ptr &graph) {
        {"lastName", boost::any(std::string(""))},
        {"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
 
+    graph->add_relationship(pA, pB, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
     graph->add_relationship(pA, pC, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
     graph->add_relationship(pA, pD, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
     graph->add_relationship(pB, pC, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
@@ -1275,9 +1276,9 @@ TEST_CASE("Testing LDBC BI Query 14", "[ldbc_bi]") {
     ldbc_bi_query_14(graph, rs, parameters[0]);
 
     expected.data.push_back(
-      {query_result("3"), query_result("2"), query_result("Lyon"), query_result("30")});
+      {query_result("1"), query_result("2"), query_result("Paris"), query_result("30")});
     expected.data.push_back(
-      {query_result("1"), query_result("2"), query_result("Paris"), query_result("15")});
+      {query_result("3"), query_result("2"), query_result("Lyon"), query_result("30")});
 
     REQUIRE(rs == expected);
     return true;
@@ -1297,6 +1298,8 @@ TEST_CASE("Testing LDBC BI Query 15", "[ldbc_bi]") {
     result_set rs, expected;
     ldbc_bi_query_15(graph, rs, parameters[0]);
 
+    expected.data.push_back(
+      {query_result("[ 2 1 4 ]"), query_result("1.500000")});
     expected.data.push_back(
       {query_result("[ 2 3 4 ]"), query_result("1.000000")});
 
