@@ -518,6 +518,7 @@ struct group_by : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  std::mutex m_;
   std::size_t grpkey_cnt_;
   std::vector<std::string> grpkey_set_;
   std::vector<std::size_t> grpkey_pos_;
@@ -525,6 +526,22 @@ struct group_by : public qop {
   std::unordered_map<std::size_t, qr_tuple> grp_tpl_map_;
   std::vector<std::pair<std::string, std::size_t>> aggrs_;
   std::unordered_map<std::size_t, std::size_t> grp_size_map_;
+};
+
+/**
+ * distinct_tuples implements an operator for outputing distinct
+ * result tuples.
+ */
+struct distinct_tuples : public qop {
+  distinct_tuples() = default;
+  ~distinct_tuples() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::mutex m_;
+  std::set<std::string> keys_;
 };
 
 /**

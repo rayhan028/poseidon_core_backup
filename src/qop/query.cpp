@@ -239,6 +239,12 @@ query::groupby(const std::vector<std::size_t> &pos,
 }
 
 query &
+query::distinct() {
+  auto op = std::make_shared<distinct_tuples>();
+  return append_op(op, std::bind(&distinct_tuples::process, op.get(), ph::_1, ph::_2));
+}
+
+query &
 query::where_qr_tuple(std::function<bool(const qr_tuple &)> pred) {
   auto op = std::make_shared<filter_tuple>(pred);
   return append_op(op,

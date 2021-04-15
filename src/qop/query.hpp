@@ -190,6 +190,12 @@ public:
     const std::vector<std::pair<std::string, std::size_t>> &aggrs);
 
   /**
+   * Add an operator for eliminating duplicates in result tuples.
+   * Resulting tuples are distinct tuples.
+   */
+  query &distinct();
+
+  /**
    * Add an operator to filter projected result tuples based on the pred function.
    */
   query &where_qr_tuple(std::function<bool(const qr_tuple &)> pred);

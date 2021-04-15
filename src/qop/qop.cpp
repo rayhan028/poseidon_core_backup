@@ -430,6 +430,7 @@ void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
     }
   }
 
+  std::lock_guard<std::mutex> lock(m_);
   std::size_t gpos;
   const auto gitr = grpkey_map_.find(grpkeys);
   if (gitr != grpkey_map_.end()) {
@@ -526,6 +527,45 @@ void group_by::finish(graph_db_ptr &gdb) {
     consume_(gdb, gtpl);
   }
   finish_(gdb);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void distinct_tuples::dump(std::ostream &os) const {
+  os << "distinct_tuples() - " << PROF_DUMP;
+}
+
+void distinct_tuples::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  std::string key = "";
+  for (const auto& qres : v) {
+    if (qres.type() == typeid(std::string)) {
+      key += boost::get<std::string>(qres);
+    } else if (qres.type() == typeid(uint64_t)) {
+      key += std::to_string(boost::get<uint64_t>(qres));
+    } else if (qres.type() == typeid(ptime)) { 
+      key += to_iso_extended_string(boost::get<ptime>(qres));
+    } else if (qres.type() == typeid(node *)) {
+      key += std::to_string(boost::get<node *>(qres)->id());
+    } else if (qres.type() == typeid(relationship *)) {
+      key += std::to_string(boost::get<relationship *>(qres)->id());
+    } else if (qres.type() == typeid(int)) {
+      key += std::to_string(boost::get<int>(qres));
+    } else if (qres.type() == typeid(double)) {
+      key += std::to_string(boost::get<double>(qres));
+    } else if (qres.type() == typeid(null_val)) {
+      key += std::string("NULL");
+    } else if (qres.type() == typeid(array_t)) {
+      auto arr = boost::get<array_t>(qres).elems;
+      for (auto a : arr)
+        key += std::to_string(a);
+    }
+  }
+
+  std::lock_guard<std::mutex> lock(m_);
+  if (keys_.find(key) == keys_.end()) {
+    keys_.insert(key); // TODO optimize with integer value representation
+    consume_(gdb, v);
+  }
 }
 
 /* ------------------------------------------------------------------------ */

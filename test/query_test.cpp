@@ -1143,3 +1143,48 @@ TEST_CASE("Testing Bi-directional traversal operator", "[qop]") {
   });
   graph_pool::destroy(pool);
 }
+
+TEST_CASE("Testing distinct operator", "[qop]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+
+  namespace pj = builtin;
+
+  graph->run_transaction([&]() {
+
+    auto a = graph->add_node("Person", {{"id", boost::any(3)}});
+    auto b = graph->add_node("Person", {{"id", boost::any(4)}});
+    auto c = graph->add_node("Person", {{"id", boost::any(5)}});
+    auto d = graph->add_node("Person", {{"id", boost::any(6)}});
+    auto p = graph->add_node("Paper", {{"id", boost::any(38)}});
+
+    graph->add_relationship(a, p, ":authored", {});
+    graph->add_relationship(b, p, ":authored", {});
+    graph->add_relationship(c, p, ":authored", {});
+    graph->add_relationship(d, p, ":authored", {});
+
+    return true;
+  });
+
+  graph->run_transaction([&]() {
+
+    result_set rs, expected;
+    auto q = query(graph)
+              .all_nodes("Person")
+              .from_relationships(":authored")
+              .to_node("Paper")
+              .project({PExpr_(2, pj::int_property(res, "id"))})
+              .distinct()
+              .collect(rs);
+
+    q.start();
+    rs.wait();
+    q.print_plan();
+
+    expected.data.push_back({query_result("38")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
