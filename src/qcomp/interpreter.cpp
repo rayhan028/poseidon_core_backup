@@ -119,6 +119,7 @@ void interprete_visitor::visit(std::shared_ptr<project> op) {
                 break;
             }
             case FTYPE::BOOLEAN:
+            case FTYPE::NONE:
                 continue;
         }
 

@@ -6,7 +6,7 @@
 #include "filter_expression_inline.hpp"
 
 bool finishing = false;
-
+Function *cur_pipeline;
 /*
 * Function initialisation at first access path
 */
@@ -64,7 +64,7 @@ void codegen_inline_visitor::init_function(BasicBlock *bb) {
     max_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     max_cnt = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     ctx.getBuilder().CreateStore(ctx.MAX_PITEM_CNT, max_cnt);
-    cur_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+    //cur_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     loop_cnt = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
 
     cross_join_idx.push_back(ctx.getBuilder().CreateAlloca(ctx.int64Ty));
@@ -107,10 +107,12 @@ AllocaInst *codegen_inline_visitor::insert_alloca(Type *ty) {
 }
 int qcnt = 0;
 bool pipelined_finish = false;
+std::string query_id_str = "";
 /*
 * Generates code for a scan operator.
 */
 void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
+    
     // clear register mapping of previous access path
     reg_query_results.clear();
     // process the appropriate query length
@@ -123,9 +125,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     std::string finish_name = "finish_"+op->name_;
     //}
 
+    query_id_str = op->name_;
     main_function = Function::Create(ctx.startFctTy, Function::ExternalLinkage, op->name_, ctx.getModule());
     main_finish   = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, finish_name, ctx.getModule());
-    
+
+    pipelines.push_back(std::string(main_function->getName()));
+    pipelines.push_back(std::string(main_finish->getName()));
+
+    cur_pipeline = main_function;
     // obtain all relevant function callees for the scan operator
     //FunctionCallee dict_lookup_label = ctx.extern_func("dict_lookup_label");
     auto get_valid_node = ctx.extern_func("get_valid_node");
@@ -314,10 +321,10 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
  */
 void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     op->name_ = "";
-
+    
     // obtain the relationship field ids from the direction
-    int node_rship_idx;
-    int next_rship_idx;
+    int node_rship_idx = 2;
+    int next_rship_idx = 4;
     switch (op->dir_) {
         case RSHIP_DIR::FROM:
             node_rship_idx = 2;
@@ -342,14 +349,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     auto fadd_time_diff = ctx.extern_func("add_time_diff");
 
     // create the basic blocks for the operator processing
-    BasicBlock *fe_entry = BasicBlock::Create(ctx.getContext(), "fe_entry", main_function);
-    BasicBlock *foreach_rship_end = BasicBlock::Create(ctx.getModule().getContext(), "foreach_rel_end", main_function);
-    BasicBlock *nextBB = BasicBlock::Create(ctx.getModule().getContext(), "next_rship", main_function);
-    BasicBlock *consumeBB = BasicBlock::Create(ctx.getModule().getContext(), "consume_rship", main_function);
+    BasicBlock *fe_entry = BasicBlock::Create(ctx.getContext(), "fe_entry", cur_pipeline);
+    BasicBlock *foreach_rship_end = BasicBlock::Create(ctx.getModule().getContext(), "foreach_rel_end", cur_pipeline);
+    BasicBlock *nextBB = BasicBlock::Create(ctx.getModule().getContext(), "next_rship", cur_pipeline);
+    BasicBlock *consumeBB = BasicBlock::Create(ctx.getModule().getContext(), "consume_rship", cur_pipeline);
 
     // basic blocks for the fev operator
-    BasicBlock *loop_head = BasicBlock::Create(ctx.getContext(), "fev_loop_head", main_function);
-    BasicBlock *loop_body = BasicBlock::Create(ctx.getContext(), "fev_loop_body", main_function);
+    BasicBlock *loop_head = BasicBlock::Create(ctx.getContext(), "fev_loop_head", cur_pipeline);
+    BasicBlock *loop_body = BasicBlock::Create(ctx.getContext(), "fev_loop_body", cur_pipeline);
     //BasicBlock *loop_next = BasicBlock::Create(ctx.getContext(), "fev_loop_next", main_function);
 
     // link the entry point with the block of the previous operator
@@ -357,10 +364,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     ctx.getBuilder().CreateBr(fe_entry);
     ctx.getBuilder().SetInsertPoint(fe_entry);
 
-    Value *t_start;
-    Value *t_end;
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
-    Value *node;
+    Value *node = nullptr;
+
     // get the previous tuple result
     if(op->node_pos_ == std::numeric_limits<int>::max())
         node = reg_query_results.back().reg_val;
@@ -369,22 +377,28 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
 
     auto UNKNOWN_REL_ID = ConstantInt::get(ctx.int64Ty,
                                            std::numeric_limits<int64_t>::max()); // TODO: UNKNOWN VALUE = std::numeric_limits<int64_t>::max()
-    ctx.getBuilder().CreateStore(UNKNOWN_REL_ID, rhs_alloca);
+    auto nr = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+    ctx.getBuilder().CreateStore(UNKNOWN_REL_ID, nr);
 
     GlobalVariable *label = ctx.getBuilder().CreateGlobalString(StringRef(op->label_), "rship_label");
 
     auto strPtr = ctx.getBuilder().CreateBitCast(label, ctx.int8PtrTy);
-    ctx.getBuilder().CreateStore(strPtr, strAlloc);
+    auto stra = ctx.getBuilder().CreateAlloca(ctx.int8PtrTy);
+    ctx.getBuilder().CreateStore(strPtr, stra);
 
     //auto label_code = ConstantInt::get(ctx.int32Ty, APInt(32, ctx.get_dcode(op->label_)));
 
     // extract label from arguments and obtain label code
-    auto label_code = ctx.extract_arg_label(op->op_id_, gdb, queryArgs);
+    auto qctx = cur_pipeline->args().begin();
+    auto g = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(qctx, 0));
+    auto args = cur_pipeline->args().begin()+1;
+    auto label_code = ctx.extract_arg_label(op->op_id_, g, args);
 
     // extract the first relationship id from the node
     auto node_rship_id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(node, node_rship_idx));
-    ctx.getBuilder().CreateStore(node_rship_id, lhs_alloca);
-
+    auto lhs = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+    ctx.getBuilder().CreateStore(node_rship_id, lhs);
+    
     // register value for the current relationship
     Value *rship;
 
@@ -415,16 +429,16 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
 
     } else {
         // iterate through the relationship list of the node
-        auto loop_body = ctx.while_loop_condition(main_function, lhs_alloca, rhs_alloca, PContext::WHILE_COND::LT, foreach_rship_end,
+        auto loop_body = ctx.while_loop_condition(cur_pipeline, lhs, nr, PContext::WHILE_COND::LT, foreach_rship_end,
                                                 [&](BasicBlock *, BasicBlock *) {
                                                     if(profiling)
                                                         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
 
                                                     // extract relationship id from alloca
-                                                    auto lhs = ctx.getBuilder().CreateLoad(lhs_alloca);
+                                                    auto lhsi = ctx.getBuilder().CreateLoad(lhs);
 
                                                     // obtain the relationship through an extern function call
-                                                    rship = ctx.getBuilder().CreateCall(rship_by_id, {gdb, lhs});
+                                                    rship = ctx.getBuilder().CreateCall(rship_by_id, {g, lhsi});
 
                                                     // check for the given label
                                                     auto consume_cond = ctx.rship_cmp_label(rship, label_code);
@@ -437,7 +451,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
         ctx.getBuilder().SetInsertPoint(nextBB);
         {
             auto next_rship = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(rship, next_rship_idx));
-            ctx.getBuilder().CreateStore(next_rship, lhs_alloca);
+            ctx.getBuilder().CreateStore(next_rship, lhs);
             ctx.getBuilder().CreateBr(loop_body);
         }
     }
@@ -493,13 +507,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
     ctx.getBuilder().SetInsertPoint(entry);
     std::map<std::size_t, Value*> vmap;
 
-    Value *t_start;
-    Value *t_end;
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
     auto i = 1;
 
     if(profiling)
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
+        
     // add new projection variables to registers
     std::vector<QR_VALUE> nqrv;
     for(auto & pe : op->prexpr_) {
@@ -603,14 +618,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<expand_op> op) {
     op->name_ = "";
 
     // create the basic blocks of the expand operator
-    BasicBlock *entry = BasicBlock::Create(ctx.getContext(), "expand_entry", main_function);
-    BasicBlock *consume = BasicBlock::Create(ctx.getContext(), "expand_consume", main_function);
-    BasicBlock *null = BasicBlock::Create(ctx.getContext(), "expand_false", main_function);
-    BasicBlock *check_label = BasicBlock::Create(ctx.getContext(), "check_label", main_function);
+    BasicBlock *entry = BasicBlock::Create(ctx.getContext(), "expand_entry", cur_pipeline);
+    BasicBlock *consume = BasicBlock::Create(ctx.getContext(), "expand_consume", cur_pipeline);
+    BasicBlock *null = BasicBlock::Create(ctx.getContext(), "expand_false", cur_pipeline);
+    BasicBlock *check_label = BasicBlock::Create(ctx.getContext(), "check_label", cur_pipeline);
 
-    Value *label_code;
-    Value *t_start;
-    Value *t_end;
+    Value *label_code = nullptr;
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
     // get the relevant FunctionCallee
     auto get_node_by_id = ctx.extern_func("node_by_id");
@@ -631,8 +646,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<expand_op> op) {
     // extract the node id from the relationship
     auto exp_rship = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(rship, exp_id));
 
+    auto qctx = cur_pipeline->args().begin();
+    auto g = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(qctx, 0));
+
+
     //get node by id
-    auto node = ctx.getBuilder().CreateCall(get_node_by_id, {gdb, exp_rship});
+    auto node = ctx.getBuilder().CreateCall(get_node_by_id, {g, exp_rship});
     qr.push_back(node);
 
     // test if node is null
@@ -644,7 +663,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<expand_op> op) {
     if(op->label_.empty())
         ctx.getBuilder().CreateCondBr(cmp, null, consume);
     else {
-        label_code = ctx.extract_arg_label(op->op_id_, gdb, queryArgs);
+        //label_code = ctx.extract_arg_label(op->op_id_, gdb, queryArgs);
+        auto args = cur_pipeline->args().begin()+1;
+        label_code = ctx.extract_arg_label(op->op_id_, g, args);
         ctx.getBuilder().CreateCondBr(cmp, null, check_label);
     }
 
@@ -733,8 +754,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<filter_op> op) {
     ctx.getBuilder().CreateBr(entry);
     ctx.getBuilder().SetInsertPoint(entry);
 
-    Value* t_start;
-    Value* t_end;
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
     if(profiling)
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
@@ -791,8 +812,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
 
     if(pipelined_finish) {
         collect_fct = main_finish;
-        rs_arg = main_finish->args().begin();
-        gdb_ptr = main_finish->args().begin()+1;
+        rs_arg = main_finish->args().begin()+2;
     } else {
         collect_fct = main_function;
         rs_arg = rs;
@@ -806,8 +826,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
     ctx.getBuilder().CreateBr(entry);
     ctx.getBuilder().SetInsertPoint(entry);
 
-    Value* t_start;
-    Value* t_end;
+    if(pipelined_finish) {
+        gdb_ptr = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(collect_fct->args().begin(), 0));
+    }
+
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
     if(profiling) 
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
@@ -930,6 +954,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     BasicBlock *consume = BasicBlock::Create(ctx.getContext(), "consume", main_function);
     BasicBlock *end = BasicBlock::Create(ctx.getContext(), "end", main_function);
 
+
     // obtain all FunctionCallees
     auto get_join_tp_at = ctx.extern_func("get_join_tp_at");
     auto node_reg = ctx.extern_func("get_node_res_at");
@@ -949,18 +974,18 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     ctx.getBuilder().CreateBr(join_lhs_entry);
     ctx.getBuilder().SetInsertPoint(join_lhs_entry);
 
-    Value* t_start;
-    Value* t_end;
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
     if(profiling) 
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
-
+    cur_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
 
     // init idx and dangling flag
     ctx.getBuilder().CreateStore(ctx.LLVM_ONE, dangling);
     ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, cur_idx);
 
-    Value *tp;
+    Value *tp = nullptr;
 
     // get the join identifier and the appropriate rhs tuple list
     auto jid = ConstantInt::get(ctx.int64Ty, query_id_inline);
@@ -971,7 +996,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     //Value *rhs_id;
     //auto rhs_id_alloc = insert_alloca(ctx.int64Ty);
     auto rhs_id_alloc = insert_alloca(ctx.int64Ty);
-    BasicBlock *loop_body;
+
+    BasicBlock *loop_body = nullptr;
+    
     if(op->jop_ == JOIN_OP::NESTED_LOOP) {
             loop_body = ctx.while_loop_condition(main_function, cur_idx, max_idx, PContext::WHILE_COND::LT, end,
                                             [&](BasicBlock *body, BasicBlock *epilog) {
@@ -1002,7 +1029,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
                                                 });        
     }
 
-    BasicBlock *loop_rship;
+    BasicBlock *loop_rship = nullptr;
     if(op->jop_ == JOIN_OP::LEFT_OUTER) {
         // for left outer join
         ctx.getBuilder().SetInsertPoint(left_outer);
@@ -1077,7 +1104,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         auto rhs_id = ctx.getBuilder().CreateLoad(rhs_id_alloc);
         auto id_eq = ctx.getBuilder().CreateICmpEQ(lhs_id, rhs_id);
         ctx.getBuilder().CreateCondBr(id_eq, nested_joinable, incr_loop);
-
+        
         ctx.getBuilder().SetInsertPoint(nested_joinable);
         ctx.getBuilder().CreateBr(concat_qrl);
 
@@ -1113,7 +1140,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         auto id = ctx.getBuilder().CreateCall(get_hj_input_id, {jid, bucket_id, idx});
         auto incr_hj_id = ctx.getBuilder().CreateAdd(idx, ctx.LLVM_ONE);
         ctx.getBuilder().CreateStore(incr_hj_id, cur_idx);
-        auto hj_eq = ctx.getBuilder().CreateICmpEQ(lhs_id, idx);
+        auto hj_eq = ctx.getBuilder().CreateICmpEQ(lhs_id, id);
         ctx.getBuilder().CreateCondBr(hj_eq, hj_joinable, loop_body);
 
         ctx.getBuilder().SetInsertPoint(hj_joinable);
@@ -1127,7 +1154,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         auto i = ctx.getBuilder().CreateLoad(cur_idx);
         ctx.getBuilder().CreateStore(ctx.getBuilder().CreateAdd(i, ctx.LLVM_ONE), cur_idx);
 
-        if(op->jop_ != JOIN_OP::NESTED_LOOP || op->jop_ != JOIN_OP::HASH_JOIN) {
+        if(op->jop_ == JOIN_OP::LEFT_OUTER) {
             auto dang = ctx.getBuilder().CreateLoad(dangling);
             auto is_dangling = ctx.getBuilder().CreateICmpEQ(dang, ctx.LLVM_ONE);
             ctx.getBuilder().CreateCondBr(is_dangling, concat_qrl, loop_body);
@@ -1160,12 +1187,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
 
     if(op->jop_ == JOIN_OP::CROSS || op->jop_ == JOIN_OP::NESTED_LOOP) {
         auto i = ctx.getBuilder().CreateLoad(cur_idx);
-        ctx.getBuilder().CreateStore(ctx.getBuilder().CreateAdd(i, ctx.LLVM_ONE), cur_idx);
+        auto i_add = ctx.getBuilder().CreateAdd(i, ctx.LLVM_ONE);
+        ctx.getBuilder().CreateStore(i_add, cur_idx);
     }
 
     ctx.getBuilder().CreateBr(consume);
 
     ctx.getBuilder().SetInsertPoint(consume);
+
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
         ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
@@ -1200,8 +1229,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<sort_op> op) {
     ctx.getBuilder().CreateBr(sort_entry);
     ctx.getBuilder().SetInsertPoint(sort_entry);
 
-    Value* t_start;
-    Value* t_end;
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
     if(profiling) 
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
@@ -1239,8 +1268,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<limit_op> op) {
     ctx.getBuilder().CreateBr(limit);
     ctx.getBuilder().SetInsertPoint(limit);
 
-    Value* t_start;
-    Value* t_end;
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
     if(profiling) 
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
@@ -1304,8 +1333,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     ctx.getBuilder().CreateBr(bb);
     ctx.getBuilder().SetInsertPoint(bb);
 
-    Value* t_start;
-    Value* t_end;
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
     if(profiling) 
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
@@ -1315,7 +1344,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     jids.pop_front();
     auto jid = ConstantInt::get(ctx.int64Ty, last_jid);
     
-    Value *remainder;
+    Value *remainder = nullptr;
+
     if(op->join_op_ == JOIN_OP::NESTED_LOOP) {
         auto n = reg_query_results[op->qr_pos_].reg_val;
         auto id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(n, 1));
@@ -1362,11 +1392,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     ctx.getBuilder().CreateBr(main_return);
 
     ctx.getBuilder().SetInsertPoint(df_finish_bb);
-    if(next_pipeline) {
-        ctx.getBuilder().CreateBr(next_pipeline);
-    } else {
-        ctx.getBuilder().CreateRetVoid();
-    }
+    ctx.getBuilder().CreateRetVoid();
 }
 
 /**
@@ -1448,8 +1474,16 @@ void codegen_inline_visitor::visit(std::shared_ptr<create_op> op) {
  * Generates code for the group_by operation
  */
 void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
+    
     op->name_ = "";
-    pipelined_finish = true;
+
+    if(pipelined_finish) {
+        //main_function = Function::Create(ctx.startFctTy, Function::ExternalLinkage, query_id_str, ctx.getModule());
+        main_finish   = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, "finish_"+query_id_str, ctx.getModule());
+        
+        //pipelines.push_back(std::string(main_function->getName()));
+        pipelines.push_back(std::string(main_finish->getName()));
+    }
 
     auto get_node_grpkey = ctx.extern_func("get_node_grpkey");
     auto get_rship_grpkey = ctx.extern_func("get_rship_grpkey");
@@ -1461,14 +1495,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
     auto fadd_now = ctx.extern_func("get_now");
     auto fadd_time_diff = ctx.extern_func("add_time_diff");
 
-    BasicBlock *group_entry = BasicBlock::Create(ctx.getContext(), "group_entry", main_function);
+    BasicBlock *group_entry = BasicBlock::Create(ctx.getContext(), "group_entry", cur_pipeline);
 
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(group_entry);
     ctx.getBuilder().SetInsertPoint(group_entry);
 
-    Value* t_start;
-    Value* t_end;
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
     if(profiling) 
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
@@ -1481,7 +1515,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
         auto type_id = (res.type == 7 ? 2 : res.type == 0 ? 90 : res.type == 1 ? 91 : res.type);
         auto type = ConstantInt::get(ctx.int64Ty, type_id);
         auto cv_reg = ctx.getBuilder().CreateBitCast(res.reg_val, ctx.int64PtrTy);
-        ctx.getBuilder().CreateCall(mat_reg, {gdb, cv_reg, type});
+        auto qctx = cur_pipeline->args().begin();
+        auto g = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(qctx, 0));
+        ctx.getBuilder().CreateCall(mat_reg, {g, cv_reg, type});
     }
 
     std::vector<std::pair<int,int>> pos_type;
@@ -1526,15 +1562,21 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
     }
 
     ctx.getBuilder().CreateBr(main_return);
-    prev_bb = group_entry;
 
     //modify the finish processing -> add to last basic block of pipeline
     BasicBlock *group_finish = BasicBlock::Create(ctx.getContext(), "group_finish", main_finish);
     ctx.getBuilder().SetInsertPoint(df_finish_bb);
-    ctx.getBuilder().CreateBr(group_finish);
+    if(pipelined_finish)
+        //ctx.getBuilder().CreateBr(main_return);
+        ctx.getBuilder().CreateRetVoid();
+    else
+        ctx.getBuilder().CreateBr(group_finish);
+    
+    prev_bb = group_entry;
+    
     ctx.getBuilder().SetInsertPoint(group_finish);
     auto finish_group_by = ctx.extern_func("finish_group_by");
-    auto rs_arg = main_finish->args().begin();
+    auto rs_arg = main_finish->args().begin()+2;
     ctx.getBuilder().CreateCall(finish_group_by, {rs_arg});
 
     auto int_to_reg = ctx.extern_func("int_to_reg");
@@ -1611,9 +1653,13 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
     //ctx.getBuilder().CreateBr(group_loop_head);
 
     ctx.getBuilder().SetInsertPoint(group_loop_exit);
+  //  if(pipelined_finish)
+  //      ctx.getBuilder().CreateBr(main_return);
     df_finish_bb = group_loop_exit;
     main_return = group_loop_head;
     prev_bb = group_loop_body;
+
+    pipelined_finish = true;
 }
 
 /**
@@ -1638,8 +1684,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
     ctx.getBuilder().CreateBr(aggr_finish);
     ctx.getBuilder().SetInsertPoint(aggr_finish);
 
-    Value* t_start;
-    Value* t_end;
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
     if(profiling) 
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
@@ -1665,8 +1711,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
             auto pos = ConstantInt::get(ctx.int64Ty, aggr.second);
             switch(reg_query_results[aggr.second].type) {
                 case 2: {
-                    //auto sum_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
-                    auto sum_alloc = insert_alloca(ctx.int64Ty);
+                    auto sum_alloc = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
+                    //auto sum_alloc = insert_alloca(ctx.int64Ty);
                     auto sum = ctx.getBuilder().CreateCall(get_group_sum_int, {pos});
                     ctx.getBuilder().CreateStore(sum, sum_alloc);
                     reg_query_results.push_back({sum_alloc, 2});
@@ -1692,7 +1738,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
             auto pos = ConstantInt::get(ctx.int64Ty, aggr.second);
             switch(reg_query_results[aggr.second].type) {
                 case 2: {
-                    auto avg_alloc = insert_alloca(ctx.doubleTy);
+                    auto avg_alloc = ctx.getBuilder().CreateAlloca(ctx.doubleTy);
+                    //auto avg_alloc = insert_alloca(ctx.doubleTy);
                     auto cnt = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(grp_cnt, {}), ctx.doubleTy);
                     auto sum = ctx.getBuilder().CreateBitCast(ctx.getBuilder().CreateCall(get_group_sum_int, {pos}), ctx.doubleTy);
                     auto avg = ctx.getBuilder().CreateFDiv(sum, cnt);
@@ -1729,6 +1776,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
 
     prev_bb = aggr_finish;
     //df_finish = aggr_finish;
+    //main_function = main_finish;
+    cur_pipeline = main_finish;
 }
 
 void codegen_inline_visitor::visit(std::shared_ptr<connected_op> op) {
@@ -1748,8 +1797,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<connected_op> op) {
     ctx.getBuilder().CreateBr(connected_entry);
     ctx.getBuilder().SetInsertPoint(connected_entry);
 
-    Value* t_start;
-    Value* t_end;
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
     if(profiling) 
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
@@ -1818,8 +1867,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<append_op> op) {
     // insert the append processing before the tuples get materialized
     ctx.getBuilder().SetInsertPoint(pre_tuple_mat);
 
-    Value* t_start;
-    Value* t_end;
+    Value* t_start = nullptr;
+    Value* t_end = nullptr;
 
     if(profiling) 
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});

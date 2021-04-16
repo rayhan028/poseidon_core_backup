@@ -252,9 +252,12 @@ struct pr_expr {
     bool if_exist_;
     std::vector<std::string> has_properties;
     std::pair<std::string, std::string> then_else;
+    
+    int_prj_func_node int_node_func;
+
     PROJECTION_TYPE prt;
 
-    int_prj_func_node int_node_func;
+    
     pr_expr(std::size_t i) : id(i), type(FTYPE::NONE), int_node_func(nullptr), prt(PROJECTION_TYPE::FORWARD_PR)  {}
     pr_expr(std::size_t i, int_prj_func_node func) : id(i), int_node_func(func), prt(PROJECTION_TYPE::FUNCTIONAL_VAL) {}
     pr_expr(std::size_t i, std::string k, FTYPE t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist), prt(PROJECTION_TYPE::PROPERTY_PR) {}

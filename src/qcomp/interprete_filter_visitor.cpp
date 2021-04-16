@@ -56,6 +56,7 @@ std::function<bool(const p_item &)> interprete_filter_visitor::get_pred() {
             return [&](const p_item &p) { return p.equal(int_value_); };
         case value_type::fpv:
         case value_type::uiv:
+        default:
             assert(false && "not implemented yet");
             return [&](const p_item &p) { return p.equal(int_value_); };
     }

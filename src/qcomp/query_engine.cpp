@@ -8,6 +8,8 @@
 #include "codegen_inline.hpp"
 #include "thread_pool.hpp"
 
+#include "grouper.hpp"
+
 using namespace std::placeholders;
 
 std::unique_ptr<p_jit> query_engine::initializeJitCompiler() {
@@ -148,7 +150,7 @@ void query_engine::extract_arg(std::shared_ptr<base_op> op) {
 }
 
 
-void query_engine::run(result_set * rs, std::vector<uint64_t*> args, bool cleanup_query) {
+void query_engine::run(result_set * rs, arg_builder & args, bool cleanup_query) {
     //prepare();
 
     auto tx = graph_->begin_transaction();
@@ -167,16 +169,22 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args, bool cleanu
 
     auto start_idx = start_.size()-1;
     auto last = graph_->get_nodes()->num_chunks();
-    query_context qtx = {graph_.get(), 0, last, tx, &rs, args.data()};
+    query_context qtx = {graph_.get(), 0, last, tx, &rs, args.args.data()};
     qtx.gdb = graph_.get();
     qtx.rs = &rs;
-    *qtx.args = *args.data();
+    *qtx.args = *args.args.data();
     qtx.tx = tx;
 
     for(i = start_idx; i >= 0; i--) {
-        start_[i](&qtx, args.data(), rs);
-        finish_[i](rs, graph_.get());
+        start_[i](&qtx, args.args.data(), rs);
+        finish_[i](&qtx, args.args.data(), rs);
     }
+    
+    for(i = start_idx;i < finish_.size();i++) {
+        //grouper::clear();
+        //finish_[i](&qtx, args.args.data(), rs);
+    }
+
     graph_->commit_transaction();
 
     auto bench = qtx.profiling_time;
@@ -198,7 +206,7 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args, bool cleanu
 }
 
 void query_engine::run(result_set * rs) {
-    run(rs, query_args.args);
+    run(rs, query_args);
 }
 
 //std::map<int, std::vector<consumer_fct_type>> query_engine::operator_functions_ = {};
@@ -267,12 +275,18 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
     }
 }
 
-void query_engine::finish(result_set *rs) {
+void query_engine::finish(result_set *rs, arg_builder & args) {
     for(auto & t : rs2.data) {
         rs->append(t);
     }
+
+    query_context qtx = {graph_.get(), 0,  graph_->get_nodes()->num_chunks(), current_transaction_, &rs, args.args.data()};
+    qtx.gdb = graph_.get();
+    qtx.rs = &rs;
+    *qtx.args = *args.args.data();
+    
     for(int i = start_.size()-1; i >= 0; i--) {
-        finish_[i](rs, graph_.get());
+        finish_[i](&qtx, args.args.data(), rs);
     }
 }
 
@@ -310,39 +324,24 @@ void compile_task::operator()() {
     std::string finish_name = "default_finish_"+internal_qid;
     std::vector<int> type_vec;
     std::vector<algebra_optr> recur_list;
-    while(!cur_op->inputs_.empty() || !recur_list.empty()) {
-        qeng_.extract_arg(cur_op);
-        if(cur_op->inputs_.empty()) {
-            cur_op = recur_list.back();
-            recur_list.pop_back();
-            query_id++;
-        }
-
-        if(cur_op->type_ == qop_type::sort) {
-            finish_name = cur_op->name_;
-            cur_op = cur_op->inputs_[0];
-            continue;
-        }
-        if(cur_op->type_ == qop_type::cross_join || 
-           cur_op->type_ == qop_type::left_join || 
-           cur_op->type_ == qop_type::nest_loop_join ||
-           cur_op->type_ == qop_type::hash_join) {
-            recur_list.push_back(cur_op->inputs_[1]);
-        }
-
-        if(cur_op->produced_type_ != -1)
-            qeng_.type_vec_[query_id].push_back(cur_op->produced_type_);
-
-        if(!cur_op->name_.empty()) {
-            qeng_.operator_names_[query_id].push_back(cur_op->name_);
-        }
-        cur_op = cur_op->inputs_[0];
+    
+    int i = 0;
+    for(auto & s : cv.pipelines) {
+        if(s.find("finish_") == 0) {
+            auto ffct = jit_.getFunctionRaw<finish_fct_type>(s);
+            if(ffct) {
+                qeng_.finish_[i] = *ffct;
+                i++;
+            }
+        } else {
+            qeng_.operator_names_[0].push_back(s);
+            auto start_fc = jit_.getFunctionRaw<start_ty>(s);
+            if(start_fc) {
+                qeng_.start_[i] = *start_fc;
+            }
+        }       
     }
-    if(cur_op->type_ == qop_type::none && !cur_op->name_.empty()) {
-        qeng_.operator_names_[query_id].push_back(cur_op->name_);
-    }
-    //query_id = 0;
-
+    
     //3. get all generated function pointers
     /*for(int q = 0; q <= query_id; q++) {
         for(auto i = 1u; i < qeng_.operator_names_[q].size(); i++) {
@@ -352,15 +351,5 @@ void compile_task::operator()() {
                 query_engine::operator_functions_[q].push_back(*fc);
         }
     }*/
-
-    for(int q = 0; q <= query_id; q++) {
-        auto start_fc = jit_.getFunctionRaw<start_ty>(qeng_.operator_names_[q].at(0));
-        if(start_fc)
-            qeng_.start_[q] = *start_fc;
-        auto ffct = jit_.getFunctionRaw<finish_fct_type>(("finish_"+qeng_.operator_names_[q].at(0)));
-        if(ffct) {
-            qeng_.finish_[q] = *ffct;
-        }
-        // 
-    }
+    
 }

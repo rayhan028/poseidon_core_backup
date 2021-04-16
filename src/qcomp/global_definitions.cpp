@@ -14,7 +14,6 @@ void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_tim
 
  chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
     //grouper::clear(); // TODO: fix and replace with pipeline context
-    std::cout << "JIT" << std::endl;
     return new chunked_vec<node, NODE_CHUNK_SIZE>::range_iter(vec->as_vec(), first, last);
 }
 
@@ -111,7 +110,7 @@ std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
 void apply_pexpr_node(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int *ret) {
     // cast the query result to a node
     auto n = (node*)qr;
-
+    
     // try to find the description in the thread local result memory
     // if it is not present, generate the description and write it to the thread local memory
     if(descs.find(n->id()) == descs.end())
@@ -249,7 +248,6 @@ std::mutex ct_mut;
 void collect_tuple(graph_db *gdb, result_set *rs, bool print) {
 std::lock_guard<std::mutex> lck(mat_reg_mut);
 auto & tp = tp_m[std::this_thread::get_id()];
-
 {
     rs->append(tp);
     /*if(print) {
@@ -530,3 +528,6 @@ void apply_has_property(int has_properties_cnt, char *then_res, char *else_res, 
 void end_notify(result_set *rs) {
     rs->notify();
 }
+
+int pl = 0;
+void print_int(int i) { std::cout << i << std::endl; }

@@ -20,6 +20,8 @@ std::string expression::fop_str(FOP fop) const {
             return "||";
         case FOP::NOT:
             return "!";
+        default:
+            return "";
     }
 }
 

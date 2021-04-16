@@ -15,9 +15,7 @@
 #include <boost/thread/barrier.hpp>
 #include <boost/hana.hpp>
 
-//using consumer_ty = std::function<void(graph_db*, int, int**, int*, int, int*)>;
-//using consumer_fct_type = void(*)(graph_db*, int, int**, int*, int, int*, int**, int);
-using finish_fct_type = void(*)(result_set*, graph_db*);
+
 using query_time_point = std::chrono::time_point<std::chrono::high_resolution_clock>;
 struct query_context {
     graph_db* gdb;
@@ -51,7 +49,7 @@ void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_tim
  */ 
 //using start_ty = void(*)(graph_db*, int, int, transaction_ptr, int, std::vector<int>*, result_set*, int**, finish_fct_type, uint64_t, uint64_t**);
 using start_ty = void(*)(query_context*, uint64_t**, result_set* rs);
-
+using finish_fct_type = void(*)(query_context*, uint64_t**, result_set* rs);
 
 /**
  * Tuple result types
@@ -344,5 +342,7 @@ void apply_has_property(int has_properties_cnt, char *then_res, char *else_res, 
 void apply_if_property_exist(int has_property, char *property, int *result);
 
 void end_notify(result_set *rs);
+
+void print_int(int i);
 
 #endif //PJIT_GLOBAL_DEFINITIONS_HPP

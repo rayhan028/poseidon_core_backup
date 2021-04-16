@@ -196,6 +196,8 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&end_notify), JITSymbolFlags::Exported);
         M[Mangle("persist_tuple")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&persist_tuple), JITSymbolFlags::Exported);
+        M[Mangle("print_int")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&print_int), JITSymbolFlags::Exported);
 
         ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
     }
@@ -207,6 +209,7 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
     ModuleKeys.push_back(K);
 
 #if USE_CACHE
+    std::cout << "Use cache" << std::endl;
     auto obj = ObjCache->getCachedObject(*M);
     if(!obj) {
         M.~unique_ptr();
@@ -221,7 +224,7 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
 #endif
 
     OptimizeLayer.setTransform(Optimizer(3));
-
+    
     return OptimizeLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx), K);
     //cantFail(CompileLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx)));
 }

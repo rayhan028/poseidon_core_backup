@@ -69,8 +69,8 @@ public:
     void prepare();
 
     void run(result_set * rs);
-    void run(result_set * rs, std::vector<uint64_t*> args, bool cleanup_query = true);
-    void finish(result_set *rs);
+    void run(result_set * rs, arg_builder & args, bool cleanup_query = true);
+    void finish(result_set *rs, arg_builder & args);
 
     void run_parallel(result_set * rs, arg_builder & args, unsigned thread_num);
 

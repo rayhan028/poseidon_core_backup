@@ -333,6 +333,7 @@ public:
 
     bool profiling = false;
     bool pipelined = false;
+    std::vector<std::string> pipelines;
     
     void extract_query_context(Value* context_arg) {
         gdb = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 0));

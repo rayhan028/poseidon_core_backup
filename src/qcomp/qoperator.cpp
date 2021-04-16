@@ -10,6 +10,7 @@ std::string expand_str(EXPAND exp) {
         case EXPAND::IN:
             return "in";
         case EXPAND::OUT:
+        default:
             return "out";
     }
 }
@@ -24,6 +25,8 @@ std::string join_op_str(JOIN_OP jop) {
             return "nested_loop";
         case JOIN_OP::HASH_JOIN:
             return "hash_join";
+        default:
+            return "";
     }
 }
 

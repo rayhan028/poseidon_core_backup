@@ -1,7 +1,8 @@
 #include <set>
 #include <iostream>
 #include <boost/variant.hpp>
-
+#include "global_definitions.hpp"
+#include "grouper.hpp"
 #include "config.h"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
@@ -9,7 +10,17 @@
 #include "qoperator.hpp"
 #include "queryc.hpp"
 #include "query.hpp"
+
 namespace pj = builtin;
+
+#define POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
+
+struct root {
+  graph_db_ptr graph;
+};
+
+/*
+
 int cnt = 0;
 bool fct(int* np) {
 	return cnt++ % 2 ? 1 : 0;
@@ -24,7 +35,12 @@ query_result *afunc(qr_tuple &qrt) {
 	return &qr;
 }
 
-const std::string test_path = poseidon::gPmemPath + "jit_qcomp";
+
+
+
+
+
+
 
 int nodefunc(node *n) {
 	return n->id();
@@ -35,6 +51,69 @@ bool int_fct(int *i) {
 	return in % 2 == 0; 
 }
 
+std::map<std::size_t, std::vector<std::size_t>> find_chunk_ranges(std::vector<std::size_t> &chunk) {
+	std::size_t range_cnt = 0;
+	std::size_t last_rng = 0;
+	std::map<std::size_t, std::vector<std::size_t>> ranges;
+	for(auto c : chunk) {
+		if(range_cnt == 0 && last_rng == 0) {
+			ranges[range_cnt].push_back(c);
+		} else {
+			if(last_rng + 1 == c) {
+				if(ranges[range_cnt].size() == 25) {
+					range_cnt++;
+				}
+				ranges[range_cnt].push_back(c);
+			} else {
+				range_cnt++;
+				ranges[range_cnt].push_back(c);
+			}
+		}
+
+		last_rng = c;
+	}
+
+	return ranges;
+}
+
+std::map<std::size_t, std::vector<std::size_t>>  eval_work(graph_db_ptr gdb, std::map<std::size_t, std::size_t> &cp) {
+	std::cout << "Processed chunks: " << cp.size() << std::endl;
+
+	int finished = 0;
+	int n_proc = 0;
+	auto n_max = gdb->get_nodes()->num_chunks() * 18723;
+	for(auto & c : cp) {
+		n_proc += c.second;
+		if(c.second == 18723)
+			finished++;
+	}
+	auto n_prog = n_proc * 100 / n_max;
+
+	std::cout << "Finished chunks: " << finished << std::endl;
+	std::cout << "Progress: " << n_prog << "%" << std::endl;
+	std::cout << "Stored results: " << gdb->get_stored_results() << std::endl;
+
+
+	std::cout << "Not started chunks: ";
+	std::vector<std::size_t> rem_chunks;
+	for(auto i = 0u; i < gdb->get_nodes()->num_chunks(); i++) {
+		if(cp.find(i) == cp.end()) {
+			rem_chunks.push_back(i);
+			std::cout << i << ", ";
+		}
+	}
+	std::cout << std::endl;
+	auto rng = find_chunk_ranges(rem_chunks);
+	for(auto & r : rng) {
+		std::cout << r.first << ": ";
+		for(auto i : r.second) {
+			std::cout << i << " ";
+		}
+		std::cout << std::endl;
+	}
+	return rng;
+}
+*/
 
 #ifdef USE_PMDK
 
@@ -43,6 +122,8 @@ bool int_fct(int *i) {
 namespace nvm = pmem::obj;
 
 nvm::pool_base prepare_pool() {
+	const std::string test_path = poseidon::gPmemPath + "jit_qcomp";
+	std::string db_name = "jit_qcomp";
 	nvm::pool_base pop;
 	if (access(test_path.c_str(), F_OK) != 0) {
     	pop = nvm::pool_base::create(test_path, "poseidon", PMEMOBJ_POOL_SIZE);
@@ -57,28 +138,29 @@ nvm::pool_base prepare_pool() {
 
 int main() {
 	bool init;
+	std::string test_path = poseidon::gPmemPath + "jit_qcomp";
+	std::string db_name = "jit_qcomp";
 #ifdef USE_PMDK
 	init = false;
-	graph_pool_ptr pool;
-	graph_db_ptr graph;
-	
-	auto p1 = std::chrono::steady_clock::now();
-	if (access(test_path.c_str(), F_OK) != 0) {
-    	pool = graph_pool::create(test_path);
-		graph = pool->create_graph("jit_qcomp");
-		init = true;
-  	} else {
-    	pool = graph_pool::open(test_path);
-		graph = pool->open_graph("jit_qcomp");
-  	}
+  namespace nvm = pmem::obj;
 
-	auto p2 = std::chrono::steady_clock::now();
+  nvm::pool<root> pop;
+  const auto path = test_path;
 
-	std::cout << "POOL: "
-		<< std::chrono::duration_cast<std::chrono::milliseconds>(p2 -
-																	p1)
-				.count()
-		<< " ms" << std::endl;
+  if (access(path.c_str(), F_OK) != 0) {
+    pop = nvm::pool<root>::create(path, db_name, POOL_SIZE);
+	init = true;
+  } else {
+    pop = nvm::pool<root>::open(path, db_name);
+  }
+
+  auto q = pop.root();
+  if (!q->graph) {
+    // create a new persistent graph_db object
+    nvm::transaction::run(pop, [&] { q->graph = p_make_ptr<graph_db>(); });
+  }
+  auto graph = q->graph;
+  graph->runtime_initialize();
 #else
   auto pool = graph_pool::open(test_path);
   auto graph = pool->open_graph("jit_qcomp");
@@ -87,7 +169,7 @@ int main() {
 	if(init) {
 		auto tx = graph->begin_transaction();
 
-		int PERSONS = 5;
+		int PERSONS = 10;
 		int add = 0;
 		int j = 1;
 		auto id = 0;
@@ -136,12 +218,7 @@ int main() {
 
 	auto qq  = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Book", End())));
 
-	auto r_expr = Scan(labels, End(JOIN_OP::NESTED_LOOP, 0));
-
-    auto l_expr = Scan("Person", Join(JOIN_OP::CROSS, {}, 
-                        Project({{0, "name", FTYPE::STRING}, {0, "age", FTYPE::INT}, {0, "id", FTYPE::INT}
-                                  /*{3, "title", FTYPE::STRING}, {3, "Age", FTYPE::INT}, {0, "id", FTYPE::INT}, {0, "name", FTYPE::STRING}*/}, 
-							Collect()), r_expr));
+	auto r_expr = Scan("Book", End(JOIN_OP::NESTED_LOOP, 0));
 
 	auto fev = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr))));
 
@@ -149,23 +226,8 @@ int main() {
 		return true;
 	};
 
-	auto simp = Scan("Person", 
-						ForeachRship(RSHIP_DIR::FROM, {}, ":likes", 
-							Expand(EXPAND::IN, "Person",
-								Project({{0, "id", FTYPE::INT}, {2, "id", FTYPE::INT}},
-									Store(
-										Collect())))));
+	auto simp = Scan("Person", GroupBy({0},Aggr({{"count", 0}}, Collect())));
 
-
-
-	auto multi = Scan(labels, Project({{0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}, {0}}, Collect()));
-	auto multi_exp = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", 
-	Expand(EXPAND::OUT, labels, 
-	Project({{0, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0}}, Collect()))));
-
-	//auto filter_exp = Scan("Person", Filter(Call(Key(0, "id"), Fct(int_fct)), ForeachRship(RSHIP_DIR::TO, {}, ":likes", Expand(EXPAND::IN, "Person", Project({{0, nodefunc}}, Collect())))));
-	auto filter_exp = Scan("Person", Filter(Call(Key(0, "id"), Fct(int_fct)), ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Person", 
-			Project({{0, "name", FTYPE::STRING}, {2, "name", FTYPE::STRING}, {0, {"dumm1", "dummy2"}, {"true", "false"}}, {0, nodefunc}}, Collect())))));
 	scan_task::callee_ = &scan_task::scan;	
 
 	auto cs1 = std::chrono::steady_clock::now();
@@ -174,49 +236,20 @@ int main() {
 	
 	arg_builder ab;
 	ab.arg(1, "Person");
-	ab.arg(2, ":likes");
-	ab.arg(3, "Person");
-	ab.arg(4, "Book");
-	ab.arg(5, ":likes");
-	ab.arg(6, "Book");
-	ab.arg(7, ":likes");
-	ab.arg(11, "Person");
-	ab.arg(12, "Book");
-	ab.arg(13, ":HAS_READ");
-	ab.arg(14, "Book");
-	ab.arg(15, "Book");
-
+	ab.arg(6, ":likes");
+	ab.arg(7, "Book");
+	
 	result_set rs;
-	
-	auto o = query(graph)
-				.all_nodes("Person");
 
-	auto q = query(graph)
-				.all_nodes().
-					has_label("Person").
-						to_relationships(":likes", 0).
-							to_node("Person").
-								collect(rs);
-	//graph->clear_result_storage();
-	//auto cp = graph->restore_positions();
-	
-	auto a = query(graph).
-				recover_results().
-					to_relationships(":likes", 0).
-						to_node("Person").
-							collect(rs);
-	
-	//auto q = query(graph).continue_scan(cp).has_label("Person").to_relationships(":likes").to_node("Person").persist().collect(rs);
-	
+	auto aq = query(graph).all_nodes("Person").groupby({0}, {{"count", 0}}).groupby({0}, {{"count", 0}}).groupby({0}, {{"count", 0}}).collect(rs);
+
 	std::cout << "Start Query" << std::endl;
 	auto js = std::chrono::steady_clock::now();
-	graph->begin_transaction();
-	//queryEngine.run(&rs, ab.args, 24);
-	//queryEngine.finish(&rs);
-	query::start({&q});
-	rs.wait();
-	//graph->restore_results(rs.data);
-	graph->commit_transaction();
+	queryEngine.run(&rs, ab, 24);
+	//queryEngine.finish(&rs, ab);
+	//graph->begin_transaction();
+	//query::start({&aq});
+	//graph->commit_transaction();
 	auto je = std::chrono::steady_clock::now();
 	
 	std::cout << rs << std::endl;
@@ -230,41 +263,6 @@ int main() {
 				.count()
 		<< " ms" << std::endl;
 
-/*
-	std::cout << "Cached" << std::endl;
-	
-	rs.data.clear();
-
-//#ifndef USE_PMDK
-	queryEngine.~query_engine();
-//#endif 
-
-	std::cout << "deleted" << std::endl;
-	query_engine queryEngine2(graph, THREAD_NUM, cv_range);
-
-	auto r_expr2 = Scan(labels, End(JOIN_OP::NESTED_LOOP, 0));
-
-	auto fev2 = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr))));
-
-	auto cs2 = std::chrono::steady_clock::now();
-	queryEngine2.generate(fev, false);
-	auto ce2 = std::chrono::steady_clock::now();
-
-  	auto js2 = std::chrono::steady_clock::now();
-	queryEngine2.run(&rs, ab.args);
-	auto je2 = std::chrono::steady_clock::now();
-
-	std::cout << rs << std::endl;
-	std::cout << "JIT: "
-		<< std::chrono::duration_cast<std::chrono::milliseconds>(je2 -
-																	js2)
-				.count()
-		<< " CT: "
-		<< std::chrono::duration_cast<std::chrono::milliseconds>(ce2 -
-																	cs2)
-				.count()
-		<< " ms" << std::endl;
-*/
 #ifdef USE_PMDK
 	//nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
 	//pop.close();

@@ -196,7 +196,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<fct_call> fct) {
 
     Value* fct_raw;
 
-    FunctionType* fct_callee_type;
+    FunctionType* fct_callee_type = nullptr;
 
     switch(fct->fct_type_) {
         case FOP_TYPE::INT:
