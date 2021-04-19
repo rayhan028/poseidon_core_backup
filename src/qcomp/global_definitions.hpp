@@ -172,12 +172,12 @@ extern "C" const char* lookup_dc(graph_db *gdb, dcode_t dc);
 /**
  * Function for the creation of a node with given properties
  */
-extern "C" node* create_node(graph_db *gdb, char *label, properties_t *props);
+extern "C" node* create_node_func(graph_db *gdb, char *label, properties_t *props);
 
 /**
  * Function for the creation of a relationship with given properties
  */
-extern "C" relationship* create_rship(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props);
+extern "C" relationship* create_rship_func(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props);
 
 /**
  * Functions to handle the variable from relationship operator

@@ -14,7 +14,7 @@ endif()
 option(USE_PMDK       "Use Intel PMDK"                         ON)
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
-option(BUILD_PYTHON   "Build python interface for poseidon"    OFF)
+option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
 option(QOP_PROFILING  "Enable query profiling"                 ON)
 #-------------------------------------------------------------------------------
 endif()
@@ -227,6 +227,23 @@ if(NOT linenoise_POPULATED)
   set_property(TARGET LINENOISE PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${LINENOISE_INCLUDE_DIR}")
 endif()
 
+# pybind11 =================================================================== #
+include(FetchContent REQUIRED)
+ FetchContent_Declare(
+  pybind11
+  GIT_REPOSITORY https://github.com/pybind/pybind11.git
+ #  GIT_TAG        1.2.1
+  )
+FetchContent_GetProperties(pybind11)
+
+if(NOT pybind11_POPULATED)
+  message(STATUS "Populating pybind11")
+  FetchContent_Populate(pybind11)
+  set(pybind11_INCLUDE_DIR ${pybind11_SOURCE_DIR}/include)
+  add_library(pybind11 IMPORTED INTERFACE)
+  set_property(TARGET pybind11 PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${pybind11_INCLUDE_DIR}")
+endif()
+
 #---------------------------------------------------------------------------
 
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -255,6 +272,7 @@ message(STATUS "PYTHON")
     message("PythonLibs ${PYTHON_LIBDIR}")
 
     include_directories(${PYTHON_INCLUDE_DIRS})
+    include_directories(${pybind11_INCLUDE_DIR})
     link_directories(${PYTHON_LIBDIR})
 
     set(PYTHON_SOURCES
@@ -272,27 +290,13 @@ endif()
 # Boost C++ library
 ######################
 #
-SET(BOOST_MIN_VERSION "1.60.0")
+SET(BOOST_MIN_VERSION "1.70.0")
 
-if (BUILD_PYTHON)
-  if(Python3_FOUND)
-    set(BOOST_PYTHON "python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
-  else()
-    message(FATAL_ERROR "Fatal error: BUILD_PYTHON was set, but no python3 interpreter could be found")
-  endif()
-  find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
-    program_options
-    date_time
-    ${BOOST_PYTHON}
-    thread
-    REQUIRED)
-else()
-  find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
+find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
     program_options
     date_time
     thread
     REQUIRED)
-endif()
 
 if (NOT Boost_FOUND)
      message(FATAL_ERROR "Fatal error: Boost (version >= ${BOOST_MIN_VERSION}) required.\n"
@@ -356,6 +360,8 @@ set(src_files
   src/qcomp/qoperator.cpp
   src/qcomp/joiner.cpp
   src/qcomp/interprete_filter_visitor.cpp
+  src/ql/queryc_qcomp.cpp
+  src/ql/queryc_qex.cpp
   src/ql/queryc.cpp
   src/ql/ast.cpp
   src/analytics/bfs.cpp
@@ -450,7 +456,6 @@ add_library(poseidon SHARED
 target_link_libraries(poseidon
   LLVM
   Boost::date_time
-  Boost::${BOOST_PYTHON}
   Boost::thread
   ${PYTHON_LIBRARIES}
   ${PMDK_LIBRARIES}

@@ -137,7 +137,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_1)(benchmark::State &state) {
                                           snb_dyn + "person_isLocatedIn_place_3_0.csv"};
 
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
 
   load_snb_data(graph, node_files, rship_files);
@@ -150,7 +150,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_1)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_is_query_1(graph, rs, 28587302330379);
 #ifdef USE_TX
@@ -190,7 +190,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_2)(benchmark::State &state) {
                                           snb_dyn + "comment_replyOf_comment_3_0.csv"};
 
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -201,7 +201,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_2)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_is_query_2(graph, rs, 65);
 #ifdef USE_TX
@@ -224,7 +224,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_3)(benchmark::State &state) {
                                           snb_dyn + "person_knows_person_2_0.csv",
                                           snb_dyn + "person_knows_person_3_0.csv"};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -235,7 +235,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_3)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_is_query_3(graph, rs, 933);
 #ifdef USE_TX
@@ -255,7 +255,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_4)(benchmark::State &state) {
 
   std::vector<std::string> rship_files = {};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -266,7 +266,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_4)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_is_query_4(graph, rs, 1374389534791);
 #ifdef USE_TX
@@ -291,7 +291,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_5)(benchmark::State &state) {
                                           snb_dyn + "comment_hasCreator_person_2_0.csv",
                                           snb_dyn + "comment_hasCreator_person_3_0.csv"};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -302,7 +302,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_5)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_is_query_5(graph, rs, 1099511854641);
 #ifdef USE_TX
@@ -343,7 +343,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_6)(benchmark::State &state) {
                                           snb_dyn + "forum_hasModerator_person_2_0.csv",
                                           snb_dyn + "forum_hasModerator_person_3_0.csv"};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -354,7 +354,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_6)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_is_query_6(graph, rs, 1649267442210);
 #ifdef USE_TX
@@ -383,7 +383,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_7)(benchmark::State &state) {
                                           snb_dyn + "comment_replyOf_comment_2_0.csv",
                                           snb_dyn + "comment_replyOf_comment_3_0.csv"};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -394,7 +394,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveShort_7)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_is_query_7(graph, rs, 1649267442212);
 #ifdef USE_TX
@@ -435,7 +435,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_1)(benchmark::State &state) {
                                           snb_dyn + "person_workAt_organisation_2_0.csv",
                                           snb_dyn + "person_workAt_organisation_3_0.csv"};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -446,7 +446,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_1)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_iu_query_1(graph, rs);
 #ifdef USE_TX
@@ -471,7 +471,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_2)(benchmark::State &state) {
                                           snb_dyn + "person_likes_post_2_0.csv",
                                           snb_dyn + "person_likes_post_3_0.csv"};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -482,7 +482,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_2)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_iu_query_2(graph, rs);
 #ifdef USE_TX
@@ -507,7 +507,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_3)(benchmark::State &state) {
                                           snb_dyn + "person_likes_comment_2_0.csv",
                                           snb_dyn + "person_likes_comment_3_0.csv"};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -518,7 +518,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_3)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_iu_query_3(graph, rs);
 #ifdef USE_TX
@@ -549,7 +549,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_4)(benchmark::State &state) {
                                             snb_dyn + "forum_hasTag_tag_2_0.csv",
                                             snb_dyn + "forum_hasTag_tag_3_0.csv"};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   std::vector<uint64_t> uint64_props = {1564, 206, 53975}; 
@@ -562,7 +562,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_4)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_iu_query_4(graph, rs, uint64_props, str_props);
 #ifdef USE_TX
@@ -587,7 +587,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_5)(benchmark::State &state) {
                                           snb_dyn + "forum_hasMember_person_2_0.csv",
                                           snb_dyn + "forum_hasMember_person_3_0.csv"};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -600,7 +600,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_5)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_iu_query_5(graph, rs, uint64_props, str_props);
 #ifdef USE_TX
@@ -643,7 +643,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_6)(benchmark::State &state) {
                                             snb_dyn + "post_hasTag_tag_2_0.csv",
                                             snb_dyn + "post_hasTag_tag_3_0.csv"};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -659,7 +659,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_6)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_iu_query_6(graph, rs, uint64_props, str_props, int_props);
 #ifdef USE_TX
@@ -702,7 +702,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_7)(benchmark::State &state) {
                                             snb_dyn + "comment_hasTag_tag_2_0.csv",
                                             snb_dyn + "comment_hasTag_tag_3_0.csv"};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -713,7 +713,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_7)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_iu_query_7(graph, rs);
 #ifdef USE_TX
@@ -736,7 +736,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_8)(benchmark::State &state) {
                                           snb_dyn + "person_knows_person_2_0.csv",
                                           snb_dyn + "person_knows_person_3_0.csv"};
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
   load_snb_data(graph, node_files, rship_files);
   result_set rs;
@@ -747,7 +747,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_InteractiveInsert_8)(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 #endif
     //ldbc_iu_query_8(graph, rs);
 #ifdef USE_TX

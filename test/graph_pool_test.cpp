@@ -35,7 +35,7 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
     auto graph = pool->create_graph("my_graph");
     // add a node
     {
-        auto tx = graph->begin_transaction();
+        graph->begin_transaction();
 
         nid = graph->add_node(":Person", {{"name", boost::any(std::string("Anne"))},
                                   {"age", boost::any(28)}});
@@ -43,7 +43,7 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
     }
     // check that the node exists
     {
-        auto tx = graph->begin_transaction();
+        graph->begin_transaction();
 
         auto& n = graph->node_by_id(nid);
         auto nd = graph->get_node_description(nid);
@@ -55,7 +55,7 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
     auto graph2 = pool->open_graph("my_graph");
     // check the node
     {
-        auto tx = graph2->begin_transaction();
+        graph2->begin_transaction();
 
         auto& n = graph2->node_by_id(nid);
         auto nd = graph2->get_node_description(nid);

@@ -154,24 +154,24 @@ struct key_max : TAO_PEGTL_KEYWORD("max") {};
 
 struct func_name : sor<key_avg, key_sum, key_count, key_min, key_max> {};
 
-struct func_expr : seq< func_name, one<'('>, ws, variable_name, one<':'>, dtype, ws, one<')'>> {};
+struct func_expr : if_must< func_name, one<'('>, ws, variable_name, one<':'>, dtype, ws, one<')'>> {};
 
-struct func_array : seq< one<'['>, ws, list<func_expr, comma>, ws, one<']'> > {};
+struct func_array : if_must< one<'['>, ws, list<func_expr, comma>, ws, one<']'> > {};
 
-struct property : seq< name, opt<space>, one<':'>, opt<space>, sor<decimal, literal_string> > {};
+struct property : if_must< name, opt<space>, one<':'>, opt<space>, sor<decimal, literal_string, variable_name> > {};
 
-struct prop_list : seq<one<'{'>, ws, list<property, comma>, ws, one<'}'> > {};
+struct prop_list : if_must<one<'{'>, ws, list<property, comma>, ws, one<'}'> > {};
 
 struct node_or_rship_label : seq<name, opt<space>, one<':'>, opt<space>, name> {};
 struct node_or_rship_pattern : seq<node_or_rship_label, opt<space>, opt<prop_list> > {};
 struct node_pattern : seq<one<'('>, opt<space>, node_or_rship_pattern, opt<space>, one<')'> > {};
 
-struct snode : seq<one<'('>, opt<space>, one< '$' >, integer, opt<space>, one<')'>> {};
+struct snode : seq<one<'('>, opt<space>, one<'$'>, integer, opt<space>, one<')'>> {};
 
 struct right_rship_dir : seq< one<'-'>, opt< one<'>'>>> {};
 struct left_rship_dir : seq< opt< one<'<'>>, one<'-'>> {};
 
-struct rship_pattern : seq<snode, 
+struct rship_pattern : if_must<snode, 
                           left_rship_dir, 
                           one<'['>, opt<space>, node_or_rship_pattern, opt<space>, one <']'>, 
                           right_rship_dir, 
@@ -182,9 +182,10 @@ struct qoperator;
 struct param : sor<literal_string, qoperator, directions, integer, expression, proj_array, func_array, 
                     node_pattern, rship_pattern> {};
 
-struct param_list : list<param, comma> {};
+struct param_list : list<param, comma, space> {};
 
-struct qoperator : seq<ws, op_name, ws, one<'('>, ws, opt<param_list>, ws, one<')'>, ws> {};
+// struct qoperator : seq<ws, op_name, ws, one<'('>, ws, opt<param_list>, ws, one<')'>, ws> {};
+struct qoperator : if_must<op_name, ws, one<'('>, ws, opt<param_list>, ws, one<')'>, ws> {};
 
 /* ------------------------------------------------------------- */
 

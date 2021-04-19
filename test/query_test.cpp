@@ -30,7 +30,7 @@ using namespace boost::posix_time;
 const std::string test_path = poseidon::gPmemPath + "query_test";
 
 void create_data(graph_db_ptr graph) {
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 
       graph->add_node("Node", {{"id", boost::any(7)},
                                {"name", boost::any(std::string("aaa7"))},
@@ -64,7 +64,7 @@ void create_data(graph_db_ptr graph) {
 }
 
 void create_join_data(graph_db_ptr graph) {
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 
   graph->add_node("Node1", {{"id", boost::any(1)}});
   graph->add_node("Node1", {{"id", boost::any(2)}});
@@ -81,7 +81,7 @@ TEST_CASE("Testing query operators", "[qop]") {
 
   create_data(graph);
 
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 
   namespace pj = builtin;
 
@@ -185,7 +185,7 @@ TEST_CASE("Testing query operators", "[qop]") {
 
   SECTION("use index") {
     graph->commit_transaction();
-    tx = graph->begin_transaction();
+    graph->begin_transaction();
 
     // create index
     auto idx = graph->create_index("Node", "id");
@@ -256,7 +256,7 @@ TEST_CASE("Testing join operators", "[qop]") {
   // prepare some data
   create_join_data(graph);
 
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 
   namespace pj = builtin;
 
@@ -290,7 +290,7 @@ TEST_CASE("Projecting node and relationship datetime properties", "[graph_db]") 
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
 
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 
   auto a = graph->add_node("Person",
       {{"id", boost::any(1)},
@@ -303,7 +303,7 @@ TEST_CASE("Projecting node and relationship datetime properties", "[graph_db]") 
       {{"creationDate", boost::any(time_from_string(std::string("2011-11-02 13:00:00.000")))}});
 
   graph->commit_transaction();
-  tx = graph->begin_transaction();
+  graph->begin_transaction();
 
   namespace pj = builtin;
   result_set rs, expected;
@@ -338,7 +338,7 @@ TEST_CASE("Finding Unweighted Shortest Path", "[shortest_path]") {
   auto rpred = [&](relationship &r) {
                 return std::string(graph->get_string(r.rship_label)) == ":knows"; };
 
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 
   auto a = graph->add_node(":Person", {{"name",
             boost::any(std::string("John"))}, {"age", boost::any(42)}});
@@ -389,7 +389,7 @@ TEST_CASE("Weighted Shortest Path", "[shortest_path]") {
                                       std::string("age")).value();
         return (double)(src_age + des_age); };
 
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 
   auto a = graph->add_node(":Person", {{"name",
             boost::any(std::string("John"))}, {"age", boost::any(42)}});
@@ -438,7 +438,7 @@ TEST_CASE("Top K Weighted Shortest Paths", "[shortest_path]") {
                                       std::string("age")).value();
         return (double)(src_age + des_age); };
 
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 
   auto a = graph->add_node(":Person", {{"name",
             boost::any(std::string("John"))}, {"age", boost::any(42)}});

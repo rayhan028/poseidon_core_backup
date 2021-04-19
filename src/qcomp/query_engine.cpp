@@ -142,8 +142,8 @@ void query_engine::extract_arg(std::shared_ptr<base_op> op) {
 void query_engine::run(result_set * rs, std::vector<uint64_t*> args, bool cleanup_query) {
     //prepare();
 
-    auto tx = graph_->begin_transaction();
-    current_transaction_ = tx;
+    graph_->begin_transaction();
+    current_transaction_ = current_transaction();
     if(parallel_) {
         unsigned int op_start = 1;
         arg_builder args;
@@ -164,7 +164,7 @@ void query_engine::run(result_set * rs, std::vector<uint64_t*> args, bool cleanu
     auto start_idx = start_.size()-1;
 
     for(i = start_idx; i >= 0; i--) {
-        start_[i](graph_.get(), 0, graph_->get_nodes()->num_chunks(), tx, 1, &type_vec_[start_idx], rs, nullptr, finish_[0], 0, args.data());
+        start_[i](graph_.get(), 0, graph_->get_nodes()->num_chunks(), current_transaction_, 1, &type_vec_[start_idx], rs, nullptr, finish_[0], 0, args.data());
         //offset += offsets[i];
     }
     graph_->commit_transaction();
@@ -228,7 +228,8 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
         std::vector<std::thread> query_threads;
         auto cur_start = 0;
         auto end = chunksz - 1;
-        auto tx = graph_->begin_transaction();
+        graph_->begin_transaction();
+        auto tx = current_transaction();
         for(auto i = 0u; i < thread_num; i++) {
             current_transaction_ = tx;
             if(i == thread_num - 1)

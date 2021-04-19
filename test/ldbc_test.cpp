@@ -9,6 +9,10 @@
 #include "ldbc.hpp"
 #include "graph_pool.hpp"
 
+#ifndef USE_PMDK
+#undef RUN_INDEXED
+#endif
+
 using namespace boost::posix_time;
 const std::string test_path = poseidon::gPmemPath + "ldbc_test";
 

@@ -24,6 +24,15 @@
 
 namespace ph = std::placeholders;
 
+query::query(graph_db_ptr gdb, qop_ptr qop) {
+  graph_db_ = gdb;
+  plan_head_ = qop;
+  // initialize plan_tail_
+  plan_tail_ = qop;
+  while (plan_tail_->has_subscriber())
+    plan_tail_ = plan_tail_->subscriber();
+}
+
 query &query::append_op(qop_ptr op, qop::consume_func cf) {
   if (!plan_head_)
     plan_head_ = op;

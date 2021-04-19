@@ -111,11 +111,11 @@ TEST_CASE("Looking up some strings", "[dict]") {
 #endif
 
   REQUIRE(d.size() == 0);
-  auto c1 = d.insert("String #1");
+  d.insert("String #1");
   auto c2 = d.insert("String #2");
-  auto c3 = d.insert("String #3");
+  d.insert("String #3");
   auto c4 = d.insert("String #4");
-  auto c5 = d.insert("String #5");
+  d.insert("String #5");
 
   REQUIRE(d.lookup_string("String #4") == c4);
   REQUIRE(d.lookup_string("String #2") == c2);
@@ -141,11 +141,11 @@ TEST_CASE("Looking up some codes", "[dict]") {
 #endif
 
   REQUIRE(d.size() == 0);
-  auto c1 = d.insert("String #1");
-  auto c2 = d.insert("String #2");
+  d.insert("String #1");
+  d.insert("String #2");
   auto c3 = d.insert("String #3");
   auto c4 = d.insert("String #4");
-  auto c5 = d.insert("String #5");
+  d.insert("String #5");
 
   REQUIRE(std::string("String #4") == d.lookup_code(c4));
   REQUIRE(std::string("String #3") ==d.lookup_code(c3));
