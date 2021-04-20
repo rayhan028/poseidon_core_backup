@@ -51,8 +51,9 @@ void scan_nodes::dump(std::ostream &os) const {
 /* ------------------------------------------------------------------------ */
 
 void continue_scan_nodes::start(graph_db_ptr &gdb) {
+#ifdef USE_PMDK
   gdb->continue_parallel_nodes(check_points, [&](node &n) { consume_(gdb, {&n}); });
-
+#endif
   qop::default_finish(gdb);
 }
 
@@ -718,7 +719,9 @@ void persist_result::dump(std::ostream &os) const { os << "persist()"; }
 
 void persist_result::process(graph_db_ptr &gdb, const qr_tuple &v) { 
   qr_tuple t = v;
+#ifdef USE_PMDK
   gdb->store_query_result(t, 0);
+#endif
   consume_(gdb, v);
 }
 

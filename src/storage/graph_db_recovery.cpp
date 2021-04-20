@@ -78,6 +78,7 @@ void graph_db::apply_undo_log() {
 #endif
 }
 
+#ifdef USE_PMDK
 void graph_db::store_query_result(qr_tuple &qr, std::size_t chunk) {
   recovery_results_->add(std::move(qr), chunk);
 }
@@ -107,7 +108,6 @@ void graph_db::restore_results(std::list<qr_tuple> &result_list) {
   for(auto & res : result_map) {
     result_list.push_back(res.second);
   }
-
 }
 
 void graph_db::store_iter(std::pair<std::size_t, std::size_t> iter_pos) {
@@ -196,3 +196,4 @@ void graph_db::continue_parallel_nodes(std::map<std::size_t, std::size_t> &check
     f.get();
   }
 }
+#endif

@@ -22,7 +22,9 @@
 
 #include <boost/any.hpp>
 // #include <map>
+#ifdef USE_PMDK
 #include <libpmemobj++/container/concurrent_hash_map.hpp>
+#endif
 #include <mutex>
 #include <string>
 
@@ -56,7 +58,9 @@ public:
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;
 
+#ifdef USE_PMDK
   using rec_map_t = pmem::obj::concurrent_hash_map<p<int>, p<int>>;
+#endif
 
   /**
    * Constructor for a new empty graph database.
@@ -497,10 +501,12 @@ public:
    */
   node &get_valid_node_version(node &n, xid_t xid);
 
+#ifdef USE_PMDK
   void store_query_result(qr_tuple &qr, std::size_t chunk);
   void store_iter(std::pair<std::size_t, std::size_t> iter_pos);
   void restore_results(std::list<qr_tuple> &result_list);
   std::map<std::size_t, std::size_t> restore_positions();
+#endif
 private:
   friend struct scan_task;
 
@@ -570,8 +576,10 @@ private:
 
   p_ptr<index_map> index_map_; // the list of all exisiting indexes
   p_ptr<pmlog> ulog_; // the undo log 
+  #ifdef USE_PMDK
   p_ptr<recovery_list> recovery_results_; // stored intermediate results
   p_ptr<rec_map_t> recovery_res_;
+  #endif
   /**
    * These member variables are volatile and have to be reinitialized
    * during startup.

@@ -11,7 +11,7 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK       "Use Intel PMDK"                         ON)
+option(USE_PMDK       "Use Intel PMDK"                         OFF)
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
 option(BUILD_PYTHON   "Build python interface for poseidon"    OFF)
@@ -615,6 +615,9 @@ add_executable(qlc
  Boost::program_options
 )
 
+#-----------------------------------------------------------------------------------------
+
+if(USE_PMDK MATCHES ON)
 add_executable(crash_query
 #  src/ql/ast.cpp
   src/query_crash_and_recover/crash_query.cpp
@@ -636,6 +639,7 @@ add_executable(recover_query
  ${PMDK_LIBRARIES}
  Boost::program_options
 )
+endif()
 
 #-----------------------------------------------------------------------------------------
 #
