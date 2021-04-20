@@ -114,7 +114,7 @@ void ldbc_jit_is_query_1_b(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(4, personId);
 
   qeng.generate(q, adaptive);
-  qeng.run(&rs, ab.args);
+  qeng.run(&rs, ab);
 }
 
 void ldbc_jit_is_query_2_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
@@ -249,7 +249,7 @@ void ldbc_jit_is_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();*/
   auto e_s = std::chrono::steady_clock::now();
@@ -286,7 +286,7 @@ void ldbc_jit_is_query_4_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -324,7 +324,7 @@ void ldbc_jit_is_query_4_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -366,7 +366,7 @@ void ldbc_jit_is_query_5_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -408,7 +408,7 @@ void ldbc_jit_is_query_5_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -455,7 +455,7 @@ void ldbc_jit_is_query_6_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -508,7 +508,7 @@ void ldbc_jit_is_query_6_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -573,7 +573,7 @@ void ldbc_jit_is_query_7_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -636,7 +636,7 @@ void ldbc_jit_is_query_7_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
