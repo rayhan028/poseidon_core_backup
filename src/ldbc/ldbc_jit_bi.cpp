@@ -45,7 +45,7 @@ void ldbc_jit_bi_query_1(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
 
     std::cout << "Run query" << std::endl;
     auto e_s = std::chrono::steady_clock::now();
-    qeng.run(&rs, ab.args, false);
+    qeng.run(&rs, ab, false);
     auto e_e = std::chrono::steady_clock::now();
     std::cout << "Complete" << std::endl;
     std::cout << "Execution: " 
@@ -99,7 +99,7 @@ void ldbc_jit_bi_query_2(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
     }
 
     auto e_s = std::chrono::steady_clock::now();
-    qeng.run(&rs, ab.args, false);
+    qeng.run(&rs, ab, false);
     auto e_e = std::chrono::steady_clock::now();
     
     std::cout << "Execution: " 
@@ -176,7 +176,7 @@ void ldbc_jit_bi_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
     }
 
     auto e_s = std::chrono::steady_clock::now();
-    qeng.run(&rs, ab.args, false);
+    qeng.run(&rs, ab, false);
     auto e_e = std::chrono::steady_clock::now();
     
     std::cout << "Execution: " 
@@ -277,7 +277,7 @@ void ldbc_jit_bi_query_4(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
     }
 
     auto e_s = std::chrono::steady_clock::now();
-    qeng.run(&rs, ab.args, false);
+    qeng.run(&rs, ab, false);
     auto e_e = std::chrono::steady_clock::now();
     
     std::cout << "Execution: " 
