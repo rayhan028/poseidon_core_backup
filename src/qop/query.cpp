@@ -261,7 +261,7 @@ query::where_qr_tuple(std::function<bool(const qr_tuple &)> pred) {
 }
 
 query &
-query::append_to_qr_tuple(std::function<query_result(qr_tuple &)> func) {
+query::append_to_qr_tuple(std::function<query_result(const qr_tuple &)> func) {
   auto op = std::make_shared<qr_tuple_append>(func);
   return append_op(op,
                    std::bind(&qr_tuple_append::process, op.get(), ph::_1, ph::_2));
@@ -327,6 +327,15 @@ query &query::outerjoin_on_node(const std::pair<int, int> &left_right, query &ot
   return append_op(
       op, std::bind(&left_outerjoin_on_node::process_left, op.get(), ph::_1, ph::_2),
       std::bind(&left_outerjoin_on_node::finish, op.get(), ph::_1));
+}
+
+query &query::outerjoin(query &other, std::function<bool(const qr_tuple &, const qr_tuple &)> pred) {
+  auto op = std::make_shared<left_outerjoin>(pred);
+  other.append_op(
+      op, std::bind(&left_outerjoin::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&left_outerjoin::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&left_outerjoin::finish, op.get(), ph::_1));
 }
 
 query &query::join_on_rship(std::pair<int, int> src_des, query &other) {

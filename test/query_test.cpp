@@ -833,7 +833,7 @@ TEST_CASE("Testing other Join operators", "[qop]") {
       REQUIRE(rs == expected);
     }
 
-    SECTION("outerjoin_on_node") {
+    SECTION("outerjoin on node") {
       result_set rs, expected;
       auto q1 = query(graph)
                 .all_nodes("Person")
@@ -846,7 +846,8 @@ TEST_CASE("Testing other Join operators", "[qop]") {
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .from_relationships({1, 3}, ":knows")
                 .to_node("Person")
-                .outerjoin_on_node({2, 2}, q1)
+                .outerjoin(q1, [&](const qr_tuple &lv, const qr_tuple &rv) {
+                  return boost::get<node *>(lv[2])->id() == boost::get<node *>(rv[2])->id(); })
                 .project({PExpr_(0, pj::string_property(res, "firstName")),
                           PExpr_(2, pj::string_property(res, "firstName")),
                           PExpr_(3, pj::string_property(res, "firstName")),
@@ -871,14 +872,15 @@ TEST_CASE("Testing other Join operators", "[qop]") {
       REQUIRE(rs == expected);
     }
 
-    SECTION("join_on_rship") {
+    SECTION("join on rship") {
       result_set rs, expected;
       auto q1 = query(graph)
                 .all_nodes("Person");
 
       auto q2 = query(graph)
                 .all_nodes("Person")
-                .join_on_rship({0, 0}, q1)
+                .crossjoin(q1)
+                .rship_exists({0, 1}, false)
                 .project({PExpr_(0, pj::string_property(res, "firstName")),
                           PVar_(2),
                           PExpr_(1, pj::string_property(res, "firstName"))})
@@ -897,31 +899,38 @@ TEST_CASE("Testing other Join operators", "[qop]") {
       REQUIRE(rs == expected);
     }
 
-    SECTION("outerjoin_on_rship") {
+    SECTION("outerjoin on rship") {
       result_set rs, expected;
       auto q1 = query(graph)
                 .all_nodes("Person");
 
       auto q2 = query(graph)
                 .all_nodes("Person")
-                .outerjoin_on_rship({0, 0}, q1)
+                .outerjoin(q1, [&](const qr_tuple &lv, const qr_tuple &rv) {
+                  auto connected = false;
+                  auto src = boost::get<node *>(lv[0]);
+                  auto des = boost::get<node *>(rv[0]);
+                  graph->foreach_from_relationship_of_node((*src), [&](auto &r) {
+                    if (r.to_node_id() == des->id())
+                      connected = true;
+                  });
+                  return connected; })
                 .project({PExpr_(0, pj::string_property(res, "firstName")),
-                          PVar_(2),
-                          PExpr_(1, pj::string_property(res, "firstName"))})
+                          PExpr_(1, pj::string_property(res, "firstName")) })
                 .collect(rs);
 
       query::start({&q1, &q2});
       rs.wait();
       query::print_plans({&q1, &q2});
 
-      expected.data.push_back({query_result("A"), query_result("::knows[0]{}"), query_result("B")});
-      expected.data.push_back({query_result("A"), query_result("::knows[1]{}"), query_result("C")});
-      expected.data.push_back({query_result("A"), query_result("::knows[2]{}"), query_result("D")});
-      expected.data.push_back({query_result("B"), query_result("::knows[3]{}"), query_result("E")});
-      expected.data.push_back({query_result("C"), query_result("NULL"), query_result("NULL")});
-      expected.data.push_back({query_result("D"), query_result("NULL"), query_result("NULL")});
-      expected.data.push_back({query_result("E"), query_result("::knows[4]{}"), query_result("F")});
-      expected.data.push_back({query_result("F"), query_result("NULL"), query_result("NULL")});
+      expected.data.push_back({query_result("A"), query_result("B")});
+      expected.data.push_back({query_result("A"), query_result("C")});
+      expected.data.push_back({query_result("A"), query_result("D")});
+      expected.data.push_back({query_result("B"), query_result("E")});
+      expected.data.push_back({query_result("C"), query_result("NULL")});
+      expected.data.push_back({query_result("D"), query_result("NULL")});
+      expected.data.push_back({query_result("E"), query_result("F")});
+      expected.data.push_back({query_result("F"), query_result("NULL")});
 
       REQUIRE(rs == expected);
     }

@@ -106,9 +106,17 @@ void ldbc_is_qp3_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId
                         if (boost::get<boost::posix_time::ptime>(qr1[3]) == boost::get<boost::posix_time::ptime>(qr2[3]))
                           return boost::get<uint64_t>(qr1[2]) > boost::get<uint64_t>(qr2[2]);
                         return boost::get<boost::posix_time::ptime>(qr1[3]) < boost::get<boost::posix_time::ptime>(qr2[3]); })
-                .outerjoin_on_rship({1, 2}, q1)
-                .append_to_qr_tuple([&](qr_tuple &v) {
-                  return v[5].type() == typeid(null_val) ?
+                .outerjoin(q1, [&](const qr_tuple &lv, const qr_tuple &rv) {
+                  auto connected = false;
+                  auto src = boost::get<node *>(lv[1]);
+                  auto des = boost::get<node *>(rv[2]);
+                  gdb->foreach_from_relationship_of_node((*src), [&](auto &r) {
+                    if (r.to_node_id() == des->id())
+                      connected = true;
+                  });
+                  return connected; })
+                .append_to_qr_tuple([&](const qr_tuple &v) {
+                  return v[4].type() == typeid(null_val) ?
                     query_result(std::string("false")) : query_result(std::string("true")); })
                 .project({PVar_(2),
                           PExpr_(0, pj::string_property(res, "content")),
@@ -116,7 +124,7 @@ void ldbc_is_qp3_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId
                           PExpr_(1, pj::uint64_property(res, "id")),
                           PExpr_(1, pj::string_property(res, "firstName")),
                           PExpr_(1, pj::string_property(res, "lastName")),
-                          PVar_(6) })
+                          PVar_(5) })
                 .collect(rs);
 
   query::start({&q1, &q2});
@@ -166,9 +174,17 @@ void ldbc_is_qp3_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId
                         if (boost::get<boost::posix_time::ptime>(qr1[3]) == boost::get<boost::posix_time::ptime>(qr2[3]))
                           return boost::get<uint64_t>(qr1[2]) > boost::get<uint64_t>(qr2[2]);
                         return boost::get<boost::posix_time::ptime>(qr1[3]) < boost::get<boost::posix_time::ptime>(qr2[3]); })
-                .outerjoin_on_rship({1, 2}, q1)
-                .append_to_qr_tuple([&](qr_tuple &v) {
-                  return v[5].type() == typeid(null_val) ?
+                .outerjoin(q1, [&](const qr_tuple &lv, const qr_tuple &rv) {
+                  auto connected = false;
+                  auto src = boost::get<node *>(lv[1]);
+                  auto des = boost::get<node *>(rv[2]);
+                  gdb->foreach_from_relationship_of_node((*src), [&](auto &r) {
+                    if (r.to_node_id() == des->id())
+                      connected = true;
+                  });
+                  return connected; })
+                .append_to_qr_tuple([&](const qr_tuple &v) {
+                  return v[4].type() == typeid(null_val) ?
                     query_result(std::string("false")) : query_result(std::string("true")); })
                 .project({PVar_(2),
                           PExpr_(0, pj::string_property(res, "content")),
@@ -176,7 +192,7 @@ void ldbc_is_qp3_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId
                           PExpr_(1, pj::uint64_property(res, "id")),
                           PExpr_(1, pj::string_property(res, "firstName")),
                           PExpr_(1, pj::string_property(res, "lastName")),
-                          PVar_(6) })
+                          PVar_(5) })
                 .collect(rs);
 
   query::start({&q1, &q2});

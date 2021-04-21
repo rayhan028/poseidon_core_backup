@@ -207,7 +207,7 @@ public:
    * Add an operator that applies a function on multiple query results in the 
    * same query tuple and appends the result to the tuple.
    */
-  query &append_to_qr_tuple(std::function<query_result(qr_tuple &)> func);
+  query &append_to_qr_tuple(std::function<query_result(const qr_tuple &)> func);
 
   /**
    * Add an operator to unions all the query tuples of the left query 
@@ -259,6 +259,12 @@ public:
    * The node positions are specified by the pos pair. 
    */
   query &hashjoin_on_node(std::pair<int, int> left_right, query &other);
+
+  /**
+   * Add a left outerjoin operator for merging tuples of two queries based 
+   * on the given join condition. Dangling tuples are padded with "null_val" 
+   */
+  query &outerjoin(query &other, std::function<bool(const qr_tuple &, const qr_tuple &)> pred);
 
   /**
    * Add a left outerjoin operator for merging tuples of two queries if the node
