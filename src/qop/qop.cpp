@@ -592,10 +592,9 @@ void qr_tuple_append::dump(std::ostream &os) const {
 
 void qr_tuple_append::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
-  auto v1 = v;
-  auto res = func_(v1);
-  auto v2 = append(v1, res);
-  consume_(gdb, v2);
+  auto a = func_(v);
+  auto res = append(v, a);
+  consume_(gdb, res);
   PROF_POST(1);
 }
 

@@ -568,7 +568,7 @@ struct filter_tuple : public qop {
  * already existing query results in the tuple.
  */
 struct qr_tuple_append : public qop {
-  qr_tuple_append(std::function<query_result(qr_tuple &)> func)
+  qr_tuple_append(std::function<query_result(const qr_tuple &)> func)
       : func_(func) {}
   ~qr_tuple_append() = default;
 
@@ -578,7 +578,7 @@ struct qr_tuple_append : public qop {
 
   void finish(graph_db_ptr &gdb);
 
-  std::function<query_result(qr_tuple &)> func_;
+  std::function<query_result(const qr_tuple &)> func_;
 };
 
 /**

@@ -1038,14 +1038,14 @@ TEST_CASE("Testing LDBC BI Query 3", "[ldbc_bi]") {
   create_bi_data(graph);
 
   graph->run_transaction([&]() {
-    std::vector<params_tuple> parameters = {{"Ski resorts", "Spain"}};
+    std::vector<params_tuple> parameters = {{"Sports", "Spain"}};
     result_set rs, expected;
     ldbc_bi_query_3(graph, rs, parameters[0]);
 
     expected.data.push_back(
       {query_result("1"), query_result("Skiing trips"),
       query_result("2011-10-10T11:01:47"), query_result("2"),
-      query_result("1")});
+      query_result("3")});
 
     REQUIRE(rs == expected);
     return true;
@@ -1064,6 +1064,12 @@ TEST_CASE("Testing LDBC BI Query 4", "[ldbc_bi]") {
     result_set rs, expected;
     ldbc_bi_query_4(graph, rs, parameters[0]);
 
+    expected.data.push_back(
+      {query_result("1"), query_result("Amelie"), query_result(""),
+      query_result("2010-06-10T11:05:56"), query_result("2")});
+    expected.data.push_back(
+      {query_result("3"), query_result("Cedric"), query_result(""),
+      query_result("2010-06-10T11:05:56"), query_result("2")});
     expected.data.push_back(
       {query_result("2"), query_result("Bernardo"), query_result(""),
       query_result("2010-06-10T11:05:56"), query_result("1")});
