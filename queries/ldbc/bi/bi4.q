@@ -1,22 +1,70 @@
-Sort([$4:DESC, $0:ASC],
-    Project([$0.id:uint64, $0.firstName:string, $0.lastName:string, $0.creationDate:datetime, $1],
-        Aggregate([$0:COUNT],
-            Group([$0],
-                Join(HASHJOIN_ON_NODE, {2, 0},
-                    Limit(100,
-                        Sort([$2:DESC, $1:ASC],
-                            Aggregate([$0:COUNT],
-                                Group([$0, $1],
+Limit(100,
+    Sort([$4:uint64 DESC, $0:uint64 ASC],
+        Project([$0.id:uint64, $0.firstName:string, $0.lastName:string, $0.creationDate:datetime, $1],
+            GroupBy([$0],
+                    [count($0)],
+                Union(
+                    Join(HASHJOIN_ON_NODE, {$1, $0},
+                        Project([$4, $10],
+                            Filter($6.creationDate > %date,
+                                Expand(IN, "Forum",
+                                    ForeachRelationship(TO, ":containerOf",
+                                        Expand(OUT, "Post",
+                                            ForeachRelationship(FROM, ":replyOf", {1, 100},
+                                                Expand(IN, ["Comment"],
+                                                    ForeachRelationship(TO, ":hasCreator",
+                                                        Expand(OUT, "Person",
+                                                            ForeachRelationship(FROM, ":hasMember", $0,
+                                                                Limit(100,
+                                                                    Sort([$2:uint64 DESC, $1:uint64 ASC],
+                                                                        GroupBy([$0, $1],
+                                                                                [count($0)],
+                                                                            Project([$6, $6.id:uint64],
+                                                                                Filter($6.creationDate > %date,
+                                                                                    Expand(IN, "Forum",
+                                                                                        ForeachRelationship(TO, ":hasMember",
+                                                                                            Expand(IN, "Person",
+                                                                                                ForeachRelationship(TO, ":isLocatedIn",
+                                                                                                    Expand(IN, "Place",
+                                                                                                        ForeachRelationship(TO, ":isPartOf",
+                                                                                                            Filter($0.name == %country,
+                                                                                                                NodeScan("Place")
+                                                                                                            )
+                                                                                                        )
+                                                                                                    )
+                                                                                                )
+                                                                                            )
+                                                                                        )
+                                                                                    )
+                                                                                )
+                                                                            )
+                                                                        )
+                                                                    )
+                                                                )
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        Limit(100,
+                            Sort([$2:uint64 DESC, $1:uint64 ASC],
+                                GroupBy([$0, $1],
+                                        [count($0)],
                                     Project([$6, $6.id:uint64],
                                         Filter($6.creationDate > %date,
-                                            Expand(IN, ["Forum"],
+                                            Expand(IN, "Forum",
                                                 ForeachRelationship(TO, ":hasMember",
-                                                    Expand(IN, ["Person"],
+                                                    Expand(IN, "Person",
                                                         ForeachRelationship(TO, ":isLocatedIn",
-                                                            Expand(IN, ["Place"],
+                                                            Expand(IN, "Place",
                                                                 ForeachRelationship(TO, ":isPartOf",
                                                                     Filter($0.name == %country,
-                                                                        NodeScan(["Place"])
+                                                                        NodeScan("Place")
                                                                     )
                                                                 )
                                                             )
@@ -30,18 +78,19 @@ Sort([$4:DESC, $0:ASC],
                             )
                         )
                     ),
-                    Project([$4, $6, $8],
-                        Filter($6.creationDate > %date,
-                            Expand(IN, "Forum",
-                                ForeachRelationship(TO, ":containerOf",
-                                    Expand(IN, ["Post", "Comment"],
-                                        ForeachRelationship(TO, ":hasCreator",
-                                            Expand(OUT, "Person",
-                                                ForeachRelationship(FROM, ":hasMember", $0,
-                                                    Limit(100,
-                                                        Sort([$2:DESC, $1:ASC],
-                                                            Aggregate([$0:COUNT],
-                                                                Group([$0, $1],
+                    Join(HASHJOIN_ON_NODE, {$1, $0},
+                        Project([$4, $8],
+                            Filter($6.creationDate > %date,
+                                Expand(IN, "Forum",
+                                    ForeachRelationship(TO, ":containerOf",
+                                        Expand(IN, ["Post"],
+                                            ForeachRelationship(TO, ":hasCreator",
+                                                Expand(OUT, "Person",
+                                                    ForeachRelationship(FROM, ":hasMember", $0,
+                                                        Limit(100,
+                                                            Sort([$2:uint64 DESC, $1:uint64 ASC],
+                                                                GroupBy([$0, $1],
+                                                                        [count($0)],
                                                                     Project([$6, $6.id:uint64],
                                                                         Filter($6.creationDate > %date,
                                                                             Expand(IN, "Forum",
@@ -60,6 +109,32 @@ Sort([$4:DESC, $0:ASC],
                                                                                 )
                                                                             )
                                                                         )
+                                                                    )
+                                                                )
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        Limit(100,
+                            Sort([$2:uint64 DESC, $1:uint64 ASC],
+                                GroupBy([$0, $1],
+                                        [count($0)],
+                                    Project([$6, $6.id:uint64],
+                                        Filter($6.creationDate > %date,
+                                            Expand(IN, "Forum",
+                                                ForeachRelationship(TO, ":hasMember",
+                                                    Expand(IN, "Person",
+                                                        ForeachRelationship(TO, ":isLocatedIn",
+                                                            Expand(IN, "Place",
+                                                                ForeachRelationship(TO, ":isPartOf",
+                                                                    Filter($0.name == %country,
+                                                                        NodeScan("Place")
                                                                     )
                                                                 )
                                                             )
