@@ -181,7 +181,6 @@ void query_engine::run(result_set * rs, arg_builder & args, bool cleanup_query) 
     }
     
     for(i = start_idx;i < finish_.size();i++) {
-        //grouper::clear();
         //finish_[i](&qtx, args.args.data(), rs);
     }
 

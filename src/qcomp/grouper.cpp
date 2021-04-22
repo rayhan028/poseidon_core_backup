@@ -1,41 +1,9 @@
 #include "grouper.hpp"
 
-unsigned grouper::grp_cnt_ = 0;
-int grouper::aggr_grp_cnt_ = -1;
-std::vector<result_set> grouper::grps_ = {};
-std::vector<std::string> grouper::grpkey_set_ = {};
-std::unordered_map<std::string, unsigned> grouper::grpkey_map_ = {};
-std::set<unsigned> grouper::pos_set_ = {};
-result_set grouper::intermediate_rs_;
-qr_tuple grouper::current_tp_;
-
-bool grouper::total_grp_cnt_calc = false;
-unsigned grouper::total_grp_cnt = 0;
-
-bool grouper::grp_cnt_int = false;
-unsigned grouper::tota_grp_cnt_int = 0;
-
-bool clear_ir = false;
-
-void grouper::clear() {
-    grp_cnt_ = 0;
-    aggr_grp_cnt_ = -1;
-    //grps_.clear();
-    //grpkey_set_.clear();
-    //grpkey_map_.clear();
-    pos_set_.clear();
-    //intermediate_rs_.data.clear();
-    total_grp_cnt_calc = false;
-    grp_cnt_int = false;
-    current_tp_.clear();
-}
 std::mutex group_mtx; 
-void grouper::add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos_set) {
+void grouper::add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos_set) {  
     std::lock_guard<std::mutex> lck(group_mtx);
-    if(clear_ir) {
-        clear();
-        clear_ir = false;
-    }
+
     pos_set_ = pos_set;
 
     const auto itr = grpkey_map_.find(key);
@@ -44,7 +12,8 @@ void grouper::add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos_
     } else {
         grpkey_map_.emplace(key, grp_cnt_);
         grpkey_set_.push_back(key);
-        grps_.emplace_back();
+        result_set rs;
+        grps_.push_back(rs);
         grps_[grp_cnt_++].append(qr);
     }
 }
@@ -56,6 +25,7 @@ void grouper::finish(result_set* rs) {
         qr_tuple res;
         auto gpos = grpkey_map_[grp];
         auto tpl = grps_[gpos].data.front();
+        
         for(auto pos : pos_set_) {
             res.push_back(tpl[pos]);
         }
@@ -68,18 +38,14 @@ qr_tuple* grouper::demat_tuple(int index) {
     std::lock_guard<std::mutex> lck(group_mtx);
     current_tp_ = intermediate_rs_.data.front();
     intermediate_rs_.data.pop_front();
-    if(intermediate_rs_.data.empty()) {
-        //clear();
-        clear_ir = true;
-        //aggr_grp_cnt_ = -1;
-    }
+
     return &current_tp_;
 }
 
 unsigned grouper::get_rs_count() {
     return intermediate_rs_.data.size();
 }
-bool init = false;
+
 void grouper::init_grp_aggr() {
     aggr_grp_cnt_++;
 }
@@ -87,7 +53,7 @@ void grouper::init_grp_aggr() {
 unsigned grouper::get_group_cnt() {
     auto &grp_data = grps_[aggr_grp_cnt_].data;
     auto ccnt = grp_data.size();
-    grps_[aggr_grp_cnt_].data.clear();
+    //grps_[aggr_grp_cnt_].data.clear();
     return ccnt;
 }
 

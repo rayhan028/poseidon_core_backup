@@ -180,7 +180,7 @@ int main() {
 			auto p = graph->add_node("Person",
 					{{"name", boost::any(std::string("John Doe"))},
 					{"age", boost::any(42+add)},
-					{"id", boost::any(id++)},
+					{"id", boost::any(55+id++)},
 					{"num", boost::any(uint64_t(1234567890123412)+uint64_t(i))},
 					{"dummy1", boost::any(std::string("Dummy"))},
 					{"dummy2", boost::any(1.2345)}},
@@ -188,7 +188,7 @@ int main() {
 			auto p2 = graph->add_node("Person",
 					{{"name", boost::any(std::string("John Moe"))},
 					{"age", boost::any(42+add)},
-					{"id", boost::any(id++)},
+					{"id", boost::any(56+id++)},
 					{"num", boost::any(uint64_t(1234567890123412)+uint64_t(i))},
 					{"dummy1", boost::any(std::string("Dummy"))},
 					{"dummy2", boost::any(1.2345)}},
@@ -226,7 +226,11 @@ int main() {
 		return true;
 	};
 
-	auto simp = Scan("Person", GroupBy({0},Aggr({{"count", 0}}, Collect())));
+	auto simp = Scan("Person", Project({{0, "id", FTYPE::INT}},
+			GroupBy({0},Aggr({{"count", 0}},
+				GroupBy({1},Aggr({{"count", 0}},
+					GroupBy({1},Aggr({{"count", 0}},
+						Collect()))))))));
 
 	scan_task::callee_ = &scan_task::scan;	
 
@@ -234,14 +238,21 @@ int main() {
 	queryEngine.generate(simp, false);
 	auto ce1 = std::chrono::steady_clock::now();
 	
+	grouper g1;
+	grouper g2;
+	grouper g3;
 	arg_builder ab;
 	ab.arg(1, "Person");
-	ab.arg(6, ":likes");
-	ab.arg(7, "Book");
+	ab.arg(2, &g1);
+	ab.arg(3, &g1);
+	ab.arg(4, &g2);
+	ab.arg(5, &g2);
+	ab.arg(6, &g3);
+	ab.arg(7, &g3);
 	
 	result_set rs;
 
-	auto aq = query(graph).all_nodes("Person").groupby({0}, {{"count", 0}}).groupby({0}, {{"count", 0}}).groupby({0}, {{"count", 0}}).collect(rs);
+	auto aq = query(graph).all_nodes("Person").groupby({0}, {{"count", 0}}).groupby({0,1}, {{"count", 0}}).collect(rs);
 
 	std::cout << "Start Query" << std::endl;
 	auto js = std::chrono::steady_clock::now();
@@ -251,7 +262,7 @@ int main() {
 	//query::start({&aq});
 	//graph->commit_transaction();
 	auto je = std::chrono::steady_clock::now();
-	
+	std::cout << "finished" << std::endl;
 	std::cout << rs << std::endl;
 	std::cout << "JIT: "
 		<< std::chrono::duration_cast<std::chrono::milliseconds>(je -

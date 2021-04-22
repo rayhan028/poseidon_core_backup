@@ -2,6 +2,7 @@
 #define POSEIDON_CORE_QUERY_ENGINE_HPP
 
 #include "joiner.hpp"
+#include "grouper.hpp"
 #include "p_jit.hpp"
 #include "p_context.hpp"
 
@@ -35,6 +36,9 @@ struct arg_builder {
     void arg(int op_id, uint64_t arg) {
         int_args[op_id] = arg;
         args[op_id] = (uint64_t*)&(int_args[op_id]);
+    }
+    void arg(int op_id, grouper *g) {
+        args[op_id] = (uint64_t*)g;
     }
 
     void arg(int op_id, properties_t & props) {

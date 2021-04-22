@@ -464,7 +464,10 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     SECTION("Test Aggregation count") {
           auto fev = Scan("Person", Project({{0, "group", FTYPE::INT}}, GroupBy({0}, Aggr({{"count", 0}, {"avg", 0}}, Collect()))));
           arg_builder args;
+          grouper g1;
           args.arg(1, "Person");
+          args.arg(2, &g1);
+          args.arg(3, &g1);
 
           result_set rs;
           queryEngine.generate(fev, false);
