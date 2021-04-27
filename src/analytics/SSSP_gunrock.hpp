@@ -32,8 +32,7 @@
 using rship_predicate = std::function<bool(relationship&)>;
 
 /**
- * Typedef for a function that computes the weight of a relationship. Return only
- * non-negative numbers! 
+ * Typedef for a function that computes the weight of a relationship.
  */
 using rship_weight = std::function<float(relationship&)>;
 
@@ -126,7 +125,7 @@ struct edge_coords{
  *   gdb           -> Pointer to Poseidon Graph Database
  *   bidirectional -> Set true to treat relationships bidirectionally
  *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a non-negative float weight for each relationship
+ *   weight_func   -> Function returning a float weight for each relationship
  * Output: 
  *   row_offsets   -> CSR-formatted graph row offsets, to be allocated in advance
  *   col_indices   -> CSR-formatted graph column indices, to be allocated in advance
@@ -136,7 +135,7 @@ struct edge_coords{
  *                    chunked_vectors will lead to unneccesary runtime growth. 
  *   num_edges     -> Number of edges in the input graph
  */
-void graph_PoseidonToCSR(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
+void poseidonToCSR(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
                 std::vector<uint64_t>* row_offsets, std::vector<uint64_t>* col_indices, std::vector<float>* edge_values, 
                 uint64_t* num_nodes, uint64_t* num_edges);
 
@@ -151,7 +150,7 @@ void graph_PoseidonToCSR(graph_db_ptr gdb, bool bidirectional, rship_predicate r
  *   start         -> Source node to begin traverse
  *   bidirectional -> Set true to treat relationships bidirectionally
  *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a non-negative float weight for each relationship
+ *   weight_func   -> Function returning a float weight for each relationship
  *   quiet         -> Set true to mute std::cout outputs during execution
  * Output: 
  *   spath         -> A struct containing shortest path information
@@ -171,7 +170,7 @@ int64_t weighted_SSSP_gunrock_CSR(graph_db_ptr gdb, node::id_t start, bool bidir
  *   gdb              -> Pointer to Poseidon Graph Database
  *   bidirectional    -> Set true to treat relationships bidirectionally
  *   rpred            -> Function returning a bool for each relationship
- *   weight_func      -> Function returning a non-negative float weight for each relationship
+ *   weight_func      -> Function returning a float weight for each relationship
  * Output: 
  *   edge_coordinates -> COO-formatted graph edge coordinates, to be allocated in advance
  *   edge_values      -> COO-formatted graph edge weights, to be allocated in advance
@@ -179,7 +178,7 @@ int64_t weighted_SSSP_gunrock_CSR(graph_db_ptr gdb, node::id_t start, bool bidir
  *                       chunked_vectors are considered here as well! 
  *   num_edges        -> Number of edges in the input graph
  */
-void graph_PoseidonToCOO(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
+void poseidonToCOO(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
                 edge_coords* edge_coordinates, float* edge_values, uint64_t* num_nodes, uint64_t* num_edges);
 
 /**
@@ -193,7 +192,7 @@ void graph_PoseidonToCOO(graph_db_ptr gdb, bool bidirectional, rship_predicate r
  *   start         -> Source node to begin traverse
  *   bidirectional -> Set true to treat relationships bidirectionally
  *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a non-negative float weight for each relationship
+ *   weight_func   -> Function returning a float weight for each relationship
  *   quiet         -> Set true to mute std::cout outputs during execution
  * Output: 
  *   spath         -> A struct containing shortest path information
@@ -215,7 +214,7 @@ int64_t weighted_SSSP_gunrock_COO(graph_db_ptr gdb, node::id_t start, bool bidir
  *   start         -> Source node to begin traverse
  *   bidirectional -> Set true to treat relationships bidirectionally
  *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a non-negative float weight for each relationship
+ *   weight_func   -> Function returning a float weight for each relationship
  *   quiet         -> Set true to mute std::cout outputs during execution
  * Output: 
  *   spath         -> A struct containing shortest path information
