@@ -19,7 +19,7 @@
 
 #include "SSSP_gunrock.hpp"
 
-void graph_PoseidonToCSR(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
+void poseidonToCSR(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
                 std::vector<uint64_t>* row_offsets, std::vector<uint64_t>* col_indices, std::vector<float>* edge_values, 
                 uint64_t* num_nodes, uint64_t* num_edges){
     int edgeID = 0;
@@ -81,7 +81,7 @@ int64_t weighted_SSSP_gunrock_CSR(graph_db_ptr gdb, node::id_t start, bool bidir
     std::vector<uint64_t> col_indices = {};
     std::vector<float> edge_values = {};
     
-    graph_PoseidonToCSR(gdb, bidirectional, rpred, weight_func, &row_offsets, &col_indices, &edge_values, &max_index_nodes, &num_edges);
+    poseidonToCSR(gdb, bidirectional, rpred, weight_func, &row_offsets, &col_indices, &edge_values, &max_index_nodes, &num_edges);
 
     std::chrono::steady_clock::time_point end_conversion = std::chrono::steady_clock::now();
 
@@ -103,16 +103,16 @@ int64_t weighted_SSSP_gunrock_CSR(graph_db_ptr gdb, node::id_t start, bool bidir
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     if(!quiet){ // For performance analysis
-        std::cout << "Executed SSSP using Gunrock with CSR graph representation.\n";
-        std::cout << "Elapsed time conversion to CSR: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_conversion - start_conversion).count() << "[ms]" << "\n";
-        std::cout << "Elapsed time gunrock:           " << std::chrono::duration_cast<std::chrono::milliseconds>(end - end_conversion).count() << "[ms]" << "\n";
-        std::cout << "Total Elapsed time:             " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start_conversion).count() << "[ms]" << "\n";
+        std::cout << "Executed SSSP using Gunrock with CSR graph representation (SSSP_gunrock_CSR). \n";
+        std::cout << "poseidonToCSR:         " << std::chrono::duration_cast<std::chrono::milliseconds>(end_conversion - start_conversion).count() << "[ms]" << "\n";
+        std::cout << "Gunrock (SSSP-solver): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - end_conversion).count() << "[ms]" << "\n";
+        std::cout << "Total Elapsed time:    " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start_conversion).count() << "[ms]" << "\n";
     }
     return std::chrono::duration_cast<std::chrono::milliseconds>(end - start_conversion).count();
 }
 
 typedef chunked_vec<relationship, RSHIP_CHUNK_SIZE> chunked_vec_relationships_t;
-void graph_PoseidonToCOO(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
+void poseidonToCOO(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
                 edge_coords* edge_coordinates, float* edge_values, uint64_t* num_nodes, uint64_t* num_edges){
     chunked_vec_relationships_t &cV_rels = gdb->get_relationships()->as_vec();
     chunked_vec_relationships_t::iter cV_rels_iter = cV_rels.begin();
@@ -157,7 +157,7 @@ int64_t weighted_SSSP_gunrock_COO(graph_db_ptr gdb, node::id_t start, bool bidir
     uint64_t max_index_nodes = 0; // n
     uint64_t num_edges = 0;       // m
 
-    graph_PoseidonToCOO(gdb, bidirectional, rpred, weight_func, edge_coordinates, edge_weights, &max_index_nodes, &num_edges);
+    poseidonToCOO(gdb, bidirectional, rpred, weight_func, edge_coordinates, edge_weights, &max_index_nodes, &num_edges);
 
     std::chrono::steady_clock::time_point end_conversion = std::chrono::steady_clock::now();
 
@@ -180,10 +180,10 @@ int64_t weighted_SSSP_gunrock_COO(graph_db_ptr gdb, node::id_t start, bool bidir
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     if(!quiet){ // For performance analysis
-        std::cout << "Executed SSSP using Gunrock with COO graph representation.\n";
-        std::cout << "Elapsed time conversion to COO: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_conversion - start_conversion).count() << "[ms]" << "\n";
-        std::cout << "Elapsed time gunrock:           " << std::chrono::duration_cast<std::chrono::milliseconds>(end - end_conversion).count() << "[ms]" << "\n";
-        std::cout << "Total Elapsed time:             " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start_conversion).count() << "[ms]" << "\n";
+        std::cout << "Executed SSSP using Gunrock with COO graph representation (SSSP_gunrock_COO). \n";
+        std::cout << "poseidonToCOO:                           " << std::chrono::duration_cast<std::chrono::milliseconds>(end_conversion - start_conversion).count() << "[ms]" << "\n";
+        std::cout << "Gunrock (GunrockCOOtoCSR + SSSP-solver): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - end_conversion).count() << "[ms]" << "\n";
+        std::cout << "Total Elapsed time:                      " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start_conversion).count() << "[ms]" << "\n";
     }
     return std::chrono::duration_cast<std::chrono::milliseconds>(end - start_conversion).count();
 }
@@ -261,8 +261,8 @@ int64_t weighted_SSSP_sequential(graph_db_ptr gdb, node::id_t start, bool bidire
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     
     if(!quiet){ // For performance analysis
-        std::cout << "Executed SSSP using sequential Dijkstra with fibonacci-heap.\n";
-        std::cout << "Total Elapsed time:             " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << "\n";
+        std::cout << "Executed SSSP using sequential Dijkstra with fibonacci-heap (SSSP_sequential_Dijkstra). \n";
+        std::cout << "Total Elapsed time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << "\n";
     }
     return std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 }
