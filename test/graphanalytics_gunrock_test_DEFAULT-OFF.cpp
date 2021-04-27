@@ -17,7 +17,7 @@ const std::string test_path = poseidon::gPmemPath + "graphanalytics_gunrock_test
  * Drawback: create_random_dense_data has time complexity O(n^2). Since for dense graphs m = O(n^2)
  * anyway, that's acceptable. 
  */
-void create_random_sparse_data(graph_db_ptr graph, uint64_t numberVertices, uint64_t numberEdges, bool quiet){
+uint64_t create_random_sparse_data(graph_db_ptr graph, uint64_t numberVertices, uint64_t numberEdges, bool quiet){
 
     // Fixed outDegree. The graph is random, but rather uniformly structured
     double outDegree = double(numberEdges) / double(numberVertices); 
@@ -60,6 +60,7 @@ void create_random_sparse_data(graph_db_ptr graph, uint64_t numberVertices, uint
     
     if(!quiet) { std::cout << "|\n"; }
     graph->commit_transaction();
+    return edge_count;
 }
 
 /* 
@@ -69,7 +70,7 @@ void create_random_sparse_data(graph_db_ptr graph, uint64_t numberVertices, uint
  * Drawback: create_random_sparse_data creates duplicate edges, but for very sparse graphs 
  * that's accaptable. 
  */
-void create_random_dense_data(graph_db_ptr graph, uint64_t numberVertices, uint64_t numberEdges, bool quiet){
+uint64_t create_random_dense_data(graph_db_ptr graph, uint64_t numberVertices, uint64_t numberEdges, bool quiet){
 
     // Fixed outDegree. The graph is random, but rather uniformly structured
     double density = (double(numberEdges) / double(numberVertices)) / double(numberVertices); 
@@ -103,6 +104,7 @@ void create_random_dense_data(graph_db_ptr graph, uint64_t numberVertices, uint6
     
     if(!quiet) { std::cout << "|\n"; }
     graph->commit_transaction();
+    return edge_count;
 }
 
 /* 
@@ -200,6 +202,15 @@ TEST_CASE("Check correctness of results on predefined graphs"){
         graph->commit_transaction();
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         
+        std::cout << rslt.getPredecessor(0) << " " 
+                << rslt.getPredecessor(1)<< " "  
+                << rslt.getPredecessor(2)<< " "  
+                << rslt.getPredecessor(3)<< " "  
+                << rslt.getPredecessor(4)<< " "  
+                << rslt.getPredecessor(5)<< " "  
+                << rslt.getPredecessor(6) 
+                << std::endl;
+                
         bool test = ((rslt.getPredecessor(5) == 6) &
                     (rslt.getPredecessor(6) == UNKNOWN) &
                     (rslt.getPredecessor(4) == 3) &
@@ -221,6 +232,15 @@ TEST_CASE("Check correctness of results on predefined graphs"){
         graph->commit_transaction();
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         
+        std::cout << rslt.getPredecessor(0) << " " 
+                << rslt.getPredecessor(1)<< " "  
+                << rslt.getPredecessor(2)<< " "  
+                << rslt.getPredecessor(3)<< " "  
+                << rslt.getPredecessor(4)<< " "  
+                << rslt.getPredecessor(5)<< " "  
+                << rslt.getPredecessor(6) 
+                << std::endl;
+
         bool test = ((rslt.getPredecessor(5) == 5) &
                     (rslt.getPredecessor(6) == UNKNOWN) &
                     (rslt.getPredecessor(4) == 3) &
@@ -283,23 +303,29 @@ TEST_CASE("Check correctness of results on predefined graphs"){
  */
 /*TEST_CASE("Performance comparison: Fixed n, variable m"){
 
-    uint64_t num_vertices = 60000;
+    // Parameters //
+    uint64_t num_vertices = 110000; //60000;
     uint64_t min_edges = num_vertices;
-    uint64_t max_edges = 2000000;
+    uint64_t max_edges = 4000000;
     uint64_t number_samples = 50;
     bool bidirectional = false;
+
+    // Logarithmic Sampling //
+    double exponent_max_edges = std::log10(max_edges);
+    double exponent_min_edges = std::log10(min_edges);
+    double exponent_delta = (exponent_max_edges-exponent_min_edges)/(number_samples-1);
 
     std::cout << "\n\nPerformance comparison: Fixed n, variable m\n\n";
 
     std::vector<double> results;
     SSSP_result sssp_rslt = SSSP_result();
 
-    for(uint64_t edges = min_edges; edges <= max_edges; edges+=uint64_t((max_edges-min_edges)/(number_samples-1))){
+    for(double exponent = exponent_min_edges; exponent <= exponent_max_edges; exponent+=exponent_delta){
         // Graph creation
         auto pool = graph_pool::create(test_path);
         auto graph = pool->create_graph("my_graph");
-        create_random_sparse_data(graph, num_vertices, edges, true);
-        std::cout << edges << "/" << max_edges << " | " << std::flush;
+        uint64_t edges = create_random_sparse_data(graph, num_vertices, uint64_t(std::pow(10,exponent)), true);
+        std::cout << edges << "/" << max_edges << std::endl;
 
         // Runtime tests
         auto tx = graph->begin_transaction(); 
@@ -313,7 +339,7 @@ TEST_CASE("Check correctness of results on predefined graphs"){
 
     std::cout << "\n\nnum_vertices,min_edges,max_edges,number_samples,bidirectional\n";
     std::cout << num_vertices << "," << min_edges << "," << max_edges << "," << number_samples << "," << bidirectional << "\n";
-    std::cout << "gunrockCSR,gunrockCOO,sequential,edges\n";
+    std::cout << "SSSP_gunrock_CSR,SSSP_gunrock_COO,SSSP_sequential_Dijkstra,edges\n";
     while(!results.empty()){
         std::cout << results.back() << ",";
         results.pop_back();
@@ -328,11 +354,11 @@ TEST_CASE("Check correctness of results on predefined graphs"){
 
 /*TEST_CASE("Performance comparison: Fixed m, variable n"){
 
-    uint64_t num_edges = 2000000;
+    uint64_t num_edges = 5000000;
 
     uint64_t min_vertices = 50000;
     uint64_t max_vertices = 2500000;
-    uint64_t number_samples = 20;
+    uint64_t number_samples = 15;
     bool bidirectional = false;
 
     std::cout << "\n\nPerformance comparison: Fixed m, variable n\n\n";
@@ -345,7 +371,7 @@ TEST_CASE("Check correctness of results on predefined graphs"){
         auto pool = graph_pool::create(test_path);
         auto graph = pool->create_graph("my_graph");
         create_random_sparse_data(graph, vertices, num_edges, true);
-        std::cout << vertices << "/" << max_vertices << " | " << std::flush;
+        std::cout << vertices << "/" << max_vertices << std::endl;
 
         // Runtime tests
         auto tx = graph->begin_transaction(); 
@@ -359,7 +385,7 @@ TEST_CASE("Check correctness of results on predefined graphs"){
 
     std::cout << "\n\nmin_vertices,max_vertices,num_edges,number_samples,bidirectional\n";
     std::cout << min_vertices << "," << max_vertices << "," << num_edges << "," << number_samples << "," << bidirectional << "\n";
-    std::cout << "gunrockCSR,gunrockCOO,sequential,vertices\n";
+    std::cout << "SSSP_gunrock_CSR,SSSP_gunrock_COO,SSSP_sequential_Dijkstra,vertices\n";
     while(!results.empty()){
         std::cout << results.back() << ",";
         results.pop_back();
@@ -376,8 +402,8 @@ TEST_CASE("Check correctness of results on predefined graphs"){
 
     auto pool = graph_pool::create(test_path);
     auto graph = pool->create_graph("my_graph");
-    uint64_t num_vertices = 100000;
-    uint64_t num_edges = 1000000;
+    uint64_t num_vertices = 1000000;
+    uint64_t num_edges = 10000000;
 
     SECTION("Bidirectional"){
         SSSP_result rslt = SSSP_result();
