@@ -1,204 +1,79 @@
-Aggregate([$0:COUNT],
-    Group([$3],
-        Filter(Lambda5,
-            Expand(OUT, "Person",
-                ForeachRelationship(FROM, ":hasCreator",
-                    Expand(IN, "Comment",
-                        ForeachRelationship(TO, ":replyOf", $7,
-                            Filter($13.Lambda4,
-                                Filter($Lambda3,
-                                    Filter($Lambda2,
-                                        Expand(IN, "Forum",
-                                            ForeachRelationship(TO, ":containerOf", $7,
-                                                Filter($10.name == %tag,
-                                                    Expand(OUT, "Tag",
-                                                        ForeachRelationship(FROM, ":hasTag", $7,
-                                                            Filter($Lambda1,
-                                                                Project([$0, $2, $2.creationDate:datetime, $4, $6, $8, $15, $17, $17.creationDate:datetime],
-                                                                    Expand(IN, "Post",
-                                                                        ForeachRelationship(TO, ":hasCreator", $8,
-                                                                            Join(HASHJOIN_ON_NODE, {6, 4},
-                                                                                Expand(OUT, "Person",
-                                                                                    ForeachRelationship(FROM, ":hasMember",
-                                                                                        Expand(IN, "Forum",
-                                                                                            ForeachRelationship(TO, ":containerOf",
-                                                                                                Expand(IN, "Post",
-                                                                                                    ForeachRelationship(TO, ":hasTag",
-                                                                                                        Filter($0.name == %tag,
-                                                                                                            NodeScan("Tag")
-                                                                                                        )
-                                                                                                    )
-                                                                                                )
-                                                                                            )
-                                                                                        )
-                                                                                    )
-                                                                                ),
-                                                                                Expand(OUT, "Person",
-                                                                                    ForeachRelationship(FROM, ":hasMember",
-                                                                                        Expand(IN, "Forum",
-                                                                                            ForeachRelationship(TO, ":containerOf", $2,
-                                                                                                Expand(OUT, "Person",
-                                                                                                    ForeachRelationship(FROM, ":hasCreator",
-                                                                                                        Expand(IN, "Post",
-                                                                                                            ForeachRelationship(TO, ":hasTag",
-                                                                                                                Filter($0.name == %tag,
-                                                                                                                    NodeScan("Tag")
-                                                                                                                )
-                                                                                                            )
-                                                                                                        )
-                                                                                                    )
-                                                                                                )
-                                                                                            )
-                                                                                        )
-                                                                                    )
-                                                                                )
-                                                                            )
-                                                                        )
-                                                                    )
-                                                                )
-                                                            )
-                                                        )
-                                                    )
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
-    )
-)
+auto samePerson = [&](auto &v, int idx1, int idx2) {
+    return boost::get<node *>(v[idx1])->id() != boost::get<node *>(v[idx2])->id();
+});
 
-Aggregate([$0:COUNT],
-    Group([$3],
-        Filter(Lambda5,
-            Expand(OUT, "Person",
-                ForeachRelationship(FROM, ":hasCreator",
-                    Expand(IN, "Comment",
-                        ForeachRelationship(TO, ":replyOf", $7,
-                            Filter($13.Lambda4,
-                                Filter($Lambda3,
-                                    Filter($Lambda2,
-                                        Expand(IN, "Forum",
-                                            ForeachRelationship(TO, ":containerOf", $7,
-                                                Filter($10.name == %tag,
-                                                    Expand(OUT, "Tag",
-                                                        ForeachRelationship(FROM, ":hasTag", $7,
-                                                            Filter($Lambda1,
-                                                                Project([$0, $2, $2.creationDate:datetime, $4, $6, $8, $15, $17, $17.creationDate:datetime],
-                                                                    Expand(IN, "Comment",
-                                                                        ForeachRelationship(TO, ":hasCreator", $8,
-                                                                            Join(HASHJOIN_ON_NODE, {6, 4},
-                                                                                Expand(OUT, "Person",
-                                                                                    ForeachRelationship(FROM, ":hasMember",
-                                                                                        Expand(IN, "Forum",
-                                                                                            ForeachRelationship(TO, ":containerOf",
-                                                                                                Expand(IN, "Post",
-                                                                                                    ForeachRelationship(TO, ":hasTag",
-                                                                                                        Filter($0.name == %tag,
-                                                                                                            NodeScan("Tag")
-                                                                                                        )
-                                                                                                    )
-                                                                                                )
-                                                                                            )
-                                                                                        )
-                                                                                    )
-                                                                                ),
-                                                                                Expand(OUT, "Person",
-                                                                                    ForeachRelationship(FROM, ":hasMember",
-                                                                                        Expand(IN, "Forum",
-                                                                                            ForeachRelationship(TO, ":containerOf", $2,
-                                                                                                Expand(OUT, "Person",
-                                                                                                    ForeachRelationship(FROM, ":hasCreator",
-                                                                                                        Expand(IN, "Post",
-                                                                                                            ForeachRelationship(TO, ":hasTag",
-                                                                                                                Filter($0.name == %tag,
-                                                                                                                    NodeScan("Tag")
-                                                                                                                )
-                                                                                                            )
-                                                                                                        )
-                                                                                                    )
-                                                                                                )
-                                                                                            )
-                                                                                        )
-                                                                                    )
-                                                                                )
-                                                                            )
-                                                                        )
-                                                                    )
-                                                                )
-                                                            )
-                                                        )
-                                                    )
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
-    )
-)
+auto msgInterval = [&](auto &lv, auto &rv) {
+    auto msg1_dt = boost::get<ptime>(v[0]);
+    auto msg2_dt = boost::get<ptime>(v[5]);
+    auto hrs = boost::get<int>(params[1]);
+    return (msg1_dt + hours(hrs)) < msg2_dt
+});
 
-Aggregate([$0:COUNT],
-    Group([$3],
-        Filter(Lambda5,
-            Expand(OUT, "Person",
-                ForeachRelationship(FROM, ":hasCreator",
-                    Expand(IN, "Comment",
-                        ForeachRelationship(TO, ":replyOf", $7,
-                            Filter($13.Lambda4,
-                                Filter($Lambda3,
-                                    Filter($Lambda2,
-                                        Expand(IN, "Forum",
-                                            ForeachRelationship(TO, ":containerOf", $7,
-                                                Filter($10.name == %tag,
-                                                    Expand(OUT, "Tag",
-                                                        ForeachRelationship(FROM, ":hasTag", $7,
-                                                            Filter($Lambda1,
-                                                                Project([$0, $2, $2.creationDate:datetime, $4, $8, $10, $19, $21, $21.creationDate:datetime],
-                                                                    Expand(IN, "Post",
-                                                                        ForeachRelationship(TO, ":hasCreator", $10,
-                                                                            Join(HASHJOIN_ON_NODE, {8, 6},
-                                                                                Expand(OUT, "Person",
-                                                                                    ForeachRelationship(FROM, ":hasMember",
-                                                                                        Expand(IN, "Forum",
-                                                                                            ForeachRelationship(TO, ":containerOf",
-                                                                                                Expand(OUT, "Post",
-                                                                                                    ForeachRelationship(FROM, [1, 100], ":replyOf",
-                                                                                                        Expand(IN, "Comment",
-                                                                                                            ForeachRelationship(TO, ":hasTag",
-                                                                                                                Filter($0.name == %tag,
-                                                                                                                    NodeScan("Tag")
-                                                                                                                )
-                                                                                                            )
-                                                                                                        )
-                                                                                                    )
-                                                                                                )
-                                                                                            )
-                                                                                        )
-                                                                                    )
-                                                                                ),
-                                                                                Expand(OUT, "Person",
-                                                                                    ForeachRelationship(FROM, ":hasMember",
-                                                                                        Expand(IN, "Forum",
-                                                                                            ForeachRelationship(TO, ":containerOf", $2,
-                                                                                                Expand(OUT, "Post",
-                                                                                                    ForeachRelationship(FROM, [1, 100], ":replyOf", $2,
-                                                                                                        Expand(OUT, "Person",
-                                                                                                            ForeachRelationship(FROM, ":hasCreator",
-                                                                                                                Expand(IN, "Comment",
-                                                                                                                    ForeachRelationship(TO, ":hasTag",
-                                                                                                                        Filter($0.name == %tag,
-                                                                                                                            NodeScan("Tag")
+auto fltrRship1 = [&](auto &v, int idx, string label) {
+    if (v[idx].type() == typeid(null_val)) 
+        return false;
+    auto r = boost::get<relationship *>(v[idx]);
+    return r->rship_label == gdb->get_code(label) ? true : true;
+});
+
+
+auto fltrRship2 = [&](auto &v, int idx, string label) {
+    if (v[idx].type() == typeid(null_val)) 
+        return false;
+    auto r = boost::get<relationship *>(v[idx]);
+    return r->rship_label == gdb->get_code(label) ? false : true;
+});
+
+Sort([$0:uint64 ASC],
+    Project([$0.id:uint64, $1],
+        GroupBy([$1],
+                [sum($1)],
+            Union(
+                GroupBy([$1],
+                        [count($0)],
+                    Filter(fltrRship1(tuple, 18, ":hasMember"),
+                        RshipExists({2, 17},
+                            Expand(OUT, "Person",
+                                ForeachRelationship(FROM, ":hasCreator", $13,
+                                    Filter($14.name == %tag,
+                                        Expand(OUT, "Tag",
+                                            ForeachRelationship(FROM, ":hasTag",
+                                                Expand(OUT, "Comment",
+                                                    ForeachRelationship(FROM, ":replyOf", $4,
+                                                        Filter(fltrRship2(tuple, 11, ":hasMember"),
+                                                            RshipExists({10, 1},
+                                                                Expand(IN, "Forum",
+                                                                    ForeachRelationship(TO, ":containerOf", $6,
+                                                                        Filter($8.name == %tag,
+                                                                            Expand(OUT, "Tag",
+                                                                                ForeachRelationship(FROM, ":hasTag", $4,
+                                                                                    Filter(msgInterval(tuple),
+                                                                                        Project([$2.creationDate:datetime, $6, $8, $10, $12, $12.creationDate:datetime, $14],
+                                                                                            Expand(OUT, "Post",
+                                                                                                ForeachRelationship(FROM, ":replyOf", {1, 100},
+                                                                                                    Expand(IN, "Comment",
+                                                                                                        ForeachRelationship(TO, ":hasCreator",
+                                                                                                            Filter(samePerson(tuple, 6, 10),
+                                                                                                                Expand(OUT, "Person",
+                                                                                                                    ForeachRelationship(FROM, ":hasMember",
+                                                                                                                        Expand(IN, "Forum",
+                                                                                                                            ForeachRelationship(TO, ":containerOf", $4,
+                                                                                                                                Expand(OUT, "Person",
+                                                                                                                                    ForeachRelationship(FROM, ":hasCreator", $2,
+                                                                                                                                        Expand(OUT, "Post",
+                                                                                                                                            ForeachRelationship(FROM, ":replyOf", {1, 100},
+                                                                                                                                                Expand(IN, "Comment",
+                                                                                                                                                    ForeachRelationship(TO, ":hasTag",
+                                                                                                                                                        Filter($0.name == %tag,
+                                                                                                                                                            NodeScan("Tag")
+                                                                                                                                                        )
+                                                                                                                                                    )
+                                                                                                                                                )
+                                                                                                                                            )
+                                                                                                                                        )
+                                                                                                                                    )
+                                                                                                                                )
+                                                                                                                            )
                                                                                                                         )
                                                                                                                     )
                                                                                                                 )
@@ -225,42 +100,50 @@ Aggregate([$0:COUNT],
                             )
                         )
                     )
-                )
-            )
-        )
-    )
-)
-
-Aggregate([$0:COUNT],
-    Group([$3],
-        Filter(Lambda5,
-            Expand(OUT, "Person",
-                ForeachRelationship(FROM, ":hasCreator",
-                    Expand(IN, "Comment",
-                        ForeachRelationship(TO, ":replyOf", $7,
-                            Filter($13.Lambda4,
-                                Filter($Lambda3,
-                                    Filter($Lambda2,
-                                        Expand(IN, "Forum",
-                                            ForeachRelationship(TO, ":containerOf", $7,
-                                                Filter($10.name == %tag,
-                                                    Expand(OUT, "Tag",
-                                                        ForeachRelationship(FROM, ":hasTag", $7,
-                                                            Filter($Lambda1,
-                                                                Project([$0, $2, $2.creationDate:datetime, $4, $8, $10, $19, $21, $21.creationDate:datetime],
-                                                                    Expand(IN, "Comment",
-                                                                        ForeachRelationship(TO, ":hasCreator", $10,
-                                                                            Join(HASHJOIN_ON_NODE, {8, 6},
-                                                                                Expand(OUT, "Person",
-                                                                                    ForeachRelationship(FROM, ":hasMember",
-                                                                                        Expand(IN, "Forum",
-                                                                                            ForeachRelationship(TO, ":containerOf",
-                                                                                                Expand(OUT, "Post",
-                                                                                                    ForeachRelationship(FROM, [1, 100], ":replyOf",
-                                                                                                        Expand(IN, "Comment",
-                                                                                                            ForeachRelationship(TO, ":hasTag",
-                                                                                                                Filter($0.name == %tag,
-                                                                                                                    NodeScan("Tag")
+                ),
+                GroupBy([$1],
+                        [count($0)],
+                    Filter(fltrRship1(tuple, 17, ":hasMember"),
+                        RshipExists({2, 16},
+                            Expand(OUT, "Person",
+                                ForeachRelationship(FROM, ":hasCreator", $12,
+                                    Filter($13.name == %tag,
+                                        Expand(OUT, "Tag",
+                                            ForeachRelationship(FROM, ":hasTag",
+                                                Expand(OUT, "Comment",
+                                                    ForeachRelationship(FROM, ":replyOf", $4,
+                                                        Filter(fltrRship2(tuple, 10, ":hasMember"),
+                                                            RshipExists({9, 1},
+                                                                Expand(IN, "Forum",
+                                                                    ForeachRelationship(TO, ":containerOf", $4,
+                                                                        Filter($7.name == %tag,
+                                                                            Expand(OUT, "Tag",
+                                                                                ForeachRelationship(FROM, ":hasTag", $4,
+                                                                                    Filter(msgInterval(tuple),
+                                                                                        Project([$2.creationDate:datetime, $6, $8, $10, $12, $12.creationDate:datetime],
+                                                                                            Expand(IN, "Post",
+                                                                                                ForeachRelationship(TO, ":hasCreator",
+                                                                                                    Filter(samePerson(tuple, 6, 10),
+                                                                                                        Expand(OUT, "Person",
+                                                                                                            ForeachRelationship(FROM, ":hasMember",
+                                                                                                                Expand(IN, "Forum",
+                                                                                                                    ForeachRelationship(TO, ":containerOf", $4,
+                                                                                                                        Expand(OUT, "Person",
+                                                                                                                            ForeachRelationship(FROM, ":hasCreator", $2,
+                                                                                                                                Expand(OUT, "Post",
+                                                                                                                                    ForeachRelationship(FROM, ":replyOf", {1, 100},
+                                                                                                                                        Expand(IN, "Comment",
+                                                                                                                                            ForeachRelationship(TO, ":hasTag",
+                                                                                                                                                Filter($0.name == %tag,
+                                                                                                                                                    NodeScan("Tag")
+                                                                                                                                                )
+                                                                                                                                            )
+                                                                                                                                        )
+                                                                                                                                    )
+                                                                                                                                )
+                                                                                                                            )
+                                                                                                                        )
+                                                                                                                    )
                                                                                                                 )
                                                                                                             )
                                                                                                         )
@@ -269,19 +152,128 @@ Aggregate([$0:COUNT],
                                                                                             )
                                                                                         )
                                                                                     )
-                                                                                ),
-                                                                                Expand(OUT, "Person",
-                                                                                    ForeachRelationship(FROM, ":hasMember",
-                                                                                        Expand(IN, "Forum",
-                                                                                            ForeachRelationship(TO, ":containerOf", $2,
-                                                                                                Expand(OUT, "Post",
-                                                                                                    ForeachRelationship(FROM, [1, 100], ":replyOf", $2,
+                                                                                )
+                                                                            )
+                                                                        )
+                                                                    )
+                                                                )
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+                GroupBy([$1],
+                        [count($0)],
+                    Filter(fltrRship1(tuple, 18, ":hasMember"),
+                        RshipExists({2, 17},
+                            Expand(OUT, "Person",
+                                ForeachRelationship(FROM, ":hasCreator", $13,
+                                    Filter($14.name == %tag,
+                                        Expand(OUT, "Tag",
+                                            ForeachRelationship(FROM, ":hasTag",
+                                                Expand(OUT, "Comment",
+                                                    ForeachRelationship(FROM, ":replyOf", $4,
+                                                        Filter(fltrRship2(tuple, 11, ":hasMember"),
+                                                            RshipExists({10, 1},
+                                                                Expand(IN, "Forum",
+                                                                    ForeachRelationship(TO, ":containerOf", $6,
+                                                                        Filter($8.name == %tag,
+                                                                            Expand(OUT, "Tag",
+                                                                                ForeachRelationship(FROM, ":hasTag", $4,
+                                                                                    Filter(msgInterval(tuple),
+                                                                                        Project([$2.creationDate:datetime, $4, $6, $8, $10, $10.creationDate:datetime, $12],
+                                                                                            Expand(OUT, "Post",
+                                                                                                ForeachRelationship(FROM, ":replyOf", {1, 100},
+                                                                                                    Expand(IN, "Comment",
+                                                                                                        ForeachRelationship(TO, ":hasCreator",
+                                                                                                            Filter(samePerson(tuple, 4, 8),
+                                                                                                                Expand(OUT, "Person",
+                                                                                                                    ForeachRelationship(FROM, ":hasMember",
+                                                                                                                        Expand(IN, "Forum",
+                                                                                                                            ForeachRelationship(TO, ":containerOf", $2,
+                                                                                                                                Expand(OUT, "Person",
+                                                                                                                                    ForeachRelationship(FROM, ":hasCreator",
+                                                                                                                                        Expand(IN, "Post",
+                                                                                                                                            ForeachRelationship(TO, ":hasTag",
+                                                                                                                                                Filter($0.name == %tag,
+                                                                                                                                                    NodeScan("Tag")
+                                                                                                                                                )
+                                                                                                                                            )
+                                                                                                                                        )
+                                                                                                                                    )
+                                                                                                                                )
+                                                                                                                            )
+                                                                                                                        )
+                                                                                                                    )
+                                                                                                                )
+                                                                                                            )
+                                                                                                        )
+                                                                                                    )
+                                                                                                )
+                                                                                            )
+                                                                                        )
+                                                                                    )
+                                                                                )
+                                                                            )
+                                                                        )
+                                                                    )
+                                                                )
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+                GroupBy([$1],
+                        [count($0)],
+                    Filter(fltrRship1(tuple, 17, ":hasMember"),
+                        RshipExists({2, 16},
+                            Expand(OUT, "Person",
+                                ForeachRelationship(FROM, ":hasCreator", $9,
+                                    Filter($13.name == %tag,
+                                        Expand(OUT, "Tag",
+                                            ForeachRelationship(FROM, ":hasTag",
+                                                Expand(OUT, "Comment",
+                                                    ForeachRelationship(FROM, ":replyOf", $4,
+                                                        Filter(fltrRship2(tuple, 10, ":hasMember"),
+                                                            RshipExists({9, 1},
+                                                                Expand(IN, "Forum",
+                                                                    ForeachRelationship(TO, ":containerOf", $4,
+                                                                        Filter($7.name == %tag,
+                                                                            Expand(OUT, "Tag",
+                                                                                ForeachRelationship(FROM, ":hasTag", $4,
+                                                                                    Filter(msgInterval(tuple),
+                                                                                        Project([$2, $4, $6, $8, $10, $10.creationDate:datetime],
+                                                                                            Expand(IN, "Post",
+                                                                                                ForeachRelationship(TO, ":hasCreator",
+                                                                                                    Filter(samePerson(tuple, 4, 8),
                                                                                                         Expand(OUT, "Person",
-                                                                                                            ForeachRelationship(FROM, ":hasCreator",
-                                                                                                                Expand(IN, "Comment",
-                                                                                                                    ForeachRelationship(TO, ":hasTag",
-                                                                                                                        Filter($0.name == %tag,
-                                                                                                                            NodeScan("Tag")
+                                                                                                            ForeachRelationship(FROM, ":hasMember",
+                                                                                                                Expand(IN, "Forum",
+                                                                                                                    ForeachRelationship(TO, ":containerOf", $2,
+                                                                                                                        Expand(OUT, "Person",
+                                                                                                                            ForeachRelationship(FROM, ":hasCreator",
+                                                                                                                                Expand(IN, "Post",
+                                                                                                                                    ForeachRelationship(TO, ":hasTag",
+                                                                                                                                        Filter($0.name == %tag,
+                                                                                                                                            NodeScan("Tag")
+                                                                                                                                        )
+                                                                                                                                    )
+                                                                                                                                )
+                                                                                                                            )
                                                                                                                         )
                                                                                                                     )
                                                                                                                 )

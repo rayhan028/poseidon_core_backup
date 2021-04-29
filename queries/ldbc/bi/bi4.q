@@ -4,7 +4,7 @@ Limit(100,
             GroupBy([$0],
                     [count($0)],
                 Union(
-                    Join(HASHJOIN_ON_NODE, {$1, $0},
+                    Hashjoin({$1, $0},
                         Project([$4, $10],
                             Filter($6.creationDate > %date,
                                 Expand(IN, "Forum",
@@ -78,7 +78,7 @@ Limit(100,
                             )
                         )
                     ),
-                    Join(HASHJOIN_ON_NODE, {$1, $0},
+                    Hashjoin({$1, $0},
                         Project([$4, $8],
                             Filter($6.creationDate > %date,
                                 Expand(IN, "Forum",
