@@ -1,5 +1,5 @@
-#ifndef tpc_hpp_
-#define tpc_hpp_
+#ifndef gtpc_hpp_
+#define gtpc_hpp_
 
 #include "graph_db.hpp"
 #include "qop.hpp"
@@ -12,9 +12,35 @@
 
 // #define RUN_INDEXED
 // #define RUN_PARALLEL
-// #define PRINT_RESULT
+#define PRINT_RESULT
 
-namespace pj = builtin;
+
+using param_val = boost::variant<uint64_t, std::string, int, boost::posix_time::ptime>;
+using params_tuple = std::vector<param_val>;
+
+/* queries */
+void gtpch_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_10(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_14(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_15(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_18(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_20(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_21(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+void gtpch_query_22(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 
 /* data */
 void load_gtpc_data(graph_db_ptr &graph, const std::string& path, bool strict = true);

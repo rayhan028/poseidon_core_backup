@@ -426,6 +426,7 @@ target_link_libraries(poseidon_ldbc
 
 set(gtpc_files
   src/gtpc/gtpc_loader.cpp
+  src/gtpc/gtpc.cpp
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -437,7 +438,7 @@ else()
 add_library(poseidon_gtpc_obj OBJECT SHARED ${gtpc_files})
 endif()
 
-# Poseidon LDBC library for building C++ applications
+# Poseidon GTPC library for building C++ applications
 add_library(poseidon_gtpc SHARED
   $<TARGET_OBJECTS:poseidon_gtpc_obj>
 )
@@ -571,6 +572,19 @@ add_executable(run_gtpc_loader
  )
 
 target_link_libraries(run_gtpc_loader
+  poseidon_gtpc
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
+# The program for executing gtpc queries.
+#
+add_executable(run_gtpc
+  src/gtpc/run_gtpc.cpp
+ )
+
+target_link_libraries(run_gtpc
   poseidon_gtpc
   poseidon_core
   ${PMDK_LIBRARIES}

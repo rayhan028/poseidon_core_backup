@@ -372,7 +372,7 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
 
         // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
         if (const auto& col {columns[i]}; !col.empty() && !field.empty()) {
-          if (col == "id" || col == "c_phone" || col == "su_phone") {
+          if (col == "id" || col == "phone") {
             prop_types[i] = p_item::p_uint64;     
           }
           else {   

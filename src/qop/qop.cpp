@@ -459,6 +459,22 @@ void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
       }
       else if (aggr.first == "avg" || aggr.first == "pcount")
         gtpl.push_back(query_result(0.0));
+      else if (aggr.first == "min") {
+        if (v[aggr.second].type() == typeid(uint64_t))
+          gtpl.push_back(query_result(std::numeric_limits<uint64_t>::max()));
+        else if (v[aggr.second].type() == typeid(int))
+          gtpl.push_back(query_result(std::numeric_limits<int>::max()));
+        else if (v[aggr.second].type() == typeid(double))
+          gtpl.push_back(query_result(std::numeric_limits<double>::max()));
+      }
+      else if (aggr.first == "max") {
+        if (v[aggr.second].type() == typeid(uint64_t))
+          gtpl.push_back(query_result((uint64_t)0));
+        else if (v[aggr.second].type() == typeid(int))
+          gtpl.push_back(query_result(0));
+        else if (v[aggr.second].type() == typeid(double))
+          gtpl.push_back(query_result(0.0));
+      }
     }
 
     grp_tpl_map_.emplace(gpos, gtpl);
@@ -497,6 +513,40 @@ void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
                     boost::get<double>(v[aggr.second]) : 0;
       gavg = (gsize == 1) ? (double)val :
               (gavg * (gsize-1) + (double)val) / (double)gsize;
+    }
+    else if (aggr.first == "min") {
+      if (v[aggr.second].type() == typeid(uint64_t)) {
+        uint64_t &gmin = boost::get<uint64_t>(aggr_tpl[aggr_pos]);
+        if (boost::get<uint64_t>(v[aggr.second]) < gmin)
+          gmin = boost::get<uint64_t>(v[aggr.second]);
+      }
+      else if (v[aggr.second].type() == typeid(int)) {
+        int &gmin = boost::get<int>(aggr_tpl[aggr_pos]);
+        if (boost::get<int>(v[aggr.second]) < gmin)
+          gmin = boost::get<int>(v[aggr.second]);
+      }
+      else if (v[aggr.second].type() == typeid(double)) {
+        double &gmin = boost::get<double>(aggr_tpl[aggr_pos]);
+        if (boost::get<double>(v[aggr.second]) < gmin)
+          gmin = boost::get<double>(v[aggr.second]);
+      }
+    }
+    else if (aggr.first == "max") {
+      if (v[aggr.second].type() == typeid(uint64_t)) {
+        uint64_t &gmax = boost::get<uint64_t>(aggr_tpl[aggr_pos]);
+        if (boost::get<uint64_t>(v[aggr.second]) > gmax)
+          gmax = boost::get<uint64_t>(v[aggr.second]);
+      }
+      else if (v[aggr.second].type() == typeid(int)) {
+        int &gmax = boost::get<int>(aggr_tpl[aggr_pos]);
+        if (boost::get<int>(v[aggr.second]) > gmax)
+          gmax = boost::get<int>(v[aggr.second]);
+      }
+      else if (v[aggr.second].type() == typeid(double)) {
+        double &gmax = boost::get<double>(aggr_tpl[aggr_pos]);
+        if (boost::get<double>(v[aggr.second]) > gmax)
+          gmax = boost::get<double>(v[aggr.second]);
+      }
     } // process pcount (percentage count) in group_by::finish
     aggr_pos++;
   }
