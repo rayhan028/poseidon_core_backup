@@ -227,10 +227,7 @@ int main() {
 	};
 
 	auto simp = Scan("Person", Project({{0, "id", FTYPE::INT}},
-			GroupBy({0},Aggr({{"count", 0}},
-				GroupBy({1},Aggr({{"count", 0}},
-					GroupBy({1},Aggr({{"count", 0}},
-						Collect()))))))));
+			GroupBy({0},Aggr({{"count", 0}}, Collect()))));
 
 	scan_task::callee_ = &scan_task::scan;	
 
@@ -241,6 +238,7 @@ int main() {
 	grouper g1;
 	grouper g2;
 	grouper g3;
+	grouper g4;
 	arg_builder ab;
 	ab.arg(1, "Person");
 	ab.arg(2, &g1);
@@ -249,6 +247,10 @@ int main() {
 	ab.arg(5, &g2);
 	ab.arg(6, &g3);
 	ab.arg(7, &g3);
+	ab.arg(8, ":likes");
+	ab.arg(9, "Person");
+	ab.arg(10, &g4);
+	ab.arg(11, &g4);
 	
 	result_set rs;
 
@@ -262,7 +264,7 @@ int main() {
 	//query::start({&aq});
 	//graph->commit_transaction();
 	auto je = std::chrono::steady_clock::now();
-	std::cout << "finished" << std::endl;
+	
 	std::cout << rs << std::endl;
 	std::cout << "JIT: "
 		<< std::chrono::duration_cast<std::chrono::milliseconds>(je -

@@ -98,6 +98,7 @@ void query_engine::cleanup() {
     complete_.store(false);
     compiled_.store(false);
     type_vec_.clear();
+    qpipelines_.clear();
 }
 
 void query_engine::prepare() {
@@ -177,12 +178,15 @@ void query_engine::run(result_set * rs, arg_builder & args, bool cleanup_query) 
 
     for(i = start_idx; i >= 0; i--) {
         start_[i](&qtx, args.args.data(), rs);
-        finish_[i](&qtx, args.args.data(), rs);
+        //finish_[i](&qtx, args.args.data(), rs);
+       for(auto finish : qpipelines_[i]) {
+           finish(&qtx, args.args.data(), rs);
+       }
     }
     
-    for(i = start_idx;i < finish_.size();i++) {
-        //finish_[i](&qtx, args.args.data(), rs);
-    }
+    /*for(i = start_idx;i < finish_.size();i++) {
+        finish_[i](&qtx, args.args.data(), rs);
+    }*/
 
     graph_->commit_transaction();
 
@@ -323,32 +327,31 @@ void compile_task::operator()() {
     std::string finish_name = "default_finish_"+internal_qid;
     std::vector<int> type_vec;
     std::vector<algebra_optr> recur_list;
+    qeng_.qpipelines_.clear();
+    qeng_.start_.clear();
+    qeng_.finish_.clear();
     
     int i = 0;
+    int pipe_id = -1;
     for(auto & s : cv.pipelines) {
         if(s.find("finish_") == 0) {
+            
             auto ffct = jit_.getFunctionRaw<finish_fct_type>(s);
             if(ffct) {
                 qeng_.finish_[i] = *ffct;
+                qeng_.qpipelines_[pipe_id].push_back(*ffct);
                 i++;
             }
         } else {
+            //pipe_id = std::atoi(&s.back());
             qeng_.operator_names_[0].push_back(s);
             auto start_fc = jit_.getFunctionRaw<start_ty>(s);
             if(start_fc) {
                 qeng_.start_[i] = *start_fc;
+                pipe_id++;
             }
         }       
     }
     
-    //3. get all generated function pointers
-    /*for(int q = 0; q <= query_id; q++) {
-        for(auto i = 1u; i < qeng_.operator_names_[q].size(); i++) {
-            auto op_name = qeng_.operator_names_[q].at(i);
-            auto fc = jit_.getFunctionRaw<consumer_fct_type>(op_name);
-            if(fc)
-                query_engine::operator_functions_[q].push_back(*fc);
-        }
-    }*/
     
 }
