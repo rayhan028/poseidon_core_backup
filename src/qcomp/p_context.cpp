@@ -225,24 +225,24 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     get_int_grpkey_ty = FunctionType::get(voidTy, {int64Ty, int64Ty}, false);
     get_string_grpkey_ty = FunctionType::get(voidTy, {int64PtrTy, int64Ty}, false);
     get_time_grpkey_ty = FunctionType::get(voidTy, {int64PtrTy, int64Ty}, false);
-    add_to_group_ty = FunctionType::get(voidTy, {}, false);
-    finish_group_by_ty = FunctionType::get(voidTy, {int64PtrTy}, false);
+    add_to_group_ty = FunctionType::get(voidTy, {int8PtrTy}, false);
+    finish_group_by_ty = FunctionType::get(voidTy, {int8PtrTy, int64PtrTy}, false);
 
-    grp_demat_at_ty = FunctionType::get(int8PtrTy, {int64Ty}, false);
+    grp_demat_at_ty = FunctionType::get(int8PtrTy, {int8PtrTy, int64Ty}, false);
     clear_mat_tuple_ty = FunctionType::get(voidTy, {}, false);
-    get_grp_rs_count_ty = FunctionType::get(int64Ty, {}, false);
+    get_grp_rs_count_ty = FunctionType::get(int64Ty, {int8PtrTy}, false);
     int_to_reg_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
     str_to_reg_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
     node_to_reg_ty = FunctionType::get(nodePtrTy, {int8PtrTy, int64Ty}, false);
     rship_to_reg_ty = FunctionType::get(rshipPtrTy, {int8PtrTy, int64Ty}, false);
     time_to_reg_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
 
-    init_grp_aggr_ty = FunctionType::get(voidTy, {}, false);
-    get_group_cnt_ty = FunctionType::get(int64Ty, {}, false);
-    get_total_group_cnt_ty = FunctionType::get(int64Ty, {}, false);
-    get_group_sum_int_ty = FunctionType::get(int64Ty, {int64Ty}, false);
-    get_group_sum_double_ty = FunctionType::get(doubleTy, {int64Ty}, false);
-    get_group_sum_uint_ty = FunctionType::get(int64Ty, {int64Ty}, false);
+    init_grp_aggr_ty = FunctionType::get(voidTy, {int8PtrTy}, false);
+    get_group_cnt_ty = FunctionType::get(int64Ty, {int8PtrTy}, false);
+    get_total_group_cnt_ty = FunctionType::get(int64Ty, {int8PtrTy}, false);
+    get_group_sum_int_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
+    get_group_sum_double_ty = FunctionType::get(doubleTy, {int8PtrTy, int64Ty}, false);
+    get_group_sum_uint_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
 
     append_to_tuple_ty = FunctionType::get(voidTy, {int8PtrTy}, false);
     get_qr_tuple_ty = FunctionType::get(int8PtrTy, {}, false);

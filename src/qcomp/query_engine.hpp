@@ -2,6 +2,7 @@
 #define POSEIDON_CORE_QUERY_ENGINE_HPP
 
 #include "joiner.hpp"
+#include "grouper.hpp"
 #include "p_jit.hpp"
 #include "p_context.hpp"
 
@@ -35,6 +36,9 @@ struct arg_builder {
     void arg(int op_id, uint64_t arg) {
         int_args[op_id] = arg;
         args[op_id] = (uint64_t*)&(int_args[op_id]);
+    }
+    void arg(int op_id, grouper *g) {
+        args[op_id] = (uint64_t*)g;
     }
 
     void arg(int op_id, properties_t & props) {
@@ -89,6 +93,7 @@ public:
     std::map<int, std::vector<std::string>> operator_names_;
     std::map<int, std::vector<int>> type_vec_;
     static std::map<int, finish_fct_type> finish_;
+    std::map<int, std::vector<finish_fct_type>> qpipelines_;
 
 
     std::function<void(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer)> task_callee_;

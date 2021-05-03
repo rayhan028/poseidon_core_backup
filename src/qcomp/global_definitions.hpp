@@ -15,6 +15,8 @@
 #include <boost/thread/barrier.hpp>
 #include <boost/hana.hpp>
 
+#include "joiner.hpp"
+#include "grouper.hpp"
 
 using query_time_point = std::chrono::time_point<std::chrono::high_resolution_clock>;
 struct query_context {
@@ -298,11 +300,11 @@ extern thread_local std::string grpkey_buffer;
  void get_double_grpkey(int* d_ptr, unsigned pos);
  void get_string_grpkey(int* str_ptr, unsigned pos);
  void get_time_grpkey(int* time_ptr, unsigned pos);
- void add_to_group();
- void finish_group_by(result_set* rs);
+ void add_to_group(grouper *g);
+ void finish_group_by(grouper *g, result_set* rs);
  void clear_mat_tuple();
- qr_tuple* grp_demat_at(int index);
- int get_grp_rs_count();
+ qr_tuple* grp_demat_at(grouper *g, int index);
+ int get_grp_rs_count(grouper *g);
 
 /**
  * Methods for the dematerialization of the tuple to IR registers
@@ -317,12 +319,12 @@ extern thread_local std::string grpkey_buffer;
 /**
  * Methods for the aggregation processing
  */
- void init_grp_aggr();
- int get_group_count();
- int get_total_group_count();
- int get_group_sum_int(int pos);
- double get_group_sum_double(int pos);
- uint64_t get_group_sum_uint(int pos);
+ void init_grp_aggr(grouper *g);
+ int get_group_count(grouper *g);
+ int get_total_group_count(grouper *g);
+ int get_group_sum_int(grouper *g, int pos);
+ double get_group_sum_double(grouper *g, int pos);
+ uint64_t get_group_sum_uint(grouper *g, int pos);
 
  void append_to_tuple(query_result qr);
 
