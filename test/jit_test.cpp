@@ -71,7 +71,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
   auto num_persons = 100u;
   auto num_books = 42u;
 
-  for (auto i = 0u; i < num_persons; i++) {
+  for (int i = 0; i < num_persons; i++) {
     graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
@@ -329,8 +329,8 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
   graph->begin_transaction();
 #endif
 
-  auto num_persons = 100u;
-  auto num_books = 42u;    
+  unsigned num_persons = 100;
+  unsigned num_books = 42;    
   for (int i = 0; i < num_persons; i++) {
     auto p = graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
@@ -699,7 +699,7 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
   graph->begin_transaction();
 #endif
 
-  int num_towns = 42;
+  auto num_towns = 42u;
   
   for(auto i = 0u; i < num_towns; i+=3) {
         auto t1 = graph->add_node("Town",

@@ -255,8 +255,8 @@ auto & tp = tp_m[std::this_thread::get_id()];
     /*if(print) {
         std::cout << "{";
         auto my_visitor = boost::hana::overload(
-            [&](node *n) { /*os << gdb->get_node_description(*n);  },
-            [&](relationship *r) { /* os << gdb->get_relationship_label(*r);  },
+            [&](node *n) { os << gdb->get_node_description(*n);  },
+            [&](relationship *r) {  os << gdb->get_relationship_label(*r);  },
             [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
             [&](const std::string &s) { std::cout << s; }, [&](uint64_t ll) { std::cout << ll; },
             [&](null_t n) { std::cout << "NULL"; },
