@@ -214,6 +214,8 @@ std::mutex mat_reg_mut;
         if(type == 2) {
             int res = std::stoi(con_map[type](gdb, reg));
             tp.push_back(res);
+        } else if(type == 3) {
+            tp.push_back(*(double*)reg);
         } else if(type == 5 || type == 6) {
             tp.push_back(time_result[*reg]);
         } else if(type == 8) {

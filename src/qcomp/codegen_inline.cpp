@@ -5,8 +5,7 @@
 #include "codegen_inline.hpp"
 #include "filter_expression_inline.hpp"
 
-bool finishing = false;
-Function *cur_pipeline;
+
 /*
 * Function initialisation at first access path
 */
@@ -106,8 +105,7 @@ AllocaInst *codegen_inline_visitor::insert_alloca(Type *ty) {
     return alloc;
 }
 int qcnt = 0;
-bool pipelined_finish = false;
-std::string query_id_str = "";
+
 /*
 * Generates code for a scan operator.
 */

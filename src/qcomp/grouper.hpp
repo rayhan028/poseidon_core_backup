@@ -74,7 +74,7 @@ class grouper {
     unsigned tota_grp_cnt_int;
     
 public:
-    grouper() : grp_cnt_(0), aggr_grp_cnt_(-1), grps_({}), grpkey_map_({}) {}
+    grouper() : grp_cnt_(0), aggr_grp_cnt_(-1), grps_({}), grpkey_map_({}), grp_cnt_int(false), tota_grp_cnt_int(0) {}
 
     void add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos);
     void finish(result_set* rs);

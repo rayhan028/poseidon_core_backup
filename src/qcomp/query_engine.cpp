@@ -32,7 +32,7 @@ query_engine::query_engine(graph_db_ptr &graph, unsigned int thread_num, unsigne
     graph_(graph), 
     compiled_(false), 
     complete_(false) {
-
+        
     ctx_.getModule().setDataLayout(jit_->getDataLayout());
 
     auto insert_nd = [&] (graph_db* gdb, int *ptr) -> std::string {

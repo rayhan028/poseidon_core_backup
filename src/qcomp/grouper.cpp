@@ -3,9 +3,8 @@
 std::mutex group_mtx; 
 void grouper::add_to_group(std::string key, qr_tuple qr, std::set<unsigned> pos_set) {  
     std::lock_guard<std::mutex> lck(group_mtx);
-
+    
     pos_set_ = pos_set;
-
     const auto itr = grpkey_map_.find(key);
     if(itr != grpkey_map_.end()) {
         grps_[itr->second].append(qr);
@@ -52,34 +51,28 @@ void grouper::init_grp_aggr() {
 
 unsigned grouper::get_group_cnt() {
     auto &grp_data = grps_[aggr_grp_cnt_].data;
-    auto ccnt = grp_data.size();
-    //grps_[aggr_grp_cnt_].data.clear();
-    return ccnt;
+    return grp_data.size(); 
 }
 
 unsigned grouper::get_total_group_cnt() {
-    if(!total_grp_cnt_calc) {
-        for(auto & g : grps_) {
-            total_grp_cnt += g.data.size();
-        }
-        total_grp_cnt_calc = true;
-        return total_grp_cnt;
-    } else {
-        return total_grp_cnt;
+    total_grp_cnt = 0;
+    for(auto & g : grps_) {
+        total_grp_cnt += g.data.size();
     }
+    
+    total_grp_cnt_calc = true;
+    return total_grp_cnt;
 }
 
 unsigned grouper::get_group_sum_int(int pos) {
-    if(!grp_cnt_int) {
-        auto &grp_data = grps_[aggr_grp_cnt_].data;
-        int i = 0;
-        for(auto &tpl : grp_data) {
-            tota_grp_cnt_int += boost::get<int>(tpl[pos]);
-        }
-        return tota_grp_cnt_int;
-    } else {
-        return tota_grp_cnt_int;
+    tota_grp_cnt_int = 0;
+    auto &grp_data = grps_[aggr_grp_cnt_].data;
+    int i = 0;
+    for(auto &tpl : grp_data) {
+        tota_grp_cnt_int += boost::get<int>(tpl[pos]);
     }
+    
+    return tota_grp_cnt_int;
 }
 
 double grouper::get_group_sum_double(int pos) {
