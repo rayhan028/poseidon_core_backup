@@ -84,10 +84,6 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&create_node_func), JITSymbolFlags::Exported);
         M[Mangle("create_ship")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&create_rship_func), JITSymbolFlags::Exported);
-        M[Mangle("foreach_variable_from")] = JITEvaluatedSymbol(
-                pointerToJITTargetAddress(&foreach_variable_from), JITSymbolFlags::Exported);
-        M[Mangle("foreach_variable_from")] = JITEvaluatedSymbol(
-                pointerToJITTargetAddress(&foreach_variable_from), JITSymbolFlags::Exported);
         M[Mangle("mat_reg_value")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&mat_reg_value), JITSymbolFlags::Exported);
         M[Mangle("collect_tuple")] = JITEvaluatedSymbol(

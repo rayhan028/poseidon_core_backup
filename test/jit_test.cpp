@@ -731,18 +731,6 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
 
 	query_engine queryEngine(graph, 1, chunks);
 
-  SECTION("Test the compiled variable foreach relationship operator2") {
-
-<<<<<<< HEAD
-        REQUIRE(true);
-=======
-        graph->begin_transaction();
-        auto q = query(graph).all_nodes("Town").from_relationships({1, 2}, ":CONNECTED").collect(rs);
-        q.start();
-        graph->commit_transaction();
-        REQUIRE(rs.data.size() == 191);
-  }
-
   SECTION("Test the compiled variable foreach relationship operator") {
         auto fev = Scan("Town", ForeachRship(RSHIP_DIR::FROM, {1, 2}, ":CONNECTED", 
                        Collect()));
@@ -752,10 +740,9 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
 
         result_set rs;
         queryEngine.generate(fev, false);
-        queryEngine.run(&rs, args.args);
+        queryEngine.run(&rs, args);
 
-        REQUIRE(rs.data.size() == 191);
->>>>>>> master
+        REQUIRE(rs.data.size() == 244);
     }
 
 #ifdef USE_PMDK

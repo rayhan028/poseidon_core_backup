@@ -263,72 +263,7 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
   return nptr;
 }
 
-<<<<<<< HEAD
-proj_spec queryc::get_property_spec(parse_tree_ptr& pn) {
-  assert (pn->is_type<qlang::proj_expr>());
-  std::vector<std::string> s;
-  boost::split(s, pn->string(), boost::is_any_of(":"));
-  return proj_spec{ s[0], s[1] };
-}
-
-jproperty queryc::get_json_property(parse_tree_ptr& pn) {
-  assert (pn->is_type<qlang::property>());
-  std::vector<std::string> s;
-  boost::split(s, pn->string(), boost::is_any_of(":"));
-  return jproperty{ s[0], s[1] };
-}
-
-void queryc::ast_to_plan(ast_op_ptr &ast) {
-  if (!ast)
-    return;
-
-  auto qop = ast_to_qop(ast, nullptr);
-}
-
-qop_ptr queryc::ast_to_qop(ast_op_ptr &ast, qop_ptr parent) {
-  std::cout << "ast_to_qop: " << ast->op_ << std::endl;
-  qop_ptr qop;
-  switch (ast->op_) {
-    case ast_op::node_scan:
-      qop = std::make_shared<scan_nodes>(ast->get_param<std::string>(0));
-      break;
-    case ast_op::limit:
-      qop = std::make_shared<limit_result>(ast->get_param<int>(0));
-      break;
-    case ast_op::project:
-      std::cout << "Project" << std::endl;
-      break;
-  /*  case ast_op::filter:
-      qop = std::make_shared<is_property>(??);
-      if (parent)
-        parent->connect(qop, std::bind(&is_property::process,
-                                dynamic_cast<is_property *>(qop.get()), ph::_1,
-                                ph::_2));
-      break;*/
-    default:
-      break;
-  } 
-  if (!ast->is_source()) {
-    auto qop1 = ast_to_qop(ast->children_[0], qop);
-    if (ast->children_.size() == 2) {
-      auto qop2 = ast_to_qop(ast->children_[1], qop);
-    }    
-  }
-  return qop;
-} 
-
-std::string parse_variable_name(std::string var_name) {
-  auto dot_pos = var_name.find(".");
-  return var_name.substr(dot_pos+1);
-}
-
-unsigned parse_tuple_id(std::string var_name) {
-  auto dot_pos = var_name.find(".");
-  return std::stoi(var_name.substr(1, dot_pos-1));
-}
-=======
 /* -------------------------------------------------------------------------------- */
->>>>>>> master
 
 expr queryc::parse_expression(parse_tree_ptr& tree) {
   auto& lhs_key = tree->children[0];

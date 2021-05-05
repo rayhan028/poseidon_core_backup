@@ -207,18 +207,6 @@ extern "C" node* create_node_func(graph_db *gdb, char *label, properties_t *prop
  */
 extern "C" relationship* create_rship_func(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props);
 
-/**
- * Functions to handle the variable from relationship operator
- */
-extern "C" void foreach_variable_from(graph_db *gdb, dcode_t label, int min, int max, consumer_fct_type consumer,
-                                 int oid, int **qr, int *rs, int size, int *ty, int **call_map_arg, int offset);
-
-/**
- * Functions to handle the variable to relationship operator
- */
-extern "C" void foreach_variable_to(graph_db *gdb, dcode_t label, int min, int max, consumer_fct_type consumer,
-                                      int oid, int **qr, int *rs, int size, int *ty, int **call_map_arg, int offset);
-
 extern std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
 
 /**

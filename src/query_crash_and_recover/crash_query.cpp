@@ -15,7 +15,7 @@
 const std::string test_path = poseidon::gPmemPath + "query_recovery";
 
 void init_data(graph_db_ptr &graph) {
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 
     int PERSONS = 50000;
     int add = 0;

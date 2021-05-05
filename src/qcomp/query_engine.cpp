@@ -170,11 +170,11 @@ void query_engine::run(result_set * rs, arg_builder & args, bool cleanup_query) 
 
     auto start_idx = start_.size()-1;
     auto last = graph_->get_nodes()->num_chunks();
-    query_context qtx = {graph_.get(), 0, last, tx, &rs, args.args.data()};
+    query_context qtx = {graph_.get(), 0, last, current_transaction_, &rs, args.args.data()};
     qtx.gdb = graph_.get();
     qtx.rs = &rs;
     *qtx.args = *args.args.data();
-    qtx.tx = tx;
+    qtx.tx = current_transaction_;
 
     for(i = start_idx; i >= 0; i--) {
         start_[i](&qtx, args.args.data(), rs);
@@ -183,10 +183,6 @@ void query_engine::run(result_set * rs, arg_builder & args, bool cleanup_query) 
            finish(&qtx, args.args.data(), rs);
        }
     }
-    
-    /*for(i = start_idx;i < finish_.size();i++) {
-        finish_[i](&qtx, args.args.data(), rs);
-    }*/
 
     graph_->commit_transaction();
 
