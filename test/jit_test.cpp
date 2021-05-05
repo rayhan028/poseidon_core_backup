@@ -65,7 +65,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 #endif
 
 #ifdef USE_TX
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
 
   auto num_persons = 100u;
@@ -94,7 +94,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
 #ifdef USE_TX
   graph->commit_transaction();
-  tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
 
   graph->create_index("Person", "id");
@@ -326,7 +326,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 #endif
 
 #ifdef USE_TX
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
 
   auto num_persons = 100u;
@@ -696,7 +696,7 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
 #endif
 
 #ifdef USE_TX
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
 
   int num_towns = 42;
@@ -733,7 +733,29 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
 
   SECTION("Test the compiled variable foreach relationship operator2") {
 
+<<<<<<< HEAD
         REQUIRE(true);
+=======
+        graph->begin_transaction();
+        auto q = query(graph).all_nodes("Town").from_relationships({1, 2}, ":CONNECTED").collect(rs);
+        q.start();
+        graph->commit_transaction();
+        REQUIRE(rs.data.size() == 191);
+  }
+
+  SECTION("Test the compiled variable foreach relationship operator") {
+        auto fev = Scan("Town", ForeachRship(RSHIP_DIR::FROM, {1, 2}, ":CONNECTED", 
+                       Collect()));
+        arg_builder args;
+        args.arg(1, "Town");
+        args.arg(2, ":CONNECTED");
+
+        result_set rs;
+        queryEngine.generate(fev, false);
+        queryEngine.run(&rs, args.args);
+
+        REQUIRE(rs.data.size() == 191);
+>>>>>>> master
     }
 
 #ifdef USE_PMDK

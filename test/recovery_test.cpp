@@ -49,7 +49,7 @@ TEST_CASE("Recovery of aborted inserts", "[graph_db]") {
     auto graph = pool->open_graph("my_graph");
 
     // check that inserts don't exist anymore
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
     int num_nodes = 0;
     graph->nodes([&](auto& n) { num_nodes++; });
     REQUIRE(num_nodes == 1);

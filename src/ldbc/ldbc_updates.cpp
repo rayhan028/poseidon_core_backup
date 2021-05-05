@@ -17,6 +17,10 @@
 
 #define IU_RESULT
 
+#ifndef USE_PMDK
+#undef RUN_INDEXED
+#endif
+
 // ------------------------------------------------------------------------------------------------------------------------
 
 void ldbc_iu_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {

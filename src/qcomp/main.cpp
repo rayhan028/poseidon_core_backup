@@ -169,6 +169,7 @@ int main() {
 	if(init) {
 		auto tx = graph->begin_transaction();
 
+<<<<<<< HEAD
 		int PERSONS = 10;
 		int add = 0;
 		int j = 1;

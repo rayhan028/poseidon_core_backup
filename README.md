@@ -52,7 +52,7 @@ auto graph = pool->open_graph("my_graph");
 Using a graph object we can add nodes and relationships. All these operations have to performed in the context of a transaction:
 
 ```c++
-auto tx = graph->begin_transaction();
+graph->begin_transaction();
 auto p1 = graph->add_node(":Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)}});
@@ -105,8 +105,7 @@ Project | [ projection list ], input | Projects query results based on the given
 Limit | number of tuples, input | Limits the input list to the given number of tuples
 ForeachRelationship | TO or FROM, RelationshipType, input | Traverses all incoming or outgoing relationships of the given type
 Sort |  sort function, input | Orders tuples according to the sorting function
-Group | [ GroupKey list ], input | Groups all tuples based on grouping key(s)
-Aggregate | [ AggregateType list ], input | Applies aggregate function(s) and appends the output to tuple
+GroupBy | [ GroupKey list ], [ AggregateType list  ], input | Groups all tuples based on grouping key(s) and apply aggregate functions
 AppendToTuple | result function, input | Computes a query result and appends it to tuple
 Union | [ query list ], input | Combines the tuples of multiple queries
 AlgoShortestPath | SPATHTYPE, relationship predicate, weight function, input | Performs a uni/bi-directional search for the weighted/unweighted or top-k shortest paths between node pairs and appends the paths and/or their weights to tuple
@@ -135,42 +134,6 @@ auto q = query(gdb)
                PExpr_(0, pj::ptime_property(res, "creationDate")) })
           .print();
   q.start();
-```
-
-### Poseidon Python API
-
-In addition, there is a thin wrapper library for providing a Python API. This API allows creating and opening graph databases, importing CVS data, and specifying query execution plans. The latter reflects the C++ query class (see above).
-
-In the following Python example the database `imdb` is created by loading the IMDB data from three files.
-
-```python
-import poseidon
-
-# create a new graph database
-graph = poseidon.graph_db()
-graph.create("imdb")
-
-# we need a mapping table for mapping logical node ids to ids used for
-# creating relationships
-m = graph.mapping()
-
-# import nodes and relationships for the IMDB database
-n = graph.import_nodes("Movies", "imdb-data/movies.csv", m)
-print(n, "movies imported.")
-n = graph.import_nodes("Actor", "imdb-data/actors.csv", m)
-print(n, "actors imported.")
-n = graph.import_relationships("imdb-data/roles.csv", m)
-print(n, "roles imported.")
-```
-
-After creating the graph database, it can be queried:
-
-```python
-q = poseidon.query(graph) \
-    .all_nodes("Movies") \
-    .print()
-
-q.start()
 ```
 
 ## Storage structure

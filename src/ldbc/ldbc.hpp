@@ -13,6 +13,7 @@
 #define CREATE_INDEX
 
 #define RUN_INDEXED
+
 // #define RUN_PARALLEL
 #define PRINT_RESULT
 

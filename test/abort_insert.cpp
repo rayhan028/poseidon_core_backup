@@ -16,13 +16,13 @@ int main(int argc, char **argv) {
     auto graph = pool->create_graph(graph_name);
     spdlog::info("create pool '{}' with graph '{}'", path, graph_name);
     {
-        auto tx = graph->begin_transaction();
+        graph->begin_transaction();
         auto n = graph->add_node(":Person", {{"number", boost::any(2)}});
         spdlog::info("node #{} inserted", n);
         graph->commit_transaction();
     }
     {
-        auto tx = graph->begin_transaction();
+        graph->begin_transaction();
         graph->add_node(":Person", {{"number", boost::any(42)}});
         graph->add_node(":Person", {{"number", boost::any(43)}});
         graph->add_node(":Person", {{"number", boost::any(44)}});

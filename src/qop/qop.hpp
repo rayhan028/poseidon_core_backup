@@ -219,7 +219,7 @@ struct index_scan : public qop {
  * of the consume method.
  */
 struct foreach_from_relationship : public qop {
-  foreach_from_relationship(const std::string &l, int pos) : label(l), lcode(0), npos(pos) {}
+  foreach_from_relationship(const std::string &l, int pos = std::numeric_limits<int>::max()) : label(l), lcode(0), npos(pos) {}
   ~foreach_from_relationship() = default;
 
   void dump(std::ostream &os) const override;
@@ -238,7 +238,7 @@ struct foreach_from_relationship : public qop {
  */
 struct foreach_variable_from_relationship : public qop {
   foreach_variable_from_relationship(const std::string &l, std::size_t min,
-                                     std::size_t max, int pos)
+                                     std::size_t max, int pos = std::numeric_limits<int>::max())
       : label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
   ~foreach_variable_from_relationship() = default;
 
@@ -258,7 +258,7 @@ struct foreach_variable_from_relationship : public qop {
  * of the consume method.
  */
 struct foreach_to_relationship : public qop {
-  foreach_to_relationship(const std::string &l, int pos) : label(l), lcode(0), npos(pos) {}
+  foreach_to_relationship(const std::string &l, int pos = std::numeric_limits<int>::max()) : label(l), lcode(0), npos(pos) {}
   ~foreach_to_relationship() = default;
 
   void dump(std::ostream &os) const override;
@@ -277,7 +277,7 @@ struct foreach_to_relationship : public qop {
  */
 struct foreach_variable_to_relationship : public qop {
   foreach_variable_to_relationship(const std::string &l, std::size_t min,
-                                   std::size_t max, int pos)
+                                   std::size_t max, int pos = std::numeric_limits<int>::max())
       : label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
   ~foreach_variable_to_relationship() = default;
 

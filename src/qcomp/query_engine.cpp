@@ -154,8 +154,8 @@ void query_engine::extract_arg(std::shared_ptr<base_op> op) {
 void query_engine::run(result_set * rs, arg_builder & args, bool cleanup_query) {
     //prepare();
 
-    auto tx = graph_->begin_transaction();
-    current_transaction_ = tx;
+    graph_->begin_transaction();
+    current_transaction_ = current_transaction();
     if(parallel_) {
         unsigned int op_start = 1;
         arg_builder args;

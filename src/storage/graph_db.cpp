@@ -77,11 +77,11 @@ void graph_db::runtime_initialize() {
 }
 
 bool graph_db::run_transaction(std::function<bool()> body) {
-  auto tx = begin_transaction();
+  begin_transaction();
   return body() ? commit_transaction() : abort_transaction();
 }
 
-transaction_ptr graph_db::begin_transaction() {
+void graph_db::begin_transaction() {
   if (current_transaction_)
     throw invalid_nested_transaction();
   auto tx = std::make_shared<transaction>();
@@ -92,7 +92,6 @@ transaction_ptr graph_db::begin_transaction() {
   active_tx_->insert({tx->xid(), tx});
   // spdlog::info("begin transaction {}", tx->xid());
 #endif
-  return tx;
 }
 
 void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
