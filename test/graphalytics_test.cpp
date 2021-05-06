@@ -29,7 +29,7 @@
 const std::string test_path = poseidon::gPmemPath + "graphalytics_test";
 
 void create_data(graph_db_ptr graph) {
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 
   /**
    *  0 --> 1 --> 2 --> 3 --> 4
@@ -71,7 +71,7 @@ TEST_CASE("Sequential BFS", "[ldbc]") {
   SECTION("bidirectional test") {
     std::vector<int> rs, expected;
 
-    auto tx = graph->begin_transaction(); 
+    graph->begin_transaction(); 
     bfs(graph, 0, false, 
         [](auto& r) { return true; }, 
         [&](auto& n) { rs.push_back(n.id()); }
@@ -85,7 +85,7 @@ TEST_CASE("Sequential BFS", "[ldbc]") {
   SECTION("unidirectional test") {
     std::vector<int> rs, expected;
 
-    auto tx = graph->begin_transaction(); 
+    graph->begin_transaction(); 
     bfs(graph, 0, true, 
         [](auto& r) { return true; }, 
         [&](auto& n) { rs.push_back(n.id()); }
@@ -100,7 +100,7 @@ TEST_CASE("Sequential BFS", "[ldbc]") {
     std::vector<int> rs, expected;
 
     auto label = graph->get_code(":knows");
-    auto tx = graph->begin_transaction(); 
+    graph->begin_transaction(); 
     bfs(graph, 0, false, 
         [&](auto& r) { return r.rship_label == label; }, 
         [&](auto& n) { rs.push_back(n.id()); }
@@ -114,7 +114,7 @@ TEST_CASE("Sequential BFS", "[ldbc]") {
   SECTION("path visitor test") {
     std::vector<path> rs, expected;
 
-    auto tx = graph->begin_transaction(); 
+    graph->begin_transaction(); 
     path_bfs(graph, 0, false, 
         [&](auto& r) { return true; }, 
         [&](auto& n, const path& p) { 

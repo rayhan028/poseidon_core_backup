@@ -344,6 +344,11 @@ public:
     }
 
     AllocaInst *insert_alloca(Type *ty);
+
+    bool finishing = false;
+    Function *cur_pipeline;
+    bool pipelined_finish = false;
+    std::string query_id_str = "";
     
 };
 

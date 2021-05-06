@@ -37,11 +37,14 @@
  *   q.start();
  */
 class query {
+  friend class query_set;
 public:
   /**
    * Constructor for a query on the given graph database.
    */
   query(graph_db_ptr gdb) : graph_db_(gdb) {}
+
+  query(graph_db_ptr gdb, qop_ptr qop);
 
   /**
    * Default destructor.
@@ -409,6 +412,11 @@ public:
    * Start the execution of the query.
    */
   void start();
+
+ /**
+   * Print the query plan.
+   */
+  void print_plan(std::ostream& os = std::cout);
 
 private:
   std::vector<query> queries_;

@@ -119,6 +119,8 @@ graph_db_ptr graph_pool::open_graph(const std::string& name) {
     return iter->second;
 }
 
+void graph_pool::close() {}
+
 #endif
 
 

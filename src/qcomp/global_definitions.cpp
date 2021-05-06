@@ -193,12 +193,13 @@ std::mutex prj_mutex;
     return gdb->get_string(dc);
 }
 
- node* create_node(graph_db *gdb, char *label, properties_t *props) {
+
+extern "C" node* create_node_func(graph_db *gdb, char *label, properties_t *props) {
     auto node_id = gdb->add_node(std::string(label), *props, true);
     return &gdb->node_by_id(node_id);
 }
 
- relationship* create_rship(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props) {
+extern "C" relationship* create_rship_func(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props) {
     auto rid = gdb->add_relationship(n1->id(), n2->id(), label, *props, true);
     return &gdb->rship_by_id(rid);
 }
@@ -214,6 +215,8 @@ std::mutex mat_reg_mut;
         if(type == 2) {
             int res = std::stoi(con_map[type](gdb, reg));
             tp.push_back(res);
+        } else if(type == 3) {
+            tp.push_back(*(double*)reg);
         } else if(type == 5 || type == 6) {
             tp.push_back(time_result[*reg]);
         } else if(type == 8) {
@@ -252,8 +255,8 @@ auto & tp = tp_m[std::this_thread::get_id()];
     /*if(print) {
         std::cout << "{";
         auto my_visitor = boost::hana::overload(
-            [&](node *n) { /*os << gdb->get_node_description(*n);  },
-            [&](relationship *r) { /* os << gdb->get_relationship_label(*r);  },
+            [&](node *n) { os << gdb->get_node_description(*n);  },
+            [&](relationship *r) {  os << gdb->get_relationship_label(*r);  },
             [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
             [&](const std::string &s) { std::cout << s; }, [&](uint64_t ll) { std::cout << ll; },
             [&](null_t n) { std::cout << "NULL"; },

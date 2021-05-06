@@ -328,7 +328,7 @@ double run_query_1(graph_db_ptr gdb) {
         assert(parameters[i].size() == 16);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         ldbc_iu_query_1(gdb, rs, parameters[i]);
         gdb->commit_transaction();
 
@@ -427,7 +427,7 @@ double run_query_2(graph_db_ptr gdb) {
         assert(parameters[i].size() == 3);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         ldbc_iu_query_2(gdb, rs, parameters[i]);
         gdb->commit_transaction();
 
@@ -526,7 +526,7 @@ double run_query_3(graph_db_ptr gdb) {
         assert(parameters[i].size() == 3);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         ldbc_iu_query_3(gdb, rs, parameters[i]);
         gdb->commit_transaction();
 
@@ -697,7 +697,7 @@ double run_query_4(graph_db_ptr gdb) {
         assert(parameters[i].size() == 5);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         ldbc_iu_query_4(gdb, rs, parameters[i]);
         gdb->commit_transaction();
 
@@ -796,7 +796,7 @@ double run_query_5(graph_db_ptr gdb) {
         assert(parameters[i].size() == 3);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         ldbc_iu_query_5(gdb, rs, parameters[i]);
         gdb->commit_transaction();
 
@@ -1215,7 +1215,7 @@ double run_query_6(graph_db_ptr gdb) {
         assert(parameters[i].size() == 12);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         ldbc_iu_query_6(gdb, rs, parameters[i]);
         gdb->commit_transaction();
 
@@ -1573,7 +1573,7 @@ double run_query_7(graph_db_ptr gdb) {
         assert(parameters[i].size() == 10);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         ldbc_iu_query_7(gdb, rs, parameters[i]);
         gdb->commit_transaction();
 
@@ -1672,7 +1672,7 @@ double run_query_8(graph_db_ptr gdb) {
         assert(parameters[i].size() == 3);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         ldbc_iu_query_8(gdb, rs, parameters[i]);
         gdb->commit_transaction();
 
@@ -1782,7 +1782,7 @@ int main(int argc, char **argv) {
   }
 
 #ifdef USE_TX
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
   node::id_t last_insert_node = graph->get_nodes()->as_vec().first_available();
   relationship::id_t last_insert_rship = graph->get_relationships()->as_vec().first_available();

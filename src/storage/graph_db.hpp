@@ -75,11 +75,10 @@ public:
   /* -------------- transaction management -------------- */
 
   /**
-   * Starts a new transaction and returns a pointer to this transaction.
-   * This transaction is associated with the current thread and stored there
-   * as thread_local property.
+   * Starts a new transaction. This transaction is associated with the 
+   * current thread and stored there as thread_local property.
    */
-  transaction_ptr begin_transaction();
+  void begin_transaction();
 
   /**
    * Commits the currently active transaction associated with this thread.

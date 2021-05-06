@@ -13,6 +13,10 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
+#ifndef USE_PMDK
+#undef RUN_INDEXED
+#endif
+
 // ------------------------------------------------------------------------------------------------------------------------
 
 void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {

@@ -729,11 +729,14 @@ void persist_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
 /* ------------------------------------------------------------------------ */
 
 projection::projection(const expr_list &exprs) : exprs_(exprs) {
+  if (exprs_.empty())
+    return;
   // we build a mapping table where for each expression variable refering to a
   // property a new index is created
-  auto it =
+      auto it =
       std::max_element(exprs_.begin(), exprs_.end(),
                        [](expr &e1, expr &e2) { return e1.vidx < e2.vidx; });
+
   nvars_ = it->vidx + 1;
   npvars_ = 0;
   var_map_.resize(nvars_);

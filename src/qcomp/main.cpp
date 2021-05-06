@@ -167,7 +167,7 @@ int main() {
   init = true;
 #endif
 	if(init) {
-		auto tx = graph->begin_transaction();
+		graph->begin_transaction();
 
 		int PERSONS = 10;
 		int add = 0;
@@ -226,8 +226,7 @@ int main() {
 		return true;
 	};
 
-	auto simp = Scan("Person", Project({{0, "id", FTYPE::INT}},
-			GroupBy({0},Aggr({{"count", 0}}, Collect()))));
+	auto simp = Scan("Person", GroupBy({0}, Aggr({{"count", 0}}, Collect())));
 
 	scan_task::callee_ = &scan_task::scan;	
 
@@ -243,7 +242,7 @@ int main() {
 	ab.arg(1, "Person");
 	ab.arg(2, &g1);
 	ab.arg(3, &g1);
-	ab.arg(4, &g2);
+	ab.arg(4, ":likes");
 	ab.arg(5, &g2);
 	ab.arg(6, &g3);
 	ab.arg(7, &g3);
@@ -254,9 +253,9 @@ int main() {
 	
 	result_set rs;
 
-	auto aq = query(graph).all_nodes("Person").groupby({0}, {{"count", 0}}).groupby({0,1}, {{"count", 0}}).collect(rs);
+	auto aq = query(graph).all_nodes("Person").project({PExpr_(0, pj::int_property(res, "age"))}).groupby({0}, {{"pcount", 0}}).collect(rs);
 
-	std::cout << "Start Query" << std::endl;
+	std::cout << rs << std::endl;
 	auto js = std::chrono::steady_clock::now();
 	queryEngine.run(&rs, ab, 24);
 	//queryEngine.finish(&rs, ab);

@@ -200,12 +200,12 @@ bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_C
 /**
  * Function for the creation of a node with given properties
  */
- node* create_node(graph_db *gdb, char *label, properties_t *props);
+extern "C" node* create_node_func(graph_db *gdb, char *label, properties_t *props);
 
 /**
  * Function for the creation of a relationship with given properties
  */
- relationship* create_rship(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props);
+extern "C" relationship* create_rship_func(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props);
 
 extern std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
 

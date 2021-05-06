@@ -140,5 +140,20 @@ void query::print_plans(std::initializer_list<query *> queries, std::ostream& os
     trees[0]->print(os);
     print_plan_helper(os, trees[0], "");
     os << "##----------------------------------------------------------------------\n";
+}
 
+void query_set::print_plan(std::ostream& os) {
+    std::vector<qop_node_ptr> trees;
+    for (auto &q : queries_) {
+        auto qop_tree = build_qop_tree(q.plan_head_);
+        trees.push_back(qop_tree.first);
+    }
+    // merge trees
+    for (auto i = 1u; i < trees.size(); i++) {
+        merge_qop_trees(trees[0], trees[i]);
+    }
+    os << "##----------------------------------------------------------------------\n";
+    trees[0]->print(os);
+    print_plan_helper(os, trees[0], "");
+    os << "##----------------------------------------------------------------------\n";
 }
