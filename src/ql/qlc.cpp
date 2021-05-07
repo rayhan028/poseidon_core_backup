@@ -141,12 +141,12 @@ void compile_query(graph_db_ptr &gdb, const std::string &qstr) {
   spdlog::debug("generate query code");     
   queryEngine.generate(plan, false);
   auto end_qc = std::chrono::steady_clock::now();
-
+  
   spdlog::debug("execute query code");     
 	queryEngine.run(&rs);
 
   auto end_qp = std::chrono::steady_clock::now();
-
+  
   std::cout << "Query compiled in "
             << std::chrono::duration_cast<std::chrono::milliseconds>(end_qc -
                                                                      start_qp)
