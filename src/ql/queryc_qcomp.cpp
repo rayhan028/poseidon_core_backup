@@ -119,6 +119,38 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
     }  
     case ast_op::group_by:
     {
+      auto pr_list = ast->get_param<proj_spec_list>(0);
+      auto aggr_list = ast->get_param<aggr_spec_list>(1);
+   
+      // Group attributes
+      std::vector<unsigned int> group_ids;
+      std::vector<std::pair<std::string, int>> aggrs;
+      for(auto & ag : aggr_list) {
+          auto tp_pos = parse_tuple_id(ag.aname);
+          group_ids.push_back(tp_pos);
+          aggrs.push_back({ag.afunc, tp_pos});
+      }
+
+      auto aggr = Aggr(aggrs, parent);
+      auto grby = GroupBy(group_ids, aggr);
+
+      // Project attributes
+      std::vector<pr_expr> pr_exprs;
+      for(auto & p : pr_list) {
+          FTYPE type = FTYPE::INT;
+          if (boost::iequals(p.ptype, "int")) {
+            type = FTYPE::INT;
+          } else if (boost::iequals(p.ptype, "string")) {
+            type = FTYPE::STRING;
+          } else if (boost::iequals(p.ptype, "uint64")) {
+            type = FTYPE::UINT64;
+          } /// TODO: improve type handling
+
+          auto pv_id = parse_tuple_id(p.pname);
+          auto pv_name = parse_variable_name(p.pname);
+          pr_exprs.push_back({pv_id, pv_name, type});
+      }
+      op = Project(pr_exprs, grby);  
       break;        
     }     
     default:

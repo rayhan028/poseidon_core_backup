@@ -106,7 +106,7 @@ void query_engine::prepare() {
         type_vec_[i].insert(type_vec_[i].end(), type_vec_[i-1].begin(), type_vec_[i-1].end());
     }
 }
-
+grouper g1;
 void query_engine::extract_arg(std::shared_ptr<base_op> op) {
     switch(op->type_) {
         case qop_type::scan: {
@@ -142,9 +142,18 @@ void query_engine::extract_arg(std::shared_ptr<base_op> op) {
         case qop_type::limit:
         case qop_type::nest_loop_join:
         case qop_type::none:
-        case qop_type::project:
+        case qop_type::project: {
+            // inline arguments, nothing to do
+            break;
+        }
         case qop_type::sort:
         case qop_type::any:
+        case qop_type::group: {
+            query_args.arg(arg_counter++, &g1);
+            query_args.arg(arg_counter++, &g1);
+            break;
+        }
+        case qop_type::aggr:
         default:
             return;
     }
@@ -205,6 +214,12 @@ void query_engine::run(result_set * rs, arg_builder & args, bool cleanup_query) 
 }
 
 void query_engine::run(result_set * rs) {
+    auto curop = cur_query_;
+    while(!curop->inputs_.empty()) {
+        extract_arg(curop);
+        curop = curop->inputs_[0];
+    }
+    
     run(rs, query_args);
 }
 

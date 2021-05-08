@@ -210,10 +210,9 @@ int main() {
 	auto THREAD_NUM = 4;
 	auto chunks = graph->get_nodes()->num_chunks();
 	auto cv_range = chunks / THREAD_NUM;
-	std::cout << "Chunks: " << chunks << std::endl;
+	
 	query_engine queryEngine(graph, THREAD_NUM, cv_range);
 
-	//algebra_optr op = qlc.compile_to_plan("Project([$0.name:string, $0.num:uint64], NodeScan('Person'))");
 	std::vector<std::string> labels = {"Person", "Book"};
 
 	auto qq  = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Book", End())));
@@ -226,7 +225,7 @@ int main() {
 		return true;
 	};
 
-	auto simp = Scan("Person", GroupBy({0}, Aggr({{"count", 0}}, Collect())));
+	auto simp = Scan("Person", GroupBy({0}, Aggr({{"count", 0}}, GroupBy({0}, Aggr({{"count", 0}}, GroupBy({0}, Aggr({{"count", 0}}, GroupBy({0}, Aggr({{"pcount", 0}}, Collect())))))))));
 
 	scan_task::callee_ = &scan_task::scan;	
 
@@ -242,14 +241,12 @@ int main() {
 	ab.arg(1, "Person");
 	ab.arg(2, &g1);
 	ab.arg(3, &g1);
-	ab.arg(4, ":likes");
+	ab.arg(4, &g2);
 	ab.arg(5, &g2);
 	ab.arg(6, &g3);
 	ab.arg(7, &g3);
-	ab.arg(8, ":likes");
-	ab.arg(9, "Person");
-	ab.arg(10, &g4);
-	ab.arg(11, &g4);
+	ab.arg(8, &g4);
+	ab.arg(9, &g4);
 	
 	result_set rs;
 
