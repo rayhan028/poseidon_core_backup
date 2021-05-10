@@ -47,7 +47,9 @@ void scan_task::scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::
 	if (n.is_valid()) {
 	   auto &nv = gdb->get_valid_node_version(n, xid);
 		consumer(nv);
+    #ifdef QOP_RECOVERY
     gdb->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
+    #endif
 	}
 #else
 	consumer_(*iter);

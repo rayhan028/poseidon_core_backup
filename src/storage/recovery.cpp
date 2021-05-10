@@ -4,6 +4,8 @@
 #include "relationships.hpp"
 #include <iostream>
 
+#ifdef QOP_RECOVERY
+
 query_argument_list::~query_argument_list() {
 
 }
@@ -60,3 +62,5 @@ void recovery_list::add(qr_tuple &&qr, std::size_t chunk) {
     }
     std::atomic_fetch_add(&tuple_cnt_, 1);
 }
+
+#endif

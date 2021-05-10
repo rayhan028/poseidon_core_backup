@@ -247,7 +247,7 @@ int main() {
 	ab.arg(7, &g3);
 	ab.arg(8, &g4);
 	ab.arg(9, &g4);
-	
+
 	result_set rs;
 
 	auto aq = query(graph).all_nodes("Person").project({PExpr_(0, pj::int_property(res, "age"))}).groupby({0}, {{"pcount", 0}}).collect(rs);

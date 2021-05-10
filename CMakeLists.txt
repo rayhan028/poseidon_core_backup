@@ -16,6 +16,7 @@ option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
 option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
 option(QOP_PROFILING  "Enable query profiling"                 ON)
+option(QOP_RECOVERY   "Enable query recovery on failure"       ON)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -325,18 +326,24 @@ else()
   set(dict_src src/dict/dict_bimap.cpp)
 endif()
 
+if(QOP_RECOVERY MATCHES ON)
+  set(qoprec_src src/storage/recovery.cpp)
+else()
+  set(qoprec_src "")
+endif()
+
 set(src_files 
   ${dict_src} 
   src/storage/nodes.cpp
   src/storage/relationships.cpp
   src/storage/properties.cpp
-  src/storage/recovery.cpp
   src/storage/graph_db.cpp
   src/storage/graph_db_import.cpp
   src/storage/graph_db_index.cpp
   src/storage/graph_db_query.cpp
-  src/storage/graph_db_recovery.cpp
   src/storage/graph_db_gc.cpp
+  src/storage/graph_db_recovery.cpp
+  ${qoprec_src}
   src/btree/index_map.cpp
   src/qop/profiling.cpp
   src/qop/qop.cpp
@@ -615,28 +622,6 @@ add_executable(qlc
  )
 
  target_link_libraries(qlc
- poseidon_core
- ${PMDK_LIBRARIES}
- Boost::program_options
-)
-
-add_executable(crash_query
-#  src/ql/ast.cpp
-  src/query_crash_and_recover/crash_query.cpp
- )
-
- target_link_libraries(crash_query
- poseidon_core
- ${PMDK_LIBRARIES}
- Boost::program_options
-)
-
-add_executable(recover_query
-#  src/ql/ast.cpp
-  src/query_crash_and_recover/recover_and_continue.cpp
- )
-
- target_link_libraries(recover_query
  poseidon_core
  ${PMDK_LIBRARIES}
  Boost::program_options

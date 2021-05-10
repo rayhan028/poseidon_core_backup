@@ -78,6 +78,8 @@ void graph_db::apply_undo_log() {
 #endif
 }
 
+#ifdef QOP_RECOVERY
+
 void graph_db::store_query_result(qr_tuple &qr, std::size_t chunk) {
   recovery_results_->add(std::move(qr), chunk);
 }
@@ -196,3 +198,5 @@ void graph_db::continue_parallel_nodes(std::map<std::size_t, std::size_t> &check
     f.get();
   }
 }
+
+#endif

@@ -273,11 +273,12 @@ auto & tp = tp_m[std::this_thread::get_id()];
     tp.clear();
 }
 }
-
+#ifdef QOP_RECOVERY
 void persist_tuple(graph_db *gdb, qr_tuple *qr) {
     gdb->store_query_result(*qr, 0);
     qr->clear();
 }
+#endif
 
 thread_local qr_tuple mat_tuple;
 

@@ -34,8 +34,10 @@ graph_db::graph_db(const std::string &db_name) {
   rships_ = p_make_ptr<relationship_list>();
   node_properties_ = p_make_ptr<property_list>();
   rship_properties_ = p_make_ptr<property_list>();
+#ifdef QOP_RECOVERY
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
+#endif
   dict_ = p_make_ptr<dict>();
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
@@ -62,8 +64,10 @@ graph_db::~graph_db() {
 void graph_db::runtime_initialize() {
   nodes_->runtime_initialize();
   rships_->runtime_initialize();
+#ifdef QOP_RECOVERY
   recovery_results_->runtime_initialize();
   recovery_res_->runtime_initialize();
+#endif
   // make sure the dictionary is initialized
   dict_->initialize();
   // perform recovery using the undo log
