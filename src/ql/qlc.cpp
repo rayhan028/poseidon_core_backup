@@ -119,10 +119,22 @@ static void trim(std::string &s) {
 }
 
 /**
+ * Execute the query given as string by interpreting the plan.
+ */
+void interpret_query(graph_db_ptr &gdb, const std::string &qstr) {
+  queryc qlc;
+  spdlog::debug("create AOT query code");
+  auto qset = qlc.generate_qex_plan(gdb, qstr);  
+  qset.start(); 
+}
+
+/**
  * Execute the query given as string by generating code via LLVM.
  */
 void compile_query(graph_db_ptr &gdb, const std::string &qstr) {
   queryc qlc;
+
+#ifdef USE_LLVM
   spdlog::debug("compile to plan via LLVM");     
   auto plan = qlc.compile_to_plan(qstr);
 /*
@@ -151,23 +163,17 @@ void compile_query(graph_db_ptr &gdb, const std::string &qstr) {
             << std::chrono::duration_cast<std::chrono::milliseconds>(end_qc -
                                                                      start_qp)
                    .count()
-            << " ms and executed in "
+            << " ms and executed in " 
             << std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
                                                                      end_qc)
                    .count()
             << " ms" << std::endl;
 
   std::cout << rs << std::endl;
-}
-
-/**
- * Execute the query given as string by interpreting the plan.
- */
-void interpret_query(graph_db_ptr &gdb, const std::string &qstr) {
-  queryc qlc;
-  spdlog::debug("create AOT query code");
-  auto qset = qlc.generate_qex_plan(gdb, qstr);  
-  qset.start(); 
+#else
+spdlog::debug("query compiler is disabled, create AOT query code");
+interpret_query(gdb, qstr);
+#endif
 }
 
 /**

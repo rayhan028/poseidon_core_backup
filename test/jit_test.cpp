@@ -29,6 +29,7 @@
 #include <iostream>
 #include <boost/variant.hpp>
 
+#ifdef USE_LLVM
 #include "qoperator.hpp"
 #include "queryc.hpp"
 #include "query.hpp"
@@ -754,3 +755,9 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
 #endif
 
 }
+
+#else
+TEST_CASE("dummy test") {
+  REQUIRE(true);
+}
+#endif

@@ -12,6 +12,8 @@
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
 
+#ifdef USE_LLVM
+
 #include "qoperator.hpp"
 #include "queryc.hpp"
 
@@ -239,3 +241,9 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
 	remove(test_path.c_str());
 #endif
 }
+
+#else
+TEST_CASE("dummy test qcomp") {
+    REQUIRE(true);
+}
+#endif

@@ -25,7 +25,7 @@
 
 #include "queryc.hpp"
 
-
+#ifdef USE_LLVM
 algebra_optr queryc::compile_to_plan(const std::string &query) {
     auto ast = parse(query);
     if (!ast) 
@@ -76,12 +76,14 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
     case ast_op::limit:
       op = Limit(ast->get_param<int>(0), parent);
       break;
+#ifdef USE_LLVM
     case ast_op::filter:
     {
-      auto fexpr = ast->get_param<expr>(0);
-      op = Filter(fexpr, parent);
+      //auto fexpr = ast->get_param<expr>(0);
+      //op = Filter(fexpr, parent);
     }
       break;
+#endif
     case ast_op::project:
     {
         auto pr_list = ast->get_param<proj_spec_list>(0);
@@ -164,3 +166,5 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
   }
   return op;
 }
+
+#endif

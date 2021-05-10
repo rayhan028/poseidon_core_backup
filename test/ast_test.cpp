@@ -22,6 +22,7 @@ TEST_CASE("Constructing an AST from a query string", "[qlang]") {
         REQUIRE(os.str() == "Project([ $0.firstName, $0.lastName ] )\n└── NodeScan('Person' )\n");
     }
 
+#ifdef USE_LLVM
     SECTION("filter") {
         auto ast = qc.parse("Filter($0.id == 42)");
         std::ostringstream os;
@@ -70,6 +71,7 @@ TEST_CASE("Constructing an AST from a query string", "[qlang]") {
         ast_to_stream(ast, os);
         REQUIRE(os.str() == "HashJoin($0.id==$0.id )\n├── NodeScan('Post' )\n└── NodeScan('Person' )\n");
     }
+#endif
 
     SECTION("sort + limit") {
         auto ast = qc.parse("Limit(20, Sort([$4.Age:int DESC, $1.Name:string ASC]))");
@@ -105,6 +107,7 @@ TEST_CASE("Constructing an AST from a query string", "[qlang]") {
         REQUIRE(os.str() == "CreateNode(n:Label { name:  $0.Name, age:  $0.Age } )\n└── NodeScan('Person' )\n");
     }
 
+#ifdef USE_LLVM
    SECTION("scan + create rship") {
         auto ast = qc.parse("Create(($0)-[r:Label { id: 'Bla'} ]->($1), HashJoin($0.Id == $1.PId, NodeScan('Person'), NodeScan('Order')))");
         std::ostringstream os;
@@ -118,4 +121,5 @@ TEST_CASE("Constructing an AST from a query string", "[qlang]") {
         ast_to_stream(ast, os);
         REQUIRE(os.str() == "CreateRelationship(<-> 0 1 r:Label )\n└── HashJoin($0.Id==$1.Id )\n    ├── NodeScan('Order' )\n    └── NodeScan('Person' )\n");
     }
+#endif 
 }

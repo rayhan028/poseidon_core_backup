@@ -32,7 +32,9 @@ namespace pegtl = tao::pegtl;
 /* -------------------------------------------------------------------------------- */
 /*                               Helper methods                                     */
 /* -------------------------------------------------------------------------------- */   
+#ifdef USE_LLVM
 expr parse_expression(parse_tree_ptr& tree);
+#endif
 
 std::string queryc::trim_string(const std::string& s) {
   std::string s2 = s;
@@ -195,10 +197,12 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
       else if (param->is_type<qlang::integer>()) {
         nptr->add_param(std::stoi(param->string()));
       }
+#ifdef USE_LLVM
       else if (param->is_type<qlang::expression>()) {
         // nptr->add_param(std::move(param));
-        nptr->add_param(parse_expression(param));
+        //nptr->add_param(parse_expression(param));
       }
+#endif
       else if (param->is_type<qlang::proj_array>()) {
         proj_spec_list plist;
         for (auto& p : param->children) {
@@ -264,7 +268,7 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
 }
 
 /* -------------------------------------------------------------------------------- */
-
+#ifdef USE_LLVM
 expr queryc::parse_expression(parse_tree_ptr& tree) {
   auto& lhs_key = tree->children[0];
   
@@ -299,3 +303,4 @@ expr queryc::parse_expression(parse_tree_ptr& tree) {
   return op_se;
 }
 
+#endif
