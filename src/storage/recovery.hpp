@@ -15,8 +15,6 @@
 #include "transaction.hpp"
 #include "txn_data.hpp"
 
-#define QOP_RECOVERY
-
  /*
   Wrapper structure for the stored intermediate query result.
   Tuple_id_ is the identifier of the tuple to which the result belongs.

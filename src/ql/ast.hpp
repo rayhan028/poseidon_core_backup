@@ -85,14 +85,20 @@ struct ast_op {
         create_rship 
     };
 
+#ifdef USE_LLVM
     using param_type = boost::variant<int, 
                                         std::string, 
-                                        #ifdef USE_LLVM 
-                                            expr,
-                                        #endif 
+                                        expr,
                                         proj_spec_list, 
                                         jproperty_list, 
                                         aggr_spec_list>;
+#else
+using param_type = boost::variant<int, 
+                                        std::string, 
+                                        proj_spec_list, 
+                                        jproperty_list, 
+                                        aggr_spec_list>;    
+#endif
 
     /**
      * Constructor

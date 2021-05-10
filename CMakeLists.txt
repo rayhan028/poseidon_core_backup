@@ -65,10 +65,20 @@ endif()
 if(QOP_PROFILING MATCHES ON)
   add_definitions( "-DQOP_PROFILING" )
 endif()
+
+if(USE_LLVM MATCHES ON)
+  add_definitions( "-DUSE_LLVM" )
+endif()
+
+if(QOP_RECOVERY MATCHES ON)
+  add_definitions( "-DQOP_RECOVERY" )
+endif()
+
 configure_file(
   ${PROJECT_SOURCE_DIR}/src/config.h.in
   ${PROJECT_BINARY_DIR}/generated/config.h
 )
+
 
 
 
@@ -361,13 +371,13 @@ set(src_files
   src/storage/nodes.cpp
   src/storage/relationships.cpp
   src/storage/properties.cpp
+  ${qoprec_src}
   src/storage/graph_db.cpp
   src/storage/graph_db_import.cpp
   src/storage/graph_db_index.cpp
   src/storage/graph_db_query.cpp
   src/storage/graph_db_gc.cpp
   src/storage/graph_db_recovery.cpp
-  ${qoprec_src}
   src/btree/index_map.cpp
   src/qop/profiling.cpp
   src/qop/qop.cpp

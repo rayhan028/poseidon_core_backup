@@ -199,8 +199,8 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
       }
 #ifdef USE_LLVM
       else if (param->is_type<qlang::expression>()) {
-        // nptr->add_param(std::move(param));
-        //nptr->add_param(parse_expression(param));
+          //nptr->add_param(std::move(param));
+          nptr->add_param(parse_expression(param));
       }
 #endif
       else if (param->is_type<qlang::proj_array>()) {

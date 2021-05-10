@@ -18,8 +18,6 @@
 #include "joiner.hpp"
 #include "grouper.hpp"
 
-#define USE_LLVM
-
 using query_time_point = std::chrono::time_point<std::chrono::high_resolution_clock>;
 struct query_context {
     graph_db* gdb;
