@@ -40,6 +40,7 @@ void init_graph(graph_db_ptr &gdb) {
 }
 
 TEST_CASE("Store checkpoint test") {
+#ifdef QOP_RECOVERY
     auto pool = graph_pool::create(test_path);
     auto graph = pool->create_graph("my_graph");
 
@@ -63,8 +64,9 @@ TEST_CASE("Store checkpoint test") {
         ++iter;
     }
 
-
-    REQUIRE(true);
-
     graph_pool::destroy(pool);
+
+#else
+    REQUIRE(true);
+#endif
 }
