@@ -33,12 +33,14 @@ p_jit::p_jit(ExitOnError ExitOnErr)
 #else
           CompileLayer(*ES, ObjLinkingLayer, std::make_unique<SimpleCompiler>(*TM)),
 #endif
-          OptimizeLayer(*ES, CompileLayer) {
+          OptimizeLayer(*ES, CompileLayer),
+          MainJD(ES->createBareJITDylib("main")) {
     //ObjLinkingLayer.setNotifyLoaded(createNotifyLoadedFtor());
-    auto exp_jit_dylib = ES->createJITDylib("Main");
-    if(exp_jit_dylib) {
-        if(auto R = createHostProcessResolver())
-                ES->getJITDylibByName("Main")->addGenerator(std::move(R));
+    //if(*MainJD) {
+        //if(auto R = createHostProcessResolver())
+                //MainJD.addGenerator(std::move(R));
+                cantFail(DynamicLibrarySearchGenerator::GetForCurrentProcess(
+            getDataLayout().getGlobalPrefix()));
         SymbolMap M;
         MangleAndInterner Mangle(*ES, getDataLayout());
         // Register every symbol that can be accessed from the JIT'ed code.
@@ -201,15 +203,17 @@ p_jit::p_jit(ExitOnError ExitOnErr)
         M[Mangle("print_int")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&print_int), JITSymbolFlags::Exported);
 
-        ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
-    }
+        ExitOnErr(MainJD.define(absoluteSymbols(M)));
+    //}
+}
+
+p_jit::~p_jit() {
+    if(auto err = ES->endSession())
+        ES->reportError(std::move(err));
 }
 
 
 Error p_jit::addModule(std::unique_ptr<Module> M) {
-    auto K = ES->allocateVModule();
-    ModuleKeys.push_back(K);
-
 #if USE_CACHE
     std::cout << "Use cache" << std::endl;
     auto obj = ObjCache->getCachedObject(*M);
@@ -227,7 +231,11 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
 
     OptimizeLayer.setTransform(Optimizer(3));
     
-    return OptimizeLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx), K);
+    auto RT = MainJD.getDefaultResourceTracker();
+
+    return OptimizeLayer.add(RT, ThreadSafeModule(std::move(M), ctx));
+
+    //return OptimizeLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx), K);
     //cantFail(CompileLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx)));
 }
 
