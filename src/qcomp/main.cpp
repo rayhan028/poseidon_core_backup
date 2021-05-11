@@ -252,7 +252,6 @@ int main() {
 
 	auto aq = query(graph).all_nodes("Person").project({PExpr_(0, pj::int_property(res, "age"))}).groupby({0}, {{"pcount", 0}}).collect(rs);
 
-	std::cout << "Run" << std::endl;
 	auto js = std::chrono::steady_clock::now();
 	queryEngine.run(&rs, ab, 24);
 	//queryEngine.finish(&rs, ab);

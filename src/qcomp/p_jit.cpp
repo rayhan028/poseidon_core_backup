@@ -35,16 +35,14 @@ p_jit::p_jit(ExitOnError ExitOnErr)
 #endif
           OptimizeLayer(*ES, CompileLayer),
           MainJD(ES->createBareJITDylib("main")) {
-    //ObjLinkingLayer.setNotifyLoaded(createNotifyLoadedFtor());
-    //if(*MainJD) {
-        //if(auto R = createHostProcessResolver())
-                //MainJD.addGenerator(std::move(R));
+
         auto dl = getDataLayout();
                 cantFail(DynamicLibrarySearchGenerator::GetForCurrentProcess(
-            dl.getGlobalPrefix()));
-            std::cout << "INIT" << std::endl;
+        dl.getGlobalPrefix()));
+            
         SymbolMap M;
         MangleAndInterner Mangle(*ES, dl);
+
         // Register every symbol that can be accessed from the JIT'ed code.
         M[Mangle("vec_end_reached")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&vec_end_reached), JITSymbolFlags::Exported);
@@ -206,7 +204,6 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&print_int), JITSymbolFlags::Exported);
 
         ExitOnErr(MainJD.define(absoluteSymbols(M)));
-    //}
 }
 
 p_jit::~p_jit() {
