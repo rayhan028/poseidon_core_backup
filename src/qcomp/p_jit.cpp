@@ -39,10 +39,12 @@ p_jit::p_jit(ExitOnError ExitOnErr)
     //if(*MainJD) {
         //if(auto R = createHostProcessResolver())
                 //MainJD.addGenerator(std::move(R));
+        auto dl = getDataLayout();
                 cantFail(DynamicLibrarySearchGenerator::GetForCurrentProcess(
-            getDataLayout().getGlobalPrefix()));
+            dl.getGlobalPrefix()));
+            std::cout << "INIT" << std::endl;
         SymbolMap M;
-        MangleAndInterner Mangle(*ES, getDataLayout());
+        MangleAndInterner Mangle(*ES, dl);
         // Register every symbol that can be accessed from the JIT'ed code.
         M[Mangle("vec_end_reached")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&vec_end_reached), JITSymbolFlags::Exported);
@@ -278,7 +280,7 @@ Error p_jit::applyDataLayout(llvm::Module &M) {
 
 Expected<JITTargetAddress> p_jit::getFunctionAddr(llvm::StringRef Name) {
     SymbolStringPtr NamePtr = ES->intern(mangle(Name));
-    JITDylibSearchOrder JDs{{ES->getJITDylibByName("Main"), JITDylibLookupFlags::MatchAllSymbols}};
+    JITDylibSearchOrder JDs{{&MainJD, JITDylibLookupFlags::MatchAllSymbols}};
     Expected<JITEvaluatedSymbol> S = ES->lookup(JDs, NamePtr);
     if(!S)
         return S.takeError();
