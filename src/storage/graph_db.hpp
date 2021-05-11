@@ -369,6 +369,9 @@ public:
   void parallel_nodes(node_consumer_func consumer);
 
 #ifdef QOP_RECOVERY
+  /**
+   * Continues the scan from the given positions (checkpoints) and invokes the given consumer function for each node.
+   */
   void continue_parallel_nodes(std::map<std::size_t, std::size_t> &check_points, node_consumer_func consumer);
 #endif
   /**
@@ -504,9 +507,29 @@ public:
   node &get_valid_node_version(node &n, xid_t xid);
 
 #ifdef QOP_RECOVERY
+  /**
+   * Return the checkpoints for each touched chunked from the last query
+   */
+  const p_ptr<rec_map_t>& get_query_checkpoints() { return recovery_res_; }
+
+  /**
+   * Stores the tuple of a query into intermediate storage
+   */
   void store_query_result(qr_tuple &qr, std::size_t chunk);
+
+  /**
+   * Stores the checkpoint of a chunk into intermediate storage
+   */
   void store_iter(std::pair<std::size_t, std::size_t> iter_pos);
+
+  /**
+   * Recovers the stored intermediate results into a given list
+   */
   void restore_results(std::list<qr_tuple> &result_list);
+
+  /**
+   * Returns the checkpoint positions to continue a failed query
+   */
   std::map<std::size_t, std::size_t> restore_positions();
 #endif
 private:
@@ -578,9 +601,10 @@ private:
 
   p_ptr<index_map> index_map_; // the list of all exisiting indexes
   p_ptr<pmlog> ulog_; // the undo log 
+
 #ifdef QOP_RECOVERY
-  p_ptr<recovery_list> recovery_results_; // stored intermediate results
-  p_ptr<rec_map_t> recovery_res_;
+  p_ptr<recovery_list> recovery_results_; // stored intermediate tuples of a query
+  p_ptr<rec_map_t> recovery_res_; // stored checkpoints of the chunks 
 #endif
   /**
    * These member variables are volatile and have to be reinitialized

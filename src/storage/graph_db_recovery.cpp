@@ -127,6 +127,9 @@ std::map<std::size_t, std::size_t> graph_db::restore_positions() {
   return cp;
 }
 
+/**
+ * A task structure to continue a failed query with from stored checkpoints
+ */
 struct continue_query_task {
   using range = std::pair<std::size_t, std::size_t>;
   continue_query_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last,
