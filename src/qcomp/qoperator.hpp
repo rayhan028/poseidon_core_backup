@@ -1,12 +1,12 @@
-#ifndef ART_QOPERATOR_HPP
-#define ART_QOPERATOR_HPP
+#ifndef QOPERATOR_HPP
+#define QOPERATOR_HPP
 
 #include <iostream>
+#include <limits>
 
 #include "p_context.hpp"
 #include "filter_expression.hpp"
 #include "global_definitions.hpp"
-
 #include "query_engine.hpp"
 
 using namespace llvm;
@@ -23,6 +23,11 @@ class sort_op;
 class limit_op;
 class end_op;
 class create_op;
+class group_op;
+class aggr_op;
+class connected_op;
+class append_op;
+class store_op;
 
 class op_visitor {
 public:
@@ -49,6 +54,16 @@ public:
     virtual void visit(std::shared_ptr<end_op> op) = 0;
 
     virtual void visit(std::shared_ptr<create_op> op) = 0;
+
+    virtual void visit(std::shared_ptr<group_op> op) = 0;
+
+    virtual void visit(std::shared_ptr<aggr_op> op) = 0;
+
+    virtual void visit(std::shared_ptr<connected_op> op) = 0;
+
+    virtual void visit(std::shared_ptr<append_op> op) = 0;
+
+    virtual void visit(std::shared_ptr<store_op> op) = 0;
 };
 
 using algebra_optr = std::shared_ptr<base_op>;
@@ -88,7 +103,10 @@ enum class qop_type {
     sort,
     limit,
     collect,
-    create
+    create,
+    group,
+    aggr,
+    store
 };
 
 enum class create_type {
@@ -122,19 +140,19 @@ public:
 
 class scan_op : public base_op, public std::enable_shared_from_this<scan_op> {
 public:
-    std::string label_;
-
     scan_op(algebra_optr inp) {
         inputs_.push_back(inp);
     }
 
     scan_op(std::string label, bool indexed, algebra_optr inp) : label_(label), indexed_(indexed) {
         inputs_.push_back(inp);
-        if (label.empty()) {
-            name_ = "Scan_All";
-        } else {
-            name_ = "Scan_" + label_;
-        }
+
+        type_ = qop_type::scan;
+        produced_type_ = 0;
+    }
+
+    scan_op(std::vector<std::string> labels, bool indexed, algebra_optr inp) : labels_(labels), indexed_(indexed) {
+        inputs_.push_back(inp);
 
         type_ = qop_type::scan;
         produced_type_ = 0;
@@ -142,10 +160,13 @@ public:
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
+    std::string label_;
+    std::vector<std::string> labels_;
     bool indexed_;
 };
 
 inline algebra_optr Scan(std::string label, algebra_optr op) { return std::make_shared<scan_op>(label, false, op); }
+inline algebra_optr Scan(std::vector<std::string> labels, algebra_optr op) { return std::make_shared<scan_op>(labels, false, op); }
 inline algebra_optr IndexScan(algebra_optr op) { return std::make_shared<scan_op>("", true, op); }
 
 enum class RSHIP_DIR {
@@ -168,7 +189,14 @@ public:
         inputs_.push_back(inp);
     }
 
-    foreach_rship_op(RSHIP_DIR dir, std::pair<int, int> hops, std::string label, algebra_optr inp) : dir_(dir), label_(label), hops_(hops) {
+    foreach_rship_op(RSHIP_DIR dir, std::pair<int, int> hops, std::string label, algebra_optr inp) : dir_(dir), label_(label), hops_(hops), node_pos_(std::numeric_limits<int>::max()) {
+        name_ = "ForeachRelationship";
+        inputs_.push_back(inp);
+        produced_type_ = 1;
+        type_ = qop_type::foreach_rship;
+    }
+
+    foreach_rship_op(RSHIP_DIR dir, std::string label, int node_pos, algebra_optr inp) : dir_(dir), label_(label), node_pos_(node_pos) {
         name_ = "ForeachRelationship";
         inputs_.push_back(inp);
         produced_type_ = 1;
@@ -184,18 +212,57 @@ public:
     RSHIP_DIR dir_;
     std::string label_;
     std::pair<int, int> hops_;
+    int node_pos_;
 };
 
 inline algebra_optr ForeachRship(RSHIP_DIR dir, std::pair<int, int> hops, std::string label, algebra_optr op) {
     return std::make_shared<foreach_rship_op>(dir, hops, label, op);
 }
 
+inline algebra_optr ForeachRship(RSHIP_DIR dir, std::string label, int node_pos, algebra_optr op) {
+    return std::make_shared<foreach_rship_op>(dir, label, node_pos, op);
+}
+
+inline algebra_optr FromRships(std::string label, algebra_optr op) {
+    auto dir = RSHIP_DIR::FROM;
+    std::pair<int, int> p = {};
+    return std::make_shared<foreach_rship_op>(dir, p, label, op);
+}
+
+inline algebra_optr ToRships(std::string label, algebra_optr op) {
+    auto dir = RSHIP_DIR::TO;
+    std::pair<int, int> p = {};
+    return std::make_shared<foreach_rship_op>(dir, p, label, op);
+}
 
 
 struct pr_expr {
+    enum PROJECTION_TYPE {
+        PROPERTY_PR,
+        FORWARD_PR,
+        FUNCTIONAL_VAL,
+        CONDITIONAL_VAL,
+    };
+
+    typedef int (*int_prj_func_node)(node *n);
+
     std::size_t id;
     std::string key;
     FTYPE type;
+    bool if_exist_;
+    std::vector<std::string> has_properties;
+    std::pair<std::string, std::string> then_else;
+    
+    int_prj_func_node int_node_func;
+
+    PROJECTION_TYPE prt;
+
+    
+    pr_expr(std::size_t i) : id(i), type(FTYPE::NONE), int_node_func(nullptr), prt(PROJECTION_TYPE::FORWARD_PR)  {}
+    pr_expr(std::size_t i, int_prj_func_node func) : id(i), int_node_func(func), prt(PROJECTION_TYPE::FUNCTIONAL_VAL) {}
+    pr_expr(std::size_t i, std::string k, FTYPE t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist), prt(PROJECTION_TYPE::PROPERTY_PR) {}
+    pr_expr(std::size_t i, std::vector<std::string> properties, std::pair<std::string, std::string> then) : 
+        id(i), has_properties(properties), then_else(then), prt(PROJECTION_TYPE::CONDITIONAL_VAL) {}
 };
 
 class project : public base_op, public std::enable_shared_from_this<project> {
@@ -250,14 +317,26 @@ public:
         produced_type_ = 0;
     }
 
+    expand_op(EXPAND exp, std::vector<std::string> labels, algebra_optr inp) : exp_(exp), labels_(labels) {
+        name_ = "Expand";
+        inputs_.push_back(inp);
+        type_ = qop_type::expand;
+        produced_type_ = 0;
+    }
+
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
     EXPAND exp_;
     std::string label_;
+    std::vector<std::string> labels_;
 };
 
 inline algebra_optr Expand(EXPAND exp, std::string label, algebra_optr op) { return std::make_shared<expand_op>(exp, label, op); }
-
+inline algebra_optr Expand(EXPAND exp, std::vector<std::string> labels, algebra_optr op) { return std::make_shared<expand_op>(exp, labels, op); }
+inline algebra_optr ExpandIn(std::string label, algebra_optr op) { return std::make_shared<expand_op>(EXPAND::IN, label, op); }
+inline algebra_optr ExpandIn(std::vector<std::string> labels, algebra_optr op) { return std::make_shared<expand_op>(EXPAND::IN, labels, op); }
+inline algebra_optr ExpandOut(std::string label, algebra_optr op) { return std::make_shared<expand_op>(EXPAND::OUT, label, op); }
+inline algebra_optr ExpandOut(std::vector<std::string> labels, algebra_optr op) { return std::make_shared<expand_op>(EXPAND::OUT, labels, op); }
 
 enum class JOIN_OP {
     CROSS,
@@ -411,15 +490,25 @@ public:
     end_op() {
         name_ = "End";
         type_ = qop_type::none;
+        qr_pos_ = produced_type_ = -1;
+        qr_pos_ = 0;
+    }
+
+    end_op(JOIN_OP jop, int qr_pos) : join_op_(jop), qr_pos_(qr_pos) {
+        name_ = "End";
+        type_ = qop_type::none;
         produced_type_ = -1;
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
     std::vector<std::array<int*, 100>> *join_inputs_;
+    JOIN_OP join_op_;
+    int qr_pos_;
 };
 
 inline algebra_optr End() { return std::make_shared<end_op>(); }
+inline algebra_optr End(JOIN_OP jop, int qr_pos) { return std::make_shared<end_op>(jop, qr_pos); }
 
 class create_op : public base_op, public std::enable_shared_from_this<create_op> {
 public:
@@ -434,7 +523,7 @@ public:
     }
 
     create_op(create_type ct, std::pair<int, int> src_des, algebra_optr inp) {
-        name_ = "CreateNode";
+        name_ = "CreateRship";
         type_ = qop_type::create;
         inputs_.push_back(inp);
         produced_type_ = static_cast<int>(ct);
@@ -450,6 +539,73 @@ public:
 };
 inline algebra_optr CreateNode(algebra_optr inp) { return std::make_shared<create_op>(create_type::node, inp); }
 inline algebra_optr CreateRship(std::pair<int, int> src_des, algebra_optr inp) { return std::make_shared<create_op>(create_type::rship, src_des, inp); }
+
+class group_op : public base_op, public std::enable_shared_from_this<group_op> {
+public:
+    group_op(std::vector<unsigned> grpkey_pos, algebra_optr inp) : grpkey_pos_(grpkey_pos) {
+        type_ = qop_type::group;
+        inputs_.push_back(inp);
+    }
+
+    void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
+
+    std::vector<unsigned> grpkey_pos_;
+    std::vector<result_set> grps;
+};
+
+inline algebra_optr GroupBy(std::vector<unsigned> grpkey_pos, algebra_optr inp) { return std::make_shared<group_op>(grpkey_pos, inp); }
+
+class aggr_op : public base_op, public std::enable_shared_from_this<aggr_op> {
+public:
+    aggr_op(std::vector<std::pair<std::string, int>> aggrs, algebra_optr inp) : aggrs_(aggrs) {
+        type_ = qop_type::aggr;
+        inputs_.push_back(inp);
+    }
+
+    void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
+
+    std::vector<std::pair<std::string, int>> aggrs_;
+};
+inline algebra_optr Aggr(std::vector<std::pair<std::string, int>> aggrs, algebra_optr inp) { return std::make_shared<aggr_op>(aggrs, inp); }
+
+class connected_op : public base_op, public std::enable_shared_from_this<connected_op> {
+public:
+    connected_op(std::pair<int, int> src_des, bool b, algebra_optr inp) : src_des_(src_des), append_null_(b) {
+        inputs_.push_back(inp);
+    }
+
+    void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
+
+    std::pair<int, int> src_des_;
+    bool append_null_;
+};
+inline algebra_optr Connected(std::pair<int, int> src_des, bool b, algebra_optr inp) { return std::make_shared<connected_op>(src_des, b, inp); }
+
+class append_op : public base_op, public std::enable_shared_from_this<append_op> {
+public:
+    typedef query_result* (*append_func)(qr_tuple&);
+
+    append_op(append_func func, FTYPE type, algebra_optr inp) : func_(func), type_(type) {
+        inputs_.push_back(inp);
+    }
+
+    void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
+
+    append_func func_;
+    FTYPE type_;
+};
+inline algebra_optr Append(append_op::append_func func, FTYPE type, algebra_optr inp) { return std::make_shared<append_op>(func, type, inp); }
+
+class store_op : public base_op, public std::enable_shared_from_this<store_op> {
+public:
+
+    store_op(algebra_optr inp) {
+        inputs_.push_back(inp);
+    }
+
+    void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
+};
+inline algebra_optr Store(algebra_optr inp) { return std::make_shared<store_op>(inp); }
 
 struct FExp {
     FExp(PContext &ctx, FOP fop, FTYPE type, std::string property, std::string value) : fop_(fop), type_(type),

@@ -49,6 +49,8 @@ struct fep_visitor_inline : public expression_visitor {
 
     void visit(int rank, std::shared_ptr<str_token> str) override;
 
+    void visit(int rank, std::shared_ptr<time_token> time) override;
+
     void visit(int rank, std::shared_ptr<fct_call> fct) override;
 
     void visit(int rank, std::shared_ptr<eq_predicate> eq) override;
@@ -56,6 +58,8 @@ struct fep_visitor_inline : public expression_visitor {
     void visit(int rank, std::shared_ptr<and_predicate> andpr) override;
 
     void visit(int rank, std::shared_ptr<or_predicate> orpr) override;
+
+    void visit(int rank, std::shared_ptr<call_predicate> call) override;
 
     Value *alloc(std::string name, Type *type, Value *val = nullptr);
 
@@ -74,6 +78,13 @@ struct fep_visitor_inline : public expression_visitor {
     std::map<std::string, BasicBlock *> bbs_;
 
     std::vector<AllocaInst *> keys;
+
+    struct filter_callee {
+        Value* callee_;
+        FunctionType* type_;
+    };
+
+    std::map<int, filter_callee> fct_callees_;
 
 };
 

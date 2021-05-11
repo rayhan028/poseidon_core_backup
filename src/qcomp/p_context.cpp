@@ -68,6 +68,8 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
 
     list_size = FunctionType::get(Type::getVoidTy(*ctx_), {queryResultListPtrTy}, false);
 
+    queryContextTy = StructType::create(*ctx_, "jit_args");
+    
 //++++++++++++++++++ NODE TYPE +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     opaqueListTy = StructType::create(*ctx_, "opaque_list");
     nodeAtomicIdTy = StructType::create(*ctx_, "node_atomic_id");
@@ -106,7 +108,8 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     graphDbPtrTy = PointerType::get(graphDbTy, 0);
 
     graphDbCVecTy = StructType::create(*ctx_, "chunk_vec_iter");
-
+    queryContextTy = StructType::create(*ctx_, "queryContext");
+    queryTimePointTy = StructType::create(*ctx_, "queryTimePoint");
 //++++++++++++++++++ NODE SCAN FCT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     nodeConsumerFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {nodePtrTy}, false);
     nodeConsumerFctPtrTy = PointerType::getUnqual(nodeConsumerFctTy);
@@ -160,10 +163,10 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     applyRshipProjectionFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int8PtrTy, int64Ty, int64PtrTy, int64PtrTy}, false);
 //++++++++++++++++++ START FCT +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    finishFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int64PtrTy}, false);
-
     // gdb, first, last, tx, oid, typevec, resultset, callmap, finish, result_offset
-    startFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, int64Ty, int8PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64PtrTy, finishFctTy->getPointerTo(), int64Ty, queryArgTy->getPointerTo()}, false);
+    //startFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, int64Ty, int8PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64PtrTy, finishFctTy->getPointerTo(), int64Ty, queryArgTy->getPointerTo()}, false);
+    
+    
     collectFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy}, false);
     limitFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy}, false);
 
@@ -204,7 +207,7 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     get_join_vec_size_ty = FunctionType::get(int64Ty, {int64PtrTy}, false);
 
     mat_reg_val_ty = FunctionType::get(voidTy, {int8PtrTy, int64PtrTy, int64Ty}, false);
-    collect_reg_ty = FunctionType::get(voidTy, {int64PtrTy, boolTy}, false);
+    collect_reg_ty = FunctionType::get(voidTy, {int8PtrTy, int64PtrTy, boolTy}, false);
 
     obtain_mat_tuple_ty = FunctionType::get(int8PtrTy, {}, false);
     mat_node_ty = FunctionType::get(voidTy, {nodePtrTy, int8PtrTy}, false);
@@ -216,6 +219,44 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     get_node_res_at_ty = FunctionType::get(nodePtrTy, {int8PtrTy, int64Ty}, false);
     get_rship_res_at_ty = FunctionType::get(rshipPtrTy, {int8PtrTy, int64Ty}, false);
     get_mat_res_size_ty = FunctionType::get(int64Ty, {int64Ty}, false);
+
+    get_node_grpkey_ty = FunctionType::get(voidTy, {nodePtrTy, int64Ty}, false);
+    get_rship_grpkey_ty = FunctionType::get(voidTy, {rshipPtrTy, int64Ty}, false);
+    get_int_grpkey_ty = FunctionType::get(voidTy, {int64Ty, int64Ty}, false);
+    get_string_grpkey_ty = FunctionType::get(voidTy, {int64PtrTy, int64Ty}, false);
+    get_time_grpkey_ty = FunctionType::get(voidTy, {int64PtrTy, int64Ty}, false);
+    add_to_group_ty = FunctionType::get(voidTy, {int8PtrTy}, false);
+    finish_group_by_ty = FunctionType::get(voidTy, {int8PtrTy, int64PtrTy}, false);
+
+    grp_demat_at_ty = FunctionType::get(int8PtrTy, {int8PtrTy, int64Ty}, false);
+    clear_mat_tuple_ty = FunctionType::get(voidTy, {}, false);
+    get_grp_rs_count_ty = FunctionType::get(int64Ty, {int8PtrTy}, false);
+    int_to_reg_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
+    str_to_reg_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
+    node_to_reg_ty = FunctionType::get(nodePtrTy, {int8PtrTy, int64Ty}, false);
+    rship_to_reg_ty = FunctionType::get(rshipPtrTy, {int8PtrTy, int64Ty}, false);
+    time_to_reg_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
+
+    init_grp_aggr_ty = FunctionType::get(voidTy, {int8PtrTy}, false);
+    get_group_cnt_ty = FunctionType::get(int64Ty, {int8PtrTy}, false);
+    get_total_group_cnt_ty = FunctionType::get(int64Ty, {int8PtrTy}, false);
+    get_group_sum_int_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
+    get_group_sum_double_ty = FunctionType::get(doubleTy, {int8PtrTy, int64Ty}, false);
+    get_group_sum_uint_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
+
+    append_to_tuple_ty = FunctionType::get(voidTy, {int8PtrTy}, false);
+    get_qr_tuple_ty = FunctionType::get(int8PtrTy, {}, false);
+
+    insert_join_id_input_ty = FunctionType::get(voidTy, {int64Ty, int64Ty}, false);
+    get_join_id_at_ty = FunctionType::get(int64Ty, {int64Ty, int64Ty}, false);
+
+    collect_tuple_hash_join_ty = FunctionType::get(voidTy, {int64Ty, int64Ty, int8PtrTy}, false);
+    insert_join_bucket_input_ty = FunctionType::get(voidTy, {int64Ty, int64Ty, int64Ty}, false);
+    get_hj_input_size_ty = FunctionType::get(int64Ty, {int64Ty, int64Ty}, false);
+    get_hj_input_id_ty = FunctionType::get(int64Ty, {int64Ty, int64Ty, int64Ty}, false);
+    get_query_result_ty = FunctionType::get(int8PtrTy, {int64Ty, int64Ty, int64Ty}, false);
+
+
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     lookup_label_type = FunctionType::get(int32Ty, {int8PtrTy, int8PtrTy}, false);
     lookup_dcode_type = FunctionType::get(int8PtrTy, {int8PtrTy, int32Ty}, false);
@@ -233,6 +274,10 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     foreach_variable_from_type = FunctionType::get(voidTy, {int8PtrTy, int32Ty, int64Ty, int64Ty, consumerFctTy->getPointerTo(),
                                                             int64Ty, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64Ty}, false);
 
+    node_has_property_ty = FunctionType::get(int64Ty, {int8PtrTy, nodePtrTy, int8PtrTy}, false);
+    rship_has_property_ty = FunctionType::get(int64Ty, {int8PtrTy, rshipPtrTy, int8PtrTy}, false);
+    apply_has_property_ty = FunctionType::get(voidTy, {int64Ty, int8PtrTy, int8PtrTy, int64PtrTy}, false );
+    persis_tuple_type = FunctionType::get(voidTy, {int8PtrTy, int8PtrTy}, false);
 //++++++++++++++++++ PROPERTY FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     pset_get_item_at_type = FunctionType::get(propertySetPtrTy, {int8PtrTy, int64Ty}, false);
 
@@ -240,10 +285,21 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
 //++++++++++++++++++ TX FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     getTxFctTy = FunctionType::get(int64Ty, {int8PtrTy}, false);
     getValidNodeFctTy = FunctionType::get(nodePtrTy, {int8PtrTy, nodePtrTy, int8PtrTy}, false);
+    notifyFctTy = FunctionType::get(voidTy, {int8PtrTy}, false);
 
 //++++++++++++++++++ BODY DEFINITIONS + ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    nodeAtomicIdTy->setBody({int64Ty});
-    rshipAtomicIdTy->setBody({int64Ty});
+    queryContextTy->setBody({int8PtrTy, int64Ty, int64Ty, int8PtrTy}); // gdb, start, end, tx, result_set, arguments
+    queryContextPtrTy = PointerType::get(queryContextTy, 0);
+    queryTimePointTy->setBody(int64Ty);
+
+    get_now_ty = FunctionType::get(queryTimePointTy, {}, false);
+    add_time_diff_ty = FunctionType::get(voidTy, {queryContextPtrTy, int64Ty, queryTimePointTy, queryTimePointTy}, false);
+
+    startFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {queryContextPtrTy, queryArgTy->getPointerTo(), int64PtrTy}, false);
+    finishFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {queryContextPtrTy, queryArgTy->getPointerTo(), int64PtrTy}, false);
+    
+    nodeAtomicIdTy->setBody(int64Ty);
+    rshipAtomicIdTy->setBody(int64Ty);
     nodeTxnBaseTy->setBody({nodeAtomicIdTy, int8PtrTy});
     nodeTy->setBody({nodeTxnBaseTy, int64Ty, int64Ty, int64Ty, int64Ty, int32Ty}); // TODO: check type size
 
@@ -251,7 +307,7 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     rshipTy->setBody({rshipTxnBaseTy, int64Ty, int64Ty, int64Ty, int64Ty, int64Ty, int64Ty, int32Ty});
 
     pitemTy->setBody({pitemValueArrTy, int32Ty, int8Ty}); // value, key, flags
-    pItemListTy->setBody({pSetRawArrTy});
+    pItemListTy->setBody(pSetRawArrTy);
     propertySetTy->setBody({int64Ty, int64Ty, pItemListTy, int8Ty}); // next, owner, items, flags
 
     qrResultTy->setBody({int8PtrTy, int64Ty, int8Ty}); // actual result, type, is null
@@ -325,6 +381,52 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     function_types["foreach_from_variable_rship"] = feFromVarFctTy;
     function_types["get_next_rship_fev"] = getNextRshipFctTy;
     function_types["fev_list_end"] = fevListEndFctTy;
+
+    function_types["get_node_grpkey"] = get_node_grpkey_ty;
+    function_types["get_rship_grpkey"] = get_rship_grpkey_ty;
+    function_types["get_int_grpkey"] = get_int_grpkey_ty;
+    function_types["get_string_grpkey"] = get_string_grpkey_ty;
+    function_types["get_time_grpkey"] = get_time_grpkey_ty;
+    function_types["add_to_group"] = add_to_group_ty;
+    function_types["finish_group_by"] = finish_group_by_ty;
+
+    function_types["grp_demat_at"] = grp_demat_at_ty;
+    function_types["clear_mat_tuple"] = clear_mat_tuple_ty;
+    function_types["get_grp_rs_count"] = get_grp_rs_count_ty;
+    function_types["int_to_reg"] = int_to_reg_ty;
+    function_types["str_to_reg"] = str_to_reg_ty;
+    function_types["node_to_reg"] = node_to_reg_ty;
+    function_types["rship_to_reg"] = rship_to_reg_ty;
+    function_types["time_to_reg"] = time_to_reg_ty;
+
+    function_types["init_grp_aggr"] = init_grp_aggr_ty;
+    function_types["get_group_cnt"] = get_group_cnt_ty;
+    function_types["get_total_group_cnt"] = get_total_group_cnt_ty;
+    function_types["get_group_sum_int"] = get_group_sum_int_ty;
+    function_types["get_group_sum_double"] = get_group_sum_double_ty;
+    function_types["get_group_sum_uint"] = get_group_sum_uint_ty;
+
+    function_types["append_to_tuple"] = append_to_tuple_ty;
+    function_types["get_qr_tuple"] = get_qr_tuple_ty;
+
+    function_types["insert_join_id_input"] = insert_join_id_input_ty;
+    function_types["get_join_id_at"] = get_join_id_at_ty;
+
+    function_types["collect_tuple_hash_join"] = collect_tuple_hash_join_ty;
+    function_types["insert_join_bucket_input"] = insert_join_bucket_input_ty;
+    function_types["get_hj_input_size"] = get_hj_input_size_ty;
+    function_types["get_hj_input_id"] = get_hj_input_id_ty;
+    function_types["get_query_result"] = get_query_result_ty;
+
+    function_types["node_has_property"] = node_has_property_ty;
+    function_types["rship_has_property"] = rship_has_property_ty;
+    function_types["apply_has_property"] = apply_has_property_ty;
+
+    function_types["get_now"] = get_now_ty;
+    function_types["add_time_diff"] = add_time_diff_ty;
+
+    function_types["end_notify"] = notifyFctTy;
+    function_types["persist_tuple"] = persis_tuple_type;
 }
 
 
@@ -336,7 +438,7 @@ PContext::while_loop_condition(Function *parent, Value *cond_lhs, Value *cond_rh
     BasicBlock *condition = BasicBlock::Create(getContext(), "while_condition");
     BasicBlock *body = BasicBlock::Create(getContext(), "while_body");
     BasicBlock *body_epilog = BasicBlock::Create(getContext(), "while_body_epilog");
-    BasicBlock *end = BasicBlock::Create(getContext(), "while_end");
+    //BasicBlock *end = BasicBlock::Create(getContext(), "while_end");
 
     // branch to the loop header for condition evaluation
     Builder->CreateBr(condition);
@@ -477,7 +579,7 @@ BasicBlock * PContext::while_rship_exist(Function *parent, Value *gdb, Value *no
     Value *rship_id = Builder->CreateLoad(Builder->CreateStructGEP(node, nodeGEPidx));
     auto UNKNOWN_REL_ID = ConstantInt::get(int64Ty, std::numeric_limits<int64_t>::max());
     Value *rship;
-    auto cmp_false = ConstantInt::get(boolTy, 0);
+    //auto cmp_false = ConstantInt::get(boolTy, 0);
     Builder->CreateBr(condition);
 
     parent->getBasicBlockList().push_back(condition);
@@ -554,7 +656,7 @@ Value * PContext::create_qr_node(Value *qr_element, Value *qr_prev,
         Builder->CreateStore(qr_prev, qr_field_prev);
     } else {
         auto null = Constant::getNullValue(queryResultNodePtrTy);
-        auto x = Builder->CreateStore(null, qr_field_prev);
+        Builder->CreateStore(null, qr_field_prev);
     }
 
 
@@ -562,7 +664,7 @@ Value * PContext::create_qr_node(Value *qr_element, Value *qr_prev,
         Builder->CreateStore(qr_next, qr_field_next);
     } else {
         auto null = Constant::getNullValue(queryResultNodePtrTy);
-        auto x = Builder->CreateStore(null, qr_field_next);
+        Builder->CreateStore(null, qr_field_next);
     }
     Builder->CreateStore(ConstantInt::get(int64Ty, 22401), check);
     return qr_node_alloca;
@@ -601,11 +703,11 @@ Value *PContext::create_qr_list(Value *firstElement) {
 
 Function *PContext::qr_list_add_end() {
     auto fct = Function::Create(add_qr_list_end, Function::InternalLinkage, "qr_list_add_end", getModule());
-    FunctionCallee ls_fct = getModule().getOrInsertFunction("list_size", list_size);
+    //FunctionCallee ls_fct = getModule().getOrInsertFunction("list_size", list_size);
     gen_funcs["qr_list_add_end"] = fct;
     auto entry = BasicBlock::Create(getContext(), "entry", fct);
-    auto qr_list = fct->arg_begin(); //qr_list*
-    auto qr_element = fct->arg_begin() + 1;
+    //auto qr_list = fct->arg_begin(); //qr_list*
+    //auto qr_element = fct->arg_begin() + 1;
     Builder->SetInsertPoint(entry);
     Builder->CreateRet(nullptr);
     return fct;
@@ -943,9 +1045,9 @@ BasicBlock *PContext::while_qr_list(Function *parent, Value *qr_list, AllocaInst
 Function *PContext::qr_list_append() {
     auto fct = Function::Create(append_qr_list, Function::InternalLinkage, "qr_list_append", getModule());
     gen_funcs["qr_list_append"] = fct;
-    auto add_end = gen_funcs["qr_list_add_end"];
+    //auto add_end = gen_funcs["qr_list_add_end"];
     auto llist = fct->args().begin();
-    auto qr_el = fct->args().begin() + 1;
+    //auto qr_el = fct->args().begin() + 1;
 
     BasicBlock *entry = BasicBlock::Create(getContext(), "entry", fct);
     BasicBlock *end = BasicBlock::Create(getContext(), "end", fct);
@@ -954,13 +1056,13 @@ Function *PContext::qr_list_append() {
     auto nlist = create_qr_list();
 
     auto cur_node = Builder->CreateAlloca(queryResultNodePtrTy);
-    auto loop = while_qr_list(fct, llist, cur_node, end, [&](BasicBlock *loop, BasicBlock *epilog) {
+    while_qr_list(fct, llist, cur_node, end, [&](BasicBlock *loop, BasicBlock *epilog) {
         // 1 extract qr from node
         auto lnode = Builder->CreateLoad(cur_node);
         auto qr = Builder->CreateLoad(Builder->CreateStructGEP(lnode, 3));
 
         // 2 create new node
-        auto nnode = create_qr_node(qr);
+        //auto nnode = create_qr_node(qr);
 
         // 3 add to new list
         //Builder->CreateCall(add_end, {nlist, qr});
@@ -990,7 +1092,7 @@ Function *PContext::qr_list_at() {
     auto cur_pos_alloca = Builder->CreateAlloca(int64Ty);
     Builder->CreateStore(LLVM_ZERO, cur_pos_alloca);
     auto cur_node = Builder->CreateAlloca(queryResultNodePtrTy);
-    auto loop = while_qr_list(fct, llist, cur_node, end, [&](BasicBlock *loop, BasicBlock *epilog) {
+    while_qr_list(fct, llist, cur_node, end, [&](BasicBlock *loop, BasicBlock *epilog) {
         // load current it pos
         auto cur_pos = Builder->CreateLoad(cur_pos_alloca);
 
@@ -1015,9 +1117,9 @@ Function *PContext::qr_list_concat() {
     auto fct = Function::Create(concat_qr_list, Function::InternalLinkage, "qr_list_concat", getModule());
     auto qrl1 = fct->args().begin();
     auto qrl2 = fct->args().begin() + 1;
-    auto qr_el = fct->args().begin() + 2;
+    //auto qr_el = fct->args().begin() + 2;
 
-    auto add_end = gen_funcs["qr_list_add_end"];
+    //auto add_end = gen_funcs["qr_list_add_end"];
     BasicBlock *entry = BasicBlock::Create(getContext(), "entry", fct);
     BasicBlock *r_list = BasicBlock::Create(getContext(), "right_list", fct);
     BasicBlock *end = BasicBlock::Create(getContext(), "end", fct);
@@ -1026,13 +1128,13 @@ Function *PContext::qr_list_concat() {
     auto nlist = create_qr_list();
 
     auto cur_node = Builder->CreateAlloca(queryResultNodePtrTy);
-    auto l_loop = while_qr_list(fct, qrl1, cur_node, r_list, [&](BasicBlock *loop, BasicBlock *epilog) {
+    while_qr_list(fct, qrl1, cur_node, r_list, [&](BasicBlock *loop, BasicBlock *epilog) {
         // 1 extract qr from node
         auto lnode = Builder->CreateLoad(cur_node);
         auto qr = Builder->CreateLoad(Builder->CreateStructGEP(lnode, 3));
 
         // 2 create new node
-        auto nnode = create_qr_node(qr);
+        //auto nnode = create_qr_node(qr);
 
         // 3 add to new list
         //Builder->CreateCall(add_end, {nlist, qr});
@@ -1041,13 +1143,13 @@ Function *PContext::qr_list_concat() {
 
 
     Builder->SetInsertPoint(r_list);
-    auto r_loop = while_qr_list(fct, qrl2, cur_node, r_list, [&](BasicBlock *loop, BasicBlock *epilog) {
+    while_qr_list(fct, qrl2, cur_node, r_list, [&](BasicBlock *loop, BasicBlock *epilog) {
         // 1 extract qr from node
         auto lnode = Builder->CreateLoad(cur_node);
         auto qr = Builder->CreateLoad(Builder->CreateStructGEP(lnode, 3));
 
         // 2 create new node
-        auto nnode = create_qr_node(qr);
+        //auto nnode = create_qr_node(qr);
 
         // 3 add to new list
         //Builder->CreateCall(add_end, {nlist, qr});

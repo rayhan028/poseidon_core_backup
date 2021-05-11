@@ -43,10 +43,25 @@ public:
 
     void visit(std::shared_ptr<create_op> op) override;
 
+    void visit(std::shared_ptr<group_op> op) override;
+
+    void visit(std::shared_ptr<aggr_op> op) override;
+
+    void visit(std::shared_ptr<connected_op> op) override;
+
+    void visit(std::shared_ptr<append_op> op) override;
+
+    void visit(std::shared_ptr<store_op> op) override;
+
     /*
-     * Initializer for the function
+     * Initializer for the main function
      */
     void init_function(BasicBlock *entry);
+
+    /*
+     * Initializer for the finish function
+     */
+    void init_finish(BasicBlock *entry);
 
     /*
      * The actual main function which emits the
@@ -55,10 +70,21 @@ public:
     Function *main_function = nullptr;
 
     /*
+     * The query finish function
+    */
+    Function *main_finish = nullptr;
+
+    /*
      * Return basic block for returning to the previous
      * block. Only temporary
      */
     BasicBlock *main_return;
+
+    /**
+     * Entry point for other operators to manipulate the
+     * query result before the actual materialization
+     */
+    BasicBlock *pre_tuple_mat;
 
     /*
      * BasicBlock for consume handling. Each operator, which is not the
@@ -73,6 +99,10 @@ public:
      * Global end block
      */
     BasicBlock *global_end;
+
+    BasicBlock *entry;
+
+    BasicBlock *inits;
 
     /*
      * The actual graph object
@@ -249,6 +279,9 @@ public:
             projection->name_ = projection->name_ + e.key;
             project_string.push_back(e.key);
             switch(e.type) {
+                case FTYPE::NONE:
+                    projection->new_types.push_back(0);
+                    break;
                 case FTYPE::INT:
                     projection->new_types.push_back(2);
                     break;
@@ -264,6 +297,9 @@ public:
                 case FTYPE::DATE:
                     projection->new_types.push_back(6);
                     break;
+                case FTYPE::BOOLEAN:
+                case FTYPE::UINT64:
+                    continue; //TODO
             }
         }
 
@@ -288,6 +324,32 @@ public:
         return count;
     }
 
+    Value *first;
+    Value *last;
+    Value *tx_ptr;
+    Value *query_context;
+    BasicBlock *next_pipeline;
+    BasicBlock *df_finish_bb;
+
+    bool profiling = false;
+    bool pipelined = false;
+    std::vector<std::string> pipelines;
+    
+    void extract_query_context(Value* context_arg) {
+        gdb = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 0));
+        first = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 1));
+        last = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 2));
+        tx_ptr = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(context_arg, 3));
+        //rs->getType()->dump();
+    }
+
+    AllocaInst *insert_alloca(Type *ty);
+
+    bool finishing = false;
+    Function *cur_pipeline;
+    bool pipelined_finish = false;
+    std::string query_id_str = "";
+    
 };
 
 

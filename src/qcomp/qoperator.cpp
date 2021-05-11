@@ -10,6 +10,7 @@ std::string expand_str(EXPAND exp) {
         case EXPAND::IN:
             return "in";
         case EXPAND::OUT:
+        default:
             return "out";
     }
 }
@@ -24,6 +25,8 @@ std::string join_op_str(JOIN_OP jop) {
             return "nested_loop";
         case JOIN_OP::HASH_JOIN:
             return "hash_join";
+        default:
+            return "";
     }
 }
 
@@ -37,7 +40,7 @@ int query_id = 0;
 void scan_op::codegen(op_visitor & vis, unsigned & op_id, bool interpreted) {
     pipeline_types[query_id].push_back(0);
     op_id_ = op_id;
-    auto next_offset = indexed_ ? 3 : 1;
+    auto next_offset = indexed_ ? 3 : labels_.empty() ? 1 : labels_.size();
 
     vis.visit(shared_from_this());
 
@@ -85,12 +88,12 @@ void project::codegen(op_visitor & vis, unsigned & op_id, bool interpreted) {
 void expand_op::codegen(op_visitor & vis, unsigned & op_id, bool interpreted) {
     pipeline_types[query_id].push_back(0);
     op_id_ = op_id;
-
+    auto next_offset = labels_.empty() ? 1 : labels_.size();
 
     vis.visit(shared_from_this());
 
     for(auto & inp : inputs_) {
-        inp->codegen(vis, op_id+=1,interpreted);
+        inp->codegen(vis, op_id+=next_offset,interpreted);
     }
 }
 
@@ -122,7 +125,6 @@ int get_nopid(int & start, std::vector<algebra_optr> & ops, join_op endop) {
 void join_op::codegen(op_visitor & vis, unsigned & op_id, bool interpreted) {
     op_id_ = op_id;
 
-    auto lhs_op_id = op_id_+1;
     auto cur_op = inputs_[1];
 
     if(!interpreted) {
@@ -162,9 +164,9 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
     BasicBlock *consume = BasicBlock::Create(ctx.getContext(), "consume", fct);
     BasicBlock *foreach_rship = BasicBlock::Create(ctx.getContext(), "foreach_rship", fct);
     BasicBlock *next_rship = BasicBlock::Create(ctx.getContext(), "next_rship", fct);
-    BasicBlock *consume_next = BasicBlock::Create(ctx.getContext(), "consume_next_left", fct);
-    BasicBlock *for_each_rship = BasicBlock::Create(ctx.getContext(), "for_each_rship", fct);
-    BasicBlock *for_each_next = BasicBlock::Create(ctx.getContext(), "for_each_next_rship", fct);
+    //BasicBlock *consume_next = BasicBlock::Create(ctx.getContext(), "consume_next_left", fct);
+    //BasicBlock *for_each_rship = BasicBlock::Create(ctx.getContext(), "for_each_rship", fct);
+    //BasicBlock *for_each_next = BasicBlock::Create(ctx.getContext(), "for_each_next_rship", fct);
     BasicBlock *end = BasicBlock::Create(ctx.getContext(), "end", fct);
 
     Value *left_pos = nullptr;
@@ -180,23 +182,18 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
     }
 
     auto gdb = fct->args().begin();
-    auto oid = fct->args().begin() + 1;
+    //auto oid = fct->args().begin() + 1;
     auto qr_tuple_list = fct->args().begin() + 2;
-    auto rs = fct->args().begin() + 3;
+    //auto rs = fct->args().begin() + 3;
     auto prev_size = fct->args().begin() + 4;
-    auto ty = fct->args().begin() + 5;
-    auto call_map_arg = fct->args().begin() + 6;
-    auto offset = fct->args().begin() + 7;
-    auto call_map = ctx.getBuilder().CreateBitCast(fct->args().begin() + 6, ctx.callMapPtrTy);
+    //auto call_map_arg = fct->args().begin() + 6;
+    //auto call_map = ctx.getBuilder().CreateBitCast(fct->args().begin() + 6, ctx.callMapPtrTy);
 
     auto lhs_qr_arr = ctx.getBuilder().CreateBitCast(qr_tuple_list, ctx.res_arr_type->getPointerTo());
-    auto lhs_size_field = ctx.getBuilder().CreateInBoundsGEP(lhs_qr_arr, {ctx.LLVM_ZERO, ctx.LLVM_ZERO});
-    auto lhs_size = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateLoad(lhs_size_field));
-    auto insert_pos = ctx.getBuilder().CreateAdd(prev_size, ctx.LLVM_ONE);
+    //auto lhs_size_field = ctx.getBuilder().CreateInBoundsGEP(lhs_qr_arr, {ctx.LLVM_ZERO, ctx.LLVM_ZERO});
 
     auto lhs_alloca = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     auto rhs_alloca = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
-    auto rhs_id_alloca = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
 
     auto max_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     auto cur_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
@@ -216,8 +213,8 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
 
     auto cpy_size = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
 
-    auto noid = ctx.getBuilder().CreateAdd(oid, ctx.LLVM_ONE);
-    auto fct_ptr = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(call_map, {ctx.LLVM_ZERO, oid}));
+    //auto noid = ctx.getBuilder().CreateAdd(oid, ctx.LLVM_ONE);
+    //auto fct_ptr = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(call_map, {ctx.LLVM_ZERO, oid}));
 
     //auto ql = ctx.getBuilder().CreateCall(get_join_vec, {inputs_vec, ctx.LLVM_TWO});
     auto loop_body = ctx.while_loop_condition(fct, cur_idx, max_idx, PContext::WHILE_COND::LT, end,
@@ -298,8 +295,8 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
 
     ctx.getBuilder().CreateStore(prev_size, cpy_size);
 
-    auto offset_rhs = ctx.getBuilder().CreateAdd(rhs_size, ctx.LLVM_ONE);
-    auto nsize = ctx.getBuilder().CreateAdd(prev_size, offset_rhs);
+    //auto offset_rhs = ctx.getBuilder().CreateAdd(rhs_size, ctx.LLVM_ONE);
+    //auto nsize = ctx.getBuilder().CreateAdd(prev_size, offset_rhs);
 
     // copy each element from rhs to lhs
     auto copy_body = ctx.while_loop_condition(fct, cur_lhs_pos, rhs_pos_max, PContext::WHILE_COND::LE, consume,
@@ -324,7 +321,6 @@ Function *join_op::codegen_rhs(PContext &ctx, Function *consumer) {
     ctx.getBuilder().CreateBr(copy_body);
 
     ctx.getBuilder().SetInsertPoint(consume);
-    auto forward = ctx.getBuilder().CreateBitCast(lhs_qr_arr, ctx.int64PtrTy);
     //ctx.getBuilder().CreateCall(fct_ptr, {gdb, noid, forward, rs, nsize, ty, call_map_arg, offset});
     ctx.getBuilder().CreateBr(loop_body);
 
@@ -388,3 +384,52 @@ void create_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted)
     }
 }
 
+void group_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) {
+    op_id_ = op_id;
+
+    vis.visit(shared_from_this());
+
+    for(auto & inp : inputs_) {
+        inp->codegen(vis, op_id+=1,true);
+    }
+}
+
+void aggr_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) {
+    op_id_ = op_id;
+
+    vis.visit(shared_from_this());
+
+    for(auto & inp : inputs_) {
+        inp->codegen(vis, op_id+=1,true);
+    }
+}
+
+void connected_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) {
+    op_id_ = op_id;
+
+    vis.visit(shared_from_this());
+
+    for(auto & inp : inputs_) {
+        inp->codegen(vis, op_id+=1,true);
+    }
+}
+
+void append_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) {
+    op_id_ = op_id;
+
+    vis.visit(shared_from_this());
+
+    for(auto & inp : inputs_) {
+        inp->codegen(vis, op_id+=1,true);
+    }
+}
+
+void store_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) {
+    op_id_ = op_id;
+
+    vis.visit(shared_from_this());
+
+    for(auto & inp : inputs_) {
+        inp->codegen(vis, op_id+=1,true);
+    }
+}

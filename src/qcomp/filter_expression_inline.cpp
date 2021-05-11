@@ -5,9 +5,9 @@ std::map<int, Value*> expr_register;
 fep_visitor_inline::fep_visitor_inline(PContext *ctx, Function *parent, std::vector<codegen_inline_visitor::QR_VALUE> &qr, BasicBlock *next, BasicBlock *end, Value *item_arr, Value *item, Value *pset,
                                        Value *unknown_id, Value *plist_id, Value *loop_cnt, Value *max_cnt, Value *pitem,
         Value *arg)
-        : ctx_(ctx),
+        : qr_regs_(qr),
+          ctx_(ctx),
           fct_(parent),
-          qr_regs_(qr),
           next_(next),
           end_(end) {
     cur_item = item;
@@ -81,6 +81,8 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<key_token> key)  {
     Value *item_arr;
     Value *cur_item_reg;
 
+    auto gdb = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateStructGEP(fct_->args().begin(), 0));
+
     // iterate through property list of node
     auto loop_body = ctx_->while_loop_condition(fct_, plist_id_, unknown_id_, ctx_->WHILE_COND::LT, end_,
                                                 [&](BasicBlock *body, BasicBlock *epilog) {
@@ -91,7 +93,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<key_token> key)  {
                                                     // load property list
                                                     auto pset = ctx_->getBuilder().CreateCall(
                                                             ctx_->extern_func("pset_get_item_at"),
-                                                            {fct_->args().begin(), pid});
+                                                            {gdb, pid});
                                                     ctx_->getBuilder().CreateStore(pset, cur_pset);
 
                                                     // get pitem set
@@ -170,20 +172,64 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<str_token> str) {
     opd_cnt++;
 }
 
+/**
+ * Generates evaluation code for a time value
+ */
+void fep_visitor_inline::visit(int rank, std::shared_ptr<time_token> time) {
+    time->opd_num = opd_cnt;
+    expr_stack.insert(expr_stack.begin(), time);
+
+    auto time_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )&time->time_);
+    auto time_ptr = ctx_->getBuilder().CreateIntToPtr(time_raw, ctx_->int64PtrTy);
+
+    expr_register[opd_cnt] = time_ptr;
+
+    auto epilog = add_bb("epilog_" + std::to_string(opd_cnt));
+    ctx_->getBuilder().CreateBr(epilog);
+    ctx_->getBuilder().SetInsertPoint(epilog);
+    opd_cnt++;
+}
+
 void fep_visitor_inline::visit(int rank, std::shared_ptr<fct_call> fct) {
     fct->opd_num = opd_cnt;
     expr_stack.insert(expr_stack.begin(), fct);
 
-    auto fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_);
+    Value* fct_raw;
+
+    FunctionType* fct_callee_type = nullptr;
+
+    switch(fct->fct_type_) {
+        case FOP_TYPE::INT:
+            fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int64PtrTy}, false);
+            fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_int_);
+            break;
+        case FOP_TYPE::STRING:
+            fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int8PtrTy}, false);
+            fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_str_);
+            break;
+        case FOP_TYPE::UINT64:
+            fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int64PtrTy}, false);
+            fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_uint_);
+        case FOP_TYPE::BOOL_OP:
+        case FOP_TYPE::DATE:
+        case FOP_TYPE::DOUBLE:
+        case FOP_TYPE::KEY:
+        case FOP_TYPE::OP:
+        case FOP_TYPE::TIME:
+            break;
+    } 
+
     auto fct_ptr = ctx_->getBuilder().CreateIntToPtr(fct_raw, ctx_->int64PtrTy);
-    auto fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int64PtrTy}, false);
+
     auto fct_callee = ctx_->getBuilder().CreateBitCast(fct_ptr, fct_callee_type->getPointerTo());
 
-    auto roi = ctx_->getBuilder().CreateBitCast(qr_regs_.at(0).reg_val, ctx_->int64PtrTy);
 
-    auto res = ctx_->getBuilder().CreateCall(fct_callee_type, fct_callee, {roi});
+    fct_callees_[opd_cnt] = {fct_callee, fct_callee_type};
 
-    ctx_->getBuilder().CreateCondBr(res, next_, end_);
+    auto epilog = add_bb("epilog_" + std::to_string(opd_cnt));
+    ctx_->getBuilder().CreateBr(epilog);
+    ctx_->getBuilder().SetInsertPoint(epilog);
+    opd_cnt++;
 }
 
 /**
@@ -194,7 +240,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<eq_predicate> eq)  {
     expr_stack.insert(expr_stack.begin(), eq);
 
     // obtain the evaluation stack values
-    auto opd_it = expr_stack.begin();
+    //auto opd_it = expr_stack.begin();
     auto rhs_it = expr_stack.begin() + 1;
     auto lhs_it = expr_stack.begin() + 2;
 
@@ -219,15 +265,22 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<eq_predicate> eq)  {
             auto cmp_pitem = ctx_->getBuilder().CreateICmpEQ(int_value, val_rhs);
 
             expr_register[opd_cnt] = cmp_pitem;
-        }
             break;
+        }
         case FOP_TYPE::DOUBLE: {
             auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
             auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
             auto cmp_pitem = ctx_->getBuilder().CreateFCmpOEQ(int_value, val_rhs);
             gen_vals_[opd_cnt] = alloc("cmp_eq_res_" + std::to_string(eq->opd_num), ctx_->boolTy, cmp_pitem);
+            break;
         }
-
+        case FOP_TYPE::DATE:
+        case FOP_TYPE::STRING:
+        case FOP_TYPE::TIME:
+        case FOP_TYPE::UINT64:
+        case FOP_TYPE::BOOL_OP:
+        case FOP_TYPE::OP:
+        case FOP_TYPE::KEY:
             break;
     }
 
@@ -247,7 +300,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<and_predicate> andpr) {
     andpr->opd_num = opd_cnt;
     expr_stack.insert(expr_stack.begin(), andpr);
 
-    auto bopd_it = expr_stack.begin();
+    //auto bopd_it = expr_stack.begin();
     auto rhs_it = expr_stack.begin() + 1;
     auto cit = expr_stack.begin() + 1;
     auto offset = 0;
@@ -286,7 +339,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<or_predicate> orpr) {
     orpr->opd_num = opd_cnt;
     expr_stack.insert(expr_stack.begin(), orpr);
 
-    auto bopd_it = expr_stack.begin();
+    //auto bopd_it = expr_stack.begin();
     auto rhs_it = expr_stack.begin() + 1;
     auto cit = expr_stack.begin() + 1;
     auto offset = 0;
@@ -312,6 +365,42 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<or_predicate> orpr) {
         auto ptr = gen_vals_[opd_cnt];
         auto cond = ctx_->getBuilder().CreateLoad(ptr);
         ctx_->getBuilder().CreateCondBr(cond, next_, end_);
+    } else {
+        ctx_->getBuilder().CreateBr(epilog);
+        ctx_->getBuilder().SetInsertPoint(epilog);
+    }
+    opd_cnt++;
+}
+
+void fep_visitor_inline::visit(int rank, std::shared_ptr<call_predicate> call) {
+    call->opd_num = opd_cnt;
+    expr_stack.insert(expr_stack.begin(), call);
+
+    // obtain the evaluation stack values
+    //auto opd_it = expr_stack.begin();
+    auto rhs_it = expr_stack.begin() + 1;
+    auto lhs_it = expr_stack.begin() + 2;
+
+    auto call_alloc = add_bb("cmp_eq_"+ std::to_string(call->opd_num));
+    ctx_->getBuilder().CreateBr(call_alloc);
+    ctx_->getBuilder().SetInsertPoint(call_alloc);
+
+    // extract the values from the stack
+    auto pitem = expr_register[(*lhs_it)->opd_num];
+    auto callee = fct_callees_[(*rhs_it)->opd_num];
+
+    // get the value arr from the property item
+    auto value_arr = ctx_->getBuilder().CreateStructGEP(pitem, 0);
+
+    auto int_value = ctx_->getBuilder().CreateBitCast(value_arr, ctx_->int64PtrTy);
+        
+    expr_register[opd_cnt] = ctx_->getBuilder().CreateCall(callee.type_, callee.callee_, {int_value});
+
+    auto epilog = add_bb("epilog_" + std::to_string(opd_cnt));
+
+    // if no other expression is given, jump to the next block, otherwise link to the next expression
+    if (rank == 0) {
+        ctx_->getBuilder().CreateCondBr(expr_register[opd_cnt], next_, end_);
     } else {
         ctx_->getBuilder().CreateBr(epilog);
         ctx_->getBuilder().SetInsertPoint(epilog);

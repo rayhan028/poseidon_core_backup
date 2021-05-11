@@ -24,6 +24,10 @@ void interprete_filter_visitor::visit(int rank, std::shared_ptr<str_token> str) 
     dict_value_ = dc;
 }
 
+void interprete_filter_visitor::visit(int rank, std::shared_ptr<time_token> time) {
+
+}
+
 void interprete_filter_visitor::visit(int rank, std::shared_ptr<fct_call> fct) {
     //TODO: implement
 }
@@ -40,6 +44,10 @@ void interprete_filter_visitor::visit(int rank, std::shared_ptr<or_predicate> or
 
 }
 
+void interprete_filter_visitor::visit(int rank, std::shared_ptr<call_predicate> orpr) {
+    
+}
+
 std::function<bool(const p_item &)> interprete_filter_visitor::get_pred() {
     switch(val_type_) {
         case value_type::dcodev:
@@ -48,6 +56,7 @@ std::function<bool(const p_item &)> interprete_filter_visitor::get_pred() {
             return [&](const p_item &p) { return p.equal(int_value_); };
         case value_type::fpv:
         case value_type::uiv:
+        default:
             assert(false && "not implemented yet");
             return [&](const p_item &p) { return p.equal(int_value_); };
     }

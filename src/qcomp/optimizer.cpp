@@ -21,23 +21,25 @@ Optimizer::operator()(ThreadSafeModule TSM,
                       const MaterializationResponsibility &) {
     Module &M = *TSM.getModuleUnlocked();
 
+    //M.dump();
 
     legacy::FunctionPassManager FPM(&M);
-    //FPM.add(createPromoteMemoryToRegisterPass());
-    /*FPM.add(createCFGSimplificationPass());
+    FPM.add(createPromoteMemoryToRegisterPass());
+    FPM.add(createCFGSimplificationPass());
     FPM.add(createLCSSAPass());
-    FPM.add(createLoopDeletionPass());*/
-    //FPM.add(createInstructionCombiningPass());
+    FPM.add(createLoopDeletionPass());
+    FPM.add(createDeadStoreEliminationPass());
+    
+    FPM.add(createInstructionCombiningPass());
     B.populateFunctionPassManager(FPM);
     FPM.doInitialization();
 
     for (Function &F : M)
         FPM.run(F);
     FPM.doFinalization();
-    //M.dump();
+
     legacy::PassManager MPM;
-    //B.populateModulePassManager(MPM);
-    //MPM.run(M);
-    //M.dump();
+    B.populateModulePassManager(MPM);
+    
     return std::move(TSM);
 }

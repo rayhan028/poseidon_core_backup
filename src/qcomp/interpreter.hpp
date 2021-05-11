@@ -8,12 +8,12 @@
 
 
 class interprete_visitor : public op_visitor {
-    query query_;
     graph_db_ptr gdb_;
-    result_set *rs_;
-    interprete_filter_visitor ifv_;
-    projection::expr_list pexpr_;
+    query query_;
     arg_builder args_;
+    interprete_filter_visitor ifv_;
+    result_set *rs_;
+    projection::expr_list pexpr_;
 
     std::vector<query> queries_;
 public:
@@ -40,6 +40,16 @@ public:
     void visit(std::shared_ptr<end_op> op) override;
 
     void visit(std::shared_ptr<create_op> op) override;
+
+    void visit(std::shared_ptr<group_op> op) override;
+
+    void visit(std::shared_ptr<aggr_op> op) override;
+
+    void visit(std::shared_ptr<connected_op> op) override;
+
+    void visit(std::shared_ptr<append_op> op) override;
+
+    void visit(std::shared_ptr<store_op> op) override;
 
     void start();
 

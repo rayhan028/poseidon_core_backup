@@ -22,9 +22,13 @@
 #include "qlang_grammar.hpp"
 #include "ast.hpp"
 #include "qop.hpp"
+#include "query.hpp"
+
+#ifdef USE_LLVM
 #include "qoperator.hpp"
 #include "query_engine.hpp"
-#include "query.hpp"
+
+#endif 
 
 #include <tao/pegtl.hpp>
 #include <tao/pegtl/contrib/parse_tree.hpp>
@@ -50,6 +54,7 @@ public:
    */
   queryc() = default;
 
+#ifdef USE_LLVM
   /**
    * Parses the given query string and construct a plan
    * for the code compiler.
@@ -60,7 +65,7 @@ public:
    * TODO
    */
   algebra_optr ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent);
-
+#endif
   /**
    *
    */
@@ -104,10 +109,12 @@ private:
    */
   std::pair<qop_ptr, qop_ptr> ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gdb, std::vector<qop_ptr>& sources);
 
+#ifdef USE_LLVM
   /**
    * TODO
    */
   expr parse_expression(parse_tree_ptr& tree);
+#endif 
 
   /**
    * Returns the property name from the variable name, 

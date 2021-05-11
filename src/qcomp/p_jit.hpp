@@ -117,9 +117,20 @@ private:
     //llvm::JITEventListener *GDBListener;
 
     /*
+    * JIT compiler error object
+    */
+    llvm::ExitOnError E_ERR;
+
+    /*
     * LLVM IR transformation layers
     */
     llvm::orc::RTDyldObjectLinkingLayer ObjLinkingLayer;
+
+    /*
+    * The actual cache for compiled query IR code
+    */
+    std::unique_ptr<PJitObjectCache> ObjCache;
+
     llvm::orc::IRCompileLayer CompileLayer;
     llvm::orc::IRTransformLayer OptimizeLayer;
 
@@ -147,16 +158,8 @@ private:
                          GDBListener, _1, _2, _3);
     }
     */
-   
-    /*
-    * JIT compiler error object
-    */
-    llvm::ExitOnError E_ERR;
 
-    /*
-    * The actual cache for compiled query IR code
-    */
-    std::unique_ptr<PJitObjectCache> ObjCache;
+
 };
 
 

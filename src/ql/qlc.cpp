@@ -119,13 +119,24 @@ static void trim(std::string &s) {
 }
 
 /**
+ * Execute the query given as string by interpreting the plan.
+ */
+void interpret_query(graph_db_ptr &gdb, const std::string &qstr) {
+  queryc qlc;
+  spdlog::debug("create AOT query code");
+  auto qset = qlc.generate_qex_plan(gdb, qstr);  
+  qset.start(); 
+}
+
+/**
  * Execute the query given as string by generating code via LLVM.
  */
 void compile_query(graph_db_ptr &gdb, const std::string &qstr) {
   queryc qlc;
+
+#ifdef USE_LLVM
   spdlog::debug("compile to plan via LLVM");     
   auto plan = qlc.compile_to_plan(qstr);
-
 /*
   std::ostringstream os;
   os << "Execution plan: '";
@@ -142,31 +153,27 @@ void compile_query(graph_db_ptr &gdb, const std::string &qstr) {
   spdlog::debug("generate query code");     
   queryEngine.generate(plan, false);
   auto end_qc = std::chrono::steady_clock::now();
-
+  
   spdlog::debug("execute query code");     
 	queryEngine.run(&rs);
 
   auto end_qp = std::chrono::steady_clock::now();
-
+  
   std::cout << "Query compiled in "
             << std::chrono::duration_cast<std::chrono::milliseconds>(end_qc -
                                                                      start_qp)
                    .count()
-            << " ms and executed in "
+            << " ms and executed in " 
             << std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
                                                                      end_qc)
                    .count()
             << " ms" << std::endl;
-}
 
-/**
- * Execute the query given as string by interpreting the plan.
- */
-void interpret_query(graph_db_ptr &gdb, const std::string &qstr) {
-  queryc qlc;
-  spdlog::debug("create AOT query code");
-  auto qset = qlc.generate_qex_plan(gdb, qstr);  
-  qset.start(); 
+  std::cout << rs << std::endl;
+#else
+spdlog::debug("query compiler is disabled, create AOT query code");
+interpret_query(gdb, qstr);
+#endif
 }
 
 /**
@@ -344,6 +351,8 @@ int main(int argc, char* argv[]) {
   if (start_shell) {
     run_shell(graph, qex_cc);
   }
+
+  //exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
 
   // exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
 

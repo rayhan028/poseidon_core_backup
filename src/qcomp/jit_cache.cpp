@@ -9,9 +9,12 @@ using pmem::obj::pool;
 using pmem::obj::concurrent_hash_map;
 using pmem::obj::array;
 #endif
+#include <cstring>
 
 using namespace llvm;
 using namespace llvm::orc;
+
+std::map<std::string, std::string> code_cache_ = {};
 
 #ifdef USE_PMDK
 static inline int file_exists(const char *file) {
@@ -19,34 +22,36 @@ static inline int file_exists(const char *file) {
 }
 
 PJitObjectCache::PJitObjectCache(std::string dir) : dir_(dir) {
-/*        if(file_exists(dir_.c_str()) != 0) {
-            cache_pool_ = pool<PCache>::create(dir_.c_str(), "", POOLSIZE, S_IRWXU);
-            transaction::run(cache_pool_, [&] {
-                cache_pool_.root()->cache = make_persistent<PObjCache>();
-                cache_pool_.root()->cache->runtime_initialize();
-            });
-        } else {
-            cache_pool_ = pool<PCache>::open(dir_.c_str(), "");
+    /*if(file_exists(dir_.c_str()) != 0) {
+        cache_pool_ = pool<PCache>::create(dir_.c_str(), "", POOLSIZE, S_IRWXU);
+        transaction::run(cache_pool_, [&] {
+            cache_pool_.root()->cache = make_persistent<PObjCache>();
             cache_pool_.root()->cache->runtime_initialize();
-            cache_pool_.root()->cache->defragment();
-        }
-*/
+        });
+    } else {
+        cache_pool_ = pool<PCache>::open(dir_.c_str(), "");
+        cache_pool_.root()->cache->runtime_initialize();
+        cache_pool_.root()->cache->defragment();
+    }*/
+
 }
 
 #endif
 
 void PJitObjectCache::notifyObjectCompiled(const Module *M, MemoryBufferRef Obj) {
+/*
 #ifdef USE_PMDK
-    /*auto pc = cache_pool_.root();
+    auto pc = cache_pool_.root();
 
     PObjCache::accessor acc;
     pc->cache->insert(acc, string_t(std::string(M->getModuleIdentifier())));
     acc->second = string_t(Obj.getBufferStart(), Obj.getBufferSize());
     acc.release();
-    cache_pool_.close();*/
+    cache_pool_.close();
 #else
-    //code_cache_.insert({std::string(M->getModuleIdentifier()), Obj.getBufferStart()});
-#endif
+    std::string strBuf = std::string(Obj.getBufferStart(), Obj.getBufferSize());
+    code_cache_.insert({std::string(M->getModuleIdentifier()), strBuf});
+#endif*/
 }
 
 std::unique_ptr<MemoryBuffer> PJitObjectCache::getObject(const Module *M) {
@@ -71,7 +76,11 @@ std::unique_ptr<MemoryBuffer> PJitObjectCache::getObject(const Module *M) {
     cache_pool_.close();
     return MemoryBuffer::getMemBufferCopy(std::string(ret, buf_size));
 #else
-    //return MemoryBuffer::getMemBufferCopy(code_cache_[mid]);
+    if(code_cache_.find(mid) == code_cache_.end()) {
+        return nullptr;
+    } else {
+        return MemoryBuffer::getMemBufferCopy(code_cache_[mid]);
+    }
 #endif
 }
 

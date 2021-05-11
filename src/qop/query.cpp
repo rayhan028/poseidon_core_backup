@@ -22,6 +22,8 @@
 // #include "lua_poseidon.hpp"
 #include "update.hpp"
 
+#include <memory>
+
 namespace ph = std::placeholders;
 
 query::query(graph_db_ptr gdb, qop_ptr qop) {
@@ -79,6 +81,13 @@ query &query::nodes_where_indexed(const std::string &label, const std::string &p
   plan_head_ = plan_tail_ = std::make_shared<index_scan>(idx, val);
   return *this;
 }
+
+#ifdef QOP_RECOVERY
+query &query::continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label) {
+  plan_head_ = plan_tail_ = std::make_shared<continue_scan_nodes>(cp, label);
+  return *this;
+}
+#endif
 
 query &query::nodes_where_indexed(const std::vector<std::string> &labels,
                                   const std::string &prop, uint64_t val) {
@@ -204,15 +213,20 @@ query &query::finish() {
   auto op = std::make_shared<end_pipeline>();
   return append_op(op, std::bind(&end_pipeline::process, op.get()));
 }
-
+#ifdef QOP_RECOVERY
+query &query::persist() {
+  auto op = std::make_shared<persist_result>();
+  return append_op(op,
+                   std::bind(&persist_result::process, op.get(), ph::_1, ph::_2));
+}
+#endif
 query &query::project(const projection::expr_list &exprs) {
   auto op = std::make_shared<projection>(exprs);
   return append_op(op,
                    std::bind(&projection::process, op.get(), ph::_1, ph::_2));
 }
 
-query &
-query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
+query &query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
   auto op = std::make_shared<order_by>(cmp);
   return append_op(op, std::bind(&order_by::process, op.get(), ph::_1, ph::_2),
                    std::bind(&order_by::finish, op.get(), ph::_1));
@@ -402,6 +416,34 @@ void query::start() { plan_head_->start(graph_db_); }
 void query::start(std::initializer_list<query *> queries) {
   for (auto &q : queries) {
     q->start();
+  }
+}
+
+void query::extract_args() {
+  std::map<offset_t, offset_t> args_map;
+  offset_t opid = 0;
+  if(auto ns = std::dynamic_pointer_cast<scan_nodes>(plan_head_)) {
+    if(ns->labels.empty()) {
+        offset_t lc = graph_db_->get_dictionary()->lookup_string(ns->label);
+        args_map[opid++] = lc;
+    } else {
+      for(auto & l : ns->labels) {
+        offset_t lc = graph_db_->get_dictionary()->lookup_string(l);
+        args_map[opid++] = lc;
+      }
+    }
+  } else if(auto fr = std::dynamic_pointer_cast<foreach_from_relationship>(plan_head_)) {
+    if(!fr->label.empty()) {
+        offset_t lc = graph_db_->get_dictionary()->lookup_string(fr->label);
+        args_map[opid] = lc;
+    }
+    opid++;
+  } else if(auto tr = std::dynamic_pointer_cast<foreach_to_relationship>(plan_head_)) {
+    if(!tr->label.empty()) {
+        offset_t lc = graph_db_->get_dictionary()->lookup_string(fr->label);
+        args_map[opid] = lc;
+    }
+    opid++;
   }
 }
 
