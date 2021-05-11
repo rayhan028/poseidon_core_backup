@@ -22,7 +22,6 @@
 
 #include <boost/any.hpp>
 // #include <map>
-#include <libpmemobj++/container/concurrent_hash_map.hpp>
 #include <mutex>
 #include <string>
 
@@ -32,6 +31,7 @@
 #include "properties.hpp"
 #include "relationships.hpp"
 #ifdef QOP_RECOVERY
+ #include <libpmemobj++/container/concurrent_hash_map.hpp>
  #include "recovery.hpp"
 #endif
 #include "transaction.hpp"
@@ -58,7 +58,9 @@ public:
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;
 
+#ifdef QOP_RECOVERY
   using rec_map_t = pmem::obj::concurrent_hash_map<p<int>, p<int>>;
+#endif
 
   /**
    * Constructor for a new empty graph database.
