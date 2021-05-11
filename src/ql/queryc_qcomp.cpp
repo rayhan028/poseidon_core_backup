@@ -25,7 +25,7 @@
 
 #include "queryc.hpp"
 
-
+#ifdef USE_LLVM
 algebra_optr queryc::compile_to_plan(const std::string &query) {
     auto ast = parse(query);
     if (!ast) 
@@ -164,3 +164,5 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
   }
   return op;
 }
+
+#endif

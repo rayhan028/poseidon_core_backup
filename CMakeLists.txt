@@ -14,8 +14,10 @@ endif()
 option(USE_PMDK       "Use Intel PMDK"                         OFF)
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
+option(USE_LLVM       "Use LLVM for query compilation"         OFF)
 option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
 option(QOP_PROFILING  "Enable query profiling"                 ON)
+option(QOP_RECOVERY   "Enable query recovery on failure"       OFF)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -63,10 +65,20 @@ endif()
 if(QOP_PROFILING MATCHES ON)
   add_definitions( "-DQOP_PROFILING" )
 endif()
+
+if(USE_LLVM MATCHES ON)
+  add_definitions( "-DUSE_LLVM" )
+endif()
+
+if(QOP_RECOVERY MATCHES ON)
+  add_definitions( "-DQOP_RECOVERY" )
+endif()
+
 configure_file(
   ${PROJECT_SOURCE_DIR}/src/config.h.in
   ${PROJECT_BINARY_DIR}/generated/config.h
 )
+
 
 
 
@@ -85,7 +97,6 @@ include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
 include_directories(${PROJECT_SOURCE_DIR}/src/ql)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics)
 include_directories(${PROJECT_SOURCE_DIR}/src/gtpc)
-include_directories(${PROJECT_SOURCE_DIR}/src/query_crash_and_recover)
 
 #---------------------------------------------------------------------------
 
@@ -185,6 +196,7 @@ if(NOT benchmark_POPULATED)
   set(BENCHMARK_INCLUDE_DIR ${benchmark_SOURCE_DIR}/include)
 endif()
 
+if(USE_LLVM MATCHES ON)
 # LLVM ============================================================== #
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -194,6 +206,7 @@ llvm_map_components_to_libnames(LLVM_LIBRARIES
 XRay WindowsManifest TableGen Symbolize DebugInfoPDB OrcJIT OrcError JITLink ObjectYAML MCA LTO Passes Coroutines ObjCARCOpts Extensions LineEditor LibDriver Interpreter FuzzMutate MCJIT ExecutionEngine RuntimeDyld DWARFLinker DlltoolDriver Option DebugInfoGSYM Coverage XCoreDisassembler XCoreCodeGen XCoreDesc XCoreInfo X86Disassembler X86AsmParser X86CodeGen X86Desc X86Info WebAssemblyDisassembler WebAssemblyCodeGen WebAssemblyDesc WebAssemblyAsmParser WebAssemblyInfo SystemZDisassembler SystemZCodeGen SystemZAsmParser SystemZDesc SystemZInfo SparcDisassembler SparcCodeGen SparcAsmParser SparcDesc SparcInfo RISCVDisassembler RISCVCodeGen RISCVAsmParser RISCVDesc RISCVUtils RISCVInfo PowerPCDisassembler PowerPCCodeGen PowerPCAsmParser PowerPCDesc PowerPCInfo NVPTXCodeGen NVPTXDesc NVPTXInfo MSP430Disassembler MSP430CodeGen MSP430AsmParser MSP430Desc MSP430Info MipsDisassembler MipsCodeGen MipsAsmParser MipsDesc MipsInfo LanaiDisassembler LanaiCodeGen LanaiAsmParser LanaiDesc LanaiInfo HexagonDisassembler HexagonCodeGen HexagonAsmParser HexagonDesc HexagonInfo BPFDisassembler BPFCodeGen BPFAsmParser BPFDesc BPFInfo AVRDisassembler AVRCodeGen AVRAsmParser AVRDesc AVRInfo ARMDisassembler ARMCodeGen ARMAsmParser ARMDesc ARMUtils ARMInfo AMDGPUDisassembler AMDGPUCodeGen MIRParser ipo Instrumentation Vectorize Linker IRReader AsmParser FrontendOpenMP AMDGPUAsmParser AMDGPUDesc AMDGPUUtils AMDGPUInfo AArch64Disassembler MCDisassembler AArch64CodeGen CFGuard GlobalISel SelectionDAG AsmPrinter DebugInfoDWARF CodeGen Target ScalarOpts InstCombine AggressiveInstCombine TransformUtils BitWriter Analysis ProfileData Object TextAPI BitReader Core Remarks BitstreamReader AArch64AsmParser MCParser AArch64Desc MC DebugInfoCodeView DebugInfoMSF BinaryFormat AArch64Utils AArch64Info Support Demangle)
         #X86Utils)
 # LLVM_DYLIB_COMPONENTS in case of dynamic lib
+endif() 
 
 # PEGTL =================================================================== #
 include(FetchContent REQUIRED)
@@ -325,18 +338,46 @@ else()
   set(dict_src src/dict/dict_bimap.cpp)
 endif()
 
+if(USE_LLVM MATCHES ON)
+  set(llvm_src
+    src/qcomp/codegen_inline.cpp
+    src/qcomp/filter_expression.cpp
+    src/qcomp/filter_expression_inline.cpp
+    src/qcomp/global_definitions.cpp
+    src/qcomp/interpreter.cpp
+    src/qcomp/jit_cache.cpp
+    src/qcomp/p_jit.cpp
+    src/qcomp/optimizer.cpp
+    src/qcomp/main.cpp
+    src/qcomp/p_context.cpp
+    src/qcomp/query_engine.cpp
+    src/qcomp/qoperator.cpp
+    src/qcomp/joiner.cpp
+    src/qcomp/grouper.cpp
+    src/qcomp/interprete_filter_visitor.cpp
+  )
+else()
+  set(llvm_src "")
+endif()
+
+if(QOP_RECOVERY MATCHES ON)
+  set(qoprec_src src/storage/recovery.cpp)
+else()
+  set(qoprec_src "")
+endif()
+
 set(src_files 
   ${dict_src} 
   src/storage/nodes.cpp
   src/storage/relationships.cpp
   src/storage/properties.cpp
-  src/storage/recovery.cpp
+  ${qoprec_src}
   src/storage/graph_db.cpp
   src/storage/graph_db_import.cpp
   src/storage/graph_db_index.cpp
   src/storage/graph_db_query.cpp
-  src/storage/graph_db_recovery.cpp
   src/storage/graph_db_gc.cpp
+  src/storage/graph_db_recovery.cpp
   src/btree/index_map.cpp
   src/qop/profiling.cpp
   src/qop/qop.cpp
@@ -348,21 +389,7 @@ set(src_files
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
-  src/qcomp/codegen_inline.cpp
-  src/qcomp/filter_expression.cpp
-  src/qcomp/filter_expression_inline.cpp
-  src/qcomp/global_definitions.cpp
-  src/qcomp/interpreter.cpp
-  src/qcomp/jit_cache.cpp
-  src/qcomp/p_jit.cpp
-  src/qcomp/optimizer.cpp
-  src/qcomp/main.cpp
-  src/qcomp/p_context.cpp
-  src/qcomp/query_engine.cpp
-  src/qcomp/qoperator.cpp
-  src/qcomp/joiner.cpp
-  src/qcomp/grouper.cpp
-  src/qcomp/interprete_filter_visitor.cpp
+  ${llvm_src}
   src/ql/queryc_qcomp.cpp
   src/ql/queryc_qex.cpp
   src/ql/queryc.cpp
@@ -385,8 +412,14 @@ add_library(poseidon_core SHARED
   $<TARGET_OBJECTS:poseidon_obj>
 )
 
+if(USE_LLVM MATCHES ON)
+  set(LLVM_LIB LLVM)
+else()
+  set(LLVM_LIB "")
+endif()
+
 target_link_libraries(poseidon_core
-  LLVM
+  ${LLVM_LIB}
   Boost::date_time
   Boost::thread
   spdlog::spdlog_header_only
@@ -457,7 +490,7 @@ add_library(poseidon SHARED
 )
 
 target_link_libraries(poseidon
-  LLVM
+  ${LLVM_LIB}
   Boost::date_time
   Boost::thread
   ${PYTHON_LIBRARIES}
@@ -549,6 +582,7 @@ target_link_libraries(run_ldbc_updates
 #   Boost::program_options
 # )
 
+if(USE_LLVM MATCHES ON)
 # The program for executing jitted short read queries.
 #
 add_executable(run_ldbc_jit_reads
@@ -561,6 +595,7 @@ target_link_libraries(run_ldbc_jit_reads
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+endif()
 
 #-----------------------------------------------------------------------------------------
 #
@@ -580,7 +615,7 @@ target_link_libraries(run_gtpc_loader
   Boost::program_options
 )
 
-
+if(USE_LLVM MATCHES ON)
 # The program for executing jitted bi queries.
 #
 add_executable(run_ldbc_jit_bi
@@ -593,9 +628,10 @@ target_link_libraries(run_ldbc_jit_bi
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+endif()
 
 #-----------------------------------------------------------------------------------------
-
+if(USE_LLVM MATCHES ON)
 # The program for executing the LLVM query compiler
 add_executable(qcomp
 	  src/qcomp/main.cpp
@@ -606,7 +642,7 @@ target_link_libraries(qcomp
 	     ${PMDK_LIBRARIES}
 	     Boost::program_options
              )
-
+endif()
 #-----------------------------------------------------------------------------------------
 
 add_executable(qlc
@@ -619,32 +655,6 @@ add_executable(qlc
  ${PMDK_LIBRARIES}
  Boost::program_options
 )
-
-#-----------------------------------------------------------------------------------------
-
-if(USE_PMDK MATCHES ON)
-add_executable(crash_query
-#  src/ql/ast.cpp
-  src/query_crash_and_recover/crash_query.cpp
- )
-
- target_link_libraries(crash_query
- poseidon_core
- ${PMDK_LIBRARIES}
- Boost::program_options
-)
-
-add_executable(recover_query
-#  src/ql/ast.cpp
-  src/query_crash_and_recover/recover_and_continue.cpp
- )
-
- target_link_libraries(recover_query
- poseidon_core
- ${PMDK_LIBRARIES}
- Boost::program_options
-)
-endif()
 
 #-----------------------------------------------------------------------------------------
 #

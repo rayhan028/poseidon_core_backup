@@ -78,7 +78,8 @@ void graph_db::apply_undo_log() {
 #endif
 }
 
-#ifdef USE_PMDK
+#ifdef QOP_RECOVERY
+
 void graph_db::store_query_result(qr_tuple &qr, std::size_t chunk) {
   recovery_results_->add(std::move(qr), chunk);
 }

@@ -216,11 +216,12 @@ public:
    */
   query &finish();
 
+#ifdef QOP_RECOVERY
   /**
    * Perists intermediate tuple results
    */
   query &persist();
-
+#endif 
   /**
    * Add an operator for constructing the cartesian product of the query tuples 
    * of the left and right query pipelines.

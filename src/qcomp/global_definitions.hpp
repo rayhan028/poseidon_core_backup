@@ -230,7 +230,9 @@ extern thread_local std::map<int, boost::posix_time::ptime> time_result;
  */
  void collect_tuple(graph_db *gdb, result_set *rs, bool print);
 
+#ifdef QOP_RECOVERY
  void persist_tuple(graph_db *gdb, qr_tuple *qr);
+#endif
 
 qr_tuple &get_qr_tuple();
 

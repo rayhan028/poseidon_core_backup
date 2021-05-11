@@ -33,7 +33,9 @@
 #include "nodes.hpp"
 #include "properties.hpp"
 #include "relationships.hpp"
-#include "recovery.hpp"
+#ifdef QOP_RECOVERY
+ #include "recovery.hpp"
+#endif
 #include "transaction.hpp"
 #include "btree.hpp"
 #include "index_map.hpp"
@@ -366,8 +368,9 @@ public:
    */
   void parallel_nodes(node_consumer_func consumer);
 
+#ifdef QOP_RECOVERY
   void continue_parallel_nodes(std::map<std::size_t, std::size_t> &check_points, node_consumer_func consumer);
-
+#endif
   /**
    * Scans all nodes which satisfy the given predicate on the property with
    * label pkey and invokes for each of these nodes the consumer function.
@@ -500,7 +503,7 @@ public:
    */
   node &get_valid_node_version(node &n, xid_t xid);
 
-#ifdef USE_PMDK
+#ifdef QOP_RECOVERY
   void store_query_result(qr_tuple &qr, std::size_t chunk);
   void store_iter(std::pair<std::size_t, std::size_t> iter_pos);
   void restore_results(std::list<qr_tuple> &result_list);
@@ -575,10 +578,10 @@ private:
 
   p_ptr<index_map> index_map_; // the list of all exisiting indexes
   p_ptr<pmlog> ulog_; // the undo log 
-  #ifdef USE_PMDK
+#ifdef QOP_RECOVERY
   p_ptr<recovery_list> recovery_results_; // stored intermediate results
   p_ptr<rec_map_t> recovery_res_;
-  #endif
+#endif
   /**
    * These member variables are volatile and have to be reinitialized
    * during startup.

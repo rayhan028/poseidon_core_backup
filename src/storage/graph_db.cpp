@@ -34,7 +34,7 @@ graph_db::graph_db(const std::string &db_name) {
   rships_ = p_make_ptr<relationship_list>();
   node_properties_ = p_make_ptr<property_list>();
   rship_properties_ = p_make_ptr<property_list>();
-#ifdef USE_PMDK
+#ifdef QOP_RECOVERY
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
 #endif
@@ -64,7 +64,7 @@ graph_db::~graph_db() {
 void graph_db::runtime_initialize() {
   nodes_->runtime_initialize();
   rships_->runtime_initialize();
-#ifdef USE_PMDK
+#ifdef QOP_RECOVERY
   recovery_results_->runtime_initialize();
   recovery_res_->runtime_initialize();
 #endif

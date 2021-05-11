@@ -180,6 +180,7 @@ struct scan_nodes : public qop {
   std::vector<std::string> labels;
 };
 
+#ifdef QOP_RECOVERY
 struct continue_scan_nodes : public qop {
   continue_scan_nodes(std::map<std::size_t, std::size_t> &cp, const std::string &l) : label(l), check_points(cp) {}
   continue_scan_nodes() = default;
@@ -192,7 +193,7 @@ struct continue_scan_nodes : public qop {
   std::string label;
   std::map<std::size_t, std::size_t> check_points;
 };
-
+#endif
 
 /**
  * index_scan represents a query operator for scanning an index on nodes for
@@ -657,6 +658,7 @@ struct end_pipeline : public qop {
   void process();
 };
 
+#ifdef QOP_RECOVERY
 /**
  * persist is a query operator to persist intermediate results to storage for recovery
  */
@@ -667,7 +669,7 @@ struct persist_result : public qop {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 };
-
+#endif 
 /**
  * Macro to simplify definition of arguments in project etc.
  * Usage: Instead of requiring to define a lambda expression

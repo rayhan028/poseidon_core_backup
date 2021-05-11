@@ -194,8 +194,10 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&add_time_diff), JITSymbolFlags::Exported);
         M[Mangle("end_notify")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&end_notify), JITSymbolFlags::Exported);
+#ifdef QOP_RECOVERY
         M[Mangle("persist_tuple")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&persist_tuple), JITSymbolFlags::Exported);
+#endif
         M[Mangle("print_int")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&print_int), JITSymbolFlags::Exported);
 
