@@ -537,10 +537,11 @@ public:
   intermediate_result &ir_by_id(offset_t id);
   void tuple_by_ids(std::vector<offset_t> ids, qr_tuple &fwd_tpl);
   int get_stored_results();
-#endif
+
   void clear_result_storage();
   void recover_scan_parallel(tuple_consumer_func consumer);
   const p_ptr<recovery_list>& get_rec_list() { return recovery_results_; }
+#endif
 
 private:
   friend struct scan_task;
