@@ -29,8 +29,6 @@
 #include <iostream>
 #include <boost/variant.hpp>
 
-#define QOP_RECOVERY
-
 const std::string test_path = poseidon::gPmemPath + "query_recovery_test";
 
 void init_graph(graph_db_ptr &gdb) {

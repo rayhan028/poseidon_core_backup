@@ -47,8 +47,7 @@ void ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                                   (len >= 40 && len < 80) ? query_result(std::string("1")) :
                                   (len >= 80 && len < 160) ? query_result(std::string("2")) :
                                   query_result(std::string("3")); }) })
-              .crash(30000000)
-              .pgroupby({0, 1, 3}, {{"count", 0}, {"avg", 2}, {"sum", 2}, {"pcount", 0}})
+              .groupby({0, 1, 3}, {{"count", 0}, {"avg", 2}, {"sum", 2}, {"pcount", 0}})
               .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                 if (boost::get<int>(qr1[0]) == boost::get<int>(qr2[0])) {
                   if (boost::get<std::string>(qr1[1]) == boost::get<std::string>(qr2[1]))
@@ -294,7 +293,6 @@ void ldbc_bi_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .where_qr_tuple([&](auto &v) {
                 return boost::get<ptime>(v[2]) > boost::get<ptime>(params[1]); })
               .hashjoin_on_node({3, 0}, q1)
-              .crash(50000)
               .groupby({0}, {{"count", 0}})
               .project({PExpr_(0, pj::uint64_property(res, "id")),
                         PExpr_(0, pj::string_property(res, "firstName")),
@@ -682,8 +680,7 @@ void ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .where_qr_tuple([&](const qr_tuple &v) {
                 return boost::get<ptime>(v[3]) >= boost::get<ptime>(params[0]) &&
                         boost::get<ptime>(v[3]) <= boost::get<ptime>(params[1]); })
-              .crash(4000)
-              .pgroupby({0, 1}, {{"count", 0}})
+              .groupby({0, 1}, {{"count", 0}})
               .append_to_qr_tuple([&](qr_tuple &v) {
                 auto msg_cnt = boost::get<uint64_t>(v[2]);
                 msg_cnt++;
@@ -891,14 +888,13 @@ void ldbc_bi_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
   std::vector<result_set> grps3;
 
   auto q1 = query(gdb)
-//#ifdef RUN_PARALLEL
-//              .all_nodes()
-//              .has_label("Person")
-//#else
-//              .all_nodes("Person")
-//#endif
-//              .to_relationships(":hasCreator")
-              .recover_results()
+#ifdef RUN_PARALLEL
+              .all_nodes()
+              .has_label("Person")
+#else
+              .all_nodes("Person")
+#endif
+              .to_relationships(":hasCreator")
               .from_node("Post")
               .project({PVar_(0),
                         PVar_(1),
@@ -1327,7 +1323,6 @@ void ldbc_bi_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto gtg = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto etg = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
                 return gtg == etg; })
-              .persist()
               .groupby({2, 4}, {{"count", 0}})
               .where_qr_tuple([&](const qr_tuple v) {
                 return boost::get<uint64_t>(v[2]) <= (uint64_t)boost::get<int>(params[4]); })

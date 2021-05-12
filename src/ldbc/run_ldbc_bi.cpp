@@ -44,7 +44,7 @@ std::map<std::size_t, std::vector<std::size_t>> find_chunk_ranges(std::vector<st
 
 	return ranges;
 }
-
+#ifdef QOP_RECOVERY
 std::map<std::size_t, std::vector<std::size_t>>  eval_work(graph_db_ptr gdb) {
     auto cp = gdb->restore_positions();
 	std::cout << "Processed chunks: " << cp.size() << std::endl;
@@ -83,7 +83,7 @@ std::map<std::size_t, std::vector<std::size_t>>  eval_work(graph_db_ptr gdb) {
 	}
 	return rng;
 }
-
+#endif
 
 double calc_avg_time(const std::vector<double>& vec) {
     double d = 0.0;
@@ -116,7 +116,7 @@ double run_query_1(graph_db_ptr gdb) {
     }
     return calc_avg_time(runtimes);
 }
-
+#ifdef QOP_RECOVERY
 std::pair<double, double> run_query_9_recovery(graph_db_ptr gdb) {
     std::cout << "Start 1" << std::endl;
     std::vector<params_tuple> params =
@@ -163,7 +163,7 @@ std::pair<double, double> run_query_9_recovery(graph_db_ptr gdb) {
     }
     return {calc_avg_time(runtimes), rec_time};
 }
-
+#endif 
 double run_query_2(graph_db_ptr gdb) {
     std::vector<params_tuple> params = {{time_from_string(std::string("2011-04-14 01:51:21.746"))}};
 
@@ -611,6 +611,7 @@ double run_query_20(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
+#ifdef QOP_RECOVERY
 double restore_results_bench(graph_db_ptr gdb) {
     std::vector<double> runtimes(10);
     for(auto i = 0; i < 10; i++) {
@@ -630,42 +631,29 @@ double restore_results_bench(graph_db_ptr gdb) {
     }
     return calc_avg_time(runtimes);
 }
-
+#endif
 
 void run_benchmark(graph_db_ptr gdb) {
-    double t = 0.0;
-    /*for(auto i = 0; i < 5; i++) {
-        t = run_query_1(gdb);
-        spdlog::info("Query #1: {} msecs", t);
-    }*/
-    /*for(auto i = 0; i < 5; i++) {
-        t = run_query_2(gdb);
-        spdlog::info("Query #2: {} msecs", t);
-    }
+    auto t = run_query_1(gdb);
+    spdlog::info("Query #1: {} msecs", t);
+    t = run_query_2(gdb);
+    spdlog::info("Query #2: {} msecs", t);
     t = run_query_3(gdb);
-    spdlog::info("Query #3: {} msecs", t);*/
-    //spdlog::info("Recovered in #1: {} msecs", restore_results_bench(gdb));
-    //eval_work(gdb);
-    //auto rec1 = run_query_9_recovery(gdb);
-    //spdlog::info("Query #1: {} msecs runtime", rec1.first);
-    //spdlog::info("Query #1: {} msecs recovery", rec1.second);
-    for(auto i = 0; i < 1; i++) {
-        t = run_query_9(gdb);
-        spdlog::info("Query #4: {} msecs", t);
-    }
-    eval_work(gdb);
-    /*t = run_query_5(gdb);
+    spdlog::info("Query #3: {} msecs", t);
+    t = run_query_4(gdb);
+    spdlog::info("Query #4: {} msecs", t);
+    t = run_query_5(gdb);
     spdlog::info("Query #5: {} msecs", t);
     t = run_query_6(gdb);
     spdlog::info("Query #6: {} msecs", t);
     t = run_query_7(gdb);
     spdlog::info("Query #7: {} msecs", t);
-    //t = run_query_8(gdb);
-    //spdlog::info("Query #8: {} msecs", t);
+    t = run_query_8(gdb);
+    spdlog::info("Query #8: {} msecs", t);
     t = run_query_9(gdb);
     spdlog::info("Query #9: {} msecs", t);
-    //t = run_query_10(gdb);
-    //spdlog::info("Query #10: {} msecs", t);
+    t = run_query_10(gdb);
+    spdlog::info("Query #10: {} msecs", t);
     t = run_query_11(gdb);
     spdlog::info("Query #11: {} msecs", t);
     t = run_query_12(gdb);
@@ -674,18 +662,18 @@ void run_benchmark(graph_db_ptr gdb) {
     spdlog::info("Query #13: {} msecs", t);
     t = run_query_14(gdb);
     spdlog::info("Query #14: {} msecs", t);
-    //t = run_query_15(gdb);
-    //spdlog::info("Query #15: {} msecs", t);
+    t = run_query_15(gdb);
+    spdlog::info("Query #15: {} msecs", t);
     t = run_query_16(gdb);
     spdlog::info("Query #16: {} msecs", t);
-    //t = run_query_17(gdb);
-    //spdlog::info("Query #17: {} msecs", t);
+    t = run_query_17(gdb);
+    spdlog::info("Query #17: {} msecs", t);
     t = run_query_18(gdb);
     spdlog::info("Query #18: {} msecs", t);
-    //t = run_query_19(gdb);
-    //spdlog::info("Query #19: {} msecs", t);
-    //t = run_query_20(gdb);
-    //spdlog::info("Query #20: {} msecs", t);*/
+    t = run_query_19(gdb);
+    spdlog::info("Query #19: {} msecs", t);
+    t = run_query_20(gdb);
+    spdlog::info("Query #20: {} msecs", t);
 }
 
 /* ---------------------------------------------------------------------------- */

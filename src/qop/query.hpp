@@ -59,8 +59,6 @@ public:
   query &all_nodes(const std::string &label = "");
   query &all_nodes(std::map<std::size_t, std::vector<std::size_t>> &range_map, const std::string &label = "");
 
-  query &recover_results();
-
   /**
    * Add a scan over all nodes with the label which satisfy the given predicate
    * on the property with the given key.
@@ -80,8 +78,6 @@ public:
    * Add an index scan over nodes where the key is equal to the given value. 
    */
   query &nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val);
-
-  query &continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label = "");
 
   query &nodes_where_indexed(const std::vector<std::string> &labels,
                               const std::string &prop, uint64_t val);
@@ -152,7 +148,6 @@ public:
    * Add a limit operator that produces only the first n result elements.
    */
   query &limit(std::size_t n);
-  query &crash(std::size_t n);
 
   /**
    * Add an operator that appends the relationship object between a source and a
@@ -185,8 +180,6 @@ public:
   query &groupby(const std::vector<std::size_t> &pos,
     const std::vector<std::pair<std::string, std::size_t>> &aggrs);
   query &groupby(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
-    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
-  query &pgroupby(const std::vector<std::size_t> &pos,
     const std::vector<std::pair<std::string, std::size_t>> &aggrs);
   
 
@@ -226,10 +219,19 @@ public:
   query &finish();
 
 #ifdef QOP_RECOVERY
+  query &recover_results();
+
   /**
    * Perists intermediate tuple results
    */
   query &persist();
+
+  query &continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label = "");
+
+  query &pgroupby(const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+
+  query &crash(std::size_t n);
 #endif 
   /**
    * Add an operator for constructing the cartesian product of the query tuples 
