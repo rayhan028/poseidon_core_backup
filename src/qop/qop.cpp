@@ -37,9 +37,12 @@ void scan_nodes::start(graph_db_ptr &gdb) {
   if (label.empty() && labels.empty())
     if(!ranged) {
       gdb->parallel_nodes([&](node &n) { consume_(gdb, {&n}); });
-    } else {
+    } 
+#ifdef QOP_RECOVERY    
+    else {
       gdb->parallel_nodes([&](node &n) { consume_(gdb, {&n}); }, ranges);
     }
+#endif
   else if (!label.empty())
     gdb->nodes_by_label(label, [&](node &n) { PROF_PRE; consume_(gdb, {&n}); PROF_POST(1); });
   // TODO: in case of calling parallel_nodes we should handle this differently
