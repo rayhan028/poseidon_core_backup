@@ -20,6 +20,71 @@ using namespace boost::posix_time;
 
 /* ------------------------------------------------------------------------ */
 
+std::map<std::size_t, std::vector<std::size_t>> find_chunk_ranges(std::vector<std::size_t> &chunk) {
+	std::size_t range_cnt = 0;
+	std::size_t last_rng = 0;
+	std::map<std::size_t, std::vector<std::size_t>> ranges;
+	for(auto c : chunk) {
+		if(range_cnt == 0 && last_rng == 0) {
+			ranges[range_cnt].push_back(c);
+		} else {
+			if(last_rng + 1 == c) {
+				if(ranges[range_cnt].size() == 25) {
+					range_cnt++;
+				}
+				ranges[range_cnt].push_back(c);
+			} else {
+				range_cnt++;
+				ranges[range_cnt].push_back(c);
+			}
+		}
+
+		last_rng = c;
+	}
+
+	return ranges;
+}
+
+std::map<std::size_t, std::vector<std::size_t>>  eval_work(graph_db_ptr gdb) {
+    auto cp = gdb->restore_positions();
+	std::cout << "Processed chunks: " << cp.size() << std::endl;
+
+	int finished = 0;
+	int n_proc = 0;
+	auto n_max = gdb->get_nodes()->num_chunks() * 18723;
+	for(auto & c : cp) {
+		n_proc += c.second;
+		if(c.second == 18723)
+			finished++;
+	}
+	auto n_prog = n_proc * 100 / n_max;
+
+	std::cout << "Finished chunks: " << finished << std::endl;
+	std::cout << "Progress: " << n_prog << "%" << std::endl;
+	std::cout << "Stored results: " << gdb->get_stored_results() << std::endl;
+
+
+	//std::cout << "Not started chunks: ";
+	std::vector<std::size_t> rem_chunks;
+	for(auto i = 0u; i < gdb->get_nodes()->num_chunks(); i++) {
+		if(cp.find(i) == cp.end()) {
+			rem_chunks.push_back(i);
+			//std::cout << i << ", ";
+		}
+	}
+	std::cout << std::endl;
+	auto rng = find_chunk_ranges(rem_chunks);
+	for(auto & r : rng) {
+		std::cout << r.first << ": ";
+		for(auto i : r.second) {
+			//std::cout << i << " ";
+		}
+		//std::cout << std::endl;
+	}
+	return rng;
+}
+
+
 double calc_avg_time(const std::vector<double>& vec) {
     double d = 0.0;
     for (auto v : vec)
@@ -28,6 +93,7 @@ double calc_avg_time(const std::vector<double>& vec) {
 }
 
 double run_query_1(graph_db_ptr gdb) {
+    std::cout << "Start 1" << std::endl;
     std::vector<params_tuple> params =
         {{time_from_string(std::string("2017-04-14 01:51:21.746"))}};
 
@@ -49,6 +115,53 @@ double run_query_1(graph_db_ptr gdb) {
 #endif
     }
     return calc_avg_time(runtimes);
+}
+
+std::pair<double, double> run_query_9_recovery(graph_db_ptr gdb) {
+    std::cout << "Start 1" << std::endl;
+    std::vector<params_tuple> params =
+        {{time_from_string(std::string("2017-04-14 01:51:21.746"))}};
+
+    std::vector<double> runtimes(params.size());
+    double rec_time;
+
+    auto rng = eval_work(gdb);
+
+    auto cp = gdb->restore_positions();
+    result_set rec;
+    auto rec_q = query(gdb).
+                    recover_results().
+                        collect(rec);
+    auto start_rec = std::chrono::steady_clock::now();
+    gdb->begin_transaction();  
+    query::start({&rec_q});
+    rec.wait();
+    gdb->commit_transaction();  
+    auto end_rec = std::chrono::steady_clock::now();               
+    rec_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_rec -
+                                                                       start_rec).count();
+    gdb->begin_transaction(); 
+    std::list<qr_tuple> recq;
+	gdb->restore_results(recq);
+    gdb->commit_transaction(); 
+    std::cout << "rec: " << recq.size() << std::endl;
+    
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        gdb->begin_transaction();
+        recover_ldbc_bi_query_9(gdb, rs, cp, rng, recq, params[i]);
+        gdb->commit_transaction();
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return {calc_avg_time(runtimes), rec_time};
 }
 
 double run_query_2(graph_db_ptr gdb) {
@@ -235,6 +348,7 @@ double run_query_9(graph_db_ptr gdb) {
 #ifdef PRINT_RESULT
         std::cout << rs << "\n";
 #endif
+    std::cout << "SIZE: " << rs.data.size() << std::endl;
     }
     return calc_avg_time(runtimes);
 }
@@ -497,28 +611,61 @@ double run_query_20(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 
+double restore_results_bench(graph_db_ptr gdb) {
+    std::vector<double> runtimes(10);
+    for(auto i = 0; i < 10; i++) {
+        result_set rs;
+        auto q = query(gdb).
+                    recover_results().
+                        collect(rs);
+        auto start_qp = std::chrono::steady_clock::now();
+        gdb->begin_transaction();
+        query::start({&q});
+        rs.wait();
+        gdb->commit_transaction();
+        auto end_qp = std::chrono::steady_clock::now();
+        std::cout << rs.data.size() << " ";
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+    }
+    return calc_avg_time(runtimes);
+}
+
+
 void run_benchmark(graph_db_ptr gdb) {
     double t = 0.0;
-    t = run_query_1(gdb);
-    spdlog::info("Query #1: {} msecs", t);
-    t = run_query_2(gdb);
-    spdlog::info("Query #2: {} msecs", t);
+    /*for(auto i = 0; i < 5; i++) {
+        t = run_query_1(gdb);
+        spdlog::info("Query #1: {} msecs", t);
+    }*/
+    /*for(auto i = 0; i < 5; i++) {
+        t = run_query_2(gdb);
+        spdlog::info("Query #2: {} msecs", t);
+    }
     t = run_query_3(gdb);
-    spdlog::info("Query #3: {} msecs", t);
-    t = run_query_4(gdb);
-    spdlog::info("Query #4: {} msecs", t);
-    t = run_query_5(gdb);
+    spdlog::info("Query #3: {} msecs", t);*/
+    //spdlog::info("Recovered in #1: {} msecs", restore_results_bench(gdb));
+    //eval_work(gdb);
+    //auto rec1 = run_query_9_recovery(gdb);
+    //spdlog::info("Query #1: {} msecs runtime", rec1.first);
+    //spdlog::info("Query #1: {} msecs recovery", rec1.second);
+    for(auto i = 0; i < 1; i++) {
+        t = run_query_9(gdb);
+        spdlog::info("Query #4: {} msecs", t);
+    }
+    eval_work(gdb);
+    /*t = run_query_5(gdb);
     spdlog::info("Query #5: {} msecs", t);
     t = run_query_6(gdb);
     spdlog::info("Query #6: {} msecs", t);
     t = run_query_7(gdb);
     spdlog::info("Query #7: {} msecs", t);
-    t = run_query_8(gdb);
-    spdlog::info("Query #8: {} msecs", t);
+    //t = run_query_8(gdb);
+    //spdlog::info("Query #8: {} msecs", t);
     t = run_query_9(gdb);
     spdlog::info("Query #9: {} msecs", t);
-    t = run_query_10(gdb);
-    spdlog::info("Query #10: {} msecs", t);
+    //t = run_query_10(gdb);
+    //spdlog::info("Query #10: {} msecs", t);
     t = run_query_11(gdb);
     spdlog::info("Query #11: {} msecs", t);
     t = run_query_12(gdb);
@@ -527,18 +674,18 @@ void run_benchmark(graph_db_ptr gdb) {
     spdlog::info("Query #13: {} msecs", t);
     t = run_query_14(gdb);
     spdlog::info("Query #14: {} msecs", t);
-    t = run_query_15(gdb);
-    spdlog::info("Query #15: {} msecs", t);
+    //t = run_query_15(gdb);
+    //spdlog::info("Query #15: {} msecs", t);
     t = run_query_16(gdb);
     spdlog::info("Query #16: {} msecs", t);
-    t = run_query_17(gdb);
-    spdlog::info("Query #17: {} msecs", t);
+    //t = run_query_17(gdb);
+    //spdlog::info("Query #17: {} msecs", t);
     t = run_query_18(gdb);
     spdlog::info("Query #18: {} msecs", t);
-    t = run_query_19(gdb);
-    spdlog::info("Query #19: {} msecs", t);
-    t = run_query_20(gdb);
-    spdlog::info("Query #20: {} msecs", t);
+    //t = run_query_19(gdb);
+    //spdlog::info("Query #19: {} msecs", t);
+    //t = run_query_20(gdb);
+    //spdlog::info("Query #20: {} msecs", t);*/
 }
 
 /* ---------------------------------------------------------------------------- */

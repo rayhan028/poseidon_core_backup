@@ -167,8 +167,10 @@ protected:
  * subscriber.
  */
 struct scan_nodes : public qop {
-  scan_nodes(const std::string &l) : label(l) {}
-  scan_nodes(const std::vector<std::string> &l) : labels(l) {}
+  scan_nodes(const std::string &l) : label(l), ranged(false) {}
+  scan_nodes(const std::string &l, std::map<std::size_t, std::vector<std::size_t>> &range_map) : label(l), 
+        ranges(range_map), ranged(true) {}
+  scan_nodes(const std::vector<std::string> &l) : labels(l), ranged(false) {}
   scan_nodes() = default;
   ~scan_nodes() = default;
 
@@ -178,6 +180,8 @@ struct scan_nodes : public qop {
 
   std::string label;
   std::vector<std::string> labels;
+  std::map<std::size_t, std::vector<std::size_t>> ranges;
+  bool ranged;
 };
 
 #ifdef QOP_RECOVERY
@@ -194,6 +198,20 @@ struct continue_scan_nodes : public qop {
   std::map<std::size_t, std::size_t> check_points;
 };
 #endif
+
+struct recover_scan : public qop {
+  recover_scan() = default;
+  ~recover_scan() = default;
+
+  void dump(std::ostream &os) const override;
+
+  virtual void start(graph_db_ptr &gdb) override;
+
+  void finish(graph_db_ptr &gdb);
+
+  std::map<int, qr_tuple> tuple_map_;
+};
+
 
 /**
  * index_scan represents a query operator for scanning an index on nodes for
@@ -380,6 +398,17 @@ struct limit_result : public qop {
   std::size_t num_, processed_;
 };
 
+struct crash_at : public qop {
+  crash_at(std::size_t n) : num_(n), processed_(0) {}
+  ~crash_at() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t num_, processed_;
+};
+
 /**
  * nodes_connected appends the relationship object between a source and a
  * destination node, whose positions in the query tuple are given by the
@@ -485,6 +514,8 @@ struct group_by : public qop {
   group_by(const std::vector<std::size_t> &pos);
   group_by(const std::vector<std::size_t> &pos,
     const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+  group_by(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
   ~group_by() = default;
 
   void dump(std::ostream &os) const override;
@@ -500,6 +531,29 @@ struct group_by : public qop {
   std::unordered_map<std::size_t, qr_tuple> grp_tpl_map_;
   std::vector<std::pair<std::string, std::size_t>> aggrs_;
   std::unordered_map<std::size_t, std::size_t> grp_size_map_;
+};
+
+struct persistent_group_by : public qop {
+  persistent_group_by(const std::vector<std::size_t> &pos);
+  persistent_group_by(const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+  ~persistent_group_by() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  std::size_t grpkey_cnt_;
+  std::vector<std::string> grpkey_set_;
+  std::vector<std::size_t> grpkey_pos_;
+  std::unordered_map<std::string, std::size_t> grpkey_map_;
+  std::unordered_map<std::size_t, qr_tuple> grp_tpl_map_;
+  std::vector<std::pair<std::string, std::size_t>> aggrs_;
+  std::unordered_map<std::size_t, std::size_t> grp_size_map_;
+
+  std::map<std::size_t, std::vector<std::size_t>> pgrp_tpl_pos_;
 };
 
 /**
@@ -553,6 +607,7 @@ struct union_all_qres : public qop {
   void process_left(graph_db_ptr &gdb, const qr_tuple &v);
   void process_right(graph_db_ptr &gdb, const qr_tuple &v);
 
+  void r_finish(graph_db_ptr &gdb);
   void finish(graph_db_ptr &gdb);
 
   bool is_binary() const override { return true; }

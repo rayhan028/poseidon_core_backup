@@ -60,6 +60,17 @@ query &query::all_nodes(const std::string &label) {
   return *this;
 }
 
+query &query::all_nodes(std::map<std::size_t, std::vector<std::size_t>> &range_map, const std::string &label) {
+  plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(label, range_map);
+  return *this;
+}
+
+
+query &query::recover_results() {
+  plan_head_ = plan_tail_ = std::make_shared<recover_scan>();
+  return *this;
+}
+
 query &query::nodes_where(const std::string &label, const std::string &key,
                           std::function<bool(const p_item &)> pred) {
   plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(label);
@@ -191,6 +202,12 @@ query &query::limit(std::size_t n) {
                    std::bind(&limit_result::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::crash(std::size_t n) {
+  auto op = std::make_shared<crash_at>(n);
+  return append_op(op,
+                   std::bind(&crash_at::process, op.get(), ph::_1, ph::_2));
+}
+
 query &query::rship_exists(std::pair<int, int> src_des, bool append_null) {
   auto op = std::make_shared<nodes_connected>(src_des, append_null);
   return append_op(op,
@@ -245,6 +262,22 @@ query::groupby(const std::vector<std::size_t> &pos,
   auto op = std::make_shared<group_by>(pos, aggrs);
   return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
                    std::bind(&group_by::finish, op.get(), ph::_1));
+}
+
+query &
+query::groupby(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs) {
+  auto op = std::make_shared<group_by>(grps, pos, aggrs);
+  return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
+                   std::bind(&group_by::finish, op.get(), ph::_1));
+}
+
+query &
+query::pgroupby(const std::vector<std::size_t> &pos,
+  const std::vector<std::pair<std::string, std::size_t>> &aggrs) {
+  auto op = std::make_shared<persistent_group_by>(pos, aggrs);
+  return append_op(op, std::bind(&persistent_group_by::process, op.get(), ph::_1, ph::_2),
+                   std::bind(&persistent_group_by::finish, op.get(), ph::_1));
 }
 
 query &

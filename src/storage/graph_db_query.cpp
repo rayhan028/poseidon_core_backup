@@ -142,6 +142,31 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
   }
 }
 
+void graph_db::parallel_nodes(node_consumer_func consumer, std::map<std::size_t, std::vector<std::size_t>> &range_map) {
+#ifdef USE_TX
+  check_tx_context();
+#endif
+  const int nchunks = 25;
+  spdlog::debug("Start parallel query with {} threads",
+                range_map.size());
+
+  std::vector<std::future<void>> res;
+  res.reserve(range_map.size());
+  thread_pool pool;
+
+  for(auto & r : range_map) {
+    auto start = r.second.front();
+    auto end = r.second.back();
+    res.push_back(pool.submit(
+        scan_task(this, *nodes_, start, end, consumer, current_transaction_)));
+  }
+  
+  // std::cout << "waiting ..." << std::endl;
+  for (auto &f : res) {
+    f.get();
+  }
+}
+
 void graph_db::nodes(node_consumer_func consumer) {
 #ifdef USE_TX
   check_tx_context();

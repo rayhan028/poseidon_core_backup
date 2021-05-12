@@ -57,6 +57,9 @@ public:
    * Add a scan over all nodes (optionally with the given label = type).
    */
   query &all_nodes(const std::string &label = "");
+  query &all_nodes(std::map<std::size_t, std::vector<std::size_t>> &range_map, const std::string &label = "");
+
+  query &recover_results();
 
   /**
    * Add a scan over all nodes with the label which satisfy the given predicate
@@ -149,6 +152,7 @@ public:
    * Add a limit operator that produces only the first n result elements.
    */
   query &limit(std::size_t n);
+  query &crash(std::size_t n);
 
   /**
    * Add an operator that appends the relationship object between a source and a
@@ -180,6 +184,11 @@ public:
   query &groupby(const std::vector<std::size_t> &pos);
   query &groupby(const std::vector<std::size_t> &pos,
     const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+  query &groupby(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+  query &pgroupby(const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+  
 
   /**
    * Add an operator to filter projected result tuples based on the pred function.
@@ -248,7 +257,7 @@ public:
    * Add a left outerjoin operator for merging tuples of two queries if the node
    * at a given position in the left tuple is the same as the node at another
    * given position in the right tuple. The node positions are specified by the
-   * pos pair. Dangling tuples are padded with "NULL" 
+   * pos pair. Dangling tuples are padded with "NULL" consume_(gdb, {&n});
    */
   query &outerjoin_on_node(const std::pair<int, int> &left_right, query &other);
 

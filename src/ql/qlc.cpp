@@ -134,8 +134,10 @@ void interpret_query(graph_db_ptr &gdb, const std::string &qstr) {
 void compile_query(graph_db_ptr &gdb, const std::string &qstr) {
   queryc qlc;
 
+
 #ifdef USE_LLVM
   spdlog::debug("compile to plan via LLVM");     
+
   auto plan = qlc.compile_to_plan(qstr);
 /*
   std::ostringstream os;

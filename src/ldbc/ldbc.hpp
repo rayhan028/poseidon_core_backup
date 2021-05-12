@@ -15,7 +15,7 @@
 #define RUN_INDEXED
 
 // #define RUN_PARALLEL
-#define PRINT_RESULT
+ #define PRINT_RESULT
 
 namespace pj = builtin;
 
@@ -72,6 +72,14 @@ void ldbc_bi_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 void ldbc_bi_query_18(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 void ldbc_bi_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
 void ldbc_bi_query_20(graph_db_ptr &gdb, result_set &rs, params_tuple &params);
+
+void recover_ldbc_bi_query_1(graph_db_ptr &gdb, result_set &rs, std::map<std::size_t, std::size_t> &cp, 
+    std::map<std::size_t, std::vector<std::size_t>> &range_map, 
+    std::list<qr_tuple> rec, params_tuple &params);
+
+void recover_ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, std::map<std::size_t, std::size_t> &cp, 
+    std::map<std::size_t, std::vector<std::size_t>> &range_map, 
+    std::list<qr_tuple> rec, params_tuple &params);
 
 /* interactive delete queries */
 void ldbc_del_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params);

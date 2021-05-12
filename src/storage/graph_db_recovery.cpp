@@ -21,6 +21,8 @@
 #include "spdlog/spdlog.h"
 #include "thread_pool.hpp"
 
+using namespace boost::posix_time;
+
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
 #endif
@@ -80,8 +82,37 @@ void graph_db::apply_undo_log() {
 
 #ifdef QOP_RECOVERY
 
-void graph_db::store_query_result(qr_tuple &qr, std::size_t chunk) {
-  recovery_results_->add(std::move(qr), chunk);
+std::vector<std::size_t> graph_db::store_query_result(qr_tuple &qr, std::size_t chunk) {
+  return recovery_results_->add(std::move(qr), *dict_, chunk);
+}
+
+intermediate_result &graph_db::ir_by_id(offset_t id) {
+  return recovery_results_->get(id);
+}
+
+void graph_db::tuple_by_ids(std::vector<offset_t> ids, qr_tuple &fwd_tpl) {
+  for(auto id : ids) {
+    auto & res = recovery_results_->get(id);
+      if(res.type_ == 0) {
+      auto & n = node_by_id(res.res_);
+      fwd_tpl.push_back(&n);
+    } else if(res.type_ == 1) {
+      auto & r = rship_by_id(res.res_);
+      fwd_tpl.push_back(&r);
+    } else if(res.type_ == 2) {
+      fwd_tpl.push_back((int)res.res_);
+    } else if(res.type_ == 3) {
+      std::string str = dict_->lookup_code(res.res_);
+      fwd_tpl.push_back(str);
+    } else if(res.type_ == 4) {
+      double d;
+      std::memcpy(&d, &res.res_, sizeof(d));
+      fwd_tpl.push_back(d);
+    } else if(res.type_ == 5) {
+      fwd_tpl.push_back(res.res_);
+    }
+  }
+  
 }
 
 void graph_db::restore_results(std::list<qr_tuple> &result_list) {
@@ -102,7 +133,9 @@ void graph_db::restore_results(std::list<qr_tuple> &result_list) {
     } else if(res.type_ == 4) {
       double d;
       std::memcpy(&d, &res.res_, sizeof(d));
-      result_map[res.tuple_id_].push_back(d);
+      result_map[res.tuple_id_].push_back((double)d);
+    } else if(res.type_ == 5) {
+      result_map[res.tuple_id_].push_back(res.res_);
     }
   }
 
@@ -122,7 +155,7 @@ void graph_db::store_iter(std::pair<std::size_t, std::size_t> iter_pos) {
 std::map<std::size_t, std::size_t> graph_db::restore_positions() {
   std::map<std::size_t, std::size_t> cp;
   for(auto & x : *recovery_res_) {
-    std::cout << x.first << " " << x.second << std::endl;
+    //std::cout << x.first << " " << x.second << std::endl;
     cp[x.first] = x.second;
   }
   return cp;
@@ -134,9 +167,31 @@ std::map<std::size_t, std::size_t> graph_db::restore_positions() {
 struct continue_query_task {
   using range = std::pair<std::size_t, std::size_t>;
   continue_query_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last,
-	    graph_db::node_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0);
+	    graph_db::node_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0) 
+      : graph_db_(gdb), nodes_(n), range_(first, last), consumer_(c), tx_(tp), start_pos_(start_pos) {}
 
-  void operator()();
+  void operator()() {
+    xid_t xid = 0;
+    if (tx_) { // we need the transaction pointer in thread-local storage
+    current_transaction_ = tx_;
+    xid = tx_->xid();				    
+      }
+      auto iter = graph_db_->get_nodes()->range(range_.first, range_.second, start_pos_);
+      
+      while (iter) {
+  #ifdef USE_TX
+    auto &n = *iter;
+    if (n.is_valid()) {
+      auto &nv = graph_db_->get_valid_node_version(n, xid);
+      consumer_(nv);
+      graph_db_->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
+    }
+  #else
+    consumer_(*iter);
+  #endif
+    ++iter;
+      }
+  }
   
   graph_db *graph_db_;
   node_list &nodes_;
@@ -145,33 +200,6 @@ struct continue_query_task {
   transaction_ptr tx_;
   std::size_t start_pos_;
 };
-
-continue_query_task::continue_query_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last, graph_db::node_consumer_func c, transaction_ptr tp, std::size_t start_pos)
-	: graph_db_(gdb), nodes_(n), range_(first, last), consumer_(c), tx_(tp), start_pos_(start_pos) {}
-
-
-void continue_query_task::operator()() {
-  xid_t xid = 0;
-  if (tx_) { // we need the transaction pointer in thread-local storage
-	current_transaction_ = tx_;
-	xid = tx_->xid();				    
-    }
-    auto iter = graph_db_->get_nodes()->range(range_.first, range_.second, start_pos_);
-    
-    while (iter) {
-#ifdef USE_TX
-	auto &n = *iter;
-	if (n.is_valid()) {
-	   auto &nv = graph_db_->get_valid_node_version(n, xid);
-		consumer_(nv);
-    graph_db_->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
-	}
-#else
-	consumer_(*iter);
-#endif
-	++iter;
-    }
-}
 
 void graph_db::continue_parallel_nodes(std::map<std::size_t, std::size_t> &check_points, node_consumer_func consumer) {
 #ifdef USE_TX
@@ -203,3 +231,101 @@ void graph_db::continue_parallel_nodes(std::map<std::size_t, std::size_t> &check
 }
 
 #endif
+
+void graph_db::clear_result_storage() {
+  recovery_results_->clear();
+  recovery_res_->clear();
+}
+
+ptime secondsToPtime(uint64_t secs) {
+  auto epoch = from_time_t(0);
+  ptime accum = epoch;
+  accum += seconds(secs);
+  return accum;
+}
+
+struct recover_scan {
+  using range = std::pair<std::size_t, std::size_t>;
+  recover_scan(graph_db *gdb, recovery_list &r, std::size_t first, std::size_t last,
+	    graph_db::tuple_consumer_func c, transaction_ptr tp = nullptr)
+      : graph_db_(gdb), rec_(r), range_(first, last), consumer_(c), tx_(tp) {}
+
+  using rl_iter = recovery_list::range_iterator;
+
+  void operator()() {
+    xid_t xid = 0;
+    if (tx_) { // we need the transaction pointer in thread-local storage
+    current_transaction_ = tx_;
+    xid = tx_->xid();				    
+      }
+      auto iter = rec_.range(range_.first, range_.second);
+      
+      while (iter) {
+  #ifdef USE_TX
+        auto & q = *iter;
+        //handle transaction processing according to result type
+        if(q.type_ == 0) {
+          auto & n = graph_db_->node_by_id(q.res_);
+          auto &nv = graph_db_->get_valid_node_version(n, xid);
+          consumer_({&nv}, q.tuple_id_);
+        } else if(q.type_ == 1) {
+          auto & r = graph_db_->rship_by_id(q.res_);
+          auto &rv = graph_db_->get_valid_rship_version(r, xid);
+          consumer_({&rv}, q.tuple_id_);
+        } else if(q.type_ == 2){
+          consumer_({(int)q.res_}, q.tuple_id_);
+        } else if(q.type_ == 3) {
+          std::string str = graph_db_->get_dictionary()->lookup_code(q.res_);
+          consumer_({str}, q.tuple_id_);
+        } else if(q.type_ == 4){
+          double d;
+          std::memcpy(&d, &q.res_, sizeof(double));
+          consumer_({d}, q.tuple_id_);
+        } else if(q.type_ == 5){
+          consumer_({q.res_}, q.tuple_id_);
+        } else if(q.type_ == 6){
+          ptime pt = secondsToPtime(q.res_);
+          consumer_({pt}, q.tuple_id_);
+        } 
+  #else
+    //consumer_(*iter); TODO: !
+  #endif
+    ++iter;
+      }
+  }
+  
+  graph_db *graph_db_;
+  recovery_list &rec_;
+  range range_;
+  graph_db::tuple_consumer_func consumer_;
+  transaction_ptr tx_;
+};
+
+void graph_db::recover_scan_parallel(tuple_consumer_func consumer) {
+#ifdef USE_TX
+  check_tx_context();
+#endif
+  const int nchunks = 25;
+  spdlog::debug("Start parallel recover with {} threads",
+                recovery_results_->num_chunks() / nchunks + 1);
+
+  std::vector<std::future<void>> res;
+  res.reserve(recovery_results_->num_chunks() / nchunks + 1);
+  thread_pool pool;
+  std::size_t start = 0, end = nchunks - 1;
+  while (start < recovery_results_->num_chunks()) {
+    res.push_back(pool.submit(
+        recover_scan(this, *recovery_results_, start, end, consumer, current_transaction_)));
+    start = end + 1;
+    end += nchunks;
+  }
+  
+  // std::cout << "waiting ..." << std::endl;
+  for (auto &f : res) {
+    f.get();
+  }
+}
+
+int graph_db::get_stored_results() {
+  return recovery_results_->get_stored_tuples();
+}

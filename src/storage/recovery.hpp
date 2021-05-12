@@ -26,7 +26,7 @@ struct intermediate_result {
     offset_t res_;
     offset_t type_;
     offset_t chunk_;
-    
+
     intermediate_result() = default;
 
     intermediate_result(const intermediate_result &) = delete;
@@ -83,7 +83,19 @@ public:
   /**
    * Method for adding the elements of a results tuple to the intermediate result storage 
    */
-  void add(qr_tuple &&qr, std::size_t chunk);
+  std::vector<std::size_t> add(qr_tuple &&qr, dict &d, std::size_t chunk);
+
+  void update(std::size_t chunked_id, qr_tuple &qr, dict &d);
+
+  /**
+   * Get a tuple element via its identifier.
+   */
+  intermediate_result &get(offset_t id);
+
+  /**
+   * Method for clearing the storage 
+   */
+  void clear();
 
   /*
    * Returns the chunk vector of intermediate results
@@ -91,7 +103,22 @@ public:
   chunked_vec<intermediate_result> &as_vec() { return results_; }
 
   const int size() { return tuple_cnt_.load(); }
+
+  /**
+   * Return a range iterator to traverse the node_list from first_chunk to
+   * last_chunk.
+   */
+  range_iterator range(std::size_t first_chunk, std::size_t last_chunk, std::size_t start_pos = 0) {
+    return results_.range(first_chunk, last_chunk, start_pos);
+  }
   
+  /**
+   * Returns the number of occupied chunks of the underlying chunked_vec.
+   */
+  std::size_t num_chunks() const { return results_.num_chunks(); }
+
+  int get_stored_tuples();
+
 private:
   chunked_vec<intermediate_result> results_; // the actual list of stored intermediate_results
   std::atomic<int> tuple_cnt_;
