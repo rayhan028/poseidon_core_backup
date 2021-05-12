@@ -141,7 +141,7 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
     f.get();
   }
 }
-
+#ifdef QOP_RECOVERY
 void graph_db::parallel_nodes(node_consumer_func consumer, std::map<std::size_t, std::vector<std::size_t>> &range_map) {
 #ifdef USE_TX
   check_tx_context();
@@ -166,6 +166,7 @@ void graph_db::parallel_nodes(node_consumer_func consumer, std::map<std::size_t,
     f.get();
   }
 }
+#endif 
 
 void graph_db::nodes(node_consumer_func consumer) {
 #ifdef USE_TX
