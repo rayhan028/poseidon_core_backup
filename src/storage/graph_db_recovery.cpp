@@ -230,8 +230,6 @@ void graph_db::continue_parallel_nodes(std::map<std::size_t, std::size_t> &check
   }
 }
 
-#endif
-
 void graph_db::clear_result_storage() {
   recovery_results_->clear();
   recovery_res_->clear();
@@ -329,3 +327,5 @@ void graph_db::recover_scan_parallel(tuple_consumer_func consumer) {
 int graph_db::get_stored_results() {
   return recovery_results_->get_stored_tuples();
 }
+
+#endif

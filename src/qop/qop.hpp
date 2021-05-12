@@ -197,7 +197,6 @@ struct continue_scan_nodes : public qop {
   std::string label;
   std::map<std::size_t, std::size_t> check_points;
 };
-#endif
 
 struct recover_scan : public qop {
   recover_scan() = default;
@@ -211,7 +210,7 @@ struct recover_scan : public qop {
 
   std::map<int, qr_tuple> tuple_map_;
 };
-
+#endif
 
 /**
  * index_scan represents a query operator for scanning an index on nodes for
@@ -398,6 +397,7 @@ struct limit_result : public qop {
   std::size_t num_, processed_;
 };
 
+#ifdef QOP_RECOVERY
 struct crash_at : public qop {
   crash_at(std::size_t n) : num_(n), processed_(0) {}
   ~crash_at() = default;
@@ -408,6 +408,7 @@ struct crash_at : public qop {
 
   std::size_t num_, processed_;
 };
+#endif
 
 /**
  * nodes_connected appends the relationship object between a source and a
@@ -533,6 +534,7 @@ struct group_by : public qop {
   std::unordered_map<std::size_t, std::size_t> grp_size_map_;
 };
 
+#ifdef QOP_RECOVERY
 struct persistent_group_by : public qop {
   persistent_group_by(const std::vector<std::size_t> &pos);
   persistent_group_by(const std::vector<std::size_t> &pos,
@@ -555,6 +557,7 @@ struct persistent_group_by : public qop {
 
   std::map<std::size_t, std::vector<std::size_t>> pgrp_tpl_pos_;
 };
+#endif
 
 /**
  * filter_tuple implements an operator that filters a tuple

@@ -309,6 +309,7 @@ void limit_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
   }
 }
 
+#ifdef QOP_RECOVERY
 void crash_at::dump(std::ostream &os) const {
   os << "limit([" << num_ << "]) - " << PROF_DUMP;
 }
@@ -322,7 +323,7 @@ void crash_at::process(graph_db_ptr &gdb, const qr_tuple &v) {
     throw std::invalid_argument( "query failure :(" );
   }
 }
-
+#endif
 /* ------------------------------------------------------------------------ */
 
 void nodes_connected::dump(std::ostream &os) const {
@@ -530,6 +531,7 @@ void group_by::finish(graph_db_ptr &gdb) {
   finish_(gdb);
 }
 
+#ifdef QOP_RECOVERY
 /* ------------------------------------------------------------------------ */
 persistent_group_by::persistent_group_by(const std::vector<std::size_t> &pos) :
     grpkey_cnt_(0), grpkey_pos_(pos) {}
@@ -684,7 +686,7 @@ void persistent_group_by::finish(graph_db_ptr &gdb) {
   }
   finish_(gdb);
 }
-
+#endif
 /* ------------------------------------------------------------------------ */
 
 void filter_tuple::dump(std::ostream &os) const {
@@ -879,7 +881,6 @@ void collect_result::dump(std::ostream &os) const {
   os << "collect_result() - " << PROF_DUMP;
 }
 
-int xyz = 0;
 std::mutex collect_mtx;
 void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
   std::lock_guard<std::mutex> lock(collect_mtx);
@@ -930,7 +931,7 @@ void persist_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
   gdb->store_query_result(t, 0);
   consume_(gdb, v);
 }
-#endif 
+ 
 
 void recover_scan::dump(std::ostream &os) const { os << "recover_scan()"; }
 
@@ -952,7 +953,7 @@ void recover_scan::finish(graph_db_ptr &gdb) {
   }
   qop::default_finish(gdb);
 }
-
+#endif
 
 /* ------------------------------------------------------------------------ */
 
