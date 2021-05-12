@@ -528,6 +528,8 @@ public:
    * Returns the checkpoint positions to continue a failed query
    */
   std::map<std::size_t, std::size_t> restore_positions();
+
+  const p_ptr<recovery_list>& get_recovery_results() { return recovery_results_; } 
 #endif
 private:
   friend struct scan_task;

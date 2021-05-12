@@ -89,6 +89,8 @@ public:
    * Returns the chunk vector of intermediate results
   */
   chunked_vec<intermediate_result> &as_vec() { return results_; }
+
+  const int size() { return tuple_cnt_.load(); }
   
 private:
   chunked_vec<intermediate_result> results_; // the actual list of stored intermediate_results

@@ -29,6 +29,8 @@
 #include <iostream>
 #include <boost/variant.hpp>
 
+#define QOP_RECOVERY
+
 const std::string test_path = poseidon::gPmemPath + "query_recovery_test";
 
 void init_graph(graph_db_ptr &gdb) {
@@ -46,22 +48,69 @@ TEST_CASE("Store checkpoint test") {
 
     init_graph(graph);
 
-    auto iter = graph->get_nodes()->range(0,0);
-    for(int i = 0; i < 6; i++) {
+    SECTION("Test storing checkpoints") {
+        auto iter = graph->get_nodes()->range(0,0);
+        for(int i = 0; i < 6; i++) {
 
-        REQUIRE(iter.get_cur_chunk() == 0);
-        REQUIRE(iter.get_cur_pos() == i);
+            REQUIRE(iter.get_cur_chunk() == 0);
+            REQUIRE(iter.get_cur_pos() == i);
 
-        graph->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
-        auto checkpoints = graph->get_query_checkpoints();
+            graph->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
+            auto checkpoints = graph->get_query_checkpoints();
 
-        int j = 0;
-        for(auto & cp : *checkpoints) {
-            REQUIRE(cp.first == 0);
-            REQUIRE(cp.second == i);
+            int j = 0;
+            for(auto & cp : *checkpoints) {
+                REQUIRE(cp.first == 0);
+                REQUIRE(cp.second == i);
+            }
+
+            ++iter;
+            }
+    }
+
+    SECTION("Test restoring checkpoints") {
+        for(int i = 0; i < 10; i++) {
+            graph->store_iter({i, i*42});
         }
 
-        ++iter;
+        auto checkpoints = graph->restore_positions();
+
+        int chunk = 0;
+        for(auto & cp : checkpoints) {
+            auto pos = chunk * 42;
+            REQUIRE(cp.first == chunk);
+            REQUIRE(cp.second == pos);
+            chunk++;
+        }
+        REQUIRE(chunk == 10);
+    }
+
+    SECTION("Test storing tuple result") {
+        qr_tuple qrt;
+        qrt.push_back(int(21));
+        qrt.push_back(int(42));
+
+        for(int i = 0; i < 10; i++) {
+            graph->store_query_result(qrt, 0);
+        }
+
+        auto recs = graph->get_recovery_results();
+
+        REQUIRE(recs->size() == 10);
+
+        std::list<qr_tuple> restored_list;
+        graph->restore_results(restored_list);
+
+        REQUIRE(restored_list.size() == 10);
+
+        for(auto & rt : restored_list) {
+            REQUIRE(rt.size() == 2);
+            int i = 21;
+            for(auto & tp : rt) {
+                REQUIRE(boost::get<int>(tp) == i);
+                i *= 2;
+            }
+        }
     }
 
     graph_pool::destroy(pool);
