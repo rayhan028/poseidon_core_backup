@@ -5,6 +5,7 @@
 #include <iostream>
 
 #ifdef QOP_RECOVERY
+using namespace boost::posix_time;
 
 query_argument_list::~query_argument_list() {
 
@@ -35,10 +36,25 @@ offset_t type_to_offset(query_result t) {
         return 2;
     } else if(t.type() == typeid(std::string)){
         return 3;
+    } else if(t.type() == typeid(double)){
+        return 4;
+    } else if(t.type() == typeid(uint64_t)){
+        return 5;
+    } else if(t.type() == typeid(ptime)){
+        return 6;
     }
 }
 
-void recovery_list::add(qr_tuple &&qr, std::size_t chunk) {
+uint64_t secondsSinceEpoch(ptime &time) {
+    auto epoch = from_time_t(0);
+    auto duration = time-epoch;
+    return duration.total_seconds();
+}
+
+std::mutex rec_mtx;
+std::vector<std::size_t> recovery_list::add(qr_tuple &&qr, dict &d, offset_t chunk) {
+    std::lock_guard<std::mutex> lck(rec_mtx);
+    std::vector<std::size_t> add_ids;
     for(auto & t : qr) {
         offset_t type;
         offset_t value;
@@ -52,15 +68,50 @@ void recovery_list::add(qr_tuple &&qr, std::size_t chunk) {
             type = 2;
             value = boost::get<int>(t);
         } else if(t.type() == typeid(std::string)){
+            auto str = boost::get<std::string>(t);
+            value = d.lookup_string(str);
+            if(value == 0) { // add string to dict
+                value = d.insert(str);
+            }
             type = 3;
         } else if(t.type() == typeid(double)){
-            auto d = boost::get<int>(t);
+            auto d = boost::get<double>(t);
             std::memcpy(&value, &d, sizeof(double));
             type = 4;
+        } else if(t.type() == typeid(ptime)){
+            auto time = boost::get<ptime>(t);
+            value = secondsSinceEpoch(time);
+            type = 6;
+        } else if(t.type() == typeid(uint64_t)){
+            auto u = boost::get<uint64_t>(t);
+            value = u;
+            type = 5;
         }
-        results_.store({tuple_cnt_.load(), value, type});
+        auto store_id = results_.store({tuple_cnt_.load(), value, type, chunk});
+        add_ids.push_back(store_id.first);
     }
     std::atomic_fetch_add(&tuple_cnt_, 1);
-}
 
 #endif
+    return add_ids;
+}
+
+void recovery_list::clear() {
+    tuple_cnt_.store(0);
+    results_.clear();
+}
+
+void recovery_list::update(std::size_t chunked_id, qr_tuple &qr, dict &d) {
+
+}
+
+intermediate_result &recovery_list::get(offset_t id) {
+    if(results_.capacity() <= id)
+        throw unknown_id();
+    auto &r = results_.at(id);
+    return r;
+}
+
+int recovery_list::get_stored_tuples() {
+    return tuple_cnt_.load();
+}

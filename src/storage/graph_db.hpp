@@ -21,10 +21,6 @@
 #define graph_db_hpp_
 
 #include <boost/any.hpp>
-// #include <map>
-#ifdef USE_PMDK
-#include <libpmemobj++/container/concurrent_hash_map.hpp>
-#endif
 #include <mutex>
 #include <string>
 
@@ -34,7 +30,8 @@
 #include "properties.hpp"
 #include "relationships.hpp"
 #ifdef QOP_RECOVERY
- #include "recovery.hpp"
+#include <libpmemobj++/container/concurrent_hash_map.hpp>
+#include "recovery.hpp"
 #endif
 #include "transaction.hpp"
 #include "btree.hpp"
@@ -60,7 +57,9 @@ public:
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;
 
-#ifdef USE_PMDK
+#ifdef QOP_RECOVERY
+  using tuple_consumer_func = std::function<void(const qr_tuple &, int)>;
+
   using rec_map_t = pmem::obj::concurrent_hash_map<p<int>, p<int>>;
 #endif
 
@@ -372,6 +371,7 @@ public:
   /**
    * Continues the scan from the given positions (checkpoints) and invokes the given consumer function for each node.
    */
+  void parallel_nodes(node_consumer_func consumer, std::map<std::size_t, std::vector<std::size_t>> &range_map);
   void continue_parallel_nodes(std::map<std::size_t, std::size_t> &check_points, node_consumer_func consumer);
 #endif
   /**
@@ -515,7 +515,7 @@ public:
   /**
    * Stores the tuple of a query into intermediate storage
    */
-  void store_query_result(qr_tuple &qr, std::size_t chunk);
+  std::vector<std::size_t> store_query_result(qr_tuple &qr, std::size_t chunk);
 
   /**
    * Stores the checkpoint of a chunk into intermediate storage
@@ -531,9 +531,21 @@ public:
    * Returns the checkpoint positions to continue a failed query
    */
   std::map<std::size_t, std::size_t> restore_positions();
+
+  const p_ptr<recovery_list>& get_recovery_results() { return recovery_results_; } 
+
+  intermediate_result &ir_by_id(offset_t id);
+  void tuple_by_ids(std::vector<offset_t> ids, qr_tuple &fwd_tpl);
+  int get_stored_results();
+
+  void clear_result_storage();
+  void recover_scan_parallel(tuple_consumer_func consumer);
+  const p_ptr<recovery_list>& get_rec_list() { return recovery_results_; }
 #endif
+
 private:
   friend struct scan_task;
+  friend struct recover_scan;
 
   /**
    * Update the given node as the FROM node of the relationship. The relationship was already

@@ -57,6 +57,7 @@ public:
    * Add a scan over all nodes (optionally with the given label = type).
    */
   query &all_nodes(const std::string &label = "");
+  query &all_nodes(std::map<std::size_t, std::vector<std::size_t>> &range_map, const std::string &label = "");
 
   /**
    * Add a scan over all nodes with the label which satisfy the given predicate
@@ -77,8 +78,6 @@ public:
    * Add an index scan over nodes where the key is equal to the given value. 
    */
   query &nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val);
-
-  query &continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label = "");
 
   query &nodes_where_indexed(const std::vector<std::string> &labels,
                               const std::string &prop, uint64_t val);
@@ -180,6 +179,9 @@ public:
   query &groupby(const std::vector<std::size_t> &pos);
   query &groupby(const std::vector<std::size_t> &pos,
     const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+  query &groupby(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+  
 
   /**
    * Add an operator to filter projected result tuples based on the pred function.
@@ -217,10 +219,19 @@ public:
   query &finish();
 
 #ifdef QOP_RECOVERY
+  query &recover_results();
+
   /**
    * Perists intermediate tuple results
    */
   query &persist();
+
+  query &continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label = "");
+
+  query &pgroupby(const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+
+  query &crash(std::size_t n);
 #endif 
   /**
    * Add an operator for constructing the cartesian product of the query tuples 
@@ -248,7 +259,7 @@ public:
    * Add a left outerjoin operator for merging tuples of two queries if the node
    * at a given position in the left tuple is the same as the node at another
    * given position in the right tuple. The node positions are specified by the
-   * pos pair. Dangling tuples are padded with "NULL" 
+   * pos pair. Dangling tuples are padded with "NULL" consume_(gdb, {&n});
    */
   query &outerjoin_on_node(const std::pair<int, int> &left_right, query &other);
 

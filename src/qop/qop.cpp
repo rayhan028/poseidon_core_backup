@@ -35,7 +35,14 @@ using namespace boost::posix_time;
 
 void scan_nodes::start(graph_db_ptr &gdb) {
   if (label.empty() && labels.empty())
-    gdb->parallel_nodes([&](node &n) { consume_(gdb, {&n}); });
+//    if(!ranged) {
+      gdb->parallel_nodes([&](node &n) { consume_(gdb, {&n}); });
+/*    } 
+#ifdef QOP_RECOVERY    
+    else {
+      gdb->parallel_nodes([&](node &n) { consume_(gdb, {&n}); }, ranges);
+    }
+#endif*/
   else if (!label.empty())
     gdb->nodes_by_label(label, [&](node &n) { PROF_PRE; consume_(gdb, {&n}); PROF_POST(1); });
   // TODO: in case of calling parallel_nodes we should handle this differently
@@ -306,6 +313,21 @@ void limit_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
   }
 }
 
+#ifdef QOP_RECOVERY
+void crash_at::dump(std::ostream &os) const {
+  os << "limit([" << num_ << "]) - " << PROF_DUMP;
+}
+
+#include <stdexcept>
+void crash_at::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  if (processed_ < num_) {
+    consume_(gdb, v);
+    processed_++;
+  } else {
+    throw std::invalid_argument( "query failure :(" );
+  }
+}
+#endif
 /* ------------------------------------------------------------------------ */
 
 void nodes_connected::dump(std::ostream &os) const {
@@ -365,7 +387,39 @@ void group_by::dump(std::ostream &os) const {
   os << "group_by([]) - " << PROF_DUMP;
 }
 
+group_by::group_by(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs) : grpkey_cnt_(0), grpkey_pos_(pos), aggrs_(aggrs) {
+  for(auto & g : grps) {
+    std::string grpkeys = "";
+    for (auto pos : grpkey_pos_) {
+      if (g[pos].type() == typeid(std::string)) {
+        grpkeys += boost::get<std::string>(g[pos]);
+      } else if (g[pos].type() == typeid(int)) {
+        grpkeys += std::to_string(boost::get<int>(g[pos]));
+      } else if (g[pos].type() == typeid(double)) {
+        grpkeys += std::to_string(boost::get<double>(g[pos]));
+      } else if (g[pos].type() == typeid(uint64_t)) {
+        grpkeys += std::to_string(boost::get<uint64_t>(g[pos]));
+      } else if (g[pos].type() == typeid(ptime)) { 
+        grpkeys += to_iso_extended_string(boost::get<ptime>(g[pos]));
+      } else if (g[pos].type() == typeid(node *)) {
+        grpkeys += std::to_string(boost::get<node *>(g[pos])->id());
+      }
+    }
+    std::size_t gpos;
+    gpos = grpkey_cnt_;
+    grpkey_set_.push_back(grpkeys);
+    grp_size_map_.emplace(gpos, 1);
+    grpkey_map_.emplace(grpkeys, gpos);
+
+    grp_tpl_map_.emplace(gpos, g);
+    grpkey_cnt_++;
+  }
+}
+
+std::mutex grp_mutex;
 void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  std::lock_guard<std::mutex> lck(grp_mutex);
   std::string grpkeys = "";
   for (auto pos : grpkey_pos_) {
     if (v[pos].type() == typeid(std::string)) {
@@ -481,6 +535,162 @@ void group_by::finish(graph_db_ptr &gdb) {
   finish_(gdb);
 }
 
+#ifdef QOP_RECOVERY
+/* ------------------------------------------------------------------------ */
+persistent_group_by::persistent_group_by(const std::vector<std::size_t> &pos) :
+    grpkey_cnt_(0), grpkey_pos_(pos) {}
+
+persistent_group_by::persistent_group_by(const std::vector<std::size_t> &pos, 
+  const std::vector<std::pair<std::string, std::size_t>> &aggrs) :
+    grpkey_cnt_(0), grpkey_pos_(pos), aggrs_(aggrs) {}
+
+void persistent_group_by::dump(std::ostream &os) const {
+  os << "persistent_group_by([]) - " << PROF_DUMP;
+}
+
+std::mutex grp_mutex2;
+void persistent_group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  std::lock_guard<std::mutex> lck(grp_mutex2);
+  std::string grpkeys = "";
+  for (auto pos : grpkey_pos_) {
+    if (v[pos].type() == typeid(std::string)) {
+      grpkeys += boost::get<std::string>(v[pos]);
+    } else if (v[pos].type() == typeid(int)) {
+      grpkeys += std::to_string(boost::get<int>(v[pos]));
+    } else if (v[pos].type() == typeid(double)) {
+      grpkeys += std::to_string(boost::get<double>(v[pos]));
+    } else if (v[pos].type() == typeid(uint64_t)) {
+      grpkeys += std::to_string(boost::get<uint64_t>(v[pos]));
+    } else if (v[pos].type() == typeid(ptime)) { 
+      grpkeys += to_iso_extended_string(boost::get<ptime>(v[pos]));
+    } else if (v[pos].type() == typeid(node *)) {
+      grpkeys += std::to_string(boost::get<node *>(v[pos])->id());
+    }
+  }
+
+  std::size_t gpos;
+  const auto gitr = grpkey_map_.find(grpkeys);
+  if (gitr != grpkey_map_.end()) {
+    gpos = gitr->second;
+    grp_size_map_[gpos]++;
+  }
+  else {
+    gpos = grpkey_cnt_;
+    grpkey_set_.push_back(grpkeys);
+    grp_size_map_.emplace(gpos, 1);
+    grpkey_map_.emplace(grpkeys, gpos);
+
+    qr_tuple gtpl;
+    for (auto pos : grpkey_pos_)
+      gtpl.push_back(v[pos]);
+    for (auto &aggr : aggrs_) {
+      if (aggr.first == "count")
+        gtpl.push_back(query_result((uint64_t)0));
+      else if (aggr.first == "sum") {
+        if (v[aggr.second].type() == typeid(uint64_t))
+          gtpl.push_back(query_result((uint64_t)0));
+        else if (v[aggr.second].type() == typeid(int))
+          gtpl.push_back(query_result(0));
+        else if (v[aggr.second].type() == typeid(double))
+          gtpl.push_back(query_result(0.0));
+      }
+      else if (aggr.first == "avg" || aggr.first == "pcount")
+        gtpl.push_back(query_result(0.0));
+    }
+
+    grp_tpl_map_.emplace(gpos, gtpl);
+    grpkey_cnt_++;
+
+    std::vector<std::size_t> pgrp_pos = gdb->store_query_result(gtpl, 0);
+    pgrp_tpl_pos_[gpos].swap(pgrp_pos);
+  }  
+// here pls
+  auto &aggr_tpl = pgrp_tpl_pos_[gpos];
+  auto aggr_pos = grpkey_pos_.size();
+
+  for (auto &aggr : aggrs_) {
+    if (aggr.first == "count") {
+      auto & ir = gdb->ir_by_id(aggr_tpl[aggr_pos]);
+      ir.res_++;
+      //boost::get<uint64_t>(aggr_tpl[aggr_pos])++;
+    }
+    else if (aggr.first == "sum") {
+      if (v[aggr.second].type() == typeid(uint64_t)) {
+        auto &ir = gdb->ir_by_id(aggr_tpl[aggr_pos]);
+        uint64_t &gsum = ir.res_;
+        gsum += boost::get<uint64_t>(v[aggr.second]);
+      }
+      else if (v[aggr.second].type() == typeid(int)) {
+        auto &ir = gdb->ir_by_id(aggr_tpl[aggr_pos]);
+        int &gsum = (int&)(ir.res_);
+        gsum += boost::get<int>(v[aggr.second]);
+      }
+      else if (v[aggr.second].type() == typeid(double)) {
+        auto &ir = gdb->ir_by_id(aggr_tpl[aggr_pos]);
+        offset_t &gsum = ir.res_;
+        double d;
+        std::memcpy(&d, &gsum, sizeof(d));
+        d += boost::get<double>(v[aggr.second]);
+        std::memcpy(&gsum, &d, sizeof(d));
+      }
+    }
+    else if (aggr.first == "avg") {
+      auto &ir = gdb->ir_by_id(aggr_tpl[aggr_pos]);
+      offset_t &gavg = ir.res_;
+      double d;
+      std::memcpy(&d, &gavg, sizeof(d));
+      
+      auto gsize = grp_size_map_[gpos];
+      auto val = (v[aggr.second].type() == typeid(uint64_t)) ?
+                    boost::get<uint64_t>(v[aggr.second]) :
+                  (v[aggr.second].type() == typeid(int)) ?
+                    boost::get<int>(v[aggr.second]) :
+                  (v[aggr.second].type() == typeid(double)) ?
+                    boost::get<double>(v[aggr.second]) : 0;
+      d = (gsize == 1) ? (double)val :
+              (d * (gsize-1) + (double)val) / (double)gsize;
+      std::memcpy(&gavg, &d, sizeof(d));
+    } // process pcount (percentage count) in group_by::finish
+    aggr_pos++;
+  }  
+}
+
+void persistent_group_by::finish(graph_db_ptr &gdb) {
+  auto aggr_pos = grpkey_pos_.size();
+  for (auto &aggr : aggrs_) {
+    if (aggr.first == "pcount"){
+      std::size_t tsize = 0;
+      for (auto &elem : grp_size_map_)
+        tsize += elem.second;
+      for (auto &grp : grpkey_set_) {
+        auto gpos = grpkey_map_[grp];
+        auto gsize = grp_size_map_[gpos];
+        //auto &aggr_tpl = grp_tpl_map_[gpos];
+        auto ids = pgrp_tpl_pos_[gpos];
+        auto aggr_id = ids[aggr_pos];
+
+        auto &ir = gdb->ir_by_id(aggr_id);
+        offset_t &pc = ir.res_;
+        double gpcount;
+        std::memcpy(&gpcount, &pc, sizeof(pc));
+        gpcount = (gsize / (double)tsize) * 100;
+        std::memcpy(&pc, &gpcount, sizeof(pc));
+      }
+    }
+    aggr_pos++;
+  }
+
+  for (auto &grp : grpkey_set_) {
+    auto gpos = grpkey_map_[grp];
+    //auto &gtpl = grp_tpl_map_[gpos];
+    qr_tuple gtpl;
+    auto ids = pgrp_tpl_pos_[gpos];
+    gdb->tuple_by_ids(ids, gtpl);
+    consume_(gdb, gtpl);
+  }
+  finish_(gdb);
+}
+#endif
 /* ------------------------------------------------------------------------ */
 
 void filter_tuple::dump(std::ostream &os) const {
@@ -525,7 +735,7 @@ void union_all_qres::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
 void union_all_qres::process_right(graph_db_ptr &gdb, const qr_tuple &v) {
   consume_(gdb, v);
 }
-
+void union_all_qres::r_finish(graph_db_ptr &gdb) { }
 void union_all_qres::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
 
 /* ------------------------------------------------------------------------ */
@@ -727,7 +937,30 @@ void persist_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
 #endif
   consume_(gdb, v);
 }
-#endif 
+ 
+
+void recover_scan::dump(std::ostream &os) const { os << "recover_scan()"; }
+
+void recover_scan::start(graph_db_ptr &gdb) {
+  std::mutex mtx;
+  
+  gdb->recover_scan_parallel([&](const qr_tuple &qr, int tuple_id) {
+    std::lock_guard<std::mutex> lck(mtx);
+    tuple_map_[tuple_id].push_back(qr.front());
+    //f(tuple_map_[tuple_id].size() == 2)
+     // consume_(gdb, tuple_map_[tuple_id]);
+  });
+  finish(gdb);  
+}
+
+void recover_scan::finish(graph_db_ptr &gdb) {
+  for(auto & t : tuple_map_) {
+      consume_(gdb, t.second);
+  }
+  qop::default_finish(gdb);
+}
+#endif
+
 /* ------------------------------------------------------------------------ */
 
 projection::projection(const expr_list &exprs) : exprs_(exprs) {
