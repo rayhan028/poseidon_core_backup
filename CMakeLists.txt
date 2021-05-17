@@ -43,9 +43,9 @@ set(CMAKE_MACOSX_RPATH 1)
 # include(code-coverage)
 # add_code_coverage()
 
-# Require C++17
+# Require C++20
 include(c++-standards)
-cxx_17()
+cxx_20()
 
 # Include the PMDK module
 if(USE_PMDK MATCHES ON)

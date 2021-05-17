@@ -12,7 +12,7 @@ query_argument_list::~query_argument_list() {
 }
 
 void query_argument_list::add(offset_t opid, offset_t value, offset_t type) {
-    args_.store({opid, value, type});
+    //args_.store({opid, value, type});
 }
 
 recovery_list::~recovery_list() {
@@ -87,7 +87,14 @@ std::vector<std::size_t> recovery_list::add(qr_tuple &&qr, dict &d, offset_t chu
             value = u;
             type = 5;
         }
-        auto store_id = results_.store({tuple_cnt_.load(), value, type, chunk});
+
+        intermediate_result ir;
+        ir.tuple_id_ = tuple_cnt_.load();
+        ir.res_ = value;
+        ir.type_ = type;
+        ir.chunk_ = chunk;
+
+        auto store_id = results_.store(std::move(ir));
         add_ids.push_back(store_id.first);
     }
     std::atomic_fetch_add(&tuple_cnt_, 1);

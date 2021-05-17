@@ -24,6 +24,8 @@
 #include "config.h"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
+#include "qop.hpp"
+#include "query.hpp"
 
 #include <set>
 #include <iostream>
@@ -31,10 +33,14 @@
 
 const std::string test_path = poseidon::gPmemPath + "query_recovery_test";
 
+#define QOP_RECOVERY
+
 void init_graph(graph_db_ptr &gdb) {
     gdb->begin_transaction();
     for(int i = 0; i < 10; i++) {
-        gdb->add_node("Person", {});
+        auto p1 = gdb->add_node("Person", {});
+        auto p2 = gdb->add_node("Person", {});
+        gdb->add_relationship(p1, p2, ":knows", {}, false);
     }
     gdb->commit_transaction();
 }
@@ -110,6 +116,209 @@ TEST_CASE("Store checkpoint test") {
             }
         }
     }
+
+    SECTION("Test storing nodes/rships") {
+        graph->begin_transaction();
+        auto & n1 = graph->node_by_id(7);
+        auto & r = graph->rship_by_id(3);
+        auto & n2 = graph->node_by_id(4);
+        graph->commit_transaction();
+
+        qr_tuple qrt;
+        qrt.push_back(&n1);
+        qrt.push_back(&r);
+        qrt.push_back(&n2);
+
+        graph->store_query_result(qrt, 0);
+
+        auto recs = graph->get_recovery_results();
+
+        REQUIRE(recs->size() == 1);
+
+        std::vector<offset_t> expected = {7, 3, 4};
+        int i = 0;
+        for(auto & res : recs->as_vec()) {
+            res.res_ = expected[i++];    
+        }
+    }
+
+    SECTION("Test storing strings") {
+        std::string to_insert1 = "test_42_str1";
+        std::string to_insert2 = "test_42_str2";
+        auto dicti = graph->get_dictionary();
+        auto cd1 = dicti->lookup_string(to_insert1);
+        auto cd2 = dicti->lookup_string(to_insert2);
+
+        REQUIRE(cd1 == 0);
+        REQUIRE(cd2 == 0);
+
+        qr_tuple qrt;
+        qrt.push_back(to_insert1);
+        qrt.push_back(to_insert2);
+
+        graph->store_query_result(qrt, 0);
+
+        auto recs = graph->get_recovery_results();
+
+        REQUIRE(recs->size() == 1);
+
+        cd1 = dicti->lookup_string(to_insert1);
+        cd2 = dicti->lookup_string(to_insert2);
+
+        REQUIRE(cd1 == 3);
+        REQUIRE(cd2 == 4);
+    }
+
+    SECTION("Test storing tuple result with different type") {
+        qr_tuple qrt;
+        qrt.push_back(int(21));
+        qrt.push_back(std::string("test_42"));
+        qrt.push_back(double(5.4f));
+        graph->begin_transaction();
+        qrt.push_back(&graph->node_by_id(7));
+        graph->commit_transaction();
+        graph->begin_transaction();
+        qrt.push_back(&graph->rship_by_id(3));
+        graph->commit_transaction();
+
+        graph->store_query_result(qrt, 0);
+        auto recs = graph->get_recovery_results();
+
+        REQUIRE(recs->size() == 1);
+        
+        std::list<qr_tuple> restored_list;
+        
+        graph->begin_transaction();
+        graph->restore_results(restored_list);
+        graph->commit_transaction();
+        
+        auto tp = restored_list.front();
+        REQUIRE(tp.size() == 5);
+
+        auto i_res = tp.begin();
+        REQUIRE(boost::get<int>(*i_res) == 21);
+
+        auto str_res = ++i_res;
+        REQUIRE(boost::get<std::string>(*str_res) == "test_42");
+
+        auto d_res = ++str_res;
+        REQUIRE(boost::get<double>(*d_res) == 5.4f);
+
+        auto n_res = ++d_res;
+        REQUIRE(boost::get<node*>(*n_res)->id() == 7);
+
+        auto r_res = ++n_res;
+        REQUIRE(boost::get<relationship*>(*r_res)->id() == 3);
+
+        std::vector<offset_t> exp_type = {2, 3, 4, 0, 1};
+
+        offset_t dbl_val = 0.0;
+        double src = 5.4f;
+        std::memcpy(&dbl_val, &src, sizeof(double));
+
+        std::vector<offset_t> exp_val = {21, 3, dbl_val, 7, 3};
+
+        int i = 0;
+        for(auto & res : recs->as_vec()) {
+            REQUIRE(res.type_ == exp_type[i]);
+            REQUIRE(res.res_ == exp_val[i++]);
+            REQUIRE(res.tuple_id_ == 0);
+            REQUIRE(res.chunk_ == 0);
+        }
+    }
+
+    SECTION("Test parallel insert") {
+        std::vector<std::thread> threads;
+        qr_tuple qrt;
+        qrt.push_back(int(21));
+        qrt.push_back(std::string("test_42"));
+        qrt.push_back(double(5.4f));
+
+        for(int i = 0; i < 4; i++) {
+            threads.push_back(std::thread([&]{
+                for(int j = 0; j < 10; j++) {
+                    graph->store_query_result(qrt, i);
+                }
+            }));
+        }
+
+        for(auto & t : threads) {
+            t.join();
+        }
+
+        auto recs = graph->get_recovery_results();
+
+        REQUIRE(recs->size() == 40);
+
+        std::list<qr_tuple> restored_list;
+        graph->restore_results(restored_list);
+
+        REQUIRE(restored_list.size() == 40);
+
+        offset_t dbl_val = 0.0;
+        double src = 5.4f;
+        std::memcpy(&dbl_val, &src, sizeof(double));
+
+        for(auto & tp : restored_list) {
+            REQUIRE(tp.size() == 3);
+            int i = 0;
+            for(auto & res : tp) {
+                if(i++ == 0) {
+                    REQUIRE(boost::get<int>(res) == 21);
+                } else if (i++ == 1) {
+                    REQUIRE(boost::get<std::string>(res) == "test_42");
+                } else if (i++ == 2) {
+                    REQUIRE(boost::get<double>(res) == 5.4f);
+                }
+            }
+        }
+    }
+
+    SECTION("Test persist results in query pipeline") {
+        result_set rs;
+        auto q = query(graph).all_nodes("Person")
+            .from_relationships(":knows")
+                .to_node("Person")
+                    .persist()
+                        .collect(rs);
+
+        graph->begin_transaction();
+        query::start({&q});
+        graph->commit_transaction();
+
+        REQUIRE(rs.data.size() == 10);
+
+        auto recs = graph->get_recovery_results();
+
+        REQUIRE(recs->size() == 10);
+
+        std::list<qr_tuple> restored_list;
+
+        graph->begin_transaction();
+        graph->restore_results(restored_list);
+        graph->commit_transaction(); 
+        
+        REQUIRE(restored_list.size() == 10);
+
+        for(auto & res : restored_list) {
+            REQUIRE(res.size() == 3);
+            
+            auto res_it = res.begin();
+            auto n1 = boost::get<node*>(*res_it++);
+            REQUIRE(n1);
+
+            auto r = boost::get<relationship*>(*res_it++);
+            REQUIRE(r);
+
+            auto n2 = boost::get<node*>(*res_it);
+            REQUIRE(n2);
+        }
+
+        
+    }
+
+
+
 
     graph_pool::destroy(pool);
 
