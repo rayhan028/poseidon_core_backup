@@ -142,7 +142,6 @@ void graph_db::restore_results(std::list<qr_tuple> &result_list) {
   for(auto & res : result_map) {
     result_list.push_back(res.second);
   }
-
 }
 
 void graph_db::store_iter(std::pair<std::size_t, std::size_t> iter_pos) {
