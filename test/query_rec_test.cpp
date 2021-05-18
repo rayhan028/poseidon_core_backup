@@ -33,8 +33,6 @@
 
 const std::string test_path = poseidon::gPmemPath + "query_recovery_test";
 
-#define QOP_RECOVERY
-
 void init_graph(graph_db_ptr &gdb) {
     gdb->begin_transaction();
     for(int i = 0; i < 10; i++) {
