@@ -33,6 +33,8 @@
 
 const std::string test_path = poseidon::gPmemPath + "query_recovery_test";
 
+#define QOP_RECOVERY
+
 void init_graph(graph_db_ptr &gdb) {
     gdb->begin_transaction();
     for(int i = 0; i < 10; i++) {
@@ -311,11 +313,87 @@ TEST_CASE("Store checkpoint test") {
             auto n2 = boost::get<node*>(*res_it);
             REQUIRE(n2);
         }
-
-        
     }
 
+    SECTION("Test checkpoints in query pipeline") {
+        result_set rs;
+        auto q = query(graph).all_nodes()
+            .has_label("Person")
+            .from_relationships(":knows")
+                .to_node("Person")
+                    .persist()
+                        .collect(rs);
 
+        graph->begin_transaction();
+        query::start({&q});
+        graph->commit_transaction();
+        rs.wait();
+        REQUIRE(rs.data.size() == 10);
+
+        auto checkpoints = graph->get_query_checkpoints();
+
+        int chunk = 0;
+        for(auto & cp : *checkpoints) {
+            REQUIRE(cp.second == 19);
+            chunk++;
+        }
+        REQUIRE(chunk == 1);
+
+        graph->clear_result_storage();
+
+        checkpoints = graph->get_query_checkpoints();
+
+        chunk = 0;
+        for(auto & cp : *checkpoints) {
+            chunk++;
+        }
+        REQUIRE(chunk == 0);
+
+        rs.data.clear();
+
+        q = query(graph).all_nodes()
+            .has_label("Person")
+            .from_relationships(":knows")
+                .to_node("Person")
+                        .persist()
+                            .crash(7)
+                            .collect(rs);
+
+        graph->begin_transaction();
+        try {
+                
+                query::start({&q});
+        } catch(std::exception& e) {
+            graph->commit_transaction();
+        }
+        
+        REQUIRE(rs.data.size() == 7);
+    }
+
+    SECTION("Test reset of intermediate result storage") {
+        qr_tuple qrt;
+        qrt.push_back(int(21));
+        qrt.push_back(std::string("test_42"));
+        qrt.push_back(double(5.4f));
+
+        for(int i = 0; i < 42; i++) {
+            graph->store_query_result(qrt, 0);
+        }
+
+        auto recs = graph->get_recovery_results();
+
+        REQUIRE(recs->size() == 42);
+
+        recs->clear();
+
+        REQUIRE(recs->size() == 0);
+
+        int i = 0;
+        for(auto & res : recs->as_vec()) {
+            i++;
+        }
+        REQUIRE(i==0);
+    }
 
 
     graph_pool::destroy(pool);

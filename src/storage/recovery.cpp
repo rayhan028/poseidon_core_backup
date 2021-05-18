@@ -95,11 +95,11 @@ std::vector<std::size_t> recovery_list::add(qr_tuple &&qr, dict &d, offset_t chu
         ir.chunk_ = chunk;
 
         auto store_id = results_.store(std::move(ir));
+        
         add_ids.push_back(store_id.first);
     }
     std::atomic_fetch_add(&tuple_cnt_, 1);
 
-#endif
     return add_ids;
 }
 
@@ -122,3 +122,4 @@ intermediate_result &recovery_list::get(offset_t id) {
 int recovery_list::get_stored_tuples() {
     return tuple_cnt_.load();
 }
+#endif
