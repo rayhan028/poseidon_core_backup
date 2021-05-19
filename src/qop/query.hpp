@@ -219,6 +219,10 @@ public:
   query &finish();
 
 #ifdef QOP_RECOVERY
+  /**
+   * Add an operator for recovering stored intermediate results 
+   * and pushing them to the query pipeline.
+   */
   query &recover_results();
 
   /**
@@ -226,11 +230,20 @@ public:
    */
   query &persist();
 
+  /**
+   * Add an operator to continue a sequential scan starting from given checkpoint positions
+   */
   query &continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label = "");
 
+  /**
+   * Add an operator to group query tuples where the intermediate results stored in PMem
+   */
   query &pgroupby(const std::vector<std::size_t> &pos,
     const std::vector<std::pair<std::string, std::size_t>> &aggrs);
 
+  /**
+   * Add an operator to intentionally crash a query after a certain tuple count
+   */
   query &crash(std::size_t n);
 #endif 
   /**

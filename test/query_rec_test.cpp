@@ -359,8 +359,7 @@ TEST_CASE("Store checkpoint test") {
 
         graph->begin_transaction();
         try {
-                
-                query::start({&q});
+            query::start({&q});
         } catch(std::exception& e) {
             graph->commit_transaction();
         }
@@ -393,9 +392,212 @@ TEST_CASE("Store checkpoint test") {
         REQUIRE(i==0);
     }
 
+    SECTION("Test checkpoints and results after crash") {
+        result_set rs; 
+
+        auto q = query(graph).all_nodes()
+                .has_label("Person")
+                    .crash(7)
+                        .persist()
+                            .collect(rs);
+
+        graph->begin_transaction();
+        try {
+            query::start({&q});
+        } catch(std::exception& e) {
+            graph->commit_transaction();
+        }
+        
+        REQUIRE(rs.data.size() == 7);
+        auto checkpoints = graph->get_query_checkpoints();
+
+        int chunk = 0;
+        for(auto & cp : *checkpoints) {
+            REQUIRE(cp.first == chunk);
+            REQUIRE(cp.second == 6);
+            chunk++;
+        }
+        REQUIRE(chunk == 1);
+
+        graph->begin_transaction();
+        std::list<qr_tuple> restored_list;
+        graph->restore_results(restored_list);
+        graph->commit_transaction();
+        
+        REQUIRE(restored_list.size() == 7);
+
+        int i = 0;
+        for(auto & res : restored_list) {
+            REQUIRE(res.size() == 1);
+            REQUIRE(res.front().type() == typeid(node*));
+            auto n = boost::get<node*>(res.front());
+            REQUIRE(n->id() == i++);
+        }
+    }
+
+    SECTION("Test results restoration after crash with multiple elements") {
+        result_set rs; 
+        auto q = query(graph).all_nodes()
+                    .has_label("Person")
+                        .from_relationships(":knows")
+                            .to_node("Person")
+                            .crash(6)
+                                    .persist()
+                                        .collect(rs);
+
+        graph->begin_transaction();
+        try {
+            query::start({&q});
+        } catch(std::exception& e) {
+            graph->commit_transaction();
+        }
+
+        REQUIRE(rs.data.size() == 6);
+
+        graph->begin_transaction();
+        std::list<qr_tuple> restored_list;
+        graph->restore_results(restored_list);
+        graph->commit_transaction();
+        
+        REQUIRE(restored_list.size() == 6);
+
+        for(auto & res : restored_list) {
+            REQUIRE(res.size() == 3);
+
+            auto rit = res.begin();
+
+            auto n1 = boost::get<node*>(*rit++);
+            REQUIRE(n1->id() >= 0);
+        
+            auto r = boost::get<relationship*>(*rit++);
+            REQUIRE(r->id() >= 0);
+        
+            auto n2 = boost::get<node*>(*rit);
+            REQUIRE(n2->id() >= 0);
+        }
+    }
+
+
 
     graph_pool::destroy(pool);
 
+#else
+    REQUIRE(true);
+#endif
+}
+
+TEST_CASE("Recovery and continue failed query") {
+#ifdef QOP_RECOVERY
+    auto pool = graph_pool::create(test_path);
+    auto graph = pool->create_graph("my_graph");
+
+    init_graph(graph);
+
+    SECTION("Continue query after failure") {
+        result_set rs; 
+        auto q = query(graph).all_nodes()
+                    .has_label("Person")
+                        .from_relationships(":knows")
+                            .to_node("Person")
+                            .crash(3)
+                                    .persist()
+                                        .collect(rs);
+
+        graph->begin_transaction();
+        try {
+            query::start({&q});
+        } catch(std::exception& e) {
+            graph->commit_transaction();
+        }
+
+        REQUIRE(rs.data.size() == 3);
+
+        auto checkpoints = graph->restore_positions();
+
+        auto c = query(graph)
+                    .continue_scan(checkpoints)
+                        .has_label("Person")
+                            .from_relationships(":knows")
+                                .to_node("Person")
+                                    .persist()
+                                        .collect(rs);
+        graph->begin_transaction();
+        query::start({&c});
+        graph->commit_transaction();
+
+        REQUIRE(rs.data.size() == 10);
+
+        auto new_cp = graph->restore_positions();
+
+        REQUIRE(new_cp[0] == 19);
+
+        graph->clear_result_storage();
+    }
+
+    SECTION("Restore scan after failure") {
+        result_set rs; 
+        auto q = query(graph).all_nodes()
+                    .has_label("Person")
+                        .from_relationships(":knows")
+                            .to_node("Person")
+                            .crash(3)
+                                    .persist()
+                                        .collect(rs);
+
+        graph->begin_transaction();
+        try {
+            query::start({&q});
+        } catch(std::exception& e) {
+            graph->commit_transaction();
+        }
+
+        result_set recovered;
+        auto rq = query(graph).recover_results().collect(recovered);
+
+        graph->begin_transaction();
+        query::start({&rq});
+        graph->commit_transaction();
+
+        REQUIRE(recovered.data.size() == 3);
+
+        graph->clear_result_storage();
+    }
+
+    SECTION("Restore query pipeline and continue operator") {
+        result_set rs; 
+        auto q = query(graph).all_nodes()
+                    .has_label("Person")
+                            .crash(3)
+                                    .persist()
+                                        .collect(rs);
+
+        graph->begin_transaction();
+        try {
+            query::start({&q});
+        } catch(std::exception& e) {
+            graph->commit_transaction();
+        }
+
+        result_set recovered;
+        auto rq = query(graph)
+                .recover_results()
+                    .from_relationships(":knows")
+                            .to_node("Person")
+                                .collect(recovered);
+
+        graph->begin_transaction();
+        query::start({&rq});
+        graph->commit_transaction();
+
+        REQUIRE(recovered.data.size() == 2);
+
+        for(auto & res : recovered.data) {
+            REQUIRE(res.size() == 3);
+        }                        
+
+    }
+
+    graph_pool::destroy(pool);
 #else
     REQUIRE(true);
 #endif
