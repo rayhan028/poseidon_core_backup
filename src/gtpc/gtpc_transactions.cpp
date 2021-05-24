@@ -1,5 +1,6 @@
 #include <iostream>
 #include <regex>
+#include <random>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 
@@ -21,10 +22,6 @@ static const auto DISTRICT_PER_WAREHOUSE = 10;
 static const auto CUSTOMER_PER_DISTRICT = 3000;
 static const std::vector<std::string> C_LAST =
   {"BAR", "OUGHT", "ABLE", "PRI", "PRES", "ESE", "ANTI", "CALLY", "ATION", "EING"};
-
-std::string gen_last_name(int num);
-int gen_random_uniform_int(int min, int max);
-int gen_random_nonuniform_int(int A, int x, int y, int C);
 
 /* ------------------------------------------------------------------------ */
 
@@ -816,7 +813,10 @@ void gtpc_transaction_5(graph_db_ptr &gdb, result_set &rs) {
 /* ------------------------------------------------------------------------ */
 
 int gen_random_uniform_int(int min, int max) {
-	return (rand() % (max - min + 1)) + min;
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> distr(min, max);
+	return distr(gen);
 }
 
 int gen_random_nonuniform_int(int A, int x, int y, int C) {
