@@ -14,10 +14,16 @@
 namespace pj = builtin;
 using namespace boost::posix_time;
 
+static const std::vector<std::string> REGIONS =
+  {"ALGERIA", "ARGENTINA", "BRAZIL", "CANADA", "EGYPT",
+   "ETHIOPIA", "FRANCE", "GERMANY", "INDIA", "INDONESIA"};
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_1(graph_db_ptr &gdb, result_set &rs) {
+  auto delta = 90;
+  // auto delta = gen_random_uniform_int(60, 120);
+  auto max_ship_dt = time_from_string(std::string("2010-02-14 00:00:00.000"));
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -25,12 +31,12 @@ void gtpc_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("OrderLine")
               .property( "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto gdt = boost::get<ptime>(params[0]) - hours(24 * boost::get<int>(params[1]));
+                auto gdt = max_ship_dt - hours(24 * delta);
                 return dt <= gdt; })
 #else
               .nodes_where("OrderLine", "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto gdt = boost::get<ptime>(params[0]) - hours(24 * boost::get<int>(params[1]));
+                auto gdt = max_ship_dt - hours(24 * delta);
                 return dt <= gdt; })
 #endif
               .project({PExpr_(0, pj::int_property(res, "number")),
@@ -46,7 +52,10 @@ void gtpc_query_1(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_2(graph_db_ptr &gdb, result_set &rs) {
+  std::string data = "b";
+  std::string region = "EUROPE";
+  // auto region = REGIONS[gen_random_uniform_int(0, 9)];
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -54,12 +63,12 @@ void gtpc_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("Region")
               .property( "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1]));
+                auto b = gdb->get_dictionary()->lookup_string(region);
                 return a == b; })
 #else
               .nodes_where("Region", "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1]));
+                auto b = gdb->get_dictionary()->lookup_string(region);
                 return a == b; })
 #endif
               .to_relationships(":isPartOf")
@@ -73,7 +82,7 @@ void gtpc_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .property("data", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(".*" + boost::get<std::string>(params[0]));
+                std::regex r(".*" + data);
                 return std::regex_match(s, r); })
               .project({PVar_(8),
                         PExpr_(6, pj::int_property(res, "quantity")) })
@@ -113,7 +122,9 @@ void gtpc_query_2(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_3(graph_db_ptr &gdb, result_set &rs) {
+  std::string state = "A";
+  auto date = time_from_string(std::string("2011-10-30 00:00:00.000"));
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -122,25 +133,23 @@ void gtpc_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .property( "state", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(boost::get<std::string>(params[0]) + ".*");
+                std::regex r(state + ".*");
                 return std::regex_match(s, r); })
 #else
               .nodes_where("Customer", "state", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(boost::get<std::string>(params[0]) + ".*");
+                std::regex r(state + ".*");
                 return std::regex_match(s, r); })
 #endif
               .from_relationships(":hasPlaced")
               .to_node("Order")
               .property("entry_d", [&](auto &prop) {
-                return (*(reinterpret_cast<const ptime *>(prop.value_))) <
-                        boost::get<ptime>(params[1]); })
+                return (*(reinterpret_cast<const ptime *>(prop.value_))) < date; })
               .from_relationships(":contains")
               .to_node("OrderLine")
               .property("delivery_d", [&](auto &prop) {
-                return (*(reinterpret_cast<const ptime *>(prop.value_))) >
-                        boost::get<ptime>(params[1]); })
+                return (*(reinterpret_cast<const ptime *>(prop.value_))) > date; })
               .project({PExpr_(2, pj::uint64_property(res, "id")),
                         PExpr_(4, pj::double_property(res, "amount")),
                         PExpr_(2, pj::ptime_property(res, "entry_d")) })
@@ -157,7 +166,8 @@ void gtpc_query_3(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_4(graph_db_ptr &gdb, result_set &rs) {
+  auto sqtr = time_from_string(std::string("2011-08-01 00:00:00.000"));
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -165,13 +175,11 @@ void gtpc_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("Order")
               .property( "entry_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sqtr = boost::get<ptime>(params[0]);
                 auto eqtr = sqtr + hours(24 * 30 * 3);
                 return sqtr <= dt && dt < eqtr; })
 #else
               .nodes_where("Order", "entry_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sqtr = boost::get<ptime>(params[0]);
                 auto eqtr = sqtr + hours(24 * 30 * 3);
                 return sqtr <= dt && dt < eqtr; })
 #endif
@@ -192,7 +200,10 @@ void gtpc_query_4(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_5(graph_db_ptr &gdb, result_set &rs) {
+  std::string region = "ASIA";
+  // auto region = REGIONS[gen_random_uniform_int(0, 9)];
+  auto sdt = time_from_string(std::string("2010-01-01 00:00:00.000"));
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -200,12 +211,12 @@ void gtpc_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("Region")
               .property( "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(region);
                 return a == b; })
 #else
               .nodes_where("Region", "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(region);
                 return a == b; })
 #endif
               .to_relationships(":isPartOf")
@@ -216,7 +227,6 @@ void gtpc_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_node("Order")
               .property( "entry_d", [&](auto &prop) {
                 auto dt = *(reinterpret_cast<const ptime *>(prop.value_));
-                auto sdt = boost::get<ptime>(params[1]);
                 auto edt = sdt + hours(24 * 365);
                 return sdt <= dt && dt < edt; })
               .from_relationships(":contains")
@@ -241,7 +251,10 @@ void gtpc_query_5(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_6(graph_db_ptr &gdb, result_set &rs) {
+  auto sdt = time_from_string(std::string("2011-04-01 00:00:00.000"));
+  // auto quantity = gen_random_uniform_int(24, 25);
+  auto quantity = 5;
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -249,19 +262,17 @@ void gtpc_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("OrderLine")
               .property( "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[0]);
+                auto sdt = date;
                 auto edt = sdt + hours(24 * 365);
                 return sdt <= dt && dt < edt; })
 #else
               .nodes_where("OrderLine", "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[0]);
                 auto edt = sdt + hours(24 * 365);
                 return sdt <= dt && dt < edt; })
 #endif
               .property( "quantity", [&](auto &prop) {
-                auto qtty = (*(reinterpret_cast<const int *>(prop.value_)));
-                return qtty == boost::get<int>(params[1]); })
+                return (*(reinterpret_cast<const int *>(prop.value_))) == quantity; })
               .project({PExpr_(0, pj::double_property(res, "amount")) })
               .groupby({}, {{"sum", 0}})
               .collect(rs);
@@ -271,7 +282,11 @@ void gtpc_query_6(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_7(graph_db_ptr &gdb, result_set &rs) {
+  std::string nation1 = "FRANCE";
+  std::string nation2 = "GERMANY";
+  auto sdt = time_from_string(std::string("2011-01-01 00:00:00.000"));
+  auto edt = time_from_string(std::string("2012-01-01 00:00:00.000"));
 
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -279,12 +294,12 @@ void gtpc_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("Nation")
               .property( "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(nation1);
                 return a == b; })
 #else
               .nodes_where("Nation", "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(nation1);
                 return a == b; })
 #endif
               .to_relationships(":isLocatedIn")
@@ -295,8 +310,6 @@ void gtpc_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_node("OrderLine")
               .property( "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[2]);
-                auto edt = boost::get<ptime>(params[3]);
                 return sdt <= dt && dt < edt; })
               .from_relationships(":hasStock")
               .to_node("Stock")
@@ -306,7 +319,7 @@ void gtpc_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_node("Nation")
               .property( "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1]));
+                auto b = gdb->get_dictionary()->lookup_string(nation2);
                 return a == b; })
               .project({PExpr_(12, pj::string_property(res, "name")),
                         PExpr_(0, pj::string_property(res, "name")),
@@ -319,12 +332,12 @@ void gtpc_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("Nation")
               .property( "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1]));
+                auto b = gdb->get_dictionary()->lookup_string(nation2);
                 return a == b; })
 #else
               .nodes_where("Nation", "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[1]));
+                auto b = gdb->get_dictionary()->lookup_string(nation2);
                 return a == b; })
 #endif
               .to_relationships(":isLocatedIn")
@@ -335,8 +348,6 @@ void gtpc_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_node("OrderLine")
               .property( "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[2]);
-                auto edt = boost::get<ptime>(params[3]);
                 return sdt <= dt && dt < edt; })
               .from_relationships(":hasStock")
               .to_node("Stock")
@@ -346,7 +357,7 @@ void gtpc_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_node("Nation")
               .property( "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(nation1);
                 return a == b; })
               .project({PExpr_(12, pj::string_property(res, "name")),
                         PExpr_(0, pj::string_property(res, "name")),
@@ -368,7 +379,13 @@ void gtpc_query_7(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_8(graph_db_ptr &gdb, result_set &rs) {
+  // auto region = REGIONS[gen_random_uniform_int(0, 9)];
+  std::string region = "EUROPE";
+  std::string nation = "BRAZIL";
+  std::string data = "b";
+  auto sdt = time_from_string(std::string("2011-01-01 00:00:00.000"));
+  auto edt = time_from_string(std::string("2012-01-01 00:00:00.000"));
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -376,12 +393,12 @@ void gtpc_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("Region")
               .property( "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(region);
                 return a == b; })
 #else
               .nodes_where("Region", "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(region);
                 return a == b; })
 #endif
               .to_relationships(":isPartOf")
@@ -392,8 +409,6 @@ void gtpc_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_node("Order")
               .property( "entry_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[3]);
-                auto edt = boost::get<ptime>(params[4]);
                 return sdt <= dt && dt < edt; })
               .from_relationships(":contains")
               .to_node("OrderLine")
@@ -404,7 +419,7 @@ void gtpc_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .property("data", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(".*" + boost::get<std::string>(params[2]));
+                std::regex r(".*" + data);
                 return std::regex_match(s, r); })
               .from_relationships(":hasSupplier", 10)
               .to_node("Supplier")
@@ -414,7 +429,7 @@ void gtpc_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         PExpr_(16, pj::string_property(res, "name")),
                         PExpr_(8, pj::double_property(res, "amount")) })
               .append_to_qr_tuple([&](const qr_tuple &v) {
-                bool b = boost::get<std::string>(v[1]) == boost::get<std::string>(params[1]);
+                bool b = boost::get<std::string>(v[1]) == nation;
                 return b ? boost::get<double>(v[2]) : 0.0; })
               .groupby({0}, {{"sum", 2}, {"sum", 3}})
               .append_to_qr_tuple([&](const qr_tuple &v) {
@@ -428,7 +443,8 @@ void gtpc_query_8(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_9(graph_db_ptr &gdb, result_set &rs) {
+  std::string data = "BB";
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -437,13 +453,13 @@ void gtpc_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .property( "data", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(".*" + boost::get<std::string>(params[0]));
+                std::regex r(".*" + data);
                 return std::regex_match(s, r); })
 #else
               .nodes_where("Item", "data", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(".*" + boost::get<std::string>(params[0]));
+                std::regex r(".*" + data);
                 return std::regex_match(s, r); })
 #endif
               .from_relationships(":hasStock")
@@ -471,7 +487,8 @@ void gtpc_query_9(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_10(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_10(graph_db_ptr &gdb, result_set &rs) {
+  auto sdt = time_from_string(std::string("2011-08-01 00:00:00.000"));
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -479,13 +496,11 @@ void gtpc_query_10(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("Order")
               .property( "entry_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[0]);
                 auto edt = sdt + hours(24 * 30 * 3);
                 return sdt <= dt && dt < edt; })
 #else
               .nodes_where("Order", "entry_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[0]);
                 auto edt = sdt + hours(24 * 30 * 3);
                 return sdt <= dt && dt < edt; })
 #endif
@@ -518,7 +533,9 @@ void gtpc_query_10(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_11(graph_db_ptr &gdb, result_set &rs) {
+  std::string nation = "GERMANY";
+  double fraction = 0.0001;
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -526,12 +543,12 @@ void gtpc_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("Nation")
               .property( "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(nation);
                 return a == b; })
 #else
               .nodes_where("Nation", "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(nation);
                 return a == b; })
 #endif
               .to_relationships(":isLocatedIn")
@@ -543,8 +560,7 @@ void gtpc_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .groupby({0}, {{"sum", 1}})
               .where_qr_tuple([&](const qr_tuple &v) {
                 auto sum = boost::get<int>(v[1]);
-                auto fraction = sum * boost::get<double>(params[1]);
-                return sum >= fraction; })
+                return sum >= (sum * fraction); })
               .orderby([&](const qr_tuple &q1, const qr_tuple &q2) {
                 return boost::get<int>(q1[1]) > boost::get<int>(q2[1]); })
               .collect(rs);
@@ -554,7 +570,8 @@ void gtpc_query_11(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_12(graph_db_ptr &gdb, result_set &rs) {
+  auto sdt = time_from_string(std::string("2011-04-01 00:00:00.000"));
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -562,13 +579,11 @@ void gtpc_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("OrderLine")
               .property( "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[0]);
                 auto edt = sdt + hours(24 * 365);
                 return sdt <= dt && dt < edt; })
 #else
               .nodes_where("OrderLine", "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[0]);
                 auto edt = sdt + hours(24 * 365);
                 return sdt <= dt && dt < edt; })
 #endif
@@ -598,19 +613,18 @@ void gtpc_query_12(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_13(graph_db_ptr &gdb, result_set &rs) {
+  auto carrier_id = 8;
 
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Order")
               .property("carrier_id", [&](auto &prop) {
-                return (*(reinterpret_cast<const int *>(prop.value_))) >
-                        boost::get<int>(params[0]); });
+                return (*(reinterpret_cast<const int *>(prop.value_))) > carrier_id; });
 #else
               .nodes_where("Order", "carrier_id", [&](auto &prop) {
-                return (*(reinterpret_cast<const int *>(prop.value_))) >
-                        boost::get<int>(params[0]); });
+                return (*(reinterpret_cast<const int *>(prop.value_))) > carrier_id; });
 #endif
 
     auto q2 = query(gdb)
@@ -641,12 +655,10 @@ void gtpc_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .all_nodes()
               .has_label("Order")
               .property("carrier_id", [&](auto &prop) {
-                return (*(reinterpret_cast<const int *>(prop.value_))) >
-                        boost::get<int>(params[0]); })
+                return (*(reinterpret_cast<const int *>(prop.value_))) > carrier_id; })
 #else
               .nodes_where("Order", "carrier_id", [&](auto &prop) {
-                return (*(reinterpret_cast<const int *>(prop.value_))) >
-                        boost::get<int>(params[0]); })
+                return (*(reinterpret_cast<const int *>(prop.value_))) > carrier_id; })
 #endif
               .to_relationships(":hasPlaced")
               .from_node("Customer")
@@ -664,7 +676,9 @@ void gtpc_query_13(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_14(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_14(graph_db_ptr &gdb, result_set &rs) {
+  auto sdt = time_from_string(std::string("2011-04-01 00:00:00.000"));
+  std::string data = "PR";
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -672,13 +686,11 @@ void gtpc_query_14(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("OrderLine")
               .property( "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[0]);
                 auto edt = sdt + hours(24 * 30);
                 return sdt <= dt && dt < edt; })
 #else
               .nodes_where("OrderLine", "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[0]);
                 auto edt = sdt + hours(24 * 30);
                 return sdt <= dt && dt < edt; })
 #endif
@@ -690,7 +702,7 @@ void gtpc_query_14(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         PExpr_(0, pj::double_property(res, "amount"))})
               .append_to_qr_tuple([&](const qr_tuple &v) {
                 auto s = boost::get<std::string>(v[0]);
-                std::regex r(boost::get<std::string>(params[1]) + ".*");
+                std::regex r(data + ".*");
                 return std::regex_match(s, r) ? v[1] : query_result(0.0); })
               .groupby({}, {{"sum", 2}, {"sum", 1}})
               .append_to_qr_tuple([&](const qr_tuple &v) {
@@ -706,7 +718,8 @@ void gtpc_query_14(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_15(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_15(graph_db_ptr &gdb, result_set &rs) {
+  auto sdt = time_from_string(std::string("2011-04-01 00:00:00.000"));
 
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -714,13 +727,11 @@ void gtpc_query_15(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("OrderLine")
               .property( "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[0]);
                 auto edt = sdt + hours(24 * 30 * 3);
                 return sdt <= dt && dt < edt; })
 #else
               .nodes_where("OrderLine", "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[0]);
                 auto edt = sdt + hours(24 * 30 * 3);
                 return sdt <= dt && dt < edt; })
 #endif
@@ -739,13 +750,11 @@ void gtpc_query_15(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("OrderLine")
               .property( "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[0]);
                 auto edt = sdt + hours(24 * 30 * 3);
                 return sdt <= dt && dt < edt; })
 #else
               .nodes_where("OrderLine", "delivery_d", [&](auto &prop) {
                 auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-                auto sdt = boost::get<ptime>(params[0]);
                 auto edt = sdt + hours(24 * 30 * 3);
                 return sdt <= dt && dt < edt; })
 #endif
@@ -773,7 +782,9 @@ void gtpc_query_15(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_16(graph_db_ptr &gdb, result_set &rs) {
+  std::string data = "zz";
+  std::string comment = "bad";
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -782,13 +793,13 @@ void gtpc_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .property( "data", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(boost::get<std::string>(params[0]) + ".*");
+                std::regex r(data + ".*");
                 return !std::regex_match(s, r); })
 #else
               .nodes_where("Item", "data", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(boost::get<std::string>(params[0]) + ".*");
+                std::regex r(data + ".*");
                 return !std::regex_match(s, r); })
 #endif
               .from_relationships(":hasStock")
@@ -798,7 +809,7 @@ void gtpc_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .property( "comment", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(".*" + boost::get<std::string>(params[1]) + ".*");
+                std::regex r(".*" + comment + ".*");
                 return !std::regex_match(s, r); })
               .project({PExpr_(0, pj::string_property(res, "name")),
                         projection::expr(0, [&](auto res) {
@@ -818,7 +829,8 @@ void gtpc_query_16(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_17(graph_db_ptr &gdb, result_set &rs) {
+  std::string data = "b";
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -827,13 +839,13 @@ void gtpc_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .property( "data", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(".*" + boost::get<std::string>(params[0]));
+                std::regex r(".*" + data);
                 return !std::regex_match(s, r); })
 #else
               .nodes_where("Item", "data", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(".*" + boost::get<std::string>(params[0]));
+                std::regex r(".*" + data);
                 return !std::regex_match(s, r); })
 #endif
               .from_relationships(":hasStock")
@@ -867,7 +879,8 @@ void gtpc_query_17(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_18(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_18(graph_db_ptr &gdb, result_set &rs) {
+  auto amount = 100;
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -882,7 +895,7 @@ void gtpc_query_18(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         PExpr_(2, pj::double_property(res, "amount")) })
               .groupby({0}, {{"sum", 1}})
               .where_qr_tuple([&](const qr_tuple &v) {
-                return boost::get<double>(v[1]) > boost::get<int>(params[0]); })
+                return boost::get<double>(v[1]) > amount; })
               .from_relationships(":contains", 0)
               .to_node("OrderLine")
               .to_relationships(":hasPlaced", 0)
@@ -906,7 +919,14 @@ void gtpc_query_18(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_19(graph_db_ptr &gdb, result_set &rs) {
+  std::string data1 = "a";
+  std::string data2 = "b";
+  std::string data3 = "c";
+  auto price1 = 1;
+  auto price2 = 400000;
+  auto quantity1 = 1;
+  auto quantity2 = 10;
 
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -920,11 +940,10 @@ void gtpc_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         PExpr_(0, pj::double_property(res, "price"))})
               .where_qr_tuple([&](const qr_tuple &v) {
                 auto s = boost::get<std::string>(v[1]);
-                std::regex r(".*" + boost::get<std::string>(params[0]));
+                std::regex r(".*" + data1);
                 auto pred1 = std::regex_match(s, r);
                 auto p = boost::get<double>(v[2]);
-                auto pred2 = boost::get<int>(params[1]) <= p &&
-                              p <= boost::get<int>(params[2]);
+                auto pred2 = price1 <= p && p <= price2;
                 return pred1 && pred2; })
               .from_relationships(":hasStock", 0)
               .to_node("Stock")
@@ -933,8 +952,7 @@ void gtpc_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .project({PExpr_(6, pj::int_property(res, "quantity")) })
               .where_qr_tuple([&](const qr_tuple &v) {
                 auto amount = boost::get<int>(v[0]);
-                return boost::get<int>(params[3]) <= amount &&
-                        amount <= boost::get<int>(params[4]); });
+                return quantity1 <= amount && amount <= quantity2; });
 
    auto q2 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -948,11 +966,10 @@ void gtpc_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         PExpr_(0, pj::double_property(res, "price"))})
               .where_qr_tuple([&](const qr_tuple &v) {
                 auto s = boost::get<std::string>(v[1]);
-                std::regex r(".*" + boost::get<std::string>(params[5]));
+                std::regex r(".*" + data2);
                 auto pred1 = std::regex_match(s, r);
                 auto p = boost::get<double>(v[2]);
-                auto pred2 = boost::get<int>(params[1]) <= p &&
-                              p <= boost::get<int>(params[2]);
+                auto pred2 = price1 <= p && p <= price2;
                 return pred1 && pred2; })
               .from_relationships(":hasStock", 0)
               .to_node("Stock")
@@ -961,8 +978,7 @@ void gtpc_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .project({PExpr_(6, pj::int_property(res, "quantity")) })
               .where_qr_tuple([&](const qr_tuple &v) {
                 auto amount = boost::get<int>(v[0]);
-                return boost::get<int>(params[3]) <= amount &&
-                        amount <= boost::get<int>(params[4]); });
+                return quantity1 <= amount && amount <= quantity2; });
 
     auto q3 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -976,11 +992,10 @@ void gtpc_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                         PExpr_(0, pj::double_property(res, "price"))})
               .where_qr_tuple([&](const qr_tuple &v) {
                 auto s = boost::get<std::string>(v[1]);
-                std::regex r(".*" + boost::get<std::string>(params[6]));
+                std::regex r(".*" + data3);
                 auto pred1 = std::regex_match(s, r);
                 auto p = boost::get<double>(v[2]);
-                auto pred2 = boost::get<int>(params[1]) <= p &&
-                              p <= boost::get<int>(params[2]);
+                auto pred2 = price1 <= p && p <= price2;
                 return pred1 && pred2; })
               .from_relationships(":hasStock", 0)
               .to_node("Stock")
@@ -989,8 +1004,7 @@ void gtpc_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .project({PExpr_(6, pj::int_property(res, "quantity")) })
               .where_qr_tuple([&](const qr_tuple &v) {
                 auto amount = boost::get<int>(v[0]);
-                return boost::get<int>(params[3]) <= amount &&
-                        amount <= boost::get<int>(params[4]); })
+                return quantity1 <= amount && amount <= quantity2; })
               .union_all({&q1, &q2})
               .groupby({}, {{"sum", 0}})
               .collect(rs);
@@ -1000,7 +1014,10 @@ void gtpc_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_20(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_20(graph_db_ptr &gdb, result_set &rs) {
+  std::string data = "co";
+  auto date = time_from_string(std::string("2011-10-30 00:00:00.000"));
+  std::string nation = "CHINA";
 
     auto q = query(gdb)
 #ifdef RUN_PARALLEL
@@ -1009,13 +1026,13 @@ void gtpc_query_20(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .property( "data", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(boost::get<std::string>(params[0]) + ".*");
+                std::regex r(data + ".*");
                 return std::regex_match(s, r); })
 #else
               .nodes_where("Item", "data", [&](auto &prop) {
                 auto c = *(reinterpret_cast<const dcode_t *>(prop.value_));
                 auto s = gdb->get_dictionary()->lookup_code(c);
-                std::regex r(boost::get<std::string>(params[0]) + ".*");
+                std::regex r(data + ".*");
                 return std::regex_match(s, r); })
 #endif
               .from_relationships(":hasStock")
@@ -1023,8 +1040,7 @@ void gtpc_query_20(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_relationships(":hasStock")
               .from_node("OrderLine")
               .property("delivery_d", [&](auto &prop) {
-                return (*(reinterpret_cast<const ptime *>(prop.value_))) >
-                        boost::get<ptime>(params[1]); })
+                return (*(reinterpret_cast<const ptime *>(prop.value_))) > date; })
               .project({PVar_(2),
                         PExpr_(2, pj::int_property(res, "quantity")),
                         PExpr_(4, pj::int_property(res, "quantity")) })
@@ -1039,7 +1055,7 @@ void gtpc_query_20(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .to_node("Nation")
               .property( "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[2]));
+                auto b = gdb->get_dictionary()->lookup_string(nation);
                 return a == b; })
               .project({PExpr_(4, pj::string_property(res, "name")),
                         PExpr_(4, pj::string_property(res, "address")) })
@@ -1052,7 +1068,8 @@ void gtpc_query_20(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_21(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_21(graph_db_ptr &gdb, result_set &rs) {
+  std::string nation = "SAUDI ARABIA";
 
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -1073,12 +1090,12 @@ void gtpc_query_21(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("Nation")
               .property( "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(nation);
                 return a == b; })
 #else
               .nodes_where("Nation", "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(nation);
                 return a == b; })
 #endif
               .to_relationships(":isLocatedIn")
@@ -1108,12 +1125,12 @@ void gtpc_query_21(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
               .has_label("Nation")
               .property( "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(nation);
                 return a == b; })
 #else
               .nodes_where("Nation", "name", [&](auto &prop) {
                 auto a = *(reinterpret_cast<const dcode_t *>(prop.value_));
-                auto b = gdb->get_dictionary()->lookup_string(boost::get<std::string>(params[0]));
+                auto b = gdb->get_dictionary()->lookup_string(nation);
                 return a == b; })
 #endif
               .to_relationships(":isLocatedIn")
@@ -1151,7 +1168,8 @@ void gtpc_query_21(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_22(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
+void gtpc_query_22(graph_db_ptr &gdb, result_set &rs) {
+    std::vector<std::string> ph = {"1", "2", "3", "4", "5", "6", "7"};
 
     auto q1 = query(gdb)
 #ifdef RUN_PARALLEL
@@ -1167,13 +1185,10 @@ void gtpc_query_22(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto pred1 = boost::get<double>(v[0]) < 0.0;
                 auto phone = boost::get<uint64_t>(v[1]);
                 auto str = std::to_string(phone).substr(1, 1);
-                auto pred2 = (str == boost::get<std::string>(params[0])) ||
-                              (str == boost::get<std::string>(params[1])) ||
-                              (str == boost::get<std::string>(params[2])) ||
-                              (str == boost::get<std::string>(params[3])) ||
-                              (str == boost::get<std::string>(params[4])) ||
-                              (str == boost::get<std::string>(params[5])) ||
-                              (str == boost::get<std::string>(params[6]));
+                auto pred2 = (str == ph[0]) || (str == ph[1]) ||
+                              (str == ph[2]) || (str == ph[3]) ||
+                              (str == ph[4]) || (str == ph[5]) ||
+                              (str == ph[6]);
                 return pred1 && pred2; })
               .groupby({}, {{"avg", 0}});
 
@@ -1193,13 +1208,10 @@ void gtpc_query_22(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto pred1 = boost::get<double>(v[1]) >= boost::get<double>(v[3]);
                 auto phone = boost::get<uint64_t>(v[2]);
                 auto str = std::to_string(phone).substr(1, 1);
-                auto pred2 = (str == boost::get<std::string>(params[0])) ||
-                              (str == boost::get<std::string>(params[1])) ||
-                              (str == boost::get<std::string>(params[2])) ||
-                              (str == boost::get<std::string>(params[3])) ||
-                              (str == boost::get<std::string>(params[4])) ||
-                              (str == boost::get<std::string>(params[5])) ||
-                              (str == boost::get<std::string>(params[6]));
+                auto pred2 = (str == ph[0]) || (str == ph[1]) ||
+                              (str == ph[2]) || (str == ph[3]) ||
+                              (str == ph[4]) || (str == ph[5]) ||
+                              (str == ph[6]);
                 return pred1 && pred2; })
               .from_relationships(":hasPlaced", 0)
               .to_node("Order");
@@ -1218,13 +1230,10 @@ void gtpc_query_22(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto pred1 = boost::get<double>(v[0]) < 0.0;
                 auto phone = boost::get<uint64_t>(v[1]);
                 auto str = std::to_string(phone).substr(1, 1);
-                auto pred2 = (str == boost::get<std::string>(params[0])) ||
-                              (str == boost::get<std::string>(params[1])) ||
-                              (str == boost::get<std::string>(params[2])) ||
-                              (str == boost::get<std::string>(params[3])) ||
-                              (str == boost::get<std::string>(params[4])) ||
-                              (str == boost::get<std::string>(params[5])) ||
-                              (str == boost::get<std::string>(params[6]));
+                auto pred2 = (str == ph[0]) || (str == ph[1]) ||
+                              (str == ph[2]) || (str == ph[3]) ||
+                              (str == ph[4]) || (str == ph[5]) ||
+                              (str == ph[6]);
                 return pred1 && pred2; })
               .groupby({}, {{"avg", 0}});
 
@@ -1244,13 +1253,10 @@ void gtpc_query_22(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
                 auto pred1 = boost::get<double>(v[1]) >= boost::get<double>(v[3]);
                 auto phone = boost::get<uint64_t>(v[2]);
                 auto str = std::to_string(phone).substr(1, 1);
-                auto pred2 = (str == boost::get<std::string>(params[0])) ||
-                              (str == boost::get<std::string>(params[1])) ||
-                              (str == boost::get<std::string>(params[2])) ||
-                              (str == boost::get<std::string>(params[3])) ||
-                              (str == boost::get<std::string>(params[4])) ||
-                              (str == boost::get<std::string>(params[5])) ||
-                              (str == boost::get<std::string>(params[6]));
+                auto pred2 = (str == ph[0]) || (str == ph[1]) ||
+                              (str == ph[2]) || (str == ph[3]) ||
+                              (str == ph[4]) || (str == ph[5]) ||
+                              (str == ph[6]);
                 return pred1 && pred2; })
               .outerjoin(q2, [&](const qr_tuple &lv, const qr_tuple &rv) {
                 return boost::get<node *>(lv[0])->id() == boost::get<node *>(rv[0])->id(); })
