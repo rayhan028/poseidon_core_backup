@@ -426,7 +426,8 @@ target_link_libraries(poseidon_ldbc
 
 set(gtpc_files
   src/gtpc/gtpc_loader.cpp
-  src/gtpc/gtpc.cpp
+  src/gtpc/gtpc_queries.cpp
+  src/gtpc/gtpc_transactions.cpp
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion

@@ -13,6 +13,8 @@
 #include "spdlog/spdlog.h"
 
 using namespace boost::posix_time;
+using transaction_func = std::function<void (graph_db_ptr &, result_set &)>;
+using query_func = std::function<void (graph_db_ptr &, result_set &, params_tuple &)>;
 
 /* ------------------------------------------------------------------------ */
 
@@ -23,170 +25,177 @@ double calc_avg_time(const std::vector<double>& vec) {
     return d / (double)vec.size();
 }
 
-double run_query_1(graph_db_ptr gdb) {
-    std::vector<params_tuple> params =
+double run_query(graph_db_ptr gdb, const query_func &qr_func, std::vector<params_tuple> &params) {
+
+    std::vector<double> runtimes(params.size());
+
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        gdb->run_transaction([&]() {
+          qr_func(gdb, rs, params[i]);
+          return true;
+        });
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return calc_avg_time(runtimes);
+}
+
+double run_transaction(graph_db_ptr gdb, const transaction_func &txn_func) {
+
+    auto streams = 1u;
+    std::vector<double> runtimes(streams);
+
+    for (auto i = 0u; i < streams; i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        gdb->run_transaction([&]() {
+          txn_func(gdb, rs);
+          return true;
+        });
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs << "\n";
+#endif
+    }
+    return calc_avg_time(runtimes);
+}
+
+void run_queries(graph_db_ptr gdb) {
+    std::vector<params_tuple> gtpc_query_1_params =
         {{time_from_string(std::string("2010-02-14 00:00:00.000")), 90}};
 
-    std::vector<double> runtimes(params.size());
+    std::vector<params_tuple> gtpc_query_2_params = {{"b", "EUROPE"}};
 
-    for (auto i = 0u; i < params.size(); i++) {
-        result_set rs;
-        auto start_qp = std::chrono::steady_clock::now();
-
-        gdb->run_transaction([&]() {
-          gtpch_query_1(gdb, rs, params[i]);
-          return true;
-        });
-
-        auto end_qp = std::chrono::steady_clock::now();
-        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
-                                                                       start_qp).count();
-#ifdef PRINT_RESULT
-        std::cout << rs << "\n";
-#endif
-    }
-    return calc_avg_time(runtimes);
-}
-
-double run_query_2(graph_db_ptr gdb) {
-    std::vector<params_tuple> params = {{"b", "EUROPE"}};
-
-    std::vector<double> runtimes(params.size());
-
-    for (auto i = 0u; i < params.size(); i++) {
-        result_set rs;
-        auto start_qp = std::chrono::steady_clock::now();
-
-        gdb->run_transaction([&]() {
-          gtpch_query_2(gdb, rs, params[i]);
-          return true;
-        });
-
-        auto end_qp = std::chrono::steady_clock::now();
-        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
-                                                                       start_qp).count();
-#ifdef PRINT_RESULT
-        std::cout << rs << "\n";
-#endif
-    }
-    return calc_avg_time(runtimes);
-}
-
-double run_query_3(graph_db_ptr gdb) {
-    std::vector<params_tuple> params =
+    std::vector<params_tuple> gtpc_query_3_params =
         {{"A", time_from_string(std::string("2011-10-30 00:00:00.000"))}};
 
-    std::vector<double> runtimes(params.size());
-
-    for (auto i = 0u; i < params.size(); i++) {
-        result_set rs;
-        auto start_qp = std::chrono::steady_clock::now();
-
-        gdb->run_transaction([&]() {
-          gtpch_query_3(gdb, rs, params[i]);
-          return true;
-        });
-
-        auto end_qp = std::chrono::steady_clock::now();
-        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
-                                                                       start_qp).count();
-#ifdef PRINT_RESULT
-        std::cout << rs << "\n";
-#endif
-    }
-    return calc_avg_time(runtimes);
-}
-
-double run_query_4(graph_db_ptr gdb) {
-    std::vector<params_tuple> params =
+    std::vector<params_tuple> gtpc_query_4_params =
         {{time_from_string(std::string("2011-08-01 00:00:00.000"))}};
 
-    std::vector<double> runtimes(params.size());
-
-    for (auto i = 0u; i < params.size(); i++) {
-        result_set rs;
-        auto start_qp = std::chrono::steady_clock::now();
-
-        gdb->run_transaction([&]() {
-          gtpch_query_4(gdb, rs, params[i]);
-          return true;
-        });
-
-        auto end_qp = std::chrono::steady_clock::now();
-        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
-                                                                       start_qp).count();
-#ifdef PRINT_RESULT
-        std::cout << rs << "\n";
-#endif
-    }
-    return calc_avg_time(runtimes);
-}
-
-double run_query_5(graph_db_ptr gdb) {
-    std::vector<params_tuple> params =
+    std::vector<params_tuple> gtpc_query_5_params =
         {{"ASIA", time_from_string(std::string("2010-01-01 00:00:00.000"))}};
 
-    std::vector<double> runtimes(params.size());
-
-    for (auto i = 0u; i < params.size(); i++) {
-        result_set rs;
-        auto start_qp = std::chrono::steady_clock::now();
-
-        gdb->run_transaction([&]() {
-          gtpch_query_5(gdb, rs, params[i]);
-          return true;
-        });
-
-        auto end_qp = std::chrono::steady_clock::now();
-        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
-                                                                       start_qp).count();
-#ifdef PRINT_RESULT
-        std::cout << rs << "\n";
-#endif
-    }
-    return calc_avg_time(runtimes);
-}
-
-double run_query_6(graph_db_ptr gdb) {
-    std::vector<params_tuple> params =
+    std::vector<params_tuple> gtpc_query_6_params =
         {{time_from_string(std::string("2011-04-01 00:00:00.000")), 5}};
 
-    std::vector<double> runtimes(params.size());
+    std::vector<params_tuple> gtpc_query_7_params =
+        {{"FRANCE", "GERMANY", time_from_string(std::string("2011-01-01 00:00:00.000")),
+        time_from_string(std::string("2012-01-01 00:00:00.000"))}};
 
-    for (auto i = 0u; i < params.size(); i++) {
-        result_set rs;
-        auto start_qp = std::chrono::steady_clock::now();
+    std::vector<params_tuple> gtpc_query_8_params =
+        {{"EUROPE", "BRAZIL", "b", time_from_string(std::string("2011-01-01 00:00:00.000")),
+        time_from_string(std::string("2012-01-01 00:00:00.000"))}};
 
-        gdb->run_transaction([&]() {
-          gtpch_query_6(gdb, rs, params[i]);
-          return true;
-        });
+    std::vector<params_tuple> gtpc_query_9_params = {{"BB"}};
 
-        auto end_qp = std::chrono::steady_clock::now();
-        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
-                                                                       start_qp).count();
-#ifdef PRINT_RESULT
-        std::cout << rs << "\n";
-#endif
-    }
-    return calc_avg_time(runtimes);
-}
+    std::vector<params_tuple> gtpc_query_10_params =
+        {{time_from_string(std::string("2011-08-01 00:00:00.000"))}};
 
-void run_benchmark(graph_db_ptr gdb) {
+    std::vector<params_tuple> gtpc_query_11_params =
+        {{"GERMANY", 0.0001}};
+
+    std::vector<params_tuple> gtpc_query_12_params =
+        {{time_from_string(std::string("2011-04-01 00:00:00.000"))}};
+
+    std::vector<params_tuple> gtpc_query_13_params = {{8}};
+
+    std::vector<params_tuple> gtpc_query_14_params =
+        {{time_from_string(std::string("2011-04-01 00:00:00.000")), "PR"}};
+
+    std::vector<params_tuple> gtpc_query_15_params =
+        {{time_from_string(std::string("2011-04-01 00:00:00.000")), "PR"}};
+
+    std::vector<params_tuple> gtpc_query_16_params = {{"zz", "bad"}};
+
+    std::vector<params_tuple> gtpc_query_17_params = {{"b"}};
+
+    std::vector<params_tuple> gtpc_query_18_params = {{300}};
+
+    std::vector<params_tuple> gtpc_query_19_params = {{"a", 1, 400000, 1, 10, "b", "c"}};
+
+    std::vector<params_tuple> gtpc_query_20_params =
+        {{"co", time_from_string(std::string("2011-10-30 00:00:00.000")), "CHINA"}};
+
+    std::vector<params_tuple> gtpc_query_21_params =
+        {{"SAUDI ARABIA"}};
+
+    std::vector<params_tuple> gtpc_query_22_params =
+        {{"1", "2", "3", "4", "5", "6", "7"}};
+
     double t = 0.0;
-    t = run_query_1(gdb);
+    t = run_query(gdb, gtpc_query_1, gtpc_query_1_params);
     spdlog::info("Query #1: {} msecs", t);
-    t = run_query_2(gdb);
+    t = run_query(gdb, gtpc_query_2, gtpc_query_2_params);
     spdlog::info("Query #2: {} msecs", t);
-    t = run_query_3(gdb);
+    t = run_query(gdb, gtpc_query_3, gtpc_query_3_params);
     spdlog::info("Query #3: {} msecs", t);
-    t = run_query_4(gdb);
+    t = run_query(gdb, gtpc_query_4, gtpc_query_4_params);
     spdlog::info("Query #4: {} msecs", t);
-    t = run_query_5(gdb);
+    t = run_query(gdb, gtpc_query_5, gtpc_query_5_params);
     spdlog::info("Query #5: {} msecs", t);
-    t = run_query_6(gdb);
+    t = run_query(gdb, gtpc_query_6, gtpc_query_6_params);
     spdlog::info("Query #6: {} msecs", t);
+    t = run_query(gdb, gtpc_query_7, gtpc_query_7_params);
+    spdlog::info("Query #7: {} msecs", t);
+    t = run_query(gdb, gtpc_query_8, gtpc_query_8_params);
+    spdlog::info("Query #8: {} msecs", t);
+    t = run_query(gdb, gtpc_query_9, gtpc_query_9_params);
+    spdlog::info("Query #9: {} msecs", t);
+    t = run_query(gdb, gtpc_query_10, gtpc_query_10_params);
+    spdlog::info("Query #10: {} msecs", t);
+    t = run_query(gdb, gtpc_query_11, gtpc_query_11_params);
+    spdlog::info("Query #11: {} msecs", t);
+    t = run_query(gdb, gtpc_query_12, gtpc_query_12_params);
+    spdlog::info("Query #12: {} msecs", t);
+    t = run_query(gdb, gtpc_query_13, gtpc_query_13_params);
+    spdlog::info("Query #13: {} msecs", t);
+    t = run_query(gdb, gtpc_query_14, gtpc_query_14_params);
+    spdlog::info("Query #14: {} msecs", t);
+    t = run_query(gdb, gtpc_query_15, gtpc_query_15_params);
+    spdlog::info("Query #15: {} msecs", t);
+    t = run_query(gdb, gtpc_query_16, gtpc_query_16_params);
+    spdlog::info("Query #16: {} msecs", t);
+    t = run_query(gdb, gtpc_query_17, gtpc_query_17_params);
+    spdlog::info("Query #17: {} msecs", t);
+    t = run_query(gdb, gtpc_query_18, gtpc_query_18_params);
+    spdlog::info("Query #18: {} msecs", t);
+    t = run_query(gdb, gtpc_query_19, gtpc_query_19_params);
+    spdlog::info("Query #19: {} msecs", t);
+    t = run_query(gdb, gtpc_query_20, gtpc_query_20_params);
+    spdlog::info("Query #20: {} msecs", t);
+    t = run_query(gdb, gtpc_query_21, gtpc_query_21_params);
+    spdlog::info("Query #21: {} msecs", t);
+    t = run_query(gdb, gtpc_query_22, gtpc_query_22_params);
+    spdlog::info("Query #22: {} msecs", t);
 }
+
+void run_transactions(graph_db_ptr gdb) {
+    double t = 0.0;
+    t = run_transaction(gdb, gtpc_transaction_1);
+    spdlog::info("Transaction #1: {} msecs", t);
+    t = run_transaction(gdb, gtpc_transaction_2);
+    spdlog::info("Transaction #2: {} msecs", t);
+    t = run_transaction(gdb, gtpc_transaction_3);
+    spdlog::info("Transaction #3: {} msecs", t);
+    t = run_transaction(gdb, gtpc_transaction_4);
+    spdlog::info("Transaction #4: {} msecs", t);
+    t = run_transaction(gdb, gtpc_transaction_5);
+    spdlog::info("Transaction #5: {} msecs", t);
+}
+
+void run_benchmark(graph_db_ptr gdb) {}
 
 /* ---------------------------------------------------------------------------- */
 
@@ -210,7 +219,7 @@ int main(int argc, char **argv) {
     store(parse_command_line(argc, argv, desc), vm);
 
     if (vm.count("help")) {
-      std::cout << "Poseidon Graph Database LDBC Benchmark Version " << POSEIDON_VERSION
+      std::cout << "Poseidon Graph Database GTPC Benchmark Version " << POSEIDON_VERSION
                 << "\n"
                 << desc << '\n';
       return -1;
@@ -248,5 +257,7 @@ int main(int argc, char **argv) {
 #endif
   graph->print_stats();
 
-  run_benchmark(graph);
+  run_queries(graph);
+  run_transactions(graph);
+//   run_benchmark(graph);
 }
