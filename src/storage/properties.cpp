@@ -24,7 +24,7 @@
 
 #include "properties.hpp"
 
-static std::regex float_expr("[0-9]+\\.[0-9]+");
+static std::regex float_expr("-?[0-9]+\\.[0-9]+");
 
 static std::regex int_expr("(-?[1-9][0-9]*)|0");
 
