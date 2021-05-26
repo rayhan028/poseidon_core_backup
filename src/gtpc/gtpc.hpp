@@ -19,36 +19,36 @@ using param_val = boost::variant<uint64_t, std::string, int,
                                  boost::posix_time::ptime, double>;
 using params_tuple = std::vector<param_val>;
 
-/* queries */
-void gtpc_query_1(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_2(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_3(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_4(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_5(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_6(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_7(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_8(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_9(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_10(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_11(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_12(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_13(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_14(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_15(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_16(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_17(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_18(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_19(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_20(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_21(graph_db_ptr &gdb, result_set &rs);
-void gtpc_query_22(graph_db_ptr &gdb, result_set &rs);
+/* OLAP */
+void gtpc_olap_1(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_2(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_3(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_4(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_5(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_6(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_7(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_8(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_9(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_10(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_11(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_12(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_13(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_14(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_15(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_16(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_17(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_18(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_19(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_20(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_21(graph_db_ptr &gdb, result_set &rs);
+void gtpc_olap_22(graph_db_ptr &gdb, result_set &rs);
 
-/* transactions */
-void gtpc_transaction_1(graph_db_ptr &gdb, result_set &rs);
-void gtpc_transaction_2(graph_db_ptr &gdb, result_set &rs);
-void gtpc_transaction_3(graph_db_ptr &gdb, result_set &rs);
-void gtpc_transaction_4(graph_db_ptr &gdb, result_set &rs);
-void gtpc_transaction_5(graph_db_ptr &gdb, result_set &rs);
+/* OLTP */
+void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs);
+void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs);
+void gtpc_oltp_3(graph_db_ptr &gdb, result_set &rs);
+void gtpc_oltp_4(graph_db_ptr &gdb, result_set &rs);
+void gtpc_oltp_5(graph_db_ptr &gdb, result_set &rs);
 
 /* data */
 void load_gtpc_data(graph_db_ptr &graph, const std::string& path, bool strict = true);

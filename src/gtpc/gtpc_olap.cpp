@@ -20,7 +20,7 @@ static const std::vector<std::string> REGIONS =
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_1(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_1(graph_db_ptr &gdb, result_set &rs) {
   auto delta = 90;
   // auto delta = gen_random_uniform_int(60, 120);
   auto max_ship_dt = time_from_string(std::string("2010-02-14 00:00:00.000"));
@@ -52,7 +52,7 @@ void gtpc_query_1(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_2(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_2(graph_db_ptr &gdb, result_set &rs) {
   std::string data = "b";
   std::string region = "EUROPE";
   // auto region = REGIONS[gen_random_uniform_int(0, 9)];
@@ -122,7 +122,7 @@ void gtpc_query_2(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_3(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_3(graph_db_ptr &gdb, result_set &rs) {
   std::string state = "A";
   auto date = time_from_string(std::string("2011-10-30 00:00:00.000"));
 
@@ -166,7 +166,7 @@ void gtpc_query_3(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_4(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_4(graph_db_ptr &gdb, result_set &rs) {
   auto sqtr = time_from_string(std::string("2011-08-01 00:00:00.000"));
 
     auto q = query(gdb)
@@ -200,7 +200,7 @@ void gtpc_query_4(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_5(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_5(graph_db_ptr &gdb, result_set &rs) {
   std::string region = "ASIA";
   // auto region = REGIONS[gen_random_uniform_int(0, 9)];
   auto sdt = time_from_string(std::string("2010-01-01 00:00:00.000"));
@@ -251,7 +251,7 @@ void gtpc_query_5(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_6(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_6(graph_db_ptr &gdb, result_set &rs) {
   auto sdt = time_from_string(std::string("2011-04-01 00:00:00.000"));
   // auto quantity = gen_random_uniform_int(24, 25);
   auto quantity = 5;
@@ -282,7 +282,7 @@ void gtpc_query_6(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_7(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_7(graph_db_ptr &gdb, result_set &rs) {
   std::string nation1 = "FRANCE";
   std::string nation2 = "GERMANY";
   auto sdt = time_from_string(std::string("2011-01-01 00:00:00.000"));
@@ -379,7 +379,7 @@ void gtpc_query_7(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_8(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_8(graph_db_ptr &gdb, result_set &rs) {
   // auto region = REGIONS[gen_random_uniform_int(0, 9)];
   std::string region = "EUROPE";
   std::string nation = "BRAZIL";
@@ -443,7 +443,7 @@ void gtpc_query_8(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_9(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_9(graph_db_ptr &gdb, result_set &rs) {
   std::string data = "BB";
 
     auto q = query(gdb)
@@ -487,7 +487,7 @@ void gtpc_query_9(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_10(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_10(graph_db_ptr &gdb, result_set &rs) {
   auto sdt = time_from_string(std::string("2011-08-01 00:00:00.000"));
 
     auto q = query(gdb)
@@ -533,7 +533,7 @@ void gtpc_query_10(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_11(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_11(graph_db_ptr &gdb, result_set &rs) {
   std::string nation = "GERMANY";
   double fraction = 0.0001;
 
@@ -570,7 +570,7 @@ void gtpc_query_11(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_12(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_12(graph_db_ptr &gdb, result_set &rs) {
   auto sdt = time_from_string(std::string("2011-04-01 00:00:00.000"));
 
     auto q = query(gdb)
@@ -613,7 +613,7 @@ void gtpc_query_12(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_13(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_13(graph_db_ptr &gdb, result_set &rs) {
   auto carrier_id = 8;
 
     auto q1 = query(gdb)
@@ -676,7 +676,7 @@ void gtpc_query_13(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_14(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_14(graph_db_ptr &gdb, result_set &rs) {
   auto sdt = time_from_string(std::string("2011-04-01 00:00:00.000"));
   std::string data = "PR";
 
@@ -718,7 +718,7 @@ void gtpc_query_14(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_15(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_15(graph_db_ptr &gdb, result_set &rs) {
   auto sdt = time_from_string(std::string("2011-04-01 00:00:00.000"));
 
     auto q1 = query(gdb)
@@ -782,7 +782,7 @@ void gtpc_query_15(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_16(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_16(graph_db_ptr &gdb, result_set &rs) {
   std::string data = "zz";
   std::string comment = "bad";
 
@@ -829,7 +829,7 @@ void gtpc_query_16(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_17(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_17(graph_db_ptr &gdb, result_set &rs) {
   std::string data = "b";
 
     auto q = query(gdb)
@@ -879,7 +879,7 @@ void gtpc_query_17(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_18(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_18(graph_db_ptr &gdb, result_set &rs) {
   auto amount = 100;
 
     auto q = query(gdb)
@@ -919,7 +919,7 @@ void gtpc_query_18(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_19(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_19(graph_db_ptr &gdb, result_set &rs) {
   std::string data1 = "a";
   std::string data2 = "b";
   std::string data3 = "c";
@@ -1014,7 +1014,7 @@ void gtpc_query_19(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_20(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_20(graph_db_ptr &gdb, result_set &rs) {
   std::string data = "co";
   auto date = time_from_string(std::string("2011-10-30 00:00:00.000"));
   std::string nation = "CHINA";
@@ -1068,7 +1068,7 @@ void gtpc_query_20(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_21(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_21(graph_db_ptr &gdb, result_set &rs) {
   std::string nation = "SAUDI ARABIA";
 
     auto q1 = query(gdb)
@@ -1168,7 +1168,7 @@ void gtpc_query_21(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_query_22(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_olap_22(graph_db_ptr &gdb, result_set &rs) {
     std::vector<std::string> ph = {"1", "2", "3", "4", "5", "6", "7"};
 
     auto q1 = query(gdb)

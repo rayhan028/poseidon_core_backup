@@ -25,7 +25,7 @@ static const std::vector<std::string> C_LAST =
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_transaction_1(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
 
   /**
    *  retrieve warehouse
@@ -250,7 +250,7 @@ void gtpc_transaction_1(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_transaction_2(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs) {
 
   /**
    *  retrieve warehouse
@@ -504,7 +504,7 @@ void gtpc_transaction_2(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_transaction_3(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_oltp_3(graph_db_ptr &gdb, result_set &rs) {
 
   /**
    *  retrieve customer
@@ -616,7 +616,7 @@ void gtpc_transaction_3(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_transaction_4(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_oltp_4(graph_db_ptr &gdb, result_set &rs) {
 
   uint64_t d_min = (W_ID - 1) * 10 + 1;
   uint64_t d_max = (W_ID - 1) * 10 + 10;
@@ -755,7 +755,7 @@ void gtpc_transaction_4(graph_db_ptr &gdb, result_set &rs) {
 
 /* ------------------------------------------------------------------------ */
 
-void gtpc_transaction_5(graph_db_ptr &gdb, result_set &rs) {
+void gtpc_oltp_5(graph_db_ptr &gdb, result_set &rs) {
 
   /**
    *  retrieve district

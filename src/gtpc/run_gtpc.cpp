@@ -16,82 +16,108 @@
 using namespace boost::posix_time;
 using func = std::function<void (graph_db_ptr &, result_set &)>;
 
-static const auto NUM_QUERIES = 22;
-static const auto NUM_TRANSACTIONS = 5;
+static const auto NUM_OLAP = 22;
+static const auto NUM_OLTP = 5;
 
 /* ------------------------------------------------------------------------ */
 
-double calc_avg_time(const std::vector<double>& vec) {
-    double d = 0.0;
-    for (auto v : vec)
-      d += v;
-    return d / (double)vec.size();
-}
+void run_olap_query_stream(graph_db_ptr gdb, std::size_t stream) {
+  const std::vector<func> olap_queries =
+    {gtpc_olap_1, gtpc_olap_2, gtpc_olap_3, gtpc_olap_4,
+     gtpc_olap_5, gtpc_olap_6, gtpc_olap_7, gtpc_olap_8,
+     gtpc_olap_9, gtpc_olap_10, gtpc_olap_11, gtpc_olap_12,
+     gtpc_olap_13, gtpc_olap_14, gtpc_olap_15, gtpc_olap_16,
+     gtpc_olap_17, gtpc_olap_18, gtpc_olap_19, gtpc_olap_20,
+     gtpc_olap_21, gtpc_olap_22};
 
-double run(graph_db_ptr gdb, const func &f) {
+  auto start_query = gen_random_uniform_int(1, NUM_OLAP);
+  for (auto i = 0; i < NUM_OLAP; i++) {
+    auto idx = (start_query + i) % NUM_OLAP;
+    result_set rs;
+    auto start_qp = std::chrono::steady_clock::now();
 
-    auto iterations = 1u;
-    std::vector<double> runtimes(iterations);
+    gdb->run_transaction([&]() {
+      try {
+        olap_queries[idx](gdb, rs);
+        return true;
+      }
+      catch (const std::exception &ex) {
+        spdlog::error("Query #{} in OLAP Stream #{} Failed:", (idx + 1), stream);
+        std::cerr << ex.what() << "\n";
+        return false;
+      }
+    });
 
-    for (auto i = 0u; i < iterations; i++) {
-        result_set rs;
-        auto start_qp = std::chrono::steady_clock::now();
-
-        gdb->run_transaction([&]() {
-          f(gdb, rs);
-          return true;
-        });
-
-        auto end_qp = std::chrono::steady_clock::now();
-        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
-                                                                       start_qp).count();
+    auto end_qp = std::chrono::steady_clock::now();
+    double t = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                    start_qp).count();
 #ifdef PRINT_RESULT
-        std::cout << rs << "\n";
+    std::cout << rs << "\n";
 #endif
-    }
-    return calc_avg_time(runtimes);
+    spdlog::info("Query #{} in OLAP Stream #{}: {} msecs:", (idx + 1), stream, t);
+  }
 }
 
-void run_query_stream(graph_db_ptr gdb) {
-    const std::vector<func> queries =
-        {gtpc_query_1, gtpc_query_2, gtpc_query_3, gtpc_query_4,
-         gtpc_query_5, gtpc_query_6, gtpc_query_7, gtpc_query_8,
-         gtpc_query_9, gtpc_query_10, gtpc_query_11, gtpc_query_12,
-         gtpc_query_13, gtpc_query_14, gtpc_query_15, gtpc_query_16,
-         gtpc_query_17, gtpc_query_18, gtpc_query_19, gtpc_query_20,
-         gtpc_query_21, gtpc_query_22};
+void run_oltp_query_stream(graph_db_ptr gdb, std::size_t stream) {
+  const std::vector<func> transactions =
+    {gtpc_oltp_1, gtpc_oltp_2, gtpc_oltp_3,
+     gtpc_oltp_4, gtpc_oltp_5};
 
-    auto start_query = gen_random_uniform_int(1, NUM_QUERIES);
-    for (auto i = 0; i < NUM_QUERIES; i++) {
-        auto idx = (start_query + i) % NUM_QUERIES;
-        double t = run(gdb, queries[idx]);
-        std::string msg = "Query #" + std::to_string(idx + 1) + ": {} msecs";
-        spdlog::info(msg, t);
-    }
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::vector<std::size_t> idxs(NUM_OLTP);
+  std::iota(idxs.begin(), idxs.end(), 0);
+  std::shuffle(idxs.begin(), idxs.end(), gen);
+
+  for (auto idx : idxs) {
+    result_set rs;
+    auto start_qp = std::chrono::steady_clock::now();
+
+    gdb->run_transaction([&]() {
+      try {
+        transactions[idx](gdb, rs);
+        return true;
+      }
+      catch (const std::exception &ex) {
+        spdlog::error("Query #{} in OLTP Stream #{} Failed:", (idx + 1), stream);
+        std::cerr << ex.what() << "\n";
+        return false;
+      }
+    });
+
+    auto end_qp = std::chrono::steady_clock::now();
+    double t = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                    start_qp).count();
+#ifdef PRINT_RESULT
+    std::cout << rs << "\n";
+#endif
+    spdlog::info("Query #{} in OLTP Stream #{}: {} msecs: ", (idx + 1), stream, t);
+  }
 }
 
-void run_transaction_stream(graph_db_ptr gdb) {
-    const std::vector<func> transactions =
-        {gtpc_transaction_1, gtpc_transaction_2, gtpc_transaction_3,
-         gtpc_transaction_4, gtpc_transaction_5};
+void run_benchmark(graph_db_ptr gdb, std::size_t qr_streams, std::size_t tx_streams) {
+  spdlog::info("--------- Dispatching {} OLAP Streams and "
+               "{} OLTP Streams...", qr_streams, tx_streams);
+  std::vector<std::future<void>> res;
+  res.reserve((qr_streams + tx_streams));
+  thread_pool pool;
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::vector<int> idxs(NUM_TRANSACTIONS);
-    std::iota(idxs.begin(), idxs.end(), 0);
-    std::shuffle(idxs.begin(), idxs.end(), gen);
-    for (auto idx : idxs) {
-        double t = run(gdb, transactions[idx]);
-        std::string msg = "Transaction #" + 
-                           std::to_string(idx + 1) + 
-                           ": {} msecs";
-        spdlog::info(msg, t);
-    }
-}
-
-void run_benchmark(graph_db_ptr gdb) {
-    auto query_streams = 1;
-    auto transaction_streams = 1;
+  for (std::size_t i = 0; i < qr_streams; i++) {
+    auto olap_s = i + 1;
+    res.push_back(pool.submit([&]() {
+      spdlog::info("Dispatching OLAP Stream #{}", olap_s);
+      run_olap_query_stream(gdb, olap_s);
+    }));
+  }
+  for (std::size_t i = 0; i < tx_streams; i++) {
+    auto oltp_s = i + 1;
+    res.push_back(pool.submit([&]() {
+      spdlog::info("Dispatching OLTP Stream #{}", oltp_s);
+      run_oltp_query_stream(gdb, oltp_s);
+    }));
+  }
+  for (auto &f : res)
+    f.get();
 }
 
 /* ---------------------------------------------------------------------------- */
@@ -101,6 +127,7 @@ using namespace boost::program_options;
 int main(int argc, char **argv) {
   bool strict = false;
   std::string pool_path, gtpc_home, db_name;
+  std::size_t olap_streams, oltp_streams;
 
  try {
     options_description desc{"Options"};
@@ -110,7 +137,9 @@ int main(int argc, char **argv) {
         ("import,i", value<std::string>(&gtpc_home), "Path to directories containing SNB CSV files")
         ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
         ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem pool")
-        ("db,d", value<std::string>(&db_name)->required(),"Database name (required)");
+        ("db,d", value<std::string>(&db_name)->required(),"Database name (required)")
+        ("olap,a", value<std::size_t>(&olap_streams)->required(),"Query streams (required)")
+        ("oltp,t", value<std::size_t>(&oltp_streams)->required(),"Transaction streams (required)");
 
     variables_map vm;
     store(parse_command_line(argc, argv, desc), vm);
@@ -154,7 +183,7 @@ int main(int argc, char **argv) {
 #endif
   graph->print_stats();
 
-  run_query_stream(graph);
-  run_transaction_stream(graph);
-//   run_benchmark(graph);
+  run_olap_query_stream(graph, olap_streams);
+  run_oltp_query_stream(graph, oltp_streams);
+  // run_benchmark(graph, olap_streams, oltp_streams);
 }
