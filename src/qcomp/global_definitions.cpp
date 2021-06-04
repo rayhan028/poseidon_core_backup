@@ -404,7 +404,8 @@ std::set<unsigned> pos_set;
 
  void get_time_grpkey(int* time_ptr, unsigned pos) {
     pos_set.insert(pos);
-    grpkey_buffer += to_iso_extended_string(time_result[*time_ptr]);
+    std::string dt = to_iso_extended_string(time_result[*time_ptr]);
+    grpkey_buffer += dt.substr(0, dt.find("-"));
 }
 
  void add_to_group(grouper *g) {

@@ -279,10 +279,11 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
             scan_task::callee_ = task_callee_;
             compiled_.store(true);
         });
+
         if(t1.joinable())
             t1.join();
         if(interpreter_thread.joinable())
-            interpreter_thread.join();
+           interpreter_thread.join();
         if(has_join(cur_query_) && (pipeline != pipeline_num-1)) {
             graph_->parallel_nodes(consumer_dummy);
         }

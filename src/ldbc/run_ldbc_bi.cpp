@@ -50,18 +50,22 @@ std::map<std::size_t, std::vector<std::size_t>>  eval_work(graph_db_ptr gdb) {
 	std::cout << "Processed chunks: " << cp.size() << std::endl;
 
 	int finished = 0;
-	int n_proc = 0;
+	long n_proc = 0;
 	auto n_max = gdb->get_nodes()->num_chunks() * 18723;
 	for(auto & c : cp) {
 		n_proc += c.second;
 		if(c.second == 18723)
 			finished++;
 	}
-	auto n_prog = n_proc * 100 / n_max;
-
+    
+    long procp = n_proc * 100; 
+	double n_prog = (procp / n_max);
+    /*std::cout << "pr: " << procp << std::endl;
+    std::cout << "np: " << n_proc << std::endl;
+    std::cout << "nm: " << n_max << std::endl;
 	std::cout << "Finished chunks: " << finished << std::endl;
 	std::cout << "Progress: " << n_prog << "%" << std::endl;
-	std::cout << "Stored results: " << gdb->get_stored_results() << std::endl;
+	std::cout << "Stored results: " << gdb->get_stored_results() << std::endl;*/
 
 
 	//std::cout << "Not started chunks: ";
@@ -72,10 +76,10 @@ std::map<std::size_t, std::vector<std::size_t>>  eval_work(graph_db_ptr gdb) {
 			//std::cout << i << ", ";
 		}
 	}
-	std::cout << std::endl;
+	//std::cout << std::endl;
 	auto rng = find_chunk_ranges(rem_chunks);
 	for(auto & r : rng) {
-		std::cout << r.first << ": ";
+		//std::cout << r.first << ": ";
 		for(auto i : r.second) {
 			//std::cout << i << " ";
 		}
@@ -93,7 +97,6 @@ double calc_avg_time(const std::vector<double>& vec) {
 }
 
 double run_query_1(graph_db_ptr gdb) {
-    std::cout << "Start 1" << std::endl;
     std::vector<params_tuple> params =
         {{time_from_string(std::string("2017-04-14 01:51:21.746"))}};
 
@@ -103,10 +106,14 @@ double run_query_1(graph_db_ptr gdb) {
         result_set rs;
         auto start_qp = std::chrono::steady_clock::now();
 
-        gdb->begin_transaction();
-        ldbc_bi_query_1(gdb, rs, params[i]);
-        gdb->commit_transaction();
+        try {
+            gdb->begin_transaction();
+            ldbc_bi_query_1(gdb, rs, params[i]);
+        } catch(...) {
 
+        }
+        
+        gdb->commit_transaction();
         auto end_qp = std::chrono::steady_clock::now();
         runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
                                                                        start_qp).count();
@@ -117,6 +124,54 @@ double run_query_1(graph_db_ptr gdb) {
     return calc_avg_time(runtimes);
 }
 #ifdef QOP_RECOVERY
+std::pair<double, double> run_query_1_recovery(graph_db_ptr gdb) {
+    std::vector<params_tuple> params =
+        {{time_from_string(std::string("2017-04-14 01:51:21.746"))}};
+
+    std::vector<double> runtimes(params.size());
+    double rec_time;
+
+    auto rng = eval_work(gdb);
+
+    auto cp = gdb->restore_positions();
+    result_set rec;
+    auto rec_q = query(gdb).
+                    recover_results().
+                        collect(rec);
+
+    auto start_rec = std::chrono::steady_clock::now();
+    gdb->begin_transaction();  
+    query::start({&rec_q});
+    rec.wait();
+    gdb->commit_transaction();  
+    auto end_rec = std::chrono::steady_clock::now();               
+    
+    rec_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_rec -
+                                                                       start_rec).count();
+    gdb->begin_transaction(); 
+    std::list<qr_tuple> recq;
+	gdb->restore_results(recq);
+    gdb->commit_transaction(); 
+    std::cout << "rec: " << recq.size() << std::endl;
+    
+    for (auto i = 0u; i < params.size(); i++) {
+        result_set rs;
+        auto start_qp = std::chrono::steady_clock::now();
+
+        gdb->begin_transaction();
+        recover_ldbc_bi_query_1(gdb, rs, cp, rng, recq, params[i]);
+        gdb->commit_transaction();
+
+        auto end_qp = std::chrono::steady_clock::now();
+        runtimes[i] = std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                       start_qp).count();
+#ifdef PRINT_RESULT
+        std::cout << rs.data.size() << "\n";
+#endif
+    }
+    return {calc_avg_time(runtimes), rec_time};
+}
+
 std::pair<double, double> run_query_9_recovery(graph_db_ptr gdb) {
     std::cout << "Start 1" << std::endl;
     std::vector<params_tuple> params =
@@ -164,6 +219,7 @@ std::pair<double, double> run_query_9_recovery(graph_db_ptr gdb) {
     return {calc_avg_time(runtimes), rec_time};
 }
 #endif 
+
 double run_query_2(graph_db_ptr gdb) {
     std::vector<params_tuple> params = {{time_from_string(std::string("2011-04-14 01:51:21.746"))}};
 
@@ -634,6 +690,7 @@ double restore_results_bench(graph_db_ptr gdb) {
 #endif
 
 void run_benchmark(graph_db_ptr gdb) {
+
     auto t = run_query_1(gdb);
     spdlog::info("Query #1: {} msecs", t);
     t = run_query_2(gdb);

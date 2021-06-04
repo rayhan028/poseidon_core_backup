@@ -115,6 +115,25 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
     }    
     case ast_op::sort:
     {
+      auto pr_list = ast->get_param<proj_spec_list>(0);
+      
+      auto pr1 = pr_list.front();
+
+      auto pv_id = parse_tuple_id(pr1.pname);
+
+      auto order = pr1.porder;
+      std::function<bool(const qr_tuple &, const qr_tuple &)> sort_fct;
+      if(order == proj_spec::sort_order::Asc) {
+        sort_fct =  [=](const qr_tuple &qr1, const qr_tuple &qr2) {
+            return boost::get<int>(qr1[pv_id]) < boost::get<int>(qr2[pv_id]); 
+        };
+      } else {
+        sort_fct =  [=](const qr_tuple &qr1, const qr_tuple &qr2) {
+            return boost::get<int>(qr1[pv_id]) > boost::get<int>(qr2[pv_id]); 
+        };
+      }      
+      
+      op = Sort(sort_fct, parent);
       break;        
     }  
     case ast_op::group_by:

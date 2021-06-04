@@ -136,6 +136,15 @@ nvm::pool_base prepare_pool() {
 }
 #endif
 
+graph_db_ptr gdb;
+
+int i = 0;
+bool filter_fct(int *prop_ptr) {
+	auto str = gdb->get_dictionary()->lookup_code(*prop_ptr);
+	std::cout << "Str: " << str << std::endl;
+    return (i++) % 2 == 0;
+}
+
 int main() {
 	bool init;
 	std::string test_path = poseidon::gPmemPath + "jit_qcomp";
@@ -166,10 +175,11 @@ int main() {
   auto graph = pool->open_graph("jit_qcomp");
   init = true;
 #endif
+	gdb = graph;
 	if(init) {
 		graph->begin_transaction();
 
-		int PERSONS = 10;
+		int PERSONS = 1000000;
 		int add = 0;
 		int j = 1;
 		auto id = 0;
@@ -210,7 +220,7 @@ int main() {
 	auto THREAD_NUM = 4;
 	auto chunks = graph->get_nodes()->num_chunks();
 	auto cv_range = chunks / THREAD_NUM;
-	
+	std::cout << "Chunks: " << chunks << std::endl;
 	query_engine queryEngine(graph, THREAD_NUM, cv_range);
 
 	std::vector<std::string> labels = {"Person", "Book"};
@@ -225,7 +235,11 @@ int main() {
 		return true;
 	};
 
-	auto simp = Scan("Person", GroupBy({0}, Aggr({{"count", 0}}, GroupBy({0}, Aggr({{"count", 0}}, GroupBy({0}, Aggr({{"count", 0}}, GroupBy({0}, Aggr({{"pcount", 0}}, Collect())))))))));
+  auto sort_fct = [&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                        return boost::get<int>(qr1[0]) > boost::get<int>(qr2[0]); };
+
+	auto simp = Scan("Person", Limit(10, Project({{0, "id", FTYPE::INT}}, Sort(sort_fct, 
+						Collect()))));
 
 	scan_task::callee_ = &scan_task::scan;	
 
@@ -239,26 +253,20 @@ int main() {
 	grouper g4;
 	arg_builder ab;
 	ab.arg(1, "Person");
-	ab.arg(2, &g1);
 	ab.arg(3, &g1);
-	ab.arg(4, &g2);
-	ab.arg(5, &g2);
-	ab.arg(6, &g3);
-	ab.arg(7, &g3);
-	ab.arg(8, &g4);
-	ab.arg(9, &g4);
+	ab.arg(4, &g1);
 
 	result_set rs;
 
-	auto aq = query(graph).all_nodes("Person").project({PExpr_(0, pj::int_property(res, "age"))}).groupby({0}, {{"pcount", 0}}).collect(rs);
+	auto aq = query(graph).all_nodes().has_label("Person").project({PExpr_(0, pj::int_property(res, "age"))}).groupby({0}, {{"pcount", 0}}).collect(rs);
 
 	std::cout << rs << std::endl;
 	auto js = std::chrono::steady_clock::now();
-	queryEngine.run(&rs, ab, 24);
+	//queryEngine.run(&rs, ab, 24);
 	//queryEngine.finish(&rs, ab);
-	//graph->begin_transaction();
+	queryEngine.run(&rs, ab, true);
+	//queryEngine.finish(&rs, ab);
 	//query::start({&aq});
-	//graph->commit_transaction();
 	auto je = std::chrono::steady_clock::now();
 	
 	std::cout << rs << std::endl;
