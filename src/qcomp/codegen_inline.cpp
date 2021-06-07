@@ -116,7 +116,6 @@ int qcnt = 0;
 * Generates code for a scan operator.
 */
 void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
-    
     // clear register mapping of previous access path
     reg_query_results.clear();
     // process the appropriate query length
@@ -985,15 +984,22 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
     cur_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
 
+    auto opid = ConstantInt::get(ctx.int64Ty, op->op_id_);
+    auto qctx_f = main_function->args().begin() + 1;
+
+    auto joiner_arg = ctx.getBuilder().CreateBitCast(
+        ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(qctx_f, {ctx.LLVM_ZERO, opid})),
+        ctx.int8PtrTy);
+
     // init idx and dangling flag
     ctx.getBuilder().CreateStore(ctx.LLVM_ONE, dangling);
     ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, cur_idx);
 
     Value *tp = nullptr;
-
+    
     // get the join identifier and the appropriate rhs tuple list
     auto jid = ConstantInt::get(ctx.int64Ty, query_id_inline);
-    auto ma = ctx.getBuilder().CreateCall(get_size, {jid});
+    auto ma = ctx.getBuilder().CreateCall(get_size, {joiner_arg, jid});
     ctx.getBuilder().CreateStore(ma, max_idx);
     query_id_inline++;
 
@@ -1007,9 +1013,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
             loop_body = ctx.while_loop_condition(main_function, cur_idx, max_idx, PContext::WHILE_COND::LT, end,
                                             [&](BasicBlock *body, BasicBlock *epilog) {
                                                 auto pos = ctx.getBuilder().CreateLoad(cur_idx);
-                                                auto rhs_id = ctx.getBuilder().CreateCall(get_join_id_at, {jid, pos});
+                                                auto rhs_id = ctx.getBuilder().CreateCall(get_join_id_at, {joiner_arg, jid, pos});
                                                 
-                                                tp = ctx.getBuilder().CreateCall(get_join_tp_at, {jid, pos});
+                                                tp = ctx.getBuilder().CreateCall(get_join_tp_at, {joiner_arg, jid, pos});
                                                 ctx.getBuilder().CreateStore(rhs_id, rhs_id_alloc);
                                                 ctx.getBuilder().CreateBr(nested_loop); 
                                             });  
@@ -1021,7 +1027,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
                                                 [&](BasicBlock *body, BasicBlock *epilog) {
                                                     // get current index for join vector
                                                     auto idx = ctx.getBuilder().CreateLoad(cur_idx);
-                                                    tp = ctx.getBuilder().CreateCall(get_join_tp_at, {jid, idx});
+                                                    tp = ctx.getBuilder().CreateCall(get_join_tp_at, {joiner_arg, jid, idx});
 
                                                     if(op->jop_ == JOIN_OP::CROSS) {
                                                         // process cross join
@@ -1130,7 +1136,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
 
         loop_body = BasicBlock::Create(ctx.getContext(), "hj_head", main_function);
 
-        auto input_size = ctx.getBuilder().CreateCall(get_hj_input_size, {jid, bucket_id});
+        auto input_size = ctx.getBuilder().CreateCall(get_hj_input_size, {joiner_arg, jid, bucket_id});
         auto cur_idx = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
         ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, cur_idx);
         ctx.getBuilder().CreateBr(loop_body);
@@ -1141,14 +1147,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         ctx.getBuilder().CreateCondBr(hj_lt, hj_body, end);
 
         ctx.getBuilder().SetInsertPoint(hj_body);
-        auto id = ctx.getBuilder().CreateCall(get_hj_input_id, {jid, bucket_id, idx});
+        auto id = ctx.getBuilder().CreateCall(get_hj_input_id, {joiner_arg, jid, bucket_id, idx});
         auto incr_hj_id = ctx.getBuilder().CreateAdd(idx, ctx.LLVM_ONE);
         ctx.getBuilder().CreateStore(incr_hj_id, cur_idx);
         auto hj_eq = ctx.getBuilder().CreateICmpEQ(lhs_id, id);
         ctx.getBuilder().CreateCondBr(hj_eq, hj_joinable, loop_body);
 
         ctx.getBuilder().SetInsertPoint(hj_joinable);
-        tp = ctx.getBuilder().CreateCall(get_query_result, {jid, bucket_id, idx});
+        tp = ctx.getBuilder().CreateCall(get_query_result, {joiner_arg, jid, bucket_id, idx});
         ctx.getBuilder().CreateBr(concat_qrl);
     }
 
@@ -1337,6 +1343,13 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     ctx.getBuilder().CreateBr(bb);
     ctx.getBuilder().SetInsertPoint(bb);
 
+    auto opid = ConstantInt::get(ctx.int64Ty, op->op_id_);
+    auto qctx_f = main_function->args().begin() + 1;
+
+    auto joiner_arg = ctx.getBuilder().CreateBitCast(
+        ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(qctx_f, {ctx.LLVM_ZERO, opid})),
+        ctx.int8PtrTy);
+
     Value* t_start = nullptr;
     Value* t_end = nullptr;
 
@@ -1353,13 +1366,13 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     if(op->join_op_ == JOIN_OP::NESTED_LOOP) {
         auto n = reg_query_results[op->qr_pos_].reg_val;
         auto id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(n, 1));
-        ctx.getBuilder().CreateCall(insert_join_id_input, {jid, id});
+        ctx.getBuilder().CreateCall(insert_join_id_input, {joiner_arg, jid, id});
     } else if(op->join_op_ == JOIN_OP::HASH_JOIN) {
         auto n = reg_query_results[op->qr_pos_].reg_val;
         auto id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(n, 1));
         auto num_bucket = ConstantInt::get(ctx.int64Ty, 10);
         remainder = ctx.getBuilder().CreateSRem(id, num_bucket);
-        ctx.getBuilder().CreateCall(insert_join_bucket_input, {jid, remainder, id});
+        ctx.getBuilder().CreateCall(insert_join_bucket_input, {joiner_arg, jid, remainder, id});
     }
     // obtain tuple object for materialization -> joiner mat_tuple
     auto tp = ctx.getBuilder().CreateCall(obtain_mat_tuple, {});
@@ -1382,9 +1395,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     }
 
     if(op->join_op_ == JOIN_OP::HASH_JOIN) {
-        ctx.getBuilder().CreateCall(collect_tuple_hash_join, {jid, remainder, tp});
+        ctx.getBuilder().CreateCall(collect_tuple_hash_join, {joiner_arg, jid, remainder, tp});
     } else {
-        ctx.getBuilder().CreateCall(collect_tuple_join, {jid, tp});
+        ctx.getBuilder().CreateCall(collect_tuple_join, {joiner_arg, jid, tp});
     }
     
 
@@ -1690,7 +1703,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
  * Generates code for aggr operations
  */
 void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
-    std::cout << "Op:" << op->op_id_ << std::endl;
     op->name_ = "";
     auto init_grp_aggr = ctx.extern_func("init_grp_aggr");
     auto grp_cnt = ctx.extern_func("get_group_cnt");

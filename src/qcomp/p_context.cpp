@@ -212,13 +212,13 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     obtain_mat_tuple_ty = FunctionType::get(int8PtrTy, {}, false);
     mat_node_ty = FunctionType::get(voidTy, {nodePtrTy, int8PtrTy}, false);
     mat_rship_ty = FunctionType::get(voidTy, {rshipPtrTy, int8PtrTy}, false);
-    collect_tuple_join_ty = FunctionType::get(voidTy, {int64Ty, int8PtrTy}, false);
+    collect_tuple_join_ty = FunctionType::get(voidTy, {int8PtrTy, int64Ty, int8PtrTy}, false);
 
 
-    get_join_tp_at_ty = FunctionType::get(int8PtrTy, {int64Ty, int64Ty}, false);
+    get_join_tp_at_ty = FunctionType::get(int8PtrTy, {int8PtrTy, int64Ty, int64Ty}, false);
     get_node_res_at_ty = FunctionType::get(nodePtrTy, {int8PtrTy, int64Ty}, false);
     get_rship_res_at_ty = FunctionType::get(rshipPtrTy, {int8PtrTy, int64Ty}, false);
-    get_mat_res_size_ty = FunctionType::get(int64Ty, {int64Ty}, false);
+    get_mat_res_size_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty}, false);
 
     get_node_grpkey_ty = FunctionType::get(voidTy, {nodePtrTy, int64Ty}, false);
     get_rship_grpkey_ty = FunctionType::get(voidTy, {rshipPtrTy, int64Ty}, false);
@@ -247,14 +247,14 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     append_to_tuple_ty = FunctionType::get(voidTy, {int8PtrTy}, false);
     get_qr_tuple_ty = FunctionType::get(int8PtrTy, {}, false);
 
-    insert_join_id_input_ty = FunctionType::get(voidTy, {int64Ty, int64Ty}, false);
-    get_join_id_at_ty = FunctionType::get(int64Ty, {int64Ty, int64Ty}, false);
+    insert_join_id_input_ty = FunctionType::get(voidTy, {int8PtrTy, int64Ty, int64Ty}, false);
+    get_join_id_at_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty, int64Ty}, false);
 
-    collect_tuple_hash_join_ty = FunctionType::get(voidTy, {int64Ty, int64Ty, int8PtrTy}, false);
-    insert_join_bucket_input_ty = FunctionType::get(voidTy, {int64Ty, int64Ty, int64Ty}, false);
-    get_hj_input_size_ty = FunctionType::get(int64Ty, {int64Ty, int64Ty}, false);
-    get_hj_input_id_ty = FunctionType::get(int64Ty, {int64Ty, int64Ty, int64Ty}, false);
-    get_query_result_ty = FunctionType::get(int8PtrTy, {int64Ty, int64Ty, int64Ty}, false);
+    collect_tuple_hash_join_ty = FunctionType::get(voidTy, {int8PtrTy, int64Ty, int64Ty, int8PtrTy}, false);
+    insert_join_bucket_input_ty = FunctionType::get(voidTy, {int8PtrTy, int64Ty, int64Ty, int64Ty}, false);
+    get_hj_input_size_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty, int64Ty}, false);
+    get_hj_input_id_ty = FunctionType::get(int64Ty, {int8PtrTy, int64Ty, int64Ty, int64Ty}, false);
+    get_query_result_ty = FunctionType::get(int8PtrTy, {int8PtrTy, int64Ty, int64Ty, int64Ty}, false);
 
 
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

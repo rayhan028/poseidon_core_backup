@@ -276,9 +276,12 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         query_engine queryEngine(graph, 1, chunks);
         auto rhs = Scan("Book", End());
         auto lhs = Scan("Person", Join(JOIN_OP::CROSS, {}, Collect(), rhs));
+        
         arg_builder args;
+        joiner j;
+        args.arg(4, &j);
         args.arg(1, "Book");
-        args.arg(2, "Person");
+        args.arg(2, &j);
         args.arg(3, "Person");
 
         result_set rs;
@@ -295,14 +298,17 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         auto lhs = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0,0}, Collect(), rhs));
 
         arg_builder args;
+        joiner j;
+        args.arg(4, &j);
         args.arg(1, "Book");
-        args.arg(2, "Person");
+        args.arg(2, &j);
+        args.arg(3, "Person");
 
         result_set rs;
         queryEngine.generate(lhs, false);
         queryEngine.run(&rs, args);
 
-        REQUIRE(rs.data.size() == num_persons * num_books * 2);
+        REQUIRE(rs.data.size() == num_persons * num_books);
     }   
     REQUIRE(true);
 
@@ -428,12 +434,15 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
                         Project({{0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64}, 
                         {3, "name", FTYPE::STRING}}, Collect()), r_expr))));
         arg_builder args;
+        joiner j;
+        args.arg(6, &j);
         args.arg(1, "Person");
         args.arg(2, ":HAS_READ");
         args.arg(3, "Book");
-        args.arg(4, "Book");
-        args.arg(5, ":HAS_READ");
-        args.arg(6, "Person");
+        args.arg(4, &j);
+        args.arg(5, "Book");
+        args.arg(7, ":HAS_READ");
+        args.arg(8, "Person");
 
         result_set rs;
         queryEngine.generate(l_expr, false);
@@ -448,8 +457,11 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
         auto l_expr = Scan("Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr));
         arg_builder args;
-        args.arg(1, "Person");
-        args.arg(2, "Book");
+        joiner j;
+        args.arg(4, &j);
+        args.arg(1, "Book");
+        args.arg(2, &j);
+        args.arg(3, "Book");
 
         result_set rs;
         queryEngine.generate(l_expr, false);
@@ -464,8 +476,11 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
         auto l_expr = Scan("Person", Join(JOIN_OP::HASH_JOIN, {0,0}, Collect(), r_expr));
         arg_builder args;
+        joiner j;
+        args.arg(4, &j);
         args.arg(1, "Person");
-        args.arg(2, "Person");
+        args.arg(2, &j);
+        args.arg(3, "Person");
 
         result_set rs;
         queryEngine.generate(l_expr, false);

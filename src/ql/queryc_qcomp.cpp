@@ -105,12 +105,18 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
         op = Project(pr_exprs, parent);
       break;
     }
+    case ast_op::end: 
+    {
+      op = End();
+      break;
+    }
     case ast_op::hash_join:
     {
       break;        
     }
     case ast_op::leftouter_join:
     {
+
       break;        
     }    
     case ast_op::sort:

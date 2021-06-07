@@ -82,7 +82,8 @@ struct ast_op {
         hash_join, 
         leftouter_join,
         create_node, 
-        create_rship 
+        create_rship,
+        end 
     };
 
 #ifdef USE_LLVM

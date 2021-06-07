@@ -299,12 +299,12 @@ thread_local qr_tuple mat_tuple;
     qr->push_back(r);
 }
 
- void collect_tuple_join(int jid, qr_tuple *qr) {
-    joiner::materialize_rhs(jid, qr);
+ void collect_tuple_join(joiner *j, int jid, qr_tuple *qr) {
+    j->materialize_rhs(jid, qr);
 }
 
- qr_tuple *get_join_tp_at(int jid, int pos) {
-    return &joiner::rhs_input_[jid].at(pos);
+ qr_tuple *get_join_tp_at(joiner *j, int jid, int pos) {
+    return &j->rhs_input_[jid].at(pos);
 }
 
  node *get_node_res_at(qr_tuple *tuple, int pos) {
@@ -316,8 +316,9 @@ thread_local qr_tuple mat_tuple;
     return x;
 }
 
- int get_mat_res_size(int jid) {
-    return joiner::rhs_input_[jid].size();
+ int get_mat_res_size(joiner *j, int jid) {
+     std::cout << "size: " << j->rhs_input_[jid].size() << std::endl;
+    return j->rhs_input_[jid].size();
 }
 
  node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t value) {
@@ -484,31 +485,32 @@ int double_to_reg(qr_tuple* qr, int pos) {
     return g->get_group_sum_uint(pos);
 }
 
-void insert_join_id_input(int jid, offset_t id) {
-    joiner::materialize_rhs_id(jid, id);
+void insert_join_id_input(joiner *j, int jid, offset_t id) {
+    j->materialize_rhs_id(jid, id);
 }
 
-offset_t get_join_id_at(int jid, int pos) {
-    return joiner::id_input_[jid][pos];
+offset_t get_join_id_at(joiner *j, int jid, int pos) {
+    std::cout << "at: " << j->id_input_[jid][pos] << std::endl;
+    return j->id_input_[jid][pos];
 }
 
-void collect_tuple_hash_join(int jid, int remainder, qr_tuple *qr) {
-    joiner::materialize_rhs_hash_join(jid, remainder, qr);
+void collect_tuple_hash_join(joiner *j, int jid, int remainder, qr_tuple *qr) {
+    j->materialize_rhs_hash_join(jid, remainder, qr);
 }
 
-void insert_join_bucket_input(int jid, int remainder, int id) {
-    joiner::materialize_rhs_id_hash_join(jid, remainder, id);
+void insert_join_bucket_input(joiner *j, int jid, int remainder, int id) {
+    j->materialize_rhs_id_hash_join(jid, remainder, id);
 }
 
-int get_hj_input_size(int jid, int bucket) {
-    return joiner::get_input_size(jid, bucket);
+int get_hj_input_size(joiner *j, int jid, int bucket) {
+    return j->get_input_size(jid, bucket);
 }
-int get_hj_input_id(int jid, int bucket, int idx) {
-    return joiner::get_input_id(jid, bucket, idx);
+int get_hj_input_id(joiner *j, int jid, int bucket, int idx) {
+    return j->get_input_id(jid, bucket, idx);
 }
 
-qr_tuple * get_query_result(int jid, int bucket, int idx) {
-    return joiner::get_query_result(jid, bucket, idx);
+qr_tuple * get_query_result(joiner *j, int jid, int bucket, int idx) {
+    return j->get_query_result(jid, bucket, idx);
 }
 
 int node_has_property(graph_db *gdb, node *n, char *property) {

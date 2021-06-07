@@ -112,6 +112,7 @@ struct key_aggregate : TAO_PEGTL_KEYWORD("Aggregate") {};
 struct key_groupby : TAO_PEGTL_KEYWORD("GroupBy") {};
 struct key_sort : TAO_PEGTL_KEYWORD("Sort") {};
 struct key_create : TAO_PEGTL_KEYWORD("Create") {};
+struct key_end : TAO_PEGTL_KEYWORD("End") {};
 
 struct op_name : sor< key_node_scan, 
                     key_index_scan, 
@@ -124,7 +125,8 @@ struct op_name : sor< key_node_scan,
                     key_lojoin,
                     key_groupby,
                     key_sort,
-                    key_create
+                    key_create,
+                    key_end
                     > {};
 
 struct directions : sor<TAO_PEGTL_KEYWORD("FROM"), TAO_PEGTL_KEYWORD("TO"), 

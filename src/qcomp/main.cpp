@@ -227,7 +227,7 @@ int main() {
 
 	auto qq  = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Book", End())));
 
-	auto r_expr = Scan("Book", End(JOIN_OP::NESTED_LOOP, 0));
+	auto r_expr = Scan("Book", Limit(10, End(JOIN_OP::NESTED_LOOP, 0)));
 
 	auto fev = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr))));
 
@@ -238,8 +238,7 @@ int main() {
   auto sort_fct = [&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         return boost::get<int>(qr1[0]) > boost::get<int>(qr2[0]); };
 
-	auto simp = Scan("Person", Limit(10, Project({{0, "id", FTYPE::INT}}, Sort(sort_fct, 
-						Collect()))));
+	auto simp = Scan("Person", Limit(10, Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr)));
 
 	scan_task::callee_ = &scan_task::scan;	
 
@@ -251,14 +250,15 @@ int main() {
 	grouper g2;
 	grouper g3;
 	grouper g4;
+	joiner j1;
 	arg_builder ab;
 	ab.arg(1, "Person");
-	ab.arg(3, &g1);
-	ab.arg(4, &g1);
+	ab.arg(4, "Person");
+	ab.arg(3, &j1);
+	ab.arg(6, &j1);
+
 
 	result_set rs;
-
-	auto aq = query(graph).all_nodes().has_label("Person").project({PExpr_(0, pj::int_property(res, "age"))}).groupby({0}, {{"pcount", 0}}).collect(rs);
 
 	std::cout << rs << std::endl;
 	auto js = std::chrono::steady_clock::now();

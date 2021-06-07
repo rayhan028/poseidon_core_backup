@@ -81,6 +81,8 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
             os << "CreateNode("; break;
         case ast_op::create_rship:
             os << "CreateRelationship("; break;
+        case ast_op::end:
+            os << "CreateRelationship("; break;
         default:
             break;
     }

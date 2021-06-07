@@ -158,6 +158,8 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
         return ast_op::expand;
       else if (name == "Project")
         return ast_op::project;
+      else if (name == "End")
+        return ast_op::end;
       else if (name == "Create") {
         if (pn->children.size() > 1) {
           auto& sibling = pn->children[1];
