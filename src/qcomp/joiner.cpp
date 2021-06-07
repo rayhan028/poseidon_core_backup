@@ -1,7 +1,6 @@
 #include "joiner.hpp"
 
 void joiner::materialize_rhs(int jid, qr_tuple *qr) {
-    std::cout << "add" << std::endl;
     std::lock_guard<std::mutex> lck(materialize_mutex);
     rhs_input_[jid].push_back(*qr);
     qr->clear();
