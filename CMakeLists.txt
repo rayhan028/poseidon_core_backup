@@ -308,6 +308,7 @@ SET(BOOST_MIN_VERSION "1.70.0")
 
 find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
     program_options
+    filesystem
     date_time
     thread
     REQUIRED)
@@ -378,6 +379,7 @@ set(src_files
   src/storage/graph_db_query.cpp
   src/storage/graph_db_gc.cpp
   src/storage/graph_db_recovery.cpp
+  src/storage/mm_file.cpp
   src/btree/index_map.cpp
   src/qop/profiling.cpp
   src/qop/qop.cpp
@@ -420,6 +422,7 @@ endif()
 
 target_link_libraries(poseidon_core
   ${LLVM_LIB}
+  Boost::filesystem
   Boost::date_time
   Boost::thread
   spdlog::spdlog_header_only
@@ -491,6 +494,7 @@ add_library(poseidon SHARED
 
 target_link_libraries(poseidon
   ${LLVM_LIB}
+  Boost::filesystem
   Boost::date_time
   Boost::thread
   ${PYTHON_LIBRARIES}

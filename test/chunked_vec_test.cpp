@@ -145,6 +145,7 @@ TEST_CASE("Testing chunked_vec", "[chunked_vec]") {
         REQUIRE(victims[v++] == o);
       }
     }
+    REQUIRE(v == victims.size());
 
 #ifdef USE_PMDK
     pop.close();
