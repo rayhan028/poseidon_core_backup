@@ -20,6 +20,7 @@
 #define mm_file_hpp_
 
 #include <string>
+#include <memory>
 #include <boost/interprocess/file_mapping.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 
