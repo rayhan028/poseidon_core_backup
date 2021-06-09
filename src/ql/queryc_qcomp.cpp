@@ -18,12 +18,14 @@
  */
 #include <iostream>
 #include <memory>
+#include <chrono>
 
 #include <boost/algorithm/string.hpp>
 
 #include <tao/pegtl/contrib/parse_tree.hpp>
 
 #include "queryc.hpp"
+
 
 #ifdef USE_LLVM
 algebra_optr queryc::compile_to_plan(const std::string &query) {
@@ -32,6 +34,49 @@ algebra_optr queryc::compile_to_plan(const std::string &query) {
       throw query_execution_error();
     auto collect = Collect(true);
     return ast_to_algoptr(ast, collect);
+}
+
+void queryc::exec_plan(algebra_optr &plan, graph_db_ptr &gdb) {
+  query_engine queryEngine(gdb, 1, gdb->get_nodes()->num_chunks());
+
+  result_set rs;
+
+  auto start_qp = std::chrono::steady_clock::now();
+  spdlog::debug("generate query code");     
+  queryEngine.generate(plan, false);
+  auto end_qc = std::chrono::steady_clock::now();
+
+  spdlog::debug("execute query code");     
+	queryEngine.run(&rs);
+
+  auto end_qp = std::chrono::steady_clock::now();
+  
+  std::cout << "Query compiled in "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end_qc -
+                                                                     start_qp)
+                   .count()
+            << " ms and executed in " 
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                     end_qc)
+                   .count()
+            << " ms" << std::endl;
+
+  std::cout << rs << std::endl;
+}
+
+void queryc::exec_plan(const std::string &qname, graph_db_ptr &gdb) {
+  auto plan_it = query_plans_.find(qname);
+  if(plan_it != query_plans_.end()) {
+    auto plan = query_plans_[qname];
+    exec_plan(plan, gdb);
+  } else {
+    std::cout << "Query plan not found!" << std::endl;
+  }
+}
+
+void queryc::parse_and_save_plan(const std::string &name, const std::string &query) {
+  auto plan = compile_to_plan(query);
+  query_plans_[name] = plan;
 }
 
 algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
@@ -107,7 +152,7 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
     }
     case ast_op::end: 
     {
-      op = End();
+      op = parent = End();
       break;
     }
     case ast_op::hash_join:

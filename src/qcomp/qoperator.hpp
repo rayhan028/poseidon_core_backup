@@ -106,7 +106,8 @@ enum class qop_type {
     create,
     group,
     aggr,
-    store
+    store,
+    end
 };
 
 enum class create_type {
@@ -407,6 +408,19 @@ public:
 inline algebra_optr Join(JOIN_OP jop, std::pair<int, int> pos, algebra_optr lhs, algebra_optr rhs) {
     return std::make_shared<join_op>(jop, std::move(pos), lhs, rhs);
 }
+inline algebra_optr LeftJoin(std::pair<int, int> pos, algebra_optr lhs, algebra_optr rhs) {
+    return std::make_shared<join_op>(JOIN_OP::LEFT_OUTER, pos, lhs, rhs);
+}
+inline algebra_optr CrossJoin(algebra_optr lhs, algebra_optr rhs) {
+    std::pair<int, int> pos = {};
+    return std::make_shared<join_op>(JOIN_OP::CROSS, std::move(pos), lhs, rhs);
+}
+inline algebra_optr HashJoin(std::pair<int, int> pos, algebra_optr lhs, algebra_optr rhs) {
+    return std::make_shared<join_op>(JOIN_OP::HASH_JOIN, std::move(pos), lhs, rhs);
+}
+inline algebra_optr NestedLoopJoin(std::pair<int, int> pos, algebra_optr lhs, algebra_optr rhs) {
+    return std::make_shared<join_op>(JOIN_OP::NESTED_LOOP, std::move(pos), lhs, rhs);
+}
 
 class collect_op : public base_op, public std::enable_shared_from_this<collect_op> {
     
@@ -424,6 +438,8 @@ public:
 };
 
 inline algebra_optr Collect(bool print = false) { return std::make_shared<collect_op>(print); }
+inline algebra_optr Print() { return std::make_shared<collect_op>(true); }
+
 
 class filter_op : public base_op, public std::enable_shared_from_this<filter_op> {
 public:
@@ -489,14 +505,14 @@ public:
 
     end_op() {
         name_ = "End";
-        type_ = qop_type::none;
+        type_ = qop_type::end;
         qr_pos_ = produced_type_ = -1;
         qr_pos_ = 0;
     }
 
     end_op(JOIN_OP jop, int qr_pos) : join_op_(jop), qr_pos_(qr_pos) {
         name_ = "End";
-        type_ = qop_type::none;
+        type_ = qop_type::end;
         produced_type_ = -1;
     }
 
@@ -509,6 +525,9 @@ public:
 
 inline algebra_optr End() { return std::make_shared<end_op>(); }
 inline algebra_optr End(JOIN_OP jop, int qr_pos) { return std::make_shared<end_op>(jop, qr_pos); }
+inline algebra_optr HashJoinEnd(int qr_pos) { return std::make_shared<end_op>(JOIN_OP::HASH_JOIN, qr_pos); }
+inline algebra_optr NestedLoopEnd(int qr_pos) { return std::make_shared<end_op>(JOIN_OP::NESTED_LOOP, qr_pos); }
+
 
 class create_op : public base_op, public std::enable_shared_from_this<create_op> {
 public:

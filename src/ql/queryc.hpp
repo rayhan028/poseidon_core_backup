@@ -76,6 +76,22 @@ public:
    */
   ast_op_ptr parse(const std::string &query);
 
+  /**
+   * Parses the given query string and saves the plan with given name.
+   */
+  void parse_and_save_plan(const std::string &name, const std::string &query);
+
+  /**
+   * Executes the given query plan.
+   */
+  void exec_plan(algebra_optr &plan, graph_db_ptr &gdb);
+
+
+  /**
+   * Executes the given query by name.
+   */
+  void exec_plan(const std::string &qname, graph_db_ptr &gdb);
+
 private:
   /**
    * Derives the operator type for the AST node from the
@@ -155,6 +171,9 @@ private:
       parent->connect(qop, std::bind(&T::process, dynamic_cast<T *>(qop.get()), ph::_1, ph::_2));
     return qop;
   }
+
+
+  std::map<std::string, algebra_optr> query_plans_;
 
 };
 
