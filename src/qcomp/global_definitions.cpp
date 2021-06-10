@@ -317,7 +317,6 @@ thread_local qr_tuple mat_tuple;
 }
 
  int get_mat_res_size(joiner *j, int jid) {
-     std::cout << "size: " << j->rhs_input_[jid].size() << std::endl;
     return j->rhs_input_[jid].size();
 }
 
@@ -490,7 +489,6 @@ void insert_join_id_input(joiner *j, int jid, offset_t id) {
 }
 
 offset_t get_join_id_at(joiner *j, int jid, int pos) {
-    std::cout << "at: " << j->id_input_[jid][pos] << std::endl;
     return j->id_input_[jid][pos];
 }
 

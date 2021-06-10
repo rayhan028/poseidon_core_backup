@@ -227,7 +227,7 @@ int main() {
 
 	auto qq  = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Book", End())));
 
-	auto r_expr = Scan("Book", Limit(10, End(JOIN_OP::NESTED_LOOP, 0)));
+	auto r_expr = Scan("Person", Limit(10, End(JOIN_OP::NESTED_LOOP, 0)));
 
 	auto fev = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr))));
 
@@ -264,7 +264,7 @@ int main() {
 	auto js = std::chrono::steady_clock::now();
 	//queryEngine.run(&rs, ab, 24);
 	//queryEngine.finish(&rs, ab);
-	queryEngine.run(&rs, ab, true);
+	queryEngine.run(&rs);
 	//queryEngine.finish(&rs, ab);
 	//query::start({&aq});
 	auto je = std::chrono::steady_clock::now();

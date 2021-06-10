@@ -146,17 +146,20 @@ void query_engine::extract_arg(std::shared_ptr<base_op> op) {
         }
         case qop_type::end: {
             query_args.arg(arg_counter++, last_joiner);
+            break;
         }
         case qop_type::group: {
             query_args.arg(arg_counter++, new grouper()); //TODO: allocation
             query_args.arg(arg_counter++, new grouper());
             break;
         }
+        case qop_type::limit: {
+            arg_counter++;
+        }
         // inline argument, nothing to do here
         case qop_type::project:
         case qop_type::aggr:
         case qop_type::collect:
-        case qop_type::limit:
         case qop_type::sort:
         case qop_type::any:
         case qop_type::none:
@@ -221,9 +224,23 @@ void query_engine::run(result_set * rs, arg_builder & args, bool cleanup_query) 
 
 void query_engine::run(result_set * rs) {
     auto curop = cur_query_;
-    while(!curop->inputs_.empty()) {
+    std::vector<algebra_optr> recur; 
+    while(!curop->inputs_.empty() || !recur.empty()) {
         extract_arg(curop);
-        curop = curop->inputs_[0];
+        if(curop->inputs_.empty()) {
+            if(!recur.empty()) {
+                curop = recur.front();
+                recur.erase(recur.begin());
+                continue;
+            }
+        }
+        if(curop->inputs_.size() > 1) {
+            recur.push_back(curop->inputs_[0]);
+            curop = curop->inputs_[1];
+        } else {
+            if(!curop->inputs_.empty())
+                curop = curop->inputs_[0];
+        }
     }
     
     run(rs, query_args);
