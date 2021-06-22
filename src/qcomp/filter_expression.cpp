@@ -20,6 +20,8 @@ std::string expression::fop_str(FOP fop) const {
             return "||";
         case FOP::NOT:
             return "!";
+        default:
+            return "";
     }
 }
 
@@ -36,7 +38,7 @@ void number_token::accept(int rank, expression_visitor &fep) {
     fep.visit(rank, shared_from_this());
 }
 
-key_token::key_token(unsigned qr_id, std::string key) : qr_id_(qr_id), key_(key) {
+key_token::key_token(unsigned qr_id, std::string key) : key_(key), qr_id_(qr_id) {
     name_ = "KEY";
     ftype_ = FOP_TYPE::KEY;
 }
@@ -47,6 +49,19 @@ std::string key_token::operator()() const {
 
 void key_token::accept(int rank, expression_visitor &fep) {
     fep.visit(rank, shared_from_this());
+}
+
+time_token::time_token(boost::posix_time::ptime time) : time_(time) {
+    name_ = "TIME";
+    ftype_ = FOP_TYPE::TIME;
+}
+
+void time_token::accept(int rank, expression_visitor &fep) {
+    fep.visit(rank, shared_from_this());
+}
+
+std::string time_token::operator()() const {
+    return boost::posix_time::to_simple_string(time_);
 }
 
 str_token::str_token(std::string str) : str_(str) {
@@ -62,7 +77,15 @@ void str_token::accept(int rank, expression_visitor &fep) {
     fep.visit(rank, shared_from_this());
 }
 
-fct_call::fct_call(fct_t fct) : fct_(fct) {
+fct_call::fct_call(fct_int_t fct) : fct_int_(fct), fct_type_(FOP_TYPE::INT) {
+    name_ = "FCT";
+}
+
+fct_call::fct_call(fct_str_t fct) : fct_str_(fct), fct_type_(FOP_TYPE::STRING) {
+    name_ = "FCT";
+}
+
+fct_call::fct_call(fct_uint_t fct) : fct_uint_(fct), fct_type_(FOP_TYPE::UINT64) {
     name_ = "FCT";
 }
 
@@ -75,7 +98,7 @@ std::string fct_call::operator()() const {
 }
 
 binary_predicate::binary_predicate(FOP fop, const expr left, const expr right, bool prec, bool is_bool)
-        : left_(left), right_(right), fop_(fop), prec_(prec), is_bool_(is_bool) {}
+        : left_(left), right_(right), fop_(fop), is_bool_(is_bool), prec_(prec) {}
 
 std::string binary_predicate::operator()() const {
     auto lhs = (*left_)();
@@ -94,6 +117,20 @@ eq_predicate::eq_predicate(const expr left, const expr right, bool prec, bool no
 }
 
 void eq_predicate::accept(int rank, expression_visitor &fep) {
+    left_->accept(rank+1, fep);
+    right_->accept(rank+1, fep);
+    fep.visit(rank, shared_from_this());
+    // TODO: do binary stuff here
+}
+
+call_predicate::call_predicate(const expr left, const expr right, bool prec, bool not_)
+        : binary_predicate(FOP::EQ, left, right, prec) {
+    name_ = "CALL";
+    ftype_ = FOP_TYPE::OP;
+    if (not_) fop_ = FOP::NEQ;
+}
+
+void call_predicate::accept(int rank, expression_visitor &fep) {
     left_->accept(rank+1, fep);
     right_->accept(rank+1, fep);
     fep.visit(rank, shared_from_this());
@@ -250,13 +287,41 @@ void fep_visitor::visit(int rank, std::shared_ptr<str_token> str) {
     opd_cnt++;
 }
 
+void fep_visitor::visit(int rank, std::shared_ptr<time_token> time) {
+
+}
+
 void fep_visitor::visit(int rank, std::shared_ptr<fct_call> fct) {
     fct->opd_num = opd_cnt;
     expr_stack.insert(expr_stack.begin(), fct);
 
-    auto fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_);
+    Value* fct_raw;
+
+    FunctionType* fct_callee_type;
+
+    switch(fct->fct_type_) {
+        case FOP_TYPE::INT:
+            fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int64PtrTy}, false);
+            fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_int_);
+            break;
+        case FOP_TYPE::STRING:
+            fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int8PtrTy}, false);
+            fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_str_);
+            break;
+        case FOP_TYPE::UINT64:
+            fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int64PtrTy}, false);
+            fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_uint_);
+        case FOP_TYPE::BOOL_OP:
+        case FOP_TYPE::DATE:
+        case FOP_TYPE::DOUBLE:
+        case FOP_TYPE::KEY:
+        case FOP_TYPE::OP:
+        case FOP_TYPE::TIME:
+            break;
+    } 
+
     auto fct_ptr = ctx_->getBuilder().CreateIntToPtr(fct_raw, ctx_->int64PtrTy);
-    auto fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int64PtrTy}, false);
+
     auto fct_callee = ctx_->getBuilder().CreateBitCast(fct_ptr, fct_callee_type->getPointerTo());
 
     auto res = ctx_->getBuilder().CreateCall(fct_callee_type, fct_callee, {roi_});
@@ -268,7 +333,7 @@ void fep_visitor::visit(int rank, std::shared_ptr<eq_predicate> eq)  {
     eq->opd_num = opd_cnt;
     expr_stack.insert(expr_stack.begin(), eq);
 
-    auto opd_it = expr_stack.begin();
+    //auto opd_it = expr_stack.begin();
     auto rhs_it = expr_stack.begin() + 1;
     auto lhs_it = expr_stack.begin() + 2;
 
@@ -285,16 +350,23 @@ void fep_visitor::visit(int rank, std::shared_ptr<eq_predicate> eq)  {
             auto int_value = ctx_->getBuilder().CreateLoad(
                     ctx_->getBuilder().CreateBitCast(value_arr, ctx_->int64PtrTy));
             auto cmp_pitem = ctx_->getBuilder().CreateICmpEQ(int_value, val_rhs);
-            gen_vals_[opd_cnt] = alloc("cmp_eq_res_" + std::to_string(eq->opd_num), ctx_->boolTy, cmp_pitem);
-        }
+            gen_vals_[opd_cnt] = alloc("cmp_eq_res_" + std::to_string(eq->opd_num), ctx_->boolTy, cmp_pitem);;
             break;
+        }
         case FOP_TYPE::DOUBLE: {
             auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
             auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
             auto cmp_pitem = ctx_->getBuilder().CreateFCmpOEQ(int_value, val_rhs);
             gen_vals_[opd_cnt] = alloc("cmp_eq_res_" + std::to_string(eq->opd_num), ctx_->boolTy, cmp_pitem);
+            break;
         }
-
+        case FOP_TYPE::STRING:
+        case FOP_TYPE::DATE:
+        case FOP_TYPE::KEY:
+        case FOP_TYPE::TIME:
+        case FOP_TYPE::BOOL_OP:
+        case FOP_TYPE::OP:
+        case FOP_TYPE::UINT64:
             break;
     }
 
@@ -386,6 +458,8 @@ void fep_visitor::visit(int rank, std::shared_ptr<or_predicate> orpr) {
     }
     opd_cnt++;
 }
+
+void fep_visitor::visit(int rank, std::shared_ptr<call_predicate> orpr) {}
 
 Value * fep_visitor::alloc(std::string name, Type *type, Value *val) {
     if (alloc_stack.find(name) == alloc_stack.end()) {

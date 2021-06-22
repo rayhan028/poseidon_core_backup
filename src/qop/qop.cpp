@@ -48,7 +48,23 @@ void scan_nodes::dump(std::ostream &os) const {
   os << "scan_nodes([" << label << "]) - " << PROF_DUMP;
 }
 
+#ifdef QOP_RECOVERY
 /* ------------------------------------------------------------------------ */
+
+void continue_scan_nodes::start(graph_db_ptr &gdb) {
+  gdb->continue_parallel_nodes(check_points, [&](node &n) { consume_(gdb, {&n}); });
+
+  qop::default_finish(gdb);
+}
+
+void continue_scan_nodes::dump(std::ostream &os) const {
+  os << "continue_scan_nodes([" << label << "])=>";
+  if (subscriber_)
+    subscriber_->dump(os);
+}
+
+/* ------------------------------------------------------------------------ */
+#endif
 
 void index_scan::start(graph_db_ptr &gdb) {
   if (idxs.empty())
@@ -856,7 +872,9 @@ void collect_result::dump(std::ostream &os) const {
   os << "collect_result() - " << PROF_DUMP;
 }
 
+std::mutex collect_mtx;
 void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  std::lock_guard<std::mutex> lock(collect_mtx);
   PROF_PRE;
   // we transform node and relationship into their string representations ...
   qr_tuple res(v.size());
@@ -894,6 +912,17 @@ void end_pipeline::dump(std::ostream &os) const { os << "end_pipeline()"; }
 
 void end_pipeline::process() { return; }
 
+#ifdef QOP_RECOVERY
+/* ------------------------------------------------------------------------ */
+
+void persist_result::dump(std::ostream &os) const { os << "persist()"; }
+
+void persist_result::process(graph_db_ptr &gdb, const qr_tuple &v) { 
+  qr_tuple t = v;
+  gdb->store_query_result(t, 0);
+  consume_(gdb, v);
+}
+#endif 
 /* ------------------------------------------------------------------------ */
 
 projection::projection(const expr_list &exprs) : exprs_(exprs) {

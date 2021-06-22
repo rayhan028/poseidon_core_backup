@@ -29,6 +29,34 @@ double calc_avg() {
   return avg;
 }
 
+void ldbc_jit_iu_query_4(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, params_tuple &params) {
+  properties_t props = {{"id", boost::any(boost::get<uint64_t>(params[2]))},
+                              {"title", boost::any(boost::get<std::string &>(params[3]))},
+                              {"creationDate", boost::any(boost::get<std::string &>(params[4]))} };
+
+  auto q1 = Scan("Person",
+              Filter(EQ(Key(0, "id"),Int(boost::get<uint64_t>(params[0]))),
+                End()));
+  auto q2 = Scan("Person",
+              Filter(EQ(Key(0, "id"),Int(boost::get<uint64_t>(params[1]))),
+                End()));
+  auto q3 = CreateNode(
+              Join(JOIN_OP::CROSS, {},
+                CreateRship({0, 1}, 
+                  Join(JOIN_OP::CROSS, {},
+                    CreateRship({0, 3}, 
+                    Collect()), q2)), 
+                q1));
+
+  arg_builder ab;
+  ab.arg(1, "Forum");
+  ab.arg(2, props);
+  ab.arg(3, "Person");
+  ab.arg(4, boost::get<uint64_t>(params[0]));
+  ab.arg(5, "Person");
+  ab.arg(6, boost::get<uint64_t>(params[1]));
+}
+
 void ldbc_jit_is_query_1_a(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
   auto q = Scan("Person",
               Filter(EQ(Key(0, "id"), Int(personId)),
@@ -45,7 +73,7 @@ void ldbc_jit_is_query_1_a(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(3, ":isLocatedIn");
   ab.arg(4, "Place");
 
-  if(!compiled) {
+  if(true) {
     auto c_s = std::chrono::steady_clock::now();
     qeng.generate(q, adaptive);
     compiled = true;
@@ -86,7 +114,7 @@ void ldbc_jit_is_query_1_b(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   ab.arg(4, personId);
 
   qeng.generate(q, adaptive);
-  qeng.run(&rs, ab.args);
+  qeng.run(&rs, ab);
 }
 
 void ldbc_jit_is_query_2_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, bool adaptive, uint64_t personId) {
@@ -221,7 +249,7 @@ void ldbc_jit_is_query_3(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();*/
   auto e_s = std::chrono::steady_clock::now();
@@ -258,7 +286,7 @@ void ldbc_jit_is_query_4_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -296,7 +324,7 @@ void ldbc_jit_is_query_4_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -338,7 +366,7 @@ void ldbc_jit_is_query_5_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -380,7 +408,7 @@ void ldbc_jit_is_query_5_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -427,7 +455,7 @@ void ldbc_jit_is_query_6_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -480,7 +508,7 @@ void ldbc_jit_is_query_6_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
@@ -545,14 +573,14 @@ void ldbc_jit_is_query_7_p(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
   auto e_s = std::chrono::steady_clock::now();
-  //gdb->begin_transaction();
+  gdb->begin_transaction();
   qeng.run_parallel(&rs, ab, 24);
-  //gdb->commit_transaction();
+  gdb->commit_transaction();
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 
@@ -608,14 +636,14 @@ void ldbc_jit_is_query_7_c(graph_db_ptr &gdb, query_engine &qeng, result_set &rs
   }
 /*
   auto e_s = std::chrono::steady_clock::now();
-  qeng.run(&rs, ab.args, false);
+  qeng.run(&rs, ab, false);
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 */
   auto e_s = std::chrono::steady_clock::now();
-  //gdb->begin_transaction();
+  gdb->begin_transaction();
   qeng.run_parallel(&rs, ab, 24);
-  //gdb->commit_transaction();
+  gdb->commit_transaction();
   auto e_e = std::chrono::steady_clock::now();
   rs.data.clear();
 
@@ -851,10 +879,11 @@ void run_is_7_c(graph_db_ptr gdb, query_engine &qeng) {
 }
 
 void run_benchmark(graph_db_ptr gdb, query_engine &qeng) {
-  /*run_is_1(gdb, qeng);  
+  run_is_1(gdb, qeng);  
   spdlog::info("Query #1: {} msecs", calc_avg());
   qeng.cleanup();
 
+/*
   run_is_2_p(gdb, qeng);  
   spdlog::info("Query #2: {} msecs", calc_avg());
   qeng.cleanup();
@@ -889,14 +918,14 @@ void run_benchmark(graph_db_ptr gdb, query_engine &qeng) {
 
   run_is_6_c(gdb, qeng);  
   spdlog::info("Query #10: {} msecs", calc_avg());
-  qeng.cleanup();*/
+  qeng.cleanup();
 
   run_is_7_p(gdb, qeng);  
   spdlog::info("Query #11: {} msecs", calc_avg());
   qeng.cleanup();
 
   run_is_7_c(gdb, qeng);  
-  spdlog::info("Query #12: {} msecs", calc_avg());
+  spdlog::info("Query #12: {} msecs", calc_avg());*/
 /*
   ldbc_jit_is_query_2_p(gdb, qeng, rs, false, 10995116338469);
   //std::cout << rs << std::endl;

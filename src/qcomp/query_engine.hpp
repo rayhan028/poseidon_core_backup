@@ -2,6 +2,7 @@
 #define POSEIDON_CORE_QUERY_ENGINE_HPP
 
 #include "joiner.hpp"
+#include "grouper.hpp"
 #include "p_jit.hpp"
 #include "p_context.hpp"
 
@@ -36,6 +37,9 @@ struct arg_builder {
         int_args[op_id] = arg;
         args[op_id] = (uint64_t*)&(int_args[op_id]);
     }
+    void arg(int op_id, grouper *g) {
+        args[op_id] = (uint64_t*)g;
+    }
 
     void arg(int op_id, properties_t & props) {
         prop_args[op_id] = props;
@@ -59,7 +63,7 @@ class query_engine {
 
     graph_db_ptr graph_;
 public: 
-    query_engine(graph_db_ptr graph, unsigned int thread_num, unsigned cv_range);
+    query_engine(graph_db_ptr &graph, unsigned int thread_num, unsigned cv_range);
     ~query_engine();
 
     static std::unique_ptr<p_jit> initializeJitCompiler();
@@ -69,7 +73,8 @@ public:
     void prepare();
 
     void run(result_set * rs);
-    void run(result_set * rs, std::vector<uint64_t*> args, bool cleanup_query = true);
+    void run(result_set * rs, arg_builder & args, bool cleanup_query = true);
+    void finish(result_set *rs, arg_builder & args);
 
     void run_parallel(result_set * rs, arg_builder & args, unsigned thread_num);
 
@@ -87,8 +92,8 @@ public:
 
     std::map<int, std::vector<std::string>> operator_names_;
     std::map<int, std::vector<int>> type_vec_;
-    static std::map<int, std::vector<consumer_fct_type>> operator_functions_;
     static std::map<int, finish_fct_type> finish_;
+    std::map<int, std::vector<finish_fct_type>> qpipelines_;
 
 
     std::function<void(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer)> task_callee_;

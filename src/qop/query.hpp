@@ -78,6 +78,8 @@ public:
    */
   query &nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val);
 
+  query &continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label = "");
+
   query &nodes_where_indexed(const std::vector<std::string> &labels,
                               const std::string &prop, uint64_t val);
 
@@ -238,6 +240,12 @@ public:
    */
   query &finish();
 
+#ifdef QOP_RECOVERY
+  /**
+   * Perists intermediate tuple results
+   */
+  query &persist();
+#endif 
   /**
    * Add an operator for constructing the cartesian product of the query tuples 
    * of the left and right query pipelines.
@@ -406,6 +414,7 @@ public:
   static void start(std::initializer_list<query *> queries);
   static void print_plans(std::initializer_list<query *> queries, std::ostream& os = std::cout);
 
+  void extract_args();
   /**
    * Return the pointer to the graph database.
    */
