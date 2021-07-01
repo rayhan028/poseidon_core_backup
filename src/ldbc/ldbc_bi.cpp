@@ -2171,7 +2171,6 @@ void ldbc_bi_query_19(graph_db_ptr &gdb, result_set &rs, params_tuple &params) {
     };
 
     rship_weight rweight = [&](relationship &r) {
-        double w = 0.0;
         auto &src = gdb->node_by_id(r.from_node_id());
         auto &des = gdb->node_by_id(r.to_node_id());
         auto count = interaction(src, des) + interaction(des, src);

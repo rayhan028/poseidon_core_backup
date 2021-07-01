@@ -379,8 +379,8 @@ TEST_CASE("Weighted Shortest Path", "[shortest_path]") {
                 return std::string(graph->get_string(r.rship_label)) == ":knows"; };
 
   auto rweight = [&](relationship &r) {
-        auto &src = graph->node_by_id(r.from_node_id());
-        auto &des = graph->node_by_id(r.to_node_id());
+        // auto &src = graph->node_by_id(r.from_node_id());
+        // auto &des = graph->node_by_id(r.to_node_id());
         auto src_descr = graph->get_node_description(r.from_node_id());
         auto des_descr = graph->get_node_description(r.to_node_id());
         auto src_age = get_property<int>(src_descr.properties, 
@@ -428,8 +428,8 @@ TEST_CASE("Top K Weighted Shortest Paths", "[shortest_path]") {
                 return std::string(graph->get_string(r.rship_label)) == ":knows"; };
 
   auto rweight = [&](relationship &r) {
-        auto &src = graph->node_by_id(r.from_node_id());
-        auto &des = graph->node_by_id(r.to_node_id());
+        // auto &src = graph->node_by_id(r.from_node_id());
+        // auto &des = graph->node_by_id(r.to_node_id());
         auto src_descr = graph->get_node_description(r.from_node_id());
         auto des_descr = graph->get_node_description(r.to_node_id());
         auto src_age = get_property<int>(src_descr.properties, 

@@ -180,7 +180,7 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
 #endif
 
 TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
-  spdlog::info("size = {}", sizeof(log_ins_record));
+  // spdlog::info("size = {}", sizeof(log_ins_record));
 
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
@@ -248,7 +248,7 @@ TEST_CASE("Checking FROM relationships", "[graph_db]") {
 
   graph->commit_transaction();
 
-  graph->dump_dot("from_rships.dot");
+  // graph->dump_dot("from_rships.dot");
 
   graph->begin_transaction();
 
@@ -264,7 +264,7 @@ TEST_CASE("Checking FROM relationships", "[graph_db]") {
       else if (s == ":IS_FRIENDS_WITH")
         isFriendsCnt++;
       auto &n2 = graph->node_by_id(r.to_node_id());
-      std::cout << n1.id() << "-[" << s << "]->" << n2.id() << std::endl;
+      // std::cout << n1.id() << "-[" << s << "]->" << n2.id() << std::endl;
     });
     REQUIRE(hasReadCnt == 3);
     REQUIRE(isFriendsCnt == 1);
@@ -295,7 +295,7 @@ TEST_CASE("Checking TO relationships", "[graph_db]") {
 
   graph->commit_transaction();
 
-  graph->dump_dot("to_rships.dot");
+  // graph->dump_dot("to_rships.dot");
   
   graph->begin_transaction();
 
@@ -668,8 +668,8 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
 
     auto &n1 = graph->node_by_id(p1);
     graph->foreach_from_relationship_of_node(n1, [&](relationship &rel) {
-      std::cout << "update relationship: " << graph->get_relationship_label(rel)
-                << std::endl;
+      // std::cout << "update relationship: " << graph->get_relationship_label(rel)
+      //          << std::endl;
       graph->update_relationship(rel, {{"p1", boost::any(std::string("val2"))},
                                        {"p2", boost::any(20)},
                                        {"p3", boost::any(30)}});
@@ -679,7 +679,7 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
     auto &n2 = graph->node_by_id(p1);
     graph->foreach_from_relationship_of_node(n2, [&](relationship &rel) {
       auto reldesc = graph->get_rship_description(rel.id());
-      std::cout << reldesc << std::endl;
+      // std::cout << reldesc << std::endl;
 
       REQUIRE(reldesc.id == r);
       REQUIRE(reldesc.label == "KNOWS");
@@ -702,7 +702,7 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
     auto &n2 = graph->node_by_id(p1);
     graph->foreach_from_relationship_of_node(n2, [&](relationship &rel) {
       auto reldesc = graph->get_rship_description(rel.id());
-      std::cout << reldesc << std::endl;
+      // std::cout << reldesc << std::endl;
 
       REQUIRE(reldesc.id == r);
       REQUIRE(reldesc.label == "KNOWS");
@@ -738,6 +738,7 @@ TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
 
   graph_pool::destroy(pool);
 } 
+
 
 TEST_CASE("Deleting all inserted nodes and relationships in separate transactions", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
@@ -800,6 +801,7 @@ TEST_CASE("Deleting all inserted nodes and relationships in separate transaction
     graph->delete_relationship(i);
 
   graph->commit_transaction();
+  graph->dump();
   graph->begin_transaction();
 
   for (node::id_t i = 0; i < next_node; i++) {
@@ -807,7 +809,6 @@ TEST_CASE("Deleting all inserted nodes and relationships in separate transaction
   }
   
   graph->commit_transaction();
-
   graph->begin_transaction();
 
   int num = 0;
@@ -885,17 +886,17 @@ TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
   REQUIRE(next_node == 5);
   REQUIRE(next_rship == 5);  
 
-  graph->dump();
-  spdlog::info("starting delete ... tx = {}", short_ts(current_transaction()->xid()));
+  // graph->dump();
+  // spdlog::info("starting delete ... tx = {}", short_ts(current_transaction()->xid()));
   // delete all nodes and relationships
   // deleting a node deletes all relationships associated with the node
   for (relationship::id_t i = 0; i < next_rship; i++) {
-    spdlog::info("    delete rship #{}", i);
+    // spdlog::info("    delete rship #{}", i);
     graph->delete_relationship(i);
   }
   graph->dump();
   for (node::id_t i = 0; i < next_node; i++) {
-    spdlog::info("    delete node #{}", i);
+    // spdlog::info("    delete node #{}", i);
     graph->delete_node(i);
   }
   
@@ -952,7 +953,7 @@ TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
 
   node::id_t next_node = graph->get_nodes()->as_vec().first_available();
   for (node::id_t i = 2; i < next_node; i++) {// p2 ... b3
-    std::cout << "trying to delete #" << i << std::endl;
+    // std::cout << "trying to delete #" << i << std::endl;
     graph->delete_node(i); 
   }
 
@@ -979,7 +980,7 @@ TEST_CASE("Checking that we cannot delete nodes which are still part of a relati
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {});
   graph->commit_transaction();
 
-  graph->dump();
+  // graph->dump();
 
   graph->begin_transaction();
   {
@@ -1006,7 +1007,7 @@ TEST_CASE("Checking delete_detached_node", "[graph_db]") {
   auto r2 = graph->add_relationship(p1, p3, ":IS_FRIENDS_WITH", {});
   graph->commit_transaction();
 
-  graph->dump();
+  // graph->dump();
 
   graph->begin_transaction();
   {
@@ -1014,7 +1015,7 @@ TEST_CASE("Checking delete_detached_node", "[graph_db]") {
     REQUIRE(n.id() == p1);
     graph->detach_delete_node(p1);
   }
-  spdlog::info("detach_delete_node finished");
+  // spdlog::info("detach_delete_node finished");
   graph->commit_transaction();
 
   // we should not find r1 and r2 anymore

@@ -24,16 +24,42 @@
 #include "parser.hpp"
 #include "spdlog/spdlog.h"
 #include <iostream>
+#include <stdio.h>
+
+#ifdef USE_MMFILE
+#include <boost/filesystem.hpp>
+#endif
 
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
 #endif
 
-graph_db::graph_db(const std::string &db_name) {
-  nodes_ = p_make_ptr<node_list>();
-  rships_ = p_make_ptr<relationship_list>();
-  node_properties_ = p_make_ptr<property_list>();
-  rship_properties_ = p_make_ptr<property_list>();
+void graph_db::destroy(graph_db_ptr gp) {
+#ifdef USE_MMFILE
+  auto prefix = gp->database_name_ + "/";
+  boost::filesystem::remove(prefix + "nodes.db");
+  boost::filesystem::remove(prefix + "slots_nodes.db");
+  boost::filesystem::remove(prefix + "rships.db");
+  boost::filesystem::remove(prefix + "slots_rships.db");
+  boost::filesystem::remove(prefix + "props.db");
+  boost::filesystem::remove(prefix + "slots_props.db");
+#endif
+}
+
+
+graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
+  std::string prefix = "";
+#ifdef USE_MMFILE
+  boost::filesystem::path path_obj(db_name);
+  // check if path exists and is of a regular file
+  if (! boost::filesystem::exists(path_obj))
+    boost::filesystem::create_directory(path_obj);
+  prefix = db_name + "/";
+#endif
+  nodes_ = p_make_ptr<node_list>(prefix + "nodes.db");
+  rships_ = p_make_ptr<relationship_list>(prefix + "rships.db");
+  node_properties_ = p_make_ptr<property_list>(prefix + "nprops.db");
+  rship_properties_ = p_make_ptr<property_list>(prefix + "rprops.db");
 #ifdef QOP_RECOVERY
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();

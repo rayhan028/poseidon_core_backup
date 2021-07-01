@@ -91,10 +91,13 @@ TEST_CASE("Creating a few nodes in the node list", "[nodes]") {
 
   nvm::transaction::run(
       pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list>(); });
+#endif
 
+  SECTION("Creating nodes") {
+#ifdef USE_PMDK
   node_list &nlist = *(root_obj->nlist_p);
 #else
-  node_list nlist;
+  node_list nlist("nodes1.db");
 #endif
 
   auto n1 = nlist.add(node(62));
@@ -119,26 +122,34 @@ TEST_CASE("Creating a few nodes in the node list", "[nodes]") {
   CHECK_THROWS_AS(nlist.get(n3), unknown_id);
   // if the capacity is larger than 10000 then no exception is raised
   // CHECK_THROWS_AS(nlist.remove(10000), unknown_id); 
+  }
 
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
+#elif USE_MMFILE
+  remove("nodes1.db");
+  remove("slots_nodes1.db");
 #endif
 }
 
-#ifdef USE_PMDK
+#if defined(USE_PMDK) || defined(USE_MMFILE) 
 TEST_CASE("Creating and restoring a persistent node list", "[nodes]") {
+  node::id_t n1 = 0, n2 = 0, n3 = 0;
+  {
+#ifdef USE_PMDK
   auto pop = nvm::pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
   auto root_obj = pop.root();
 
   nvm::transaction::run(
       pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list>(); });
-
   node_list &nlist = *(root_obj->nlist_p);
-
-  auto n1 = nlist.add(node(62));
-  auto n2 = nlist.add(node(63));
-  auto n3 = nlist.add(node(64));
+#else
+  node_list nlist("nodes2.db");
+#endif
+  n1 = nlist.add(node(62));
+  n2 = nlist.add(node(63));
+  n3 = nlist.add(node(64));
 
   REQUIRE(nlist.get(n1).id() == n1);
   REQUIRE(nlist.get(n1).node_label == 62);
@@ -149,12 +160,20 @@ TEST_CASE("Creating and restoring a persistent node list", "[nodes]") {
   REQUIRE(nlist.get(n3).id() == n3);
   REQUIRE(nlist.get(n3).node_label == 64);
 
+#ifdef USE_PMDK
   pop.close();
+#endif
+  }
 
+  {
+#ifdef USE_PMDK
   pop = nvm::pool<root>::open(test_path, "");
   root_obj = pop.root();
 
   node_list &nlist2 = *(root_obj->nlist_p);
+#else
+  node_list nlist2("nodes2.db");
+#endif
 
   REQUIRE(nlist2.get(n1).id() == n1);
   REQUIRE(nlist2.get(n1).node_label == 62);
@@ -165,9 +184,17 @@ TEST_CASE("Creating and restoring a persistent node list", "[nodes]") {
   REQUIRE(nlist2.get(n3).id() == n3);
   REQUIRE(nlist2.get(n3).node_label == 64);
 
+#ifdef USE_PMDK
   pop.close();
+#endif
+  }
 
+#ifdef USE_PMDK
   remove(test_path.c_str());
+#else
+  remove("nodes2.db");
+  remove("slots_nodes2.db");
+#endif
 }
 #endif
 
@@ -178,10 +205,13 @@ TEST_CASE("Deleting a node", "[nodes]") {
 
   nvm::transaction::run(
       pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list>(); });
+#endif
 
+  SECTION("Delete") {
+#ifdef USE_PMDK
   node_list &nlist = *(root_obj->nlist_p);
 #else
-  node_list nlist;
+  node_list nlist("nodes3.db");
 #endif
   auto n1 = nlist.add(node(62));
   auto n2 = nlist.add(node(63));
@@ -197,10 +227,14 @@ TEST_CASE("Deleting a node", "[nodes]") {
 
   // nlist.get(n2) should raise an exception
   REQUIRE_THROWS_AS(nlist.get(n2), unknown_id);
+  }
 
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
+#elif USE_MMFILE
+  remove("nodes3.db");
+  remove("slots_nodes3.db");
 #endif
 }
 

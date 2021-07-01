@@ -29,7 +29,7 @@
 
 #include "defs.hpp"
 
-#include "chunked_vec.hpp"
+#include "vec.hpp"
 #include "dict.hpp"
 #include "exceptions.hpp"
 
@@ -198,6 +198,12 @@ struct property_set {
   }
 };
 
+#ifdef USE_MMFILE
+using props_vec = file_vec<property_set>;
+#else
+using props_vec = chunked_vec<property_set, PROP_CHUNK_SIZE>;
+#endif
+
 /**
  * A class for storing all properties associated with nodes and relationships of
  * a graph. It supports adding and removing properties as well as looking up
@@ -209,7 +215,8 @@ public:
   /**
    * Constructor
    */
-  property_list() = default;
+  property_list(const std::string& vec_name = "") : properties_(vec_name) {}
+
   property_list(const property_list &) = delete;
 
   /**
@@ -325,7 +332,7 @@ public:
   /**
    * Returns the underlying vector of the property set list.
    */
-  chunked_vec<property_set, PROP_CHUNK_SIZE> &as_vec() { return properties_; }
+  props_vec &as_vec() { return properties_; }
 
   /**
    * Build a list of p_items from the list of properties represented by props.
@@ -362,7 +369,7 @@ public:
   std::size_t num_chunks() const { return properties_.num_chunks(); }
 
 private:
-  chunked_vec<property_set, PROP_CHUNK_SIZE> properties_; // the actual list of properties
+  props_vec properties_; // the actual list of properties
   std::mutex m;
 };
 

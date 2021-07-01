@@ -127,7 +127,7 @@ void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
       c_node = &n;
   });
   uint64_t customer = c_node->id();
-  auto hasPlaced = gdb->add_relationship(customer, order, ":hasPlaced", {});
+  gdb->add_relationship(customer, order, ":hasPlaced", {});
 
   for (auto ol_number = 1; ol_number <= o_ol_cnt; ol_number++) {
     auto ol_quantity = gen_random_uniform_int(1, 10);
@@ -236,7 +236,7 @@ void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
                                     {"amount", ol_amount},
                                     {"dist_info", s_dist_xx}});
 
-    auto contains = gdb->add_relationship(order, orderLine, ":contains", {});
+    gdb->add_relationship(order, orderLine, ":contains", {});
 
     node* s_node = nullptr;
     gdb->nodes_by_label("Stock", [&](node & n) {
@@ -244,7 +244,7 @@ void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
         s_node = &n;
     });
     uint64_t stock = s_node->id();
-    auto hasStock = gdb->add_relationship(orderLine, stock, ":hasStock", {});
+    gdb->add_relationship(orderLine, stock, ":hasStock", {});
   }
 }
 
@@ -342,7 +342,7 @@ void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs) {
   /**
    *  retrieve and update customer
    */
-  auto x = gen_random_uniform_int(1, 100);
+  // auto x = gen_random_uniform_int(1, 100);
   auto y = gen_random_uniform_int(1, 100);
   // uint64_t wid = gen_random_uniform_int(1, WAREHOUSE_COUNT);
   // while (wid == W_ID)
@@ -509,7 +509,7 @@ void gtpc_oltp_3(graph_db_ptr &gdb, result_set &rs) {
   /**
    *  retrieve customer
    */
-  auto x = gen_random_uniform_int(1, 100);
+  // auto x = gen_random_uniform_int(1, 100);
   auto y = gen_random_uniform_int(1, 100);
   // uint64_t wid = gen_random_uniform_int(1, WAREHOUSE_COUNT);
   // while (wid == W_ID)

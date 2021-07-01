@@ -25,26 +25,35 @@
 #include <string>
 #include <cstdio>
 
-#define DEFAULT_VEC_SIZE 10000
+#define DEFAULT_VEC_SIZE 100000
 
 template <typename T>
 class file_vec {
+  static std::string slot_filename(const std::string& fname) {
+    auto pos = fname.find("/");  
+    if (pos == std::string::npos)
+      return "slots_" + fname; 
+    else 
+      return fname.substr(0, pos + 1) + "slots_" + fname.substr(pos + 1);
+  }
+
 public:
   static void remove_file_vec(const std::string& fname) {
     ::remove(fname.c_str());
-    auto s = "slots_" + fname; 
+    auto s = slot_filename(fname); 
     ::remove(s.c_str());
   } 
 
     /**
      * Create a new empty vector.
      */
-    file_vec(const std::string& fname) : data_file_(fname, DEFAULT_VEC_SIZE * sizeof(T) + 2 * sizeof(offset_t)), slot_file_("slots_" + fname, DEFAULT_VEC_SIZE / sizeof(uint64_t)) {
+    file_vec(const std::string& fname) : data_file_(fname, DEFAULT_VEC_SIZE * sizeof(T) + 2 * sizeof(offset_t)), 
+        slot_file_(slot_filename(fname), DEFAULT_VEC_SIZE / sizeof(uint64_t)) {
       uint8_t *base_addr = static_cast<uint8_t *>(data_file_.base_address());
       std::size_t region_size = data_file_.size();
       capacity_     = region_size / sizeof(T);
       data_         = new (base_addr + 2 * sizeof(offset_t)) T[capacity_];
-      slots_        = new (slot_file_.base_address()) uint64_t[capacity_];
+      slots_        = new (slot_file_.base_address()) uint64_t[capacity_ / 64];
       // first_        = find_first_available(0);
       memcpy(&first_, base_addr, sizeof(offset_t));
       memcpy(&last_, base_addr + sizeof(offset_t), sizeof(offset_t));
@@ -59,7 +68,7 @@ public:
 
   void close() { 
     if (is_open_) {
-      // TODO: save first_, last_
+      // save first_, last_
       uint8_t *base_addr = static_cast<uint8_t *>(data_file_.base_address());
       memcpy(base_addr, &first_, sizeof(offset_t));
       memcpy(base_addr + sizeof(offset_t), &last_, sizeof(offset_t));
@@ -78,10 +87,15 @@ public:
    */
   class iter {
    public:
-    iter(T *ptr, uint64_t *slots, offset_t last = 0) : ptr_(ptr), slots_(slots), pos_(0), last_(last) {
+    iter(T *ptr, uint64_t *slots, offset_t last = 0) : slots_(slots), ptr_(ptr), pos_(0), last_(last) {
       if (ptr_ != nullptr) {
         // skip empty slots
         while (!is_used(pos_)) pos_++;
+        if (pos_ > last_) { 
+          // we are behind the end -> empty vector
+          pos_ = last_; 
+          ptr_ = nullptr; 
+        }
       }
     }
 
@@ -96,10 +110,38 @@ public:
 
     iter &operator++() {
       do {
-        if (++pos_ == last_)
+        if (++pos_ >= last_)
           ptr_ = nullptr;
       } while (ptr_ != nullptr && !is_used(pos_));
       return *this;
+    }
+
+  private:
+    bool is_used(offset_t i) const { return slots_[i / 64] & (0x8000000000000000 >> (i % 64)); }
+
+    uint64_t* slots_;
+    T* ptr_; // pointer to the current chunk
+    offset_t pos_;
+    offset_t last_;   // position within the current chunk
+  };
+
+  class range_iter {
+  public:
+    range_iter(file_vec& vec, std::size_t first, std::size_t last, std::size_t start_pos = 0) : last_(last) {}
+
+    operator bool() const { return false; }
+
+    T &operator*() const {      
+      assert(ptr_ != nullptr && is_used(pos_));
+      return ptr_[pos_];
+    }
+
+    range_iter &operator++() { 
+      do {
+        if (++pos_ == last_)
+          ptr_ = nullptr;
+      } while (ptr_ != nullptr && !is_used(pos_));
+      return *this; 
     }
 
   private:
@@ -123,6 +165,9 @@ public:
    */
   iter end() { return iter(nullptr, nullptr); }
 
+  range_iter range(std::size_t first, std::size_t last, std::size_t start_pos = 0) {
+    return range_iter(*this, first, last, start_pos);
+  }
   /**
    * Store the given record at position idx (note: move semantics) and mark this
    * slot as used.
@@ -151,6 +196,9 @@ public:
     if (callback != nullptr) callback(last_);
     auto pos = last_;
     last_++;
+    if (first_ == pos) {
+      first_++;
+    }
     return std::make_pair(pos, &data_[pos]);
   }
 
@@ -158,7 +206,14 @@ public:
    * Store the record at the first available slot and return its position and a
    * pointer(!) to the record as a pair.
    */
-  // std::pair<offset_t, T *> store(T &&o, std::function<void(offset_t)> callback = nullptr);
+  std::pair<offset_t, T *> store(T &&o, std::function<void(offset_t)> callback = nullptr) {
+    data_[first_] = std::move(o);
+    slots_[first_ / 64] |= 0x8000000000000000 >> (first_ % 64);
+    if (callback != nullptr) callback(first_);
+    auto pos = first_;
+    first_ = find_first_available(first_);;
+    return std::make_pair(pos, &data_[pos]);  
+  }
 
   /**
    * Erase the record at the given position, i.e. mark the slot as available.
@@ -168,8 +223,9 @@ public:
     offset_t pos = idx / 64;
     auto v = slots_[pos];
     slots_[pos] = v & ~(0x8000000000000000 >> (idx % 64));
-    if (idx < first_)
+    if (idx < first_) {
       first_ = idx;
+    }
   }
 
   /**
@@ -216,9 +272,9 @@ public:
   }
 
   /**
-   * Resize the chunked_vec by the given number of additional chunks.
+   * TODO: Resize the chunked_vec by the given number of additional chunks.
    */
-  // void resize(int nchunks) {}
+  void resize(int nchunks) {}
 
  /**
    * Return the capacity of the chunked_vec, which is the total number of
@@ -228,9 +284,9 @@ public:
   offset_t capacity() const { return capacity_; }
 
   /**
-   * Return true if the chunked_vec does not contain any empty slot anymore.
+   * TODO: Return true if the chunked_vec does not contain any empty slot anymore.
    */
-  // bool is_full() const { return available_slots_ == 0; }
+  bool is_full() const { return false; }
 
   /**
    * Return the number of occupied chunks.
@@ -242,7 +298,7 @@ public:
    */
   // uint32_t elements_per_chunk() const { return elems_per_chunk_; }
 
-  // uint32_t real_chunk_size() const { return sizeof(chunk<T, num_entries>); }
+  uint32_t real_chunk_size() const { return 0; }
 
   void print_slots() {
     std::cout << std::hex;
