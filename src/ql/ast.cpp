@@ -77,6 +77,8 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
             os << "HashJoin("; break;
         case ast_op::leftouter_join:
             os << "LeftOuterJoin("; break;
+        case ast_op::cross_join:
+            os << "CrossJoin("; break;
         case ast_op::create_node:
             os << "CreateNode("; break;
         case ast_op::create_rship:

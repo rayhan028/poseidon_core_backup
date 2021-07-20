@@ -136,7 +136,11 @@ void query_engine::extract_arg(std::shared_ptr<base_op> op) {
             //TODO: all create arguments
             break;
         }
-        case qop_type::cross_join:
+        case qop_type::cross_join: {
+            last_joiner = new joiner();
+            query_args.arg(arg_counter++, last_joiner);
+            break;
+        }
         case qop_type::hash_join:
         case qop_type::left_join:
         case qop_type::nest_loop_join: {

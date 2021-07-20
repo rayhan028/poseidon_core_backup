@@ -26,7 +26,7 @@
 
 #include "queryc.hpp"
 
-
+#define USE_LLVM
 #ifdef USE_LLVM
 algebra_optr queryc::compile_to_plan(const std::string &query) {
     auto ast = parse(query);
@@ -83,6 +83,7 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
   algebra_optr op;
   switch(ast->op_) {
     case ast_op::node_scan:
+    std::cout << "Scan" << std::endl;
       op = Scan(trim_string(ast->get_param<std::string>(0)), parent);
       break;
     case ast_op::foreach_rship:
@@ -119,6 +120,7 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
     }
       break;
     case ast_op::limit:
+      std::cout << "Limit" << std::endl;
       op = Limit(ast->get_param<int>(0), parent);
       break;
     case ast_op::filter:
@@ -155,13 +157,50 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       op = parent = End();
       break;
     }
+    case ast_op::cross_join:
+    {
+      // load rhs sub-query from plan storage
+      if(ast->children_.size() == 1) {
+        
+        auto query_id = trim_string(ast->get_param<std::string>(0));
+        auto plan = query_plans_.find(query_id);
+        if(plan != query_plans_.end()) {
+          std::cout << "Found plan: " << plan->first << std::endl;
+          op = CrossJoin(parent, plan->second);
+          op = ast_to_algoptr(ast->children_[0], op);
+          return op;
+          //break;
+        } else {
+          std::cout << "Plan not found!";
+        }
+      } else if(ast->children_.size() == 0) { // load rhs and lhs from plan storage
+        auto query_id1 = trim_string(ast->get_param<std::string>(0));
+        auto query_id2 = trim_string(ast->get_param<std::string>(1));
+        auto plan1 = query_plans_.find(query_id1);
+        if(plan1 != query_plans_.end()) {
+          auto plan2 = query_plans_.find(query_id2);
+          if(plan2 != query_plans_.end()) {
+            // TODO: link CrossJoin into lhs 
+          } else {
+            std::cout << "Rhs plan not found" << std::endl;
+          }
+        } else {
+          std::cout << "Lhs plan not found!";
+        }
+        
+      } else { // handle inline lhs and rhs
+
+      }
+      break;
+    }
     case ast_op::hash_join:
     {
       break;        
     }
     case ast_op::leftouter_join:
     {
-
+      auto fexpr = ast->get_param<expr>(0);
+      
       break;        
     }    
     case ast_op::sort:
@@ -227,10 +266,13 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       break;
   }
   if(!ast->is_source()) {
-    op = ast_to_algoptr(ast->children_[0], op);
-    //if(ast->children_.size() == 2) {
+    //op = ast_to_algoptr(ast->children_[0], op);
+    if(ast->children_.size() == 2) {
+      std::cout << "2" << std::endl;
       //auto qop2 = ast_to_algoptr(ast->children_[1], op);
-    //}
+    } else {
+      op = ast_to_algoptr(ast->children_[0], op);
+    }
   }
   return op;
 }

@@ -227,7 +227,7 @@ int main() {
 
 	auto qq  = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Book", End())));
 
-	auto r_expr = Scan("Person", Limit(10, End(JOIN_OP::NESTED_LOOP, 0)));
+	auto r_expr = Scan("Person", Limit(10, End()));
 
 	auto fev = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr))));
 
@@ -238,7 +238,7 @@ int main() {
   auto sort_fct = [&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         return boost::get<int>(qr1[0]) > boost::get<int>(qr2[0]); };
 
-	auto simp = Scan("Person", Limit(10, Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr)));
+	auto simp = Scan("Person", Limit(10, CrossJoin(Collect(), r_expr)));
 
 	scan_task::callee_ = &scan_task::scan;	
 

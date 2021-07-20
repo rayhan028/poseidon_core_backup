@@ -81,6 +81,7 @@ struct ast_op {
         group_by,
         hash_join, 
         leftouter_join,
+        cross_join,
         create_node, 
         create_rship,
         end 

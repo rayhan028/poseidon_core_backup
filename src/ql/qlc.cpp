@@ -203,6 +203,20 @@ std::string read_from_file(const std::string& qfile) {
 }
 
 /**
+ * Linenoise - autocompletion
+ */
+void query_completion(const char* buf, std::vector<std::string>& completions) {
+    if (buf[0] == 'n' || buf[0] == 'N') {
+        completions.push_back("NodeScan(");
+    } else if (buf[0] == 'l' || buf[0] == 'L') {
+        completions.push_back("Limit(");
+    } else if (buf[0] == 's' || buf[0] == 'S') {
+        completions.push_back("set");
+    }
+}
+
+
+/**
  * Run an interactive shell for entering and executing queries.
  */
 void run_shell(graph_db_ptr &gdb, bool qex_cc) {
@@ -214,9 +228,11 @@ void run_shell(graph_db_ptr &gdb, bool qex_cc) {
   linenoise::SetHistoryMaxLen(4);
   // Load history
   linenoise::LoadHistory(path);
+  linenoise::SetCompletionCallback(query_completion);
 
   while (true) {
     std::string line;
+    
     auto quit = linenoise::Readline("poseidon> ", line);
 
     if (quit) {

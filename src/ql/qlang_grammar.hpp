@@ -78,8 +78,9 @@ struct bracket_expr : if_must< one< '(' >, seps, expression, seps, one< ')' > > 
 struct name : seq< not_at< keyword >, identifier > {};
 
 struct variable_name : seq< one< '$' >, integer, opt<one< '.' >, name> > {};
+struct alias_name : seq< one< '@' >, name > {};
 struct expr_ten;
-struct expr_twelve : sor<key_true, key_false, decimal, literal_string, variable_name/*, expr_thirteen*/ > {};
+struct expr_twelve : sor<key_true, key_false, decimal, literal_string, variable_name, alias_name/*, expr_thirteen*/ > {};
 struct unary_operators : sor< one< '-' >, op_one< '~', '=' >, key_not > {};
 struct expr_eleven : seq< expr_twelve, seps, opt< one< '^' >, seps, expr_ten, seps > > {};
 struct unary_apply : if_must< unary_operators, seps, expr_ten, seps > {};
@@ -108,6 +109,7 @@ struct key_limit : TAO_PEGTL_KEYWORD("Limit") {};
 struct key_foreach_rship : TAO_PEGTL_KEYWORD("ForeachRelationship") {};
 struct key_lojoin : TAO_PEGTL_KEYWORD("LeftOuterJoin") {};
 struct key_hashjoin : TAO_PEGTL_KEYWORD("HashJoin") {};
+struct key_crossjoin : TAO_PEGTL_KEYWORD("CrossJoin") {};
 struct key_aggregate : TAO_PEGTL_KEYWORD("Aggregate") {};
 struct key_groupby : TAO_PEGTL_KEYWORD("GroupBy") {};
 struct key_sort : TAO_PEGTL_KEYWORD("Sort") {};
@@ -123,6 +125,7 @@ struct op_name : sor< key_node_scan,
                     key_foreach_rship,
                     key_hashjoin,
                     key_lojoin,
+                    key_crossjoin,
                     key_groupby,
                     key_sort,
                     key_create,
@@ -164,6 +167,8 @@ struct property : if_must< name, opt<space>, one<':'>, opt<space>, sor<decimal, 
 
 struct prop_list : if_must<one<'{'>, ws, list<property, comma>, ws, one<'}'> > {};
 
+struct alias : if_must<alias> {};
+
 struct node_or_rship_label : seq<name, opt<space>, one<':'>, opt<space>, name> {};
 struct node_or_rship_pattern : seq<node_or_rship_label, opt<space>, opt<prop_list> > {};
 struct node_pattern : seq<one<'('>, opt<space>, node_or_rship_pattern, opt<space>, one<')'> > {};
@@ -199,6 +204,7 @@ template <> struct my_selector<literal_string> : std::true_type {};
 template <> struct my_selector<decimal> : std::true_type {};
 template <> struct my_selector<integer> : std::true_type {};
 template <> struct my_selector<variable_name> : std::true_type {};
+template <> struct my_selector<alias> : std::true_type {};
 template <> struct my_selector<op_name> : std::true_type {};
 template <> struct my_selector<operators_cmp> : std::true_type {};
 template <> struct my_selector<proj_array> : std::true_type {};
