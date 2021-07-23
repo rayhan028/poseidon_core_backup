@@ -341,6 +341,8 @@ include_directories("${LINENOISE_INCLUDE_DIR}")
 
 if(USE_PMDK MATCHES ON)
   set(dict_src src/dict/dict_kv.cpp)
+elseif(USE_MMFILE MATCHES ON)
+  set(dict_src src/dict/dict_mm.cpp)
 else()
   set(dict_src src/dict/dict_bimap.cpp)
 endif()
