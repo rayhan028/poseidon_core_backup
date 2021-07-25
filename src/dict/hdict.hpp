@@ -16,22 +16,42 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef dict_hpp
+#define dict_hpp
 
-#ifndef dict_hpp_
-#define dict_hpp_
-
-#define USE_HDICT
-
+#include <string>
+#include <memory>
 #include "defs.hpp"
+#include "string_pool.hpp"
+#include "htable.hpp"
 
-#ifdef USE_PMDK
-#include "dict_kv.hpp"
-#elif defined(USE_HDICT)
-#include "hdict.hpp"
-#else
-#include "dict_bimap.hpp"
+#ifdef USE_MMFILE
+#include "mm_file.hpp"
 #endif
 
-using dict_ptr = p_ptr<dict>;
+class dict {
+public:
+    dict(const std::string& prefix = "", uint32_t init_pool_size = 100000);
+    ~dict();
+    
+    void initialize();
 
+    dcode_t insert(const std::string& s);
+    dcode_t lookup_string(const std::string& s) const;
+    const char* lookup_code(dcode_t code) const;
+    
+    void print_pool() const;
+    void resize();
+    
+    std::size_t size() const;
+
+private:
+#ifdef USE_MMFILE
+    mm_file dict_file_;
 #endif
+    p_ptr<string_pool> pool_;
+    std::unique_ptr<htable> table_;
+    std::mutex m_;
+};
+
+#endif /* dict_hpp */

@@ -64,7 +64,7 @@ graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
 #endif
-  dict_ = p_make_ptr<dict>();
+  dict_ = p_make_ptr<dict>(prefix);
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
   active_tx_ = new std::map<xid_t, transaction_ptr>();
