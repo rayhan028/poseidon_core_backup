@@ -11,8 +11,8 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK       "Use Intel PMDK"                         OFF)
-option(USE_MMFILE     "Use memory mapped file storage"         ON)
+option(USE_PMDK       "Use Intel PMDK"                         ON)
+option(USE_MMFILE     "Use memory mapped file storage"         OFF)
 option(USE_HDICT      "Use hdict implementation"               ON)
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
@@ -340,13 +340,13 @@ include_directories("${LINENOISE_INCLUDE_DIR}")
 
 #-----------------------------------------------------------------------------------------
 
-if(USE_PMDK MATCHES ON)
-  set(dict_src src/dict/dict_kv.cpp)
-elseif(USE_HDICT MATCHES ON)
+if(USE_HDICT MATCHES ON)
   set(dict_src 
     src/dict/string_pool.cpp 
     src/dict/htable.cpp
     src/dict/hdict.cpp)
+elseif(USE_PMDK MATCHES ON)
+  set(dict_src src/dict/dict_kv.cpp)
 else()
   set(dict_src src/dict/dict_bimap.cpp)
 endif()

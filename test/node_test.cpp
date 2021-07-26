@@ -136,10 +136,12 @@ TEST_CASE("Creating a few nodes in the node list", "[nodes]") {
 #if defined(USE_PMDK) || defined(USE_MMFILE) 
 TEST_CASE("Creating and restoring a persistent node list", "[nodes]") {
   node::id_t n1 = 0, n2 = 0, n3 = 0;
-  {
 #ifdef USE_PMDK
   auto pop = nvm::pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
   auto root_obj = pop.root();
+#endif
+  {
+#ifdef USE_PMDK
 
   nvm::transaction::run(
       pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list>(); });

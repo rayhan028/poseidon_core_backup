@@ -21,11 +21,19 @@
 #include "string_pool.hpp"
 
 string_pool::string_pool(uint32_t init_size, uint32_t exp_size) : size_(init_size), expand_(exp_size), last_(1ul) {
+#ifdef USE_PMDK
+    auto pop = pmem::obj::pool_by_vptr(this);
+    pmem::obj::transaction::run(pop, [&] {
+        pool_ = pmem::obj::make_persistent<char[]>(init_size);
+      });
+#else
     pool_ = static_cast<char *>(malloc(init_size));
     memset(pool_, 0, init_size);
+#endif
     pool_[0] = '#';
 }
 
+#ifdef USE_MMFILE
 string_pool::string_pool(uint8_t *base_addr, std::size_t sz) : expand_(10000), base_addr_(base_addr) {
     // std::cout << "create string pool from mm_file...\n";
     memcpy(&size_, base_addr, sizeof(uint32_t));
@@ -37,12 +45,13 @@ string_pool::string_pool(uint8_t *base_addr, std::size_t sz) : expand_(10000), b
     }
     pool_[0] = '#';
 }
+#endif
 
 string_pool::~string_pool() {
 #ifdef USE_MMFILE
     memcpy(base_addr_, &size_, sizeof(uint32_t));
     memcpy(base_addr_ + sizeof(uint32_t), &last_, sizeof(uint32_t));
-#else
+#elif !defined(USE_PMDK)
     free(pool_);
 #endif
 }
@@ -81,7 +90,10 @@ dcode_t string_pool::add(const std::string& str) {
 #else
         size_ += expand_;
         // std::cout << "expand to " << size_ << std::endl;
+#ifdef USE_PMDK
+#else
         pool_ = static_cast<char *>(realloc(pool_, size_));
+#endif
 #endif
     }
     memcpy(&pool_[last_], str.c_str(), str.length());
@@ -91,5 +103,8 @@ dcode_t string_pool::add(const std::string& str) {
 }
 
 void string_pool::print() const {
+#ifdef USE_PMDK
+#else
     std::cout << std::string(pool_, last_) << std::endl;
+#endif
 }

@@ -24,10 +24,10 @@
 
 #include "defs.hpp"
 
-#ifdef USE_PMDK
-#include "dict_kv.hpp"
-#elif defined(USE_HDICT)
+#ifdef USE_HDICT
 #include "hdict.hpp"
+#elif defined(USE_PMDK)
+#include "dict_kv.hpp"
 #else
 #include "dict_bimap.hpp"
 #endif
