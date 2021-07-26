@@ -561,31 +561,31 @@ inline algebra_optr CreateRship(std::pair<int, int> src_des, algebra_optr inp) {
 
 class group_op : public base_op, public std::enable_shared_from_this<group_op> {
 public:
-    group_op(std::vector<unsigned> grpkey_pos, algebra_optr inp) : grpkey_pos_(grpkey_pos) {
+    group_op(std::vector<std::size_t> grpkey_pos, algebra_optr inp) : grpkey_pos_(grpkey_pos) {
         type_ = qop_type::group;
         inputs_.push_back(inp);
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
-    std::vector<unsigned> grpkey_pos_;
+    std::vector<std::size_t> grpkey_pos_;
     std::vector<result_set> grps;
 };
 
-inline algebra_optr GroupBy(std::vector<unsigned> grpkey_pos, algebra_optr inp) { return std::make_shared<group_op>(grpkey_pos, inp); }
+inline algebra_optr GroupBy(std::vector<std::size_t> grpkey_pos, algebra_optr inp) { return std::make_shared<group_op>(grpkey_pos, inp); }
 
 class aggr_op : public base_op, public std::enable_shared_from_this<aggr_op> {
 public:
-    aggr_op(std::vector<std::pair<std::string, int>> aggrs, algebra_optr inp) : aggrs_(aggrs) {
+    aggr_op(std::vector<std::pair<std::string, std::size_t>> aggrs, algebra_optr inp) : aggrs_(aggrs) {
         type_ = qop_type::aggr;
         inputs_.push_back(inp);
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
-    std::vector<std::pair<std::string, int>> aggrs_;
+    std::vector<std::pair<std::string, std::size_t>> aggrs_;
 };
-inline algebra_optr Aggr(std::vector<std::pair<std::string, int>> aggrs, algebra_optr inp) { return std::make_shared<aggr_op>(aggrs, inp); }
+inline algebra_optr Aggr(std::vector<std::pair<std::string, std::size_t>> aggrs, algebra_optr inp) { return std::make_shared<aggr_op>(aggrs, inp); }
 
 class connected_op : public base_op, public std::enable_shared_from_this<connected_op> {
 public:

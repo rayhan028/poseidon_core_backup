@@ -225,7 +225,7 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
     }
 #endif
 
-    OptimizeLayer.setTransform(Optimizer(3));
+    OptimizeLayer.setTransform(Optimizer(0));
     
     return OptimizeLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx), K);
     //cantFail(CompileLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx)));
@@ -234,7 +234,12 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
 
 std::unique_ptr<TargetMachine> p_jit::createTargetMachine(llvm::ExitOnError ExitOnErr) {
     auto JTMP = ExitOnErr(JITTargetMachineBuilder::detectHost());
-    return ExitOnErr(JTMP.createTargetMachine());
+	
+    auto tm = JTMP.createTargetMachine();
+    if(tm) {
+        tm->get()->setFastISel(true);
+	}
+    return ExitOnErr(std::move(tm));
 }
 
 using GetMemoryManagerFunction =
@@ -275,8 +280,7 @@ Expected<JITTargetAddress> p_jit::getFunctionAddr(llvm::StringRef Name) {
     if(!S)
         return S.takeError();
     JITTargetAddress A = S->getAddress();
-    if(!A)
-        printf("Error!!!\n");
+
     return A;
 }
 

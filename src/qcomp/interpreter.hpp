@@ -15,6 +15,8 @@ class interprete_visitor : public op_visitor {
     result_set *rs_;
     projection::expr_list pexpr_;
 
+    std::vector<std::size_t> grp_pos_;
+
     std::vector<query> queries_;
 public:
     interprete_visitor(graph_db_ptr gdb, arg_builder & args, result_set *rs);

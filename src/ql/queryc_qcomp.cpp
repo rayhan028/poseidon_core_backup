@@ -26,7 +26,6 @@
 
 #include "queryc.hpp"
 
-#define USE_LLVM
 #ifdef USE_LLVM
 algebra_optr queryc::compile_to_plan(const std::string &query) {
     auto ast = parse(query);
@@ -232,8 +231,8 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       auto aggr_list = ast->get_param<aggr_spec_list>(1);
    
       // Group attributes
-      std::vector<unsigned int> group_ids;
-      std::vector<std::pair<std::string, int>> aggrs;
+      std::vector<std::size_t> group_ids;
+      std::vector<std::pair<std::string, std::size_t>> aggrs;
       for(auto & ag : aggr_list) {
           auto tp_pos = parse_tuple_id(ag.aname);
           group_ids.push_back(tp_pos);
