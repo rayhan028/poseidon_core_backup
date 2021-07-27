@@ -50,7 +50,6 @@ TEST_CASE("Creating nodes", "[graph_db]") {
                               true);
   }
   graph->commit_transaction();
-
   graph_pool::destroy(pool);
 }
 

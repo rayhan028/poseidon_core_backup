@@ -59,7 +59,6 @@ void create_data(graph_db_ptr graph) {
       graph->add_node("Node", {{"id", boost::any(1)},
                                {"name", boost::any(std::string("aaa1"))},
                                {"other", boost::any(std::string("BBB1"))}});
-
   graph->commit_transaction();
 }
 
@@ -97,6 +96,7 @@ TEST_CASE("Testing query operators", "[qop]") {
   }
 
   SECTION("count") {
+    graph->dump();
     result_set rs, expected;
     auto q = query(graph).all_nodes("Node").count().collect(rs);
     q.start();
@@ -323,149 +323,6 @@ TEST_CASE("Projecting node and relationship datetime properties", "[graph_db]") 
     query_result("2010-06-10T11:50:26"),
     query_result("2011-11-02T13:00:00")});
   REQUIRE(rs == expected);
-
-  graph->commit_transaction();
-
-  graph_pool::destroy(pool);
-}
-
-TEST_CASE("Finding Unweighted Shortest Path", "[shortest_path]") {
-  auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
-
-  path_item ss_paths;
-  path_visitor path_vis = [&](node &n, const path &p) { return; };
-  auto rpred = [&](relationship &r) {
-                return std::string(graph->get_string(r.rship_label)) == ":knows"; };
-
-  graph->begin_transaction();
-
-  auto a = graph->add_node(":Person", {{"name",
-            boost::any(std::string("John"))}, {"age", boost::any(42)}});
-  auto b = graph->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
-                                {"age", boost::any(36)}});
-  auto c = graph->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
-                                {"age", boost::any(58)}});
-  auto d = graph->add_node(":Person", {{"name", boost::any(std::string("Han"))},
-                                {"age", boost::any(13)}});
-  auto e = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
-                                {"age", boost::any(47)}});
-
-  graph->add_relationship(a, b, ":knows", {});
-  graph->add_relationship(b, c, ":knows", {});
-  graph->add_relationship(c, d, ":knows", {});
-  graph->add_relationship(a, e, ":knows", {});
-  graph->add_relationship(d, e, ":knows", {});
-
-  std::vector<uint64_t> exp_path = {0, 4, 3};
-  bool found = unweighted_shortest_path(graph, a, d, true, rpred, path_vis, ss_paths);
-
-  REQUIRE(found);
-  REQUIRE(ss_paths.get_hops() == 2);
-  REQUIRE(ss_paths.get_path() == exp_path);
-
-  graph->commit_transaction();
-
-  graph_pool::destroy(pool);
-}
-
-TEST_CASE("Weighted Shortest Path", "[shortest_path]") {
-  auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
-
-  path_item ss_path;
-  path_visitor path_vis = [&](node &n, const path &p) { return; };
-  auto rpred = [&](relationship &r) {
-                return std::string(graph->get_string(r.rship_label)) == ":knows"; };
-
-  auto rweight = [&](relationship &r) {
-        // auto &src = graph->node_by_id(r.from_node_id());
-        // auto &des = graph->node_by_id(r.to_node_id());
-        auto src_descr = graph->get_node_description(r.from_node_id());
-        auto des_descr = graph->get_node_description(r.to_node_id());
-        auto src_age = get_property<int>(src_descr.properties, 
-                                      std::string("age")).value();
-        auto des_age = get_property<int>(des_descr.properties, 
-                                      std::string("age")).value();
-        return (double)(src_age + des_age); };
-
-  graph->begin_transaction();
-
-  auto a = graph->add_node(":Person", {{"name",
-            boost::any(std::string("John"))}, {"age", boost::any(42)}});
-  auto b = graph->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
-                                {"age", boost::any(36)}});
-  auto c = graph->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
-                                {"age", boost::any(58)}});
-  auto d = graph->add_node(":Person", {{"name", boost::any(std::string("Han"))},
-                                {"age", boost::any(13)}});
-  auto e = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
-                                {"age", boost::any(47)}});
-
-  graph->add_relationship(a, b, ":knows", {});
-  graph->add_relationship(b, c, ":knows", {});
-  graph->add_relationship(c, d, ":knows", {});
-  graph->add_relationship(a, e, ":knows", {});
-  graph->add_relationship(d, e, ":knows", {});
-
-  weighted_shortest_path(graph, a, d, true, rpred, rweight, path_vis, ss_path);
-
-  REQUIRE(ss_path.get_weight() == 149.0);
-
-  graph->commit_transaction();
-
-  graph_pool::destroy(pool);
-}
-
-TEST_CASE("Top K Weighted Shortest Paths", "[shortest_path]") {
-  auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
-
-  std::size_t k = 2;
-  std::vector<path_item> k_spath;
-  path_visitor path_vis = [&](node &n, const path &p) { return; };
-  auto rpred = [&](relationship &r) {
-                return std::string(graph->get_string(r.rship_label)) == ":knows"; };
-
-  auto rweight = [&](relationship &r) {
-        // auto &src = graph->node_by_id(r.from_node_id());
-        // auto &des = graph->node_by_id(r.to_node_id());
-        auto src_descr = graph->get_node_description(r.from_node_id());
-        auto des_descr = graph->get_node_description(r.to_node_id());
-        auto src_age = get_property<int>(src_descr.properties, 
-                                      std::string("age")).value();
-        auto des_age = get_property<int>(des_descr.properties, 
-                                      std::string("age")).value();
-        return (double)(src_age + des_age); };
-
-  graph->begin_transaction();
-
-  auto a = graph->add_node(":Person", {{"name",
-            boost::any(std::string("John"))}, {"age", boost::any(42)}});
-  auto b = graph->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
-                                {"age", boost::any(36)}});
-  auto c = graph->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
-                                {"age", boost::any(58)}});
-  auto d = graph->add_node(":Person", {{"name", boost::any(std::string("Han"))},
-                                {"age", boost::any(13)}});
-  auto e = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
-                                {"age", boost::any(47)}});
-  auto f = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
-                                {"age", boost::any(81)}});
-  auto g = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
-                                {"age", boost::any(23)}});
-
-  graph->add_relationship(a, b, ":knows", {});
-  graph->add_relationship(b, c, ":knows", {});
-  graph->add_relationship(c, d, ":knows", {});
-  graph->add_relationship(e, d, ":knows", {});
-  graph->add_relationship(f, e, ":knows", {});
-  graph->add_relationship(a, g, ":knows", {});
-  graph->add_relationship(g, f, ":knows", {});
-
-  k_weighted_shortest_path(graph, a, d, k, true, rpred, rweight, path_vis, k_spath);
-
-  REQUIRE(k_spath.size() == 2);
 
   graph->commit_transaction();
 

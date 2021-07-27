@@ -29,29 +29,74 @@
 #include "mm_file.hpp"
 #endif
 
+/**
+ * This class implements an (updatable) string dictionary. Strings are stored in
+ * a contiguous memory region (string_pool). The position of each string is this
+ * memory region is used as the code which replaces the string value. To get the
+ * mapping between the code and the actual string a hash table (htable) is used.
+ * 
+ * The string_pool is stored persistently (either in PMem or in a memory mapped file),
+ * the hash table is maintained in memory.
+ */ 
 class dict {
 public:
+    /**
+     * Create a new dictionary with the initial string pool size. The prefix argument 
+     * is used only for the path of a memory-mapped file.
+     */
     dict(const std::string& prefix = "", uint32_t init_pool_size = 100000);
+
+    /**
+     * Destructor.
+     */
     ~dict();
     
+  /**
+   * The underlying persistent hash tables need a runtime initialization if
+   * stored in persistent memory.
+   */
     void initialize();
 
+  /**
+   * Insert a new string and return a newly assigned code. Duplicate strings
+   * are ignored and the already assigned code is returned.
+   */
     dcode_t insert(const std::string& s);
+
+  /**
+   * Return the code associated with the string s. If this string does not
+   * exist then 0 is returned.
+   */
     dcode_t lookup_string(const std::string& s) const;
+
+  /**
+   * Return the string associated with the given code. If the code does not
+   * exist an empty string is returned.
+   */
     const char* lookup_code(dcode_t code) const;
     
+    /**
+     * Printing the content of the string pool for debugging purposes.
+     */
     void print_pool() const;
+
+    /**
+     * Resize the dictionary (string pool and hash table.)
+     */
     void resize();
     
+    /**
+     * Return the size of the dictionary, i.e. the number of unique stored strings.
+     */
     std::size_t size() const;
 
 private:
 #ifdef USE_MMFILE
-    mm_file dict_file_;
+    mm_file dict_file_;              // the memory-mapped file
 #endif
-    p_ptr<string_pool> pool_;
-    std::unique_ptr<htable> table_;
-    std::mutex m_;
+    p_ptr<string_pool> pool_;        // the string pool for storing the actual strings
+    std::unique_ptr<htable> table_;  // the hash table for mapping codes to strings
+    std::mutex m_;                   // a mutex for synchronizing access to the dictionary
 };
 
 #endif /* dict_hpp */

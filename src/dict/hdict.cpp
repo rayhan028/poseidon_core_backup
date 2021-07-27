@@ -38,10 +38,16 @@ dict::dict(const std::string& prefix, uint32_t init_pool_size)
 dict::~dict() {
 #ifdef USE_MMFILE
     dict_file_.close();
+#elif defined(USE_PMDK)
+ auto pop = pmem::obj::pool_by_vptr(this);
+  pmem::obj::transaction::run(pop, [&] {
+    pmem::obj::delete_persistent<string_pool>(pool_);
 #endif
 }
 
-void dict::initialize() {}
+void dict::initialize() {
+    table_->rebuild();
+}
 
 std::size_t dict::size() const {
     return table_->size();    

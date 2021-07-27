@@ -211,7 +211,8 @@ public:
     slots_[first_ / 64] |= 0x8000000000000000 >> (first_ % 64);
     if (callback != nullptr) callback(first_);
     auto pos = first_;
-    first_ = find_first_available(first_);;
+    first_ = find_first_available(first_);
+    last_ = std::max(last_+1, pos);
     return std::make_pair(pos, &data_[pos]);  
   }
 
