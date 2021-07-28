@@ -157,9 +157,7 @@ void query_engine::extract_arg(std::shared_ptr<base_op> op) {
             query_args.arg(arg_counter++, new grouper());
             break;
         }
-        case qop_type::limit: {
-            arg_counter++;
-        }
+        case qop_type::limit:
         // inline argument, nothing to do here
         case qop_type::project:
         case qop_type::aggr:

@@ -82,7 +82,6 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
   algebra_optr op;
   switch(ast->op_) {
     case ast_op::node_scan:
-    std::cout << "Scan" << std::endl;
       op = Scan(trim_string(ast->get_param<std::string>(0)), parent);
       break;
     case ast_op::foreach_rship:
@@ -119,7 +118,6 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
     }
       break;
     case ast_op::limit:
-      std::cout << "Limit" << std::endl;
       op = Limit(ast->get_param<int>(0), parent);
       break;
     case ast_op::filter:
@@ -197,10 +195,32 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       break;        
     }
     case ast_op::leftouter_join:
-    {
+    { 
+      // extract join predicate
       auto fexpr = ast->get_param<expr>(0);
+      auto eq_fexpr = std::dynamic_pointer_cast<eq_predicate>(fexpr);
+      auto lhs_expr = std::dynamic_pointer_cast<key_token>(eq_fexpr->left_);
+      auto rhs_expr = std::dynamic_pointer_cast<key_token>(eq_fexpr->right_);
       
-      break;        
+      auto lhs_id = lhs_expr->qr_id_;
+      auto rhs_id = rhs_expr->qr_id_;
+
+      std::pair<int, int> join_on = {lhs_id, rhs_id};
+
+      // parse left
+      auto lhs_ast = ast->children_.at(0);
+
+      // parse right
+      auto rhs_ast = ast->children_.at(1);
+      auto rhs_plan = ast_to_algoptr(rhs_ast, End());
+
+      // auto simp = Scan("Person", LeftJoin({0,0}, Collect(), Scan("Person", End(JOIN_OP::LEFT_OUTER, 0))));
+
+      auto l_join = LeftJoin(join_on, parent, rhs_plan);
+
+      op = ast_to_algoptr(lhs_ast, l_join);
+
+      break;  
     }    
     case ast_op::sort:
     {
@@ -267,7 +287,6 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
   if(!ast->is_source()) {
     //op = ast_to_algoptr(ast->children_[0], op);
     if(ast->children_.size() == 2) {
-      std::cout << "2" << std::endl;
       //auto qop2 = ast_to_algoptr(ast->children_[1], op);
     } else {
       op = ast_to_algoptr(ast->children_[0], op);

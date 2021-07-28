@@ -210,6 +210,7 @@ int tcnt = 0;
 std::mutex mat_reg_mut;
  void mat_reg_value(graph_db *gdb, int *reg, int type) {
     std::lock_guard<std::mutex> lck(mat_reg_mut);
+    
     auto & tp = tp_m[std::this_thread::get_id()];
     {
         if(type == 2) {
@@ -233,6 +234,7 @@ std::mutex mat_reg_mut;
             tp.push_back(con_map[type](gdb, reg));
         }
     }
+    
 }
 
  void append_to_tuple(query_result qr) {

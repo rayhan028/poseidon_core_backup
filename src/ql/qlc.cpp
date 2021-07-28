@@ -197,7 +197,10 @@ std::string read_from_file(const std::string& qfile) {
     while (getline(myfile, line))
       qstr.append(line);
     myfile.close();
+  } else {
+    std::cout << "File not found" << std::endl;
   }
+  
   spdlog::info("execute query {}", qstr);
   return qstr;
 }

@@ -179,7 +179,7 @@ int main() {
 	if(init) {
 		graph->begin_transaction();
 
-		int PERSONS = 1000000;
+		int PERSONS = 10;
 		int add = 0;
 		int j = 1;
 		auto id = 0;
@@ -238,9 +238,11 @@ int main() {
   auto sort_fct = [&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         return boost::get<int>(qr1[0]) > boost::get<int>(qr2[0]); };
 
-	auto simp = Scan("Person", Limit(10, CrossJoin(Collect(), r_expr)));
-
+	auto simp = Scan("Person", LeftJoin({0,0}, Collect(), Scan("Person", End())));
+	std::cout << "Node size: " << sizeof(relationship) << std::endl;
 	scan_task::callee_ = &scan_task::scan;	
+
+
 
 	auto cs1 = std::chrono::steady_clock::now();
 	queryEngine.generate(simp, false);
@@ -253,10 +255,10 @@ int main() {
 	joiner j1;
 	arg_builder ab;
 	ab.arg(1, "Person");
-	ab.arg(4, "Person");
-	ab.arg(3, &j1);
-	ab.arg(6, &j1);
-
+	ab.arg(3, "Person");
+	ab.arg(4, &j1);
+	ab.arg(2, &j1);
+	ab.arg(5, &j1);
 
 	result_set rs;
 
@@ -266,10 +268,9 @@ int main() {
 	//queryEngine.finish(&rs, ab);
 	queryEngine.run(&rs);
 	//queryEngine.finish(&rs, ab);
-	//query::start({&aq});
 	auto je = std::chrono::steady_clock::now();
 	
-	std::cout << rs << std::endl;
+	std::cout << rs.data.size() << std::endl;
 	std::cout << "JIT: "
 		<< std::chrono::duration_cast<std::chrono::milliseconds>(je -
 																	js)

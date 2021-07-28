@@ -1010,6 +1010,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     BasicBlock *loop_body = nullptr;
     
     if(op->jop_ == JOIN_OP::NESTED_LOOP) {
+        // outer loop
             loop_body = ctx.while_loop_condition(main_function, cur_idx, max_idx, PContext::WHILE_COND::LT, end,
                                             [&](BasicBlock *body, BasicBlock *epilog) {
                                                 auto pos = ctx.getBuilder().CreateLoad(cur_idx);
