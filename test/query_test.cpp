@@ -96,7 +96,6 @@ TEST_CASE("Testing query operators", "[qop]") {
   }
 
   SECTION("count") {
-    graph->dump();
     result_set rs, expected;
     auto q = query(graph).all_nodes("Node").count().collect(rs);
     q.start();
@@ -150,6 +149,8 @@ TEST_CASE("Testing query operators", "[qop]") {
     graph->add_node("Movie", {{"title", boost::any(std::string("m2"))}});
     graph->add_node("Actor", {{"name", boost::any(std::string("p1"))}});
     graph->add_node("Actor", {{"name", boost::any(std::string("p2"))}});
+    graph->dump();
+    std::cout << "code for Movie: " << graph->get_code("Movie") << std::endl;
 
     result_set rs, expected;
     auto q = query(graph)
@@ -162,8 +163,8 @@ TEST_CASE("Testing query operators", "[qop]") {
     rs.wait();
     expected.append({query_result("m1")});
     expected.append({query_result("m2")});
-    REQUIRE(rs == expected);
     q.print_plan();
+    REQUIRE(rs == expected);
   }
 
   SECTION("node scan with label and property predicate") {

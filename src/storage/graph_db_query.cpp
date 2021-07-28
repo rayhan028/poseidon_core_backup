@@ -37,26 +37,25 @@ scan_task::scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t
 void scan_task::scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer) {
     xid_t xid = 0;
     if (tx) { // we need the transaction pointer in thread-local storage
-	current_transaction_ = tx;
-	xid = tx->xid();				    
+	    current_transaction_ = tx;
+	    xid = tx->xid();				    
     }
     auto iter = gdb->get_nodes()->range(first, last);
-    
     while (iter) {
 #ifdef USE_TX
-	auto &n = *iter;
-	if (n.is_valid()) {
-	   auto &nv = gdb->get_valid_node_version(n, xid);
-		consumer(nv);
-    #ifdef QOP_RECOVERY
-    gdb->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
-    #endif
-	}
-#else
-	consumer_(*iter);
+	    auto &n = *iter;
+	    if (n.is_valid()) {
+	      auto &nv = gdb->get_valid_node_version(n, xid);
+		    consumer(nv);
+#ifdef QOP_RECOVERY
+        gdb->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
 #endif
-	++iter;
-    }
+	  }
+#else
+	  consumer_(*iter);
+#endif
+	  ++iter;
+  }
 }
 
 std::function<void(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer)> scan_task::callee_ = &scan_task::scan;
@@ -122,13 +121,28 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
 #ifdef USE_TX
   check_tx_context();
 #endif
+  std::vector<std::future<void>> res;
+  thread_pool pool;
+
+#ifdef USE_MMFILE
+  auto nelems = nodes_->as_vec().capacity();
+  const int partitions = 20;
+  auto elems_per_task = nelems / partitions;
+  res.reserve(partitions);
+
+  std::size_t start = 0, end = elems_per_task - 1;
+  while (start < nelems) {
+    res.push_back(pool.submit(
+        scan_task(this, *nodes_, start, end, consumer, current_transaction_)));
+    start = end + 1;
+    end += elems_per_task;
+  } 
+#else
   const int nchunks = 1;
   spdlog::debug("Start parallel query with {} threads",
                 nodes_->num_chunks() / nchunks + 1);
 
-  std::vector<std::future<void>> res;
   res.reserve(nodes_->num_chunks() / nchunks + 1);
-  thread_pool pool;
   std::size_t start = 0, end = nchunks - 1;
   while (start < nodes_->num_chunks()) {
     res.push_back(pool.submit(
@@ -136,7 +150,7 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
     start = end + 1;
     end += nchunks;
   }
-  
+#endif  
   // std::cout << "waiting ..." << std::endl;
   for (auto &f : res) {
     f.get();

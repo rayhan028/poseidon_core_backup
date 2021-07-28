@@ -127,21 +127,35 @@ public:
 
   class range_iter {
   public:
-    range_iter(file_vec& vec, std::size_t first, std::size_t last, std::size_t start_pos = 0) : last_(last) {}
+     range_iter(T *ptr, uint64_t *slots, offset_t first, offset_t last = 0) : slots_(slots), ptr_(ptr), pos_(first), last_(last) {
+      if (ptr_ != nullptr) {
+        // skip empty slots
+        while (!is_used(pos_)) pos_++;
+        if (pos_ > last_) { 
+          // we are behind the end -> empty vector
+          pos_ = last_; 
+          ptr_ = nullptr; 
+        }
+      }
+    }
 
-    operator bool() const { return false; }
+    operator bool() const { return ptr_ != nullptr && is_used(pos_); }
 
-    T &operator*() const {      
+    bool operator!=(const range_iter &other) const {
+      return ptr_ != other.ptr_;
+    }
+
+    T &operator*() const {
       assert(ptr_ != nullptr && is_used(pos_));
       return ptr_[pos_];
     }
 
-    range_iter &operator++() { 
+    range_iter &operator++() {
       do {
-        if (++pos_ == last_)
+        if (++pos_ >= last_)
           ptr_ = nullptr;
       } while (ptr_ != nullptr && !is_used(pos_));
-      return *this; 
+      return *this;
     }
 
   private:
@@ -166,7 +180,7 @@ public:
   iter end() { return iter(nullptr, nullptr); }
 
   range_iter range(std::size_t first, std::size_t last, std::size_t start_pos = 0) {
-    return range_iter(*this, first, last, start_pos);
+    return range_iter(data_, slots_, first, last);
   }
   /**
    * Store the given record at position idx (note: move semantics) and mark this

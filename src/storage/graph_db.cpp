@@ -41,8 +41,12 @@ void graph_db::destroy(graph_db_ptr gp) {
   boost::filesystem::remove(prefix + "slots_nodes.db");
   boost::filesystem::remove(prefix + "rships.db");
   boost::filesystem::remove(prefix + "slots_rships.db");
-  boost::filesystem::remove(prefix + "props.db");
-  boost::filesystem::remove(prefix + "slots_props.db");
+  boost::filesystem::remove(prefix + "nprops.db");
+  boost::filesystem::remove(prefix + "slots_nprops.db");
+  boost::filesystem::remove(prefix + "rprops.db");
+  boost::filesystem::remove(prefix + "slots_rprops.db");
+  boost::filesystem::remove(prefix + "dict.db");
+  boost::filesystem::remove(prefix);
 #endif
 }
 
