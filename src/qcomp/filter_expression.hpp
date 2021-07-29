@@ -80,7 +80,7 @@ struct expression {
 
     virtual ~expression() {};
 
-    virtual std::string operator()() const = 0;
+    virtual std::string dump() const = 0;
 
     virtual void accept(int rank, expression_visitor &vis) = 0;
 
@@ -92,7 +92,7 @@ struct number_token : public expression, public std::enable_shared_from_this<num
 
     number_token(const int value = 0);
 
-    std::string operator()() const override;
+    std::string dump() const override;
 
     void accept(int rank, expression_visitor &fep) override;
 };
@@ -106,7 +106,7 @@ struct key_token : public expression, std::enable_shared_from_this<key_token> {
 
     key_token(unsigned qr_id, std::string key);
 
-    std::string operator()() const override;
+    std::string dump() const override;
 
     void accept(int rank, expression_visitor &fep) override;
 };
@@ -118,7 +118,7 @@ struct str_token : public expression, std::enable_shared_from_this<str_token> {
 
     str_token(std::string str);
 
-    std::string operator()() const override;
+    std::string dump() const override;
 
     void accept(int rank, expression_visitor &fep) override;
 };
@@ -131,7 +131,7 @@ struct time_token : public expression, std::enable_shared_from_this<time_token> 
 
     time_token(boost::posix_time::ptime time);
 
-    std::string operator()() const override;
+    std::string dump() const override;
 
     void accept(int rank, expression_visitor &fep) override;
 };
@@ -151,7 +151,7 @@ struct fct_call : public expression, std::enable_shared_from_this<fct_call> {
     fct_call(fct_uint_t fct);
     fct_call(fct_str_t fct);
 
-    std::string operator()() const override;
+    std::string dump() const override;
 
     void accept(int rank, expression_visitor &fep) override;
 };
@@ -167,7 +167,7 @@ struct binary_predicate : public expression {
 
     binary_predicate(FOP fop, expr const left = 0, expr const right = 0, bool prec = 0, bool is_bool = 0);
 
-    std::string operator()() const override;
+    std::string dump() const override;
 };
 
 struct eq_predicate : public binary_predicate, std::enable_shared_from_this<eq_predicate> {
@@ -208,52 +208,6 @@ struct grexpr {
     expr lhs;
     bin_expr op;
     expr rhs;
-};
-
-
-struct fep_visitor : public expression_visitor {
-    Value *roi_;
-    Value *type_;
-    int opd_cnt = 0;
-
-    fep_visitor(PContext *ctx, Function *parent, Value *qr_node, BasicBlock *next, BasicBlock *end);
-
-    void visit(int rank, std::shared_ptr<number_token> num) override;
-
-    void visit(int rank, std::shared_ptr<key_token> key) override;
-
-    void visit(int rank, std::shared_ptr<str_token> str) override;
-
-    void visit(int rank, std::shared_ptr<time_token> time) override;
-
-    void visit(int rank, std::shared_ptr<fct_call> fct) override;
-
-    void visit(int rank, std::shared_ptr<eq_predicate> eq) override;
-
-    void visit(int rank, std::shared_ptr<and_predicate> andpr) override;
-
-    void visit(int rank, std::shared_ptr<or_predicate> orpr) override;
-
-    void visit(int rank, std::shared_ptr<call_predicate> orpr) override;
-
-    Value *alloc(std::string name, Type *type, Value *val = nullptr);
-
-    BasicBlock *add_bb(std::string name);
-
-    PContext *ctx_;
-    Function *fct_;
-
-    Value *qr_node_;
-    BasicBlock *next_;
-    BasicBlock *end_;
-    std::vector<expr> expr_stack;
-
-    std::map<std::string, Value *> alloc_stack;
-    std::map<int, Value *> gen_vals_;
-    std::map<std::string, BasicBlock *> bbs_;
-
-    std::vector<AllocaInst *> keys;
-
 };
 
 

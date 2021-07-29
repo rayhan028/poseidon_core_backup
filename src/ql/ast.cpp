@@ -92,7 +92,7 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
       [&](int i) { os << i; },
       [&](const std::string &s) { os << s; },
       #ifdef USE_LLVM
-      [&](const expr& expr) { os << (*expr)(); },
+      [&](const expr& expr) { os << expr->dump(); },
       #endif
       [&](const proj_spec_list& plist) { os << plist; },
       [&](const aggr_spec_list& alist) { os << alist; },
