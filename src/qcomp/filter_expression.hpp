@@ -38,10 +38,12 @@ struct fep_visitor;
 struct number_token;
 struct key_token;
 struct str_token;
+struct time_token;
 struct fct_call;
 struct eq_predicate;
 struct and_predicate;
 struct or_predicate;
+struct call_predicate;
 using expr = std::shared_ptr<expression>;
 using bin_expr = std::shared_ptr<binary_predicate>;
 
@@ -58,6 +60,8 @@ public:
 
     virtual void visit(int rank, std::shared_ptr<str_token> op) = 0;
 
+    virtual void visit(int rank, std::shared_ptr<time_token> op) = 0;
+
     virtual void visit(int rank, std::shared_ptr<fct_call> op) = 0;
 
     virtual void visit(int rank, std::shared_ptr<eq_predicate> op) = 0;
@@ -65,6 +69,8 @@ public:
     virtual void visit(int rank, std::shared_ptr<and_predicate> op) = 0;
 
     virtual void visit(int rank, std::shared_ptr<or_predicate> op) = 0;
+
+    virtual void visit(int rank, std::shared_ptr<call_predicate> op) = 0;
 };
 
 struct expression {
@@ -119,18 +125,38 @@ struct str_token : public expression, std::enable_shared_from_this<str_token> {
 
 inline expr Str(std::string value = 0) { return std::make_shared<str_token>(value); }
 
-struct fct_call : public expression, std::enable_shared_from_this<fct_call> {
-    using fct_t = bool (*)(int*);  
-    fct_t fct_;
 
-    fct_call(fct_t fct);
+struct time_token : public expression, std::enable_shared_from_this<time_token> {
+    boost::posix_time::ptime time_;
+
+    time_token(boost::posix_time::ptime time);
 
     std::string operator()() const override;
 
     void accept(int rank, expression_visitor &fep) override;
 };
 
-inline expr Fct(fct_call::fct_t fct) { return std::make_shared<fct_call>(fct); }
+inline expr Time(boost::posix_time::ptime time) { return std::make_shared<time_token>(time); }
+
+struct fct_call : public expression, std::enable_shared_from_this<fct_call> {
+    using fct_int_t = bool (*)(int*);
+    using fct_uint_t = bool (*)(uint64_t*);    
+    using fct_str_t = bool (*)(char*);  
+    fct_int_t fct_int_;
+    fct_uint_t fct_uint_;
+    fct_str_t fct_str_;
+    FOP_TYPE fct_type_;
+
+    fct_call(fct_int_t fct);
+    fct_call(fct_uint_t fct);
+    fct_call(fct_str_t fct);
+
+    std::string operator()() const override;
+
+    void accept(int rank, expression_visitor &fep) override;
+};
+
+inline expr Fct(fct_call::fct_int_t fct) { return std::make_shared<fct_call>(fct); }
 
 struct binary_predicate : public expression {
     expr left_;
@@ -150,6 +176,13 @@ struct eq_predicate : public binary_predicate, std::enable_shared_from_this<eq_p
     void accept(int rank, expression_visitor &fep) override;
 };
 
+struct call_predicate : public binary_predicate, std::enable_shared_from_this<call_predicate> {
+    call_predicate(expr const left, expr const right, bool prec, bool not_ = false);
+
+    void accept(int rank, expression_visitor &fep) override;
+};
+inline bin_expr Call(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<call_predicate>(lhs, rhs, prec); }
+
 inline bin_expr EQ(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<eq_predicate>(lhs, rhs, prec); }
 
 struct and_predicate : public binary_predicate, std::enable_shared_from_this<and_predicate> {
@@ -167,7 +200,6 @@ struct or_predicate : public binary_predicate, std::enable_shared_from_this<or_p
     or_predicate(bin_expr const left, bin_expr const right, bool prec);
 
     void accept(int rank, expression_visitor &fep) override;
-
 };
 
 inline bin_expr OR(bin_expr lhs, bin_expr rhs, bool prec = 0) { return std::make_shared<or_predicate>(lhs, rhs, prec); }
@@ -192,6 +224,8 @@ struct fep_visitor : public expression_visitor {
 
     void visit(int rank, std::shared_ptr<str_token> str) override;
 
+    void visit(int rank, std::shared_ptr<time_token> time) override;
+
     void visit(int rank, std::shared_ptr<fct_call> fct) override;
 
     void visit(int rank, std::shared_ptr<eq_predicate> eq) override;
@@ -199,6 +233,8 @@ struct fep_visitor : public expression_visitor {
     void visit(int rank, std::shared_ptr<and_predicate> andpr) override;
 
     void visit(int rank, std::shared_ptr<or_predicate> orpr) override;
+
+    void visit(int rank, std::shared_ptr<call_predicate> orpr) override;
 
     Value *alloc(std::string name, Type *type, Value *val = nullptr);
 

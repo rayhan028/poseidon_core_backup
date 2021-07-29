@@ -50,5 +50,24 @@ public:
         qid += "A";
     }
 
+    virtual void visit(std::shared_ptr<group_op> op) {
+        qid += "G";
+    }
+
+    virtual void visit(std::shared_ptr<aggr_op> op) {
+        qid += "A";
+    }
+
+    virtual void visit(std::shared_ptr<connected_op> op) {
+        qid += "-";
+    }
+
+    virtual void visit(std::shared_ptr<append_op> op) {
+        qid += "+";
+    }
+    
+    virtual void visit(std::shared_ptr<store_op> op) {
+        qid += "$";
+    }
 };
 #endif //POSEIDON_CORE_QID_GENERATOR_HPP

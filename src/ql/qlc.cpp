@@ -119,14 +119,24 @@ static void trim(std::string &s) {
 }
 
 /**
- * 
+ * Execute the query given as string by interpreting the plan.
  */
-void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
+void interpret_query(graph_db_ptr &gdb, const std::string &qstr) {
+  queryc qlc;
+  spdlog::debug("create AOT query code");
+  auto qset = qlc.generate_qex_plan(gdb, qstr);  
+  qset.start(); 
+}
+
+/**
+ * Execute the query given as string by generating code via LLVM.
+ */
+void compile_query(graph_db_ptr &gdb, const std::string &qstr) {
   queryc qlc;
 
-  spdlog::debug("compile_to_plan");     
+#ifdef USE_LLVM
+  spdlog::debug("compile to plan via LLVM");     
   auto plan = qlc.compile_to_plan(qstr);
-
 /*
   std::ostringstream os;
   os << "Execution plan: '";
@@ -136,8 +146,6 @@ void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
 */
   spdlog::debug("create query_engine");     
 	query_engine queryEngine(gdb, 1, gdb->get_nodes()->num_chunks());
-  //arg_builder args;
-  //args.arg(1, "Product"); // TODO: 
 
 	result_set rs;
 
@@ -145,22 +153,40 @@ void exec_query(graph_db_ptr &gdb, const std::string &qstr) {
   spdlog::debug("generate query code");     
   queryEngine.generate(plan, false);
   auto end_qc = std::chrono::steady_clock::now();
-
+  
   spdlog::debug("execute query code");     
 	queryEngine.run(&rs);
 
   auto end_qp = std::chrono::steady_clock::now();
-
+  
   std::cout << "Query compiled in "
             << std::chrono::duration_cast<std::chrono::milliseconds>(end_qc -
                                                                      start_qp)
                    .count()
-            << " ms and executed in "
+            << " ms and executed in " 
             << std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
                                                                      end_qc)
                    .count()
             << " ms" << std::endl;
+
+  std::cout << rs << std::endl;
+#else
+spdlog::debug("query compiler is disabled, create AOT query code");
+interpret_query(gdb, qstr);
+#endif
 }
+
+/**
+ * Execute the query given as string. If qex_cc is set to true then the
+ * query is compiled using LLVM, otherwise the query interpreter is used.
+ */
+void exec_query(graph_db_ptr &gdb, const std::string &qstr, bool qex_cc) {
+  if (qex_cc)
+    compile_query(gdb, qstr);
+  else 
+    interpret_query(gdb, qstr);
+}
+
 
 std::string read_from_file(const std::string& qfile) {
   std::string qstr, line;
@@ -178,7 +204,7 @@ std::string read_from_file(const std::string& qfile) {
 /**
  * Run an interactive shell for entering and executing queries.
  */
-void run_shell(graph_db_ptr &gdb) {
+void run_shell(graph_db_ptr &gdb, bool qex_cc) {
   const auto path = "history.txt";
   // Enable the multi-line mode
   linenoise::SetMultiLine(true);
@@ -203,10 +229,10 @@ void run_shell(graph_db_ptr &gdb) {
 
     if (line.rfind("@", 0) == 0) {
       auto query_string = read_from_file(line.substr(1));
-      exec_query(gdb, query_string);
+      exec_query(gdb, query_string, qex_cc);
     }
     else
-      exec_query(gdb, line);
+      exec_query(gdb, line, qex_cc);
 
     // Add line to history
     linenoise::AddHistory(line.c_str());
@@ -218,10 +244,11 @@ void run_shell(graph_db_ptr &gdb) {
 }
 
 int main(int argc, char* argv[]) {
-  std::string db_name, query_file, dot_file;
+  std::string db_name, query_file, dot_file, qmode;
   std::vector<std::string> import_files;
   bool start_shell = false;
   bool n4j_mode = false;
+  bool qex_cc = true; 
   char delim_character = ',';
 
 
@@ -239,7 +266,8 @@ int main(int argc, char* argv[]) {
         "relationships:<rship type>:<filename>")
         ("n4j", bool_switch()->default_value(false), "Import CSV data in Neo4j format")
         ("query,q", value<std::string>(&query_file), "Execute the query from the given file")
-        ("shell,s", bool_switch()->default_value(false), "Start the interactive shell");
+        ("shell,s", bool_switch()->default_value(false), "Start the interactive shell")
+        ("qmode", value<std::string>(&qmode), "Query compile mode: llvm (default) | aot");
 
     variables_map vm;
     store(parse_command_line(argc, argv, desc), vm);
@@ -268,6 +296,15 @@ int main(int argc, char* argv[]) {
 
     if (vm.count("shell"))
       start_shell = vm["shell"].as<bool>();
+
+    if (vm.count("qmode")) {
+      std::cout << "qmode = " << qmode << std::endl;
+      if (qmode != "llvm" && qmode != "aot") {
+        std::cout << "ERROR: unknown qmode value: 'llvm' or 'aot' expected.\n";
+        return -1;
+      }
+      qex_cc = (qmode == "llvm");
+    }
 
     if (start_shell && !query_file.empty()) {
       std::cout
@@ -312,15 +349,17 @@ int main(int argc, char* argv[]) {
     graph->dump_dot(dot_file);
 
   if (start_shell) {
-    run_shell(graph);
+    run_shell(graph, qex_cc);
   }
+
+  //exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
 
   // exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
 
   if (!query_file.empty()) {
     // load the query from the file
     auto query_string = read_from_file(query_file);
-    exec_query(graph, query_string);
+    exec_query(graph, query_string, qex_cc);
   }
 }
  

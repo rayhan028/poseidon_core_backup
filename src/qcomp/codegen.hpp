@@ -31,6 +31,14 @@ public:
 
     void visit(std::shared_ptr<create_op> op) override;
 
+    void visit(std::shared_ptr<aggr_op> op) override;
+
+    void visit(std::shared_ptr<connected_op> op) override;
+
+    void visit(std::shared_ptr<append_op> op) override;
+
+    void visit(std::shared_ptr<store_op> op) override;
+
 };
 
 

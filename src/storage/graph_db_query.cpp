@@ -25,13 +25,14 @@
 #include "spdlog/spdlog.h"
 #include "thread_pool.hpp"
 #include <iostream>
+#include <set>
 
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
 #endif
 
-scan_task::scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last, graph_db::node_consumer_func c, transaction_ptr tp)
-	: graph_db_(gdb), nodes_(n), range_(first, last), consumer_(c), tx_(tp) {}
+scan_task::scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last, graph_db::node_consumer_func c, transaction_ptr tp, std::size_t start_pos)
+	: graph_db_(gdb), nodes_(n), range_(first, last), consumer_(c), tx_(tp), start_pos_(start_pos) {}
 
 void scan_task::scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer) {
     xid_t xid = 0;
@@ -47,6 +48,9 @@ void scan_task::scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::
 	if (n.is_valid()) {
 	   auto &nv = gdb->get_valid_node_version(n, xid);
 		consumer(nv);
+    #ifdef QOP_RECOVERY
+    gdb->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
+    #endif
 	}
 #else
 	consumer_(*iter);
@@ -118,7 +122,7 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
 #ifdef USE_TX
   check_tx_context();
 #endif
-  const int nchunks = 25;
+  const int nchunks = 1;
   spdlog::debug("Start parallel query with {} threads",
                 nodes_->num_chunks() / nchunks + 1);
 
@@ -132,9 +136,11 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
     start = end + 1;
     end += nchunks;
   }
+  
   // std::cout << "waiting ..." << std::endl;
-  for (auto &f : res)
+  for (auto &f : res) {
     f.get();
+  }
 }
 
 void graph_db::nodes(node_consumer_func consumer) {
@@ -228,6 +234,7 @@ void graph_db::foreach_variable_from_relationship_of_node(
 void graph_db::foreach_variable_from_relationship_of_node(
     const node &n, dcode_t lcode, std::size_t min, std::size_t max,
     rship_consumer_func consumer) {
+  std::set<relationship::id_t> rship_set;
   std::list<std::pair<relationship::id_t, std::size_t>> rship_queue;
   rship_queue.push_back(std::make_pair(n.from_rship_list, 1));
 
@@ -294,8 +301,12 @@ void graph_db::foreach_variable_from_relationship_of_node(
     if (relship.rship_label != lcode)
       continue;
 
-    if (hops >= min)
+    if (hops >= min) {
+      if (rship_set.find(relship.id()) != rship_set.end())
+        continue;
+      rship_set.insert(relship.id());
       consumer(relship);
+    }
 
     // scan recursively!!
     rship_queue.push_back(std::make_pair(relship.next_src_rship, hops));
@@ -349,6 +360,7 @@ void graph_db::foreach_variable_to_relationship_of_node(
 void graph_db::foreach_variable_to_relationship_of_node(
     const node &n, dcode_t lcode, std::size_t min, std::size_t max,
     rship_consumer_func consumer) {
+  std::set<relationship::id_t> rship_set;
   std::list<std::pair<relationship::id_t, std::size_t>> rship_queue;
   rship_queue.push_back(std::make_pair(n.to_rship_list, 1));
 
@@ -415,8 +427,12 @@ void graph_db::foreach_variable_to_relationship_of_node(
     if (relship.rship_label != lcode)
       continue;
 
-    if (hops >= min)
+    if (hops >= min) {
+      if (rship_set.find(relship.id()) != rship_set.end())
+        continue;
+      rship_set.insert(relship.id());
       consumer(relship);
+    }
 
     // scan recursively!!
     rship_queue.push_back(std::make_pair(relship.next_dest_rship, hops));

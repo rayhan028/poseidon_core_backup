@@ -483,7 +483,7 @@ std::pair<double,double> run_ldbc_is1(JitFromScratch &jit, graph_db_ptr gdb, que
         qeng.prepare(jit, gdb);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         qeng.start_[0](gdb.get(), 0, gdb->get_nodes()->num_chunks(), tx, 1, &qeng.type_vec_[0], &rs, nullptr, qeng.finish_[0], personIds[i], args.args.data());
         gdb->commit_transaction();
 
@@ -526,7 +526,7 @@ std::pair<double,double> run_ldbc_is2_1(JitFromScratch &jit, graph_db_ptr gdb, q
         qeng.prepare(jit, gdb);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         qeng.start_[0](gdb.get(), 0, gdb->get_nodes()->num_chunks(), tx, 1, &qeng.type_vec_[0], &rs, nullptr, qeng.finish_[0], personIds[i], args.args.data());
         gdb->commit_transaction();
 
@@ -569,7 +569,7 @@ std::pair<double,double> run_ldbc_is2_2(JitFromScratch &jit, graph_db_ptr gdb, q
         qeng.prepare(jit, gdb);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         qeng.start_[0](gdb.get(), 0, gdb->get_nodes()->num_chunks(), tx, 1, &qeng.type_vec_[0], &rs, nullptr, qeng.finish_[0], personIds[i], args.args.data());
         gdb->commit_transaction();
 
@@ -612,7 +612,7 @@ std::pair<double,double> run_ldbc_is3(JitFromScratch &jit, graph_db_ptr gdb, que
         qeng.prepare(jit, gdb);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         qeng.start_[0](gdb.get(), 0, gdb->get_nodes()->num_chunks(), tx, 1, &qeng.type_vec_[0], &rs, nullptr, qeng.finish_[0], personIds[i], args.args.data());
         gdb->commit_transaction();
 
@@ -656,7 +656,7 @@ std::pair<double,double> run_ldbc_is4(JitFromScratch &jit, graph_db_ptr gdb, que
         qeng.prepare(jit, gdb);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         qeng.start_[0](gdb.get(), 0, gdb->get_nodes()->num_chunks(), tx, 1, &qeng.type_vec_[0], &rs, nullptr, qeng.finish_[0], commentIds[i], args.args.data());
         gdb->commit_transaction();
 
@@ -700,7 +700,7 @@ std::pair<double,double> run_ldbc_is5(JitFromScratch &jit, graph_db_ptr gdb, que
         qeng.prepare(jit, gdb);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         qeng.start_[0](gdb.get(), 0, gdb->get_nodes()->num_chunks(), tx, 1, &qeng.type_vec_[0], &rs, nullptr, qeng.finish_[0], commentIds[i], args.args.data());
         gdb->commit_transaction();
 
@@ -744,7 +744,7 @@ std::pair<double,double> run_ldbc_is6_1(JitFromScratch &jit, graph_db_ptr gdb, q
         qeng.prepare(jit, gdb);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         qeng.start_[0](gdb.get(), 0, gdb->get_nodes()->num_chunks(), tx, 1, &qeng.type_vec_[0], &rs, nullptr, qeng.finish_[0], commentIds[i], args.args.data());
         gdb->commit_transaction();
 
@@ -788,7 +788,7 @@ std::pair<double,double> run_ldbc_is6_2(JitFromScratch &jit, graph_db_ptr gdb, q
         qeng.prepare(jit, gdb);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         qeng.start_[0](gdb.get(), 0, gdb->get_nodes()->num_chunks(), tx, 1, &qeng.type_vec_[0], &rs, nullptr, qeng.finish_[0], commentIds[i], args.args.data());
         gdb->commit_transaction();
 
@@ -832,7 +832,7 @@ std::pair<double,double> run_ldbc_is7(JitFromScratch &jit, graph_db_ptr gdb, que
         qeng.prepare(jit, gdb);
         auto start_qp = std::chrono::steady_clock::now();
 
-        auto tx = gdb->begin_transaction();
+        gdb->begin_transaction();
         qeng.start_[0](gdb.get(), 0, gdb->get_nodes()->num_chunks(), tx, 1, &qeng.type_vec_[0], &rs, nullptr, qeng.finish_[0], commentIds[i], args.args.data());
         gdb->commit_transaction();
 
@@ -923,7 +923,7 @@ int main(int argc, char **argv) {
         qargs.arg(11, "Person");
 
         auto tj1 = std::chrono::system_clock::now();
-        auto tx = graph->begin_transaction();
+        graph->begin_transaction();
         queryEngine.start_[0](graph.get(), 0, graph->get_nodes()->num_chunks(), tx, 1, &queryEngine.type_vec_[0], &rs, nullptr, queryEngine.finish_[0], x, qargs.args.data());
         graph->commit_transaction();
         auto tj2 = std::chrono::system_clock::now();
@@ -942,7 +942,7 @@ int main(int argc, char **argv) {
     interprete_visitor iv(graph);
     //expr->codegen(iv, 1, true);
     auto t7 = std::chrono::system_clock::now();
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
     scan_task::callee_ = &scan_task::scan;
 namespace pj = builtin;
 
@@ -998,7 +998,7 @@ graph_db_ptr graph1() {
     auto graph = pool->create_graph("my_graph");
     auto gdb = graph.get();
 
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
     for(int i = 0; i < 1; i++) {
         auto mahinda = graph->add_node(
                 // id|firstName|lastName|gender|birthday|creationDate|locationIP|browserUsed
@@ -1870,7 +1870,7 @@ graph_db_ptr graph2() {
     auto graph = pool->create_graph("my_grap");
     auto gdb = graph.get();
 
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 
     for(int i = 0; i < 1000; i++) {
 

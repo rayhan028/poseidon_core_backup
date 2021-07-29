@@ -34,6 +34,10 @@ graph_db::graph_db(const std::string &db_name) {
   rships_ = p_make_ptr<relationship_list>();
   node_properties_ = p_make_ptr<property_list>();
   rship_properties_ = p_make_ptr<property_list>();
+#ifdef QOP_RECOVERY
+  recovery_results_ = p_make_ptr<recovery_list>();
+  recovery_res_ = p_make_ptr<rec_map_t>();
+#endif
   dict_ = p_make_ptr<dict>();
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
@@ -60,6 +64,10 @@ graph_db::~graph_db() {
 void graph_db::runtime_initialize() {
   nodes_->runtime_initialize();
   rships_->runtime_initialize();
+#ifdef QOP_RECOVERY
+  recovery_results_->runtime_initialize();
+  recovery_res_->runtime_initialize();
+#endif
   // make sure the dictionary is initialized
   dict_->initialize();
   // perform recovery using the undo log
@@ -73,11 +81,11 @@ void graph_db::runtime_initialize() {
 }
 
 bool graph_db::run_transaction(std::function<bool()> body) {
-  auto tx = begin_transaction();
+  begin_transaction();
   return body() ? commit_transaction() : abort_transaction();
 }
 
-transaction_ptr graph_db::begin_transaction() {
+void graph_db::begin_transaction() {
   if (current_transaction_)
     throw invalid_nested_transaction();
   auto tx = std::make_shared<transaction>();
@@ -88,7 +96,6 @@ transaction_ptr graph_db::begin_transaction() {
   active_tx_->insert({tx->xid(), tx});
   // spdlog::info("begin transaction {}", tx->xid());
 #endif
-  return tx;
 }
 
 void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {

@@ -14,9 +14,11 @@ endif()
 option(USE_PMDK       "Use Intel PMDK"                         ON)
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
-option(BUILD_PYTHON   "Build python interface for poseidon"    OFF)
+option(USE_LLVM       "Use LLVM for query compilation"         ON)
+option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
 option(QOP_PROFILING  "Enable query profiling"                 ON)
 option(USE_GUNROCK    "Use Gunrock for graph analytics"        OFF)
+option(QOP_RECOVERY   "Enable query recovery on failure"       OFF)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -64,10 +66,20 @@ endif()
 if(QOP_PROFILING MATCHES ON)
   add_definitions( "-DQOP_PROFILING" )
 endif()
+
+if(USE_LLVM MATCHES ON)
+  add_definitions( "-DUSE_LLVM" )
+endif()
+
+if(QOP_RECOVERY MATCHES ON)
+  add_definitions( "-DQOP_RECOVERY" )
+endif()
+
 configure_file(
   ${PROJECT_SOURCE_DIR}/src/config.h.in
   ${PROJECT_BINARY_DIR}/generated/config.h
 )
+
 
 
 
@@ -195,6 +207,7 @@ if(NOT benchmark_POPULATED)
   set(BENCHMARK_INCLUDE_DIR ${benchmark_SOURCE_DIR}/include)
 endif()
 
+if(USE_LLVM MATCHES ON)
 # LLVM ============================================================== #
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -204,6 +217,7 @@ llvm_map_components_to_libnames(LLVM_LIBRARIES
 XRay WindowsManifest TableGen Symbolize DebugInfoPDB OrcJIT OrcError JITLink ObjectYAML MCA LTO Passes Coroutines ObjCARCOpts Extensions LineEditor LibDriver Interpreter FuzzMutate MCJIT ExecutionEngine RuntimeDyld DWARFLinker DlltoolDriver Option DebugInfoGSYM Coverage XCoreDisassembler XCoreCodeGen XCoreDesc XCoreInfo X86Disassembler X86AsmParser X86CodeGen X86Desc X86Info WebAssemblyDisassembler WebAssemblyCodeGen WebAssemblyDesc WebAssemblyAsmParser WebAssemblyInfo SystemZDisassembler SystemZCodeGen SystemZAsmParser SystemZDesc SystemZInfo SparcDisassembler SparcCodeGen SparcAsmParser SparcDesc SparcInfo RISCVDisassembler RISCVCodeGen RISCVAsmParser RISCVDesc RISCVUtils RISCVInfo PowerPCDisassembler PowerPCCodeGen PowerPCAsmParser PowerPCDesc PowerPCInfo NVPTXCodeGen NVPTXDesc NVPTXInfo MSP430Disassembler MSP430CodeGen MSP430AsmParser MSP430Desc MSP430Info MipsDisassembler MipsCodeGen MipsAsmParser MipsDesc MipsInfo LanaiDisassembler LanaiCodeGen LanaiAsmParser LanaiDesc LanaiInfo HexagonDisassembler HexagonCodeGen HexagonAsmParser HexagonDesc HexagonInfo BPFDisassembler BPFCodeGen BPFAsmParser BPFDesc BPFInfo AVRDisassembler AVRCodeGen AVRAsmParser AVRDesc AVRInfo ARMDisassembler ARMCodeGen ARMAsmParser ARMDesc ARMUtils ARMInfo AMDGPUDisassembler AMDGPUCodeGen MIRParser ipo Instrumentation Vectorize Linker IRReader AsmParser FrontendOpenMP AMDGPUAsmParser AMDGPUDesc AMDGPUUtils AMDGPUInfo AArch64Disassembler MCDisassembler AArch64CodeGen CFGuard GlobalISel SelectionDAG AsmPrinter DebugInfoDWARF CodeGen Target ScalarOpts InstCombine AggressiveInstCombine TransformUtils BitWriter Analysis ProfileData Object TextAPI BitReader Core Remarks BitstreamReader AArch64AsmParser MCParser AArch64Desc MC DebugInfoCodeView DebugInfoMSF BinaryFormat AArch64Utils AArch64Info Support Demangle)
         #X86Utils)
 # LLVM_DYLIB_COMPONENTS in case of dynamic lib
+endif() 
 
 # PEGTL =================================================================== #
 include(FetchContent REQUIRED)
@@ -238,6 +252,23 @@ if(NOT linenoise_POPULATED)
   set_property(TARGET LINENOISE PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${LINENOISE_INCLUDE_DIR}")
 endif()
 
+# pybind11 =================================================================== #
+include(FetchContent REQUIRED)
+ FetchContent_Declare(
+  pybind11
+  GIT_REPOSITORY https://github.com/pybind/pybind11.git
+ #  GIT_TAG        1.2.1
+  )
+FetchContent_GetProperties(pybind11)
+
+if(NOT pybind11_POPULATED)
+  message(STATUS "Populating pybind11")
+  FetchContent_Populate(pybind11)
+  set(pybind11_INCLUDE_DIR ${pybind11_SOURCE_DIR}/include)
+  add_library(pybind11 IMPORTED INTERFACE)
+  set_property(TARGET pybind11 PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${pybind11_INCLUDE_DIR}")
+endif()
+
 #---------------------------------------------------------------------------
 
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -266,6 +297,7 @@ message(STATUS "PYTHON")
     message("PythonLibs ${PYTHON_LIBDIR}")
 
     include_directories(${PYTHON_INCLUDE_DIRS})
+    include_directories(${pybind11_INCLUDE_DIR})
     link_directories(${PYTHON_LIBDIR})
 
     set(PYTHON_SOURCES
@@ -283,27 +315,14 @@ endif()
 # Boost C++ library
 ######################
 #
-SET(BOOST_MIN_VERSION "1.60.0")
+SET(BOOST_MIN_VERSION "1.70.0")
 
-if (BUILD_PYTHON)
-  if(Python3_FOUND)
-    set(BOOST_PYTHON "python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
-  else()
-    message(FATAL_ERROR "Fatal error: BUILD_PYTHON was set, but no python3 interpreter could be found")
-  endif()
-  find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
+find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
     program_options
-    date_time
-    ${BOOST_PYTHON}
-    thread
-    REQUIRED)
-else()
-  find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
-    program_options
+    filesystem
     date_time
     thread
     REQUIRED)
-endif()
 
 if (NOT Boost_FOUND)
      message(FATAL_ERROR "Fatal error: Boost (version >= ${BOOST_MIN_VERSION}) required.\n"
@@ -338,17 +357,47 @@ else()
   set(gunrock_analysis "")
 endif()
 
+if(USE_LLVM MATCHES ON)
+  set(llvm_src
+    src/qcomp/codegen_inline.cpp
+    src/qcomp/filter_expression.cpp
+    src/qcomp/filter_expression_inline.cpp
+    src/qcomp/global_definitions.cpp
+    src/qcomp/interpreter.cpp
+    src/qcomp/jit_cache.cpp
+    src/qcomp/p_jit.cpp
+    src/qcomp/optimizer.cpp
+    src/qcomp/main.cpp
+    src/qcomp/p_context.cpp
+    src/qcomp/query_engine.cpp
+    src/qcomp/qoperator.cpp
+    src/qcomp/joiner.cpp
+    src/qcomp/grouper.cpp
+    src/qcomp/interprete_filter_visitor.cpp
+  )
+else()
+  set(llvm_src "")
+endif()
+
+if(QOP_RECOVERY MATCHES ON)
+  set(qoprec_src src/storage/recovery.cpp)
+else()
+  set(qoprec_src "")
+endif()
+
 set(src_files 
   ${dict_src} 
   src/storage/nodes.cpp
   src/storage/relationships.cpp
   src/storage/properties.cpp
+  ${qoprec_src}
   src/storage/graph_db.cpp
   src/storage/graph_db_import.cpp
   src/storage/graph_db_index.cpp
   src/storage/graph_db_query.cpp
-  src/storage/graph_db_recovery.cpp
   src/storage/graph_db_gc.cpp
+  src/storage/graph_db_recovery.cpp
+  src/storage/mm_file.cpp
   src/btree/index_map.cpp
   src/qop/profiling.cpp
   src/qop/qop.cpp
@@ -360,20 +409,9 @@ set(src_files
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
-  src/qcomp/codegen_inline.cpp
-  src/qcomp/filter_expression.cpp
-  src/qcomp/filter_expression_inline.cpp
-  src/qcomp/global_definitions.cpp
-  src/qcomp/interpreter.cpp
-  src/qcomp/jit_cache.cpp
-  src/qcomp/p_jit.cpp
-  src/qcomp/optimizer.cpp
-  src/qcomp/main.cpp
-  src/qcomp/p_context.cpp
-  src/qcomp/query_engine.cpp
-  src/qcomp/qoperator.cpp
-  src/qcomp/joiner.cpp
-  src/qcomp/interprete_filter_visitor.cpp
+  ${llvm_src}
+  src/ql/queryc_qcomp.cpp
+  src/ql/queryc_qex.cpp
   src/ql/queryc.cpp
   src/ql/ast.cpp
   src/analytics/bfs.cpp
@@ -401,8 +439,15 @@ else()
   set(gunrock_linkLib "")
 endif()
 
+if(USE_LLVM MATCHES ON)
+  set(LLVM_LIB LLVM)
+else()
+  set(LLVM_LIB "")
+endif()
+
 target_link_libraries(poseidon_core
-  LLVM
+  ${LLVM_LIB}
+  Boost::filesystem
   Boost::date_time
   Boost::thread
   spdlog::spdlog_header_only
@@ -446,6 +491,8 @@ target_link_libraries(poseidon_ldbc
 
 set(gtpc_files
   src/gtpc/gtpc_loader.cpp
+  src/gtpc/gtpc_olap.cpp
+  src/gtpc/gtpc_oltp.cpp
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -457,7 +504,7 @@ else()
 add_library(poseidon_gtpc_obj OBJECT SHARED ${gtpc_files})
 endif()
 
-# Poseidon LDBC library for building C++ applications
+# Poseidon GTPC library for building C++ applications
 add_library(poseidon_gtpc SHARED
   $<TARGET_OBJECTS:poseidon_gtpc_obj>
 )
@@ -474,9 +521,9 @@ add_library(poseidon SHARED
 )
 
 target_link_libraries(poseidon
-  LLVM
+  ${LLVM_LIB}
+  Boost::filesystem
   Boost::date_time
-  Boost::${BOOST_PYTHON}
   Boost::thread
   ${PYTHON_LIBRARIES}
   ${PMDK_LIBRARIES}
@@ -567,6 +614,7 @@ target_link_libraries(run_ldbc_updates
 #   Boost::program_options
 # )
 
+if(USE_LLVM MATCHES ON)
 # The program for executing jitted short read queries.
 #
 add_executable(run_ldbc_jit_reads
@@ -579,6 +627,7 @@ target_link_libraries(run_ldbc_jit_reads
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+endif()
 
 #-----------------------------------------------------------------------------------------
 #
@@ -597,8 +646,36 @@ target_link_libraries(run_gtpc_loader
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+# The program for executing gtpc queries.
+#
+add_executable(run_gtpc
+  src/gtpc/run_gtpc.cpp
+ )
+
+target_link_libraries(run_gtpc
+  poseidon_gtpc
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
+if(USE_LLVM MATCHES ON)
+# The program for executing jitted bi queries.
+#
+add_executable(run_ldbc_jit_bi
+  src/ldbc/ldbc_jit_bi.cpp
+ )
+
+target_link_libraries(run_ldbc_jit_bi
+  poseidon_ldbc
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+endif()
 
 #-----------------------------------------------------------------------------------------
+if(USE_LLVM MATCHES ON)
 # The program for executing the LLVM query compiler
 add_executable(qcomp
 	  src/qcomp/main.cpp
@@ -609,7 +686,7 @@ target_link_libraries(qcomp
 	     ${PMDK_LIBRARIES}
 	     Boost::program_options
              )
-
+endif()
 #-----------------------------------------------------------------------------------------
 
 add_executable(qlc
@@ -618,6 +695,16 @@ add_executable(qlc
  )
 
  target_link_libraries(qlc
+ poseidon_core
+ ${PMDK_LIBRARIES}
+ Boost::program_options
+)
+
+add_executable(csv_loader
+  src/storage/csv_loader.cpp
+ )
+
+ target_link_libraries(csv_loader
  poseidon_core
  ${PMDK_LIBRARIES}
  Boost::program_options

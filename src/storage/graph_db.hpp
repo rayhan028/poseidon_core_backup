@@ -21,7 +21,6 @@
 #define graph_db_hpp_
 
 #include <boost/any.hpp>
-// #include <map>
 #include <mutex>
 #include <string>
 
@@ -30,6 +29,10 @@
 #include "nodes.hpp"
 #include "properties.hpp"
 #include "relationships.hpp"
+#ifdef QOP_RECOVERY
+#include <libpmemobj++/container/concurrent_hash_map.hpp>
+#include "recovery.hpp"
+#endif
 #include "transaction.hpp"
 #include "btree.hpp"
 #include "index_map.hpp"
@@ -54,6 +57,10 @@ public:
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;
 
+#ifdef QOP_RECOVERY
+  using rec_map_t = pmem::obj::concurrent_hash_map<p<int>, p<int>>;
+#endif
+
   /**
    * Constructor for a new empty graph database.
    */
@@ -67,11 +74,10 @@ public:
   /* -------------- transaction management -------------- */
 
   /**
-   * Starts a new transaction and returns a pointer to this transaction.
-   * This transaction is associated with the current thread and stored there
-   * as thread_local property.
+   * Starts a new transaction. This transaction is associated with the 
+   * current thread and stored there as thread_local property.
    */
-  transaction_ptr begin_transaction();
+  void begin_transaction();
 
   /**
    * Commits the currently active transaction associated with this thread.
@@ -359,6 +365,12 @@ public:
    */
   void parallel_nodes(node_consumer_func consumer);
 
+#ifdef QOP_RECOVERY
+  /**
+   * Continues the scan from the given positions (checkpoints) and invokes the given consumer function for each node.
+   */
+  void continue_parallel_nodes(std::map<std::size_t, std::size_t> &check_points, node_consumer_func consumer);
+#endif
   /**
    * Scans all nodes which satisfy the given predicate on the property with
    * label pkey and invokes for each of these nodes the consumer function.
@@ -491,6 +503,32 @@ public:
    */
   node &get_valid_node_version(node &n, xid_t xid);
 
+#ifdef QOP_RECOVERY
+  /**
+   * Return the checkpoints for each touched chunked from the last query
+   */
+  const p_ptr<rec_map_t>& get_query_checkpoints() { return recovery_res_; }
+
+  /**
+   * Stores the tuple of a query into intermediate storage
+   */
+  void store_query_result(qr_tuple &qr, std::size_t chunk);
+
+  /**
+   * Stores the checkpoint of a chunk into intermediate storage
+   */
+  void store_iter(std::pair<std::size_t, std::size_t> iter_pos);
+
+  /**
+   * Recovers the stored intermediate results into a given list
+   */
+  void restore_results(std::list<qr_tuple> &result_list);
+
+  /**
+   * Returns the checkpoint positions to continue a failed query
+   */
+  std::map<std::size_t, std::size_t> restore_positions();
+#endif
 private:
   friend struct scan_task;
 
@@ -561,6 +599,10 @@ private:
   p_ptr<index_map> index_map_; // the list of all exisiting indexes
   p_ptr<pmlog> ulog_; // the undo log 
 
+#ifdef QOP_RECOVERY
+  p_ptr<recovery_list> recovery_results_; // stored intermediate tuples of a query
+  p_ptr<rec_map_t> recovery_res_; // stored checkpoints of the chunks 
+#endif
   /**
    * These member variables are volatile and have to be reinitialized
    * during startup.
@@ -578,7 +620,7 @@ using graph_db_ptr = p_ptr<graph_db>;
 struct scan_task {
   using range = std::pair<std::size_t, std::size_t>;
   scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last,
-	    graph_db::node_consumer_func c, transaction_ptr tp = nullptr);
+	    graph_db::node_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0);
 
   void operator()();
 
@@ -591,6 +633,8 @@ struct scan_task {
   range range_;
   graph_db::node_consumer_func consumer_;
   transaction_ptr tx_;
+  std::size_t start_pos_;
 };
+
 
 #endif

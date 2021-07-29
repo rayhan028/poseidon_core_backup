@@ -49,7 +49,7 @@ TEST_CASE("Creating an index on nodes", "[index]") {
 #endif
 
 #ifdef USE_TX
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
 
   for (int i = 0; i < 100; i++) {
@@ -64,14 +64,14 @@ TEST_CASE("Creating an index on nodes", "[index]") {
 
 #ifdef USE_TX
   graph->commit_transaction();
-  tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
 
   auto idx = graph->create_index("Person", "id");
 
 #ifdef USE_TX
   graph->commit_transaction();
-  tx = graph->begin_transaction();
+  graph->begin_transaction();
 #endif
   REQUIRE(graph->get_index("Person", "id"));
   CHECK_THROWS_AS(graph->get_index("Actor", "id"), unknown_index);

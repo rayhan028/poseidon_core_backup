@@ -180,6 +180,21 @@ struct scan_nodes : public qop {
   std::vector<std::string> labels;
 };
 
+#ifdef QOP_RECOVERY
+struct continue_scan_nodes : public qop {
+  continue_scan_nodes(std::map<std::size_t, std::size_t> &cp, const std::string &l) : label(l), check_points(cp) {}
+  continue_scan_nodes() = default;
+  ~continue_scan_nodes() = default;
+
+  void dump(std::ostream &os) const override;
+
+  virtual void start(graph_db_ptr &gdb) override;
+
+  std::string label;
+  std::map<std::size_t, std::size_t> check_points;
+};
+#endif
+
 /**
  * index_scan represents a query operator for scanning an index on nodes for
  * a given property key/value. All the matching nodes are then forwarded to the
@@ -205,7 +220,7 @@ struct index_scan : public qop {
  * of the consume method.
  */
 struct foreach_from_relationship : public qop {
-  foreach_from_relationship(const std::string &l, int pos) : label(l), lcode(0), npos(pos) {}
+  foreach_from_relationship(const std::string &l, int pos = std::numeric_limits<int>::max()) : label(l), lcode(0), npos(pos) {}
   ~foreach_from_relationship() = default;
 
   void dump(std::ostream &os) const override;
@@ -224,9 +239,49 @@ struct foreach_from_relationship : public qop {
  */
 struct foreach_variable_from_relationship : public qop {
   foreach_variable_from_relationship(const std::string &l, std::size_t min,
-                                     std::size_t max, int pos)
+                                     std::size_t max, int pos = std::numeric_limits<int>::max())
       : label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
   ~foreach_variable_from_relationship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::string label;
+  dcode_t lcode;
+  std::size_t min_range, max_range;
+  int npos;
+};
+
+/**
+ * foreach_bi_dir_relationship is a query operator that scans all outgoing
+ * and incoming relationships of a given node. This node is the last elment 
+ * in the vector v of the consume method or given by the index position pos.
+ */
+struct foreach_all_relationship : public qop {
+  foreach_all_relationship(const std::string &l, int pos) : label(l), lcode(0), npos(pos) {}
+  ~foreach_all_relationship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::string label;
+  dcode_t lcode;
+  int npos;
+};
+
+/**
+ * foreach_variable_bi_dir_relationship is a query operator that scans all
+ * outgoing and incoming relationships of a given node recursively within the given range.
+ * This node is the last elment in the vector v of the consume method or given by the
+ * position index pos.
+ */
+struct foreach_variable_all_relationship : public qop {
+  foreach_variable_all_relationship(const std::string &l, std::size_t min,
+                                     std::size_t max, int pos)
+      : label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
+  ~foreach_variable_all_relationship() = default;
 
   void dump(std::ostream &os) const override;
 
@@ -244,7 +299,7 @@ struct foreach_variable_from_relationship : public qop {
  * of the consume method.
  */
 struct foreach_to_relationship : public qop {
-  foreach_to_relationship(const std::string &l, int pos) : label(l), lcode(0), npos(pos) {}
+  foreach_to_relationship(const std::string &l, int pos = std::numeric_limits<int>::max()) : label(l), lcode(0), npos(pos) {}
   ~foreach_to_relationship() = default;
 
   void dump(std::ostream &os) const override;
@@ -263,7 +318,7 @@ struct foreach_to_relationship : public qop {
  */
 struct foreach_variable_to_relationship : public qop {
   foreach_variable_to_relationship(const std::string &l, std::size_t min,
-                                   std::size_t max, int pos)
+                                   std::size_t max, int pos = std::numeric_limits<int>::max())
       : label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
   ~foreach_variable_to_relationship() = default;
 
@@ -478,6 +533,7 @@ struct group_by : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  std::mutex m_;
   std::size_t grpkey_cnt_;
   std::vector<std::string> grpkey_set_;
   std::vector<std::size_t> grpkey_pos_;
@@ -485,6 +541,22 @@ struct group_by : public qop {
   std::unordered_map<std::size_t, qr_tuple> grp_tpl_map_;
   std::vector<std::pair<std::string, std::size_t>> aggrs_;
   std::unordered_map<std::size_t, std::size_t> grp_size_map_;
+};
+
+/**
+ * distinct_tuples implements an operator for outputing distinct
+ * result tuples.
+ */
+struct distinct_tuples : public qop {
+  distinct_tuples() = default;
+  ~distinct_tuples() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::mutex m_;
+  std::set<std::string> keys_;
 };
 
 /**
@@ -511,7 +583,7 @@ struct filter_tuple : public qop {
  * already existing query results in the tuple.
  */
 struct qr_tuple_append : public qop {
-  qr_tuple_append(std::function<query_result(qr_tuple &)> func)
+  qr_tuple_append(std::function<query_result(const qr_tuple &)> func)
       : func_(func) {}
   ~qr_tuple_append() = default;
 
@@ -521,7 +593,7 @@ struct qr_tuple_append : public qop {
 
   void finish(graph_db_ptr &gdb);
 
-  std::function<query_result(qr_tuple &)> func_;
+  std::function<query_result(const qr_tuple &)> func_;
 };
 
 /**
@@ -530,7 +602,8 @@ struct qr_tuple_append : public qop {
  * pipeline(s).
  */
 struct union_all_qres : public qop {
-  union_all_qres() = default;
+  union_all_qres() : init(true) {}
+  // union_all_qres() = default;
   ~union_all_qres() = default;
 
   void dump(std::ostream &os) const override;
@@ -541,16 +614,37 @@ struct union_all_qres : public qop {
   void finish(graph_db_ptr &gdb);
 
   bool is_binary() const override { return true; }
+  bool init;
+  std::list<qr_tuple> res_;
+};
+
+/**
+ * count_result implements an operator that counts the
+ * query tuples of the query pipeline.
+ */
+struct count_result : public qop {
+  count_result() : count_(0) {}
+  ~count_result() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+
+  uint64_t count_;
 };
 
 /**
  * shortest_path_opr implements an operator that finds the
  * unweighted shortest path between two nodes.
+ * all_spaths_ specfies if all shortest path of equal 
+ * distance are searched.
  */
 struct shortest_path_opr : public qop {
   shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
-    rship_predicate pred, bool b) : bidirectional_(b),
-                  rpred_(pred), start_stop_(uv) {}
+    rship_predicate pred, bool bidir, bool all) : bidirectional_(bidir),
+          all_spaths_(all), rpred_(pred), start_stop_(uv) {}
   ~shortest_path_opr() = default;
 
   void dump(std::ostream &os) const override;
@@ -561,6 +655,7 @@ struct shortest_path_opr : public qop {
 
   path_item path_;
   bool bidirectional_;
+  bool all_spaths_;
   rship_predicate rpred_;
   std::pair<std::size_t, std::size_t> start_stop_;
 };
@@ -568,11 +663,13 @@ struct shortest_path_opr : public qop {
 /**
  * weighted_shortest_path_opr implements an operator that finds the
  * weighted shortest path between two nodes.
+ * all_spaths_ specfies if all shortest path of equal 
+ * weight are searched.
  */
 struct weighted_shortest_path_opr : public qop {
-  weighted_shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
-    rship_predicate pred, rship_weight weight, bool b) : bidirectional_(b),
-                  rpred_(pred), rweight_(weight), start_stop_(uv) {}
+  weighted_shortest_path_opr(std::pair<std::size_t, std::size_t> uv, rship_predicate pred,
+    rship_weight weight, bool bidir, bool all) : bidirectional_(bidir), all_spaths_(all),
+      rpred_(pred), rweight_(weight), start_stop_(uv) {}
   ~weighted_shortest_path_opr() = default;
 
   void dump(std::ostream &os) const override;
@@ -581,6 +678,7 @@ struct weighted_shortest_path_opr : public qop {
 
   path_item path_;
   bool bidirectional_;
+  bool all_spaths_;
   rship_predicate rpred_;
   rship_weight rweight_;
   std::pair<std::size_t, std::size_t> start_stop_;
@@ -643,6 +741,18 @@ struct end_pipeline : public qop {
   void process();
 };
 
+#ifdef QOP_RECOVERY
+/**
+ * persist is a query operator to persist intermediate results to storage for recovery
+ */
+struct persist_result : public qop {
+  persist_result() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+};
+#endif 
 /**
  * Macro to simplify definition of arguments in project etc.
  * Usage: Instead of requiring to define a lambda expression

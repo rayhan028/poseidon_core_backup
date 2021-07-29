@@ -96,6 +96,29 @@ private:
 };
 
 /**
+ * left_outerjoin implements a left outerjoin operator for merging tuples 
+ * of two queries based on the given join condition. 
+ * Dangling tuples are padded with "null_val" 
+ */
+struct left_outerjoin : public qop {
+  left_outerjoin(std::function<bool(const qr_tuple &, const qr_tuple &)> pred) : pred_(pred) {} 
+  ~left_outerjoin() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void finish(graph_db_ptr &gdb);
+  
+  bool is_binary() const override { return true; }
+  
+private:
+  std::vector<qr_tuple> input_;
+  std::function<bool(const qr_tuple &, const qr_tuple &)> pred_;
+};
+
+/**
  * left_outerjoin_on_node implements a left outerjoin operator for merging tuples
  * of two queries if the node at a given position in the left tuple is the same as
  * the node at another given position in the right tuple. The node positions are

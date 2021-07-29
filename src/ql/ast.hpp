@@ -29,7 +29,10 @@
 #include <tao/pegtl/contrib/parse_tree.hpp>
 
 #include "qlang_grammar.hpp"
+
+#ifdef USE_LLVM
 #include "filter_expression.hpp"
+#endif 
 
 struct ast_op;
 
@@ -81,7 +84,21 @@ struct ast_op {
         create_node, 
         create_rship 
     };
-    using param_type = boost::variant<int, std::string, expr, proj_spec_list, jproperty_list, aggr_spec_list>;
+
+#ifdef USE_LLVM
+    using param_type = boost::variant<int, 
+                                        std::string, 
+                                        expr,
+                                        proj_spec_list, 
+                                        jproperty_list, 
+                                        aggr_spec_list>;
+#else
+using param_type = boost::variant<int, 
+                                        std::string, 
+                                        proj_spec_list, 
+                                        jproperty_list, 
+                                        aggr_spec_list>;    
+#endif
 
     /**
      * Constructor
@@ -108,11 +125,12 @@ struct ast_op {
      */
     void add_param(const std::string& s) { params_.push_back(s); }
 
+#ifdef USE_LLVM
     /**
      * Add an expression as parameter (used for conditions).
      */
     void add_param(expr ex) { params_.push_back(ex); }
-
+#endif
     /**
      * Add a projection specification list as parameter (used for projection).
      */

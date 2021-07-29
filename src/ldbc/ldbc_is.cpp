@@ -13,6 +13,10 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
+#ifndef USE_PMDK
+#undef RUN_INDEXED
+#endif
+
 // ------------------------------------------------------------------------------------------------------------------------
 
 void ldbc_is_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId) {
@@ -525,9 +529,17 @@ void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .from_node("Comment")
                 .from_relationships(":hasCreator")
                 .to_node("Person")
-                .outerjoin_on_rship({4, 2}, q1)
-                .append_to_qr_tuple([&](qr_tuple &v) {
-                  return v[8].type() == typeid(null_val) ?
+                .outerjoin(q1, [&](const qr_tuple &lv, const qr_tuple &rv) {
+                  auto connected = false;
+                  auto src = boost::get<node *>(lv[4]);
+                  auto des = boost::get<node *>(rv[2]);
+                  gdb->foreach_from_relationship_of_node((*src), [&](auto &r) {
+                    if (r.to_node_id() == des->id())
+                      connected = true;
+                  });
+                  return connected; })
+                .append_to_qr_tuple([&](const qr_tuple &v) {
+                  return v[7].type() == typeid(null_val) ?
                     query_result(std::string("false")) : query_result(std::string("true")); })
                 .project({PExpr_(2, pj::uint64_property(res, "id")),
                           PExpr_(2, pj::string_property(res, "content")),
@@ -535,7 +547,7 @@ void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(4, pj::uint64_property(res, "id")),
                           PExpr_(4, pj::string_property(res, "firstName")),
                           PExpr_(4, pj::string_property(res, "lastName")),
-                          PVar_(9)})
+                          PVar_(8)})
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
@@ -579,9 +591,17 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .from_node("Comment")
                 .from_relationships(":hasCreator")
                 .to_node("Person")
-                .outerjoin_on_rship({4, 2}, q1)
-                .append_to_qr_tuple([&](qr_tuple &v) {
-                  return v[8].type() == typeid(null_val) ?
+                .outerjoin(q1, [&](const qr_tuple &lv, const qr_tuple &rv) {
+                  auto connected = false;
+                  auto src = boost::get<node *>(lv[4]);
+                  auto des = boost::get<node *>(rv[2]);
+                  gdb->foreach_from_relationship_of_node((*src), [&](auto &r) {
+                    if (r.to_node_id() == des->id())
+                      connected = true;
+                  });
+                  return connected; })
+                .append_to_qr_tuple([&](const qr_tuple &v) {
+                  return v[7].type() == typeid(null_val) ?
                     query_result(std::string("false")) : query_result(std::string("true")); })
                 .project({PExpr_(2, pj::uint64_property(res, "id")),
                           PExpr_(2, pj::string_property(res, "content")),
@@ -589,7 +609,7 @@ void ldbc_is_query_7_p(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(4, pj::uint64_property(res, "id")),
                           PExpr_(4, pj::string_property(res, "firstName")),
                           PExpr_(4, pj::string_property(res, "lastName")),
-                          PVar_(9)})
+                          PVar_(8)})
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
@@ -635,9 +655,17 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                 .from_node("Comment")
                 .from_relationships(":hasCreator")
                 .to_node("Person")
-                .outerjoin_on_rship({4, 2}, q1)
-                .append_to_qr_tuple([&](qr_tuple &v) {
-                  return v[8].type() == typeid(null_val) ?
+                .outerjoin(q1, [&](const qr_tuple &lv, const qr_tuple &rv) {
+                  auto connected = false;
+                  auto src = boost::get<node *>(lv[4]);
+                  auto des = boost::get<node *>(rv[2]);
+                  gdb->foreach_from_relationship_of_node((*src), [&](auto &r) {
+                    if (r.to_node_id() == des->id())
+                      connected = true;
+                  });
+                  return connected; })
+                .append_to_qr_tuple([&](const qr_tuple &v) {
+                  return v[7].type() == typeid(null_val) ?
                     query_result(std::string("false")) : query_result(std::string("true")); })
                 .project({PExpr_(2, pj::uint64_property(res, "id")),
                           PExpr_(2, pj::string_property(res, "content")),
@@ -645,7 +673,7 @@ void ldbc_is_query_7_c(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           PExpr_(4, pj::uint64_property(res, "id")),
                           PExpr_(4, pj::string_property(res, "firstName")),
                           PExpr_(4, pj::string_property(res, "lastName")),
-                          PVar_(9)})
+                          PVar_(8)})
                 .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);

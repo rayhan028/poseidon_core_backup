@@ -99,6 +99,11 @@ public:
     StructType *qrResultTy;
     PointerType *qrResultPtrTy;
 
+    StructType *queryContextTy;
+    PointerType *queryContextPtrTy;
+
+    StructType *queryTimePointTy;
+
 //++++++++++++++++++ RSHIP TYPE ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     StructType *rshipTy;
     PointerType *rshipPtrTy;
@@ -219,6 +224,51 @@ public:
     FunctionType *get_rship_res_at_ty;
     FunctionType *get_mat_res_size_ty;
 
+    FunctionType *get_now_ty;
+    FunctionType *add_time_diff_ty;
+    FunctionType *notifyFctTy;
+//++++++++++++++++++ GROUP_BY FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+    FunctionType *get_node_grpkey_ty;
+    FunctionType *get_rship_grpkey_ty;
+    FunctionType *get_int_grpkey_ty;
+    FunctionType *get_string_grpkey_ty;
+    FunctionType *get_time_grpkey_ty;
+    FunctionType *add_to_group_ty;
+    FunctionType *finish_group_by_ty;
+
+//++++++++++++++++++ DEMAT FUNCTIONS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    FunctionType *grp_demat_at_ty;
+    FunctionType *get_grp_rs_count_ty;
+    FunctionType *clear_mat_tuple_ty;
+    FunctionType *int_to_reg_ty;
+    FunctionType *str_to_reg_ty;
+    FunctionType *node_to_reg_ty;
+    FunctionType *rship_to_reg_ty;
+    FunctionType *time_to_reg_ty;
+
+//++++++++++++++++++ AGGR FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    FunctionType *init_grp_aggr_ty;
+    FunctionType *get_group_cnt_ty;
+    FunctionType *get_total_group_cnt_ty;
+    FunctionType *get_group_sum_int_ty;
+    FunctionType *get_group_sum_double_ty;
+    FunctionType *get_group_sum_uint_ty;
+
+    FunctionType *append_to_tuple_ty;
+    FunctionType *get_qr_tuple_ty;
+
+    FunctionType *insert_join_id_input_ty;
+    FunctionType *get_join_id_at_ty;
+
+    FunctionType *collect_tuple_hash_join_ty;
+    FunctionType *insert_join_bucket_input_ty;
+    FunctionType *get_hj_input_size_ty;
+    FunctionType *get_hj_input_id_ty;
+    FunctionType *get_query_result_ty;
+
+    FunctionType *node_has_property_ty;
+    FunctionType *rship_has_property_ty;
+    FunctionType *apply_has_property_ty;
 //++++++++++++++++++ DICT FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     FunctionType *lookup_label_type;
     FunctionType *lookup_dcode_type;
@@ -233,6 +283,7 @@ public:
     FunctionType *create_rship_type;
 
     FunctionType *foreach_variable_from_type;
+    FunctionType *persis_tuple_type;
 
 //++++++++++++++++++ PROPERTY FUNCTIONS ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     FunctionType *pset_get_item_at_type;

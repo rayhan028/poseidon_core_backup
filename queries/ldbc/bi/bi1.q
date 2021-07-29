@@ -1,23 +1,22 @@
-auto Lambda1 = [&](auto res) {
-    pj::has_label(res, "Comment") ?
-    std::string("True") : std::string("False");
+auto isComment = [&](auto res) {
+    return pj::has_label(res, "Comment") ?
+    query_result(std::string("True")) : query_result(std::string("False"));
 };
 
-auto Lambda2 = [&](auto res) {
-    auto len = boost::get<int>(pj::int_property(res, "length"));
+auto lengthCategory = [&](auto res) {
+    auto len = boost::get<int>(res);
     return (len >= 0 && len < 40) ? query_result(std::string("0")) :
             (len >= 40 && len < 80) ? query_result(std::string("1")) :
             (len >= 80 && len < 160) ? query_result(std::string("2")) :
             query_result(std::string("3"));
 };
 
-Sort([$0:DESC, $1:ASC, $2:ASC],
-    Aggregate([$0:COUNT, $2:AVG, $2:SUM, $0:PCOUNT],
-        Group([$0, $1, $3],
-            Project([$0.creationDate:datetime, $0.Lambda1, $0.length:int, $0.Lambda2],
-                Filter($0.creationDate < %date,
-                    NodeScan(["Post", "Comment"])
-                )
+Sort([$0:int DESC, $1:string ASC, $2:string ASC],
+    GroupBy([$0, $1, $3], 
+            [count($0:int), avg($2:int), sum($2:int), pcount($0:int)],
+        Project([year($0.creationDate:datetime), isComment($0), $0.length:int, lengthCategory($0.length:int)],
+            Filter($0.creationDate < %date,
+                NodeScan(["Post", "Comment"])
             )
         )
     )

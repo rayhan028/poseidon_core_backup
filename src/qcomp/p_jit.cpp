@@ -28,7 +28,11 @@ p_jit::p_jit(ExitOnError ExitOnErr)
 #else
         ObjCache(std::make_unique<PJitObjectCache>()),
 #endif
+#if USE_CACHE
+          CompileLayer(*ES, ObjLinkingLayer, std::make_unique<SimpleCompiler>(*TM, ObjCache.get())),
+#else
           CompileLayer(*ES, ObjLinkingLayer, std::make_unique<SimpleCompiler>(*TM)),
+#endif
           OptimizeLayer(*ES, CompileLayer) {
     //ObjLinkingLayer.setNotifyLoaded(createNotifyLoadedFtor());
     auto exp_jit_dylib = ES->createJITDylib("Main");
@@ -77,13 +81,9 @@ p_jit::p_jit(ExitOnError ExitOnErr)
         M[Mangle("dict_lookup_dcode")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&lookup_dc), JITSymbolFlags::Exported);
         M[Mangle("create_node")] = JITEvaluatedSymbol(
-                pointerToJITTargetAddress(&create_node), JITSymbolFlags::Exported);
+                pointerToJITTargetAddress(&create_node_func), JITSymbolFlags::Exported);
         M[Mangle("create_ship")] = JITEvaluatedSymbol(
-                pointerToJITTargetAddress(&create_rship), JITSymbolFlags::Exported);
-        M[Mangle("foreach_variable_from")] = JITEvaluatedSymbol(
-                pointerToJITTargetAddress(&foreach_variable_from), JITSymbolFlags::Exported);
-        M[Mangle("foreach_variable_from")] = JITEvaluatedSymbol(
-                pointerToJITTargetAddress(&foreach_variable_from), JITSymbolFlags::Exported);
+                pointerToJITTargetAddress(&create_rship_func), JITSymbolFlags::Exported);
         M[Mangle("mat_reg_value")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&mat_reg_value), JITSymbolFlags::Exported);
         M[Mangle("collect_tuple")] = JITEvaluatedSymbol(
@@ -119,7 +119,87 @@ p_jit::p_jit(ExitOnError ExitOnErr)
         M[Mangle("get_next_rship_fev")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_next_rship_fev), JITSymbolFlags::Exported);            
         M[Mangle("fev_list_end")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&fev_list_end), JITSymbolFlags::Exported);  
+        M[Mangle("fev_list_end")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&fev_list_end), JITSymbolFlags::Exported);            
+        M[Mangle("get_node_grpkey")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_node_grpkey), JITSymbolFlags::Exported);  
+        M[Mangle("get_rship_grpkey")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_rship_grpkey), JITSymbolFlags::Exported);  
+        M[Mangle("get_int_grpkey")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_int_grpkey), JITSymbolFlags::Exported);  
+        M[Mangle("get_string_grpkey")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_string_grpkey), JITSymbolFlags::Exported);  
+        M[Mangle("get_time_grpkey")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_time_grpkey), JITSymbolFlags::Exported);
+        M[Mangle("add_to_group")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&add_to_group), JITSymbolFlags::Exported);  
+        M[Mangle("finish_group_by")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&finish_group_by), JITSymbolFlags::Exported); 
+        M[Mangle("clear_mat_tuple")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&clear_mat_tuple), JITSymbolFlags::Exported);
+        M[Mangle("int_to_reg")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&int_to_reg), JITSymbolFlags::Exported);
+        M[Mangle("str_to_reg")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&str_to_reg), JITSymbolFlags::Exported);
+        M[Mangle("node_to_reg")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&node_to_reg), JITSymbolFlags::Exported);
+        M[Mangle("rship_to_reg")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&rship_to_reg), JITSymbolFlags::Exported);
+        M[Mangle("time_to_reg")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&time_to_reg), JITSymbolFlags::Exported);  
+        M[Mangle("grp_demat_at")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&grp_demat_at), JITSymbolFlags::Exported);
+        M[Mangle("get_grp_rs_count")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_grp_rs_count), JITSymbolFlags::Exported);  
+        M[Mangle("get_group_cnt")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_group_count), JITSymbolFlags::Exported);
+        M[Mangle("init_grp_aggr")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&init_grp_aggr), JITSymbolFlags::Exported);
+        M[Mangle("get_group_sum_int")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_group_sum_int), JITSymbolFlags::Exported);
+        M[Mangle("get_group_sum_double")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_group_sum_double), JITSymbolFlags::Exported);
+        M[Mangle("get_group_sum_uint")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_group_sum_uint), JITSymbolFlags::Exported);
+        M[Mangle("get_total_group_cnt")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_total_group_count), JITSymbolFlags::Exported);
+        M[Mangle("append_to_tuple")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&append_to_tuple), JITSymbolFlags::Exported);
+        M[Mangle("get_qr_tuple")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_qr_tuple), JITSymbolFlags::Exported);
+        M[Mangle("insert_join_id_input")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&insert_join_id_input), JITSymbolFlags::Exported);
+        M[Mangle("get_join_id_at")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_join_id_at), JITSymbolFlags::Exported);
+        M[Mangle("collect_tuple_hash_join")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&collect_tuple_hash_join), JITSymbolFlags::Exported);
+        M[Mangle("insert_join_bucket_input")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&insert_join_bucket_input), JITSymbolFlags::Exported);
+        M[Mangle("get_hj_input_size")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_hj_input_size), JITSymbolFlags::Exported);
+        M[Mangle("get_hj_input_id")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_hj_input_id), JITSymbolFlags::Exported);
+        M[Mangle("get_query_result")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_query_result), JITSymbolFlags::Exported);
+        M[Mangle("node_has_property")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&node_has_property), JITSymbolFlags::Exported);
+        M[Mangle("rship_has_property")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&rship_has_property), JITSymbolFlags::Exported);
+        M[Mangle("apply_has_property")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&apply_has_property), JITSymbolFlags::Exported);
+        M[Mangle("get_now")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_now), JITSymbolFlags::Exported);
+        M[Mangle("add_time_diff")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&add_time_diff), JITSymbolFlags::Exported);
+        M[Mangle("end_notify")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&end_notify), JITSymbolFlags::Exported);
+#ifdef QOP_RECOVERY
+        M[Mangle("persist_tuple")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&persist_tuple), JITSymbolFlags::Exported);
+#endif
+        M[Mangle("print_int")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&print_int), JITSymbolFlags::Exported);
 
         ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
     }
@@ -130,7 +210,9 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
     auto K = ES->allocateVModule();
     ModuleKeys.push_back(K);
 
-    /*auto obj = ObjCache->getCachedObject(*M);
+#if USE_CACHE
+    std::cout << "Use cache" << std::endl;
+    auto obj = ObjCache->getCachedObject(*M);
     if(!obj) {
         M.~unique_ptr();
         return obj.takeError();
@@ -140,10 +222,11 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
     if(obj->hasValue()) {
         M.~unique_ptr();
         return ObjLinkingLayer.add(*ES->getJITDylibByName("Main"), std::move(obj->getValue()));
-    }*/
+    }
+#endif
 
     OptimizeLayer.setTransform(Optimizer(3));
-
+    
     return OptimizeLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx), K);
     //cantFail(CompileLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx)));
 }
@@ -208,5 +291,6 @@ std::unique_ptr<DynamicLibrarySearchGenerator> p_jit::createHostProcessResolver(
     if(!*R) {
         return nullptr;
     }
+
     return std::move(*R);
 }

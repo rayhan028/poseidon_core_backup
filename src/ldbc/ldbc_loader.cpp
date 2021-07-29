@@ -265,7 +265,7 @@ void load_snb_data(graph_db_ptr &graph,
   }
 
 #ifdef CREATE_INDEX
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
   graph->create_index("Person", "id");
   graph->create_index("Post", "id");
   graph->create_index("Comment", "id");
@@ -282,7 +282,7 @@ void fptree_recovery(graph_db_ptr &graph){
 
   std::vector<index_id> indexes;
 #ifdef FPTree
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
   indexes.push_back(graph->get_index("Person", "id"));
   indexes.push_back(graph->get_index("Post", "id"));
   indexes.push_back(graph->get_index("Comment", "id"));
