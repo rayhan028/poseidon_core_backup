@@ -938,7 +938,7 @@ void graph_db::delete_node(node::id_t id) {
   if (n.from_rship_list != UNKNOWN || n.to_rship_list != UNKNOWN) {
     if (has_valid_from_rships(n, txid) || has_valid_to_rships(n, txid)) {
       // in this case we have to abort
-      spdlog::info("abort delete of node #{}", n.id());
+      // spdlog::info("abort delete of node #{}", n.id());
       throw orphaned_relationship();
     }
   }

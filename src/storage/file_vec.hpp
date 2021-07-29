@@ -23,6 +23,7 @@
 #include "exceptions.hpp"
 #include "mm_file.hpp"
 #include <string>
+#include <mutex>
 #include <cstdio>
 
 #define DEFAULT_VEC_SIZE 100000
@@ -187,6 +188,7 @@ public:
    * slot as used.
    */
   void store_at(offset_t idx, T &&o) {
+    const std::lock_guard<std::mutex> lock(mtx_);
     if (idx >= capacity_)
       throw index_out_of_range();
     data_[idx] = std::move(o);
@@ -203,6 +205,7 @@ public:
    * pointer(!) to the record as a pair.
    */
   std::pair<offset_t, T *> append(T &&o, std::function<void(offset_t)> callback = nullptr) {
+    const std::lock_guard<std::mutex> lock(mtx_);
     if (last_ >= capacity_)
       throw index_out_of_range();
     data_[last_] = std::move(o);
@@ -221,12 +224,14 @@ public:
    * pointer(!) to the record as a pair.
    */
   std::pair<offset_t, T *> store(T &&o, std::function<void(offset_t)> callback = nullptr) {
+    const std::lock_guard<std::mutex> lock(mtx_);
     data_[first_] = std::move(o);
     slots_[first_ / 64] |= 0x8000000000000000 >> (first_ % 64);
     if (callback != nullptr) callback(first_);
     auto pos = first_;
     first_ = find_first_available(first_);
     last_ = std::max(last_+1, pos);
+    // std::cout << "filevec::store #" << pos << std::endl;
     return std::make_pair(pos, &data_[pos]);  
   }
 
@@ -234,6 +239,7 @@ public:
    * Erase the record at the given position, i.e. mark the slot as available.
    */
   void erase(offset_t idx) {
+    const std::lock_guard<std::mutex> lock(mtx_);
     memset(&data_[idx], 0, sizeof(T));
     offset_t pos = idx / 64;
     auto v = slots_[pos];
@@ -264,6 +270,7 @@ public:
    * the chunked_vec has always an offset=0.
    */
    const T &const_at(offset_t idx) const {
+      const std::lock_guard<std::mutex> lock(mtx_);
       if (idx >= capacity_)
         throw index_out_of_range();
       if (!is_used(idx))
@@ -279,6 +286,7 @@ public:
    * Note, that the corresponding slot is not marked as used.
    */
   T &at(offset_t idx) {
+    const std::lock_guard<std::mutex> lock(mtx_);
     if (idx >= capacity_)
       throw index_out_of_range();
     if (!is_used(idx))
@@ -347,6 +355,7 @@ private:
     uint64_t* slots_;
     offset_t capacity_;
     offset_t first_, last_; // TODO
+    mutable std::mutex mtx_; 
 };
 
 #endif
