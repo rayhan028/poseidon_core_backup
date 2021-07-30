@@ -42,6 +42,7 @@ dict::~dict() {
  auto pop = pmem::obj::pool_by_vptr(this);
   pmem::obj::transaction::run(pop, [&] {
     pmem::obj::delete_persistent<string_pool>(pool_);
+  });
 #endif
 }
 
