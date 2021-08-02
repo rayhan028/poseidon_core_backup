@@ -35,7 +35,7 @@ class dict {
   using dict_bimap_type = boost::bimap<dcode_t, std::string>;
 
 public:
-  dict();
+  dict(const std::string& prefix = "", uint32_t init_pool_size = 100000);
   ~dict() = default;
 
   /**
