@@ -501,6 +501,7 @@ TEST_CASE("Checking that a relationship insert is undone after abort", "[transac
       found = true;
     });
     REQUIRE(!found);
+    gdb->abort_transaction();
   }
 
   graph_pool::destroy(pool);

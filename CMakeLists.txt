@@ -13,7 +13,7 @@ endif()
 
 option(USE_PMDK       "Use Intel PMDK"                         ON)
 option(USE_MMFILE     "Use memory mapped file storage"         OFF)
-option(USE_HDICT      "Use hdict implementation"               ON)
+option(USE_HDICT      "Use hdict implementation"               OFF)
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
 option(USE_LLVM       "Use LLVM for query compilation"         ON)
