@@ -46,7 +46,7 @@ public:
     pop = pool_base::create(bench_path, "", PMEMOBJ_POOL_SIZE);
     transaction::run(pop, [&] { dict_p = p_make_ptr<dict>(); });
 #else
-    dict_p = p_make_ptr<dict>("", 200000);
+    dict_p = p_make_ptr<dict>("", 20000);
 #endif
   }
 
