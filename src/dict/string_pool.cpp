@@ -88,11 +88,20 @@ dcode_t string_pool::add(const std::string& str) {
 #if USE_MMFILE
         std::cerr << "FATAL: cannot grow memory mapped file for dictionary - aborting." << std::endl;
 #else
+        auto old_size = size_;
         size_ += expand_;
         // std::cout << "expand to " << size_ << std::endl;
 #ifdef USE_PMDK
+    auto pop = pmem::obj::pool_by_vptr(this);
+    p_ptr<char []> new_pool;
+    pmem::obj::transaction::run(pop, [&] {
+        new_pool = pmem::obj::make_persistent<char[]>(size_);
+        pmemobj_memcpy_persist(pop.handle(), new_pool, pool_, old_size);
+        pmem::obj::delete_persistent<char[]>(pool_);
+    });
+    pool_  = new_pool;
 #else
-        pool_ = static_cast<char *>(realloc(pool_, size_));
+    pool_ = static_cast<char *>(realloc(pool_, size_));
 #endif
 #endif
     }
