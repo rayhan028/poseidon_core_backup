@@ -349,7 +349,7 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     function_types["get_tx"] = getTxFctTy;
     function_types["get_valid_node"] = getValidNodeFctTy;
     function_types["apply_pexpr"] = apply_pexpr_ty;
-    function_types["print_int"] = FunctionType::get(Type::getVoidTy(*ctx_), {int64Ty}, false);
+    function_types["print_int"] = FunctionType::get(Type::getVoidTy(*ctx_), {boolTy}, false);
     function_types["check_qr"] = FunctionType::get(Type::getVoidTy(*ctx_), {int64PtrTy}, false);
     function_types["get_join_vec_size"] = get_join_vec_size_ty;
     function_types["get_join_vec_arr"] = get_join_vec_arr_ty;

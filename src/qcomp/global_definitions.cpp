@@ -60,6 +60,7 @@ bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_C
 }
 
  relationship *rship_by_id(graph_db *gdb, offset_t id) {
+     std::cout << "ID: " << id << std::endl;
     return &gdb->rship_by_id(id);
 }
 
@@ -253,6 +254,7 @@ std::lock_guard<std::mutex> lck(mat_reg_mut);
 auto & tp = tp_m[std::this_thread::get_id()];
 
 {
+    std::cout << "collect" << std::endl;
     rs->append(tp);
     /*if(print) {
         std::cout << "{";
@@ -441,7 +443,7 @@ std::set<unsigned> pos_set;
 }
 
 int double_to_reg(qr_tuple* qr, int pos) {
-    
+    return boost::get<double>(qr->at(pos));
 }
 
  node* node_to_reg(qr_tuple* qr, int pos) {

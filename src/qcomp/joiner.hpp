@@ -31,5 +31,15 @@ public:
     qr_tuple * get_query_result(int jid, int bucket, int idx);
 };
 
+/*
+class base_join {
+    std::vector<qr_tuple> tuples_;
+public:
+    base_joiner() = default;
+
+    virtual insert_tuple(qr_tuple *qr);
+    virtual int get_input_size();
+}*/
+
 
 #endif //POSEIDON_CORE_JOINER_HPP
