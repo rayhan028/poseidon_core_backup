@@ -78,6 +78,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     BasicBlock *concat_qrl = BasicBlock::Create(ctx.getContext(), "concat_qrl", main_function);
     BasicBlock *incr_loop = BasicBlock::Create(ctx.getContext(), "incr_loop", main_function);
     BasicBlock *undang = BasicBlock::Create(ctx.getContext(), "undang", main_function);
+    BasicBlock *undang_collect = BasicBlock::Create(ctx.getContext(), "undang_collect", main_function);
     BasicBlock *return_handle = BasicBlock::Create(ctx.getContext(), "handle_ret", main_function);
     BasicBlock *consume = BasicBlock::Create(ctx.getContext(), "consume", main_function);
     BasicBlock *end = BasicBlock::Create(ctx.getContext(), "end", main_function);
@@ -204,7 +205,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
                                                       
                                                       // check if the dest node is the rhs node
                                                       auto concat_cond = ctx.getBuilder().CreateICmpEQ(rhs_id, to_node);
-                                                      ctx.getBuilder().CreateCall(print_int, {concat_cond});
 
                                                       // handle dangling node
                                                       ctx.getBuilder().CreateCondBr(concat_cond, undang, for_each_next);
@@ -296,8 +296,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
             auto dang = ctx.getBuilder().CreateLoad(dangling);
             auto is_dangling = ctx.getBuilder().CreateICmpEQ(dang, ctx.LLVM_ONE);
 
-            ctx.getBuilder().CreateCondBr(is_dangling, concat_qrl, loop_body);
-            //ctx.getBuilder().CreateBr(loop_body);
+            ctx.getBuilder().CreateCondBr(is_dangling, undang_collect, loop_body);
+
+            ctx.getBuilder().SetInsertPoint(undang_collect);
+            ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, dangling);
+            ctx.getBuilder().CreateBr(concat_qrl);
         } else {
             ctx.getBuilder().CreateBr(loop_body);
         }

@@ -209,9 +209,7 @@ int main() {
 					{"id", boost::any(id++)}},
 					false);
 			graph->add_relationship(p, b, ":likes", {{"id", boost::any(id++)}}, false);
-			graph->add_relationship(p, p2, ":likes", {}, false);
-			graph->add_relationship(p, b, ":HAS_READ", {}, false);
-			graph->add_relationship(b, p, ":HAS_READ", {}, false);
+
 		}
 		
 		graph->commit_transaction();
@@ -235,14 +233,12 @@ int main() {
 		return true;
 	};
 
-  auto sort_fct = [&](const qr_tuple &qr1, const qr_tuple &qr2) {
+    auto sort_fct = [&](const qr_tuple &qr1, const qr_tuple &qr2) {
                         return boost::get<int>(qr1[0]) > boost::get<int>(qr2[0]); };
 
 	auto simp = Scan("Person", LeftJoin({0,0}, Collect(), Scan("Person", End())));
 	std::cout << "Node size: " << sizeof(relationship) << std::endl;
 	scan_task::callee_ = &scan_task::scan;	
-
-
 
 	auto cs1 = std::chrono::steady_clock::now();
 	queryEngine.generate(simp, false);
@@ -260,17 +256,44 @@ int main() {
 	ab.arg(2, &j1);
 	ab.arg(5, &j1);
 
-	result_set rs;
+	std::cout << "Size of nodes: " << sizeof(node) << std::endl;
+	std::cout << "Size of rships: " << sizeof(relationship) << std::endl;
 
-	std::cout << rs << std::endl;
+	result_set rs;
+	result_set rs2;
+
+	auto qn1 = query(graph).all_nodes({"Person", "Book"});
+	auto qn2 = query(graph).all_nodes("Book");
+
+	auto qrs = query(graph).all_rships(":likes").pred_join([&](const qr_tuple &l, const qr_tuple &r) -> bool{
+		auto rl = boost::get<relationship*>(l[0]);
+		auto nr = boost::get<node*>(r[0]);
+		return rl->src_node == nr->id();
+	}, qn1).pred_join([&](const qr_tuple &l, const qr_tuple &r) -> bool {
+		auto rl = boost::get<relationship*>(l[0]);
+		auto nr = boost::get<node*>(r[0]);
+		return rl->dest_node == nr->id();
+	}, qn1).collect(rs);
+
+	auto qrl = query(graph).all_nodes("Person").from_relationships(":likes").to_node("Book").collect(rs);
+
+	auto testq = query(graph).all_nodes("Person");
+	auto testqm = query(graph).all_nodes("Person").outerjoin_on_rship({0,0}, testq).collect(rs);
+
 	auto js = std::chrono::steady_clock::now();
+
 	//queryEngine.run(&rs, ab, 24);
 	//queryEngine.finish(&rs, ab);
-	queryEngine.run(&rs);
+	queryEngine.run(&rs2);
 	//queryEngine.finish(&rs, ab);
+	//graph->begin_transaction();
+	//query::start({&testq, &testqm});
+	//query::start({&qrl});
+	//graph->commit_transaction();
+	
 	auto je = std::chrono::steady_clock::now();
 	
-	std::cout << rs.data.size() << std::endl;
+	std::cout << rs2.data.size() << std::endl;
 	std::cout << "JIT: "
 		<< std::chrono::duration_cast<std::chrono::milliseconds>(je -
 																	js)
