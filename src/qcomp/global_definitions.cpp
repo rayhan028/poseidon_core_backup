@@ -1,7 +1,19 @@
 #include "global_definitions.hpp"
 
 
-boost::barrier pipeline_barrier(24);
+thread_local std::map<int, std::string> str_result;
+thread_local std::map<int, uint64_t> uint_result;
+thread_local std::map<int, boost::posix_time::ptime> time_result;
+thread_local int str_res_ctr = 0;
+
+thread_local std::map<int, node_description> descs;
+thread_local std::map<int, rship_description> rdescs;
+thread_local qr_tuple mat_tuple;
+
+thread_local qr_tuple rec;
+thread_local std::vector<relationship*> fev_rship_list;
+thread_local std::vector<relationship*>::iterator fev_list_iter;
+thread_local std::string grpkey_buffer;
 
 query_time_point get_now() {
     return std::chrono::high_resolution_clock::now();
@@ -74,14 +86,6 @@ bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_C
  const property_set *pset_get_item_at(graph_db *gdb, offset_t id) {
     return &gdb->get_node_properties()->get(id);
 }
-
-thread_local std::map<int, std::string> str_result;
-thread_local std::map<int, uint64_t> uint_result;
-thread_local std::map<int, boost::posix_time::ptime> time_result;
-thread_local int str_res_ctr = 0;
-
-thread_local std::map<int, node_description> descs;
-thread_local std::map<int, rship_description> rdescs;
 
 std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
 
@@ -204,7 +208,7 @@ extern "C" relationship* create_rship_func(graph_db *gdb, char *label, node *n1,
     return &gdb->rship_by_id(rid);
 }
 
-thread_local qr_tuple rec;
+
 std::map<std::thread::id, qr_tuple> tp_m;
 int tcnt = 0;
 std::mutex mat_reg_mut;
@@ -284,8 +288,6 @@ void persist_tuple(graph_db *gdb, qr_tuple *qr) {
 }
 #endif
 
-thread_local qr_tuple mat_tuple;
-
  qr_tuple *obtain_mat_tuple() {
     //auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
     //return &joiner::mat_tuple_[tid];
@@ -356,9 +358,6 @@ thread_local qr_tuple mat_tuple;
     return queue.empty();
 }
 
-thread_local std::vector<relationship*> fev_rship_list;
-thread_local std::vector<relationship*>::iterator fev_list_iter;
-thread_local std::string grpkey_buffer;
 
  void foreach_from_variable_rship(graph_db *gdb, dcode_t lcode, node *n, std::size_t min, std::size_t max) {
     gdb->foreach_variable_from_relationship_of_node(*n, lcode, min, max, [&](relationship &r) {

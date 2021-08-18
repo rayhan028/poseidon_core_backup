@@ -18,6 +18,34 @@
 #include "joiner.hpp"
 #include "grouper.hpp"
 
+/**
+ * Tuple result types
+ * TODO: consistent type id mapping for all classes
+ */
+enum class FTYPE {
+    INT = 0,
+    DOUBLE = 1,
+    STRING = 2,
+    DATE = 3,
+    TIME = 4,
+    BOOLEAN = 5,
+    UINT64 = 6,
+    NONE = 7
+};
+
+/**
+ * Thread local storage to store the Projection of a tuple. These values are
+ * materialized to the result_set.
+ * //TODO: remove map
+ */
+extern thread_local std::map<int, uint64_t> uint_result;
+extern thread_local std::map<int, std::string> str_result;
+extern thread_local std::map<int, boost::posix_time::ptime> time_result;
+extern thread_local std::vector<relationship*> fev_rship_list;
+extern thread_local std::vector<relationship*>::iterator fev_list_iter;
+extern thread_local std::string grpkey_buffer;
+extern std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
+
 class joiner;
 
 using query_time_point = std::chrono::time_point<std::chrono::high_resolution_clock>;
@@ -54,21 +82,6 @@ void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_tim
 //using start_ty = void(*)(graph_db*, int, int, transaction_ptr, int, std::vector<int>*, result_set*, int**, finish_fct_type, uint64_t, uint64_t**);
 using start_ty = void(*)(query_context*, uint64_t**, result_set* rs);
 using finish_fct_type = void(*)(query_context*, uint64_t**, result_set* rs);
-
-/**
- * Tuple result types
- * TODO: consistent type id mapping for all classes
- */
-enum class FTYPE {
-    INT = 0,
-    DOUBLE = 1,
-    STRING = 2,
-    DATE = 3,
-    TIME = 4,
-    BOOLEAN = 5,
-    UINT64 = 6,
-    NONE = 7
-};
 
 /**
  * Function to obtain the iterator of a node vector
@@ -209,17 +222,6 @@ extern "C" node* create_node_func(graph_db *gdb, char *label, properties_t *prop
  */
 extern "C" relationship* create_rship_func(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props);
 
-extern std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
-
-/**
- * Thread local storage to store the Projection of a tuple. These values are
- * materialized to the result_set.
- * //TODO: remove map
- */
-extern thread_local std::map<int, uint64_t> uint_result;
-extern thread_local std::map<int, std::string> str_result;
-extern thread_local std::map<int, boost::posix_time::ptime> time_result;
-
 /**
  * Function to transform a register value into the appropriate type and materialize to 
  * thread local storage.
@@ -284,10 +286,6 @@ qr_tuple &get_qr_tuple();
  * index_get_node is a helper method in order to process a index scan for a specific node
  */
  node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t value);
-
-extern thread_local std::vector<relationship*> fev_rship_list;
-extern thread_local std::vector<relationship*>::iterator fev_list_iter;
-extern thread_local std::string grpkey_buffer;
 
  void foreach_from_variable_rship(graph_db *gdb, dcode_t lcode, node *n, std::size_t min, std::size_t max);
 

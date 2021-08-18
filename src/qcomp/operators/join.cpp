@@ -81,6 +81,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     BasicBlock *undang_collect = BasicBlock::Create(ctx.getContext(), "undang_collect", main_function);
     BasicBlock *return_handle = BasicBlock::Create(ctx.getContext(), "handle_ret", main_function);
     BasicBlock *consume = BasicBlock::Create(ctx.getContext(), "consume", main_function);
+    BasicBlock *pre_loop = BasicBlock::Create(ctx.getContext(), "pre_loop", main_function);
+    BasicBlock *pre_loop_init = BasicBlock::Create(ctx.getContext(), "pre_loop_init", main_function);
     BasicBlock *end = BasicBlock::Create(ctx.getContext(), "end", main_function);
 
 
@@ -133,7 +135,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     //Value *rhs_id;
     //auto rhs_id_alloc = insert_alloca(ctx.int64Ty);
     auto rhs_id_alloc = insert_alloca(ctx.int64Ty);
+    auto rship_join = insert_alloca(ctx.rshipTy);
 
+    
     BasicBlock *loop_body = nullptr;
     
     if(op->jop_ == JOIN_OP::NESTED_LOOP) {
@@ -199,6 +203,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
                                                       // get the current rship
                                                       auto rship = ctx.getBuilder().CreateCall(rship_by_id, {gdb, cur_id});
                                                       ctx.getBuilder().CreateStore(rship, ra);
+                                                      
+                                                      //ctx.getBuilder().CreateStore(ctx.getBuilder().CreateLoad(rship), rship_join);
+                                                      //reg_query_results.push_back({rship_join, 1});
 
                                                       // get the dest node of the rship
                                                       auto to_node = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(rship, 3));
@@ -229,6 +236,16 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         auto lh = ctx.getBuilder().CreateLoad(ridx);
         auto is_reached = ctx.getBuilder().CreateICmpEQ(lh, ctx.UNKNOWN_ID);
         ctx.getBuilder().CreateCondBr(is_reached, loop_body, for_each_next);
+
+        ctx.getBuilder().SetInsertPoint(pre_loop);
+        auto pos = ctx.getBuilder().CreateAdd(ctx.getBuilder().CreateLoad(cur_idx), ctx.LLVM_ONE);
+        auto max = ctx.getBuilder().CreateLoad(max_idx);
+        auto reached_loop_end = ctx.getBuilder().CreateICmpSLT(pos, max);
+        ctx.getBuilder().CreateCondBr(reached_loop_end, pre_loop_init, loop_body);
+
+        ctx.getBuilder().SetInsertPoint(pre_loop_init);
+        ctx.getBuilder().CreateStore(ctx.LLVM_ONE, dangling);
+        ctx.getBuilder().CreateBr(loop_body);
 
     } else if(op->jop_ == JOIN_OP::NESTED_LOOP) {
         // for nested loop join
@@ -291,19 +308,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     {
         auto i = ctx.getBuilder().CreateLoad(cur_idx);
         ctx.getBuilder().CreateStore(ctx.getBuilder().CreateAdd(i, ctx.LLVM_ONE), cur_idx);
-
-        if(op->jop_ == JOIN_OP::LEFT_OUTER) {
-            auto dang = ctx.getBuilder().CreateLoad(dangling);
-            auto is_dangling = ctx.getBuilder().CreateICmpEQ(dang, ctx.LLVM_ONE);
-
-            ctx.getBuilder().CreateCondBr(is_dangling, undang_collect, loop_body);
-
-            ctx.getBuilder().SetInsertPoint(undang_collect);
-            ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, dangling);
-            ctx.getBuilder().CreateBr(concat_qrl);
-        } else {
-            ctx.getBuilder().CreateBr(loop_body);
-        }
+        ctx.getBuilder().CreateBr(loop_body);
     }
     
     // merge the lhs and rhs    
@@ -346,7 +351,19 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
 
     ctx.getBuilder().SetInsertPoint(end);
     {
-        ctx.getBuilder().CreateBr(main_return);
+        if(op->jop_ == JOIN_OP::LEFT_OUTER) {
+            auto dang = ctx.getBuilder().CreateLoad(dangling);
+            auto is_dangling = ctx.getBuilder().CreateICmpEQ(dang, ctx.LLVM_ONE);
+
+            ctx.getBuilder().CreateCondBr(is_dangling, undang_collect, loop_body);
+
+            ctx.getBuilder().SetInsertPoint(undang_collect);
+            //ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, dangling);
+            //ctx.getBuilder().CreateStore(Constant::getNullValue(ctx.rshipTy), rship_join);
+            ctx.getBuilder().CreateBr(concat_qrl);
+        } else {
+            ctx.getBuilder().CreateBr(main_return);
+        }
     }
 
     if(op->jop_ == JOIN_OP::LEFT_OUTER)
