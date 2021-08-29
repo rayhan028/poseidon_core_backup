@@ -42,12 +42,12 @@ public:
     void rebuild();
 
 private:
-    dcode_t insert_into_table(dcode_t *tbl, uint32_t tsize, uint64_t hkey, dcode_t id);
+    dcode_t insert_into_table(uint64_t *tbl, uint32_t tsize, uint64_t hkey, dcode_t id);
     void resize();
     
     p_ptr<string_pool> pool_;
     uint32_t nbuckets_;
-    dcode_t *table_;
+    uint64_t *table_;
     uint32_t prime_;
     uint32_t nelems_;
 };

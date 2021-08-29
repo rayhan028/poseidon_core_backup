@@ -22,6 +22,13 @@
 #include "htable.hpp"
 #include "string_pool.hpp"
 
+
+inline uint16_t probe_distance(uint64_t val) { return (val & 0xFFFF000000000000) >> 48; }
+
+inline dcode_t hash_value(uint64_t val) { return static_cast<dcode_t>(val & 0x00000000FFFFFFFF); }
+
+inline uint64_t combine(dcode_t val, uint16_t dist) { return hash_value(val) | (static_cast<uint64_t>(dist) << 48); }
+
 #if 0
 /*compute the first prime number higher or equal to n*/
 inline size_t nearest_prime(size_t n) {
@@ -56,9 +63,8 @@ uint64_t step(const std::string& s, uint64_t prime) {
 #endif
 
 htable::htable(p_ptr<string_pool> pool, uint32_t nb) : pool_(pool), nbuckets_(nb), nelems_(0) {
-    table_ = new dcode_t[nbuckets_];
-    memset(table_, 0, nbuckets_ * sizeof(dcode_t));
-    // prime_ = nearest_prime(nbuckets_);
+    table_ = new uint64_t[nbuckets_];
+    memset(table_, 0, nbuckets_ * sizeof(uint64_t));
 }
 
 htable::~htable() {
@@ -73,7 +79,7 @@ void htable::rebuild() {
 
 void htable::print() const {
     for (auto i = 0ul; i < nbuckets_; i++) {
-        std::cout << "#" << i << " : " << table_[i] << std::endl;
+        std::cout << "#" << i << " : " << hash_value(table_[i]) << " - dist=" << probe_distance(table_[i]) << std::endl;
     }
 }
 
@@ -87,7 +93,7 @@ dcode_t htable::find(const std::string& s) {
         v = table_[bucket_id];
         if (v == 0)
             break;
-        else if (pool_->equal(v, s))
+        else if (pool_->equal(hash_value(v), s))
             return bucket_id;
         // handle collision
         bucket_id += 1;
@@ -101,7 +107,7 @@ dcode_t htable::find(const std::string& s) {
 
 dcode_t htable::get(dcode_t id) {
     assert(id < nbuckets_);
-    return table_[id];
+    return hash_value(table_[id]);
 }
 
 dcode_t htable::insert(const std::string& s, dcode_t id) {
@@ -113,10 +119,11 @@ dcode_t htable::insert(const std::string& s, dcode_t id) {
     return insert_into_table(table_, nbuckets_, key, id);
 }
 
-dcode_t htable::insert_into_table(dcode_t *tbl, uint32_t tsize, uint64_t hkey, dcode_t id) {
+dcode_t htable::insert_into_table(uint64_t *tbl, uint32_t tsize, uint64_t hkey, dcode_t id) {
     auto bucket_id = hkey % tsize;
     auto start = bucket_id;
     bool overflow = false;
+    uint16_t probe_dist = 0;
 
     while (true) {
         if (tbl[bucket_id] == 0)
@@ -129,21 +136,29 @@ dcode_t htable::insert_into_table(dcode_t *tbl, uint32_t tsize, uint64_t hkey, d
             std::cerr << "hash table overflow - aborting!" << std::endl;
             exit(-1);
         }
-
+        auto other_dist = probe_distance(tbl[bucket_id]);
+        if (other_dist < probe_dist) {
+            auto rich_id = hash_value(tbl[bucket_id]);
+            tbl[bucket_id] = combine(id, probe_dist);
+            id = rich_id;
+            probe_dist = other_dist;
+        }
+        else
+            probe_dist += 1;
     }
-    tbl[bucket_id] = id;
+    tbl[bucket_id] = combine(id, probe_dist);
     return bucket_id;
 }
 
 void htable::resize() {
     std::cout << "htable::resize..." << std::endl;
     auto nbuckets = nbuckets_ + nbuckets_/2;
-    auto new_table_ = new dcode_t[nbuckets];
-    memset(new_table_, 0, nbuckets * sizeof(dcode_t));
+    auto new_table_ = new uint64_t[nbuckets];
+    memset(new_table_, 0, nbuckets * sizeof(uint64_t));
     for (auto i = 0ul; i < nbuckets_; i++) {
         if (table_[i] != 0) {
             // get the string
-            auto s = pool_->extract(table_[i]);
+            auto s = pool_->extract(hash_value(table_[i]));
             // rehash
             auto key = std::hash<const char *>{}(s);
             // insert into new_table_
