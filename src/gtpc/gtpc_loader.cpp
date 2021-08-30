@@ -32,8 +32,7 @@ void load_gtpc_data(graph_db_ptr &graph, const std::string& path, bool strict) {
     path + "region" + post_fix,
     path + "stock" + post_fix,
     path + "supplier" + post_fix,
-    path + "warehouse" + post_fix
-    };
+    path + "warehouse" + post_fix};
 
   std::vector<std::string> rship_files =
     {path + "customer_hasPlaced_order" + post_fix,
@@ -42,12 +41,11 @@ void load_gtpc_data(graph_db_ptr &graph, const std::string& path, bool strict) {
     path + "item_hasStock_stock" + post_fix,
     path + "nation_isPartOf_region" + post_fix,
     path + "order_contains_orderLine" + post_fix,
-    path + "orderLine_hasItem_item" + post_fix,
+    path + "orderLine_hasStock_stock" + post_fix,
     path + "stock_hasSupplier_supplier" + post_fix,
     path + "supplier_isLocatedIn_nation" + post_fix,
     path + "warehouse_covers_district" + post_fix,
-    path + "warehouse_hasStock_stock" + post_fix,
-    };
+    path + "warehouse_hasStock_stock" + post_fix};
 
   spdlog::info("trying to load data from {}", path);
   load_gtpc_data(graph, node_files, rship_files, strict);

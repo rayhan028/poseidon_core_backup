@@ -21,7 +21,7 @@
 #define graph_db_hpp_
 
 #include <boost/any.hpp>
-// #include <map>
+#include <map>
 #include <mutex>
 #include <string>
 
@@ -31,8 +31,13 @@
 #include "properties.hpp"
 #include "relationships.hpp"
 #ifdef QOP_RECOVERY
+<<<<<<< HEAD
  #include <libpmemobj++/container/concurrent_hash_map.hpp>
  #include "recovery.hpp"
+=======
+#include <libpmemobj++/container/concurrent_hash_map.hpp>
+#include "recovery.hpp"
+>>>>>>> master
 #endif
 #include "transaction.hpp"
 #include "btree.hpp"

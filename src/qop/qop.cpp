@@ -136,6 +136,70 @@ void foreach_variable_from_relationship::dump(std::ostream &os) const {
 
 /* ------------------------------------------------------------------------ */
 
+void foreach_all_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
+  node *n = npos == std::numeric_limits<int>::max() ?
+            boost::get<node *>(v.back()) : boost::get<node *>(v[npos]);
+  
+  if (lcode == 0)
+    lcode = gdb->get_code(label);
+
+  uint64_t num = 0;
+  gdb->foreach_from_relationship_of_node(*n, lcode, [&](relationship &r) {
+    auto v2 = append(v, query_result(&r));
+    v2 = append(v2, query_result(&(gdb->node_by_id(r.dest_node))));
+    consume_(gdb, v2);
+    num++;
+  });
+  gdb->foreach_to_relationship_of_node(*n, lcode, [&](relationship &r) {
+    auto v2 = append(v, query_result(&r));
+    v2 = append(v2, query_result(&(gdb->node_by_id(r.src_node))));
+    consume_(gdb, v2);
+    num++;
+  });
+  PROF_POST(num);
+}
+
+void foreach_all_relationship::dump(std::ostream &os) const {
+  os << "foreach_all_relationship([" << label << "]) - " << PROF_DUMP;
+}
+
+/* ------------------------------------------------------------------------ */
+
+void foreach_variable_all_relationship::process(graph_db_ptr &gdb,
+                                                 const qr_tuple &v) {
+  PROF_PRE;
+  node *n = npos == std::numeric_limits<int>::max() ?
+            boost::get<node *>(v.back()) : boost::get<node *>(v[npos]);
+
+  if (lcode == 0)
+    lcode = gdb->get_code(label);
+
+  uint64_t num = 0;
+  gdb->foreach_variable_from_relationship_of_node(
+      *n, lcode, min_range, max_range, [&](relationship &r) {
+        auto v2 = append(v, query_result(&r));
+        v2 = append(v2, query_result(&(gdb->node_by_id(r.dest_node))));
+        consume_(gdb, v2);
+        num++;
+      });
+  gdb->foreach_variable_to_relationship_of_node(
+      *n, lcode, min_range, max_range, [&](relationship &r) {
+        auto v2 = append(v, query_result(&r));
+        v2 = append(v2, query_result(&(gdb->node_by_id(r.src_node))));
+        consume_(gdb, v2);
+        num++;
+      });
+  PROF_POST(num);
+}
+
+void foreach_variable_all_relationship::dump(std::ostream &os) const {
+  os << "foreach_variable_all_relationship([" << label << ", (" << min_range
+     << "," << max_range << ")]) - " << PROF_DUMP;
+}
+
+/* ------------------------------------------------------------------------ */
+
 void foreach_to_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
   node *n = nullptr;
   if (npos == std::numeric_limits<int>::max())
@@ -320,7 +384,7 @@ void nodes_connected::process(graph_db_ptr &gdb, const qr_tuple &v) {
       if (r.to_node_id() == des->id()){
         found = true;
         auto res = append(v, query_result(&r));
-        consume_(gdb, res); //TODO: fix for potential result tuple size mismatch
+        consume_(gdb, res);
       }
   });
 
@@ -382,6 +446,7 @@ void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
     }
   }
 
+  std::lock_guard<std::mutex> lock(m_);
   std::size_t gpos;
   const auto gitr = grpkey_map_.find(grpkeys);
   if (gitr != grpkey_map_.end()) {
@@ -410,6 +475,22 @@ void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
       }
       else if (aggr.first == "avg" || aggr.first == "pcount")
         gtpl.push_back(query_result(0.0));
+      else if (aggr.first == "min") {
+        if (v[aggr.second].type() == typeid(uint64_t))
+          gtpl.push_back(query_result(std::numeric_limits<uint64_t>::max()));
+        else if (v[aggr.second].type() == typeid(int))
+          gtpl.push_back(query_result(std::numeric_limits<int>::max()));
+        else if (v[aggr.second].type() == typeid(double))
+          gtpl.push_back(query_result(std::numeric_limits<double>::max()));
+      }
+      else if (aggr.first == "max") {
+        if (v[aggr.second].type() == typeid(uint64_t))
+          gtpl.push_back(query_result((uint64_t)0));
+        else if (v[aggr.second].type() == typeid(int))
+          gtpl.push_back(query_result(0));
+        else if (v[aggr.second].type() == typeid(double))
+          gtpl.push_back(query_result(0.0));
+      }
     }
 
     grp_tpl_map_.emplace(gpos, gtpl);
@@ -448,6 +529,40 @@ void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
                     boost::get<double>(v[aggr.second]) : 0;
       gavg = (gsize == 1) ? (double)val :
               (gavg * (gsize-1) + (double)val) / (double)gsize;
+    }
+    else if (aggr.first == "min") {
+      if (v[aggr.second].type() == typeid(uint64_t)) {
+        uint64_t &gmin = boost::get<uint64_t>(aggr_tpl[aggr_pos]);
+        if (boost::get<uint64_t>(v[aggr.second]) < gmin)
+          gmin = boost::get<uint64_t>(v[aggr.second]);
+      }
+      else if (v[aggr.second].type() == typeid(int)) {
+        int &gmin = boost::get<int>(aggr_tpl[aggr_pos]);
+        if (boost::get<int>(v[aggr.second]) < gmin)
+          gmin = boost::get<int>(v[aggr.second]);
+      }
+      else if (v[aggr.second].type() == typeid(double)) {
+        double &gmin = boost::get<double>(aggr_tpl[aggr_pos]);
+        if (boost::get<double>(v[aggr.second]) < gmin)
+          gmin = boost::get<double>(v[aggr.second]);
+      }
+    }
+    else if (aggr.first == "max") {
+      if (v[aggr.second].type() == typeid(uint64_t)) {
+        uint64_t &gmax = boost::get<uint64_t>(aggr_tpl[aggr_pos]);
+        if (boost::get<uint64_t>(v[aggr.second]) > gmax)
+          gmax = boost::get<uint64_t>(v[aggr.second]);
+      }
+      else if (v[aggr.second].type() == typeid(int)) {
+        int &gmax = boost::get<int>(aggr_tpl[aggr_pos]);
+        if (boost::get<int>(v[aggr.second]) > gmax)
+          gmax = boost::get<int>(v[aggr.second]);
+      }
+      else if (v[aggr.second].type() == typeid(double)) {
+        double &gmax = boost::get<double>(aggr_tpl[aggr_pos]);
+        if (boost::get<double>(v[aggr.second]) > gmax)
+          gmax = boost::get<double>(v[aggr.second]);
+      }
     } // process pcount (percentage count) in group_by::finish
     aggr_pos++;
   }
@@ -482,6 +597,45 @@ void group_by::finish(graph_db_ptr &gdb) {
 
 /* ------------------------------------------------------------------------ */
 
+void distinct_tuples::dump(std::ostream &os) const {
+  os << "distinct_tuples() - " << PROF_DUMP;
+}
+
+void distinct_tuples::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  std::string key = "";
+  for (const auto& qres : v) {
+    if (qres.type() == typeid(std::string)) {
+      key += boost::get<std::string>(qres);
+    } else if (qres.type() == typeid(uint64_t)) {
+      key += std::to_string(boost::get<uint64_t>(qres));
+    } else if (qres.type() == typeid(ptime)) { 
+      key += to_iso_extended_string(boost::get<ptime>(qres));
+    } else if (qres.type() == typeid(node *)) {
+      key += std::to_string(boost::get<node *>(qres)->id());
+    } else if (qres.type() == typeid(relationship *)) {
+      key += std::to_string(boost::get<relationship *>(qres)->id());
+    } else if (qres.type() == typeid(int)) {
+      key += std::to_string(boost::get<int>(qres));
+    } else if (qres.type() == typeid(double)) {
+      key += std::to_string(boost::get<double>(qres));
+    } else if (qres.type() == typeid(null_val)) {
+      key += std::string("NULL");
+    } else if (qres.type() == typeid(array_t)) {
+      auto arr = boost::get<array_t>(qres).elems;
+      for (auto a : arr)
+        key += std::to_string(a);
+    }
+  }
+
+  std::lock_guard<std::mutex> lock(m_);
+  if (keys_.find(key) == keys_.end()) {
+    keys_.insert(key); // TODO optimize with integer value representation
+    consume_(gdb, v);
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+
 void filter_tuple::dump(std::ostream &os) const {
   os << "filter_tuple([]) - " << PROF_DUMP;
 }
@@ -504,10 +658,9 @@ void qr_tuple_append::dump(std::ostream &os) const {
 
 void qr_tuple_append::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
-  auto v1 = v;
-  auto res = func_(v1);
-  auto v2 = append(v1, res);
-  consume_(gdb, v2);
+  auto a = func_(v);
+  auto res = append(v, a);
+  consume_(gdb, res);
   PROF_POST(1);
 }
 
@@ -518,14 +671,35 @@ void union_all_qres::dump(std::ostream &os) const { // TODO
 }
 
 void union_all_qres::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
+  if (init) {
+    for (auto &r : res_)
+      consume_(gdb, r);
+    init = false;
+  }
   consume_(gdb, v);
 }
 
 void union_all_qres::process_right(graph_db_ptr &gdb, const qr_tuple &v) {
-  consume_(gdb, v);
+  res_.push_back(v);
+  // consume_(gdb, v);
 }
 
 void union_all_qres::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
+
+/* ------------------------------------------------------------------------ */
+
+void count_result::dump(std::ostream &os) const {
+  os << "count_result() - " << PROF_DUMP;
+}
+
+void count_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  count_++;
+}
+
+void count_result::finish(graph_db_ptr &gdb) {
+  consume_(gdb, {query_result(count_)});
+  finish_(gdb);
+}
 
 /* ------------------------------------------------------------------------ */
 
@@ -535,22 +709,35 @@ void shortest_path_opr::dump(std::ostream &os) const {
 
 void shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
-  auto a = boost::get<node *>(v[start_stop_.first]);
-  auto b = boost::get<node *>(v[start_stop_.second]);
-  auto start = a->id();
-  auto stop = b->id();
+  auto start = boost::get<node *>(v[start_stop_.first])->id();
+  auto stop = boost::get<node *>(v[start_stop_.second])->id();
 
-  path_item spath;
   path_visitor pv = [&](node &n, const path &p) { return; }; // TODO
-  unweighted_shortest_path(gdb, start, stop, bidirectional_, rpred_, pv, spath);
 
-  auto res = v;
-  array_t nids(spath.get_path());
-  res.push_back(query_result(nids));
-  res.push_back(query_result(spath.get_hops()));
-
-  consume_(gdb, res);
-  PROF_POST(1); // ??
+  if (all_spaths_) {
+    std::list<path_item> spaths;
+    all_unweighted_shortest_paths(gdb, start, stop, bidirectional_, rpred_, pv, spaths);
+    for (auto &path : spaths) {
+      auto res = v;
+      array_t nids(path.get_path());
+      res.push_back(query_result(nids));
+      consume_(gdb, res);
+    }
+    PROF_POST(spaths.size());
+  }
+  else {
+    path_item spath;
+    bool found = unweighted_shortest_path(gdb, start, stop, bidirectional_,
+                                          rpred_, pv, spath);
+    if (found) {
+      auto res = v;
+      array_t nids(spath.get_path());
+      res.push_back(query_result(nids));
+      consume_(gdb, res);
+      PROF_POST(1);
+    }
+    else PROF_POST(0);
+  }
 }
 
 /* ------------------------------------------------------------------------ */
@@ -561,20 +748,36 @@ void weighted_shortest_path_opr::dump(std::ostream &os) const {
 
 void weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
-  auto a = boost::get<node *>(v[start_stop_.first]);
-  auto b = boost::get<node *>(v[start_stop_.second]);
-  auto start = a->id();
-  auto stop = b->id();
+  auto start = boost::get<node *>(v[start_stop_.first])->id();
+  auto stop = boost::get<node *>(v[start_stop_.second])->id();
 
-  auto res = v;
-  path_item spath;
   path_visitor pv = [&](node &n, const path &p) { return; }; // TODO
-  double weight = weighted_shortest_path(gdb, start, stop, bidirectional_,
-                          rpred_, rweight_, pv, spath) ? spath.get_weight() : 0.0;
-  res.push_back(query_result(weight));
 
-  consume_(gdb, res);
-  PROF_POST(1);
+  if (all_spaths_) {
+    std::list<path_item> spaths;
+    all_weighted_shortest_paths(gdb, start, stop, bidirectional_,
+                            rpred_, rweight_, pv, spaths);
+    for (auto &path : spaths) {
+      auto res = v;
+      double w = path.get_weight();
+      res.push_back(query_result(w));
+      consume_(gdb, res);
+    }
+    PROF_POST(spaths.size());
+  }
+  else {
+    path_item spath;
+    bool found = weighted_shortest_path(gdb, start, stop, bidirectional_,
+                            rpred_, rweight_, pv, spath);
+    if (found) {
+      auto res = v;
+      double w = spath.get_weight();
+      res.push_back(query_result(w));
+      consume_(gdb, res);
+      PROF_POST(1);
+    }
+    else PROF_POST(0);
+  }
 }
 
 /* ------------------------------------------------------------------------ */
@@ -585,25 +788,20 @@ void k_weighted_shortest_path_opr::dump(std::ostream &os) const {
 
 void k_weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
-  auto a = boost::get<node *>(v[start_stop_.first]);
-  auto b = boost::get<node *>(v[start_stop_.second]);
-  auto start = a->id();
-  auto stop = b->id();
+  auto start = boost::get<node *>(v[start_stop_.first])->id();
+  auto stop = boost::get<node *>(v[start_stop_.second])->id();
 
-  auto res = v;
   std::vector<path_item> spaths;
   path_visitor pv = [&](node &n, const path &p) { return; }; // TODO
-  bool found = k_weighted_shortest_path(gdb, start, stop, k_, bidirectional_,
+  k_weighted_shortest_path(gdb, start, stop, k_, bidirectional_,
                           rpred_, rweight_, pv, spaths);
-  for (auto &spath : spaths) {
-    if (found)
-      res.push_back(query_result(spath.get_weight()));
-    else
-      res.push_back(query_result(0.0));    
+  for (auto &path : spaths) {
+    auto res = v;
+    double w = path.get_weight();
+    res.push_back(query_result(w));
+    consume_(gdb, res);
   }
-
-  consume_(gdb, res);
-  PROF_POST(1);
+  PROF_POST(spaths.size());
 }
 
 /* ------------------------------------------------------------------------ */

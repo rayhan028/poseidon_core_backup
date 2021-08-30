@@ -128,6 +128,20 @@ query &query::from_relationships(std::pair<int, int> range,
                                  op.get(), ph::_1, ph::_2));
 }
 
+query &query::all_relationships(const std::string &label, int pos) {
+  auto op = std::make_shared<foreach_all_relationship>(label, pos);
+  return append_op(op, std::bind(&foreach_all_relationship::process, op.get(),
+                                 ph::_1, ph::_2));
+}
+
+query &query::all_relationships(std::pair<int, int> range,
+                                 const std::string &label, int pos) {
+  auto op = std::make_shared<foreach_variable_all_relationship>(
+      label, range.first, range.second, pos);
+  return append_op(op, std::bind(&foreach_variable_all_relationship::process,
+                                 op.get(), ph::_1, ph::_2));
+}
+
 query &query::property(const std::string &key,
                        std::function<bool(const p_item &)> pred) {
   auto op = std::make_shared<is_property>(key, pred);
@@ -248,6 +262,12 @@ query::groupby(const std::vector<std::size_t> &pos,
 }
 
 query &
+query::distinct() {
+  auto op = std::make_shared<distinct_tuples>();
+  return append_op(op, std::bind(&distinct_tuples::process, op.get(), ph::_1, ph::_2));
+}
+
+query &
 query::where_qr_tuple(std::function<bool(const qr_tuple &)> pred) {
   auto op = std::make_shared<filter_tuple>(pred);
   return append_op(op,
@@ -255,7 +275,7 @@ query::where_qr_tuple(std::function<bool(const qr_tuple &)> pred) {
 }
 
 query &
-query::append_to_qr_tuple(std::function<query_result(qr_tuple &)> func) {
+query::append_to_qr_tuple(std::function<query_result(const qr_tuple &)> func) {
   auto op = std::make_shared<qr_tuple_append>(func);
   return append_op(op,
                    std::bind(&qr_tuple_append::process, op.get(), ph::_1, ph::_2));
@@ -278,6 +298,13 @@ query &query::union_all(std::initializer_list<query *> queries) {
   return append_op(
       op, std::bind(&union_all_qres::process_left, op.get(), ph::_1, ph::_2),
       std::bind(&union_all_qres::finish, op.get(), ph::_1));
+}
+
+query &query::count() {
+  auto op = std::make_shared<count_result>();
+  return append_op(op,
+                   std::bind(&count_result::process, op.get(), ph::_1, ph::_2),
+                   std::bind(&count_result::finish, op.get(), ph::_1));
 }
 
 query &query::crossjoin(query &other) {
@@ -316,6 +343,15 @@ query &query::outerjoin_on_node(const std::pair<int, int> &left_right, query &ot
       std::bind(&left_outerjoin_on_node::finish, op.get(), ph::_1));
 }
 
+query &query::outerjoin(query &other, std::function<bool(const qr_tuple &, const qr_tuple &)> pred) {
+  auto op = std::make_shared<left_outerjoin>(pred);
+  other.append_op(
+      op, std::bind(&left_outerjoin::process_right, op.get(), ph::_1, ph::_2));
+  return append_op(
+      op, std::bind(&left_outerjoin::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&left_outerjoin::finish, op.get(), ph::_1));
+}
+
 query &query::join_on_rship(std::pair<int, int> src_des, query &other) {
   auto op = std::make_shared<rship_join>(src_des);
   other.append_op(
@@ -335,15 +371,16 @@ query &query::outerjoin_on_rship(std::pair<int, int> src_des, query &other) {
 }
 
 query &query::algo_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
-                            rship_predicate rpred, bool bidirectional) {
-  auto op = std::make_shared<shortest_path_opr>(start_stop, rpred, bidirectional);
+                      rship_predicate rpred, bool bidirectional, bool all_spaths) {
+  auto op = std::make_shared<shortest_path_opr>(start_stop, rpred, bidirectional, all_spaths);
   return append_op(op,
                    std::bind(&shortest_path_opr::process, op.get(), ph::_1, ph::_2));
 }
 
 query &query::algo_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
-            rship_predicate rpred, rship_weight weight, bool bidirectional) {
-  auto op = std::make_shared<weighted_shortest_path_opr>(start_stop, rpred, weight, bidirectional);
+            rship_predicate rpred, rship_weight weight, bool bidirectional, bool all_spaths) {
+  auto op = std::make_shared<weighted_shortest_path_opr>(start_stop, rpred, weight,
+                                                          bidirectional, all_spaths);
   return append_op(op,
                    std::bind(&weighted_shortest_path_opr::process, op.get(), ph::_1, ph::_2));
 }

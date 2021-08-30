@@ -599,11 +599,11 @@ private:
   pmem::obj::vector<chunk_ptr>
       chunk_list_; // the persistent list of pointers to all chunks
   pmem::obj::vector<offset_t> free_list_;   // the list of chunks with empty slots (described by their indexes)
-  pmem::obj::shared_mutex fl_mtx_;;
+  pmem::obj::shared_mutex fl_mtx_;          // mutex for accessing the free list
 #else
   std::vector<chunk_ptr> chunk_list_; // the list of pointers to all chunks
   std::vector<offset_t> free_list_;   // the list of chunks with empty slots (described by their indexes)
-  mutable std::shared_mutex fl_mtx_;
+  mutable std::shared_mutex fl_mtx_;  // mutex for accessing the free list
 #endif
 };
 

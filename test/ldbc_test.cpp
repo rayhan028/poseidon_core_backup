@@ -354,6 +354,7 @@ graph_db_ptr create_bi_data(graph_db_ptr &graph) {
        {"lastName", boost::any(std::string(""))},
        {"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
 
+    graph->add_relationship(pA, pB, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
     graph->add_relationship(pA, pC, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
     graph->add_relationship(pA, pD, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
     graph->add_relationship(pB, pC, ":knows", {{"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:05:56.000")))}});
@@ -456,13 +457,13 @@ graph_db_ptr create_bi_data(graph_db_ptr &graph) {
         {"creationDate", boost::any(time_from_string(std::string("2011-10-10 11:05:56.000")))},
         {"length", boost::any(24)},
         {"content", boost::any(std::string("We should go to Hautacam"))},
-        {"content", boost::any(std::string("en"))}});
+        {"language", boost::any(std::string("en"))}});
     auto p2 = graph->add_node("Post",
       {{"id", boost::any((uint64_t)20)},
         {"creationDate", boost::any(time_from_string(std::string("2012-03-04 13:41:23.000")))},
         {"length", boost::any(38)},
         {"content", boost::any(std::string("Voici un film de snowboard intéressant"))},
-        {"content", boost::any(std::string("fr"))}});
+        {"language", boost::any(std::string("fr"))}});
     auto c1 = graph->add_node("Comment",
       {{"id", boost::any((uint64_t)1)},
         {"creationDate", boost::any(time_from_string(std::string("2011-10-10 11:08:01.000")))},
@@ -562,21 +563,13 @@ TEST_CASE("Testing LDBC IS Query 2", "[ldbc_is_reads]") {
     ldbc_is_query_2(graph, rs, pidq3);
 
     expected.data.push_back(
-        {query_result("1863"), query_result("Content of post1"),
-        query_result("2011-10-17T05:40:34.561000"), query_result("1863"),
-         query_result("65"), query_result("Marc"), query_result("Ravalomanana")});
-    expected.data.push_back(
-        {query_result("13743894"), query_result("photo1374991234791.jpg"),
-        query_result("2010-03-16T15:05:23.955000"), query_result("13743894"),
-         query_result("65"), query_result("Marc"), query_result("Ravalomanana")});
-    expected.data.push_back(
         {query_result("1768"), query_result("Content of cmt12"),
         query_result("2013-12-27T11:32:19.336000"), query_result("13743895"),
-        query_result("1121"), query_result("Karl"), query_result("Beran")});
+         query_result("1121"), query_result("Karl"), query_result("Beran")});
     expected.data.push_back(
         {query_result("1171"), query_result("Content of cmt11"),
         query_result("2013-11-26T17:09:07.283000"), query_result("13743895"),
-        query_result("1121"), query_result("Karl"), query_result("Beran")});
+         query_result("1121"), query_result("Karl"), query_result("Beran")});
     expected.data.push_back(
         {query_result("1126"), query_result("Content of cmt10"),
         query_result("2013-10-26T23:46:18.580000"), query_result("13743894"),
@@ -601,6 +594,14 @@ TEST_CASE("Testing LDBC IS Query 2", "[ldbc_is_reads]") {
         {query_result("1171"), query_result("Content of cmt5"),
         query_result("2013-05-17T19:37:26.339000"), query_result("1863"),
         query_result("65"), query_result("Marc"), query_result("Ravalomanana")});
+    expected.data.push_back(
+        {query_result("1126"), query_result("Content of cmt4"),
+        query_result("2013-04-16T21:16:03.354000"), query_result("137438956"),
+        query_result("1291"), query_result("Wei"), query_result("Li")});
+    expected.data.push_back(
+        {query_result("1978"), query_result("Content of cmt3"),
+        query_result("2013-03-14T16:57:46.045000"), query_result("1976"),
+        query_result("1379"), query_result("Muhammad"), query_result("Iqbal")});
 
     REQUIRE(rs == expected);
     return true;
@@ -714,17 +715,6 @@ TEST_CASE("Testing LDBC IS Query 6", "[ldbc_is_reads]") {
   graph->run_transaction([&]() {
     uint64_t midq6 = 16492677;
     result_set rs, expected;
-    ldbc_is_query_6(graph, rs, midq6);
-
-    expected.data.push_back(
-        {query_result("37"),
-         query_result("Wall of Hồ Chí Do"),
-         query_result("4194"),
-         query_result("Hồ Chí"),
-         query_result("Do")});
-
-    REQUIRE(rs == expected);
-    midq6 = 16492674;
     ldbc_is_query_6(graph, rs, midq6);
 
     expected.data.push_back(
@@ -1048,14 +1038,14 @@ TEST_CASE("Testing LDBC BI Query 3", "[ldbc_bi]") {
   create_bi_data(graph);
 
   graph->run_transaction([&]() {
-    std::vector<params_tuple> parameters = {{"Ski resorts", "Spain"}};
+    std::vector<params_tuple> parameters = {{"Sports", "Spain"}};
     result_set rs, expected;
     ldbc_bi_query_3(graph, rs, parameters[0]);
 
     expected.data.push_back(
       {query_result("1"), query_result("Skiing trips"),
       query_result("2011-10-10T11:01:47"), query_result("2"),
-      query_result("1")});
+      query_result("3")});
 
     REQUIRE(rs == expected);
     return true;
@@ -1074,6 +1064,12 @@ TEST_CASE("Testing LDBC BI Query 4", "[ldbc_bi]") {
     result_set rs, expected;
     ldbc_bi_query_4(graph, rs, parameters[0]);
 
+    expected.data.push_back(
+      {query_result("1"), query_result("Amelie"), query_result(""),
+      query_result("2010-06-10T11:05:56"), query_result("2")});
+    expected.data.push_back(
+      {query_result("3"), query_result("Cedric"), query_result(""),
+      query_result("2010-06-10T11:05:56"), query_result("2")});
     expected.data.push_back(
       {query_result("2"), query_result("Bernardo"), query_result(""),
       query_result("2010-06-10T11:05:56"), query_result("1")});
@@ -1147,6 +1143,28 @@ TEST_CASE("Testing LDBC BI Query 7", "[ldbc_bi]") {
   graph_pool::destroy(pool);
 }
 
+TEST_CASE("Testing LDBC BI Query 8", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{"Pyrenees",
+        time_from_string(std::string("2010-10-01 00:00:00.000"))}};
+    result_set rs, expected;
+    ldbc_bi_query_8(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("2"), query_result("101"), query_result("2")});
+    expected.data.push_back(
+      {query_result("3"), query_result("2"), query_result("101")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
 TEST_CASE("Testing LDBC BI Query 9", "[ldbc_bi]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("snb");
@@ -1169,6 +1187,30 @@ TEST_CASE("Testing LDBC BI Query 9", "[ldbc_bi]") {
   graph_pool::destroy(pool);
 }
 
+TEST_CASE("Testing LDBC BI Query 10", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters =
+        {{(uint64_t)5, "France", "Sports", 2, 3}};
+    result_set rs, expected;
+    ldbc_bi_query_10(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("1"), query_result("Snowboard"), query_result("3")});
+    expected.data.push_back(
+      {query_result("3"), query_result("Snowboard"), query_result("2")});
+    expected.data.push_back(
+      {query_result("3"), query_result("Pyrenees"), query_result("1")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
 TEST_CASE("Testing LDBC BI Query 11", "[ldbc_bi]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("snb");
@@ -1180,7 +1222,192 @@ TEST_CASE("Testing LDBC BI Query 11", "[ldbc_bi]") {
     result_set rs, expected;
     ldbc_bi_query_11(graph, rs, parameters[0]);
 
-    // expected.data.push_back({query_result("")});
+    expected.data.push_back({query_result("1")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 12", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters =
+      {{time_from_string(std::string("2010-07-22 00:00:00.000")), 50, "en", "fr"}};
+    result_set rs, expected;
+    ldbc_bi_query_12(graph, rs, parameters[0]);
+
+    expected.data.push_back({query_result("1"), query_result("3")});
+    expected.data.push_back({query_result("3"), query_result("1")});
+    expected.data.push_back({query_result("0"), query_result("1")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 13", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters =
+      {{"France", time_from_string(std::string("2013-01-01 00:00:00.000"))}};
+    result_set rs, expected;
+    ldbc_bi_query_13(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("1"), query_result("1"), query_result("2"), query_result("0.500000")});
+    expected.data.push_back(
+      {query_result("3"), query_result("0"), query_result("1"), query_result("0.000000")});
+    expected.data.push_back(
+      {query_result("4"), query_result("0"), query_result("0"), query_result("0.000000")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 14", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{"France", "Spain"}};
+    result_set rs, expected;
+    ldbc_bi_query_14(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("1"), query_result("2"), query_result("Paris"), query_result("30")});
+    expected.data.push_back(
+      {query_result("3"), query_result("2"), query_result("Lyon"), query_result("30")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 15", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{(uint64_t)2, (uint64_t)4, 
+      time_from_string(std::string("2011-06-01 00:00:00.000")),
+      time_from_string(std::string("2012-05-31 00:00:00.000"))}};
+    result_set rs, expected;
+    ldbc_bi_query_15(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("[ 2 1 4 ]"), query_result("1.500000")});
+    expected.data.push_back(
+      {query_result("[ 2 3 4 ]"), query_result("1.000000")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 16", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters =
+    {{"Pyrenees", time_from_string(std::string("2011-10-10 00:00:00.000")),
+    "Snowboard", time_from_string(std::string("2012-03-04 00:00:00.000")), 5}};
+    result_set rs, expected;
+    ldbc_bi_query_16(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("3"), query_result("2"), query_result("1")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 17", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{"Snowboard", 10}};
+    result_set rs, expected;
+    ldbc_bi_query_17(graph, rs, parameters[0]);
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 18", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{(uint64_t)2, "Snowboard"}};
+    result_set rs, expected;
+    ldbc_bi_query_18(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("4"), query_result("2")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 19", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{(uint64_t)2, (uint64_t)4}};
+    result_set rs, expected;
+    ldbc_bi_query_19(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("2"), query_result("1"), query_result("1.000000")});
+    expected.data.push_back(
+      {query_result("2"), query_result("4"), query_result("1.000000")});
+
+    REQUIRE(rs == expected);
+    return true;
+  });
+  graph_pool::destroy(pool);
+}
+
+TEST_CASE("Testing LDBC BI Query 20", "[ldbc_bi]") {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("snb");
+  create_bi_data(graph);
+
+  graph->run_transaction([&]() {
+    std::vector<params_tuple> parameters = {{"SoftEngCo", (uint64_t)5}};
+    result_set rs, expected;
+    ldbc_bi_query_20(graph, rs, parameters[0]);
+
+    expected.data.push_back(
+      {query_result("1"), query_result("6.000000")});
 
     REQUIRE(rs == expected);
     return true;

@@ -308,6 +308,7 @@ SET(BOOST_MIN_VERSION "1.70.0")
 
 find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
     program_options
+    filesystem
     date_time
     thread
     REQUIRED)
@@ -378,6 +379,7 @@ set(src_files
   src/storage/graph_db_query.cpp
   src/storage/graph_db_gc.cpp
   src/storage/graph_db_recovery.cpp
+  src/storage/mm_file.cpp
   src/btree/index_map.cpp
   src/qop/profiling.cpp
   src/qop/qop.cpp
@@ -420,6 +422,7 @@ endif()
 
 target_link_libraries(poseidon_core
   ${LLVM_LIB}
+  Boost::filesystem
   Boost::date_time
   Boost::thread
   spdlog::spdlog_header_only
@@ -462,6 +465,8 @@ target_link_libraries(poseidon_ldbc
 
 set(gtpc_files
   src/gtpc/gtpc_loader.cpp
+  src/gtpc/gtpc_olap.cpp
+  src/gtpc/gtpc_oltp.cpp
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -473,7 +478,7 @@ else()
 add_library(poseidon_gtpc_obj OBJECT SHARED ${gtpc_files})
 endif()
 
-# Poseidon LDBC library for building C++ applications
+# Poseidon GTPC library for building C++ applications
 add_library(poseidon_gtpc SHARED
   $<TARGET_OBJECTS:poseidon_gtpc_obj>
 )
@@ -491,6 +496,7 @@ add_library(poseidon SHARED
 
 target_link_libraries(poseidon
   ${LLVM_LIB}
+  Boost::filesystem
   Boost::date_time
   Boost::thread
   ${PYTHON_LIBRARIES}
@@ -614,6 +620,18 @@ target_link_libraries(run_gtpc_loader
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+# The program for executing gtpc queries.
+#
+add_executable(run_gtpc
+  src/gtpc/run_gtpc.cpp
+ )
+
+target_link_libraries(run_gtpc
+  poseidon_gtpc
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
 
 if(USE_LLVM MATCHES ON)
 # The program for executing jitted bi queries.
@@ -651,6 +669,16 @@ add_executable(qlc
  )
 
  target_link_libraries(qlc
+ poseidon_core
+ ${PMDK_LIBRARIES}
+ Boost::program_options
+)
+
+add_executable(csv_loader
+  src/storage/csv_loader.cpp
+ )
+
+ target_link_libraries(csv_loader
  poseidon_core
  ${PMDK_LIBRARIES}
  Boost::program_options
