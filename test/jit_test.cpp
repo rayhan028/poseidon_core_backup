@@ -55,6 +55,7 @@ nvm::pool_base prepare_pool() {
 }
 #endif
 
+
 TEST_CASE("Query the graph", "[jit_query_read]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -332,7 +333,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
   auto num_persons = 100u;
   auto num_books = 42u;    
-  for (auto i = 0u; i < num_persons; i++) {
+  for (int i = 0; i < (int)num_persons; i++) {
     auto p = graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
@@ -343,7 +344,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
                                {"dummy2", boost::any(1.2345)}},
                               false);
 
-    if(i < num_books) {
+    if (i < (int)num_books) {
       auto b = graph->add_node("Book",
                                 {{"title", boost::any(std::string("Book Title"))},
                                 {"year", boost::any(1942)},
@@ -352,7 +353,6 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
       graph->add_relationship(p, b, ":HAS_READ", {});
     }
   }
-
 #ifdef USE_TX
   graph->commit_transaction();
 #endif
@@ -684,7 +684,6 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 	graph_pool::destroy(pool);
 #endif
 }
-
 
 TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVariable]") {
 #ifdef USE_PMDK
