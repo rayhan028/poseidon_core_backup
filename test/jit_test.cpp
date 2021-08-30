@@ -72,7 +72,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
   auto num_persons = 100u;
   auto num_books = 42u;
 
-  for (int i = 0; i < num_persons; i++) {
+  for (auto i = 0u; i < num_persons; i++) {
     graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
@@ -330,9 +330,9 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
   graph->begin_transaction();
 #endif
 
-  unsigned num_persons = 100;
-  unsigned num_books = 42;    
-  for (int i = 0; i < num_persons; i++) {
+  auto num_persons = 100u;
+  auto num_books = 42u;    
+  for (auto i = 0u; i < num_persons; i++) {
     auto p = graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
@@ -727,6 +727,7 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
 #ifdef USE_TX
   graph->commit_transaction();
 #endif
+  graph->dump_dot("towns.dot");
 
 	auto chunks = graph->get_nodes()->num_chunks();
 
@@ -742,6 +743,8 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
         result_set rs;
         queryEngine.generate(fev, false);
         queryEngine.run(&rs, args);
+        
+        // std::cout << rs << std::endl;
 
         REQUIRE(rs.data.size() == 244);
     }
