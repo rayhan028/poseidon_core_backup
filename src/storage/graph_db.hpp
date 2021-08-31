@@ -21,6 +21,7 @@
 #define graph_db_hpp_
 
 #include <boost/any.hpp>
+#include <map>
 #include <mutex>
 #include <string>
 
@@ -62,6 +63,8 @@ public:
 
   using rec_map_t = pmem::obj::concurrent_hash_map<p<int>, p<int>>;
 #endif
+
+  static void destroy(p_ptr<graph_db> gp);
 
   /**
    * Constructor for a new empty graph database.
@@ -602,6 +605,7 @@ private:
     */
   void vacuum(xid_t tx);
 
+  std::string database_name_;
   p_ptr<node_list> nodes_; // the list of all nodes of the graph
   p_ptr<relationship_list>
       rships_; // the list of all relationships of the graph

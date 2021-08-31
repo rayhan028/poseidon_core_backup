@@ -11,13 +11,17 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK       "Use Intel PMDK"                         OFF)
+option(USE_PMDK       "Use Intel PMDK"                         ON)
+option(USE_MMFILE     "Use memory mapped file storage"         OFF)
+option(USE_HDICT      "Use hdict implementation"               ON)
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
 option(USE_LLVM       "Use LLVM for query compilation"         OFF)
 option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
 option(QOP_PROFILING  "Enable query profiling"                 ON)
 option(QOP_RECOVERY   "Enable query recovery on failure"       OFF)
+option(BUILD_LDBC     "Build code for LDBC benchmark"          ON)
+option(BUILD_GTPC     "Build code for GTPC benchmark"          OFF)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -51,6 +55,9 @@ cxx_20()
 if(USE_PMDK MATCHES ON)
   message(STATUS "looking for PMDK")
   include(pmdk)
+elseif(USE_MMFILE MATCHES ON)
+  message(STATUS "use memory-mapped files")
+  add_definitions( "-DUSE_MMFILE" )
 endif()
 
 # Transaction support
@@ -308,6 +315,7 @@ SET(BOOST_MIN_VERSION "1.70.0")
 
 find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
     program_options
+    filesystem
     date_time
     thread
     REQUIRED)
@@ -332,7 +340,12 @@ include_directories("${LINENOISE_INCLUDE_DIR}")
 
 #-----------------------------------------------------------------------------------------
 
-if(USE_PMDK MATCHES ON)
+if(USE_HDICT MATCHES ON)
+  set(dict_src 
+    src/dict/string_pool.cpp 
+    src/dict/htable.cpp
+    src/dict/hdict.cpp)
+elseif(USE_PMDK MATCHES ON)
   set(dict_src src/dict/dict_kv.cpp)
 else()
   set(dict_src src/dict/dict_bimap.cpp)
@@ -396,6 +409,7 @@ set(src_files
   src/storage/graph_db_query.cpp
   src/storage/graph_db_gc.cpp
   src/storage/graph_db_recovery.cpp
+  src/storage/mm_file.cpp
   src/btree/index_map.cpp
   src/qop/profiling.cpp
   src/qop/qop.cpp
@@ -438,6 +452,7 @@ endif()
 
 target_link_libraries(poseidon_core
   ${LLVM_LIB}
+  Boost::filesystem
   Boost::date_time
   Boost::thread
   spdlog::spdlog_header_only
@@ -446,6 +461,11 @@ target_link_libraries(poseidon_core
 target_include_directories( ${PROJECT_NAME}
     PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
+
+#-------------------------------------------------------------------
+# Build library for LDBC benchmark
+#
+if(BUILD_LDBC MATCHES ON)
 
 set(ldbc_files
   src/ldbc/ldbc_graphalytics.cpp
@@ -478,8 +498,21 @@ target_link_libraries(poseidon_ldbc
   poseidon_core
 )
 
+set(POSEIDON_LDBC "poseidon_ldbc")
+else()
+set(POSEIDON_LDBC "")
+
+endif()
+
+#-------------------------------------------------------------------
+# Build library for GTPC benchmark
+#
+if(BUILD_GTPC MATCHES ON)
+
 set(gtpc_files
   src/gtpc/gtpc_loader.cpp
+  src/gtpc/gtpc_olap.cpp
+  src/gtpc/gtpc_oltp.cpp
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
@@ -491,7 +524,7 @@ else()
 add_library(poseidon_gtpc_obj OBJECT SHARED ${gtpc_files})
 endif()
 
-# Poseidon LDBC library for building C++ applications
+# Poseidon GTPC library for building C++ applications
 add_library(poseidon_gtpc SHARED
   $<TARGET_OBJECTS:poseidon_gtpc_obj>
 )
@@ -499,6 +532,11 @@ add_library(poseidon_gtpc SHARED
 target_link_libraries(poseidon_gtpc
   poseidon_core
 )
+set(POSEIDON_GTPC "poseidon_gtpc")
+else()
+set(POSEIDON_GTPC "")
+endif()
+
 
 if (BUILD_PYTHON)
 # Python Poseidon library for loading a module into the python3 interpreter
@@ -509,6 +547,7 @@ add_library(poseidon SHARED
 
 target_link_libraries(poseidon
   ${LLVM_LIB}
+  Boost::filesystem
   Boost::date_time
   Boost::thread
   ${PYTHON_LIBRARIES}
@@ -524,6 +563,7 @@ endif()
 # Some programs for LDBC benchmarking.
 #
 
+if(BUILD_LDBC MATCHES ON)
 # The program for loading CSV files into PMem.
 #
 add_executable(run_ldbc_loader
@@ -615,11 +655,13 @@ target_link_libraries(run_ldbc_jit_reads
 )
 endif()
 
+endif()
 #-----------------------------------------------------------------------------------------
 #
 # Some programs for GTPC benchmarking.
 #
 
+if(BUILD_GTPC MATCHES ON)
 # The program for loading CSV files into PMem.
 #
 add_executable(run_gtpc_loader
@@ -632,6 +674,19 @@ target_link_libraries(run_gtpc_loader
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+# The program for executing gtpc queries.
+#
+add_executable(run_gtpc
+  src/gtpc/run_gtpc.cpp
+ )
+
+target_link_libraries(run_gtpc
+  poseidon_gtpc
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+endif()
 
 if(USE_LLVM MATCHES ON)
 # The program for executing jitted bi queries.
@@ -669,6 +724,16 @@ add_executable(qlc
  )
 
  target_link_libraries(qlc
+ poseidon_core
+ ${PMDK_LIBRARIES}
+ Boost::program_options
+)
+
+add_executable(csv_loader
+  src/storage/csv_loader.cpp
+ )
+
+ target_link_libraries(csv_loader
  poseidon_core
  ${PMDK_LIBRARIES}
  Boost::program_options

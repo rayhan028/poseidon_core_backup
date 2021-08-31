@@ -48,7 +48,7 @@ TEST_CASE("Importing a node", "[graph_db]") {
   graph_db_ptr graph;
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
-  auto graph = p_make_ptr<graph_db>();
+  auto graph = p_make_ptr<graph_db>("my_db");
 #endif
 
 {
@@ -74,6 +74,8 @@ TEST_CASE("Importing a node", "[graph_db]") {
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
   pop.close();
   remove(test_path.c_str());
+#else
+  graph_db::destroy(graph);
 #endif
 }
 
@@ -83,7 +85,7 @@ TEST_CASE("Importing a typed node", "[graph_db]") {
   graph_db_ptr graph;
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
-  auto graph = p_make_ptr<graph_db>();
+  auto graph = p_make_ptr<graph_db>("my_db");
 #endif
 
 {
@@ -117,6 +119,8 @@ TEST_CASE("Importing a typed node", "[graph_db]") {
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
   pop.close();
   remove(test_path.c_str());
+#else
+  graph_db::destroy(graph);
 #endif
 }
 
@@ -126,7 +130,7 @@ TEST_CASE("Importing nodes from CSV (old version)", "[graph_db]") {
   graph_db_ptr graph;
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
-  auto graph = p_make_ptr<graph_db>();
+  auto graph = p_make_ptr<graph_db>("my_db");
 #endif
 
   std::string home(".");
@@ -141,6 +145,8 @@ TEST_CASE("Importing nodes from CSV (old version)", "[graph_db]") {
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
   pop.close();
   remove(test_path.c_str());
+#else
+  graph_db::destroy(graph);
 #endif
 }
 
@@ -151,7 +157,7 @@ TEST_CASE("Importing nodes from CSV", "[graph_db]") {
   graph_db_ptr graph;
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
-  auto graph = p_make_ptr<graph_db>();
+  auto graph = p_make_ptr<graph_db>("my_db");
 #endif
 
   std::string home(".");
@@ -166,6 +172,8 @@ TEST_CASE("Importing nodes from CSV", "[graph_db]") {
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
   pop.close();
   remove(test_path.c_str());
+#else
+  graph_db::destroy(graph);
 #endif
 }
 
@@ -177,7 +185,7 @@ TEST_CASE("Importing nodes with many properties from CSV", "[graph_db]") {
   graph_db_ptr graph;
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
-  auto graph = p_make_ptr<graph_db>();
+  auto graph = p_make_ptr<graph_db>("my_db");
 #endif
 
   std::string home(".");
@@ -201,6 +209,8 @@ TEST_CASE("Importing nodes with many properties from CSV", "[graph_db]") {
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
   pop.close();
   remove(test_path.c_str());
+#else
+  graph_db::destroy(graph);
 #endif
 }
 
@@ -210,7 +220,7 @@ TEST_CASE("Importing nodes with many properties from Neo4j style CSV", "[graph_d
   graph_db_ptr graph;
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
-  auto graph = p_make_ptr<graph_db>();
+  auto graph = p_make_ptr<graph_db>("my_db");
 #endif
 
   std::string home(".");
@@ -235,5 +245,7 @@ TEST_CASE("Importing nodes with many properties from Neo4j style CSV", "[graph_d
   nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
   pop.close();
   remove(test_path.c_str());
+#else
+  graph_db::destroy(graph);
 #endif
 }

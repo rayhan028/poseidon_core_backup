@@ -23,13 +23,14 @@
 
 #include <boost/dynamic_bitset.hpp>
 
+constexpr double UNKNOWN_WEIGHT = std::numeric_limits<double>::max();
+
 bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
         bool bidirectional, rship_predicate rpred, path_visitor visit, path_item &spath) {
     bool found = false;
     std::queue<path> frontier;
     boost::dynamic_bitset<> visited(gdb->get_nodes()->as_vec().capacity());
-    std::vector<std::size_t> distance(gdb->get_nodes()->as_vec().capacity(),
-                                        std::numeric_limits<uint64_t>::max());
+    std::vector<std::size_t> distance(gdb->get_nodes()->as_vec().capacity(), UNKNOWN);
 
     distance[start] = 0;
     visited.set(start);
@@ -78,62 +79,128 @@ bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
                 }
             });
         }
-
         if (found)
             return true;
     }
     return false;
 }
 
-bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool bidirectional,
-                rship_predicate rpred, rship_weight weight_func, path_visitor visit, path_item &spath) {
-    uint64_t num_nodes = gdb->get_nodes()->as_vec().capacity();
-    boost::dynamic_bitset<> visited(num_nodes);
-    std::vector<uint64_t> parent(num_nodes, UNKNOWN);
-    std::vector<double> weight(num_nodes, std::numeric_limits<double>::max());
+bool all_unweighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_t stop,
+        bool bidirectional, rship_predicate rpred, path_visitor visit, std::list<path_item> &spaths) {
+    bool found = false;
+    std::queue<path> frontier;
+    boost::dynamic_bitset<> visited(gdb->get_nodes()->as_vec().capacity());
+    std::vector<std::size_t> distance(gdb->get_nodes()->as_vec().capacity(), UNKNOWN);
 
-    double path_weight = 0.0;
-    weight[start] = 0.0;
-    parent[start] = UNKNOWN - 1;
+    distance[start] = 0;
+    visited.set(start);
+    frontier.push({start});
 
-    // TODO Optimize search for next node with minimum weight
-    for (uint64_t nid = 0; nid < num_nodes; nid++) {
-        uint64_t min_nid;
-        double min_weight = std::numeric_limits<double>::max();
-        for (uint64_t vid = 0; vid < num_nodes; vid++) {
-            if (!visited[vid] && weight[vid] < min_weight) {
-                min_nid = vid;
-                min_weight = weight[vid];
-            }
-        }
-        if (min_weight == std::numeric_limits<double>::max())
-            return false;
+    while (!frontier.empty()) {
+        auto u = frontier.front();
+        auto uid = u.back();    
+        frontier.pop();
 
-        visited.set(min_nid);
-        path_weight += min_weight;
-        if (min_nid == stop) {
-            spath.set_weight(path_weight);
-            spath.trace_path(parent, stop);
-            return true;
-        }
-
-        auto& n = gdb->node_by_id(min_nid);
+        auto& n = gdb->node_by_id(uid);
+        visit(n, u);
+       
         gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
             auto vid = r.to_node_id();
-            auto v_weight = weight_func(r);
-            if (rpred(r) && !visited[vid] && (weight[min_nid] + v_weight < weight[vid])) {
-                weight[vid] = weight[min_nid] + v_weight;
-                parent[vid] = min_nid;
+            if (rpred(r) && (!visited[vid] || (vid == stop && distance[uid] < distance[stop]))) {
+                visited.set(vid);
+                distance[vid] = distance[uid] + 1;
+                path u2(u);
+                u2.push_back(vid);
+                frontier.push(u2);
+
+                if (vid == stop) {
+                    found = true;
+                    path_item spath;
+                    spath.set_path(u2);
+                    spath.set_hops(distance[vid]);
+                    spaths.push_back(spath);
+                }
             }
         });
 
         if (bidirectional) {
             gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
                 auto vid = r.from_node_id();
+                if (rpred(r) && (!visited[vid] || (vid == stop && distance[uid] < distance[stop]))) {
+                    visited.set(vid);
+                    distance[vid] = distance[uid] + 1;
+                    path u2(u);
+                    u2.push_back(vid);
+                    frontier.push(u2);
+
+                    if (vid == stop) {
+                        found = true;
+                        path_item spath;
+                        spath.set_path(u2);
+                        spath.set_hops(distance[vid]);
+                        spaths.push_back(spath);
+                    }
+                }
+            });
+        }
+    }
+    return found ? true : false;
+}
+
+bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool bidirectional,
+                rship_predicate rpred, rship_weight weight_func, path_visitor visit, path_item &spath) {
+    bool found = false;
+    uint64_t num_nodes = gdb->get_nodes()->as_vec().capacity();
+    boost::dynamic_bitset<> visited(num_nodes);
+    std::vector<uint64_t> parent(num_nodes, UNKNOWN - 1);
+    std::vector<double> weight(num_nodes, UNKNOWN_WEIGHT);
+
+    weight[start] = 0.0;
+    parent[start] = UNKNOWN;
+
+    // TODO Optimize search for next node with minimum weight
+    for (uint64_t i = 0; i < num_nodes; i++) {
+        uint64_t min_nid = UNKNOWN;
+        double min_weight = UNKNOWN_WEIGHT;
+        for (uint64_t nid = 0; nid < num_nodes; nid++) {
+            if (!visited[nid] && weight[nid] < min_weight) {
+                min_nid = nid;
+                min_weight = weight[nid];
+            }
+        }
+
+        if (min_nid == stop) {
+            found = true;
+            spath.trace_path(parent, stop);
+            spath.set_weight(weight[stop]);
+            return true;
+        }
+        else if (min_weight == UNKNOWN_WEIGHT)
+            return false;
+
+        visited.set(min_nid);
+
+        auto& n = gdb->node_by_id(min_nid);
+        gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
+            auto vid = r.to_node_id();
+            if (rpred(r)) {
                 auto v_weight = weight_func(r);
-                if (rpred(r) && !visited[vid] && (weight[min_nid] + v_weight < weight[vid])) {
+                if (!visited[vid] && (weight[min_nid] + v_weight) < weight[vid]) {
                     weight[vid] = weight[min_nid] + v_weight;
                     parent[vid] = min_nid;
+                }
+            }
+        });
+
+        if (bidirectional) {
+            gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
+                auto vid = r.from_node_id();
+                if (rpred(r)) {
+                    auto v_weight = weight_func(r);
+                    if (!visited[vid] && (weight[min_nid] + v_weight) < weight[vid]) {
+                        weight[vid] = weight[min_nid] + v_weight;
+                        parent[vid] = min_nid;
+                    }
                 }
             });
         }
@@ -141,16 +208,90 @@ bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
     return false;
 }
 
+bool all_weighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool bidirectional,
+                rship_predicate rpred, rship_weight weight_func, path_visitor visit, std::list<path_item> &spaths) {
+    bool found = false;
+    uint64_t num_nodes = gdb->get_nodes()->as_vec().capacity();
+    boost::dynamic_bitset<> visited(num_nodes);
+    std::vector<uint64_t> parent(num_nodes, UNKNOWN - 1);
+    std::vector<double> weight(num_nodes, UNKNOWN_WEIGHT);
+
+    weight[start] = 0.0;
+    parent[start] = UNKNOWN;
+
+    // TODO Optimize search for next node with minimum weight
+    for (uint64_t i = 0; i < num_nodes; i++) {
+        uint64_t min_nid = UNKNOWN;
+        double min_weight = UNKNOWN_WEIGHT;
+        for (uint64_t nid = 0; nid < num_nodes; nid++) {
+            if (!visited[nid] && weight[nid] < min_weight) {
+                min_nid = nid;
+                min_weight = weight[nid];
+            }
+        }
+
+        if (min_nid == stop) {
+            found = true;
+            path_item spath;
+            spath.trace_path(parent, stop);
+            spath.set_weight(weight[stop]);
+            spaths.push_back(spath);
+        }
+        else if (min_weight == UNKNOWN_WEIGHT)
+            return found;
+
+        visited.set(min_nid);
+
+        auto& n = gdb->node_by_id(min_nid);
+        gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
+            auto vid = r.to_node_id();
+            if (rpred(r)) {
+                auto v_weight = weight_func(r);
+                if (!visited[vid] && (weight[min_nid] + v_weight) < weight[vid]) {
+                    weight[vid] = weight[min_nid] + v_weight;
+                    parent[vid] = min_nid;
+                }
+                else if (vid == stop && (weight[min_nid] + v_weight) == weight[vid]) {
+                    path_item spath;
+                    spath.trace_path(parent, stop);
+                    spath.set_weight(weight[vid]);
+                    spaths.push_back(spath);
+                }
+            }
+        });
+
+        if (bidirectional) {
+            gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
+                auto vid = r.from_node_id();
+                if (rpred(r)) {
+                    auto v_weight = weight_func(r);
+                    if (!visited[vid] && (weight[min_nid] + v_weight) < weight[vid]) {
+                        weight[vid] = weight[min_nid] + v_weight;
+                        parent[vid] = min_nid;
+                    }
+                    else if (vid == stop && (weight[min_nid] + v_weight) == weight[stop]) {
+                        path_item spath;
+                        spath.trace_path(parent, stop);
+                        spath.set_weight(weight[stop]);
+                        spaths.push_back(spath);
+                    }
+                }
+            });
+        }
+    }
+    return found;
+}
+
 bool w_spath_with_del_rship(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool bidirectional,
                 rship_predicate rpred, rship_weight weight_func, path_visitor visit, path_item &spath) {
     uint64_t num_nodes = gdb->get_nodes()->as_vec().capacity();
     boost::dynamic_bitset<> visited(num_nodes);
-    std::vector<uint64_t> parent(num_nodes, UNKNOWN);
+    std::vector<uint64_t> parent(num_nodes, UNKNOWN - 1);
     std::vector<double> weight(num_nodes, std::numeric_limits<double>::max());
 
     double path_weight = 0.0;
     weight[start] = 0.0;
-    parent[start] = UNKNOWN - 1;
+    parent[start] = UNKNOWN;
 
     // TODO Optimize search for next node with minimum weight
     for (uint64_t nid = 0; nid < num_nodes; nid++) {

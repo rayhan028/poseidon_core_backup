@@ -24,21 +24,51 @@
 #include "parser.hpp"
 #include "spdlog/spdlog.h"
 #include <iostream>
+#include <stdio.h>
+
+#ifdef USE_MMFILE
+#include <boost/filesystem.hpp>
+#endif
 
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
 #endif
 
-graph_db::graph_db(const std::string &db_name) {
-  nodes_ = p_make_ptr<node_list>();
-  rships_ = p_make_ptr<relationship_list>();
-  node_properties_ = p_make_ptr<property_list>();
-  rship_properties_ = p_make_ptr<property_list>();
+void graph_db::destroy(graph_db_ptr gp) {
+#ifdef USE_MMFILE
+  auto prefix = gp->database_name_ + "/";
+  boost::filesystem::remove(prefix + "nodes.db");
+  boost::filesystem::remove(prefix + "slots_nodes.db");
+  boost::filesystem::remove(prefix + "rships.db");
+  boost::filesystem::remove(prefix + "slots_rships.db");
+  boost::filesystem::remove(prefix + "nprops.db");
+  boost::filesystem::remove(prefix + "slots_nprops.db");
+  boost::filesystem::remove(prefix + "rprops.db");
+  boost::filesystem::remove(prefix + "slots_rprops.db");
+  boost::filesystem::remove(prefix + "dict.db");
+  boost::filesystem::remove(prefix);
+#endif
+}
+
+
+graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
+  std::string prefix = "";
+#ifdef USE_MMFILE
+  boost::filesystem::path path_obj(db_name);
+  // check if path exists and is of a regular file
+  if (! boost::filesystem::exists(path_obj))
+    boost::filesystem::create_directory(path_obj);
+  prefix = db_name + "/";
+#endif
+  nodes_ = p_make_ptr<node_list>(prefix + "nodes.db");
+  rships_ = p_make_ptr<relationship_list>(prefix + "rships.db");
+  node_properties_ = p_make_ptr<property_list>(prefix + "nprops.db");
+  rship_properties_ = p_make_ptr<property_list>(prefix + "rprops.db");
 #ifdef QOP_RECOVERY
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
 #endif
-  dict_ = p_make_ptr<dict>();
+  dict_ = p_make_ptr<dict>(prefix);
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
   active_tx_ = new std::map<xid_t, transaction_ptr>();
@@ -908,7 +938,7 @@ void graph_db::delete_node(node::id_t id) {
   if (n.from_rship_list != UNKNOWN || n.to_rship_list != UNKNOWN) {
     if (has_valid_from_rships(n, txid) || has_valid_to_rships(n, txid)) {
       // in this case we have to abort
-      spdlog::info("abort delete of node #{}", n.id());
+      // spdlog::info("abort delete of node #{}", n.id());
       throw orphaned_relationship();
     }
   }

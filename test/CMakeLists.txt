@@ -8,7 +8,11 @@ file(GLOB_RECURSE ALL_TEST_CPP *_test.cpp)
 
 foreach(ONE_TEST_CPP ${ALL_TEST_CPP})
     get_filename_component(ONE_TEST_EXEC ${ONE_TEST_CPP} NAME_WLE)
-    do_test(${ONE_TEST_EXEC})
+    if (BUILD_LDBC MATCHES OFF AND ONE_TEST_EXEC STREQUAL "ldbc_test")
+      message(STATUS "skipping ldbc_test ...")
+    else()
+      do_test(${ONE_TEST_EXEC})
+    endif()
 endforeach()
 
 #=============================================

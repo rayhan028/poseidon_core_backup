@@ -357,6 +357,7 @@ void compile_task::operator()() {
     ctx_.createNewModule();
     ctx_.getModule().setDataLayout(jit_.getDataLayout());
     qeng_.operator_names_.clear();
+    
     //3. extract all operator names from query and generate type vec
     //first function name == scan => start function
     auto query_id = 0;
@@ -368,11 +369,11 @@ void compile_task::operator()() {
     qeng_.start_.clear();
     qeng_.finish_.clear();
     
+    // obtain the function names for each pipeline and assign the ptrs to the appropriate map
     int i = 0;
     int pipe_id = -1;
     for(auto & s : cv.pipelines) {
         if(s.find("finish_") == 0) {
-            
             auto ffct = jit_.getFunctionRaw<finish_fct_type>(s);
             if(ffct) {
                 qeng_.finish_[i] = *ffct;

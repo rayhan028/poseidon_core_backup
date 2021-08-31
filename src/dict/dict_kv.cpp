@@ -20,7 +20,7 @@
 #include "dict_kv.hpp"
 #include <libpmemobj++/utils.hpp>
 
-dict::dict() {
+dict::dict(const std::string& prefix) {
   auto pop = pmem::obj::pool_by_vptr(this);
   last_code_ = 1;
   pmem::obj::transaction::run(pop, [&] {

@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
         ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
         ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem pool")
-        ("import,i", value<std::string>(&gtpc_home)->required(), "Path to directory containing the graph TPC-C CSV files")
+        ("import,i", value<std::string>(&gtpc_home)->required(), "Path to directory containing the graph GTPC CSV files")
         ("log,l", value<std::string>(&log_file), "Write log messages to the given file")
         ("db,d", value<std::string>(&db_name)->required(),"Database name (required)");
 
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     store(parse_command_line(argc, argv, desc), vm);
 
     if (vm.count("help")) {
-      std::cout << "Poseidon Graph Database G-TPC Importer Version " << POSEIDON_VERSION
+      std::cout << "Poseidon Graph Database GTPC Importer Version " << POSEIDON_VERSION
                 << "\n"
                 << desc << '\n';
       return -1;

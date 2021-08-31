@@ -41,7 +41,8 @@ TEST_CASE("Recovery of aborted inserts", "[graph_db]") {
     remove(test_path.c_str());
     spdlog::info("getcwd {}", getcwd(buf, 1024)); 
     std::string prog(buf);
-    prog += "/abort_insert";
+    prog += "/test/abort_insert";
+    std::cout << "prog = " << prog << std::endl;
     int result = bp::system(prog, test_path, "my_graph");
     REQUIRE(result == 0);
 

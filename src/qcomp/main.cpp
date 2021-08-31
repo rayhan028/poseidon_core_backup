@@ -223,7 +223,7 @@ int main() {
 
 	std::vector<std::string> labels = {"Person", "Book"};
 
-	auto qq  = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Book", End())));
+	auto qq  = Scan("Person", Collect());
 
 	auto r_expr = Scan("Person", Limit(10, End()));
 
@@ -241,7 +241,7 @@ int main() {
 	scan_task::callee_ = &scan_task::scan;	
 
 	auto cs1 = std::chrono::steady_clock::now();
-	queryEngine.generate(simp, false);
+	queryEngine.generate(qq, false);
 	auto ce1 = std::chrono::steady_clock::now();
 	
 	grouper g1;
