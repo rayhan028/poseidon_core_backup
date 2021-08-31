@@ -114,8 +114,8 @@ class BPTree {
    * Constructor for creating a new B+ tree.
    */
   BPTree() : depth(0), rootNode(newLeafNode()) {
-    std::cout << "sizeof(BranchNode) = " << sizeof(BranchNode)
-      << ", sizeof(LeafNode) = " << sizeof(LeafNode) << std::endl;
+    // std::cout << "sizeof(BranchNode) = " << sizeof(BranchNode)
+    //  << ", sizeof(LeafNode) = " << sizeof(LeafNode) << std::endl;
   }
 
   /**

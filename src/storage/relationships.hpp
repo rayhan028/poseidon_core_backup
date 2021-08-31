@@ -22,7 +22,7 @@
 
 #include <vector>
 
-#include "chunked_vec.hpp"
+#include "vec.hpp"
 #include "defs.hpp"
 #include "exceptions.hpp"
 #include "nodes.hpp"
@@ -110,6 +110,12 @@ struct rship_description {
  */
 std::ostream &operator<<(std::ostream &os, const rship_description &rdescr);
 
+#ifdef USE_MMFILE
+using rship_vec = file_vec<relationship>;
+#else
+using rship_vec = chunked_vec<relationship, RSHIP_CHUNK_SIZE>;
+#endif
+
 /**
  * A class for storing all relationships of a graph. It supports adding and
  * removing relationships as well as getting a relationship via its
@@ -117,12 +123,13 @@ std::ostream &operator<<(std::ostream &os, const rship_description &rdescr);
  */
 class relationship_list {
 public:
- using range_iterator = chunked_vec<relationship, RSHIP_CHUNK_SIZE>::range_iter;
+ using range_iterator = rship_vec::range_iter;
 
   /**
    * Constructors.
    */
-  relationship_list() = default;
+  relationship_list(const std::string& vec_name = "") : rships_(vec_name) {}
+
   relationship_list(const relationship_list &) = delete;
 
   /**
@@ -182,7 +189,7 @@ public:
   /**
    * Returns the underlying vector of the relationship list.
    */
-  chunked_vec<relationship, RSHIP_CHUNK_SIZE> &as_vec() { return rships_; }
+  rship_vec &as_vec() { return rships_; }
 
   /**
    * Return a range iterator to traverse the relationship_list from first_chunk to
@@ -203,6 +210,6 @@ public:
   std::size_t num_chunks() const { return rships_.num_chunks(); }
 
 private:
-  chunked_vec<relationship, RSHIP_CHUNK_SIZE> rships_; // the actual list of relationships
+  rship_vec rships_; // the actual list of relationships
 };
 #endif

@@ -80,7 +80,7 @@ private:
      * member functions.
      */
     graph_pool();
-
+   
 #ifdef USE_PMDK
     using hashmap = pmem::obj::concurrent_hash_map<string_t, graph_db_ptr, string_hasher>;
     p_ptr<hashmap> indexes_;

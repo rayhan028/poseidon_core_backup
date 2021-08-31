@@ -16,22 +16,13 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef vec_hpp_
+#define vec_hpp_
 
-#ifndef dict_hpp_
-#define dict_hpp_
-
-#define USE_HDICT
-
-#include "defs.hpp"
-
-#ifdef USE_HDICT
-#include "hdict.hpp"
-#elif defined(USE_PMDK)
-#include "dict_kv.hpp"
+#ifdef USE_MMFILE
+#include "file_vec.hpp"
 #else
-#include "dict_bimap.hpp"
+#include "chunked_vec.hpp"
 #endif
-
-using dict_ptr = p_ptr<dict>;
 
 #endif

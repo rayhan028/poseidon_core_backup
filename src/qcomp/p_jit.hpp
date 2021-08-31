@@ -34,6 +34,8 @@ class p_jit {
 public:
     p_jit(llvm::ExitOnError exitOnError);
 
+    ~p_jit();
+
     /*
     * Deleted constructors and methods
     */
@@ -144,10 +146,10 @@ private:
     std::string mangle(llvm::StringRef UnmangledName);
     llvm::Error applyDataLayout(llvm::Module &M);
 
-    /*
-    * Volatile map for the handling of already compiled modules
-    */
-    std::vector<llvm::orc::VModuleKey> ModuleKeys;
+    /**
+     * The main JIT Dylib of the compiler
+     */
+    llvm::orc::JITDylib &MainJD;
 
     /*
     * Notification method used by the GDB event listener

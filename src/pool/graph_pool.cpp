@@ -100,7 +100,13 @@ graph_pool_ptr graph_pool::open(const std::string& path, bool init) {
     return std::make_unique<graph_pool>();
 }
 
-void graph_pool::destroy(graph_pool_ptr& p) {}
+void graph_pool::destroy(graph_pool_ptr& p) {
+#ifdef USE_MMFILE
+    for (auto& gp : p->graphs_) { 
+        graph_db::destroy(gp.second);
+    }
+#endif    
+}
 
 graph_pool::graph_pool() {}
 

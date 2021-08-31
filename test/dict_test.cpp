@@ -65,6 +65,9 @@ TEST_CASE("Inserting some strings", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
+#elif defined(USE_MMFILE)
+  std::cout << "remove dict file..." << std::endl;
+  remove("dict.db");
 #endif
 }
 
@@ -93,6 +96,8 @@ TEST_CASE("Inserting duplicate strings", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
+#elif defined(USE_MMFILE)
+  remove("dict.db");  
 #endif
 }
 
@@ -123,6 +128,8 @@ TEST_CASE("Looking up some strings", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
+#elif defined(USE_MMFILE)
+  remove("dict.db"); 
 #endif
 }
 
@@ -153,6 +160,8 @@ TEST_CASE("Looking up some codes", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
+#elif defined(USE_MMFILE)
+  remove("dict.db"); 
 #endif
 }
 
@@ -180,6 +189,8 @@ TEST_CASE("Looking up some non-existing strings", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
+#elif defined(USE_MMFILE)
+  remove("dict.db"); 
 #endif
 }
 
@@ -212,6 +223,28 @@ TEST_CASE("Test persistency of dict", "[dict]") {
 
   pop.close();
   remove(test_path.c_str());
+}
+#elif defined(USE_MMFILE)
+TEST_CASE("Test persistency of dict", "[dict]") {
+  dcode_t c;
+  {
+  dict d;
+  d.initialize();
+
+  d.insert("String #1");
+  d.insert("String #2");
+  d.insert("String #3");
+  c = d.insert("String #4");
+  d.insert("String #5");
+  }
+
+  {
+  dict d2;
+  d2.initialize();
+
+  REQUIRE(d2.lookup_string("String #4") == c);
+  }
+  remove("dict.db");
 }
 #endif
 

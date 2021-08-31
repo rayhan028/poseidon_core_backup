@@ -28,7 +28,7 @@
 
 #include "spdlog/spdlog.h"
 
-#include "chunked_vec.hpp"
+#include "vec.hpp"
 #include "defs.hpp"
 #include "exceptions.hpp"
 #include "properties.hpp"
@@ -148,18 +148,25 @@ std::ostream &operator<<(std::ostream &os, const node_description &ndescr);
  */
 std::ostream &operator<<(std::ostream &os, const boost::any &any_value);
 
+#ifdef USE_MMFILE
+using node_vec = file_vec<node>;
+#else
+using node_vec = chunked_vec<node, NODE_CHUNK_SIZE>;
+#endif
+
 /**
  * A class for storing all nodes of a graph. It supports adding and removing
  * nodes as well as getting a node via its node_id.
  */
 class node_list {
 public:
-  using range_iterator = chunked_vec<node, NODE_CHUNK_SIZE>::range_iter;
+  using range_iterator = node_vec::range_iter;
 
   /**
    * Constructor
    */
-  node_list() = default;
+  node_list(const std::string& vec_name = "") : nodes_(vec_name) {}
+
   node_list(const node_list &) = delete;
 
   /**
@@ -212,7 +219,7 @@ public:
   /**
    * Returns the underlying vector of the node list.
    */
-  chunked_vec<node, NODE_CHUNK_SIZE> &as_vec() { return nodes_; }
+  node_vec &as_vec() { return nodes_; }
 
   /**
    * Return a range iterator to traverse the node_list from first_chunk to
@@ -233,7 +240,7 @@ public:
   std::size_t num_chunks() const { return nodes_.num_chunks(); }
 
 private:
-  chunked_vec<node, NODE_CHUNK_SIZE> nodes_; // the actual list of nodes
+  node_vec nodes_; // the actual list of nodes
 };
 
 #endif
