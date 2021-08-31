@@ -783,7 +783,7 @@ void recover_ldbc_bi_query_9(graph_db_ptr &gdb, result_set &rs, std::map<std::si
                 return boost::get<ptime>(v[3]) >= boost::get<ptime>(params[0]) &&
                         boost::get<ptime>(v[3]) <= boost::get<ptime>(params[1]); })
               .groupby(rec, {0, 1}, {{"count", 0}})
-              .append_to_qr_tuple([&](qr_tuple &v) {
+              .append_to_qr_tuple([&](const qr_tuple &v) {
                 auto msg_cnt = boost::get<uint64_t>(v[2]);
                 msg_cnt++;
                 return query_result(msg_cnt); })

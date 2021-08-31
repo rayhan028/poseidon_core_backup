@@ -262,19 +262,6 @@ int main() {
 	result_set rs;
 	result_set rs2;
 
-	auto qn1 = query(graph).all_nodes({"Person", "Book"});
-	auto qn2 = query(graph).all_nodes("Book");
-
-	auto qrs = query(graph).all_rships(":likes").pred_join([&](const qr_tuple &l, const qr_tuple &r) -> bool{
-		auto rl = boost::get<relationship*>(l[0]);
-		auto nr = boost::get<node*>(r[0]);
-		return rl->src_node == nr->id();
-	}, qn1).pred_join([&](const qr_tuple &l, const qr_tuple &r) -> bool {
-		auto rl = boost::get<relationship*>(l[0]);
-		auto nr = boost::get<node*>(r[0]);
-		return rl->dest_node == nr->id();
-	}, qn1).collect(rs);
-
 	auto qrl = query(graph).all_nodes("Person").from_relationships(":likes").to_node("Book").collect(rs);
 
 	auto testq = query(graph).all_nodes("Person");
