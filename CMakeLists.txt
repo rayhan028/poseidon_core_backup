@@ -711,6 +711,16 @@ add_executable(qlc
  Boost::program_options
 )
 
+add_executable(csv_loader
+  src/storage/csv_loader.cpp
+ )
+
+ target_link_libraries(csv_loader
+ poseidon_core
+ ${PMDK_LIBRARIES}
+ Boost::program_options
+)
+
 #-----------------------------------------------------------------------------------------
 #
 # Unit tests using Catch
