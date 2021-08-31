@@ -1,4 +1,4 @@
-FROM dbisilm/llvm_pmdk:latest
+FROM dbisilm/llvm12_pmdk:latest
 LABEL Poseidon Graph Database Engine
 
 
