@@ -31,8 +31,7 @@ dict::dict(const std::string& prefix, uint32_t init_pool_size)
 #else
     pool_ = p_make_ptr<string_pool>(init_pool_size);
 #endif
-    table_ = std::make_unique<htable>(pool_, 50000);
-    table_->rebuild();
+    initialize();
 }
 
 dict::~dict() {
@@ -47,6 +46,7 @@ dict::~dict() {
 }
 
 void dict::initialize() {
+    table_ = std::make_unique<htable>(pool_, 50000);
     table_->rebuild();
 }
 
