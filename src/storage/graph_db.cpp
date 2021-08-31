@@ -41,8 +41,12 @@ void graph_db::destroy(graph_db_ptr gp) {
   boost::filesystem::remove(prefix + "slots_nodes.db");
   boost::filesystem::remove(prefix + "rships.db");
   boost::filesystem::remove(prefix + "slots_rships.db");
-  boost::filesystem::remove(prefix + "props.db");
-  boost::filesystem::remove(prefix + "slots_props.db");
+  boost::filesystem::remove(prefix + "nprops.db");
+  boost::filesystem::remove(prefix + "slots_nprops.db");
+  boost::filesystem::remove(prefix + "rprops.db");
+  boost::filesystem::remove(prefix + "slots_rprops.db");
+  boost::filesystem::remove(prefix + "dict.db");
+  boost::filesystem::remove(prefix);
 #endif
 }
 
@@ -64,7 +68,7 @@ graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
 #endif
-  dict_ = p_make_ptr<dict>();
+  dict_ = p_make_ptr<dict>(prefix);
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
   active_tx_ = new std::map<xid_t, transaction_ptr>();
@@ -934,7 +938,7 @@ void graph_db::delete_node(node::id_t id) {
   if (n.from_rship_list != UNKNOWN || n.to_rship_list != UNKNOWN) {
     if (has_valid_from_rships(n, txid) || has_valid_to_rships(n, txid)) {
       // in this case we have to abort
-      spdlog::info("abort delete of node #{}", n.id());
+      // spdlog::info("abort delete of node #{}", n.id());
       throw orphaned_relationship();
     }
   }

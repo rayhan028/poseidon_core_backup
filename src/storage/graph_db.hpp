@@ -21,6 +21,7 @@
 #define graph_db_hpp_
 
 #include <boost/any.hpp>
+#include <map>
 #include <mutex>
 #include <string>
 

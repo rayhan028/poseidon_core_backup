@@ -162,7 +162,7 @@ node::id_t node_list::insert(node &&n, xid_t owner, std::function<void(offset_t)
   auto p = nodes_.store(std::move(n), callback);
   p.second->id_ = p.first;
   if (owner != 0) {
-    /// spdlog::info("lock node #{} by {}", p.first, owner);
+    // spdlog::info("lock node #{} by {}", p.first, owner);
     p.second->lock(owner);
   }
 

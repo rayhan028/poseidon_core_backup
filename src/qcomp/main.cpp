@@ -215,7 +215,7 @@ int main() {
 
 	std::vector<std::string> labels = {"Person", "Book"};
 
-	auto qq  = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Book", End())));
+	auto qq  = Scan("Person", Collect());
 
 	auto r_expr = Scan("Book", End(JOIN_OP::NESTED_LOOP, 0));
 
@@ -230,7 +230,7 @@ int main() {
 	scan_task::callee_ = &scan_task::scan;	
 
 	auto cs1 = std::chrono::steady_clock::now();
-	queryEngine.generate(simp, false);
+	queryEngine.generate(qq, false);
 	auto ce1 = std::chrono::steady_clock::now();
 	
 	grouper g1;
@@ -252,7 +252,6 @@ int main() {
 
 	auto aq = query(graph).all_nodes("Person").project({PExpr_(0, pj::int_property(res, "age"))}).groupby({0}, {{"pcount", 0}}).collect(rs);
 
-	std::cout << rs << std::endl;
 	auto js = std::chrono::steady_clock::now();
 	queryEngine.run(&rs, ab, 24);
 	//queryEngine.finish(&rs, ab);

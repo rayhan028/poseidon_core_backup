@@ -50,7 +50,6 @@ TEST_CASE("Creating nodes", "[graph_db]") {
                               true);
   }
   graph->commit_transaction();
-
   graph_pool::destroy(pool);
 }
 
@@ -263,7 +262,7 @@ TEST_CASE("Checking FROM relationships", "[graph_db]") {
         hasReadCnt++;
       else if (s == ":IS_FRIENDS_WITH")
         isFriendsCnt++;
-      auto &n2 = graph->node_by_id(r.to_node_id());
+      graph->node_by_id(r.to_node_id());
       // std::cout << n1.id() << "-[" << s << "]->" << n2.id() << std::endl;
     });
     REQUIRE(hasReadCnt == 3);
