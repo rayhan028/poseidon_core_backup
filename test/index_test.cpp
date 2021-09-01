@@ -25,54 +25,36 @@
 #include "catch.hpp"
 #include "config.h"
 #include "graph_db.hpp"
+#include "graph_pool.hpp"
 #include "../qop/qop.hpp"
 
-#ifdef USE_PMDK
-#define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
-
-namespace nvm = pmem::obj;
 const std::string test_path = poseidon::gPmemPath + "index_test";
 
-nvm::pool_base prepare_pool() {
-  auto pop = nvm::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
-  return pop;
-}
-#endif
-
 TEST_CASE("Creating an index on nodes", "[index]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  graph_db_ptr graph;
-  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
-#else
-  auto graph = p_make_ptr<graph_db>();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
 
-#ifdef USE_TX
-  graph->begin_transaction();
-#endif
-
-  for (int i = 0; i < 100; i++) {
-    graph->add_node("Person",
+  graph->run_transaction([&]() {
+    for (int i = 0; i < 100; i++) {
+      graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
                                {"id", boost::any(i)},
                                {"dummy1", boost::any(std::string("Dummy"))},
                                {"dummy2", boost::any(1.2345)}},
                               true);
-  }
+    }
+    return true;
+  });
 
-#ifdef USE_TX
-  graph->commit_transaction();
+  index_id idx; 
+  graph->run_transaction([&]() {
+    idx = graph->create_index("Person", "id");
+    return true;
+  });
+  
   graph->begin_transaction();
-#endif
 
-  auto idx = graph->create_index("Person", "id");
-
-#ifdef USE_TX
-  graph->commit_transaction();
-  graph->begin_transaction();
-#endif
   REQUIRE(graph->get_index("Person", "id"));
   CHECK_THROWS_AS(graph->get_index("Actor", "id"), unknown_index);
 
@@ -81,13 +63,8 @@ TEST_CASE("Creating an index on nodes", "[index]") {
     found = true;
   });
   REQUIRE(found);
-#ifdef USE_TX
-  graph->commit_transaction();
-#endif
 
-#ifdef USE_PMDK
-  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-  pop.close();
-  remove(test_path.c_str());
-#endif
+  graph->commit_transaction();
+
+  graph_pool::destroy(pool);
 }
