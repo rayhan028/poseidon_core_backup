@@ -95,7 +95,7 @@ private:
     mm_file dict_file_;              // the memory-mapped file
 #endif
     p_ptr<string_pool> pool_;        // the string pool for storing the actual strings
-    std::unique_ptr<htable> table_;  // the hash table for mapping codes to strings
+    htable *table_;  		     // the hash table for mapping codes to strings
     std::mutex m_;                   // a mutex for synchronizing access to the dictionary
 };
 

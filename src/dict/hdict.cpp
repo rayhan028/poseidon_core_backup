@@ -43,10 +43,11 @@ dict::~dict() {
     pmem::obj::delete_persistent<string_pool>(pool_);
   });
 #endif
+  delete table_;
 }
 
 void dict::initialize() {
-    table_ = std::make_unique<htable>(pool_, 50000);
+    table_ = new htable(pool_, 50000);
     table_->rebuild();
 }
 
