@@ -60,6 +60,10 @@ elseif(USE_MMFILE MATCHES ON)
   add_definitions( "-DUSE_MMFILE" )
 endif()
 
+if(USE_HDICT MATCHES ON)
+  add_definitions( "-DUSE_HDICT" )
+endif()
+
 # Transaction support
 if(USE_TX MATCHES ON)
   add_definitions( "-DUSE_TX" )

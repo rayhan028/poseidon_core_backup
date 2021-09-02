@@ -162,13 +162,14 @@ int main() {
   } else {
     pop = nvm::pool<root>::open(path, db_name);
   }
-
+	std::cout << "run code" << std::endl;
   auto q = pop.root();
   if (!q->graph) {
     // create a new persistent graph_db object
     nvm::transaction::run(pop, [&] { q->graph = p_make_ptr<graph_db>(); });
   }
   auto graph = q->graph;
+  std::cout << "run code" << std::endl;
   graph->runtime_initialize();
 #else
   auto pool = graph_pool::open(test_path);
@@ -176,6 +177,7 @@ int main() {
   init = true;
 #endif
 	gdb = graph;
+	std::cout << "run code" << std::endl;
 	if(init) {
 		graph->begin_transaction();
 
@@ -211,16 +213,16 @@ int main() {
 			graph->add_relationship(p, b, ":likes", {{"id", boost::any(id++)}}, false);
 
 		}
-		
+		graph->create_index("Person", "id");
 		graph->commit_transaction();
 	}
-
+	std::cout << "run code2" << std::endl;
 	auto THREAD_NUM = 4;
 	auto chunks = graph->get_nodes()->num_chunks();
 	auto cv_range = chunks / THREAD_NUM;
 	std::cout << "Chunks: " << chunks << std::endl;
 	query_engine queryEngine(graph, THREAD_NUM, cv_range);
-
+	std::cout << "run code3" << std::endl;
 	std::vector<std::string> labels = {"Person", "Book"};
 
 	auto qq  = Scan("Person", Collect());
@@ -268,7 +270,7 @@ int main() {
 	auto testqm = query(graph).all_nodes("Person").outerjoin_on_rship({0,0}, testq).collect(rs);
 
 	auto js = std::chrono::steady_clock::now();
-
+	
 	//queryEngine.run(&rs, ab, 24);
 	//queryEngine.finish(&rs, ab);
 	queryEngine.run(&rs2);
