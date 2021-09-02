@@ -20,8 +20,6 @@
 #ifndef dict_hpp_
 #define dict_hpp_
 
-#define USE_HDICT
-
 #include "defs.hpp"
 
 #ifdef USE_HDICT
