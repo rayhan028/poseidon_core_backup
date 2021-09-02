@@ -275,7 +275,9 @@ auto & tp = tp_m[std::this_thread::get_id()];
 }
 #ifdef QOP_RECOVERY
 void persist_tuple(graph_db *gdb, qr_tuple *qr) {
+#ifdef USE_PMDK
     gdb->store_query_result(*qr, 0);
+#endif
     qr->clear();
 }
 #endif
@@ -402,7 +404,8 @@ std::set<unsigned> pos_set;
 
  void get_time_grpkey(int* time_ptr, unsigned pos) {
     pos_set.insert(pos);
-    grpkey_buffer += to_iso_extended_string(time_result[*time_ptr]);
+    std::string dt = to_iso_extended_string(time_result[*time_ptr]);
+    grpkey_buffer += dt.substr(0, dt.find("-"));
 }
 
  void add_to_group(grouper *g) {

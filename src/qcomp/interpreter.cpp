@@ -148,8 +148,10 @@ void interprete_visitor::visit(std::shared_ptr<join_op> op) {
 }
 
 void interprete_visitor::start() {
+    std::cout << "start: " << queries_.size() << std::endl;
     for(auto & q : queries_) {
-        //q.dump();
+        std::cout << "start" << std::endl;
+        q.print_plan();
         q.start();
     }
     op_id_ = 1;

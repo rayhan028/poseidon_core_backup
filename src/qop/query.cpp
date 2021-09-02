@@ -60,6 +60,11 @@ query &query::all_nodes(const std::string &label) {
   return *this;
 }
 
+query &query::all_nodes(std::map<std::size_t, std::vector<std::size_t>> &range_map, const std::string &label) {
+  plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(label, range_map);
+  return *this;
+}
+
 query &query::nodes_where(const std::string &label, const std::string &key,
                           std::function<bool(const p_item &)> pred) {
   plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(label);
@@ -81,13 +86,6 @@ query &query::nodes_where_indexed(const std::string &label, const std::string &p
   plan_head_ = plan_tail_ = std::make_shared<index_scan>(idx, val);
   return *this;
 }
-
-#ifdef QOP_RECOVERY
-query &query::continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label) {
-  plan_head_ = plan_tail_ = std::make_shared<continue_scan_nodes>(cp, label);
-  return *this;
-}
-#endif
 
 query &query::nodes_where_indexed(const std::vector<std::string> &labels,
                                   const std::string &prop, uint64_t val) {
@@ -227,13 +225,7 @@ query &query::finish() {
   auto op = std::make_shared<end_pipeline>();
   return append_op(op, std::bind(&end_pipeline::process, op.get()));
 }
-#ifdef QOP_RECOVERY
-query &query::persist() {
-  auto op = std::make_shared<persist_result>();
-  return append_op(op,
-                   std::bind(&persist_result::process, op.get(), ph::_1, ph::_2));
-}
-#endif
+
 query &query::project(const projection::expr_list &exprs) {
   auto op = std::make_shared<projection>(exprs);
   return append_op(op,
@@ -257,6 +249,14 @@ query &
 query::groupby(const std::vector<std::size_t> &pos,
   const std::vector<std::pair<std::string, std::size_t>> &aggrs) {
   auto op = std::make_shared<group_by>(pos, aggrs);
+  return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
+                   std::bind(&group_by::finish, op.get(), ph::_1));
+}
+
+query &
+query::groupby(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs) {
+  auto op = std::make_shared<group_by>(grps, pos, aggrs);
   return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
                    std::bind(&group_by::finish, op.get(), ph::_1));
 }
@@ -456,6 +456,43 @@ void query::start(std::initializer_list<query *> queries) {
   }
 }
 
+void query_set::start() {
+  for (auto &q : queries_) {
+    q.start();
+  }
+}
+
+#ifdef QOP_RECOVERY
+query &query::recover_results() {
+  plan_head_ = plan_tail_ = std::make_shared<recover_scan>();
+  return *this;
+}
+
+query &query::continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label) {
+  plan_head_ = plan_tail_ = std::make_shared<continue_scan_nodes>(cp, label);
+  return *this;
+}
+
+query &query::persist() {
+  auto op = std::make_shared<persist_result>();
+  return append_op(op,
+                   std::bind(&persist_result::process, op.get(), ph::_1, ph::_2));
+}
+
+query &
+query::pgroupby(const std::vector<std::size_t> &pos,
+  const std::vector<std::pair<std::string, std::size_t>> &aggrs) {
+  auto op = std::make_shared<persistent_group_by>(pos, aggrs);
+  return append_op(op, std::bind(&persistent_group_by::process, op.get(), ph::_1, ph::_2),
+                   std::bind(&persistent_group_by::finish, op.get(), ph::_1));
+}
+
+query &query::crash(std::size_t n) {
+  auto op = std::make_shared<crash_at>(n);
+  return append_op(op,
+                   std::bind(&crash_at::process, op.get(), ph::_1, ph::_2));
+}
+
 void query::extract_args() {
   std::map<offset_t, offset_t> args_map;
   offset_t opid = 0;
@@ -484,8 +521,4 @@ void query::extract_args() {
   }
 }
 
-void query_set::start() {
-  for (auto &q : queries_) {
-    q.start();
-  }
-}
+#endif
