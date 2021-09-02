@@ -27,6 +27,7 @@ struct root {
 
 using namespace boost::program_options;
 
+queryc qlc;
 
 /**
  * Import data from the given list of CSV files. The list contains
@@ -132,8 +133,6 @@ void interpret_query(graph_db_ptr &gdb, const std::string &qstr) {
  * Execute the query given as string by generating code via LLVM.
  */
 void compile_query(graph_db_ptr &gdb, const std::string &qstr) {
-  queryc qlc;
-
 
 #ifdef USE_LLVM
   spdlog::debug("compile to plan via LLVM");     
@@ -198,10 +197,27 @@ std::string read_from_file(const std::string& qfile) {
     while (getline(myfile, line))
       qstr.append(line);
     myfile.close();
+  } else {
+    std::cout << "File not found" << std::endl;
   }
+  
   spdlog::info("execute query {}", qstr);
   return qstr;
 }
+
+/**
+ * Linenoise - autocompletion
+ */
+void query_completion(const char* buf, std::vector<std::string>& completions) {
+    if (buf[0] == 'n' || buf[0] == 'N') {
+        completions.push_back("NodeScan(");
+    } else if (buf[0] == 'l' || buf[0] == 'L') {
+        completions.push_back("Limit(");
+    } else if (buf[0] == 's' || buf[0] == 'S') {
+        completions.push_back("set");
+    }
+}
+
 
 /**
  * Run an interactive shell for entering and executing queries.
@@ -215,9 +231,11 @@ void run_shell(graph_db_ptr &gdb, bool qex_cc) {
   linenoise::SetHistoryMaxLen(4);
   // Load history
   linenoise::LoadHistory(path);
+  linenoise::SetCompletionCallback(query_completion);
 
   while (true) {
     std::string line;
+    
     auto quit = linenoise::Readline("poseidon> ", line);
 
     if (quit) {
@@ -232,7 +250,17 @@ void run_shell(graph_db_ptr &gdb, bool qex_cc) {
     if (line.rfind("@", 0) == 0) {
       auto query_string = read_from_file(line.substr(1));
       exec_query(gdb, query_string, qex_cc);
+    } 
+#if USE_LLVM    
+    else if(line.rfind("set", 0) == 0) { // save sub-query: > q1:End(NodeScan("Person"))
+      spdlog::info("Save query: {} as {}", line.substr(line.find(":") + 1), line.substr(0, line.find(":")).substr(4));
+      qlc.parse_and_save_plan(line.substr(0, line.find(":")).substr(4), line.substr(line.find(":") + 1));
+    } else if(line.rfind("run", 0) == 0) { // run saved query plan -> run:q1
+      spdlog::info("Execute query: {} ", line.substr(line.find(":") + 1));
+      //qlc.exec_plan(line.substr(line.find(":") + 1), gdb);
+      exec_query(gdb, line.substr(line.find(":") + 1), qex_cc);
     }
+#endif
     else
       exec_query(gdb, line, qex_cc);
 

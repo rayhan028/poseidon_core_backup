@@ -463,17 +463,20 @@ void query_set::start() {
 }
 
 #ifdef QOP_RECOVERY
-query &query::recover_results() {
+query &
+query::recover_results() {
   plan_head_ = plan_tail_ = std::make_shared<recover_scan>();
   return *this;
 }
 
-query &query::continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label) {
+query &
+query::continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label) {
   plan_head_ = plan_tail_ = std::make_shared<continue_scan_nodes>(cp, label);
   return *this;
 }
 
-query &query::persist() {
+query &
+query::persist() {
   auto op = std::make_shared<persist_result>();
   return append_op(op,
                    std::bind(&persist_result::process, op.get(), ph::_1, ph::_2));
@@ -487,7 +490,8 @@ query::pgroupby(const std::vector<std::size_t> &pos,
                    std::bind(&persistent_group_by::finish, op.get(), ph::_1));
 }
 
-query &query::crash(std::size_t n) {
+query &
+query::crash(std::size_t n) {
   auto op = std::make_shared<crash_at>(n);
   return append_op(op,
                    std::bind(&crash_at::process, op.get(), ph::_1, ph::_2));

@@ -1,7 +1,19 @@
 #include "global_definitions.hpp"
 
 
-boost::barrier pipeline_barrier(24);
+thread_local std::map<int, std::string> str_result;
+thread_local std::map<int, uint64_t> uint_result;
+thread_local std::map<int, boost::posix_time::ptime> time_result;
+thread_local int str_res_ctr = 0;
+
+thread_local std::map<int, node_description> descs;
+thread_local std::map<int, rship_description> rdescs;
+thread_local qr_tuple mat_tuple;
+
+thread_local qr_tuple rec;
+thread_local std::vector<relationship*> fev_rship_list;
+thread_local std::vector<relationship*>::iterator fev_list_iter;
+thread_local std::string grpkey_buffer;
 
 query_time_point get_now() {
     return std::chrono::high_resolution_clock::now();
@@ -74,14 +86,6 @@ bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_C
  const property_set *pset_get_item_at(graph_db *gdb, offset_t id) {
     return &gdb->get_node_properties()->get(id);
 }
-
-thread_local std::map<int, std::string> str_result;
-thread_local std::map<int, uint64_t> uint_result;
-thread_local std::map<int, boost::posix_time::ptime> time_result;
-thread_local int str_res_ctr = 0;
-
-thread_local std::map<int, node_description> descs;
-thread_local std::map<int, rship_description> rdescs;
 
 std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
 
@@ -204,12 +208,13 @@ extern "C" relationship* create_rship_func(graph_db *gdb, char *label, node *n1,
     return &gdb->rship_by_id(rid);
 }
 
-thread_local qr_tuple rec;
+
 std::map<std::thread::id, qr_tuple> tp_m;
 int tcnt = 0;
 std::mutex mat_reg_mut;
  void mat_reg_value(graph_db *gdb, int *reg, int type) {
     std::lock_guard<std::mutex> lck(mat_reg_mut);
+    
     auto & tp = tp_m[std::this_thread::get_id()];
     {
         if(type == 2) {
@@ -233,6 +238,7 @@ std::mutex mat_reg_mut;
             tp.push_back(con_map[type](gdb, reg));
         }
     }
+    
 }
 
  void append_to_tuple(query_result qr) {
@@ -282,8 +288,6 @@ void persist_tuple(graph_db *gdb, qr_tuple *qr) {
 }
 #endif
 
-thread_local qr_tuple mat_tuple;
-
  qr_tuple *obtain_mat_tuple() {
     //auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
     //return &joiner::mat_tuple_[tid];
@@ -299,12 +303,12 @@ thread_local qr_tuple mat_tuple;
     qr->push_back(r);
 }
 
- void collect_tuple_join(int jid, qr_tuple *qr) {
-    joiner::materialize_rhs(jid, qr);
+ void collect_tuple_join(joiner *j, int jid, qr_tuple *qr) {
+    j->materialize_rhs(jid, qr);
 }
 
- qr_tuple *get_join_tp_at(int jid, int pos) {
-    return &joiner::rhs_input_[jid].at(pos);
+ qr_tuple *get_join_tp_at(joiner *j, int jid, int pos) {
+    return &j->rhs_input_[jid].at(pos);
 }
 
  node *get_node_res_at(qr_tuple *tuple, int pos) {
@@ -316,8 +320,8 @@ thread_local qr_tuple mat_tuple;
     return x;
 }
 
- int get_mat_res_size(int jid) {
-    return joiner::rhs_input_[jid].size();
+ int get_mat_res_size(joiner *j, int jid) {
+    return j->rhs_input_[jid].size();
 }
 
  node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t value) {
@@ -354,9 +358,6 @@ thread_local qr_tuple mat_tuple;
     return queue.empty();
 }
 
-thread_local std::vector<relationship*> fev_rship_list;
-thread_local std::vector<relationship*>::iterator fev_list_iter;
-thread_local std::string grpkey_buffer;
 
  void foreach_from_variable_rship(graph_db *gdb, dcode_t lcode, node *n, std::size_t min, std::size_t max) {
     gdb->foreach_variable_from_relationship_of_node(*n, lcode, min, max, [&](relationship &r) {
@@ -439,7 +440,7 @@ std::set<unsigned> pos_set;
 }
 
 int double_to_reg(qr_tuple* qr, int pos) {
-    
+    return boost::get<double>(qr->at(pos));
 }
 
  node* node_to_reg(qr_tuple* qr, int pos) {
@@ -484,31 +485,31 @@ int double_to_reg(qr_tuple* qr, int pos) {
     return g->get_group_sum_uint(pos);
 }
 
-void insert_join_id_input(int jid, offset_t id) {
-    joiner::materialize_rhs_id(jid, id);
+void insert_join_id_input(joiner *j, int jid, offset_t id) {
+    j->materialize_rhs_id(jid, id);
 }
 
-offset_t get_join_id_at(int jid, int pos) {
-    return joiner::id_input_[jid][pos];
+offset_t get_join_id_at(joiner *j, int jid, int pos) {
+    return j->id_input_[jid][pos];
 }
 
-void collect_tuple_hash_join(int jid, int remainder, qr_tuple *qr) {
-    joiner::materialize_rhs_hash_join(jid, remainder, qr);
+void collect_tuple_hash_join(joiner *j, int jid, int remainder, qr_tuple *qr) {
+    j->materialize_rhs_hash_join(jid, remainder, qr);
 }
 
-void insert_join_bucket_input(int jid, int remainder, int id) {
-    joiner::materialize_rhs_id_hash_join(jid, remainder, id);
+void insert_join_bucket_input(joiner *j, int jid, int remainder, int id) {
+    j->materialize_rhs_id_hash_join(jid, remainder, id);
 }
 
-int get_hj_input_size(int jid, int bucket) {
-    return joiner::get_input_size(jid, bucket);
+int get_hj_input_size(joiner *j, int jid, int bucket) {
+    return j->get_input_size(jid, bucket);
 }
-int get_hj_input_id(int jid, int bucket, int idx) {
-    return joiner::get_input_id(jid, bucket, idx);
+int get_hj_input_id(joiner *j, int jid, int bucket, int idx) {
+    return j->get_input_id(jid, bucket, idx);
 }
 
-qr_tuple * get_query_result(int jid, int bucket, int idx) {
-    return joiner::get_query_result(jid, bucket, idx);
+qr_tuple * get_query_result(joiner *j, int jid, int bucket, int idx) {
+    return j->get_query_result(jid, bucket, idx);
 }
 
 int node_has_property(graph_db *gdb, node *n, char *property) {

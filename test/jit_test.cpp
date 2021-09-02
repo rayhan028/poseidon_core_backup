@@ -96,13 +96,6 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
 #ifdef USE_TX
   graph->commit_transaction();
-  graph->begin_transaction();
-#endif
-
-  graph->create_index("Person", "id");
-
-#ifdef USE_TX
-  graph->commit_transaction();
 #endif
 
 	auto chunks = graph->get_nodes()->num_chunks();
@@ -121,7 +114,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         //REQUIRE(boost::get<std::string>(rs.data[43][0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\"}");
     }
 
-   SECTION("Using an index to retrieve a certain node") {
+   /*SECTION("Using an index to retrieve a certain node") {
         query_engine queryEngine(graph, 1, chunks);
         auto expr = IndexScan(Collect());
         arg_builder args;
@@ -134,7 +127,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         queryEngine.run(&rs, args);
 
         REQUIRE(rs.data.size() == 1);
-    }
+    }*/
 
     arg_builder args;
     result_set rs;
@@ -272,7 +265,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         REQUIRE(rs.data.size() == (unsigned int)num_persons);
         //REQUIRE(boost::get<std::string>(rs.data.back()[0]) == "John Doe");     
     }
-/* TODO: merge joiner branch
+
     SECTION("CrossJoin two tuple results") {
         query_engine queryEngine(graph, 1, chunks);
         auto rhs = Scan("Book", End());
@@ -289,10 +282,10 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         queryEngine.generate(lhs, false);
         queryEngine.run(&rs, args);
 
-        REQUIRE(rs.data.size() == num_persons * num_books);
+        REQUIRE(rs.data.size() == (unsigned int)num_persons * (unsigned int)num_books);
     }
 
-
+/* TODO: merge joiner branch
     SECTION("Find connected nodes between two results with a LeftJoin") {
         query_engine queryEngine(graph, 1, chunks);
         auto rhs = Scan("Book", End());
@@ -426,7 +419,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         REQUIRE(boost::get<int>(rs.data.front()[1]) == 42);
         REQUIRE(boost::get<uint64_t>(rs.data.front()[2]) == 1234567890123412);
     }
-/* TODO: merge joiner branch
+
     SECTION("Project over several query results") {
         query_engine queryEngine(graph, 1, chunks);
         auto r_expr = Scan("Book",  End());
@@ -490,7 +483,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
         REQUIRE(rs.data.front().size() == 102);
     }
-*/
+
   SECTION("Test the compiled variable foreach relationship operator") {
         query_engine queryEngine(graph, 1, chunks);
         auto fev = Scan("Town", ForeachRship(RSHIP_DIR::FROM, {1, 2}, ":CONNECTED", 

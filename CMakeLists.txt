@@ -60,6 +60,10 @@ elseif(USE_MMFILE MATCHES ON)
   add_definitions( "-DUSE_MMFILE" )
 endif()
 
+if(USE_HDICT MATCHES ON)
+  add_definitions( "-DUSE_HDICT" )
+endif()
+
 # Transaction support
 if(USE_TX MATCHES ON)
   add_definitions( "-DUSE_TX" )
@@ -353,7 +357,25 @@ else()
 endif()
 
 if(USE_LLVM MATCHES ON)
+  set(codegen_operators_src
+    src/qcomp/operators/append.cpp
+    src/qcomp/operators/aggregation.cpp
+    src/qcomp/operators/collect.cpp
+    src/qcomp/operators/connected.cpp
+    src/qcomp/operators/create.cpp
+    src/qcomp/operators/expand.cpp
+    src/qcomp/operators/filter.cpp
+    src/qcomp/operators/foreach_rship.cpp
+    src/qcomp/operators/groupby.cpp
+    src/qcomp/operators/join.cpp
+    src/qcomp/operators/limit.cpp
+    src/qcomp/operators/project.cpp
+    src/qcomp/operators/scan.cpp
+    src/qcomp/operators/sort.cpp
+  )
+
   set(llvm_src
+    ${codegen_operators_src}
     src/qcomp/codegen_inline.cpp
     src/qcomp/filter_expression.cpp
     src/qcomp/filter_expression_inline.cpp

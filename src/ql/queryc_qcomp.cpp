@@ -18,6 +18,7 @@
  */
 #include <iostream>
 #include <memory>
+#include <chrono>
 
 #include <boost/algorithm/string.hpp>
 
@@ -32,6 +33,49 @@ algebra_optr queryc::compile_to_plan(const std::string &query) {
       throw query_execution_error();
     auto collect = Collect(true);
     return ast_to_algoptr(ast, collect);
+}
+
+void queryc::exec_plan(algebra_optr &plan, graph_db_ptr &gdb) {
+  query_engine queryEngine(gdb, 1, gdb->get_nodes()->num_chunks());
+
+  result_set rs;
+
+  auto start_qp = std::chrono::steady_clock::now();
+  spdlog::debug("generate query code");     
+  queryEngine.generate(plan, false);
+  auto end_qc = std::chrono::steady_clock::now();
+
+  spdlog::debug("execute query code");     
+	queryEngine.run(&rs);
+
+  auto end_qp = std::chrono::steady_clock::now();
+  
+  std::cout << "Query compiled in "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end_qc -
+                                                                     start_qp)
+                   .count()
+            << " ms and executed in " 
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+                                                                     end_qc)
+                   .count()
+            << " ms" << std::endl;
+
+  std::cout << rs << std::endl;
+}
+
+void queryc::exec_plan(const std::string &qname, graph_db_ptr &gdb) {
+  auto plan_it = query_plans_.find(qname);
+  if(plan_it != query_plans_.end()) {
+    auto plan = query_plans_[qname];
+    exec_plan(plan, gdb);
+  } else {
+    std::cout << "Query plan not found!" << std::endl;
+  }
+}
+
+void queryc::parse_and_save_plan(const std::string &name, const std::string &query) {
+  auto plan = compile_to_plan(query);
+  query_plans_[name] = plan;
 }
 
 algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
@@ -105,13 +149,78 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
         op = Project(pr_exprs, parent);
       break;
     }
+    case ast_op::end: 
+    {
+      op = parent = End();
+      break;
+    }
+    case ast_op::cross_join:
+    {
+      // load rhs sub-query from plan storage
+      if(ast->children_.size() == 1) {
+        
+        auto query_id = trim_string(ast->get_param<std::string>(0));
+        auto plan = query_plans_.find(query_id);
+        if(plan != query_plans_.end()) {
+          std::cout << "Found plan: " << plan->first << std::endl;
+          op = CrossJoin(parent, plan->second);
+          op = ast_to_algoptr(ast->children_[0], op);
+          return op;
+          //break;
+        } else {
+          std::cout << "Plan not found!";
+        }
+      } else if(ast->children_.size() == 0) { // load rhs and lhs from plan storage
+        auto query_id1 = trim_string(ast->get_param<std::string>(0));
+        auto query_id2 = trim_string(ast->get_param<std::string>(1));
+        auto plan1 = query_plans_.find(query_id1);
+        if(plan1 != query_plans_.end()) {
+          auto plan2 = query_plans_.find(query_id2);
+          if(plan2 != query_plans_.end()) {
+            // TODO: link CrossJoin into lhs 
+          } else {
+            std::cout << "Rhs plan not found" << std::endl;
+          }
+        } else {
+          std::cout << "Lhs plan not found!";
+        }
+        
+      } else { // handle inline lhs and rhs
+
+      }
+      break;
+    }
     case ast_op::hash_join:
     {
       break;        
     }
     case ast_op::leftouter_join:
-    {
-      break;        
+    { 
+      // extract join predicate
+      auto fexpr = ast->get_param<expr>(0);
+      auto eq_fexpr = std::dynamic_pointer_cast<eq_predicate>(fexpr);
+      auto lhs_expr = std::dynamic_pointer_cast<key_token>(eq_fexpr->left_);
+      auto rhs_expr = std::dynamic_pointer_cast<key_token>(eq_fexpr->right_);
+      
+      auto lhs_id = lhs_expr->qr_id_;
+      auto rhs_id = rhs_expr->qr_id_;
+
+      std::pair<int, int> join_on = {lhs_id, rhs_id};
+
+      // parse left
+      auto lhs_ast = ast->children_.at(0);
+
+      // parse right
+      auto rhs_ast = ast->children_.at(1);
+      auto rhs_plan = ast_to_algoptr(rhs_ast, End());
+
+      // auto simp = Scan("Person", LeftJoin({0,0}, Collect(), Scan("Person", End(JOIN_OP::LEFT_OUTER, 0))));
+
+      auto l_join = LeftJoin(join_on, parent, rhs_plan);
+
+      op = ast_to_algoptr(lhs_ast, l_join);
+
+      break;  
     }    
     case ast_op::sort:
     {
@@ -142,8 +251,8 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       auto aggr_list = ast->get_param<aggr_spec_list>(1);
    
       // Group attributes
-      std::vector<unsigned int> group_ids;
-      std::vector<std::pair<std::string, int>> aggrs;
+      std::vector<std::size_t> group_ids;
+      std::vector<std::pair<std::string, std::size_t>> aggrs;
       for(auto & ag : aggr_list) {
           auto tp_pos = parse_tuple_id(ag.aname);
           group_ids.push_back(tp_pos);
@@ -176,10 +285,12 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       break;
   }
   if(!ast->is_source()) {
-    op = ast_to_algoptr(ast->children_[0], op);
-    //if(ast->children_.size() == 2) {
+    //op = ast_to_algoptr(ast->children_[0], op);
+    if(ast->children_.size() == 2) {
       //auto qop2 = ast_to_algoptr(ast->children_[1], op);
-    //}
+    } else {
+      op = ast_to_algoptr(ast->children_[0], op);
+    }
   }
   return op;
 }

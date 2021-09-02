@@ -152,12 +152,16 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
         return ast_op::hash_join;
       else if (name == "LeftOuterJoin")
         return ast_op::leftouter_join;
+      else if (name == "CrossJoin")
+        return ast_op::cross_join;
       else if (name == "ForeachRelationship")
         return ast_op::foreach_rship;
       else if (name == "Expand")
         return ast_op::expand;
       else if (name == "Project")
         return ast_op::project;
+      else if (name == "End")
+        return ast_op::end;
       else if (name == "Create") {
         if (pn->children.size() > 1) {
           auto& sibling = pn->children[1];

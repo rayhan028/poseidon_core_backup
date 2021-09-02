@@ -51,4 +51,3 @@ coverage:
     - ctest --verbose
     - ~/.local/bin/gcovr -r .. --exclude _deps --exclude "../bench/*"
   coverage: '/^TOTAL.*\s+(\d+\%)$/'
-

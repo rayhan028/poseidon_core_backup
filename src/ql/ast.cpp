@@ -77,9 +77,13 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
             os << "HashJoin("; break;
         case ast_op::leftouter_join:
             os << "LeftOuterJoin("; break;
+        case ast_op::cross_join:
+            os << "CrossJoin("; break;
         case ast_op::create_node:
             os << "CreateNode("; break;
         case ast_op::create_rship:
+            os << "CreateRelationship("; break;
+        case ast_op::end:
             os << "CreateRelationship("; break;
         default:
             break;
@@ -88,7 +92,7 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
       [&](int i) { os << i; },
       [&](const std::string &s) { os << s; },
       #ifdef USE_LLVM
-      [&](const expr& expr) { os << (*expr)(); },
+      [&](const expr& expr) { os << expr->dump(); },
       #endif
       [&](const proj_spec_list& plist) { os << plist; },
       [&](const aggr_spec_list& alist) { os << alist; },
