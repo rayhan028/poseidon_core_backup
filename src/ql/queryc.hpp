@@ -174,6 +174,8 @@ private:
 
 #ifdef USE_LLVM
   std::map<std::string, algebra_optr> query_plans_;
+#else
+  std::map<std::string, query> query_plan_;
 #endif
 
 };
