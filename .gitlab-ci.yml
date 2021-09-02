@@ -1,4 +1,6 @@
-image: "dbisilm/llvm_pmdk:latest"
+image: 
+  name: "dbisilm/llvm_pmdk:latest"
+  entrypoint: [ '/bin/sh', '-c' ]
 
 stages:
   - build
@@ -35,7 +37,6 @@ test:
 
 coverage:
   stage: build
-  image: "dbisilm/llvm_pmdk:latest"
   tags:
     - grouprunner
   script:

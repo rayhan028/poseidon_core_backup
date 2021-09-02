@@ -191,6 +191,7 @@ TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
   auto b1 = graph->add_node(":Book", {});
   auto b2 = graph->add_node(":Book", {});
   auto b3 = graph->add_node(":Book", {});
+  graph->add_node(":Other", {});
 
   graph->add_relationship(p1, b1, ":HAS_READ", {});
   graph->add_relationship(p1, b2, ":HAS_READ", {});
@@ -221,6 +222,22 @@ TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
     auto n5 = graph->get_node_description(b3);
     REQUIRE(n5.label == ":Book");
     REQUIRE(n5.id == b3);
+  }
+
+  // check nodes_by_label
+  {
+    auto num = 0u;
+    graph->nodes_by_label(":Book", [&](node& dest_node) { num++; });
+		REQUIRE(num == 3);
+
+    num = 0u;
+    graph->nodes_by_label(":Person", [&](node& dest_node) { num++; });
+		REQUIRE(num == 2);
+
+    num = 0u;
+    std::vector<std::string> labels = { ":Person", ":Book" };
+    graph->nodes_by_label(labels, [&](node& dest_node) { num++; });
+		REQUIRE(num == 5);
   }
   graph->commit_transaction();
 

@@ -455,10 +455,12 @@ TEST_CASE("Checking that a node insert is undone after abort", "[transaction]") 
   {
     gdb->begin_transaction();
     REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
+    gdb->abort_transaction();
   }
 
   graph_pool::destroy(pool);
 }
+
 
 /* ----------------------------------------------------------------------- */
 
@@ -508,6 +510,7 @@ TEST_CASE("Checking that a relationship insert is undone after abort", "[transac
 }
 
 /* ----------------------------------------------------------------------- */
+#if 1
 
 TEST_CASE("Checking that a newly inserted node is not visible in another "
           "transaction",
@@ -1544,5 +1547,7 @@ TEST_CASE("Checking the Garbage Collector functionality: Maintain multiple "
   remove(test_path.c_str());
 #endif
 }
+
+#endif
 
 #endif
