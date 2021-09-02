@@ -66,6 +66,11 @@ public:
    * TODO
    */
   algebra_optr ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent);
+
+  /**
+   * Executes the given query plan.
+   */
+  void exec_plan(algebra_optr &plan, graph_db_ptr &gdb);
 #endif
   /**
    *
@@ -81,12 +86,6 @@ public:
    * Parses the given query string and saves the plan with given name.
    */
   void parse_and_save_plan(const std::string &name, const std::string &query);
-
-  /**
-   * Executes the given query plan.
-   */
-  void exec_plan(algebra_optr &plan, graph_db_ptr &gdb);
-
 
   /**
    * Executes the given query by name.
@@ -173,8 +172,9 @@ private:
     return qop;
   }
 
-
+#ifdef USE_LLVM
   std::map<std::string, algebra_optr> query_plans_;
+#endif
 
 };
 
