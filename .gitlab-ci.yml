@@ -1,5 +1,5 @@
 image: 
-  name: "dbisilm/llvm_pmdk:latest"
+  name: "dbisilm/llvm_pmdk:clang"
   entrypoint: [ '/bin/sh', '-c' ]
 
 stages:
