@@ -41,6 +41,10 @@ struct str_token;
 struct time_token;
 struct fct_call;
 struct eq_predicate;
+struct le_predicate;
+struct lt_predicate;
+struct ge_predicate;
+struct gt_predicate;
 struct and_predicate;
 struct or_predicate;
 struct call_predicate;
@@ -65,6 +69,14 @@ public:
     virtual void visit(int rank, std::shared_ptr<fct_call> op) = 0;
 
     virtual void visit(int rank, std::shared_ptr<eq_predicate> op) = 0;
+    
+    virtual void visit(int rank, std::shared_ptr<le_predicate> op) = 0;
+
+    virtual void visit(int rank, std::shared_ptr<lt_predicate> op) = 0;
+
+    virtual void visit(int rank, std::shared_ptr<ge_predicate> op) = 0;
+
+    virtual void visit(int rank, std::shared_ptr<gt_predicate> op) = 0;
 
     virtual void visit(int rank, std::shared_ptr<and_predicate> op) = 0;
 
@@ -176,6 +188,30 @@ struct eq_predicate : public binary_predicate, std::enable_shared_from_this<eq_p
     void accept(int rank, expression_visitor &fep) override;
 };
 
+struct le_predicate : public binary_predicate, std::enable_shared_from_this<le_predicate> {
+    le_predicate(expr const left, expr const right, bool prec, bool not_ = false);
+
+    void accept(int rank, expression_visitor &fep) override;
+};
+
+struct lt_predicate : public binary_predicate, std::enable_shared_from_this<lt_predicate> {
+    lt_predicate(expr const left, expr const right, bool prec, bool not_ = false);
+
+    void accept(int rank, expression_visitor &fep) override;
+};
+
+struct ge_predicate : public binary_predicate, std::enable_shared_from_this<ge_predicate> {
+    ge_predicate(expr const left, expr const right, bool prec, bool not_ = false);
+
+    void accept(int rank, expression_visitor &fep) override;
+};
+
+struct gt_predicate : public binary_predicate, std::enable_shared_from_this<gt_predicate> {
+    gt_predicate(expr const left, expr const right, bool prec, bool not_ = false);
+
+    void accept(int rank, expression_visitor &fep) override;
+};
+
 struct call_predicate : public binary_predicate, std::enable_shared_from_this<call_predicate> {
     call_predicate(expr const left, expr const right, bool prec, bool not_ = false);
 
@@ -184,6 +220,14 @@ struct call_predicate : public binary_predicate, std::enable_shared_from_this<ca
 inline bin_expr Call(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<call_predicate>(lhs, rhs, prec); }
 
 inline bin_expr EQ(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<eq_predicate>(lhs, rhs, prec); }
+
+inline bin_expr LE(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<le_predicate>(lhs, rhs, prec); }
+
+inline bin_expr LT(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<lt_predicate>(lhs, rhs, prec); }
+
+inline bin_expr GE(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<ge_predicate>(lhs, rhs, prec); }
+
+inline bin_expr GT(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<gt_predicate>(lhs, rhs, prec); }
 
 struct and_predicate : public binary_predicate, std::enable_shared_from_this<and_predicate> {
     and_predicate(bin_expr const left, bin_expr const right, bool prec);

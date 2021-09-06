@@ -36,6 +36,22 @@ void interprete_filter_visitor::visit(int rank, std::shared_ptr<eq_predicate> eq
     pred_ = predicate::eq;
 }
 
+void interprete_filter_visitor::visit(int rank, std::shared_ptr<le_predicate> eq) {
+    pred_ = predicate::le;
+}
+
+void interprete_filter_visitor::visit(int rank, std::shared_ptr<lt_predicate> eq) {
+    pred_ = predicate::lt;
+}
+
+void interprete_filter_visitor::visit(int rank, std::shared_ptr<ge_predicate> eq) {
+    pred_ = predicate::ge;
+}
+
+void interprete_filter_visitor::visit(int rank, std::shared_ptr<gt_predicate> eq) {
+    pred_ = predicate::gt;
+}
+
 void interprete_filter_visitor::visit(int rank, std::shared_ptr<and_predicate> andpr) {
 
 }
