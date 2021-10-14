@@ -17,60 +17,9 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "SSSP_gunrock.hpp"
+#include "gunrock_sssp.hpp"
 
-void poseidonToCSR(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
-                std::vector<uint64_t>* row_offsets, std::vector<uint64_t>* col_indices, std::vector<float>* edge_values, 
-                uint64_t* num_nodes, uint64_t* num_edges){
-    int edgeID = 0;
-    chunked_vec<node, NODE_CHUNK_SIZE> &cv_nodes = gdb->get_nodes()->as_vec();
-    offset_t max_num_nodes = cv_nodes.capacity();
-    offset_t max_num_edges = gdb->get_relationships()->as_vec().capacity();
-    
-    // Reserve enough memory. Saves runtime
-    int multi = 1;
-    if(bidirectional){multi = 2;} 
-    row_offsets->reserve(max_num_nodes+1);
-    col_indices->reserve(multi*max_num_edges);
-    edge_values->reserve(multi*max_num_edges);
-    
-    row_offsets->push_back(0); // First value is always 0
-
-    // Loop over the complete nodes chunked vector.
-    // There might exist a better solution for very sparse 
-    // chunked vectors (a lot of deleted entries). 
-    for(offset_t nodeID = 0; nodeID < max_num_nodes; nodeID++){
-        if(cv_nodes.is_used(nodeID)){
-            auto& n = gdb->node_by_id(nodeID);
-
-            gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
-                if (rpred(r)) {
-                    col_indices->push_back(int(r.to_node_id()));
-                    edge_values->push_back(weight_func(r));
-                    edgeID++;
-                } // IF rpred
-            }); // foreach
-
-            if(bidirectional){
-                gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
-                    if (rpred(r)) {
-                        col_indices->push_back(r.from_node_id());
-                        edge_values->push_back(weight_func(r));
-                        edgeID++;
-                    } // if rpred
-                }); // foreach
-            } // if bidirectional
-        } // if is_used
-        row_offsets->push_back(edgeID);
-
-
-    } // Outer for loop
-
-    *num_nodes = max_num_nodes; 
-    *num_edges = edgeID;
-}
-
-int64_t weighted_SSSP_gunrock_CSR(graph_db_ptr gdb, node::id_t start, bool bidirectional,
+int64_t gunrock_weighted_sssp_csr(graph_db_ptr gdb, node::id_t start, bool bidirectional,
                 rship_predicate rpred, rship_weight weight_func, SSSP_result &result, bool quiet) {
 
     std::chrono::steady_clock::time_point start_conversion = std::chrono::steady_clock::now();
@@ -81,7 +30,7 @@ int64_t weighted_SSSP_gunrock_CSR(graph_db_ptr gdb, node::id_t start, bool bidir
     std::vector<uint64_t> col_indices = {};
     std::vector<float> edge_values = {};
     
-    poseidonToCSR(gdb, bidirectional, rpred, weight_func, &row_offsets, &col_indices, &edge_values, &max_index_nodes, &num_edges);
+    poseidon_to_csr(gdb, bidirectional, rpred, weight_func, &row_offsets, &col_indices, &edge_values, &max_index_nodes, &num_edges);
 
     std::chrono::steady_clock::time_point end_conversion = std::chrono::steady_clock::now();
 
@@ -91,8 +40,8 @@ int64_t weighted_SSSP_gunrock_CSR(graph_db_ptr gdb, node::id_t start, bool bidir
 
     // Using a custom written function within Gunrock. You need to 
     // add this to gunrock before compiling Gunrock in order to use it!
-    gunrock_sssp_CSR(max_index_nodes, num_edges, (unsigned long long*) row_offsets.data(), (unsigned long long*) col_indices.data(), 
-                    edge_values.data(), start, true, dist, (unsigned long long*) preds);
+    poseidon_gunrock_sssp_csr(max_index_nodes, num_edges, (unsigned long long*) row_offsets.data(), (unsigned long long*) col_indices.data(), 
+                    (float *)edge_values.data(), start, true, dist, (unsigned long long*) preds);
 
     // Conversion to our output format
     result.setResult(dist, preds, max_index_nodes);
@@ -111,37 +60,7 @@ int64_t weighted_SSSP_gunrock_CSR(graph_db_ptr gdb, node::id_t start, bool bidir
     return std::chrono::duration_cast<std::chrono::milliseconds>(end - start_conversion).count();
 }
 
-typedef chunked_vec<relationship, RSHIP_CHUNK_SIZE> chunked_vec_relationships_t;
-void poseidonToCOO(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
-                edge_coords* edge_coordinates, float* edge_values, uint64_t* num_nodes, uint64_t* num_edges){
-    chunked_vec_relationships_t &cV_rels = gdb->get_relationships()->as_vec();
-    chunked_vec_relationships_t::iter cV_rels_iter = cV_rels.begin();
-    chunked_vec_relationships_t::iter cV_rels_iter_last = cV_rels.end();
-    unsigned long long edgeIndex = 0;
-
-    // Iterates over relationship list
-    while(cV_rels_iter != cV_rels_iter_last){
-        relationship r = (*cV_rels_iter);
-        if (rpred(r)){
-            edge_coordinates[edgeIndex].x = r.from_node_id();
-            edge_coordinates[edgeIndex].y = r.to_node_id();
-            edge_values[edgeIndex] = weight_func(r);
-            edgeIndex++;
-            if(bidirectional){
-                edge_coordinates[edgeIndex].x = r.to_node_id();
-                edge_coordinates[edgeIndex].y = r.from_node_id();
-                edge_values[edgeIndex] = weight_func(r);
-                edgeIndex++;
-            } // if bidirectional
-        } // if rpred
-        ++cV_rels_iter;
-    } // Outer while loop
-
-    *num_nodes = (uint64_t) gdb->get_nodes()->as_vec().capacity();
-    *num_edges = (uint64_t) edgeIndex;
-}
-
-int64_t weighted_SSSP_gunrock_COO(graph_db_ptr gdb, node::id_t start, bool bidirectional,
+int64_t gunrock_weighted_sssp_coo(graph_db_ptr gdb, node::id_t start, bool bidirectional,
                 rship_predicate rpred, rship_weight weight_func, SSSP_result &result, bool quiet) {
 
     std::chrono::steady_clock::time_point start_conversion = std::chrono::steady_clock::now();
@@ -157,7 +76,7 @@ int64_t weighted_SSSP_gunrock_COO(graph_db_ptr gdb, node::id_t start, bool bidir
     uint64_t max_index_nodes = 0; // n
     uint64_t num_edges = 0;       // m
 
-    poseidonToCOO(gdb, bidirectional, rpred, weight_func, edge_coordinates, edge_weights, &max_index_nodes, &num_edges);
+    poseidon_to_coo(gdb, bidirectional, rpred, weight_func, edge_coordinates, edge_weights, &max_index_nodes, &num_edges);
 
     std::chrono::steady_clock::time_point end_conversion = std::chrono::steady_clock::now();
 
@@ -167,7 +86,8 @@ int64_t weighted_SSSP_gunrock_COO(graph_db_ptr gdb, node::id_t start, bool bidir
 
     // Using a custom written function within Gunrock. You need to 
     // add this to gunrock before compiling Gunrock in order to use it!
-    gunrock_sssp_COO(max_index_nodes, num_edges, edge_coordinates, edge_weights, start, true, dist, preds);
+    poseidon_gunrock_sssp_coo(max_index_nodes, num_edges, edge_coordinates, (float *)edge_weights,
+                              start, true, dist, preds);
     
     // Conversion to our output format
     result.setResult(dist, (uint64_t*) preds, max_index_nodes);
@@ -195,7 +115,7 @@ int64_t weighted_SSSP_sequential(graph_db_ptr gdb, node::id_t start, bool bidire
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     uint64_t max_num_nodes = gdb->get_nodes()->as_vec().capacity();
-    float indef = std::numeric_limits<float>::max();
+    float undef = std::numeric_limits<float>::max();
     boost::heap::fibonacci_heap<nodeFibHeap, boost::heap::compare<compare_nodes>> fibHeap;
 
     // Allocate memory for intermediate results and fib-heap-handle lookup table
@@ -205,8 +125,8 @@ int64_t weighted_SSSP_sequential(graph_db_ptr gdb, node::id_t start, bool bidire
 
     // Init fibonacci-heap and lookup table
     for(uint64_t i = 0; i < max_num_nodes; i++){
-        nodeID_to_handle[i] = fibHeap.push(nodeFibHeap(i,indef));
-        distances[i] = indef;
+        nodeID_to_handle[i] = fibHeap.push(nodeFibHeap(i,undef));
+        distances[i] = undef;
         preds[i] = i;
     }
 
@@ -215,7 +135,7 @@ int64_t weighted_SSSP_sequential(graph_db_ptr gdb, node::id_t start, bool bidire
     distances[start] = 0;
 
     // Standard sequential Dijkstra-Algorithm using fib-heap
-    while(fibHeap.top().distance != indef){
+    while(fibHeap.top().distance != undef){
         nodeFibHeap u = fibHeap.top();
         fibHeap.pop();
         auto uid = u.nodeID;

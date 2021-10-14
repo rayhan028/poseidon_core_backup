@@ -17,11 +17,12 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SSSP_gunrock_hpp_
-#define SSSP_gunrock_hpp_
+#ifndef gunrock_sssp_hpp_
+#define gunrock_sssp_hpp_
 
 #include "graph_db.hpp"
 #include "gunrock.h"
+#include "format_converter.hpp"
 #include <vector>
 #include <boost/heap/fibonacci_heap.hpp> // used by dijkstra (sequential SSSP)
 #include <chrono> // for elapsed time measurement
@@ -72,7 +73,8 @@ struct SSSP_result {
      * UNKNOWN for invalid or non-reachable nodes.
     **/
     offset_t getPredecessor(offset_t nodeID){
-        if(nodeID <= max_index_nodes){
+        // if(nodeID <= max_index_nodes){
+        if(nodeID < max_index_nodes){
             return offset_t(predecessors[nodeID]);
         } else {
             return UNKNOWN;
@@ -84,7 +86,8 @@ struct SSSP_result {
      * UNKNOWN for invalid or non-reachable nodes.
     **/
     float getDistance(offset_t nodeID){
-        if(nodeID <= max_index_nodes){
+        // if(nodeID <= max_index_nodes){
+        if(nodeID < max_index_nodes){
             return distances[nodeID];
         } else {
             return UNKNOWN;
@@ -107,38 +110,6 @@ private:
     uint64_t max_index_nodes;
 };
 
-/*
- * Struct used to store edge-coordinates in COO format
- * Needs to be allocated 16-bit alligned!
- */
-struct edge_coords{
-    unsigned long long x,y;
-};
-
-/**
- * Converts a given Poseidon Graph to a CSR representation, including all relationships satisfying the
- * predicate rpred. The weight of a traversed relationship is calculated from the weight function. The 
- * bidirectional flag determines whether only outgoing relationships are considered (bidirectional = false) 
- * or both outgoing and incoming relationships (bidirectional = true).
- *
- * Input:
- *   gdb           -> Pointer to Poseidon Graph Database
- *   bidirectional -> Set true to treat relationships bidirectionally
- *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a float weight for each relationship
- * Output: 
- *   row_offsets   -> CSR-formatted graph row offsets, to be allocated in advance
- *   col_indices   -> CSR-formatted graph column indices, to be allocated in advance
- *   edge_values   -> CSR-formatted graph edge weights, to be allocated in advance
- *   num_nodes     -> Number of veritces in the input graph. Note that unused slots in
- *                    chunked_vectors are considered here as well! Sparsely populated
- *                    chunked_vectors will lead to unneccesary runtime growth. 
- *   num_edges     -> Number of edges in the input graph
- */
-void poseidonToCSR(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
-                std::vector<uint64_t>* row_offsets, std::vector<uint64_t>* col_indices, std::vector<float>* edge_values, 
-                uint64_t* num_nodes, uint64_t* num_edges);
-
 /**
  * An implementation of weighted SSSP leveraging the GPU-Library Gunrock, using CSR graph representation. The search 
  * starts at the given start node and follows all relationships satisfying the predicate rpred. The weight of a traversed 
@@ -150,36 +121,15 @@ void poseidonToCSR(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, 
  *   start         -> Source node to begin traverse
  *   bidirectional -> Set true to treat relationships bidirectionally
  *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a float weight for each relationship
+ *   weight_func   -> Function returning a weight for each relationship
  *   quiet         -> Set true to mute std::cout outputs during execution
  * Output: 
  *   spath         -> A struct containing shortest path information
  * Return value:
  *   Total elapsed time in ms, measured with std::chrono
  */
-int64_t weighted_SSSP_gunrock_CSR(graph_db_ptr gdb, node::id_t start, bool bidirectional,
+int64_t gunrock_weighted_sssp_csr(graph_db_ptr gdb, node::id_t start, bool bidirectional,
                 rship_predicate rpred, rship_weight weight_func, SSSP_result &result, bool quiet);
-
-/**
- * Converts a given Poseidon Graph to a COO representation, including all relationships satisfying the
- * predicate rpred. The weight of a traversed relationship is calculated from the weight function. The 
- * bidirectional flag determines whether only outgoing relationships are considered (bidirectional = false) 
- * or both outgoing and incoming relationships (bidirectional = true).
- *
- * Input:
- *   gdb              -> Pointer to Poseidon Graph Database
- *   bidirectional    -> Set true to treat relationships bidirectionally
- *   rpred            -> Function returning a bool for each relationship
- *   weight_func      -> Function returning a float weight for each relationship
- * Output: 
- *   edge_coordinates -> COO-formatted graph edge coordinates, to be allocated in advance
- *   edge_values      -> COO-formatted graph edge weights, to be allocated in advance
- *   num_nodes        -> Number of veritces in the input graph. Note that unused slots in
- *                       chunked_vectors are considered here as well! 
- *   num_edges        -> Number of edges in the input graph
- */
-void poseidonToCOO(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
-                edge_coords* edge_coordinates, float* edge_values, uint64_t* num_nodes, uint64_t* num_edges);
 
 /**
  * An implementation of weighted SSSP leveraging the GPU-Library Gunrock, using COO graph representation. The search 
@@ -192,14 +142,14 @@ void poseidonToCOO(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, 
  *   start         -> Source node to begin traverse
  *   bidirectional -> Set true to treat relationships bidirectionally
  *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a float weight for each relationship
+ *   weight_func   -> Function returning a weight for each relationship
  *   quiet         -> Set true to mute std::cout outputs during execution
  * Output: 
  *   spath         -> A struct containing shortest path information
  * Return value:
  *   Total elapsed time in ms, measured with std::chrono
  */
-int64_t weighted_SSSP_gunrock_COO(graph_db_ptr gdb, node::id_t start, bool bidirectional,
+int64_t gunrock_weighted_sssp_coo(graph_db_ptr gdb, node::id_t start, bool bidirectional,
                 rship_predicate rpred, rship_weight weight_func, SSSP_result &result, bool quiet);
 
 /**
@@ -214,7 +164,7 @@ int64_t weighted_SSSP_gunrock_COO(graph_db_ptr gdb, node::id_t start, bool bidir
  *   start         -> Source node to begin traverse
  *   bidirectional -> Set true to treat relationships bidirectionally
  *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a float weight for each relationship
+ *   weight_func   -> Function returning a weight for each relationship
  *   quiet         -> Set true to mute std::cout outputs during execution
  * Output: 
  *   spath         -> A struct containing shortest path information

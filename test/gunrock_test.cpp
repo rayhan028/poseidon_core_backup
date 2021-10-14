@@ -4,11 +4,13 @@
 #include "catch.hpp"
 #include "config.h"
 #include "graph_pool.hpp"
-#include "SSSP_gunrock.hpp"
+#include "gunrock_sssp.hpp"
+#include "gunrock_bfs.hpp"
+#include "gunrock_pr.hpp"
 #include <chrono> // for elapsed time measurement
 #include <boost/dynamic_bitset.hpp> // for random graph creation
 
-const std::string test_path = poseidon::gPmemPath + "graphanalytics_gunrock_test";
+const std::string test_path = poseidon::gPmemPath + "gunrock_test";
 
 /* 
  * This random edge generation is best for dense graphs and has a runtime complexity of O(n+m). 
@@ -26,7 +28,7 @@ uint64_t create_random_sparse_data(graph_db_ptr graph, uint64_t numberVertices, 
     if(!quiet) { std::cout << "Progress: |start                                          end|" << std::endl; }
     if(!quiet) { std::cout << "nodes:    |" << std::flush; }
 
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 
     // Creating nodes
     for (uint64_t i = 0; i < numberVertices; i++) {
@@ -79,7 +81,7 @@ uint64_t create_random_dense_data(graph_db_ptr graph, uint64_t numberVertices, u
     if(!quiet) { std::cout << "Progress: |start                                          end|" << std::endl; }
     if(!quiet) { std::cout << "nodes:    |" << std::flush; }
 
-    auto tx = graph->begin_transaction();
+    graph->begin_transaction();
 
     // Creating nodes
     for (uint64_t i = 0; i < numberVertices; i++) {
@@ -111,7 +113,7 @@ uint64_t create_random_dense_data(graph_db_ptr graph, uint64_t numberVertices, u
  * Creates a predefined graph for the correctness check. Copied from graphanytics_test.cpp.
  */
 void create_known_data(graph_db_ptr graph) {
-  auto tx = graph->begin_transaction();
+  graph->begin_transaction();
 
     //
     //  0 --> 1 --> 2 --> 3 --> 4
@@ -151,9 +153,9 @@ void create_known_data(graph_db_ptr graph) {
  * - predecessor of source node is UNKNOWN
  * - predecessor of unreachable node is the node itself
  * - distance to source node is 0
- * - distance to unreachable node is std::numeric_limits<float>::max()
+ * - distance to unreachable node is std::numeric_limits<double>::max()
  */
-TEST_CASE("Check correctness of results on predefined graphs"){
+TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
     auto pool = graph_pool::create(test_path);
     auto graph = pool->create_graph("my_graph");
     create_known_data(graph);
@@ -161,7 +163,7 @@ TEST_CASE("Check correctness of results on predefined graphs"){
 
     SECTION("bidirectional sequential") {
         SSSP_result rslt = SSSP_result();
-        auto tx = graph->begin_transaction(); 
+        graph->begin_transaction(); 
         weighted_SSSP_sequential(graph, 6, true, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
         graph->commit_transaction();
         
@@ -178,7 +180,7 @@ TEST_CASE("Check correctness of results on predefined graphs"){
 
     SECTION("unidirectional sequential") {
         SSSP_result rslt = SSSP_result();
-        auto tx = graph->begin_transaction(); 
+        graph->begin_transaction(); 
         weighted_SSSP_sequential(graph, 6, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
         graph->commit_transaction();
         
@@ -197,8 +199,8 @@ TEST_CASE("Check correctness of results on predefined graphs"){
         SSSP_result rslt = SSSP_result();
         
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        auto tx = graph->begin_transaction(); 
-        weighted_SSSP_gunrock_COO(graph, 6, true, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        graph->begin_transaction(); 
+        gunrock_weighted_sssp_coo(graph, 6, true, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
         graph->commit_transaction();
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         
@@ -218,6 +220,8 @@ TEST_CASE("Check correctness of results on predefined graphs"){
                     (rslt.getDistance(0) == 1) &
                     (rslt.getDistance(1) == 2) &
                     (rslt.getDistance(6) == 0));
+        std::cout << rslt.getDistance(0) << " | " << rslt.getDistance(1)
+        << " | " << rslt.getDistance(0) << '\n';
         if(test) { std::cout << "Bidirectional Gunrock COO correctness test passed.\n\n"; }
         REQUIRE(test);
 
@@ -227,8 +231,8 @@ TEST_CASE("Check correctness of results on predefined graphs"){
         SSSP_result rslt = SSSP_result();
         
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        auto tx = graph->begin_transaction(); 
-        weighted_SSSP_gunrock_COO(graph, 6, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        graph->begin_transaction(); 
+        gunrock_weighted_sssp_coo(graph, 6, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
         graph->commit_transaction();
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         
@@ -256,8 +260,8 @@ TEST_CASE("Check correctness of results on predefined graphs"){
         SSSP_result rslt = SSSP_result();
         
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        auto tx = graph->begin_transaction(); 
-        weighted_SSSP_gunrock_CSR(graph, 6, true, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        graph->begin_transaction(); 
+        gunrock_weighted_sssp_csr(graph, 6, true, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
         graph->commit_transaction();
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         
@@ -276,8 +280,8 @@ TEST_CASE("Check correctness of results on predefined graphs"){
         SSSP_result rslt = SSSP_result();
         
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        auto tx = graph->begin_transaction(); 
-        weighted_SSSP_gunrock_CSR(graph, 6, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        graph->begin_transaction(); 
+        gunrock_weighted_sssp_csr(graph, 6, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
         graph->commit_transaction();
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         
@@ -328,7 +332,7 @@ TEST_CASE("Check correctness of results on predefined graphs"){
         std::cout << edges << "/" << max_edges << std::endl;
 
         // Runtime tests
-        auto tx = graph->begin_transaction(); 
+        graph->begin_transaction(); 
         results.push_back(edges);
         results.push_back(weighted_SSSP_sequential(graph, 0, bidirectional, [](auto& r) { return true; }, [](auto& r) { return 1; }, sssp_rslt, true));
         results.push_back(weighted_SSSP_gunrock_COO(graph, 0, bidirectional, [](auto& r) { return true; }, [](auto& r) { return 1; }, sssp_rslt, true));
@@ -374,7 +378,7 @@ TEST_CASE("Check correctness of results on predefined graphs"){
         std::cout << vertices << "/" << max_vertices << std::endl;
 
         // Runtime tests
-        auto tx = graph->begin_transaction(); 
+        graph->begin_transaction(); 
         results.push_back(vertices);
         results.push_back(weighted_SSSP_sequential(graph, bidirectional, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, sssp_rslt, true));
         results.push_back(weighted_SSSP_gunrock_COO(graph, bidirectional, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, sssp_rslt, true));
@@ -409,7 +413,7 @@ TEST_CASE("Check correctness of results on predefined graphs"){
         SSSP_result rslt = SSSP_result();
         std::cout << std::endl << "Bidirectional performance test:\n" << std::endl;
         create_random_sparse_data(graph, num_vertices, num_edges, false);
-        auto tx = graph->begin_transaction(); 
+        graph->begin_transaction(); 
         std::cout << std::endl;
         weighted_SSSP_sequential(graph, 0, true, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
         std::cout << std::endl;
@@ -424,7 +428,7 @@ TEST_CASE("Check correctness of results on predefined graphs"){
         SSSP_result rslt = SSSP_result();
         std::cout << std::endl << "Unidirectional performance test:\n" << std::endl;
         create_random_sparse_data(graph, num_vertices, num_edges, false);
-        auto tx = graph->begin_transaction(); 
+        graph->begin_transaction(); 
         std::cout << std::endl;
         weighted_SSSP_sequential(graph, 0, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
         std::cout << std::endl;
@@ -437,3 +441,22 @@ TEST_CASE("Check correctness of results on predefined graphs"){
 
     graph_pool::destroy(pool);
 }*/
+
+TEST_CASE("Testing Gunrock implementation of PageRank", "[gunrock_pr]"){
+    auto pool = graph_pool::create(test_path);
+    auto graph = pool->create_graph("my_graph");
+    create_known_data(graph);
+
+    pr_result res = pr_result();
+    
+    graph->begin_transaction(); 
+    gunrock_pr_csr(graph, true, [](auto& r) { return true; }, res, false);
+    graph->commit_transaction();
+
+    bool first_rank = res.get_nid(0) == 6 || res.get_nid(0) == 2;
+    bool second_rank = res.get_nid(1) == 6 || res.get_nid(1) == 2;
+    REQUIRE(first_rank);
+    REQUIRE(second_rank);
+
+    graph_pool::destroy(pool);
+}

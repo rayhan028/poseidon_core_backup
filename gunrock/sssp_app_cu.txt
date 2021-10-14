@@ -23,7 +23,7 @@
  */
  template <typename VertexT = unsigned long long, typename SizeT = unsigned long long,
  typename GValueT = unsigned int, typename SSSPValueT = GValueT>
-double gunrock_sssp_CSR(const SizeT num_nodes, const SizeT num_edges,
+double poseidon_gunrock_sssp_csr(const SizeT num_nodes, const SizeT num_edges,
    const SizeT *row_offsets, const VertexT *col_indices,
    const GValueT *edge_values, const int num_runs, VertexT *sources,
    const bool mark_pred, SSSPValueT **distances, VertexT **preds = NULL, 
@@ -91,7 +91,7 @@ return elapsed_time;
           
 template <typename VertexT = unsigned long long, typename SizeT = unsigned long long,
           typename GValueT = unsigned int, typename SSSPValueT = GValueT>
-double gunrock_sssp_COO(const SizeT num_nodes, const SizeT num_edges, 
+double poseidon_gunrock_sssp_coo(const SizeT num_nodes, const SizeT num_edges, 
   const void *edge_coords, const GValueT *edge_values, VertexT source,
   const bool mark_pred, SSSPValueT **distances, VertexT **preds, 
   gunrock::util::Location memspace = gunrock::util::HOST,
@@ -148,7 +148,7 @@ double gunrock_sssp_COO(const SizeT num_nodes, const SizeT num_edges,
 }
 
 // Public interface
-double gunrock_sssp_COO(
+double poseidon_gunrock_sssp_coo(
   const unsigned long long        num_nodes, 
   const unsigned long long        num_edges, 
   const void                      *edge_coords, 
@@ -160,12 +160,12 @@ double gunrock_sssp_COO(
 
     gunrock::util::Location memspace = gunrock::util::HOST;
     gunrock::util::Location exec_policy = gunrock::util::DEVICE;
-    return gunrock_sssp_COO(num_nodes, num_edges, edge_coords, edge_values, 
+    return poseidon_gunrock_sssp_coo(num_nodes, num_edges, edge_coords, edge_values, 
               source, mark_pred, &distances, &preds, memspace, exec_policy);
 }
 
 // Public interface
-double gunrock_sssp_CSR(
+double poseidon_gunrock_sssp_csr(
   const unsigned long long      num_nodes, 
   const unsigned long long      num_edges, 
   const unsigned long long      *row_offsets,
@@ -179,7 +179,7 @@ double gunrock_sssp_CSR(
   gunrock::util::Location memspace = gunrock::util::HOST;
   gunrock::util::Location exec_policy = gunrock::util::DEVICE;
 
-  return gunrock_sssp_CSR(num_nodes, num_edges, row_offsets, col_indices, edge_values,
+  return poseidon_gunrock_sssp_csr(num_nodes, num_edges, row_offsets, col_indices, edge_values,
     1 /* num_runs */, &source, mark_pred, &distances, &preds, memspace, exec_policy);
 }
 
