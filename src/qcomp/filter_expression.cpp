@@ -77,6 +77,19 @@ void str_token::accept(int rank, expression_visitor &fep) {
     fep.visit(rank, shared_from_this());
 }
 
+qparam_token::qparam_token(std::string str) : str_(str) {
+    name_ = "QPARAM";
+    ftype_ = FOP_TYPE::STRING; // TODO
+}
+
+std::string qparam_token::dump() const {
+    return str_;
+}
+
+void qparam_token::accept(int rank, expression_visitor &fep) {
+    // TODO - should not happen, but replaced before
+}
+
 fct_call::fct_call(fct_int_t fct) : fct_int_(fct), fct_type_(FOP_TYPE::INT) {
     name_ = "FCT";
 }
@@ -117,6 +130,58 @@ eq_predicate::eq_predicate(const expr left, const expr right, bool prec, bool no
 }
 
 void eq_predicate::accept(int rank, expression_visitor &fep) {
+    left_->accept(rank+1, fep);
+    right_->accept(rank+1, fep);
+    fep.visit(rank, shared_from_this());
+    // TODO: do binary stuff here
+}
+
+gt_predicate::gt_predicate(const expr left, const expr right, bool prec, bool not_)
+        : binary_predicate(FOP::EQ, left, right, prec) {
+    name_ = "GT";
+    ftype_ = FOP_TYPE::OP;
+}
+
+void gt_predicate::accept(int rank, expression_visitor &fep) {
+    left_->accept(rank+1, fep);
+    right_->accept(rank+1, fep);
+    fep.visit(rank, shared_from_this());
+    // TODO: do binary stuff here
+}
+
+ge_predicate::ge_predicate(const expr left, const expr right, bool prec, bool not_)
+        : binary_predicate(FOP::EQ, left, right, prec) {
+    name_ = "GE";
+    ftype_ = FOP_TYPE::OP;
+}
+
+void ge_predicate::accept(int rank, expression_visitor &fep) {
+    left_->accept(rank+1, fep);
+    right_->accept(rank+1, fep);
+    fep.visit(rank, shared_from_this());
+    // TODO: do binary stuff here
+}
+
+lt_predicate::lt_predicate(const expr left, const expr right, bool prec, bool not_)
+        : binary_predicate(FOP::EQ, left, right, prec) {
+    name_ = "LT";
+    ftype_ = FOP_TYPE::OP;
+}
+
+void lt_predicate::accept(int rank, expression_visitor &fep) {
+    left_->accept(rank+1, fep);
+    right_->accept(rank+1, fep);
+    fep.visit(rank, shared_from_this());
+    // TODO: do binary stuff here
+}
+
+le_predicate::le_predicate(const expr left, const expr right, bool prec, bool not_)
+        : binary_predicate(FOP::EQ, left, right, prec) {
+    name_ = "LE";
+    ftype_ = FOP_TYPE::OP;
+}
+
+void le_predicate::accept(int rank, expression_visitor &fep) {
     left_->accept(rank+1, fep);
     right_->accept(rank+1, fep);
     fep.visit(rank, shared_from_this());

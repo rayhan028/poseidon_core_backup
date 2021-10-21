@@ -1,8 +1,3 @@
-auto append100 = [&](auto &v) {
-    uint64_t intrst = 100;
-    return query_result(intrst);
-};
-
 Limit(100, 
     Sort([($1:uint64 + $2:uint64) DESC, $0:uint64 ASC],
         Project([$0.id:uint64, $1, $2],
@@ -46,7 +41,7 @@ Limit(100,
                     GroupBy([$0],
                             [sum($1:uint64)],
                         Union(
-                            AppendToTuple(append100(tuple),
+                            AppendToTuple(udf::append100(tuple),
                                 Project([$2],
                                     Expand(IN, ["Person"],
                                         ForeachRelationship(TO, ":hasInterest",

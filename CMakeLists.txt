@@ -16,7 +16,7 @@ option(USE_MMFILE     "Use memory mapped file storage"         OFF)
 option(USE_HDICT      "Use hdict implementation"               ON)
 option(USE_TX         "Provide Transaction Support"            ON)
 option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
-option(USE_LLVM       "Use LLVM for query compilation"         ON)
+option(USE_LLVM       "Use LLVM for query compilation"         OFF)
 option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
 option(QOP_PROFILING  "Enable query profiling"                 ON)
 option(QOP_RECOVERY   "Enable query recovery on failure"       OFF)
@@ -224,7 +224,7 @@ include(FetchContent REQUIRED)
  FetchContent_Declare(
   pegtl
   GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
-  GIT_TAG       3.2.0
+  GIT_TAG       3.2.1
   )
 FetchContent_GetProperties(pegtl)
 if(NOT pegtl_POPULATED)

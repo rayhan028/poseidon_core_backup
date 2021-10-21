@@ -1,14 +1,9 @@
-auto incrMsgCnt = [&](auto &v) {
-    uint64_t intrst = 100;
-    return query_result(intrst);
-};
-
 Limit(100, 
     Sort([$4:uint64 DESC, $0:uint64 ASC],
         Project([$0.id:uint64, $0.firstName:string, $0.lastName:string, $1, $2],
             GroupBy([$0],
                     [count($0), sum($3:uint64)],
-                AppendToTuple(incrMsgCnt(tuple),
+                AppendToTuple(udf::incrMsgCnt(tuple),
                     GroupBy([$0, $1],
                             [count($0)],
                         Project([$0, $1, $3],

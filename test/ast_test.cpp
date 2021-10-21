@@ -123,3 +123,56 @@ TEST_CASE("Constructing an AST from a query string", "[qlang]") {
     }
 #endif 
 }
+
+std::string load_string(const std::string& fname) {
+    std::string qstr, line;
+
+    std::ifstream myfile(fname);
+    REQUIRE (myfile.is_open());
+    while (getline(myfile, line)) {
+        qstr.append(line);
+        qstr.append("\n");
+    }
+    myfile.close();
+    return qstr;
+}
+
+TEST_CASE("Constructing an AST from LDBC benchmark queries (IS)", "[qlang]") {
+    queryc qc;
+    char buf[1024];
+    spdlog::info("getcwd {}", getcwd(buf, 1024)); 
+    std::string prefix_is(buf); 
+    prefix_is += "/../../queries/ldbc/is/is";  
+    std::vector<int> query_set = { 1, 2, 3, 4, 5, 6, 7 };
+    for (auto q : query_set) {
+        auto fname = prefix_is + std::to_string(q) + ".q";
+        spdlog::info("processing file: {}", fname);
+        auto qstr = load_string(fname); 
+        auto ast = qc.parse(qstr);
+        std::ostringstream os;
+        ast_to_stream(ast, os); 
+        auto pname = prefix_is + std::to_string(q) + ".plan";
+        auto pstr = load_string(pname);
+        REQUIRE(os.str() == pstr);
+    }
+}
+
+#if 1
+TEST_CASE("Constructing an AST from LDBC benchmark queries (BI)", "[qlang]") {
+    queryc qc;
+    char buf[1024];
+    spdlog::info("getcwd {}", getcwd(buf, 1024)); 
+    std::string prefix_is(buf); 
+    prefix_is += "/../../queries/ldbc/bi/bi";  
+    std::vector<int> query_set = { 1, 2, 3/*, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20*/ };
+    for (auto q : query_set) {
+        auto fname = prefix_is + std::to_string(q) + ".q";
+        spdlog::info("processing file: {}", fname);
+        auto qstr = load_string(fname); 
+        auto ast = qc.parse(qstr);
+        std::ostringstream os;
+        ast_to_stream(ast, os); 
+        std::cout << os.str() << std::endl;
+    }
+}
+#endif

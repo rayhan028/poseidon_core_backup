@@ -75,6 +75,7 @@ struct ast_op {
         filter, 
         foreach_rship, 
         expand, 
+        append,
         project, 
         limit, 
         sort,

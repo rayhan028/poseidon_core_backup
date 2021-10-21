@@ -38,6 +38,7 @@ struct fep_visitor;
 struct number_token;
 struct key_token;
 struct str_token;
+struct qparam_token;
 struct time_token;
 struct fct_call;
 struct eq_predicate;
@@ -137,6 +138,17 @@ struct str_token : public expression, std::enable_shared_from_this<str_token> {
 
 inline expr Str(std::string value = 0) { return std::make_shared<str_token>(value); }
 
+struct qparam_token : public expression, std::enable_shared_from_this<qparam_token> {
+    std::string str_;
+
+    qparam_token(std::string str);
+
+    std::string dump() const override;
+
+    void accept(int rank, expression_visitor &fep) override;
+};
+
+inline expr QParam(std::string value = 0) { return std::make_shared<qparam_token>(value); }
 
 struct time_token : public expression, std::enable_shared_from_this<time_token> {
     boost::posix_time::ptime time_;
@@ -220,6 +232,8 @@ struct call_predicate : public binary_predicate, std::enable_shared_from_this<ca
 inline bin_expr Call(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<call_predicate>(lhs, rhs, prec); }
 
 inline bin_expr EQ(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<eq_predicate>(lhs, rhs, prec); }
+
+inline bin_expr NEQ(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<eq_predicate>(lhs, rhs, prec, true); }
 
 inline bin_expr LE(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<le_predicate>(lhs, rhs, prec); }
 

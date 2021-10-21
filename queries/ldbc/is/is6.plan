@@ -1,0 +1,7 @@
+Project([ $2.id, $2.title, $4.id, $4.firstName, $4.lastName ] )
+└── Expand(OUT "Person" )
+    └── ForeachRelationship(FROM ":hasModerator" )
+        └── Expand(IN "Forum" )
+            └── ForeachRelationship(TO ":containerOf" )
+                └── Filter($0.id==42 )
+                    └── NodeScan("Post" )

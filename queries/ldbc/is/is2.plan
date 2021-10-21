@@ -1,0 +1,6 @@
+Project([ $2.id, $2.creationDate, $2.id, $0.id, $0.firstName, $0.lastName ] )
+└── Limit(10 )
+    └── Expand(IN "Post" )
+        └── ForeachRelationship(TO ":hasCreator" )
+            └── Filter($0.id==42 )
+                └── NodeScan("Person" )
