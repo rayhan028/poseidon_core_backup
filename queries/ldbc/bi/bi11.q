@@ -1,7 +1,7 @@
 Count(
-    GroupBy([$5],
-        AppendToTuple(distinctBag(tuple),
-            Filter(samePerson($4.id:uint64, $18.id:uint64),
+    GroupBy([$19:string],
+        Append(udf::distinctBag($0:node, $1:node, $2:node),
+            Filter(udf::samePerson($4:node, $18:node),
                 Filter($17.creationDate > %date,
                     ForeachRelationship(ALL, ":knows", $12,
                         Filter($16.name == %country,

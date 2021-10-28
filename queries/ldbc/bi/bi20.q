@@ -1,8 +1,8 @@
 Limit(20,
-    Sort([$1:double DESC, $0:uint64 ASC],
-        Project([$2.id:uint64, $4],
-            AlgoShortestPath(TOPKWEIGHTED, {2, 3}, udf::rpred, udf::rweight, TRUE,
-                Crossjoin(
+    Project([$2.id:uint64, $4:double],
+        Sort([$4:double DESC, $2.id:uint64 ASC],
+            Algorithm(SPSP, 2, 3, BIDIRECTIONAL, WEIGHTED, udf::rpred(), udf::rweight(),
+                CrossJoin(
                     Expand(IN, "Person",
                         ForeachRelationship(TO, ":workAt",
                             Filter($0.name == %organisation,

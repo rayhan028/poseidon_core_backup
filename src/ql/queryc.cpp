@@ -146,6 +146,10 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
         return ast_op::limit;
       else if (name == "Sort")
         return ast_op::sort;
+      else if (name == "Union")
+        return ast_op::union_all;
+      else if (name == "Count")
+        return ast_op::count;
       else if (name == "GroupBy")
         return ast_op::group_by;
       else if (name == "HashJoin")
@@ -162,6 +166,8 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
         return ast_op::append;
       else if (name == "Project")
         return ast_op::project;
+      else if (name == "Algorithm")
+        return ast_op::algo;
       else if (name == "End")
         return ast_op::end;
       else if (name == "Create") {

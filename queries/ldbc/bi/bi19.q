@@ -1,8 +1,8 @@
 Limit(20,
-    Sort([$2:double DESC, $0:uint64 ASC, $1:uint64 ASC],
-        Project([$2.id:uint64, $5.id:uint64, $6],
-            AlgoShortestPath(WEIGHTED, {2, 5}, udf::rPred, udf::rweight, TRUE,
-                Crossjoin(
+    Project([$2.id:uint64, $5.id:uint64, $6:double],
+        Sort([$6:double DESC, $2.id:uint64 ASC, $5.id:uint64 ASC],
+            Algorithm(SPSP, 2, 5, BIDIRECTIONAL, WEIGHTED, udf::rPred(), udf::rweight(),
+                CrossJoin(
                     Expand(IN, "Person",
                         ForeachRelationship(TO, ":isLocatedIn",
                             Filter($0.id == %id2,

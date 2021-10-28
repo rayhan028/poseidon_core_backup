@@ -73,6 +73,10 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
             os << "Limit("; break;
         case ast_op::sort:
             os << "Sort("; break;
+        case ast_op::union_all:
+            os << "Union("; break;
+        case ast_op::count:
+            os << "Count("; break;
         case ast_op::group_by:
             os << "GroupBy("; break;
         case ast_op::hash_join:
@@ -85,8 +89,10 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
             os << "CreateNode("; break;
         case ast_op::create_rship:
             os << "CreateRelationship("; break;
+        case ast_op::algo:
+            os << "Algorithm("; break;
         case ast_op::end:
-            os << "CreateRelationship("; break;
+            os << "End("; break;
         default:
             break;
     }

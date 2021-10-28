@@ -79,12 +79,15 @@ struct ast_op {
         project, 
         limit, 
         sort,
+        union_all,
+        count,
         group_by,
         hash_join, 
         leftouter_join,
         cross_join,
         create_node, 
         create_rship,
+        algo,
         end 
     };
 

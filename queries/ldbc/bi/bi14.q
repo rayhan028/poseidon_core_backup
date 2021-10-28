@@ -1,16 +1,16 @@
-Sort([$3:uint64 DESC, $0:uint64 ASC, $1:uint64 ASC],
-    Project([$0.id:uint64, $1.id:uint64, $2.name:string, $3],
-        GroupBy([$0, $1, $2],
-                [sum($3)],
+Project([$0.id:uint64, $1.id:uint64, $2.name:string, $3:uint64],
+    Sort([$3:uint64 DESC, $0.id:uint64 ASC, $1.id:uint64 ASC],
+        GroupBy([$0:node, $1:node, $2:node],
+                [sum($3:uint64)],
             Union(
-                AppendToTuple(udf::appendScore(tuple, 1),
-                    Project([$1, $3, $0]
-                        Filter(udf::fltrRship(tuple, 6, ":likes"),
-                            RshipExists({3, 5},
-                                Expand(IN, ["Post", "Comment"],
+                Append(udf::appendScore(1),
+                    Project([$1:node, $3:node, $0:node],
+                        Filter(udf::filterRship($6:qresult, ":likes"),
+                            Filter(udf::rshipExists($3:node, $5:node),
+                                Expand(IN, "Post", "Comment",
                                     ForeachRelationship(TO, ":hasCreator", $1,
-                                        Crossjoin(
-                                            Project([$2, $4],
+                                        CrossJoin(
+                                            Project([$2:node, $4:node],
                                                 Expand(IN, "Person",
                                                     ForeachRelationship(TO, ":isLocatedIn",
                                                         Expand(IN, "Place",
@@ -23,7 +23,7 @@ Sort([$3:uint64 DESC, $0:uint64 ASC, $1:uint64 ASC],
                                                     )
                                                 )
                                             ),
-                                            Project([$2, $4],
+                                            Project([$2:node, $4:node],
                                                 Expand(IN, "Person",
                                                     ForeachRelationship(TO, ":isLocatedIn",
                                                         Expand(IN, "Place",
@@ -43,14 +43,14 @@ Sort([$3:uint64 DESC, $0:uint64 ASC, $1:uint64 ASC],
                         )
                     )
                 ),
-                AppendToTuple(udf::appendScore(tuple, 10),
-                    Project([$1, $3, $0]
-                        Filter(udf::fltrRship(tuple, 6, ":likes"),
-                            RshipExists({1, 5},
-                                Expand(IN, ["Post", "Comment"],
+                Append(udf::appendScore(10),
+                    Project([$1:node, $3:node, $0:node],
+                        Filter(udf::filterRship($6:qresult, ":likes"),
+                            Filter(udf::rshipExists($1:node, $3:node),
+                                Expand(IN, "Post", "Comment",
                                     ForeachRelationship(TO, ":hasCreator", $3,
-                                        Crossjoin(
-                                            Project([$2, $4],
+                                        CrossJoin(
+                                            Project([$2:node, $4:node],
                                                 Expand(IN, "Person",
                                                     ForeachRelationship(TO, ":isLocatedIn",
                                                         Expand(IN, "Place",
@@ -63,7 +63,7 @@ Sort([$3:uint64 DESC, $0:uint64 ASC, $1:uint64 ASC],
                                                     )
                                                 )
                                             ),
-                                            Project([$2, $4],
+                                            Project([$2:node, $4:node],
                                                 Expand(IN, "Person",
                                                     ForeachRelationship(TO, ":isLocatedIn",
                                                         Expand(IN, "Place",
@@ -83,74 +83,32 @@ Sort([$3:uint64 DESC, $0:uint64 ASC, $1:uint64 ASC],
                         )
                     )
                 ),
-                AppendToTuple(udf::appendScore(tuple, 15),
-                    Filter(udf::knowsRship(tuple),
-                        RshipExists({1, 3},
-                            RshipExists({3, 1},
-                                Crossjoin(
-                                    Project([$2, $4],
-                                        Expand(IN, "Person",
-                                            ForeachRelationship(TO, ":isLocatedIn",
-                                                Expand(IN, "Place",
-                                                    ForeachRelationship(TO, ":isPartOf",
-                                                        Filter($0.name == %country,
-                                                            NodeScan("Place")
-                                                        )
-                                                    )
-                                                )
-                                            )
-                                        )
-                                    ),
-                                    Project([$2, $4],
-                                        Expand(IN, "Person",
-                                            ForeachRelationship(TO, ":isLocatedIn",
-                                                Expand(IN, "Place",
-                                                    ForeachRelationship(TO, ":isPartOf",
-                                                        Filter($0.name == %country,
-                                                            NodeScan("Place")
-                                                        )
-                                                    )
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                ),
-                AppendToTuple(udf::appendScore(tuple, 1),
-                    Project([$1, $3, $0]
-                        Filter(udf::fltrRship(tuple, 8, ":replyOf"),
-                            RshipExists({7, 5},
-                                Expand(IN, ["Post", "Comment"],
-                                    ForeachRelationship(TO, ":hasCreator", $3,
-                                        Expand(IN, "Comment",
-                                            ForeachRelationship(TO, ":hasCreator", $1,
-                                                Crossjoin(
-                                                    Project([$2, $4],
-                                                        Expand(IN, "Person",
-                                                            ForeachRelationship(TO, ":isLocatedIn",
-                                                                Expand(IN, "Place",
-                                                                    ForeachRelationship(TO, ":isPartOf",
-                                                                        Filter($0.name == %country,
-                                                                            NodeScan("Place")
-                                                                        )
-                                                                    )
-                                                                )
+                Append(udf::appendScore(15),
+                    Project([$1:node, $3:node, $0:node],
+                        Filter(udf::knowsRship($4:qresult, $5:qresult),                        
+                            Filter(udf::rshipExists($1:node, $3:node),
+                                Filter(udf::rshipExists($3:node, $1:node),
+                                    CrossJoin(
+                                        Project([$2:node, $4:node],
+                                            Expand(IN, "Person",
+                                                ForeachRelationship(TO, ":isLocatedIn",
+                                                    Expand(IN, "Place",
+                                                        ForeachRelationship(TO, ":isPartOf",
+                                                            Filter($0.name == %country,
+                                                                NodeScan("Place")
                                                             )
                                                         )
-                                                    ),
-                                                    Project([$2, $4],
-                                                        Expand(IN, "Person",
-                                                            ForeachRelationship(TO, ":isLocatedIn",
-                                                                Expand(IN, "Place",
-                                                                    ForeachRelationship(TO, ":isPartOf",
-                                                                        Filter($0.name == %country,
-                                                                            NodeScan("Place")
-                                                                        )
-                                                                    )
-                                                                )
+                                                    )
+                                                )
+                                            )
+                                        ),
+                                        Project([$2:node, $4:node],
+                                            Expand(IN, "Person",
+                                                ForeachRelationship(TO, ":isLocatedIn",
+                                                    Expand(IN, "Place",
+                                                        ForeachRelationship(TO, ":isPartOf",
+                                                            Filter($0.name == %country,
+                                                                NodeScan("Place")
                                                             )
                                                         )
                                                     )
@@ -163,16 +121,16 @@ Sort([$3:uint64 DESC, $0:uint64 ASC, $1:uint64 ASC],
                         )
                     )
                 ),
-                AppendToTuple(udf::appendScore(tuple, 4),
-                    Project([$1, $3, $0]
-                        Filter(udf::connectedNodes(tuple),
-                            RshipExists({5, 7},
-                                Expand(IN, ["Post", "Comment"],
+                Append(udf::appendScore(1),
+                    Project([$1:node, $3:node, $0:node],
+                        Filter(udf::filterRship($8:qresult, ":replyOf"),
+                            Filter(udf::rshipExists($7:node, $5:node),
+                                Expand(IN, "Comment",
                                     ForeachRelationship(TO, ":hasCreator", $3,
-                                        Expand(IN, "Comment",
+                                        Expand(IN, "Post", "Comment",
                                             ForeachRelationship(TO, ":hasCreator", $1,
-                                                Crossjoin(
-                                                    Project([$2, $4],
+                                                CrossJoin(
+                                                    Project([$2:node, $4:node],
                                                         Expand(IN, "Person",
                                                             ForeachRelationship(TO, ":isLocatedIn",
                                                                 Expand(IN, "Place",
@@ -185,7 +143,51 @@ Sort([$3:uint64 DESC, $0:uint64 ASC, $1:uint64 ASC],
                                                             )
                                                         )
                                                     ),
-                                                    Project([$2, $4],
+                                                    Project([$2:node, $4:node],
+                                                        Expand(IN, "Person",
+                                                            ForeachRelationship(TO, ":isLocatedIn",
+                                                                Expand(IN, "Place",
+                                                                    ForeachRelationship(TO, ":isPartOf",
+                                                                        Filter($0.name == %country,
+                                                                            NodeScan("Place")
+                                                                        )
+                                                                    )
+                                                                )
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+                Append(udf::appendScore(4),
+                    Project([$1:node, $3:node, $0:node],
+                        Filter(udf::filterRship($8:qresult, ":replyOf"),
+                            Filter(udf::rshipExists($5:node, $7:node),
+                                Expand(IN, "Post", "Comment",
+                                    ForeachRelationship(TO, ":hasCreator", $3,
+                                        Expand(IN, "Comment",
+                                            ForeachRelationship(TO, ":hasCreator", $1,
+                                                CrossJoin(
+                                                    Project([$2:node, $4:node],
+                                                        Expand(IN, "Person",
+                                                            ForeachRelationship(TO, ":isLocatedIn",
+                                                                Expand(IN, "Place",
+                                                                    ForeachRelationship(TO, ":isPartOf",
+                                                                        Filter($0.name == %country,
+                                                                            NodeScan("Place")
+                                                                        )
+                                                                    )
+                                                                )
+                                                            )
+                                                        )
+                                                    ),
+                                                    Project([$2:node, $4:node],
                                                         Expand(IN, "Person",
                                                             ForeachRelationship(TO, ":isLocatedIn",
                                                                 Expand(IN, "Place",

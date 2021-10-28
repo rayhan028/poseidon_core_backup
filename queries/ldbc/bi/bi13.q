@@ -1,36 +1,66 @@
-Limit(100,
-    Sort([$3:double DESC, $0:uint64 ASC],
-        Project([$0.id:uint64, $5, $6, $7],
-            AppendToTuple(udf::appendScore2(tuple),
-                AppendToTuple(udf::appendScore1(tuple, 4),
-                    AppendToTuple(udf::appendScore1(tuple, 2),
-                        Outerjoin(udf::joinPred(tuple1, tuple2),
-                            Outerjoin(udf::joinPred(tuple1, tuple2),
-                                Project([$0],
-                                    Filter(udf::zmbMsgCnt(tuple),
-                                        Outerjoin(udf::joinPred(tuple1, tuple2),
-                                            Project([$4],
-                                                Filter($4.creationDate < %date,
-                                                    Expand(IN, "Person",
-                                                        ForeachRelationship(TO, ":isLocatedIn",
-                                                            Expand(IN, "Place",
-                                                                ForeachRelationship(TO, ":isPartOf",
-                                                                    Filter($0.name == %country,
-                                                                        NodeScan("Place")
+Project([$0.id:uint64, $5:uint64, $6:uint64, $7:double],
+    Sort([$7:double DESC, $0:uint64 ASC],
+        Append(udf::appendScore2($5:uint64, $6:uint64),
+            Append(udf::appendScore1($4:qresult),
+                Append(udf::appendScore1($2:qresult),
+                    LeftOuterJoin($0.id == $0.id,
+                        LeftOuterJoin($0.id == $0.id,
+                            Project([$0:node],
+                                Filter(udf::filterAvgMsgs($3:uint64),
+                                    LeftOuterJoin($0.id == $0.id,
+                                        Project([$4:node],
+                                            Filter($4.creationDate < %date,
+                                                Expand(IN, "Person",
+                                                    ForeachRelationship(TO, ":isLocatedIn",
+                                                        Expand(IN, "Place",
+                                                            ForeachRelationship(TO, ":isPartOf",
+                                                                Filter($0.name == %country,
+                                                                    NodeScan("Place")
+                                                                )
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    ),
+                                    Append(udf::appendAvgMsgs($0.creationDate:datetime, %dt, $1:uint64),
+                                        GroupBy([$4:node],
+                                                [count($0:node)],
+                                            Filter($6.creationDate < %date,
+                                                Expand(IN, "Post", "Comment",
+                                                    ForeachRelationship(TO, ":hasCreator",
+                                                        Filter($4.creationDate < %date,
+                                                            Expand(IN, "Person",
+                                                                ForeachRelationship(TO, ":isLocatedIn",
+                                                                    Expand(IN, "Place",
+                                                                        ForeachRelationship(TO, ":isPartOf",
+                                                                            Filter($0.name == %country,
+                                                                                NodeScan("Place")
+                                                                            )
+                                                                        )
                                                                     )
                                                                 )
                                                             )
                                                         )
                                                     )
                                                 )
-                                            ),
-                                            AppendToTuple(udf::avgMsgs(tuple),
-                                                Project([$0, $1, $0.creationDate:datetime],
-                                                    GroupBy([$4],
-                                                            [count($0)],
-                                                        Filter($6.creationDate < %date,
-                                                            Expand(IN, ["Post", "Comment"],
-                                                                ForeachRelationship(TO, ":hasCreator",
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+                            GroupBy([$0:node],
+                                    [count($0:node)],
+                                HashJoin([$4:node, $0:node],    
+                                    Expand(IN, "Person",
+                                        ForeachRelationship(TO, ":likes",
+                                            Expand(IN, "Post", "Comment",
+                                                ForeachRelationship(TO, ":hasCreator",
+                                                    Project([$0:node],
+                                                        Filter(udf::filterAvgMsgs($3:uint64),
+                                                            LeftOuterJoin($0.id == $0.id,
+                                                                Project([$4:node],
                                                                     Filter($4.creationDate < %date,
                                                                         Expand(IN, "Person",
                                                                             ForeachRelationship(TO, ":isLocatedIn",
@@ -38,6 +68,30 @@ Limit(100,
                                                                                     ForeachRelationship(TO, ":isPartOf",
                                                                                         Filter($0.name == %country,
                                                                                             NodeScan("Place")
+                                                                                        )
+                                                                                    )
+                                                                                )
+                                                                            )
+                                                                        )
+                                                                    )
+                                                                )
+                                                            ),
+                                                            Append(udf::appendAvgMsgs($0.creationDate:datetime, %dt, $1:uint64),
+                                                                GroupBy([$4:node],
+                                                                        [count($0:node)],
+                                                                    Filter($6.creationDate < %date,
+                                                                        Expand(IN, "Post", "Comment",
+                                                                            ForeachRelationship(TO, ":hasCreator",
+                                                                                Filter($4.creationDate < %date,
+                                                                                    Expand(IN, "Person",
+                                                                                        ForeachRelationship(TO, ":isLocatedIn",
+                                                                                            Expand(IN, "Place",
+                                                                                                ForeachRelationship(TO, ":isPartOf",
+                                                                                                    Filter($0.name == %country,
+                                                                                                        NodeScan("Place")
+                                                                                                    )
+                                                                                                )
+                                                                                            )
                                                                                         )
                                                                                     )
                                                                                 )
@@ -53,53 +107,17 @@ Limit(100,
                                         )
                                     )
                                 ),
-                                Join(HASHJOIN_ON_NODE, {$4, $0},
-                                    Expand(IN, "Person",
-                                        ForeachRelationship(TO, ":likes",
-                                            Expand(IN, ["Post", "Comment"],
-                                                ForeachRelationship(TO, ":hasCreator",
-                                                    Project([$0],
-                                                        Filter(udf::zmbMsgCnt(tuple),
-                                                            Outerjoin(udf::joinPred(tuple1, tuple2),
-                                                                Project([$4],
-                                                                    Filter($4.creationDate < %date,
-                                                                        Expand(IN, "Person",
-                                                                            ForeachRelationship(TO, ":isLocatedIn",
-                                                                                Expand(IN, "Place",
-                                                                                    ForeachRelationship(TO, ":isPartOf",
-                                                                                        Filter($0.name == %country,
-                                                                                            NodeScan("Place")
-                                                                                        )
-                                                                                    )
-                                                                                )
-                                                                            )
-                                                                        )
-                                                                    )
-                                                                ),
-                                                                AppendToTuple(udf::avgMsgs(tuple),
-                                                                    Project([$0, $1, $0.creationDate:datetime],
-                                                                        GroupBy([$4],
-                                                                                [count($0)],
-                                                                            Filter($6.creationDate < %date,
-                                                                                Expand(IN, ["Post", "Comment"],
-                                                                                    ForeachRelationship(TO, ":hasCreator",
-                                                                                        Filter($4.creationDate < %date,
-                                                                                            Expand(IN, "Person",
-                                                                                                ForeachRelationship(TO, ":isLocatedIn",
-                                                                                                    Expand(IN, "Place",
-                                                                                                        ForeachRelationship(TO, ":isPartOf",
-                                                                                                            Filter($0.name == %country,
-                                                                                                                NodeScan("Place")
-                                                                                                            )
-                                                                                                        )
-                                                                                                    )
-                                                                                                )
-                                                                                            )
-                                                                                        )
-                                                                                    )
-                                                                                )
-                                                                            )
-                                                                        )
+                                Project([$0:node],
+                                    Filter(udf::filterAvgMsgs($3:uint64),
+                                        LeftOuterJoin($0.id == $0.id,
+                                            Project([$4:node],
+                                                Filter($4.creationDate < %date,
+                                                    Expand(IN, "Person",
+                                                        ForeachRelationship(TO, ":isLocatedIn",
+                                                            Expand(IN, "Place",
+                                                                ForeachRelationship(TO, ":isPartOf",
+                                                                    Filter($0.name == %country,
+                                                                        NodeScan("Place")
                                                                     )
                                                                 )
                                                             )
@@ -107,43 +125,20 @@ Limit(100,
                                                     )
                                                 )
                                             )
-                                        )
-                                    ),
-                                    Project([$0],
-                                        Filter(udf::zmbMsgCnt(tuple),
-                                            Outerjoin(udf::joinPred(tuple1, tuple2),
-                                                Project([$4],
-                                                    Filter($4.creationDate < %date,
-                                                        Expand(IN, "Person",
-                                                            ForeachRelationship(TO, ":isLocatedIn",
-                                                                Expand(IN, "Place",
-                                                                    ForeachRelationship(TO, ":isPartOf",
-                                                                        Filter($0.name == %country,
-                                                                            NodeScan("Place")
-                                                                        )
-                                                                    )
-                                                                )
-                                                            )
-                                                        )
-                                                    )
-                                                ),
-                                                AppendToTuple(udf::avgMsgs(tuple),
-                                                    Project([$0, $1, $0.creationDate:datetime],
-                                                        GroupBy([$4],
-                                                                [count($0)],
-                                                            Filter($6.creationDate < %date,
-                                                                Expand(IN, ["Post", "Comment"],
-                                                                    ForeachRelationship(TO, ":hasCreator",
-                                                                        Filter($4.creationDate < %date,
-                                                                            Expand(IN, "Person",
-                                                                                ForeachRelationship(TO, ":isLocatedIn",
-                                                                                    Expand(IN, "Place",
-                                                                                        ForeachRelationship(TO, ":isPartOf",
-                                                                                            Filter($0.name == %country,
-                                                                                                NodeScan("Place")
-                                                                                            )
-                                                                                        )
-                                                                                    )
+                                        ),
+                                        Append(udf::appendAvgMsgs($0.creationDate:datetime, %dt, $1:uint64),
+                                            GroupBy([$4:node],
+                                                    [count($0:node)],
+                                                Filter($6.creationDate < %date,
+                                                    Expand(IN, "Post", "Comment",
+                                                        ForeachRelationship(TO, ":hasCreator",
+                                                            Filter($4.creationDate < %date,
+                                                                Expand(IN, "Person",
+                                                                    ForeachRelationship(TO, ":isLocatedIn",
+                                                                        Expand(IN, "Place",
+                                                                            ForeachRelationship(TO, ":isPartOf",
+                                                                                Filter($0.name == %country,
+                                                                                    NodeScan("Place")
                                                                                 )
                                                                             )
                                                                         )
@@ -157,48 +152,46 @@ Limit(100,
                                         )
                                     )
                                 )
-                            ),
-                            GroupBy([$0],
-                                    [count($0)],
-                                Expand(IN, "Person",
-                                    ForeachRelationship(TO, ":likes",
-                                        Expand(IN, ["Post", "Comment"],
-                                            ForeachRelationship(TO, ":hasCreator",
-                                                Project([$0],
-                                                    Filter(udf::zmbMsgCnt(tuple),
-                                                        Outerjoin(udf::joinPred(tuple1, tuple2),
-                                                            Project([$4],
-                                                                Filter($4.creationDate < %date,
-                                                                    Expand(IN, "Person",
-                                                                        ForeachRelationship(TO, ":isLocatedIn",
-                                                                            Expand(IN, "Place",
-                                                                                ForeachRelationship(TO, ":isPartOf",
-                                                                                    Filter($0.name == %country,
-                                                                                        NodeScan("Place")
-                                                                                    )
+                            )
+                        ),
+                        GroupBy([$0:node],
+                                [count($0:node)],
+                            Expand(IN, "Person",
+                                ForeachRelationship(TO, ":likes",
+                                    Expand(IN, "Post", "Comment",
+                                        ForeachRelationship(TO, ":hasCreator",
+                                            Project([$0:node],
+                                                Filter(udf::filterAvgMsgs($3:qresult),
+                                                    LeftOuterJoin($0.id == $0.id,
+                                                        Project([$4:node],
+                                                            Filter($4.creationDate < %date,
+                                                                Expand(IN, "Person",
+                                                                    ForeachRelationship(TO, ":isLocatedIn",
+                                                                        Expand(IN, "Place",
+                                                                            ForeachRelationship(TO, ":isPartOf",
+                                                                                Filter($0.name == %country,
+                                                                                    NodeScan("Place")
                                                                                 )
                                                                             )
                                                                         )
                                                                     )
                                                                 )
-                                                            ),
-                                                            AppendToTuple(udf::avgMsgs(tuple),
-                                                                Project([$0, $1, $0.creationDate:datetime],
-                                                                    GroupBy([$4],
-                                                                            [count($0)],
-                                                                        Filter($6.creationDate < %date,
-                                                                            Expand(IN, ["Post", "Comment"],
-                                                                                ForeachRelationship(TO, ":hasCreator",
-                                                                                    Filter($4.creationDate < %date,
-                                                                                        Expand(IN, "Person",
-                                                                                            ForeachRelationship(TO, ":isLocatedIn",
-                                                                                                Expand(IN, "Place",
-                                                                                                    ForeachRelationship(TO, ":isPartOf",
-                                                                                                        Filter($0.name == %country,
-                                                                                                            NodeScan("Place")
-                                                                                                        )
-                                                                                                    )
-                                                                                                )
+                                                            )
+                                                        )
+                                                    ),
+                                                    Append(udf::appendAvgMsgs($0.creationDate:datetime, %dt, $1:uint64),
+                                                        GroupBy([$4:node],
+                                                                [count($0:node)],
+                                                            Filter($6.creationDate < %date,
+                                                                Expand(IN, "Post", "Comment",
+                                                                    ForeachRelationship(TO, ":hasCreator",
+                                                                        Filter($4.creationDate < %date,
+                                                                            Expand(IN, "Person",
+                                                                                ForeachRelationship(TO, ":isLocatedIn",
+                                                                                    Expand(IN, "Place",
+                                                                                        ForeachRelationship(TO, ":isPartOf",
+                                                                                            Filter($0.name == %country,
+                                                                                                NodeScan("Place")
                                                                                             )
                                                                                         )
                                                                                     )
