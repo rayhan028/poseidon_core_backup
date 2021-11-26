@@ -149,7 +149,7 @@ void interprete_visitor::visit(std::shared_ptr<join_op> op) {
 
 void interprete_visitor::start() {
     for(auto & q : queries_) {
-        //q.dump();
+        q.print_plan();
         q.start();
     }
     op_id_ = 1;
@@ -175,11 +175,11 @@ void interprete_visitor::visit(std::shared_ptr<create_op> op) {
 }
 
 void interprete_visitor::visit(std::shared_ptr<group_op> op) {
-
+    grp_pos_ = op->grpkey_pos_;
 }
 
 void interprete_visitor::visit(std::shared_ptr<aggr_op> op) {
-
+    query_ = query_.groupby(grp_pos_, op->aggrs_);
 }
 
 void interprete_visitor::visit(std::shared_ptr<connected_op> op) {

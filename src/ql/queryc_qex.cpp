@@ -99,6 +99,9 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
         auto qp = std::make_shared<foreach_from_relationship>(ast->get_param<std::string>(1));
         qop = qop_append(res2.first ? res2.second : res.second, qp);
       }
+      else if (ast->get_param<std::string>(0) == "ALL") {
+        // TODO
+      }
       break;
     case ast_op::expand:
     {
@@ -124,6 +127,10 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
       }
       break;
     case ast_op::sort:
+      break;
+    case ast_op::union_all:
+      break;
+    case ast_op::count:
       break;
     case ast_op::group_by:
       break;
@@ -162,6 +169,11 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
         std::make_pair(ast->get_param<int>(1), ast->get_param<int>(2)));
       qop = qop_append(res2.first ? res2.second : res.second, qp);
     }
+      break;
+    case ast_op::algo:
+      if (ast->get_param<std::string>(0) == "SPSP") {
+        // TODO
+      }
       break;
     default:
       break;

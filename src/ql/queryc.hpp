@@ -24,6 +24,7 @@
 #include "qop.hpp"
 #include "query.hpp"
 
+
 #ifdef USE_LLVM
 #include "qoperator.hpp"
 #include "query_engine.hpp"
@@ -65,6 +66,11 @@ public:
    * TODO
    */
   algebra_optr ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent);
+
+  /**
+   * Executes the given query plan.
+   */
+  void exec_plan(algebra_optr &plan, graph_db_ptr &gdb);
 #endif
   /**
    *
@@ -75,6 +81,16 @@ public:
    * Parses the given query string and returns an AST.
    */
   ast_op_ptr parse(const std::string &query);
+
+  /**
+   * Parses the given query string and saves the plan with given name.
+   */
+  void parse_and_save_plan(const std::string &name, const std::string &query);
+
+  /**
+   * Executes the given query by name.
+   */
+  void exec_plan(const std::string &qname, graph_db_ptr &gdb);
 
 private:
   /**
@@ -155,6 +171,12 @@ private:
       parent->connect(qop, std::bind(&T::process, dynamic_cast<T *>(qop.get()), ph::_1, ph::_2));
     return qop;
   }
+
+#ifdef USE_LLVM
+  std::map<std::string, algebra_optr> query_plans_;
+#else
+  std::map<std::string, query> query_plan_;
+#endif
 
 };
 

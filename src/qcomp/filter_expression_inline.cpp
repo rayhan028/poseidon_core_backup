@@ -296,6 +296,262 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<eq_predicate> eq)  {
     opd_cnt++;
 }
 
+/**
+ * Generates code for the evaluation of an less equal expression
+ */
+void fep_visitor_inline::visit(int rank, std::shared_ptr<le_predicate> le)  {
+    le->opd_num = opd_cnt;
+    expr_stack.insert(expr_stack.begin(), le);
+
+    // obtain the evaluation stack values
+    //auto opd_it = expr_stack.begin();
+    auto rhs_it = expr_stack.begin() + 1;
+    auto lhs_it = expr_stack.begin() + 2;
+
+    
+    auto cmp_alloc = add_bb("cmp_le_"+ std::to_string(le->opd_num));
+    ctx_->getBuilder().CreateBr(cmp_alloc);
+    ctx_->getBuilder().SetInsertPoint(cmp_alloc);
+
+    // extract the values from the stack
+    auto pitem = expr_register[(*lhs_it)->opd_num];
+    auto rhs_alloc = expr_register[(*rhs_it)->opd_num];
+
+    // get the value arr from the property item
+    auto value_arr = ctx_->getBuilder().CreateStructGEP(pitem, 0);
+
+    // convert it to the appropriate type and compare the two values
+    switch ((*rhs_it)->ftype_) {
+        case FOP_TYPE::INT: {
+            auto val_rhs = rhs_alloc;
+            auto int_value = ctx_->getBuilder().CreateLoad(
+                    ctx_->getBuilder().CreateBitCast(value_arr, ctx_->int64PtrTy));
+            auto cmp_pitem = ctx_->getBuilder().CreateICmpSLE(int_value, val_rhs);
+
+            expr_register[opd_cnt] = cmp_pitem;
+            break;
+        }
+        case FOP_TYPE::DOUBLE: {
+            auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
+            auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
+            auto cmp_pitem = ctx_->getBuilder().CreateFCmpOLE(int_value, val_rhs);
+            gen_vals_[opd_cnt] = alloc("cmp_le_res_" + std::to_string(le->opd_num), ctx_->boolTy, cmp_pitem);
+            break;
+        }
+        case FOP_TYPE::DATE:
+        case FOP_TYPE::STRING:
+        case FOP_TYPE::TIME:
+        case FOP_TYPE::UINT64:
+        case FOP_TYPE::BOOL_OP:
+        case FOP_TYPE::OP:
+        case FOP_TYPE::KEY:
+            break;
+    }
+
+    auto epilog = add_bb("epilog_" + std::to_string(opd_cnt));
+
+    // if no other expression is given, jump to the next block, otherwise link to the next expression
+    if (rank == 0) {
+        ctx_->getBuilder().CreateCondBr(expr_register[opd_cnt], next_, end_);
+    } else {
+        ctx_->getBuilder().CreateBr(epilog);
+        ctx_->getBuilder().SetInsertPoint(epilog);
+    }
+    opd_cnt++;
+}
+
+/**
+ * Generates code for the evaluation of an less equal expression
+ */
+void fep_visitor_inline::visit(int rank, std::shared_ptr<lt_predicate> op)  {
+    op->opd_num = opd_cnt;
+    expr_stack.insert(expr_stack.begin(), op);
+
+    // obtain the evaluation stack values
+    //auto opd_it = expr_stack.begin();
+    auto rhs_it = expr_stack.begin() + 1;
+    auto lhs_it = expr_stack.begin() + 2;
+
+    
+    auto cmp_alloc = add_bb("cmp_lt_"+ std::to_string(op->opd_num));
+    ctx_->getBuilder().CreateBr(cmp_alloc);
+    ctx_->getBuilder().SetInsertPoint(cmp_alloc);
+
+    // extract the values from the stack
+    auto pitem = expr_register[(*lhs_it)->opd_num];
+    auto rhs_alloc = expr_register[(*rhs_it)->opd_num];
+
+    // get the value arr from the property item
+    auto value_arr = ctx_->getBuilder().CreateStructGEP(pitem, 0);
+
+    // convert it to the appropriate type and compare the two values
+    switch ((*rhs_it)->ftype_) {
+        case FOP_TYPE::INT: {
+            auto val_rhs = rhs_alloc;
+            auto int_value = ctx_->getBuilder().CreateLoad(
+                    ctx_->getBuilder().CreateBitCast(value_arr, ctx_->int64PtrTy));
+            auto cmp_pitem = ctx_->getBuilder().CreateICmpSLT(int_value, val_rhs);
+
+            expr_register[opd_cnt] = cmp_pitem;
+            break;
+        }
+        case FOP_TYPE::DOUBLE: {
+            auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
+            auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
+            auto cmp_pitem = ctx_->getBuilder().CreateFCmpOLT(int_value, val_rhs);
+            gen_vals_[opd_cnt] = alloc("cmp_lt_res_" + std::to_string(op->opd_num), ctx_->boolTy, cmp_pitem);
+            break;
+        }
+        case FOP_TYPE::DATE:
+        case FOP_TYPE::STRING:
+        case FOP_TYPE::TIME:
+        case FOP_TYPE::UINT64:
+        case FOP_TYPE::BOOL_OP:
+        case FOP_TYPE::OP:
+        case FOP_TYPE::KEY:
+            break;
+    }
+
+    auto epilog = add_bb("epilog_" + std::to_string(opd_cnt));
+
+    // if no other expression is given, jump to the next block, otherwise link to the next expression
+    if (rank == 0) {
+        ctx_->getBuilder().CreateCondBr(expr_register[opd_cnt], next_, end_);
+    } else {
+        ctx_->getBuilder().CreateBr(epilog);
+        ctx_->getBuilder().SetInsertPoint(epilog);
+    }
+    opd_cnt++;
+}
+
+/**
+ * Generates code for the evaluation of an less equal expression
+ */
+void fep_visitor_inline::visit(int rank, std::shared_ptr<ge_predicate> op)  {
+    op->opd_num = opd_cnt;
+    expr_stack.insert(expr_stack.begin(), op);
+
+    // obtain the evaluation stack values
+    //auto opd_it = expr_stack.begin();
+    auto rhs_it = expr_stack.begin() + 1;
+    auto lhs_it = expr_stack.begin() + 2;
+
+    
+    auto cmp_alloc = add_bb("cmp_ge_"+ std::to_string(op->opd_num));
+    ctx_->getBuilder().CreateBr(cmp_alloc);
+    ctx_->getBuilder().SetInsertPoint(cmp_alloc);
+
+    // extract the values from the stack
+    auto pitem = expr_register[(*lhs_it)->opd_num];
+    auto rhs_alloc = expr_register[(*rhs_it)->opd_num];
+
+    // get the value arr from the property item
+    auto value_arr = ctx_->getBuilder().CreateStructGEP(pitem, 0);
+
+    // convert it to the appropriate type and compare the two values
+    switch ((*rhs_it)->ftype_) {
+        case FOP_TYPE::INT: {
+            auto val_rhs = rhs_alloc;
+            auto int_value = ctx_->getBuilder().CreateLoad(
+                    ctx_->getBuilder().CreateBitCast(value_arr, ctx_->int64PtrTy));
+            auto cmp_pitem = ctx_->getBuilder().CreateICmpSGE(int_value, val_rhs);
+
+            expr_register[opd_cnt] = cmp_pitem;
+            break;
+        }
+        case FOP_TYPE::DOUBLE: {
+            auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
+            auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
+            auto cmp_pitem = ctx_->getBuilder().CreateFCmpOGE(int_value, val_rhs);
+            gen_vals_[opd_cnt] = alloc("cmp_ge_res_" + std::to_string(op->opd_num), ctx_->boolTy, cmp_pitem);
+            break;
+        }
+        case FOP_TYPE::DATE:
+        case FOP_TYPE::STRING:
+        case FOP_TYPE::TIME:
+        case FOP_TYPE::UINT64:
+        case FOP_TYPE::BOOL_OP:
+        case FOP_TYPE::OP:
+        case FOP_TYPE::KEY:
+            break;
+    }
+
+    auto epilog = add_bb("epilog_" + std::to_string(opd_cnt));
+
+    // if no other expression is given, jump to the next block, otherwise link to the next expression
+    if (rank == 0) {
+        ctx_->getBuilder().CreateCondBr(expr_register[opd_cnt], next_, end_);
+    } else {
+        ctx_->getBuilder().CreateBr(epilog);
+        ctx_->getBuilder().SetInsertPoint(epilog);
+    }
+    opd_cnt++;
+}
+
+/**
+ * Generates code for the evaluation of an less equal expression
+ */
+void fep_visitor_inline::visit(int rank, std::shared_ptr<gt_predicate> op)  {
+    op->opd_num = opd_cnt;
+    expr_stack.insert(expr_stack.begin(), op);
+
+    // obtain the evaluation stack values
+    //auto opd_it = expr_stack.begin();
+    auto rhs_it = expr_stack.begin() + 1;
+    auto lhs_it = expr_stack.begin() + 2;
+
+    
+    auto cmp_alloc = add_bb("cmp_gt_"+ std::to_string(op->opd_num));
+    ctx_->getBuilder().CreateBr(cmp_alloc);
+    ctx_->getBuilder().SetInsertPoint(cmp_alloc);
+
+    // extract the values from the stack
+    auto pitem = expr_register[(*lhs_it)->opd_num];
+    auto rhs_alloc = expr_register[(*rhs_it)->opd_num];
+
+    // get the value arr from the property item
+    auto value_arr = ctx_->getBuilder().CreateStructGEP(pitem, 0);
+
+    // convert it to the appropriate type and compare the two values
+    switch ((*rhs_it)->ftype_) {
+        case FOP_TYPE::INT: {
+            auto val_rhs = rhs_alloc;
+            auto int_value = ctx_->getBuilder().CreateLoad(
+                    ctx_->getBuilder().CreateBitCast(value_arr, ctx_->int64PtrTy));
+            auto cmp_pitem = ctx_->getBuilder().CreateICmpSGT(int_value, val_rhs);
+
+            expr_register[opd_cnt] = cmp_pitem;
+            break;
+        }
+        case FOP_TYPE::DOUBLE: {
+            auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
+            auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
+            auto cmp_pitem = ctx_->getBuilder().CreateFCmpOGT(int_value, val_rhs);
+            gen_vals_[opd_cnt] = alloc("cmp_gt_res_" + std::to_string(op->opd_num), ctx_->boolTy, cmp_pitem);
+            break;
+        }
+        case FOP_TYPE::DATE:
+        case FOP_TYPE::STRING:
+        case FOP_TYPE::TIME:
+        case FOP_TYPE::UINT64:
+        case FOP_TYPE::BOOL_OP:
+        case FOP_TYPE::OP:
+        case FOP_TYPE::KEY:
+            break;
+    }
+
+    auto epilog = add_bb("epilog_" + std::to_string(opd_cnt));
+
+    // if no other expression is given, jump to the next block, otherwise link to the next expression
+    if (rank == 0) {
+        ctx_->getBuilder().CreateCondBr(expr_register[opd_cnt], next_, end_);
+    } else {
+        ctx_->getBuilder().CreateBr(epilog);
+        ctx_->getBuilder().SetInsertPoint(epilog);
+    }
+    opd_cnt++;
+}
+
 void fep_visitor_inline::visit(int rank, std::shared_ptr<and_predicate> andpr) {
     andpr->opd_num = opd_cnt;
     expr_stack.insert(expr_stack.begin(), andpr);

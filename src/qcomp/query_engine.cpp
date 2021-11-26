@@ -106,7 +106,8 @@ void query_engine::prepare() {
         type_vec_[i].insert(type_vec_[i].end(), type_vec_[i-1].begin(), type_vec_[i-1].end());
     }
 }
-grouper g1;
+
+joiner * last_joiner;
 void query_engine::extract_arg(std::shared_ptr<base_op> op) {
     switch(op->type_) {
         case qop_type::scan: {
@@ -135,25 +136,35 @@ void query_engine::extract_arg(std::shared_ptr<base_op> op) {
             //TODO: all create arguments
             break;
         }
-        case qop_type::collect:
-        case qop_type::cross_join:
+        case qop_type::cross_join: {
+            last_joiner = new joiner();
+            query_args.arg(arg_counter++, last_joiner);
+            break;
+        }
         case qop_type::hash_join:
         case qop_type::left_join:
-        case qop_type::limit:
-        case qop_type::nest_loop_join:
-        case qop_type::none:
-        case qop_type::project: {
-            // inline arguments, nothing to do
+        case qop_type::nest_loop_join: {
+            last_joiner = new joiner();
+            query_args.arg(arg_counter++, last_joiner);
             break;
         }
+        case qop_type::end: {
+            query_args.arg(arg_counter++, last_joiner);
+            break;
+        }
+        case qop_type::group: {
+            query_args.arg(arg_counter++, new grouper()); //TODO: allocation
+            query_args.arg(arg_counter++, new grouper());
+            break;
+        }
+        case qop_type::limit:
+        // inline argument, nothing to do here
+        case qop_type::project:
+        case qop_type::aggr:
+        case qop_type::collect:
         case qop_type::sort:
         case qop_type::any:
-        case qop_type::group: {
-            query_args.arg(arg_counter++, &g1);
-            query_args.arg(arg_counter++, &g1);
-            break;
-        }
-        case qop_type::aggr:
+        case qop_type::none:
         default:
             return;
     }
@@ -215,9 +226,23 @@ void query_engine::run(result_set * rs, arg_builder & args, bool cleanup_query) 
 
 void query_engine::run(result_set * rs) {
     auto curop = cur_query_;
-    while(!curop->inputs_.empty()) {
+    std::vector<algebra_optr> recur; 
+    while(!curop->inputs_.empty() || !recur.empty()) {
         extract_arg(curop);
-        curop = curop->inputs_[0];
+        if(curop->inputs_.empty()) {
+            if(!recur.empty()) {
+                curop = recur.front();
+                recur.erase(recur.begin());
+                continue;
+            }
+        }
+        if(curop->inputs_.size() > 1) {
+            recur.push_back(curop->inputs_[0]);
+            curop = curop->inputs_[1];
+        } else {
+            if(!curop->inputs_.empty())
+                curop = curop->inputs_[0];
+        }
     }
     
     run(rs, query_args);
@@ -279,10 +304,11 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
             scan_task::callee_ = task_callee_;
             compiled_.store(true);
         });
+
         if(t1.joinable())
             t1.join();
         if(interpreter_thread.joinable())
-            interpreter_thread.join();
+           interpreter_thread.join();
         if(has_join(cur_query_) && (pipeline != pipeline_num-1)) {
             graph_->parallel_nodes(consumer_dummy);
         }
@@ -331,6 +357,7 @@ void compile_task::operator()() {
     ctx_.createNewModule();
     ctx_.getModule().setDataLayout(jit_.getDataLayout());
     qeng_.operator_names_.clear();
+    
     //3. extract all operator names from query and generate type vec
     //first function name == scan => start function
     auto query_id = 0;
@@ -342,11 +369,11 @@ void compile_task::operator()() {
     qeng_.start_.clear();
     qeng_.finish_.clear();
     
+    // obtain the function names for each pipeline and assign the ptrs to the appropriate map
     int i = 0;
     int pipe_id = -1;
     for(auto & s : cv.pipelines) {
         if(s.find("finish_") == 0) {
-            
             auto ffct = jit_.getFunctionRaw<finish_fct_type>(s);
             if(ffct) {
                 qeng_.finish_[i] = *ffct;

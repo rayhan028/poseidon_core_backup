@@ -146,18 +146,30 @@ ast_op::op_type queryc::get_op_type(parse_tree_ptr& pn) {
         return ast_op::limit;
       else if (name == "Sort")
         return ast_op::sort;
+      else if (name == "Union")
+        return ast_op::union_all;
+      else if (name == "Count")
+        return ast_op::count;
       else if (name == "GroupBy")
         return ast_op::group_by;
       else if (name == "HashJoin")
         return ast_op::hash_join;
       else if (name == "LeftOuterJoin")
         return ast_op::leftouter_join;
+      else if (name == "CrossJoin")
+        return ast_op::cross_join;
       else if (name == "ForeachRelationship")
         return ast_op::foreach_rship;
       else if (name == "Expand")
         return ast_op::expand;
+      else if (name == "Append")
+        return ast_op::append;
       else if (name == "Project")
         return ast_op::project;
+      else if (name == "Algorithm")
+        return ast_op::algo;
+      else if (name == "End")
+        return ast_op::end;
       else if (name == "Create") {
         if (pn->children.size() > 1) {
           auto& sibling = pn->children[1];
@@ -199,6 +211,7 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
       }
 #ifdef USE_LLVM
       else if (param->is_type<qlang::expression>()) {
+        std::cout << "expr = " << param->string() << std::endl;
           //nptr->add_param(std::move(param));
           nptr->add_param(parse_expression(param));
       }
@@ -287,17 +300,40 @@ expr queryc::parse_expression(parse_tree_ptr& tree) {
   if (is_int(rhs_value->string())) {
       auto n = std::stoi(rhs_value->string()); // TODO: find better solution
       value_se = Int(n);
-  } else if (rhs_value->is_type<qlang::variable_name>()){
+  } 
+  else if (rhs_value->is_type<qlang::variable_name>()){
       auto rhs_var_name = parse_variable_name(lhs_key->string());
       auto rhs_qr_id = std::stoi(rhs_value->children[0]->string());
       value_se = Key(rhs_qr_id, rhs_var_name);
   }
+  else if (rhs_value->is_type<qlang::query_param>()) {
+      auto qparam = rhs_value->string();
+      std::cout << "qparam = " << qparam << std::endl;
+      value_se = QParam(qparam);
+  }
+  else {
+    std::cout << "unknown expr: " << rhs_value->string()  << std::endl;
+  }
 
   auto& fe_op = tree->children[1];
   expr op_se;
-
   if (boost::equals(fe_op->string(), "==")) {
       op_se = EQ(key_se, value_se);
+  }
+  else if (boost::equals(fe_op->string(), "<")) {
+      op_se = LT(key_se, value_se);
+  }
+  else if (boost::equals(fe_op->string(), ">")) {
+      op_se = GT(key_se, value_se);
+  }
+  else if (boost::equals(fe_op->string(), "<=")) {
+      op_se = LE(key_se, value_se);
+  }
+  else if (boost::equals(fe_op->string(), ">=")) {
+      op_se = GE(key_se, value_se);
+  }
+  else if (boost::equals(fe_op->string(), "!=")) {
+      op_se = NEQ(key_se, value_se);
   }
 
   return op_se;

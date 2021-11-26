@@ -33,14 +33,16 @@ p_jit::p_jit(ExitOnError ExitOnErr)
 #else
           CompileLayer(*ES, ObjLinkingLayer, std::make_unique<SimpleCompiler>(*TM)),
 #endif
-          OptimizeLayer(*ES, CompileLayer) {
-    //ObjLinkingLayer.setNotifyLoaded(createNotifyLoadedFtor());
-    auto exp_jit_dylib = ES->createJITDylib("Main");
-    if(exp_jit_dylib) {
-        if(auto R = createHostProcessResolver())
-                ES->getJITDylibByName("Main")->addGenerator(std::move(R));
+          OptimizeLayer(*ES, CompileLayer),
+          MainJD(ES->createBareJITDylib("main")) {
+
+        auto dl = getDataLayout();
+                cantFail(DynamicLibrarySearchGenerator::GetForCurrentProcess(
+        dl.getGlobalPrefix()));
+            
         SymbolMap M;
-        MangleAndInterner Mangle(*ES, getDataLayout());
+        MangleAndInterner Mangle(*ES, dl);
+
         // Register every symbol that can be accessed from the JIT'ed code.
         M[Mangle("vec_end_reached")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&vec_end_reached), JITSymbolFlags::Exported);
@@ -201,15 +203,16 @@ p_jit::p_jit(ExitOnError ExitOnErr)
         M[Mangle("print_int")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&print_int), JITSymbolFlags::Exported);
 
-        ExitOnErr(ES->getJITDylibByName("Main")->define(absoluteSymbols(M)));
-    }
+        ExitOnErr(MainJD.define(absoluteSymbols(M)));
+}
+
+p_jit::~p_jit() {
+    if(auto err = ES->endSession())
+        ES->reportError(std::move(err));
 }
 
 
 Error p_jit::addModule(std::unique_ptr<Module> M) {
-    auto K = ES->allocateVModule();
-    ModuleKeys.push_back(K);
-
 #if USE_CACHE
     std::cout << "Use cache" << std::endl;
     auto obj = ObjCache->getCachedObject(*M);
@@ -225,16 +228,25 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
     }
 #endif
 
-    OptimizeLayer.setTransform(Optimizer(3));
+    OptimizeLayer.setTransform(Optimizer(0));
     
-    return OptimizeLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx), K);
+    auto RT = MainJD.getDefaultResourceTracker();
+
+    return OptimizeLayer.add(RT, ThreadSafeModule(std::move(M), ctx));
+
+    //return OptimizeLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx), K);
     //cantFail(CompileLayer.add(*ES->getJITDylibByName("Main"), ThreadSafeModule(std::move(M), ctx)));
 }
 
 
 std::unique_ptr<TargetMachine> p_jit::createTargetMachine(llvm::ExitOnError ExitOnErr) {
     auto JTMP = ExitOnErr(JITTargetMachineBuilder::detectHost());
-    return ExitOnErr(JTMP.createTargetMachine());
+	
+    auto tm = JTMP.createTargetMachine();
+    if(tm) {
+        tm->get()->setFastISel(true);
+	}
+    return ExitOnErr(std::move(tm));
 }
 
 using GetMemoryManagerFunction =
@@ -270,13 +282,12 @@ Error p_jit::applyDataLayout(llvm::Module &M) {
 
 Expected<JITTargetAddress> p_jit::getFunctionAddr(llvm::StringRef Name) {
     SymbolStringPtr NamePtr = ES->intern(mangle(Name));
-    JITDylibSearchOrder JDs{{ES->getJITDylibByName("Main"), JITDylibLookupFlags::MatchAllSymbols}};
+    JITDylibSearchOrder JDs{{&MainJD, JITDylibLookupFlags::MatchAllSymbols}};
     Expected<JITEvaluatedSymbol> S = ES->lookup(JDs, NamePtr);
     if(!S)
         return S.takeError();
     JITTargetAddress A = S->getAddress();
-    if(!A)
-        printf("Error!!!\n");
+
     return A;
 }
 

@@ -136,6 +136,15 @@ nvm::pool_base prepare_pool() {
 }
 #endif
 
+graph_db_ptr gdb;
+
+int i = 0;
+bool filter_fct(int *prop_ptr) {
+	auto str = gdb->get_dictionary()->lookup_code(*prop_ptr);
+	std::cout << "Str: " << str << std::endl;
+    return (i++) % 2 == 0;
+}
+
 int main() {
 	bool init;
 	std::string test_path = poseidon::gPmemPath + "jit_qcomp";
@@ -153,19 +162,22 @@ int main() {
   } else {
     pop = nvm::pool<root>::open(path, db_name);
   }
-
+	std::cout << "run code" << std::endl;
   auto q = pop.root();
   if (!q->graph) {
     // create a new persistent graph_db object
     nvm::transaction::run(pop, [&] { q->graph = p_make_ptr<graph_db>(); });
   }
   auto graph = q->graph;
+  std::cout << "run code" << std::endl;
   graph->runtime_initialize();
 #else
   auto pool = graph_pool::open(test_path);
   auto graph = pool->open_graph("jit_qcomp");
   init = true;
 #endif
+	gdb = graph;
+	std::cout << "run code" << std::endl;
 	if(init) {
 		graph->begin_transaction();
 
@@ -199,25 +211,23 @@ int main() {
 					{"id", boost::any(id++)}},
 					false);
 			graph->add_relationship(p, b, ":likes", {{"id", boost::any(id++)}}, false);
-			graph->add_relationship(p, p2, ":likes", {}, false);
-			graph->add_relationship(p, b, ":HAS_READ", {}, false);
-			graph->add_relationship(b, p, ":HAS_READ", {}, false);
+
 		}
-		
+		graph->create_index("Person", "id");
 		graph->commit_transaction();
 	}
-
+	std::cout << "run code2" << std::endl;
 	auto THREAD_NUM = 4;
 	auto chunks = graph->get_nodes()->num_chunks();
 	auto cv_range = chunks / THREAD_NUM;
-	
+	std::cout << "Chunks: " << chunks << std::endl;
 	query_engine queryEngine(graph, THREAD_NUM, cv_range);
-
+	std::cout << "run code3" << std::endl;
 	std::vector<std::string> labels = {"Person", "Book"};
 
-	auto qq  = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::OUT, "Book", End())));
+	auto qq  = Scan("Person", Collect());
 
-	auto r_expr = Scan("Book", End(JOIN_OP::NESTED_LOOP, 0));
+	auto r_expr = Scan("Person", Limit(10, End()));
 
 	auto fev = Scan(labels, ForeachRship(RSHIP_DIR::FROM, {}, ":likes", Expand(EXPAND::IN, "Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr))));
 
@@ -225,43 +235,54 @@ int main() {
 		return true;
 	};
 
-	auto simp = Scan("Person", GroupBy({0}, Aggr({{"count", 0}}, GroupBy({0}, Aggr({{"count", 0}}, GroupBy({0}, Aggr({{"count", 0}}, GroupBy({0}, Aggr({{"pcount", 0}}, Collect())))))))));
+    auto sort_fct = [&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                        return boost::get<int>(qr1[0]) > boost::get<int>(qr2[0]); };
 
+	auto simp = Scan("Person", LeftJoin({0,0}, Collect(), Scan("Person", End())));
+	std::cout << "Node size: " << sizeof(relationship) << std::endl;
 	scan_task::callee_ = &scan_task::scan;	
 
 	auto cs1 = std::chrono::steady_clock::now();
-	queryEngine.generate(simp, false);
+	queryEngine.generate(qq, false);
 	auto ce1 = std::chrono::steady_clock::now();
 	
 	grouper g1;
 	grouper g2;
 	grouper g3;
 	grouper g4;
+	joiner j1;
 	arg_builder ab;
 	ab.arg(1, "Person");
-	ab.arg(2, &g1);
-	ab.arg(3, &g1);
-	ab.arg(4, &g2);
-	ab.arg(5, &g2);
-	ab.arg(6, &g3);
-	ab.arg(7, &g3);
-	ab.arg(8, &g4);
-	ab.arg(9, &g4);
+	ab.arg(3, "Person");
+	ab.arg(4, &j1);
+	ab.arg(2, &j1);
+	ab.arg(5, &j1);
+
+	std::cout << "Size of nodes: " << sizeof(node) << std::endl;
+	std::cout << "Size of rships: " << sizeof(relationship) << std::endl;
 
 	result_set rs;
+	result_set rs2;
 
-	auto aq = query(graph).all_nodes("Person").project({PExpr_(0, pj::int_property(res, "age"))}).groupby({0}, {{"pcount", 0}}).collect(rs);
+	auto qrl = query(graph).all_nodes("Person").from_relationships(":likes").to_node("Book").collect(rs);
 
-	std::cout << rs << std::endl;
+	auto testq = query(graph).all_nodes("Person");
+	auto testqm = query(graph).all_nodes("Person").outerjoin_on_rship({0,0}, testq).collect(rs);
+
 	auto js = std::chrono::steady_clock::now();
-	queryEngine.run(&rs, ab, 24);
+	
+	//queryEngine.run(&rs, ab, 24);
+	//queryEngine.finish(&rs, ab);
+	queryEngine.run(&rs2);
 	//queryEngine.finish(&rs, ab);
 	//graph->begin_transaction();
-	//query::start({&aq});
+	//query::start({&testq, &testqm});
+	//query::start({&qrl});
 	//graph->commit_transaction();
+	
 	auto je = std::chrono::steady_clock::now();
 	
-	std::cout << rs << std::endl;
+	std::cout << rs2.data.size() << std::endl;
 	std::cout << "JIT: "
 		<< std::chrono::duration_cast<std::chrono::milliseconds>(je -
 																	js)

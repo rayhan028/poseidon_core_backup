@@ -20,7 +20,11 @@ class interprete_filter_visitor : public expression_visitor {
 
     enum class predicate {
         eq,
-        ueq
+        ueq,
+        le,
+        lt,
+        ge,
+        gt
     };
 
     value_type val_type_;
@@ -45,6 +49,14 @@ public:
     void visit(int rank, std::shared_ptr<fct_call> str) override;
 
     void visit(int rank, std::shared_ptr<eq_predicate> eq) override;
+
+    void visit(int rank, std::shared_ptr<le_predicate> eq) override;
+
+    void visit(int rank, std::shared_ptr<lt_predicate> eq) override;
+
+    void visit(int rank, std::shared_ptr<ge_predicate> eq) override;
+
+    void visit(int rank, std::shared_ptr<gt_predicate> eq) override;
 
     void visit(int rank, std::shared_ptr<and_predicate> andpr) override;
 

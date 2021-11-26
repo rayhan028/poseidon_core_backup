@@ -65,22 +65,34 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
             os << "ForeachRelationship("; break;
         case ast_op::expand:
             os << "Expand("; break;
+        case ast_op::append:
+            os << "Append("; break;
         case ast_op::project:
             os << "Project("; break;
         case ast_op::limit:
             os << "Limit("; break;
         case ast_op::sort:
             os << "Sort("; break;
+        case ast_op::union_all:
+            os << "Union("; break;
+        case ast_op::count:
+            os << "Count("; break;
         case ast_op::group_by:
             os << "GroupBy("; break;
         case ast_op::hash_join:
             os << "HashJoin("; break;
         case ast_op::leftouter_join:
             os << "LeftOuterJoin("; break;
+        case ast_op::cross_join:
+            os << "CrossJoin("; break;
         case ast_op::create_node:
             os << "CreateNode("; break;
         case ast_op::create_rship:
             os << "CreateRelationship("; break;
+        case ast_op::algo:
+            os << "Algorithm("; break;
+        case ast_op::end:
+            os << "End("; break;
         default:
             break;
     }
@@ -88,7 +100,7 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
       [&](int i) { os << i; },
       [&](const std::string &s) { os << s; },
       #ifdef USE_LLVM
-      [&](const expr& expr) { os << (*expr)(); },
+      [&](const expr& expr) { if (expr) os << expr->dump(); },
       #endif
       [&](const proj_spec_list& plist) { os << plist; },
       [&](const aggr_spec_list& alist) { os << alist; },

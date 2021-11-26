@@ -123,8 +123,8 @@ int get_nopid(int & start, std::vector<algebra_optr> & ops, join_op endop) {
 }
 
 void join_op::codegen(op_visitor & vis, unsigned & op_id, bool interpreted) {
-    op_id_ = op_id;
-
+    op_id_ = op_id++;
+    
     auto cur_op = inputs_[1];
 
     if(!interpreted) {
@@ -371,6 +371,7 @@ void limit_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) 
 
 
 void end_op::codegen(op_visitor &vis, unsigned int & op_id, bool interpreted) {
+    op_id_ = op_id++;
     vis.visit(shared_from_this());
 }
 

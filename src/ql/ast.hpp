@@ -75,14 +75,20 @@ struct ast_op {
         filter, 
         foreach_rship, 
         expand, 
+        append,
         project, 
         limit, 
         sort,
+        union_all,
+        count,
         group_by,
         hash_join, 
         leftouter_join,
+        cross_join,
         create_node, 
-        create_rship 
+        create_rship,
+        algo,
+        end 
     };
 
 #ifdef USE_LLVM

@@ -61,11 +61,14 @@ struct str_and : TAO_PEGTL_STRING("and") {};
 struct str_not : TAO_PEGTL_STRING("not") {};
 struct str_true : TAO_PEGTL_STRING("true") {};
 struct str_false : TAO_PEGTL_STRING("false") {};
+struct str_in : TAO_PEGTL_STRING("in") {};
+struct udf_pfx : TAO_PEGTL_STRING("udf::") {};
 
 struct key_or : key< str_or > {};
 struct key_and : key< str_and > {};
 struct key_not : key< str_not > {};
 struct key_false : key< str_false > {};
+struct key_in : key< str_in > {};
 struct key_true : key< str_true > {};
 
 struct sor_keyword : tao::pegtl::sor< str_and, str_or, str_true, str_false > {};
@@ -77,9 +80,15 @@ struct bracket_expr : if_must< one< '(' >, seps, expression, seps, one< ')' > > 
 
 struct name : seq< not_at< keyword >, identifier > {};
 
+struct query_param : seq< one<'%'>, name> {};
 struct variable_name : seq< one< '$' >, integer, opt<one< '.' >, name> > {};
+struct udf_name : seq< udf_pfx, name > {};
+
+struct alias_name : seq< one< '@' >, name > {};
 struct expr_ten;
-struct expr_twelve : sor<key_true, key_false, decimal, literal_string, variable_name/*, expr_thirteen*/ > {};
+struct udf_func_expr;
+
+struct expr_twelve : sor<key_true, key_false, decimal, literal_string, variable_name, alias_name, query_param ,udf_func_expr > {};
 struct unary_operators : sor< one< '-' >, op_one< '~', '=' >, key_not > {};
 struct expr_eleven : seq< expr_twelve, seps, opt< one< '^' >, seps, expr_ten, seps > > {};
 struct unary_apply : if_must< unary_operators, seps, expr_ten, seps > {};
@@ -94,7 +103,8 @@ struct operators_cmp : sor< two< '=' >, tao::pegtl::string< '<', '=' >,
                                            tao::pegtl::string< '>', '=' >,
                                            op_one< '<', '<' >,
                                            op_one< '>', '>' >,
-                                           tao::pegtl::string< '!', '=' > > {};
+                                           tao::pegtl::string< '!', '=' >,
+                                           key_in > {};
 struct expr_two : left_assoc< expr_six, operators_cmp > {};
 struct expr_one : left_assoc< expr_two, key_and > {};
 struct expression : left_assoc< expr_one, key_or> {};
@@ -108,10 +118,16 @@ struct key_limit : TAO_PEGTL_KEYWORD("Limit") {};
 struct key_foreach_rship : TAO_PEGTL_KEYWORD("ForeachRelationship") {};
 struct key_lojoin : TAO_PEGTL_KEYWORD("LeftOuterJoin") {};
 struct key_hashjoin : TAO_PEGTL_KEYWORD("HashJoin") {};
+struct key_crossjoin : TAO_PEGTL_KEYWORD("CrossJoin") {};
 struct key_aggregate : TAO_PEGTL_KEYWORD("Aggregate") {};
 struct key_groupby : TAO_PEGTL_KEYWORD("GroupBy") {};
 struct key_sort : TAO_PEGTL_KEYWORD("Sort") {};
+struct key_union : TAO_PEGTL_KEYWORD("Union") {};
+struct key_Count : TAO_PEGTL_KEYWORD("Count") {};
+struct key_append : TAO_PEGTL_KEYWORD("Append") {};
 struct key_create : TAO_PEGTL_KEYWORD("Create") {};
+struct key_algo : TAO_PEGTL_KEYWORD("Algorithm") {};
+struct key_end : TAO_PEGTL_KEYWORD("End") {};
 
 struct op_name : sor< key_node_scan, 
                     key_index_scan, 
@@ -122,28 +138,47 @@ struct op_name : sor< key_node_scan,
                     key_foreach_rship,
                     key_hashjoin,
                     key_lojoin,
+                    key_crossjoin,
                     key_groupby,
                     key_sort,
-                    key_create
+                    key_union,
+                    key_Count,
+                    key_append,
+                    key_create,
+                    key_algo,
+                    key_end
                     > {};
 
 struct directions : sor<TAO_PEGTL_KEYWORD("FROM"), TAO_PEGTL_KEYWORD("TO"), 
-                        TAO_PEGTL_KEYWORD("IN"), TAO_PEGTL_KEYWORD("OUT")> {};
+                        TAO_PEGTL_KEYWORD("IN"), TAO_PEGTL_KEYWORD("OUT"),
+                        TAO_PEGTL_KEYWORD("ALL")> {};
 
-struct sort_order : sor<TAO_PEGTL_KEYWORD("ASC"), TAO_PEGTL_KEYWORD("DESC")> {}; 
+struct sort_order : sor<TAO_PEGTL_KEYWORD("ASC"), TAO_PEGTL_KEYWORD("DESC")> {};
+
+struct algo_type : sor<TAO_PEGTL_KEYWORD("SPSP")> {};
+
+struct algo_variant : sor<TAO_PEGTL_KEYWORD("WEIGHTED"), TAO_PEGTL_KEYWORD("UNWEIGHTED"),
+                           TAO_PEGTL_KEYWORD("BIDIRECTIONAL"), TAO_PEGTL_KEYWORD("UNIDIRECTIONAL"),
+                           TAO_PEGTL_KEYWORD("TOPK"), TAO_PEGTL_KEYWORD("ALLPATHS")> {};
 
 struct key_int : TAO_PEGTL_KEYWORD("int") {};
 struct key_uint64 : TAO_PEGTL_KEYWORD("uint64") {};
 struct key_float : TAO_PEGTL_KEYWORD("float") {};
+struct key_double : TAO_PEGTL_KEYWORD("double") {};
 struct key_string : TAO_PEGTL_KEYWORD("string") {};
 struct key_dtime : TAO_PEGTL_KEYWORD("datetime") {};
+struct key_array : TAO_PEGTL_KEYWORD("array") {};
+struct key_qresult : TAO_PEGTL_KEYWORD("qresult") {};
 struct key_node : TAO_PEGTL_KEYWORD("node") {};
 struct key_relationship : TAO_PEGTL_KEYWORD("relationship") {};
 
-struct dtype : sor< key_int, key_uint64, key_float, key_string, key_dtime, key_node, key_relationship> {};
+struct dtype : sor< key_int, key_uint64, key_double, key_float, key_string,
+                    key_dtime, key_array, key_qresult, key_node, key_relationship> {};
 
-struct proj_expr : seq< variable_name, one<':'>, dtype, ws, opt<sort_order>> {};
-
+struct var_expr : seq< variable_name, one<':'>, dtype, ws, opt<sort_order>> {};
+struct udf_param_list : list< sor< var_expr, query_param, integer, literal_string >, comma> {};
+struct udf_func_expr : seq< if_must< udf_name, one<'('>, ws, opt< udf_param_list >, ws, one<')'>>, ws, opt<sort_order>> {};
+struct proj_expr : sor< udf_func_expr, var_expr> {};
 struct proj_array : seq< one<'['>, ws, list<proj_expr, comma>, ws, one<']'> > {};
 
 struct key_avg : TAO_PEGTL_KEYWORD("avg") {};
@@ -155,12 +190,18 @@ struct key_max : TAO_PEGTL_KEYWORD("max") {};
 struct func_name : sor<key_avg, key_sum, key_count, key_min, key_max> {};
 
 struct func_expr : if_must< func_name, one<'('>, ws, variable_name, one<':'>, dtype, ws, one<')'>> {};
+// struct expr_elem : sor < func_expr, literal_string, proj_expr  > {};
+// struct expr_array : if_must< one<'['>, ws, list<expr_elem, comma>, ws, one<']'> > {};
 
 struct func_array : if_must< one<'['>, ws, list<func_expr, comma>, ws, one<']'> > {};
+
+struct literal_array : if_must< one<'['>, ws, list<literal_string, comma>, ws, one<']'> > {};
 
 struct property : if_must< name, opt<space>, one<':'>, opt<space>, sor<decimal, literal_string, variable_name> > {};
 
 struct prop_list : if_must<one<'{'>, ws, list<property, comma>, ws, one<'}'> > {};
+
+struct alias : if_must<alias> {};
 
 struct node_or_rship_label : seq<name, opt<space>, one<':'>, opt<space>, name> {};
 struct node_or_rship_pattern : seq<node_or_rship_label, opt<space>, opt<prop_list> > {};
@@ -179,8 +220,8 @@ struct rship_pattern : if_must<snode,
 
 struct qoperator;
 
-struct param : sor<literal_string, qoperator, directions, integer, expression, proj_array, func_array, 
-                    node_pattern, rship_pattern> {};
+struct param : sor<literal_string, qoperator, directions, integer, expression, proj_array,
+                   func_array, node_pattern, rship_pattern, algo_type, algo_variant> {};
 
 struct param_list : list<param, comma, space> {};
 
@@ -194,15 +235,20 @@ template <> struct my_selector<qoperator> : std::true_type {};
 template <> struct my_selector<param> : std::true_type {};
 template <> struct my_selector<expression> : std::true_type {};
 template <> struct my_selector<literal_string> : std::true_type {};
+// template <> struct my_selector<literal_array> : std::true_type {};
 template <> struct my_selector<decimal> : std::true_type {};
 template <> struct my_selector<integer> : std::true_type {};
 template <> struct my_selector<variable_name> : std::true_type {};
+template <> struct my_selector<query_param> : std::true_type {};
+template <> struct my_selector<alias> : std::true_type {};
 template <> struct my_selector<op_name> : std::true_type {};
 template <> struct my_selector<operators_cmp> : std::true_type {};
 template <> struct my_selector<proj_array> : std::true_type {};
 template <> struct my_selector<proj_expr> : std::true_type {};
 template <> struct my_selector<func_array> : std::true_type {};
 template <> struct my_selector<func_expr> : std::true_type {};
+template <> struct my_selector<var_expr> : std::true_type {};
+template <> struct my_selector<udf_func_expr> : std::true_type {};
 template <> struct my_selector<func_name> : std::true_type {};
 template <> struct my_selector<dtype> : std::true_type {};
 template <> struct my_selector<property> : std::true_type {};
@@ -215,6 +261,8 @@ template <> struct my_selector<node_pattern> : std::true_type {};
 template <> struct my_selector<rship_pattern> : std::true_type {};
 template <> struct my_selector<directions> : std::true_type {};
 template <> struct my_selector<sort_order> : std::true_type {};
+template <> struct my_selector<algo_type> : std::true_type {};
+template <> struct my_selector<algo_variant> : std::true_type {};
 
 /* ------------------------------------------------------------- */
 
