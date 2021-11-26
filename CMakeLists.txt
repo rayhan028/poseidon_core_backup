@@ -352,7 +352,11 @@ endif()
 
 
 if(USE_GUNROCK MATCHES ON)
-  set(gunrock_analysis src/analytics/SSSP_gunrock.cpp)
+  set(gunrock_analysis 
+    src/analytics/gunrock_sssp.cpp
+    src/analytics/gunrock_bfs.cpp
+    src/analytics/gunrock_pr.cpp
+  )
 else()
   set(gunrock_analysis "")
 endif()
@@ -417,7 +421,7 @@ set(src_files
   src/analytics/bfs.cpp
   src/analytics/shortest_path.cpp
   ${gunrock_analysis}
-  )
+)
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
 # in different libraries.

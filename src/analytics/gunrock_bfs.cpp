@@ -24,29 +24,27 @@ uint64_t gunrock_bfs_csr(graph_db_ptr gdb, node::id_t start, bool bidirectional,
 
     auto t1 = std::chrono::steady_clock::now();
 
-    uint64_t max_node_idx = 0;
-    uint64_t num_edges = 0;
+    offset_t num_nodes = gdb->get_nodes()->as_vec().last_used() + 1;
+    offset_t num_edges = gdb->get_relationships()->as_vec().last_used() + 1;
     std::vector<offset_t> row_offsets = {};
     std::vector<offset_t> col_indices = {};
     std::vector<float> edge_dists = {};
 
-    poseidon_to_csr(gdb, bidirectional, rpred, [](auto& r) { return 1; },
-                    &row_offsets, &col_indices, &edge_dists, &max_node_idx,
-                    &num_edges);
+    poseidon_to_csr(gdb, row_offsets, col_indices, edge_dists, [](auto& r) { return 1; }, bidirectional);
 
     auto t2 = std::chrono::steady_clock::now();
 
     // Allocate memory for Gunrock output
-    int *dists = (int *)malloc(sizeof(int) * max_node_idx);
-    offset_t *preds = (offset_t *)malloc(sizeof(off64_t) * max_node_idx);
+    int *dists = (int *)malloc(sizeof(int) * num_nodes);
+    offset_t *preds = (offset_t *)malloc(sizeof(off64_t) * num_nodes);
 
     // Custom-written Poseidon function for Gunrock
     // add this to Gunrock before compiling Gunrock in order to use it!
-    // double exec_time = poseidon_gunrock_bfs(max_node_idx, num_edges, (unsigned long long*)row_offsets.data(),
+    // double exec_time = poseidon_gunrock_bfs(num_nodes, num_edges, (unsigned long long*)row_offsets.data(),
     //                      (unsigned long long*)col_indices.data(), start, true, true, true,
     //                      dists, (unsigned long long*)preds);
 
-    result.set_result(dists, preds, max_node_idx);
+    result.set_result(dists, preds, num_nodes);
     free(dists);
     free(preds);
 

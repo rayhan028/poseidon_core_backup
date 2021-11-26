@@ -35,7 +35,7 @@ using rship_predicate = std::function<bool(relationship&)>;
 /**
  * Typedef for a function that computes the weight of a relationship.
  */
-using rship_weight = std::function<float(relationship&)>;
+using rship_weight = std::function<double(relationship&)>;
 
 /*
  * Struct used for efficient sequential weighted SSSP

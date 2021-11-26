@@ -34,14 +34,6 @@ using rship_predicate = std::function<bool(relationship&)>;
  */
 using rship_weight = std::function<float(relationship&)>;
 
-/*
- * Struct used to store edge-coordinates in COO format
- * Needs to be allocated 16-bit alligned!
- */
-struct edge_coords {
-    node::id_t x, y;
-};
-
 /**
  * Converts a given Poseidon Graph to a CSR representation, including all relationships satisfying the
  * predicate rpred. The weight of a traversed relationship is calculated from the weight function. The 
@@ -62,55 +54,51 @@ struct edge_coords {
  *                    chunked_vectors will lead to unneccesary runtime growth. 
  *   num_edges     -> Number of edges in the input graph
  */
-inline void poseidon_to_csr(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
-                std::vector<uint64_t>* row_offsets, std::vector<uint64_t>* col_indices, std::vector<float>* edge_values, 
-                uint64_t* num_nodes, uint64_t* num_edges) {
-    offset_t edges = 0;
-    chunked_vec<node, NODE_CHUNK_SIZE> &cv_nodes = gdb->get_nodes()->as_vec();
-    offset_t max_num_nodes = cv_nodes.capacity();
-    offset_t max_num_edges = gdb->get_relationships()->as_vec().capacity();
-    
-    // Reserve enough memory. Saves runtime
-    int multi = bidirectional ? 1 : 2;
-    row_offsets->reserve(max_num_nodes + 1);
-    col_indices->reserve(multi * max_num_edges);
-    edge_values->reserve(multi * max_num_edges);
-    
-    row_offsets->push_back(0); // First value is always 0
+inline void poseidon_to_csr(graph_db_ptr gdb,
+    std::vector<uint64_t> &row_offsets, std::vector<uint64_t> &col_indices,
+    std::vector<float> &edge_values, rship_weight weight_func, bool bidirectional = false) {
 
-    // Loop over the complete nodes chunked vector.
-    // There might exist a better solution for very sparse 
-    // chunked vectors (a lot of deleted entries). 
-    for (offset_t nid = 0; nid < max_num_nodes; nid++) {
-        if (cv_nodes.is_used(nid)) {
-            auto& n = gdb->node_by_id(nid);
+  offset_t edges = 0;
+  offset_t max_num_edges = gdb->get_relationships()->as_vec().last_used() + 1;
+  auto &cv_nodes = gdb->get_nodes()->as_vec();
+  offset_t max_num_nodes = cv_nodes.last_used() + 1;
 
-            gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
-                if (rpred(r)) {
-                    col_indices->push_back(r.to_node_id());
-                    edge_values->push_back(weight_func(r));
-                    edges++;
-                } // IF rpred
-            }); // foreach
+  int multi = bidirectional ? 1 : 2;
+  row_offsets.reserve(max_num_nodes + 1);
+  col_indices.reserve(multi * max_num_edges);
+  edge_values.reserve(multi * max_num_edges);
 
-            if (bidirectional) {
-                gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
-                    if (rpred(r)) {
-                        col_indices->push_back(r.from_node_id());
-                        edge_values->push_back(weight_func(r));
-                        edges++;
-                    } // if rpred
-                }); // foreach
-            } // if bidirectional
-        } // if is_used
-        row_offsets->push_back(edges);
+  row_offsets.push_back(0); // First value is always 0
 
+  for (offset_t nid = 0; nid < max_num_nodes; nid++) {
+    if (cv_nodes.is_used(nid)) {
+      auto& n = gdb->node_by_id(nid);
 
-    } // Outer for loop
+      gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
+        col_indices.push_back(r.to_node_id());
+        edge_values.push_back(weight_func(r));
+        edges++;
+      });
 
-    *num_nodes = max_num_nodes; 
-    *num_edges = edges;
+      if (bidirectional) {
+        gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
+          col_indices.push_back(r.from_node_id());
+          edge_values.push_back(weight_func(r));
+          edges++;
+        });
+      }
+    }
+    row_offsets.push_back(edges);
+  }
 }
+
+/*
+ * Struct used to store edge-coordinates in COO format
+ * Needs to be allocated 16-bit alligned!
+ */
+struct edge_coords {
+    node::id_t x, y;
+};
 
 /**
  * Converts a given Poseidon Graph to a COO representation, including all relationships satisfying the

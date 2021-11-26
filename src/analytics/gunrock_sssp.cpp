@@ -24,27 +24,27 @@ int64_t gunrock_weighted_sssp_csr(graph_db_ptr gdb, node::id_t start, bool bidir
 
     std::chrono::steady_clock::time_point start_conversion = std::chrono::steady_clock::now();
 
-    uint64_t max_index_nodes = 0;
-    uint64_t num_edges = 0;
-    std::vector<uint64_t> row_offsets = {};
-    std::vector<uint64_t> col_indices = {};
+    offset_t num_nodes = gdb->get_nodes()->as_vec().last_used() + 1;
+    offset_t num_edges = gdb->get_relationships()->as_vec().last_used() + 1;
+    std::vector<offset_t> row_offsets = {};
+    std::vector<offset_t> col_indices = {};
     std::vector<float> edge_values = {};
     
-    poseidon_to_csr(gdb, bidirectional, rpred, weight_func, &row_offsets, &col_indices, &edge_values, &max_index_nodes, &num_edges);
+    poseidon_to_csr(gdb, row_offsets, col_indices, edge_values, [](auto& r) { return 1; }, bidirectional);
 
     std::chrono::steady_clock::time_point end_conversion = std::chrono::steady_clock::now();
 
     // Allocate memory for gunrock output
-    float *dist = (float *)malloc(sizeof(float) * max_index_nodes);
-    uint64_t *preds = (uint64_t *)malloc(sizeof(uint64_t) * max_index_nodes);
+    float *dist = (float *)malloc(sizeof(float) * num_nodes);
+    uint64_t *preds = (uint64_t *)malloc(sizeof(uint64_t) * num_nodes);
 
     // Using a custom written function within Gunrock. You need to 
     // add this to gunrock before compiling Gunrock in order to use it!
-    poseidon_gunrock_sssp_csr(max_index_nodes, num_edges, (unsigned long long*) row_offsets.data(), (unsigned long long*) col_indices.data(), 
+    poseidon_gunrock_sssp_csr(num_nodes, num_edges, (unsigned long long*) row_offsets.data(), (unsigned long long*) col_indices.data(), 
                     (float *)edge_values.data(), start, true, dist, (unsigned long long*) preds);
 
     // Conversion to our output format
-    result.setResult(dist, preds, max_index_nodes);
+    result.setResult(dist, preds, num_nodes);
 
     free(dist);
     free(preds);
