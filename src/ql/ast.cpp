@@ -23,11 +23,23 @@
 std::ostream& operator<<(std::ostream& os, const proj_spec_list& plist) {
     os << "[ ";
     for (auto i = 0u; i < plist.size(); i++) {
-        auto& pi = plist[i];
-        os << pi.pname;
-        if (pi.porder != proj_spec::None)
-            os << " " << pi.porder;
-        if (i < plist.size()-1) os << ", ";
+        auto& p = plist[i];
+        if (std::holds_alternative<simple_proj_spec>(p)) {
+            auto& pi = std::get<simple_proj_spec>(p);
+            os << pi.pname;
+            if (pi.porder != simple_proj_spec::None)
+                os << " " << pi.porder;
+        }
+        else if (std::holds_alternative<udf_spec>(p)) {
+            auto& fi = std::get<udf_spec>(p);
+            os << fi.fname << "(";
+            for (auto j = 0u; j < fi.pname_list.size(); j++) {
+                os << fi.pname_list[j] << ":" << fi.ptype_list[j];
+                if (j < fi.pname_list.size() - 1) os << ", ";
+            }
+            os << ")";
+        }
+        if (i < plist.size() - 1) os << ", ";
     }
     os << " ]";
     return os;

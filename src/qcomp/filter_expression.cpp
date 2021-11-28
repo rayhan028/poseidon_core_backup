@@ -44,7 +44,8 @@ key_token::key_token(unsigned qr_id, std::string key) : key_(key), qr_id_(qr_id)
 }
 
 std::string key_token::dump() const {
-    return std::string("$") + std::to_string(qr_id_) + "." + key_;
+    auto suffix = key_.empty() ? "" : (std::string(".") + key_);
+    return std::string("$") + std::to_string(qr_id_) + suffix;
 }
 
 void key_token::accept(int rank, expression_visitor &fep) {
@@ -108,6 +109,16 @@ void fct_call::accept(int rank, expression_visitor &fep) {
 
 std::string fct_call::dump() const {
     return "";
+}
+
+std::string func_call::dump() const {
+    std::string params;
+    for (auto i = 0u; i < param_list_.size(); i++) {
+        params += param_list_[i]->dump();
+        if (i < param_list_.size()-1)
+            params += ", ";
+    }
+    return func_name_ + "(" + params + ")";
 }
 
 binary_predicate::binary_predicate(FOP fop, const expr left, const expr right, bool prec, bool is_bool)

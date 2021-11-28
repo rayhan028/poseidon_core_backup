@@ -38,15 +38,28 @@ struct ast_op;
 
 using ast_op_ptr = std::shared_ptr<ast_op>;
 
+using str_list = std::vector<std::string>;
+
 /**
- * proj_spec represents a projection specification used in a project clause.
+ * udf_spec represents a call to a user-defined function wie parameters.
  */
-struct proj_spec {
+struct udf_spec {
+    std::string fname;
+    str_list pname_list;
+    str_list ptype_list;
+};
+
+struct simple_proj_spec {
     enum sort_order { None, Asc, Desc }; // sort order - used only for the Sort operator
     std::string pname; // name in the form of $1.name
     std::string ptype; // typename
     sort_order porder;
 };
+
+/**
+ * proj_spec represents a projection specification used in a project clause.
+ */
+using proj_spec = std::variant<udf_spec, simple_proj_spec>;
 
 using proj_spec_list = std::vector<proj_spec>;
 

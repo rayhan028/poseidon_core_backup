@@ -144,6 +144,8 @@ private:
    */
   uint32_t parse_tuple_id(const std::string& var_name);
 
+  udf_spec parse_udf(parse_tree_ptr& tree);
+
   /**
    * Removes leading and trailing quotation marks from a string.
    */
@@ -158,7 +160,7 @@ private:
     * Parses given string and returns the correspondig sort order 
     * (expects only ASC and DESC).
     */
-   proj_spec::sort_order parse_sort_order(const std::string &s);
+   simple_proj_spec::sort_order parse_sort_order(const std::string &s);
 
   /**
    *

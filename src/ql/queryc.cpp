@@ -52,13 +52,13 @@ std::string queryc::trim_ws(const std::string& str) {
   return str.substr(first, (last - first + 1));
 }
 
-proj_spec::sort_order queryc::parse_sort_order(const std::string &s) {
+simple_proj_spec::sort_order queryc::parse_sort_order(const std::string &s) {
   if (s == "ASC")
-    return proj_spec::Asc;
+    return simple_proj_spec::Asc;
   else if (s == "DESC")
-    return proj_spec::Desc;
+    return simple_proj_spec::Desc;
   else
-    return proj_spec::None;
+    return simple_proj_spec::None;
 }
 
 std::string queryc::parse_variable_name(const std::string& var_name) {
@@ -71,11 +71,30 @@ uint32_t queryc::parse_tuple_id(const std::string& var_name) {
   return std::stoi(var_name.substr(1, dot_pos - 1));
 }
 
+udf_spec queryc::parse_udf(parse_tree_ptr& pn) {
+  auto fname = pn->children[0]->string();
+  str_list pnames, ptypes;
+  for (auto &n : pn->children[1]->children) {
+    std::vector<std::string> s;
+    boost::split(s, n->string(), boost::is_any_of(": "));
+    pnames.push_back(s[0]);
+    ptypes.push_back(s[1]);
+  }
+  return udf_spec{fname, pnames, ptypes};
+}
+
 proj_spec queryc::get_property_spec(parse_tree_ptr& pn) {
   assert (pn->is_type<qlang::proj_expr>());
   std::vector<std::string> s;
-  boost::split(s, pn->string(), boost::is_any_of(": "));
-  return s.size() == 2 ? proj_spec{ s[0], s[1], proj_spec::None } : proj_spec{ s[0], s[1], parse_sort_order(s[2]) };
+  // std::cout << "--------> " << pn->string() << std::endl;
+  if (pn->string().starts_with("udf::")) {
+    // handle UDFs
+    return parse_udf(pn->children[0]);
+  }
+  else {
+    boost::split(s, pn->string(), boost::is_any_of(": "));
+    return s.size() == 2 ? simple_proj_spec{ s[0], s[1], simple_proj_spec::None } : simple_proj_spec{ s[0], s[1], parse_sort_order(s[2]) };
+  }
 }
 
 aggr_spec queryc::get_aggregate_spec(parse_tree_ptr& pn) {
@@ -283,60 +302,99 @@ ast_op_ptr queryc::ptree_to_ast(parse_tree_ptr& pn) {
 /* -------------------------------------------------------------------------------- */
 #ifdef USE_LLVM
 expr queryc::parse_expression(parse_tree_ptr& tree) {
-  auto& lhs_key = tree->children[0];
-  
-  unsigned int lhs_qr_id = 0;
-
-  if (lhs_key->is_type<qlang::variable_name>()) {
-      lhs_qr_id = std::stoi(lhs_key->children[0]->string());
+  assert(tree != nullptr);
+   std::cout << "parse_expression: " << tree->string() << " : " 
+    << tree->children.size() << " - " << tree->type << std::endl;
+  if (tree->is_type<qlang::variable_name>()) {
+    auto v_id = parse_tuple_id(tree->string());
+    std::string v_name = "";
+    if (tree->string().find(".") != std::string::npos)
+      v_name = parse_variable_name(tree->string());
+    // std::cout << "variable_id = " << v_id << " - " << v_name << std::endl;
+    return Key(v_id, v_name);
   }
+  else if (tree->is_type<qlang::var_expr>()) {
+    // std::cout << "handle var_expr..." << tree->string() << std::endl;
+    auto var = parse_expression(tree->children[0]); // variable name
+    auto vtype = tree->children[1]->string();
+    return var;
+  }
+  else if (tree->is_type<qlang::query_param>()) {
+    std::cout << "handle query_param\n";
+      // std::cout << "qparam = " << qparam << std::endl;
+    return QParam(tree->string());
+  }
+  else if (tree->is_type<qlang::udf_func_expr>()) {
+    auto& fname = tree->children[0];
+    auto& params = tree->children[1];
+    std::vector<expr> param_list;
+    for (auto i = 0u; i < params->children.size(); i++) {
+      auto pexr = parse_expression(params->children[i]);  
+      param_list.push_back(pexr);
+    }
+    return Fct(fname->string(), param_list);
+  }
+  // tree is of type "expression"
+  else if (tree->children.size() == 1) {
+    auto res = parse_expression(tree->children[0]);
+    return res;
+  }
+  else if (tree->children.size() == 3) {
+    // TODO: expression of the form x op y
+    auto& lhs_key = tree->children[0];
+    unsigned int lhs_qr_id = 0;
 
-  // extract the actual key after $X. in string
-  auto lhs_var_name = parse_variable_name(lhs_key->string());
-  auto key_se = Key(lhs_qr_id, lhs_var_name);
+    if (lhs_key->is_type<qlang::variable_name>()) {
+      lhs_qr_id = std::stoi(lhs_key->children[0]->string());
+    }
 
-  auto& rhs_value = tree->children[2];
-  expr value_se;
-  if (is_int(rhs_value->string())) {
+    // extract the actual key after $X. in string
+    auto lhs_var_name = parse_variable_name(lhs_key->string());
+    auto key_se = Key(lhs_qr_id, lhs_var_name);
+
+    auto& rhs_value = tree->children[2];
+    expr value_se;
+    if (is_int(rhs_value->string())) {
       auto n = std::stoi(rhs_value->string()); // TODO: find better solution
       value_se = Int(n);
-  } 
-  else if (rhs_value->is_type<qlang::variable_name>()){
+    } 
+    else if (rhs_value->is_type<qlang::variable_name>()){
       auto rhs_var_name = parse_variable_name(lhs_key->string());
       auto rhs_qr_id = std::stoi(rhs_value->children[0]->string());
       value_se = Key(rhs_qr_id, rhs_var_name);
-  }
-  else if (rhs_value->is_type<qlang::query_param>()) {
+    }
+    else if (rhs_value->is_type<qlang::query_param>()) {
       auto qparam = rhs_value->string();
-      std::cout << "qparam = " << qparam << std::endl;
+      // std::cout << "qparam = " << qparam << std::endl;
       value_se = QParam(qparam);
-  }
-  else {
-    std::cout << "unknown expr: " << rhs_value->string()  << std::endl;
-  }
+    }
+    else {
+      std::cout << "unknown expr: '" << rhs_value->string() << "'" << std::endl;
+    }
 
-  auto& fe_op = tree->children[1];
-  expr op_se;
-  if (boost::equals(fe_op->string(), "==")) {
+    auto& fe_op = tree->children[1];
+    expr op_se;
+    if (boost::equals(fe_op->string(), "==")) {
       op_se = EQ(key_se, value_se);
-  }
-  else if (boost::equals(fe_op->string(), "<")) {
+    }
+    else if (boost::equals(fe_op->string(), "<")) {
       op_se = LT(key_se, value_se);
-  }
-  else if (boost::equals(fe_op->string(), ">")) {
+    }
+    else if (boost::equals(fe_op->string(), ">")) {
       op_se = GT(key_se, value_se);
-  }
-  else if (boost::equals(fe_op->string(), "<=")) {
+    }
+    else if (boost::equals(fe_op->string(), "<=")) {
       op_se = LE(key_se, value_se);
-  }
-  else if (boost::equals(fe_op->string(), ">=")) {
+    }
+    else if (boost::equals(fe_op->string(), ">=")) {
       op_se = GE(key_se, value_se);
-  }
-  else if (boost::equals(fe_op->string(), "!=")) {
+    }
+    else if (boost::equals(fe_op->string(), "!=")) {
       op_se = NEQ(key_se, value_se);
-  }
+    }
 
-  return op_se;
+    return op_se;
+  }
 }
 
 #endif

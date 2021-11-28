@@ -131,19 +131,22 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
         auto pr_list = ast->get_param<proj_spec_list>(0);
         std::vector<pr_expr> pr_exprs;
 
-        for(auto & p : pr_list) {
+        for(auto& p : pr_list) {
+          if (std::holds_alternative<simple_proj_spec>(p)) {
+            auto& pp = std::get<simple_proj_spec>(p);
             FTYPE type = FTYPE::INT;
-            if (boost::iequals(p.ptype, "int")) {
+            if (boost::iequals(pp.ptype, "int")) {
               type = FTYPE::INT;
-            } else if (boost::iequals(p.ptype, "string")) {
+            } else if (boost::iequals(pp.ptype, "string")) {
               type = FTYPE::STRING;
-            } else if (boost::iequals(p.ptype, "uint64")) {
+            } else if (boost::iequals(pp.ptype, "uint64")) {
               type = FTYPE::UINT64;
             } /// TODO: improve type handling
 
-            auto pv_id = parse_tuple_id(p.pname);
-            auto pv_name = parse_variable_name(p.pname);
+            auto pv_id = parse_tuple_id(pp.pname);
+            auto pv_name = parse_variable_name(pp.pname);
             pr_exprs.push_back({pv_id, pv_name, type});
+          }
         }
         
         op = Project(pr_exprs, parent);
@@ -226,13 +229,13 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
     {
       auto pr_list = ast->get_param<proj_spec_list>(0);
       
-      auto pr1 = pr_list.front();
-
+      auto pr_front = pr_list.front();
+      auto& pr1 = std::get<simple_proj_spec>(pr_front);
       auto pv_id = parse_tuple_id(pr1.pname);
 
       auto order = pr1.porder;
       std::function<bool(const qr_tuple &, const qr_tuple &)> sort_fct;
-      if(order == proj_spec::sort_order::Asc) {
+      if(order == simple_proj_spec::sort_order::Asc) {
         sort_fct =  [=](const qr_tuple &qr1, const qr_tuple &qr2) {
             return boost::get<int>(qr1[pv_id]) < boost::get<int>(qr2[pv_id]); 
         };
@@ -265,18 +268,21 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       // Project attributes
       std::vector<pr_expr> pr_exprs;
       for(auto & p : pr_list) {
+        if (std::holds_alternative<simple_proj_spec>(p)) {
+          auto& pp = std::get<simple_proj_spec>(p);
           FTYPE type = FTYPE::INT;
-          if (boost::iequals(p.ptype, "int")) {
+          if (boost::iequals(pp.ptype, "int")) {
             type = FTYPE::INT;
-          } else if (boost::iequals(p.ptype, "string")) {
+          } else if (boost::iequals(pp.ptype, "string")) {
             type = FTYPE::STRING;
-          } else if (boost::iequals(p.ptype, "uint64")) {
+          } else if (boost::iequals(pp.ptype, "uint64")) {
             type = FTYPE::UINT64;
           } /// TODO: improve type handling
 
-          auto pv_id = parse_tuple_id(p.pname);
-          auto pv_name = parse_variable_name(p.pname);
+          auto pv_id = parse_tuple_id(pp.pname);
+          auto pv_name = parse_variable_name(pp.pname);
           pr_exprs.push_back({pv_id, pv_name, type});
+        }
       }
       op = Project(pr_exprs, grby);  
       break;        

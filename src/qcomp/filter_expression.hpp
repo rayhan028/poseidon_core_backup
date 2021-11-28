@@ -180,6 +180,21 @@ struct fct_call : public expression, std::enable_shared_from_this<fct_call> {
     void accept(int rank, expression_visitor &fep) override;
 };
 
+struct func_call : public expression, std::enable_shared_from_this<func_call> {
+    std::string func_name_;
+    std::vector<expr> param_list_;
+
+    func_call(const std::string& fn, const std::vector<expr>& pl) : func_name_(fn), param_list_(pl) {}
+
+    std::string dump() const override;
+
+    void accept(int rank, expression_visitor &fep) override {}
+};
+
+inline expr Fct(const std::string& fname, const std::vector<expr>& params) { 
+    return std::make_shared<func_call>(fname, params); 
+}
+
 inline expr Fct(fct_call::fct_int_t fct) { return std::make_shared<fct_call>(fct); }
 
 struct binary_predicate : public expression {
