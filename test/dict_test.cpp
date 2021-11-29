@@ -229,7 +229,6 @@ TEST_CASE("Test persistency of dict", "[dict]") {
   dcode_t c;
   {
   dict d;
-  d.initialize();
 
   d.insert("String #1");
   d.insert("String #2");
@@ -240,7 +239,6 @@ TEST_CASE("Test persistency of dict", "[dict]") {
 
   {
   dict d2;
-  d2.initialize();
 
   REQUIRE(d2.lookup_string("String #4") == c);
   }
