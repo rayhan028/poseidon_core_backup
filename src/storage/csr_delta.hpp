@@ -4,10 +4,21 @@
 #include "defs.hpp"
 #include "chunked_vec.hpp"
 
-#ifdef USE_PMDK
-#include <libpmemobj++/experimental/concurrent_map.hpp>
-// #include <libpmemobj++/container/concurrent_hash_map.hpp>
-#endif
+/**
+ * A struct for a CSR delta element. An element can be the id of a 
+ * node to which updates are associated, or the ids of it neigbouring 
+ * nodes or the weight of its relationships. 
+ */
+struct delta_element {
+  delta_element() = default;
+  delta_element(const delta_element &) = delete;
+
+  enum element_type { node_id, neighbour_id, rship_weight };
+
+  uint64_t node_id_;
+  element_type type_;
+  uint64_t val_;
+};
 
 /**
  * CSR delta store for updating existing CSR representations to 
@@ -16,62 +27,54 @@
  */
 class csr_delta {
 public:
-#ifdef USE_PMDK
-  using id_vector_t = pmem::obj::vector<offset_t>;
-  using weight_vector_t = pmem::obj::vector<double>;
-  using vector_pair_t =
-      pmem::detail::pair<p_ptr<id_vector_t>, p_ptr<weight_vector_t>>;
+  using range_iter = chunked_vec<delta_element>::range_iter;
   using delta_map_t =
-      pmem::obj::experimental::concurrent_map<p<uint64_t>, p_ptr<vector_pair_t>>;
-  // using delta_map_t =
-  //     pmem::obj::concurrent_hash_map<p<uint64_t>, p_ptr<vector_pair_t>>;
-  using delta_map_val_t = delta_map_t::value_type;
-#else
-  using delta_map_t =
-      std::map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<double>>>;
-#endif
+    std::map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<double>>>;
 
   /**
-   * Constructor.
+   * Constructor
    */
-  csr_delta();
+  csr_delta() = default;
+  csr_delta(const csr_delta &) = delete;
 
   /**
-   * Destructor.
+   * Destructor
    */
-  ~csr_delta();
+  ~csr_delta() {}
 
-  /**
-   * The underlying persistent maps need a runtime initialization if
-   * stored in persistent memory.
-   */
   void initialize();
 
   /**
-   * Returns a reference to the map of update deltas.
+   * Returns the underlying vector of the update delta elements.
    */
-  p_ptr<delta_map_t>& get_update_deltas() { return update_deltas_; }
+  chunked_vec<delta_element>& update_deltas_as_vec() { return update_deltas_; }
 
   /**
-   * Returns a reference to the map of append deltas.
+   * Returns the underlying vector of the append delta elements.
    */
-  p_ptr<delta_map_t>& get_append_deltas() { return append_deltas_; }
+  chunked_vec<delta_element>& append_deltas_as_vec() { return append_deltas_; }
 
   /**
-   * Inserts an entry into the map of update deltas.
+   * Adds the elements of an update delta to the list of update delta elements.
    */
-  void add_update_delta(uint64_t nid, const std::vector<uint64_t> &ids,
-                        const std::vector<double> &weights);
+  void add_update_delta(uint64_t nid, std::vector<uint64_t> &&ids,
+                        std::vector<double> &&weights);
 
   /**
-   * Inserts an entry into the map of append deltas.
+   * Adds the elements of an append delta to the list of append delta elements.
    */
-  void add_append_delta(uint64_t nid, const std::vector<uint64_t> &ids,
-                        const std::vector<double> &weights);
+  void add_append_delta(uint64_t nid, std::vector<uint64_t> &&ids,
+                        std::vector<double> &&weights);
+
+  /**
+   * TODO.
+   */
+  void restore_deltas(std::map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<double>>> &update_deltas,
+                               std::map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<double>>> &append_deltas);
 
 private:
-  p_ptr<delta_map_t> update_deltas_;
-  p_ptr<delta_map_t> append_deltas_;
+  chunked_vec<delta_element> update_deltas_; // the actual list of update delta elements
+  chunked_vec<delta_element> append_deltas_; // the actual list of append delta elements
 };
 
 

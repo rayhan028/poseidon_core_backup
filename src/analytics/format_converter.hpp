@@ -142,21 +142,23 @@ inline void update_csr_with_delta(graph_db_ptr graph,
     std::vector<float> &old_edge_vals, std::vector<uint64_t> &new_row_offs,
     std::vector<uint64_t> &new_col_inds, std::vector<float> &new_edge_vals) {
 
-  auto &update_deltas = graph->get_csr_delta()->get_update_deltas();
-  auto &append_deltas = graph->get_csr_delta()->get_append_deltas();
+  csr_delta::delta_map_t update_deltas;
+  csr_delta::delta_map_t append_deltas;
+
+  graph->get_csr_delta()->restore_deltas(update_deltas, append_deltas);
 
   auto update_edge_delta = 0; /// edge delta of existing nodes
-  for (auto &d : *update_deltas) {
+  for (auto &d : update_deltas) {
     int old_edges = old_row_offs[d.first + 1] - old_row_offs[d.first];
-    int new_edges = d.second->first->size();
+    int new_edges = d.second.first.size();
     auto diff = new_edges - old_edges;
     update_edge_delta += diff;
   }
   auto append_edge_delta = 0; /// edge delta of newly appended nodes (no record slot reuse)
-  for (auto &d : *append_deltas)
-    append_edge_delta += d.second->first->size();
+  for (auto &d : append_deltas)
+    append_edge_delta += d.second.first.size();
 
-  uint64_t new_row_offs_size = old_row_offs.size() + append_deltas->size();
+  uint64_t new_row_offs_size = old_row_offs.size() + append_deltas.size();
   uint64_t new_col_inds_size = old_col_inds.size() + update_edge_delta + append_edge_delta;
   new_row_offs.reserve(new_row_offs_size);
   new_col_inds.reserve(new_col_inds_size);
@@ -165,7 +167,7 @@ inline void update_csr_with_delta(graph_db_ptr graph,
   /// entries for the first node until the last updated
   uint64_t next_id = 0;
   new_row_offs.push_back(0);
-  for (auto &d : *update_deltas) { // TODO potential optimization using next_id and prev_id
+  for (auto &d : update_deltas) { // TODO potential optimization using next_id and prev_id
     while (next_id < d.first) { /// unchanged nodes
       auto edges = old_row_offs[next_id + 1] - old_row_offs[next_id];
       new_row_offs.push_back(new_row_offs.back() + edges);
@@ -181,9 +183,9 @@ inline void update_csr_with_delta(graph_db_ptr graph,
       next_id++;
     }
     // assert(next_id == d.first);
-    new_row_offs.push_back(new_row_offs.back() + d.second->first->size());
-    new_col_inds.insert(new_col_inds.end(), d.second->first->begin(), d.second->first->end());
-    new_edge_vals.insert(new_edge_vals.end(), d.second->second->begin(), d.second->second->end());
+    new_row_offs.push_back(new_row_offs.back() + d.second.first.size());
+    new_col_inds.insert(new_col_inds.end(), d.second.first.begin(), d.second.first.end());
+    new_edge_vals.insert(new_edge_vals.end(), d.second.second.begin(), d.second.second.end());
     next_id++;
   }
 
@@ -197,15 +199,15 @@ inline void update_csr_with_delta(graph_db_ptr graph,
   }
 
   /// entries for newly appended nodes (no record reuse)
-  for (auto &d : *append_deltas) {
+  for (auto &d : append_deltas) {
     while (next_id < d.first) { // unused node record slots
       new_row_offs.push_back(new_row_offs.back());
       next_id++;
     }
     // assert(next_id == d.first);
-    new_row_offs.push_back(new_row_offs.back() + d.second->first->size());
-    new_col_inds.insert(new_col_inds.end(), d.second->first->begin(), d.second->first->end());
-    new_edge_vals.insert(new_edge_vals.end(), d.second->second->begin(), d.second->second->end());
+    new_row_offs.push_back(new_row_offs.back() + d.second.first.size());
+    new_col_inds.insert(new_col_inds.end(), d.second.first.begin(), d.second.first.end());
+    new_edge_vals.insert(new_edge_vals.end(), d.second.second.begin(), d.second.second.end());
     next_id++;
   }
 }

@@ -56,13 +56,15 @@ TEST_CASE("Adding entries to deltas", "[csr_delta]"){
   delta.add_append_delta(8, {6, 5}, {1.3, 1.3});
   delta.add_append_delta(9, {0}, {1.3});
 
-  auto &update_deltas = delta.get_update_deltas();
-  auto &append_deltas = delta.get_append_deltas();
+  csr_delta::delta_map_t update_deltas;
+  csr_delta::delta_map_t append_deltas;
+
+  graph->get_csr_delta()->restore_deltas(update_deltas, append_deltas);
 
   SECTION("Update delta") {
-    auto iter = update_deltas->begin();
-    auto &a = *(iter->second->first);
-    auto &b = *(iter->second->second);
+    auto iter = update_deltas.begin();
+    auto &a = iter->second.first;
+    auto &b = iter->second.second;
 
     std::vector<uint64_t> a_ = {1};
     std::vector<double> b_ = {1.3};
@@ -72,8 +74,8 @@ TEST_CASE("Adding entries to deltas", "[csr_delta]"){
     REQUIRE(b == b_);
 
     iter++;
-    auto &c = *(iter->second->first);
-    auto &d = *(iter->second->second);
+    auto &c = iter->second.first;
+    auto &d = iter->second.second;
 
     std::vector<uint64_t> c_ = {6, 4, 1};
     std::vector<double> d_ = {1.3, 1.3, 1.3};
@@ -84,9 +86,9 @@ TEST_CASE("Adding entries to deltas", "[csr_delta]"){
   }
 
   SECTION("Append delta") {
-    auto iter = append_deltas->begin();
-    auto &a = *(iter->second->first);
-    auto &b = *(iter->second->second);
+    auto iter = append_deltas.begin();
+    auto &a = iter->second.first;
+    auto &b = iter->second.second;
 
     std::vector<uint64_t> a_ = {6, 5};
     std::vector<double> b_ = {1.3, 1.3};
@@ -96,8 +98,8 @@ TEST_CASE("Adding entries to deltas", "[csr_delta]"){
     REQUIRE(b == b_);
 
     iter++;
-    auto &c = *(iter->second->first);
-    auto &d = *(iter->second->second);
+    auto &c = iter->second.first;
+    auto &d = iter->second.second;
 
     std::vector<uint64_t> c_ = {0};
     std::vector<double> d_ = {1.3};
@@ -107,8 +109,8 @@ TEST_CASE("Adding entries to deltas", "[csr_delta]"){
     REQUIRE(d == d_);
 
     iter++;
-    auto &e = *(iter->second->first);
-    auto &f = *(iter->second->second);
+    auto &e = iter->second.first;
+    auto &f = iter->second.second;
 
     std::vector<uint64_t> e_ = {2, 0, 1};
     std::vector<double> f_ = {1.3, 1.3, 1.3};
