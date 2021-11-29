@@ -164,6 +164,9 @@ TEST_CASE("Constructing an AST from LDBC benchmark queries (IS)", "[qlang]") {
         ast_to_stream(ast, os);
         auto pname = prefix_is + std::to_string(q) + ".plan";
         auto pstr = load_string(pname);
+        auto diff = string_diff(os.str(), pstr);
+        if (diff != std::string::npos)
+            std::cout << "strings differ at pos " << diff << std::endl;
         REQUIRE(os.str() == pstr);
     }
 }
@@ -174,7 +177,7 @@ TEST_CASE("Constructing an AST from LDBC benchmark queries (BI)", "[qlang]") {
     spdlog::info("getcwd {}", getcwd(buf, 1024)); 
     std::string prefix_is(buf); 
     prefix_is += "/../../queries/ldbc/bi/bi";  
-    std::vector<int> query_set = { 1, 2, 3 /*, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20*/ };
+    std::vector<int> query_set = { 1, 2, 3/*, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20*/ };
     for (auto q : query_set) {
         auto fname = prefix_is + std::to_string(q) + ".q";
         spdlog::info("processing file: {}", fname);
