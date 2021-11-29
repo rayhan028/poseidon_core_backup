@@ -137,6 +137,79 @@ inline void parallel_poseidon_to_csr(graph_db_ptr gdb,
   }
 }
 
+inline void update_csr_with_delta(graph_db_ptr graph,
+    std::vector<uint64_t> &old_row_offs, std::vector<uint64_t> &old_col_inds,
+    std::vector<float> &old_edge_vals, std::vector<uint64_t> &new_row_offs,
+    std::vector<uint64_t> &new_col_inds, std::vector<float> &new_edge_vals) {
+
+  auto &update_deltas = graph->get_csr_delta()->get_update_deltas();
+  auto &append_deltas = graph->get_csr_delta()->get_append_deltas();
+
+  auto update_edge_delta = 0; /// edge delta of existing nodes
+  for (auto &d : *update_deltas) {
+    int old_edges = old_row_offs[d.first + 1] - old_row_offs[d.first];
+    int new_edges = d.second->first->size();
+    auto diff = new_edges - old_edges;
+    update_edge_delta += diff;
+  }
+  auto append_edge_delta = 0; /// edge delta of newly appended nodes (no record slot reuse)
+  for (auto &d : *append_deltas)
+    append_edge_delta += d.second->first->size();
+
+  uint64_t new_row_offs_size = old_row_offs.size() + append_deltas->size();
+  uint64_t new_col_inds_size = old_col_inds.size() + update_edge_delta + append_edge_delta;
+  new_row_offs.reserve(new_row_offs_size);
+  new_col_inds.reserve(new_col_inds_size);
+  new_edge_vals.reserve(new_col_inds_size);
+
+  /// entries for the first node until the last updated
+  uint64_t next_id = 0;
+  new_row_offs.push_back(0);
+  for (auto &d : *update_deltas) { // TODO potential optimization using next_id and prev_id
+    while (next_id < d.first) { /// unchanged nodes
+      auto edges = old_row_offs[next_id + 1] - old_row_offs[next_id];
+      new_row_offs.push_back(new_row_offs.back() + edges);
+
+      auto beg_col_inds_iter = old_col_inds.begin() + old_row_offs[next_id];
+      auto end_col_inds_iter = beg_col_inds_iter + edges;
+      new_col_inds.insert(new_col_inds.end(), beg_col_inds_iter, end_col_inds_iter);
+
+      auto beg_edge_vals_iter = old_edge_vals.begin() + old_row_offs[next_id];
+      auto end_edge_vals_iter = beg_edge_vals_iter + edges;
+      new_edge_vals.insert(new_edge_vals.end(), beg_edge_vals_iter, end_edge_vals_iter);
+
+      next_id++;
+    }
+    // assert(next_id == d.first);
+    new_row_offs.push_back(new_row_offs.back() + d.second->first->size());
+    new_col_inds.insert(new_col_inds.end(), d.second->first->begin(), d.second->first->end());
+    new_edge_vals.insert(new_edge_vals.end(), d.second->second->begin(), d.second->second->end());
+    next_id++;
+  }
+
+  /// entries for remaining unchanged nodes
+  new_col_inds.insert(new_col_inds.end(), old_col_inds.begin() + old_row_offs[next_id], old_col_inds.end());
+  new_edge_vals.insert(new_edge_vals.end(), old_edge_vals.begin() + old_row_offs[next_id], old_edge_vals.end());
+  while (next_id < (old_row_offs.size() - 1)) {
+    auto edges = old_row_offs[next_id + 1] - old_row_offs[next_id];
+    new_row_offs.push_back(new_row_offs.back() + edges);
+    next_id++;
+  }
+
+  /// entries for newly appended nodes (no record reuse)
+  for (auto &d : *append_deltas) {
+    while (next_id < d.first) { // unused node record slots
+      new_row_offs.push_back(new_row_offs.back());
+      next_id++;
+    }
+    // assert(next_id == d.first);
+    new_row_offs.push_back(new_row_offs.back() + d.second->first->size());
+    new_col_inds.insert(new_col_inds.end(), d.second->first->begin(), d.second->first->end());
+    new_edge_vals.insert(new_edge_vals.end(), d.second->second->begin(), d.second->second->end());
+    next_id++;
+  }
+}
+
 /*
  * Struct used to store edge-coordinates in COO format
  * Needs to be allocated 16-bit alligned!

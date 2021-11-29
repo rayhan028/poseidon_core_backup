@@ -41,6 +41,9 @@ graph_db::graph_db(const std::string &db_name) {
   dict_ = p_make_ptr<dict>();
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
+// #ifdef CSR_DELTA_STORE
+  csr_delta_ = p_make_ptr<csr_delta>();
+// #endif
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   m_ = new std::mutex();
   garbage_ = new gc_list();
@@ -72,6 +75,9 @@ void graph_db::runtime_initialize() {
   dict_->initialize();
   // perform recovery using the undo log
   apply_undo_log();
+// #ifdef CSR_DELTA_STORE
+  csr_delta_->initialize();
+// #endif
   // recreate volatile objects: active_tx_ table and mutex
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   oldest_xid_ = 0;

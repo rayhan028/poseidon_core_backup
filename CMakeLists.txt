@@ -11,14 +11,15 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK       "Use Intel PMDK"                         ON)
-option(USE_TX         "Provide Transaction Support"            ON)
-option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
-option(USE_LLVM       "Use LLVM for query compilation"         ON)
-option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
-option(QOP_PROFILING  "Enable query profiling"                 ON)
-option(USE_GUNROCK    "Use Gunrock for graph analytics"        OFF)
-option(QOP_RECOVERY   "Enable query recovery on failure"       OFF)
+option(USE_PMDK         "Use Intel PMDK"                         ON)
+option(USE_TX           "Provide Transaction Support"            ON)
+option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
+option(USE_LLVM         "Use LLVM for query compilation"         OFF)
+option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
+option(QOP_PROFILING    "Enable query profiling"                 ON)
+option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
+option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
+option(CSR_DELTA_STORE  "Use delta store for updating CSR data"  ON)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -389,6 +390,12 @@ else()
   set(qoprec_src "")
 endif()
 
+if(CSR_DELTA_STORE MATCHES ON)
+  set(csrdelta_src src/storage/csr_delta.cpp)
+else()
+  set(csrdelta_src "")
+endif()
+
 set(src_files 
   ${dict_src} 
   src/storage/nodes.cpp
@@ -418,6 +425,7 @@ set(src_files
   src/ql/queryc_qex.cpp
   src/ql/queryc.cpp
   src/ql/ast.cpp
+  ${csrdelta_src}
   src/analytics/bfs.cpp
   src/analytics/shortest_path.cpp
   ${gunrock_analysis}
