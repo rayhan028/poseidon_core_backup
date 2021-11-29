@@ -20,7 +20,7 @@
 #ifndef format_converter_hpp_
 #define format_converter_hpp_
 
-#include "graph_db.hpp"
+#include "query.hpp"
 #include <vector>
 #include <chrono> // for elapsed time measurement
 
@@ -32,7 +32,7 @@ using rship_predicate = std::function<bool(relationship&)>;
 /**
  * Typedef for a function that computes the weight of a relationship.
  */
-using rship_weight = std::function<float(relationship&)>;
+using rship_weight = std::function<double(relationship&)>;
 
 /**
  * Converts a given Poseidon Graph to a CSR representation, including all relationships satisfying the
@@ -89,6 +89,51 @@ inline void poseidon_to_csr(graph_db_ptr gdb,
       }
     }
     row_offsets.push_back(edges);
+  }
+}
+
+inline void parallel_poseidon_to_csr(graph_db_ptr gdb,
+    std::vector<uint64_t> &row_offsets, std::vector<uint64_t> &col_indices,
+    std::vector<float> &edge_values, rship_weight weight_func, bool bidirectional = false) {
+
+
+  offset_t max_num_nodes = gdb->get_nodes()->as_vec().last_used() + 1;
+  offset_t max_num_edges = gdb->get_relationships()->as_vec().last_used() + 1;
+  int multi = bidirectional ? 1 : 2;
+
+  row_offsets.reserve(max_num_nodes + 1);
+  col_indices.reserve(multi * max_num_edges);
+  edge_values.reserve(multi * max_num_edges);
+
+  row_offsets.push_back(0); // First value is always 0
+
+  result_set rs;
+  auto q = query(gdb)
+                .all_nodes()
+                .csr(weight_func, bidirectional)
+                .orderby([&](const qr_tuple q1, const qr_tuple q2) {
+                  return boost::get<uint64_t>(q1[1]) < boost::get<uint64_t>(q2[1]); })
+                .collect(rs);
+  q.start();
+
+  // std::cout << rs << "\n";
+
+  offset_t nid = 0;
+  offset_t total_edges = 0;
+  for (auto &tuple : rs.data) {
+    while (nid < std::stoull(boost::get<std::string>(tuple[1]))) {
+      row_offsets.push_back(total_edges);
+      nid++;
+    }
+    assert(std::stoull(boost::get<std::string>(tuple[1])) == nid);
+    int edges = std::stoi(boost::get<std::string>(tuple[2]));
+    for (auto i = 0; i < (2 * edges - 1); i += 2) {
+      col_indices.push_back(std::stoull(boost::get<std::string>(tuple[3 + i])));
+      edge_values.push_back(std::stod(boost::get<std::string>(tuple[3 + i + 1])));
+    }
+    total_edges += edges;
+    row_offsets.push_back(total_edges);
+    nid++;
   }
 }
 

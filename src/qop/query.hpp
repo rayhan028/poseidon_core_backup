@@ -342,6 +342,18 @@ public:
       std::size_t k, rship_predicate rpred, rship_weight weight, bool bidirectional = false);
 
   /**
+   * Add an operator to get the ids of the neighbours of each node 
+   * of the graph, for conversion to the CSR format. In addition, 
+   * the weight of the relationship connecting each neighbouring 
+   * node is computed from the weight function. 
+   * The bidirectional flag specifies whether only outgoing relationships 
+   * are considered (false) or both outgoing and incoming relationships 
+   * are considered (true).
+  */
+  query &csr(rship_weight weight, bool bidirectional = false,
+             std::size_t pos = std::numeric_limits<std::size_t>::max());
+
+  /**
    * Add an operator for invoking a LUA function as part of the query.
    */
   /* query &call_lua(const std::string &proc_name,

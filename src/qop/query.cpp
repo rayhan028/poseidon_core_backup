@@ -392,6 +392,12 @@ query &query::algo_k_weighted_shortest_path(std::pair<std::size_t, std::size_t> 
                    std::bind(&k_weighted_shortest_path_opr::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::csr(rship_weight weight, bool bidirectional, std::size_t pos) {
+  auto op = std::make_shared<csr_data>(weight, bidirectional, pos);
+  return append_op(op,
+                   std::bind(&csr_data::process, op.get(), ph::_1, ph::_2));
+}
+
 /*
 query &query::call_lua(const std::string &proc_name,
                        const std::vector<std::size_t> &params) {
