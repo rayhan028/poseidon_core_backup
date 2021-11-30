@@ -23,27 +23,28 @@ void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_tim
     qtx->add_time(op_id, t1, t2);
 }
 
- chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
-    return new chunked_vec<node, NODE_CHUNK_SIZE>::range_iter(vec->as_vec(), first, last);
+node_vec::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
+    // return new node_vec::range_iter(vec->as_vec(), first, last);
+    return vec->range_ptr(first, last);
 }
 
- chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
+node_vec::range_iter *get_vec_next(node_vec::range_iter *it) {
     return &it->operator++();;
 }
 
- bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) {
+ bool vec_end_reached(node_list &vec, node_vec::range_iter *it) {
     return !it->operator bool();
 }
 
-chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter get_vec_begin_r(relationship_list &vec) {
+rship_vec::iter get_vec_begin_r(relationship_list &vec) {
     return vec.as_vec().begin();
 }
 
-chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *get_vec_next_r(chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *it) {
+rship_vec::iter *get_vec_next_r(rship_vec::iter *it) {
     return &it->operator++();
 }
 
-bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter it) {
+bool vec_end_reached_r(relationship_list &vec, rship_vec::iter it) {
     return !(it != vec.as_vec().end());
 }
 
@@ -51,19 +52,19 @@ bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_C
     return gdb->get_code(label);
 }
 
- node *get_node_from_it(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it) { 
+ node *get_node_from_it(node_vec::range_iter *it) { 
     return &it->operator*();
 }
 
- relationship *get_rship_from_it(chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *it) {
+ relationship *get_rship_from_it(rship_vec::iter *it) {
     return &it->operator*();
 }
 
- chunked_vec<node, NODE_CHUNK_SIZE> *gdb_get_nodes(graph_db *gdb) {
+node_vec *gdb_get_nodes(graph_db *gdb) {
     return &gdb->get_nodes()->as_vec();
 }
 
- chunked_vec<relationship, RSHIP_CHUNK_SIZE> *gdb_get_rships(graph_db *gdb) {
+rship_vec *gdb_get_rships(graph_db *gdb) {
     return &gdb->get_relationships()->as_vec();
 }
 

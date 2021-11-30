@@ -229,6 +229,9 @@ public:
     return nodes_.range(first_chunk, last_chunk, start_pos);
   }
 
+  range_iterator* range_ptr(std::size_t first_chunk, std::size_t last_chunk, std::size_t start_pos = 0) {
+    return nodes_.range_ptr(first_chunk, last_chunk, start_pos);
+  }
   /**
    * Output the content of the node vector.
    */

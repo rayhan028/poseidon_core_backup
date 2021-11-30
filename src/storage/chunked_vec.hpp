@@ -331,6 +331,9 @@ class chunked_vec {
     return range_iter(*this, first_chunk, last_chunk, start_pos);
   }
 
+  range_iter* range_ptr(std::size_t first_chunk, std::size_t last_chunk, std::size_t start_pos = 0) {
+    return new range_iter(*this, first_chunk, last_chunk, start_pos);
+  }
   /**
    * Store the given record at position idx (note: move semantics) and mark this
    * slot as used.

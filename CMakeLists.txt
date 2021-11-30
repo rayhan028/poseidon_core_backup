@@ -20,7 +20,7 @@ option(USE_LLVM       "Use LLVM for query compilation"         ON)
 option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
 option(QOP_PROFILING  "Enable query profiling"                 ON)
 option(QOP_RECOVERY   "Enable query recovery on failure"       OFF)
-option(BUILD_LDBC     "Build code for LDBC benchmark"          ON)
+option(BUILD_LDBC     "Build code for LDBC benchmark"          OFF)
 option(BUILD_GTPC     "Build code for GTPC benchmark"          OFF)
 #-------------------------------------------------------------------------------
 endif()
@@ -658,6 +658,20 @@ target_link_libraries(run_ldbc_jit_reads
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+
+# The program for executing jitted bi queries.
+#
+add_executable(run_ldbc_jit_bi
+  src/ldbc/ldbc_jit_bi.cpp
+ )
+
+target_link_libraries(run_ldbc_jit_bi
+  poseidon_ldbc
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
 endif()
 
 endif()
@@ -693,20 +707,6 @@ target_link_libraries(run_gtpc
 )
 endif()
 
-if(USE_LLVM MATCHES ON)
-# The program for executing jitted bi queries.
-#
-add_executable(run_ldbc_jit_bi
-  src/ldbc/ldbc_jit_bi.cpp
- )
-
-target_link_libraries(run_ldbc_jit_bi
-  poseidon_ldbc
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-endif()
 
 #-----------------------------------------------------------------------------------------
 if(USE_LLVM MATCHES ON)

@@ -183,6 +183,11 @@ public:
   range_iter range(std::size_t first, std::size_t last, std::size_t start_pos = 0) {
     return range_iter(data_, slots_, first, last);
   }
+
+  range_iter* range_ptr(std::size_t first, std::size_t last, std::size_t start_pos = 0) {
+    return new range_iter(data_, slots_, first, last);
+  }
+
   /**
    * Store the given record at position idx (note: move semantics) and mark this
    * slot as used.

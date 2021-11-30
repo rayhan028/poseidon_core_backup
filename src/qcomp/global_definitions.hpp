@@ -86,32 +86,32 @@ using finish_fct_type = void(*)(query_context*, uint64_t**, result_set* rs);
 /**
  * Function to obtain the iterator of a node vector
  */
- chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last);
+node_vec::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last);
 
 /**
  * Function to obtain the next iterator of a node vector
  */
- chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *get_vec_next(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it);
+node_vec::range_iter *get_vec_next(node_vec::range_iter *it);
 
 /**
  * Boolean function to check if the end of the node vector is reached
  */
- bool vec_end_reached(node_list &vec, chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it);
+ bool vec_end_reached(node_list &vec, node_vec::range_iter *it);
 
 /**
  * Function to obtain the iterator of a relationship vector
  */
-chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter get_vec_begin_r(relationship_list &vec);
+rship_vec::iter get_vec_begin_r(relationship_list &vec);
 
 /**
  * Function to obtain the next iterator of a relationship vector
  */
-chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *get_vec_next_r(chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *it);
+rship_vec::iter *get_vec_next_r(rship_vec::iter *it);
 
 /**
  * Boolean function to check if the end of the relationship vector is reached
  */
-bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter it);
+bool vec_end_reached_r(relationship_list &vec, rship_vec::iter it);
 
 /**
  * Function to lookup a label
@@ -121,22 +121,22 @@ bool vec_end_reached_r(relationship_list &vec, chunked_vec<relationship, RSHIP_C
 /**
  * Obtains the pointer to a node from a node vector iterator
  */
- node *get_node_from_it(chunked_vec<node, NODE_CHUNK_SIZE>::range_iter *it);
+ node *get_node_from_it(node_vec::range_iter *it);
 
 /**
  * Obtains the pointer to a relationship from a relationship vector iterator
  */
- relationship *get_rship_from_it(chunked_vec<relationship, RSHIP_CHUNK_SIZE>::iter *it);
+ relationship *get_rship_from_it(rship_vec::iter *it);
 
 /**
  * Returns a pointer to the node chunked vector of a given graph
  */
- chunked_vec<node, NODE_CHUNK_SIZE> *gdb_get_nodes(graph_db *gdb);
+node_vec *gdb_get_nodes(graph_db *gdb);
 
 /**
  * Returns a pointer to the relationship chunked vector of a given graph
  */
- chunked_vec<relationship, RSHIP_CHUNK_SIZE> *gdb_get_rships(graph_db *gdb);
+rship_vec *gdb_get_rships(graph_db *gdb);
 
  void test_ints(uint64_t a, uint64_t b);
 
