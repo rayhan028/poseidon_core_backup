@@ -144,7 +144,6 @@ TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {
   auto pool = graph_pool::create(test_path);
   auto gdb = pool->create_graph("my_graph2");
 
-	  std::cout<<" Test concurr between read and write \n";
 	  node::id_t nid = 0;
 	  barrier  b1{}, b2{}, b3{};
 
@@ -229,7 +228,7 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
 		auto nd = gdb->get_node_description(nid); 
 		b3.notify(); // inform thread #2 that we have read the node 
 
-		nd = gdb->get_node_description(nid); //<===== Here it tries to access a deleted dirty version and crashes!
+		nd = gdb->get_node_description(nid); 
 
 		REQUIRE(nd.label == "Actor"); 
 		REQUIRE(get_property<int>(nd.properties, "age") == 48); 
@@ -1212,6 +1211,8 @@ TEST_CASE("Checking two concurrent transactions trying to create node", "[transa
   graph_pool::destroy(pool);
 } 
 /* -------------------------------------------------------------------------------- */
+
+
 
 #if TEST_INCORRECT
 

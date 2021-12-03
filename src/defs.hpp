@@ -54,6 +54,10 @@ using ptr_t = uint8_t *;
  */
 constexpr uint64_t UNKNOWN = std::numeric_limits<uint64_t>::max();
 
+inline std::string uint64_to_string(uint64_t v) {
+  return v == UNKNOWN ? std::string("<null>") : std::to_string(v);
+}
+
 struct node;
 struct relationship;
 

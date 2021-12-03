@@ -471,11 +471,16 @@ properties_t property_list::all_properties(offset_t id, dict_ptr &dct) {
 }
 
 void property_list::foreach_property_set(offset_t id, property_list::foreach_cb_func cb) {
+  // std::cout << "foreach_property_set..." << std::endl;
   offset_t pset_id = id;
-  while (pset_id != UNKNOWN) {
-    auto &p = properties_.at(pset_id);
-    cb(pset_id, p.items, p.next);
-    pset_id = p.next;
+  try {
+    while (pset_id != UNKNOWN) {
+      auto &p = properties_.at(pset_id);
+      cb(pset_id, p.items, p.next);
+      pset_id = p.next;
+    }
+  } catch (unknown_id& exc) {
+    throw unknown_property();
   }
 }
 
@@ -551,12 +556,14 @@ property_set &property_list::get(property_set::id_t id){
 }
 
 void property_list::remove(property_set::id_t id) {
+  // std::cout << "property_list::remove: " << id << std::endl;
   if (properties_.capacity() <= id)
     throw unknown_id();
   properties_.erase(id);
 }
 
 void property_list::remove_properties(property_set::id_t id) {
+  // std::cout << "property_list::remove_properties: " << id << std::endl;
   if (id == UNKNOWN)
     return;
     
