@@ -1,4 +1,6 @@
-image: "dbisilm/llvm_pmdk:latest"
+image: 
+  name: "dbisilm/llvm_pmdk:clang"
+  entrypoint: [ '/bin/sh', '-c' ]
 
 stages:
   - build
@@ -35,7 +37,6 @@ test:
 
 coverage:
   stage: build
-  image: "dbisilm/llvm_pmdk:latest"
   tags:
     - grouprunner
   script:
@@ -50,4 +51,3 @@ coverage:
     - ctest --verbose
     - ~/.local/bin/gcovr -r .. --exclude _deps --exclude "../bench/*"
   coverage: '/^TOTAL.*\s+(\d+\%)$/'
-
