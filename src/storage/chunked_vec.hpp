@@ -334,6 +334,7 @@ class chunked_vec {
 #endif
     chunk_list_.clear();
     capacity_ = 0;
+    free_list_.clear();
     available_slots_ = 0;
   }
 

@@ -1710,3 +1710,64 @@ TEST_CASE("Checking the Garbage Collector functionality: Maintain multiple "
 }
 
 #endif
+
+// TEST_CASE("Test node update then delete"  "[transaction]") {  
+// 	#ifdef USE_PMDK
+// 	  auto pop = prepare_pool();
+// 	  auto gdb = create_graph_db(pop);
+// 	#else
+// 	  auto gdb = create_graph_db();
+// 	#endif
+
+//   node::id_t nid;
+//   gdb->run_transaction([&]() {
+//     nid = gdb->add_node("Actor",
+// 		                {{"name", boost::any(std::string("Mark Wahlberg"))},
+// 		                  {"age", boost::any(48)}});
+//     return true;
+//   });
+
+//   gdb->run_transaction([&]() {
+//     auto &n = gdb->node_by_id(nid);
+//     gdb->update_node(n, {{"name", boost::any(std::string("Mark Wahlberg"))},
+// 		                  {"age", boost::any(49)}}, "Actor");
+//     gdb->detach_delete_node(nid);
+//     return true;
+//   });
+
+// 	#ifdef USE_PMDK
+// 	  drop_graph_db(pop, gdb);
+// 	#endif  
+// }
+
+// TEST_CASE("Test relationship update then delete"  "[transaction]") {  
+// 	#ifdef USE_PMDK
+// 	  auto pop = prepare_pool();
+// 	  auto gdb = create_graph_db(pop);
+// 	#else
+// 	  auto gdb = create_graph_db();
+// 	#endif
+
+//   relationship::id_t rid;
+//   gdb->run_transaction([&]() {
+//     node::id_t a = gdb->add_node("Actor",
+// 		                {{"name", boost::any(std::string("Mark"))},
+// 		                  {"age", boost::any(48)}});
+//     node::id_t b = gdb->add_node("Actor",
+// 		                {{"name", boost::any(std::string("Wahlberg"))},
+// 		                  {"age", boost::any(70)}});
+//     rid = gdb->add_relationship(a, b, ":costarred", {});
+//     return true;
+//   });
+
+//   gdb->run_transaction([&]() {
+//     auto &r = gdb->rship_by_id(rid);
+//     gdb->update_relationship(r, {}, ":costarred");
+//     gdb->delete_relationship(rid);
+//     return true;
+//   });
+
+// 	#ifdef USE_PMDK
+// 	  drop_graph_db(pop, gdb);
+// 	#endif  
+// }
