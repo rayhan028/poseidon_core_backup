@@ -138,6 +138,29 @@ struct alignas(64) chunk {
   }
 
   /**
+   * Returns the last used slot or SIZE_MAX if no slot is
+   * used.
+   */
+  std::size_t last_used() const {
+#ifdef USE_PMDK
+    if (slots_.get_ro().none())
+#else
+    if (slots_.none())
+#endif
+      return SIZE_MAX;
+
+    auto i = num_records - 1;
+    for (auto i = (num_records - 1); i >= 0; i--)
+#ifdef USE_PMDK
+      if (slots_.get_ro().test(i))
+#else
+      if (slots_.test(i))
+#endif
+        return i;
+    return SIZE_MAX;
+  }
+
+  /**
    * Returns true if all slots of the chunk are used, i.e. no slots are
    * available.
    */
@@ -451,6 +474,16 @@ class chunked_vec {
       offs += elems_per_chunk_;
     }
     return UNKNOWN;
+  }
+
+  /**
+   * Return the index of the last used slot in the last
+   * chunk. The index is a global offset in the chunked_vec.
+   */
+  offset_t last_used() const {
+    chunk_ptr ch = chunk_list_.back();
+    std::size_t idx = (chunk_list_.size() - 1) * elems_per_chunk_ + ch->last_used();
+    return idx;
   }
 
   /**

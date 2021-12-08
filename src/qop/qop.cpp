@@ -1018,6 +1018,51 @@ void k_weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v)
 
 /* ------------------------------------------------------------------------ */
 
+void csr_data::dump(std::ostream &os) const {
+  os << "csr_data([]) - " << PROF_DUMP;
+}
+
+void csr_data::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
+
+  auto n = pos_ == std::numeric_limits<std::size_t>::max()
+                ? boost::get<node *>(v.back())
+                : boost::get<node *>(v[pos_]);
+
+  auto offset = 0;
+  std::vector<uint64_t> neighbour_ids;
+  std::vector<double> rship_weights;
+
+  gdb->foreach_from_relationship_of_node(*n, [&](auto &r) {
+    neighbour_ids.push_back(r.to_node_id());
+    rship_weights.push_back(weight_func_(r));
+    offset++;
+  });
+
+  if (bidirectional_) {
+    gdb->foreach_to_relationship_of_node(*n, [&](auto &r) {
+      neighbour_ids.push_back(r.from_node_id());
+      rship_weights.push_back(weight_func_(r));
+      offset++;
+    });
+  }
+
+  auto res = v;
+  auto nid = n->id();
+  res.push_back(nid);
+  res.push_back(offset);
+  for (auto i = 0; i < offset; i++) {
+    res.push_back(neighbour_ids[i]);
+    res.push_back(rship_weights[i]);
+  }
+
+  consume_(gdb, res);
+
+  PROF_POST(1);
+}
+
+/* ------------------------------------------------------------------------ */
+
 void result_set::wait() {
   std::unique_lock<std::mutex> lock(m);
   cond_var.wait(lock, [&] { return ready.load(); });

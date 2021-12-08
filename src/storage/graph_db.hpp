@@ -40,6 +40,9 @@
 #include "pmlog.hpp"
 #include "gc.hpp"
 #include "robin_hood.h"
+// #ifdef CSR_DELTA_STORE
+#include "csr_delta.hpp"
+// #endif
 
 /**
  * graph_db represents a graph consisting of nodes and relationships with
@@ -313,6 +316,13 @@ public:
    * Perform recovery using the undo log.
    */ 
   void apply_undo_log();
+
+// #ifdef CSR_DELTA
+  /**
+   * Returns a reference to the CSR delta store.
+   */
+  p_ptr<csr_delta>& get_csr_delta() { return csr_delta_; }
+// #endif
 
   /* ---------------- index management ---------------- */
   
@@ -622,6 +632,9 @@ private:
   p_ptr<recovery_list> recovery_results_; // stored intermediate tuples of a query
   p_ptr<rec_map_t> recovery_res_; // stored checkpoints of the chunks 
 #endif
+// #ifdef CSR_DELTA_STORE
+  p_ptr<csr_delta> csr_delta_; // update and append CSR delta stores
+// #endif
   /**
    * These member variables are volatile and have to be reinitialized
    * during startup.

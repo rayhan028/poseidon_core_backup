@@ -71,6 +71,9 @@ graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
   dict_ = p_make_ptr<dict>(prefix);
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
+// #ifdef CSR_DELTA_STORE
+  csr_delta_ = p_make_ptr<csr_delta>();
+// #endif
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   m_ = new std::mutex();
   garbage_ = new gc_list();
@@ -102,6 +105,9 @@ void graph_db::runtime_initialize() {
   dict_->initialize();
   // perform recovery using the undo log
   apply_undo_log();
+// #ifdef CSR_DELTA_STORE
+  csr_delta_->initialize();
+// #endif
   // recreate volatile objects: active_tx_ table and mutex
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   oldest_xid_ = 0;
@@ -228,7 +234,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
   }
 
 void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t rel_id) {
-  std::cout << "commit_dirty_relationship" << std::endl;
+  // std::cout << "commit_dirty_relationship" << std::endl;
   auto xid = tx->xid();
 	auto& r = rships_->get(rel_id);
   // If the relationship was already deleted we can skip all other entries...

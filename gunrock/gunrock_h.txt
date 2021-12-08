@@ -1,0 +1,101 @@
+// COPY TO FILE {gunrock_dir}/gunrock/gunrock.h BEFORE COMPILING GUNROCK!
+
+/***********************************************************************************************/
+/***************** Cusomized versions of the public Gunrock interface *********************/
+/*************** Project: Parallel Graph Algorithms for Poseidon graph databse *****************/
+/***********************************************************************************************/
+
+/*
+ * @brief Customized interface take in graph as CSR format
+ * @param[in]  num_nodes   Number of veritces in the input graph
+ * @param[in]  num_edges   Number of edges in the input graph
+ * @param[in]  row_offsets CSR-formatted graph input row offsets
+ * @param[in]  col_indices CSR-formatted graph input column indices
+ * @param[in]  source      Source to begin traverse
+ * @param[in]  mark_preds  Whether to output predecessor info
+ * @param[in]  direction_optimized Whether to use directional optimizing BFS
+ * @param[in]  idempotence Whether to use idempotence
+ * @param[out] labels      Return shortest hop distances to source per vertex
+ * @param[out] preds       Return predecessors of each vertex
+ * \return     double      Return accumulated elapsed times for all runs
+ */
+double poseidon_gunrock_bfs(
+    const unsigned long long        num_nodes,
+    const unsigned long long        num_edges,
+    const unsigned long long       *row_offsets,
+    const unsigned long long       *col_indices,
+    unsigned long long              source,
+    const bool                      mark_pred,
+    const bool                      direction_optimized,
+    const bool                      idempotence,
+          int                      *distances,
+    unsigned long long             *preds);
+
+/*
+ * @brief Customized interface which takes in a graph in COO format
+ * @brief EdgePairT is a struct of two uint64_t values (x & y), 16 bit alligned!
+ * @param[in]  num_nodes   Number of veritces in the input graph
+ * @param[in]  num_edges   Number of edges in the input graph
+ * @param[in]  edge_coord  COO-formatted graph input edge coordinates
+ * @param[in]  edge_values COO-formatted graph input edge weights
+ * @param[in]  source      Source to begin traverse
+ * @param[in]  mark_preds  Whether to output predecessor info
+ * @param[out] distances   Return shortest distance to source per vertex
+ * @param[out] preds       Return predecessors of each vertex
+ * \return     double      Return accumulated elapsed time
+ */
+double poseidon_gunrock_sssp_coo(
+  const unsigned long long        num_nodes, 
+  const unsigned long long        num_edges, 
+  const void                      *edge_coords, 
+  const float                     *edge_values, 
+  unsigned long long              source,
+  const bool                      mark_pred, 
+  float                           *distances, 
+  unsigned long long              *preds);
+
+/*
+ * @brief Customized interface which takes in a graph in CSR format
+ * @param[out] distances Return shortest distances.
+ * @param[out] preds Return predecessor of each node
+ * @param[in] num_nodes Input graph number of nodes.
+ * @param[in] num_edges Input graph number of edges.
+ * @param[in] row_offsets Input graph row_offsets.
+ * @param[in] col_indices Input graph col_indices.
+ * @param[in] edge_values Input graph edge weight.
+ * @param[in] source Source node to start.
+ * @param[in] mark_preds Whether to mark the predecessors.
+ *
+ * \return Elapsed run time in milliseconds
+ */
+double poseidon_gunrock_sssp_csr(
+  const unsigned long long      num_nodes, 
+  const unsigned long long      num_edges, 
+  const unsigned long long      *row_offsets,
+  const unsigned long long      *col_indices, 
+  const float                   *edge_values, 
+  unsigned long long            source,
+  const bool                    mark_pred, 
+  float                         *distances, 
+  unsigned long long            *preds);
+
+/**
+ * @brief PageRank Customized public interface.
+ *
+ * @param[out] node_ids Return top-ranked vertex IDs.
+ * @param[out] pagerank Return top-ranked PageRank scores.
+ * @param[in] num_nodes Input graph number of nodes.
+ * @param[in] num_edges Input graph number of edges.
+ * @param[in] row_offsets Input graph row_offsets.
+ * @param[in] col_indices Input graph col_indices.
+ * @param[in] normalized Whether to perform a normalized PageRank
+ */
+double poseidon_gunrock_pr(
+    const unsigned long long  num_nodes,     // Input graph number of nodes
+    const unsigned long long  num_edges,     // Input graph number of edges
+    const unsigned long long* row_offsets,   // Input graph row_offsets
+    const unsigned long long* col_indices,   // Input graph col_indices
+    bool                        normalize,   // normalized pagerank flag
+    unsigned long long*         node_ids,
+    float*                      ranks);
+/***********************************************************************************************/
