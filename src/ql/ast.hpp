@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <variant>
 
 #include <boost/variant.hpp>
 #include <tao/pegtl/contrib/parse_tree.hpp>
