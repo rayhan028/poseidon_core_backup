@@ -130,6 +130,7 @@ TEST_CASE("Sequential and parallel table scan", "[format_converter]"){
 }
 
 TEST_CASE("Removing an edge an updating CSR with delta", "[format_converter]"){
+#if defined CSR_DELTA_STORE && defined USE_TX
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
   create_known_data(graph);
@@ -148,22 +149,29 @@ TEST_CASE("Removing an edge an updating CSR with delta", "[format_converter]"){
   REQUIRE((row_offs[id + 1] - row_offs[id]) == 1);
   REQUIRE(col_inds.size() == 7);
 
+  csr_delta::delta_map_t update_deltas, append_deltas;
+  graph->restore_csr_delta(update_deltas, append_deltas);
+
   std::vector<uint64_t> new_row_offs = {};
   std::vector<uint64_t> new_col_inds = {};
   std::vector<float> new_edge_vals = {};
 
-  auto &delta = graph->get_csr_delta();
-  delta->add_update_delta(6, {}, {});
+  graph->begin_transaction();
+  graph->delete_relationship(6, 2);
+  graph->commit_transaction();
+
   update_csr_with_delta(graph, row_offs, col_inds, edge_vals,
-                                  new_row_offs, new_col_inds, new_edge_vals);
+                        new_row_offs, new_col_inds, new_edge_vals);
 
   REQUIRE((new_row_offs[id + 1] - new_row_offs[id]) == 0);
   REQUIRE(new_col_inds.size() == 6);
 
   graph_pool::destroy(pool);
+#endif
 }
 
 TEST_CASE("Adding an edge and updating CSR with delta", "[format_converter]"){
+#if defined CSR_DELTA_STORE && defined USE_TX
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
   create_known_data(graph);
@@ -182,12 +190,16 @@ TEST_CASE("Adding an edge and updating CSR with delta", "[format_converter]"){
   REQUIRE((row_offs[id + 1] - row_offs[id]) == 2);
   REQUIRE(col_inds.size() == 7);
 
+  csr_delta::delta_map_t update_deltas, append_deltas;
+  graph->restore_csr_delta(update_deltas, append_deltas);
+
   std::vector<uint64_t> new_row_offs = {};
   std::vector<uint64_t> new_col_inds = {};
   std::vector<float> new_edge_vals = {};
 
-  auto &delta = graph->get_csr_delta();
-  delta->add_update_delta(0, {6, 5, 1}, {1.3, 1.3, 1.3});
+  graph->begin_transaction();
+  graph->add_relationship(0, 5, ":likes", {});
+  graph->commit_transaction();
   update_csr_with_delta(graph, row_offs, col_inds, edge_vals,
                                   new_row_offs, new_col_inds, new_edge_vals);
 
@@ -195,9 +207,11 @@ TEST_CASE("Adding an edge and updating CSR with delta", "[format_converter]"){
   REQUIRE(new_col_inds.size() == 8);
 
   graph_pool::destroy(pool);
+#endif
 }
 
 TEST_CASE("Adding a node and updating CSR with delta", "[format_converter]"){
+#if defined CSR_DELTA_STORE && defined USE_TX
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
   create_known_data(graph);
@@ -216,12 +230,24 @@ TEST_CASE("Adding a node and updating CSR with delta", "[format_converter]"){
   REQUIRE(row_offs[id] == row_offs.back());
   REQUIRE(col_inds.size() == 7);
 
+  csr_delta::delta_map_t update_deltas, append_deltas;
+  graph->restore_csr_delta(update_deltas, append_deltas);
+
   std::vector<uint64_t> new_row_offs = {};
   std::vector<uint64_t> new_col_inds = {};
   std::vector<float> new_edge_vals = {};
 
-  auto &delta = graph->get_csr_delta();
-  delta->add_append_delta(7, {4, 3}, {1.3, 1.3});
+  graph->begin_transaction();
+  graph->add_node("Person",
+              {{"name", boost::any(std::string("John Doe"))},
+              {"age", boost::any(42)},
+              {"id", boost::any(7)},
+              {"dummy1", boost::any(std::string("Dummy"))},
+              {"dummy2", boost::any(1.2345)}},
+              true);
+  graph->add_relationship(7, 4, ":knows", {});
+  graph->add_relationship(7, 3, ":knows", {});
+  graph->commit_transaction();
   update_csr_with_delta(graph, row_offs, col_inds, edge_vals,
                                   new_row_offs, new_col_inds, new_edge_vals);
 
@@ -229,9 +255,11 @@ TEST_CASE("Adding a node and updating CSR with delta", "[format_converter]"){
   REQUIRE(new_col_inds.size() == 9);
 
   graph_pool::destroy(pool);
+#endif
 }
 
 TEST_CASE("Updating graph and updating CSR with delta", "[format_converter]"){
+#if defined CSR_DELTA_STORE && defined USE_TX
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
   create_known_data(graph);
@@ -246,22 +274,39 @@ TEST_CASE("Updating graph and updating CSR with delta", "[format_converter]"){
     return true;
   });
 
+  csr_delta::delta_map_t update_deltas, append_deltas;
+  graph->restore_csr_delta(update_deltas, append_deltas);
+
   std::vector<uint64_t> new_row_offs = {};
   std::vector<uint64_t> new_col_inds = {};
   std::vector<float> new_edge_vals = {};
 
-  auto &delta = graph->get_csr_delta();
-  delta->add_update_delta(6, {}, {});
-  delta->add_update_delta(0, {6, 5, 1}, {1.3, 1.3, 1.3});
-  delta->add_append_delta(8, {6, 5}, {1.3, 1.3});
-  delta->add_append_delta(9, {0}, {1.3});
-  delta->add_append_delta(10, {2, 0, 1}, {1.3, 1.3, 1.3});
+  graph->begin_transaction();
+  graph->delete_relationship(6, 2);
+  graph->add_relationship(0, 5, ":knows", {});
+
+  for (int i = 7; i < 11; i++) { // adds nodes 7, 8, 9 and 10 to append delta
+    graph->add_node("Person",
+              {{"name", boost::any(std::string("John Doe"))},
+              {"age", boost::any(42)},
+              {"id", boost::any(i)},
+              {"dummy1", boost::any(std::string("Dummy"))},
+              {"dummy2", boost::any(1.2345)}},
+              true);
+  }
+  graph->add_relationship(8, 6, ":knows", {});
+  graph->add_relationship(8, 5, ":knows", {});
+  graph->add_relationship(9, 0, ":knows", {});
+  graph->add_relationship(10, 2, ":knows", {});
+  graph->add_relationship(10, 0, ":knows", {});
+  graph->add_relationship(10, 1, ":knows", {});
+  graph->commit_transaction();
 
   update_csr_with_delta(graph, row_offs, col_inds, edge_vals,
                                   new_row_offs, new_col_inds, new_edge_vals);
   
   std::vector<uint64_t> r = {0, 3, 4, 5, 6, 6, 7, 7, 7, 9, 10, 13};
-  std::vector<uint64_t> c = {6, 5, 1, 2, 3, 4, 6, 6, 5, 0, 2, 0, 1};
+  std::vector<uint64_t> c = {5, 6, 1, 2, 3, 4, 6, 5, 6, 0, 1, 0, 2};
   std::vector<float> e = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3,
                           1.3, 1.3, 1.3, 1.3, 1.3, 1.3,};
 
@@ -270,4 +315,5 @@ TEST_CASE("Updating graph and updating CSR with delta", "[format_converter]"){
   REQUIRE(new_edge_vals == e);
 
   graph_pool::destroy(pool);
+#endif
 }

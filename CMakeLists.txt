@@ -23,7 +23,7 @@ option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
 option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
 option(BUILD_GTPC       "Build code for GTPC benchmark"          OFF)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
-option(CSR_DELTA_STORE  "Use delta store for updating CSR data"  ON)
+option(CSR_DELTA_STORE  "Use delta store for updating CSR"       ON)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -85,6 +85,10 @@ endif()
 
 if(QOP_RECOVERY MATCHES ON)
   add_definitions( "-DQOP_RECOVERY" )
+endif()
+
+if(CSR_DELTA_STORE MATCHES ON)
+  add_definitions( "-DCSR_DELTA_STORE" )
 endif()
 
 configure_file(
@@ -614,7 +618,7 @@ add_executable(run_ldbc_loader
  )
 
 target_link_libraries(run_ldbc_loader
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -627,7 +631,7 @@ add_executable(run_ldbc_bi
 )
 
 target_link_libraries(run_ldbc_bi
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -640,7 +644,7 @@ add_executable(run_ldbc_is
  )
 
 target_link_libraries(run_ldbc_is
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -653,7 +657,7 @@ add_executable(run_ldbc_updates
  )
 
 target_link_libraries(run_ldbc_updates
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -691,7 +695,7 @@ add_executable(run_ldbc_jit_reads
  )
 
 target_link_libraries(run_ldbc_jit_reads
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -704,7 +708,7 @@ add_executable(run_ldbc_jit_bi
  )
 
 target_link_libraries(run_ldbc_jit_bi
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -726,7 +730,7 @@ add_executable(run_gtpc_loader
  )
 
 target_link_libraries(run_gtpc_loader
-  poseidon_gtpc
+  ${POSEIDON_GTPC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -738,7 +742,7 @@ add_executable(run_gtpc
  )
 
 target_link_libraries(run_gtpc
-  poseidon_gtpc
+  ${POSEIDON_GTPC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options

@@ -43,83 +43,105 @@ void create_known_data(graph_db_ptr graph) {
   graph->commit_transaction();
 }
 
-TEST_CASE("Adding entries to deltas", "[csr_delta]"){
-// #if defined CSR_DELTA_STORE && defined USE_TX
+void update_data(graph_db_ptr graph) {
+  graph->begin_transaction();
+
+  //
+  //         +--- 10 ---+
+  //         |     |     |
+  //         |     |     |
+  //         v     v     v
+  //         0 --> 1 --> 2 --> 3 --> 4
+  //         ^     ^     ^           ^
+  //         |     |     |           |
+  //         |     |     6 <-- 8     |
+  //         9     |     ^     |     |
+  //               |     |     |     |
+  //               +---- 5 ----------+
+  //                     ^     |
+  //                     |     |
+  //                     ------+
+  //
+
+  graph->add_relationship(5, 4, ":knows", {}); // adds nodes 5 and 4 to update delta
+  graph->add_relationship(5, 1, ":knows", {}); // adds node 1 to update delta
+  graph->delete_relationship(0, 6); // adds nodes 0 and 6 to update delta
+
+  for (int i = 7; i < 11; i++) { // adds nodes 7, 8, 9 and 10 to append delta
+    graph->add_node("Person",
+              {{"name", boost::any(std::string("John Doe"))},
+              {"age", boost::any(42)},
+              {"id", boost::any(i)},
+              {"dummy1", boost::any(std::string("Dummy"))},
+              {"dummy2", boost::any(1.2345)}},
+              true);
+  }
+  graph->add_relationship(8, 6, ":knows", {});
+  graph->add_relationship(8, 5, ":knows", {});
+  graph->add_relationship(9, 0, ":knows", {});
+  graph->add_relationship(10, 2, ":knows", {}); // adds node 2 to update delta
+  graph->add_relationship(10, 0, ":knows", {});
+  graph->add_relationship(10, 1, ":knows", {});
+
+  graph->commit_transaction();
+}
+
+TEST_CASE("Storing delta of transactional updates", "[csr_delta]"){
+#if defined CSR_DELTA_STORE && defined USE_TX
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
   create_known_data(graph);
 
-  auto &delta = *(graph->get_csr_delta());
-  delta.add_update_delta(5, {6, 4, 1}, {1.3, 1.3, 1.3});
-  delta.add_update_delta(0, {1}, {1.3});
-  delta.add_append_delta(10, {2, 0, 1}, {1.3, 1.3, 1.3});
-  delta.add_append_delta(8, {6, 5}, {1.3, 1.3});
-  delta.add_append_delta(9, {0}, {1.3});
+  csr_delta::delta_map_t update_deltas, append_deltas;
+  graph->restore_csr_delta(update_deltas, append_deltas);
 
-  csr_delta::delta_map_t update_deltas;
-  csr_delta::delta_map_t append_deltas;
+  csr_delta::delta_map_t update_map, append_map;
 
-  graph->get_csr_delta()->restore_deltas(update_deltas, append_deltas);
+  append_map[0] = {{6, 1}, {1.3, 1.3}};
+  append_map[1] = {{2}, {1.3}};
+  append_map[2] = {{3}, {1.3}};
+  append_map[3] = {{4}, {1.3}};
+  append_map[4] = {{}, {}};
+  append_map[5] = {{6}, {1.3}};
+  append_map[6] = {{2}, {1.3}};
 
-  SECTION("Update delta") {
-    auto iter = update_deltas.begin();
-    auto &a = iter->second.first;
-    auto &b = iter->second.second;
+  REQUIRE(update_deltas.size() == update_map.size());
+  REQUIRE(std::equal(update_deltas.begin(), update_deltas.end(),
+                      update_map.begin()));
 
-    std::vector<uint64_t> a_ = {1};
-    std::vector<double> b_ = {1.3};
+  REQUIRE(append_deltas.size() == append_deltas.size());
+  REQUIRE(std::equal(append_deltas.begin(), append_deltas.end(),
+                      append_map.begin()));
 
-    REQUIRE(iter->first == 0);
-    REQUIRE(a == a_);
-    REQUIRE(b == b_);
+  update_deltas.clear();
+  append_deltas.clear();
+  update_map.clear();
+  append_map.clear();
 
-    iter++;
-    auto &c = iter->second.first;
-    auto &d = iter->second.second;
+  update_data(graph);
 
-    std::vector<uint64_t> c_ = {6, 4, 1};
-    std::vector<double> d_ = {1.3, 1.3, 1.3};
+  graph->restore_csr_delta(update_deltas, append_deltas);
 
-    REQUIRE(iter->first == 5);
-    REQUIRE(c == c_);
-    REQUIRE(d == d_);
-  }
+  update_map[0] = {{1}, {1.3}};
+  update_map[1] = {{2}, {1.3}};
+  update_map[2] = {{3}, {1.3}};
+  update_map[4] = {{}, {}};
+  update_map[5] = {{1, 4, 6}, {1.3, 1.3, 1.3}};
+  update_map[6] = {{2}, {1.3}};
 
-  SECTION("Append delta") {
-    auto iter = append_deltas.begin();
-    auto &a = iter->second.first;
-    auto &b = iter->second.second;
+  append_map[7] = {{}, {}};
+  append_map[8] = {{5, 6}, {1.3, 1.3}};
+  append_map[9] = {{0}, {1.3}};
+  append_map[10] = {{1, 0, 2}, {1.3, 1.3, 1.3}};
 
-    std::vector<uint64_t> a_ = {6, 5};
-    std::vector<double> b_ = {1.3, 1.3};
+  REQUIRE(update_deltas.size() == update_map.size());
+  REQUIRE(std::equal(update_deltas.begin(), update_deltas.end(),
+                      update_map.begin()));
 
-    REQUIRE(iter->first == 8);
-    REQUIRE(a == a_);
-    REQUIRE(b == b_);
-
-    iter++;
-    auto &c = iter->second.first;
-    auto &d = iter->second.second;
-
-    std::vector<uint64_t> c_ = {0};
-    std::vector<double> d_ = {1.3};
-
-    REQUIRE(iter->first == 9);
-    REQUIRE(c == c_);
-    REQUIRE(d == d_);
-
-    iter++;
-    auto &e = iter->second.first;
-    auto &f = iter->second.second;
-
-    std::vector<uint64_t> e_ = {2, 0, 1};
-    std::vector<double> f_ = {1.3, 1.3, 1.3};
-
-    REQUIRE(iter->first == 10);
-    REQUIRE(e == e_);
-    REQUIRE(f == f_);
-  }
+  REQUIRE(append_deltas.size() == append_deltas.size());
+  REQUIRE(std::equal(append_deltas.begin(), append_deltas.end(),
+                      append_map.begin()));
 
   graph_pool::destroy(pool);
-// #endif
+#endif
 }
