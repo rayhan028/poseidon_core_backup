@@ -93,7 +93,9 @@ graph_db_ptr graph_pool::open_graph(const std::string& name) {
 #else
 
 graph_pool_ptr graph_pool::create(const std::string& path, unsigned long long pool_size) {
-    return std::make_unique<graph_pool>();
+    auto self = std::make_unique<graph_pool>();
+    self->path_ = path;
+    return self;
 }
 
 graph_pool_ptr graph_pool::open(const std::string& path, bool init) {

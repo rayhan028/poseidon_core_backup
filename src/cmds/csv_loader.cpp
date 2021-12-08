@@ -151,6 +151,9 @@ int main(int argc, char* argv[]) {
     if (vm.count("format"))
       format = vm["format"].as<std::string>();
 
+    if (vm.count("db"))
+      db_name = vm["db"].as<std::string>();
+
     if (vm.count("verbose"))
       if (vm["verbose"].as<bool>())
         spdlog::set_level(spdlog::level::debug);

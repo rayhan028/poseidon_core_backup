@@ -724,8 +724,7 @@ endif()
 #-----------------------------------------------------------------------------------------
 
 add_executable(qlc
-#  src/ql/ast.cpp
-  src/ql/qlc.cpp
+  src/cmds/qlc.cpp
  )
 
  target_link_libraries(qlc
@@ -735,7 +734,7 @@ add_executable(qlc
 )
 
 add_executable(csv_loader
-  src/storage/csv_loader.cpp
+  src/cmds/csv_loader.cpp
  )
 
  target_link_libraries(csv_loader
