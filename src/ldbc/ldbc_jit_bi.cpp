@@ -23,18 +23,20 @@ void ldbc_jit_bi_query_1(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
                              {0, {"language", "imageFile"}, {"true", "false"}},
                              {0, "length", FTYPE::INT},
                              {0, q1_group_msg_len}},
-                        GroupBy({0, 1, 3},
-                            Aggr({{"count", 0}, {"avg", 2}, {"sum", 2}, {"pcount", 0}},
+                             GroupBy({0, 1, 3}, Aggr({{"count", 0}},
                                 //Sort()
                                 Collect())))));
 
     arg_builder ab;
+    grouper g;
     ab.arg(1, message[0]);
     ab.arg(2, message[1]);
-
+    ab.arg(4, &g);
+    ab.arg(5, &g);
+    	
     if(!compiled) {
         auto c_s = std::chrono::steady_clock::now();
-        qeng.generate(q, adaptive);
+        qeng.generate(q, false);
         compiled = true;
         auto c_e = std::chrono::steady_clock::now();
         std::cout << "Compilation: " 
@@ -45,12 +47,15 @@ void ldbc_jit_bi_query_1(graph_db_ptr &gdb, query_engine &qeng, result_set &rs, 
 
     std::cout << "Run query" << std::endl;
     auto e_s = std::chrono::steady_clock::now();
-    qeng.run(&rs, ab, false);
+    //gdb->begin_transaction();
+    qeng.run(&rs, ab, adaptive);
+    //gdb->commit_transaction();
     auto e_e = std::chrono::steady_clock::now();
     std::cout << "Complete" << std::endl;
     std::cout << "Execution: " 
         << std::chrono::duration_cast<std::chrono::milliseconds>(e_e-e_s).count()
         << " ms" << std::endl;
+    std::cout << rs << std::endl;
 }
 
 
@@ -449,7 +454,7 @@ void run_benchmark(graph_db_ptr gdb, query_engine &qeng) {
   //run_is_4(gdb, qeng);
   //compiled = false;
   qeng.cleanup();
-  run_is_3(gdb, qeng);
+  //run_is_3(gdb, qeng);
 }
 
 int main(int argc, char **argv) {

@@ -67,7 +67,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_AppendNode)(benchmark::State &state) {
 #ifdef USE_TX
       graph->begin_transaction();
 #endif
-      auto p1 = graph->add_node("Person",
+      graph->add_node("Person",
                                 {{"name", boost::any(std::string("John Doe"))},
                                  {"age", boost::any(42)},
                                  {"number", boost::any(i)},
@@ -91,7 +91,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_CreateNode)(benchmark::State &state) {
 #ifdef USE_TX
       graph->begin_transaction();
 #endif
-      auto p1 = graph->add_node("Person",
+      graph->add_node("Person",
                                 {{"name", boost::any(std::string("John Doe"))},
                                  {"age", boost::any(42)},
                                  {"number", boost::any(i)},
@@ -114,7 +114,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_AppendBlankNode)(benchmark::State &state) {
 #ifdef USE_TX
       graph->begin_transaction();
 #endif
-      auto p1 = graph->add_node("Person", {}, true);
+      graph->add_node("Person", {}, true);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -132,7 +132,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_CreateBlankNode)(benchmark::State &state) {
 #ifdef USE_TX
       graph->begin_transaction();
 #endif
-      auto p1 = graph->add_node("Person", {});
+      graph->add_node("Person", {});
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -149,7 +149,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_GetNodeById)(benchmark::State &state) {
   graph->begin_transaction();
 #endif
   for (int i = 0u; i < 10000; i++) {
-    auto p1 = graph->add_node("Person", {}, true);
+    graph->add_node("Person", {}, true);
   }
 #ifdef USE_TX
   graph->commit_transaction();
@@ -159,7 +159,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_GetNodeById)(benchmark::State &state) {
 #ifdef USE_TX
       graph->begin_transaction();
 #endif
-      auto &n = graph->node_by_id((node::id_t)i);
+      graph->node_by_id((node::id_t)i);
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -176,7 +176,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_GetNodeDescription)(benchmark::State &state) {
 #ifdef USE_TX
     graph->begin_transaction();
 #endif
-    auto p1 = graph->add_node("Person",
+    graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
                                {"number", boost::any(i)},
@@ -192,7 +192,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_GetNodeDescription)(benchmark::State &state) {
 #ifdef USE_TX
       graph->begin_transaction();
 #endif
-      auto &n = graph->node_by_id((node::id_t)i);
+      graph->node_by_id((node::id_t)i);
       auto ndescr = graph->get_node_description((node::id_t)i);
 #ifdef USE_TX
       graph->commit_transaction();
@@ -210,7 +210,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_ScanNodes)(benchmark::State &state) {
   graph->begin_transaction();
 #endif
   for (int i = 0u; i < 10000; i++) {
-    auto p1 = graph->add_node("Person",
+    graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
                                {"number", boost::any(i)},
@@ -226,7 +226,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_ScanNodes)(benchmark::State &state) {
 #ifdef USE_TX
       graph->begin_transaction();
 #endif
-      graph->nodes([](node &n) { auto id_ = n.id(); });
+      graph->nodes([](node &n) { __attribute__((unused)) auto id_ = n.id(); });
 #ifdef USE_TX
       graph->commit_transaction();
 #endif
@@ -243,7 +243,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_ScanNodesByLabel)(benchmark::State &state) {
   graph->begin_transaction();
 #endif
   for (int i = 0u; i < 10000; i++) {
-    auto p1 = graph->add_node("Person",
+    graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
                                {"number", boost::any(i)},
@@ -259,7 +259,7 @@ BENCHMARK_DEFINE_F(MyFixture, BM_ScanNodesByLabel)(benchmark::State &state) {
 #ifdef USE_TX
       graph->begin_transaction();
 #endif
-      graph->nodes_by_label("Person", [](node &n) { auto id_ = n.id(); });
+      graph->nodes_by_label("Person", [](node &n) { __attribute__((unused)) auto id_ = n.id(); });
 #ifdef USE_TX
       graph->commit_transaction();
 #endif

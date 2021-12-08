@@ -31,6 +31,12 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
       pegtl::string_input<>("42 > 21 and 13 < 22", "")));
   REQUIRE(pegtl::parse<qlang::variable_name, pegtl::nothing>(
       pegtl::string_input<>("$1.Age", "")));
+  REQUIRE(pegtl::parse<qlang::query_param, pegtl::nothing>(
+      pegtl::string_input<>("%param", "")));
+  REQUIRE(pegtl::parse<qlang::func_expr, pegtl::nothing>(
+      pegtl::string_input<>("count($0.Name:string)", "")));
+  REQUIRE(pegtl::parse<qlang::udf_func_expr, pegtl::nothing>(
+      pegtl::string_input<>("udf::my_func($0.Name:string)", "")));
   REQUIRE(pegtl::parse<qlang::variable_name, pegtl::nothing>(
       pegtl::string_input<>("$2.Name", "")));
  REQUIRE(pegtl::parse<qlang::variable_name, pegtl::nothing>(
@@ -47,7 +53,15 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
       pegtl::string_input<>("{ Name: Max ]", "")));
  REQUIRE(pegtl::parse<qlang::func_array, pegtl::nothing>(
       pegtl::string_input<>("[ count($0.Name:string) ]", "")));
- REQUIRE_THROWS(pegtl::parse<qlang::func_array, pegtl::nothing>(
+ REQUIRE(pegtl::parse<qlang::func_array, pegtl::nothing>(
+      pegtl::string_input<>("[ count($0.Name:string), sum($0.Salary:int) ]", "")));
+ REQUIRE(pegtl::parse<qlang::proj_array, pegtl::nothing>(
+      pegtl::string_input<>("[ $1.Name:string, udf::my_func($0.Name:string) ]", "")));
+  REQUIRE(pegtl::parse<qlang::proj_expr, pegtl::nothing>(
+      pegtl::string_input<>("$1.Age:int", "")));
+  REQUIRE(pegtl::parse<qlang::proj_array, pegtl::nothing>(
+      pegtl::string_input<>("[$1.Age:int, $1.Name:string, $0:node]", "")));
+  REQUIRE_THROWS(pegtl::parse<qlang::func_array, pegtl::nothing>(
       pegtl::string_input<>("[ count($0.Name:string) }", "")));
  REQUIRE_THROWS(pegtl::parse<qlang::func_array, pegtl::nothing>(
       pegtl::string_input<>("[ $0.Name:string ]", "")));
@@ -63,6 +77,8 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("NodeScan('Person')", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("NodeScan('Person', 'Actor')", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("NodeScan( \"Person\" )", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("ForeachRelationship(FROM, \":IsLocatedIn\")", "")));
@@ -77,13 +93,14 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Filter($1.Age == 42)", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("Filter($1.Age == %param)", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("Filter($1.Age == %param, NodeScan('Person'))", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Filter($2.Name != 'John')", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("NodeScan(Filter($1.Age >= 42))", "")));
-  REQUIRE(pegtl::parse<qlang::proj_expr, pegtl::nothing>(
-      pegtl::string_input<>("$1.Age:int", "")));
-  REQUIRE(pegtl::parse<qlang::proj_array, pegtl::nothing>(
-      pegtl::string_input<>("[$1.Age:int, $1.Name:string, $0:node]", "")));
+
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Project([$1.Age:int, $1.Name:string])", "")));
   REQUIRE(pegtl::parse<qlang::prop_list, pegtl::nothing>(
@@ -114,7 +131,15 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("LeftOuterJoin($0.Id == $1.PId, NodeScan('Person'), NodeScan('Order'))", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("CrossJoin(NodeScan('Person'), NodeScan('Order'))", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("HashJoin($0.Id == $1.PId, NodeScan('Person'), NodeScan('Order'))", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
-      pegtl::string_input<>("Project([$0.firstName:string, $0.lastName:string, $0.birthday:datetime, $0.locationIP:string, $0.browserUsed:string, $2.id:uint64, $0.gender:string, $0.creationDate:datetime],ForeachRelationship(FROM, ':isLocatedIn', Filter($0.id == 42, NodeScan('Person'))))", "")));
+      pegtl::string_input<>("Project([ $0.firstName:string, $0.lastName:string, $0.birthday:datetime, $0.locationIP:string, $0.browserUsed:string, $2.id:uint64, $0.gender:string, $0.creationDate:datetime ],ForeachRelationship(FROM, ':isLocatedIn', Filter($0.id == 42, NodeScan('Person'))))", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("End()", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("CrossJoin(@q, NodeScan('Order'))", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("Project([udf::year($0.creationDate:datetime), udf::isComment($0:node), $0.length:int, udf::lengthCategory($0.length:int)], Filter($0.creationDate < %date, NodeScan('Post', 'Comment')))", "")));
  }

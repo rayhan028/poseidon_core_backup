@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -20,7 +20,11 @@
 #ifndef dict_hpp_
 #define dict_hpp_
 
-#ifdef USE_PMDK
+#include "defs.hpp"
+
+#ifdef USE_HDICT
+#include "hdict.hpp"
+#elif defined(USE_PMDK)
 #include "dict_kv.hpp"
 #else
 #include "dict_bimap.hpp"

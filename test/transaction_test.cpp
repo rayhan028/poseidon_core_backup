@@ -29,6 +29,7 @@
 #include "defs.hpp"
 #include "graph_db.hpp"
 #include "transaction.hpp"
+#include "graph_pool.hpp"
 
 /**
  * A helper class implementing a barrier allowing two threads to coordinate
@@ -61,42 +62,11 @@ public:
   }
 };
 
-#ifdef USE_PMDK
-#define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
-
-namespace nvm = pmem::obj;
 const std::string test_path = poseidon::gPmemPath + "transaction_test";
 
-nvm::pool_base prepare_pool() {
-  auto pop = nvm::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
-  return pop;
-}
-
-graph_db_ptr create_graph_db(nvm::pool_base &pop) {
-  graph_db_ptr gdb;
-  nvm::transaction::run(pop, [&] { gdb = p_make_ptr<graph_db>(); });
-  return gdb;
-}
-
-void drop_graph_db(nvm::pool_base &pop, graph_db_ptr gdb) {
-  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(gdb); });
-  pop.close();
-  remove(test_path.c_str());
-}
-
-#else
-
-graph_db_ptr create_graph_db() { return p_make_ptr<graph_db>(); }
-
-#endif
-
 TEST_CASE("Test transaction execution"  "[transaction]") {  
-	#ifdef USE_PMDK
-	  auto pop = prepare_pool();
-	  auto gdb = create_graph_db(pop);
-	#else
-	  auto gdb = create_graph_db();
-	#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
 
   gdb->run_transaction([&]() {
     gdb->add_node("Actor",
@@ -105,18 +75,13 @@ TEST_CASE("Test transaction execution"  "[transaction]") {
     return true;
   });
 
-	#ifdef USE_PMDK
-	  drop_graph_db(pop, gdb);
-	#endif  
+  graph_pool::destroy(pool);
 }
 
 TEST_CASE("Test concurrency: update during read"  "[transaction]") {  
-	#ifdef USE_PMDK
-	  auto pop = prepare_pool();
-	  auto gdb = create_graph_db(pop);
-	#else
-	  auto gdb = create_graph_db();
-	#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
 	  node::id_t nid = 0;
 	  barrier  b1{}, b2{}, b3{};
 
@@ -168,9 +133,7 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 	  t1.join();
 	  t2.join();
 
-	#ifdef USE_PMDK
-	  drop_graph_db(pop, gdb);
-	#endif
+  graph_pool::destroy(pool);
 }
 
 TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {  
@@ -178,13 +141,9 @@ TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {
 	* If two concurrent write Transactions are triggered, then the end result must be that there are two seperate
 	* nodes created
 	*/
-	#ifdef USE_PMDK
-	  auto pop = prepare_pool();
-	  auto gdb = create_graph_db(pop);
-	#else
-	  auto gdb = create_graph_db();
-	#endif
-	  std::cout<<" Test concurr between read and write \n";
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
 	  node::id_t nid = 0;
 	  barrier  b1{}, b2{}, b3{};
 
@@ -233,9 +192,7 @@ TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {
 	  t1.join();
 	  t2.join();
 
-	#ifdef USE_PMDK
-	  drop_graph_db(pop, gdb);
-	#endif
+  graph_pool::destroy(pool);
 }
 
 /* Test case for issue: https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core/-/issues/27
@@ -246,12 +203,8 @@ TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {
  */
 
 TEST_CASE("Test concurrency between update abort and read"  "[transaction]") { 
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
 
   node::id_t nid = 0;
   barrier  b1{}, b2{}, b3{};
@@ -275,7 +228,7 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
 		auto nd = gdb->get_node_description(nid); 
 		b3.notify(); // inform thread #2 that we have read the node 
 
-		nd = gdb->get_node_description(nid); //<===== Here it tries to access a deleted dirty version and crashes!
+		nd = gdb->get_node_description(nid); 
 
 		REQUIRE(nd.label == "Actor"); 
 		REQUIRE(get_property<int>(nd.properties, "age") == 48); 
@@ -302,9 +255,7 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
   t1.join();
   t2.join();
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 TEST_CASE("Test two concurrent transactions trying to create nodes"  "[transaction]") {
@@ -312,12 +263,9 @@ TEST_CASE("Test two concurrent transactions trying to create nodes"  "[transacti
 * If two concurrent write Transactions are triggered, then the end result must be that there are two seperate
 * nodes created
 */
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   node::id_t nid1 = 0, nid2 = 0;
 
   /*
@@ -365,43 +313,32 @@ TEST_CASE("Test two concurrent transactions trying to create nodes"  "[transacti
     REQUIRE(get_property<int>(nd2.properties, "age") == 22);  
     gdb->commit_transaction();
   }
-
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a newly inserted node exist in the transaction",
           "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   gdb->begin_transaction();
   auto nid = gdb->add_node("Movie", {});
   auto &my_node = gdb->node_by_id(nid);
   REQUIRE(my_node.id() == nid);
   gdb->commit_transaction();
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a newly inserted relationship exist in the transaction",
           "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   gdb->begin_transaction();
   auto m = gdb->add_node("Movie", {});
   auto a = gdb->add_node("Actor", {});
@@ -411,20 +348,14 @@ TEST_CASE("Checking that a newly inserted relationship exist in the transaction"
   REQUIRE(my_rship.id() == rid);
   gdb->commit_transaction();
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a node update is undone after abort", "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
 
   node::id_t nid = 0;
   {
@@ -460,20 +391,14 @@ TEST_CASE("Checking that a node update is undone after abort", "[transaction]") 
     gdb->abort_transaction();
   }
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a relationship update is undone after abort", "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
 
   relationship::id_t rid = 0;
   {
@@ -510,20 +435,14 @@ TEST_CASE("Checking that a relationship update is undone after abort", "[transac
     gdb->abort_transaction();
   }
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a node insert is undone after abort", "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
 
   node::id_t nid = 0;
   {
@@ -535,22 +454,18 @@ TEST_CASE("Checking that a node insert is undone after abort", "[transaction]") 
   {
     gdb->begin_transaction();
     REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
+    gdb->abort_transaction();
   }
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
+
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a relationship insert is undone after abort", "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
 
   node::id_t m, a;
   relationship::id_t rid;
@@ -587,24 +502,20 @@ TEST_CASE("Checking that a relationship insert is undone after abort", "[transac
       found = true;
     });
     REQUIRE(!found);
+    gdb->abort_transaction();
   }
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
+#if 1
 
 TEST_CASE("Checking that a newly inserted node is not visible in another "
           "transaction",
           "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
 
   node::id_t nid = 0;
   barrier b1, b2;
@@ -643,9 +554,7 @@ TEST_CASE("Checking that a newly inserted node is not visible in another "
   t1.join();
   t2.join();
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -653,12 +562,9 @@ TEST_CASE("Checking that a newly inserted node is not visible in another "
 TEST_CASE("Checking that a newly inserted relationship is not visible in another "
           "transaction",
           "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   node::id_t m, a;
   {
     gdb->begin_transaction();
@@ -705,20 +611,15 @@ TEST_CASE("Checking that a newly inserted relationship is not visible in another
   t1.join();
   t2.join();
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a newly inserted node becomes visible after commit",
           "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   node::id_t nid = 0;
   {
     gdb->begin_transaction();
@@ -738,21 +639,16 @@ TEST_CASE("Checking that a newly inserted node becomes visible after commit",
     gdb->commit_transaction();
   }
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a newly inserted relationship becomes visible after commit",
           "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   node::id_t m, a;
   {
     gdb->begin_transaction();
@@ -778,21 +674,16 @@ TEST_CASE("Checking that a newly inserted relationship becomes visible after com
     gdb->commit_transaction();
   }
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 TEST_CASE("Checking that a read transaction reads the correct version of a "
           "updated node",
           "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   node::id_t nid = 0;
   barrier b1, b2;
 
@@ -868,9 +759,7 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
     gdb->commit_transaction();
     // gdb->dump();
   }
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -878,12 +767,9 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
 TEST_CASE("Checking that a update transaction is aborted if the object is "
           "already locked by another transaction",
           "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
 barrier b1, b2, b3;
   // 1. create a new node
   node::id_t nid = 0;
@@ -937,20 +823,15 @@ barrier b1, b2, b3;
 	t1.join();
 	t2.join();
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking basic transaction level GC", "[transaction][gc]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   node::id_t nid = 0;
 	{
   // create a new node
@@ -969,20 +850,15 @@ TEST_CASE("Checking basic transaction level GC", "[transaction][gc]") {
 		gdb->abort_transaction();
 	}
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
 	barrier b1, b2, b3, b4;
   node::id_t nid = 0;
 	{
@@ -1069,20 +945,15 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
 		gdb->abort_transaction();
 
 	}
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that deleting a node works", "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   node::id_t nid;
   {
     // add a few nodes
@@ -1109,20 +980,15 @@ TEST_CASE("Checking that deleting a node works", "[transaction]") {
     REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
     gdb->abort_transaction();
   }
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+   graph_pool::destroy(pool); 
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that deleting a node works also within a transaction", "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   node::id_t nid;
   {
     // add a few nodes
@@ -1145,20 +1011,15 @@ TEST_CASE("Checking that deleting a node works also within a transaction", "[tra
     gdb->commit_transaction();
   }
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that detach delete a node works", "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   node::id_t a, b, c, d, e;
   {
     // add a few nodes
@@ -1189,20 +1050,15 @@ TEST_CASE("Checking that detach delete a node works", "[transaction]") {
     REQUIRE_THROWS_AS(gdb->rship_by_id(e), unknown_id);
     gdb->abort_transaction();
   }
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that detach delete also works within a transaction", "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   node::id_t a, b, c, d, e;
   {
     // add a few nodes
@@ -1227,20 +1083,15 @@ TEST_CASE("Checking that detach delete also works within a transaction", "[trans
     REQUIRE_THROWS_AS(gdb->rship_by_id(e), unknown_id);
     gdb->abort_transaction();
   }
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+   graph_pool::destroy(pool); 
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that aborting a delete transaction works", "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   node::id_t nid;
   {
     gdb->begin_transaction();
@@ -1262,20 +1113,14 @@ TEST_CASE("Checking that aborting a delete transaction works", "[transaction]") 
     gdb->abort_transaction();
   }
   
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 /* ----------------------------------------------------------------------- */
 
 TEST_CASE("Checking that a delete transaction does not interfer with another transaction", "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
 
   barrier b1, b2, b3;
   node::id_t nid;
@@ -1328,18 +1173,13 @@ TEST_CASE("Checking that a delete transaction does not interfer with another tra
   t1.join();
   t2.join();
 
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 }
 
 TEST_CASE("Checking two concurrent transactions trying to create node", "[transaction]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  auto gdb = create_graph_db(pop);
-#else
-  auto gdb = create_graph_db();
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto gdb = pool->create_graph("my_graph2");
+
   node::id_t nid1 = 0, nid2 = 0;
 
   // Thread 1: Add node
@@ -1368,11 +1208,11 @@ TEST_CASE("Checking two concurrent transactions trying to create node", "[transa
   REQUIRE(gdb->get_nodes()->num_chunks() == 1);
   
   gdb->dump();
-#ifdef USE_PMDK
-  drop_graph_db(pop, gdb);
-#endif
+  graph_pool::destroy(pool);
 } 
 /* -------------------------------------------------------------------------------- */
+
+
 
 #if TEST_INCORRECT
 
@@ -1711,63 +1551,4 @@ TEST_CASE("Checking the Garbage Collector functionality: Maintain multiple "
 
 #endif
 
-// TEST_CASE("Test node update then delete"  "[transaction]") {  
-// 	#ifdef USE_PMDK
-// 	  auto pop = prepare_pool();
-// 	  auto gdb = create_graph_db(pop);
-// 	#else
-// 	  auto gdb = create_graph_db();
-// 	#endif
-
-//   node::id_t nid;
-//   gdb->run_transaction([&]() {
-//     nid = gdb->add_node("Actor",
-// 		                {{"name", boost::any(std::string("Mark Wahlberg"))},
-// 		                  {"age", boost::any(48)}});
-//     return true;
-//   });
-
-//   gdb->run_transaction([&]() {
-//     auto &n = gdb->node_by_id(nid);
-//     gdb->update_node(n, {{"name", boost::any(std::string("Mark Wahlberg"))},
-// 		                  {"age", boost::any(49)}}, "Actor");
-//     gdb->detach_delete_node(nid);
-//     return true;
-//   });
-
-// 	#ifdef USE_PMDK
-// 	  drop_graph_db(pop, gdb);
-// 	#endif  
-// }
-
-// TEST_CASE("Test relationship update then delete"  "[transaction]") {  
-// 	#ifdef USE_PMDK
-// 	  auto pop = prepare_pool();
-// 	  auto gdb = create_graph_db(pop);
-// 	#else
-// 	  auto gdb = create_graph_db();
-// 	#endif
-
-//   relationship::id_t rid;
-//   gdb->run_transaction([&]() {
-//     node::id_t a = gdb->add_node("Actor",
-// 		                {{"name", boost::any(std::string("Mark"))},
-// 		                  {"age", boost::any(48)}});
-//     node::id_t b = gdb->add_node("Actor",
-// 		                {{"name", boost::any(std::string("Wahlberg"))},
-// 		                  {"age", boost::any(70)}});
-//     rid = gdb->add_relationship(a, b, ":costarred", {});
-//     return true;
-//   });
-
-//   gdb->run_transaction([&]() {
-//     auto &r = gdb->rship_by_id(rid);
-//     gdb->update_relationship(r, {}, ":costarred");
-//     gdb->delete_relationship(rid);
-//     return true;
-//   });
-
-// 	#ifdef USE_PMDK
-// 	  drop_graph_db(pop, gdb);
-// 	#endif  
-// }
+#endif

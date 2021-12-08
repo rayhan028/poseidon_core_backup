@@ -103,12 +103,15 @@ Filter | filter expression, input | Processes the input list of nodes and rships
 Expand | IN or OUT, NodeType, input | Gets all the source or destination nodes of the given type
 Project | [ projection list ], input | Projects query results based on the given projection list
 Limit | number of tuples, input | Limits the input list to the given number of tuples
-ForeachRelationship | TO or FROM, RelationshipType, input | Traverses all incoming or outgoing relationships of the given type
+Join | condition expression, input1, input2 | Computes a join from the given inputs
+LeftOuterJoin | condition expression, input1, input2 | Computes a left outer join from the given inputs
+ForeachRelationship | TO or FROM or ALL, RelationshipType, input | Traverses all incoming or outgoing or both relationships of the given type
 Sort |  sort function, input | Orders tuples according to the sorting function
 GroupBy | [ GroupKey list ], [ AggregateType list  ], input | Groups all tuples based on grouping key(s) and apply aggregate functions
-AppendToTuple | result function, input | Computes a query result and appends it to tuple
+Append | result function, input | Computes a query result and appends it to tuple
 Union | [ query list ], input | Combines the tuples of multiple queries
-AlgoShortestPath | SPATHTYPE, relationship predicate, weight function, input | Performs a uni/bi-directional search for the weighted/unweighted or top-k shortest paths between node pairs and appends the paths and/or their weights to tuple
+Count | query, input | Counts the number of tuples produced by the query
+Algorithm | type, variant, [ algo params ], input | Runs the specified algorithm as uni/bi-directional, weighted/unweighted for given parameters like relationship predicate, weight function
 Create | (n:NodeType { key: val, ...} ), input | Creates a new node from the literals or the input
 Create | ($1)-[r:RelationshipType { key: val, ...} ]->($2), input | Creates a new relationship from the literals or the input
 

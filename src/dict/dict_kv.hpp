@@ -39,7 +39,7 @@ public:
   /**
    * Construcotr.
    */
-  dict();
+  dict(const std::string& prefix = "");
 
   /**
    * Destructor.

@@ -19,7 +19,7 @@
 
 #include "dict_bimap.hpp"
 
-dict::dict() : last_dcode_(1) {}
+dict::dict(const std::string& prefix, uint32_t init_pool_size) : last_dcode_(1) {}
 
 dcode_t dict::insert(const std::string &s) {
   std::lock_guard<std::mutex> guard(m_);

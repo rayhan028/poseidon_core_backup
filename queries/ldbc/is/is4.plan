@@ -1,0 +1,3 @@
+Project([ $0.creationDate, udf::getMessage($0:qresult) ] )
+└── Filter($0.id==22 )
+    └── NodeScan("Post" )

@@ -297,7 +297,7 @@ class chunked_vec {
   /**
    * Create a new empty vector.
    */
-  chunked_vec()
+  chunked_vec(const std::string& unused = "")
       : capacity_(0), available_slots_(0),
         elems_per_chunk_(num_entries) {}
 
@@ -333,8 +333,8 @@ class chunked_vec {
       delete p;
 #endif
     chunk_list_.clear();
-    capacity_ = 0;
     free_list_.clear();
+    capacity_ = 0;
     available_slots_ = 0;
   }
 
@@ -354,6 +354,9 @@ class chunked_vec {
     return range_iter(*this, first_chunk, last_chunk, start_pos);
   }
 
+  range_iter* range_ptr(std::size_t first_chunk, std::size_t last_chunk, std::size_t start_pos = 0) {
+    return new range_iter(*this, first_chunk, last_chunk, start_pos);
+  }
   /**
    * Store the given record at position idx (note: move semantics) and mark this
    * slot as used.

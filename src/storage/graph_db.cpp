@@ -24,21 +24,51 @@
 #include "parser.hpp"
 #include "spdlog/spdlog.h"
 #include <iostream>
+#include <stdio.h>
+
+#ifdef USE_MMFILE
+#include <boost/filesystem.hpp>
+#endif
 
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
 #endif
 
-graph_db::graph_db(const std::string &db_name) {
-  nodes_ = p_make_ptr<node_list>();
-  rships_ = p_make_ptr<relationship_list>();
-  node_properties_ = p_make_ptr<property_list>();
-  rship_properties_ = p_make_ptr<property_list>();
+void graph_db::destroy(graph_db_ptr gp) {
+#ifdef USE_MMFILE
+  auto prefix = gp->database_name_ + "/";
+  boost::filesystem::remove(prefix + "nodes.db");
+  boost::filesystem::remove(prefix + "slots_nodes.db");
+  boost::filesystem::remove(prefix + "rships.db");
+  boost::filesystem::remove(prefix + "slots_rships.db");
+  boost::filesystem::remove(prefix + "nprops.db");
+  boost::filesystem::remove(prefix + "slots_nprops.db");
+  boost::filesystem::remove(prefix + "rprops.db");
+  boost::filesystem::remove(prefix + "slots_rprops.db");
+  boost::filesystem::remove(prefix + "dict.db");
+  boost::filesystem::remove(prefix);
+#endif
+}
+
+
+graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
+  std::string prefix = "";
+#ifdef USE_MMFILE
+  boost::filesystem::path path_obj(db_name);
+  // check if path exists and is of a regular file
+  if (! boost::filesystem::exists(path_obj))
+    boost::filesystem::create_directory(path_obj);
+  prefix = db_name + "/";
+#endif
+  nodes_ = p_make_ptr<node_list>(prefix + "nodes.db");
+  rships_ = p_make_ptr<relationship_list>(prefix + "rships.db");
+  node_properties_ = p_make_ptr<property_list>(prefix + "nprops.db");
+  rship_properties_ = p_make_ptr<property_list>(prefix + "rprops.db");
 #ifdef QOP_RECOVERY
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
 #endif
-  dict_ = p_make_ptr<dict>();
+  dict_ = p_make_ptr<dict>(prefix);
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
 // #ifdef CSR_DELTA_STORE
@@ -106,9 +136,14 @@ void graph_db::begin_transaction() {
 
 void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
   auto xid = tx->xid();
- 	   auto &n = nodes_->get(node_id);
+ 	auto &n = nodes_->get(node_id);
+  // If the node was already deleted we can skip all other entries...
+  if (n.cts() != INF) {
+    n.remove_dirty_version(0);
+    return;
+  }
 	  /* A dirty object was just inserted, when add_node() or update_node() was executed.
-	   * So there must be atleast one dirty version.
+	   * So there must be at least one dirty version.
 	   */
 
 	  if (!n.has_dirty_versions()) {
@@ -120,6 +155,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 	  // Note: Dirty version are always put in front of the list.
 	  // If that order is changed, then same order must be used during access.
 	  if (const auto& dn {n.dirty_list()->front()}; !dn->updated()) {
+      // std::cout << "COMMIT INSERT" << std::endl;
 		  // CASE #1 = INSERT: we have added a new node to node_list, but its properties
 		  // are stored in a dirty_node object in this case, we simply copy the
 		  // properties to property_list and release the lock
@@ -141,6 +177,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 
       if (dn->elem_.bts() == dn->elem_.cts()) {
         // CASE #2 = DELETE
+        // std::cout << "COMMIT DELETE" << std::endl;
         // spdlog::info("COMMIT DELETE: [{},{}]", short_ts(dn->elem_.bts), short_ts(dn->elem_.cts));
         log_node_record rec (pmem_log::log_delete, pmem_log::log_node, node_id, 
               n.node_label, n.from_rship_list, n.to_rship_list, n.property_list);
@@ -166,9 +203,11 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		    n.dirty_list()->front()->elem_.unlock();
         // we can delete properties because the old values are still in the dirty list
         node_properties_->remove_properties(n.property_list);
+        n.property_list = UNKNOWN;
       }
       else {
         // CASE #3 = UPDATE
+        // std::cout << "COMMIT UPDATE" << std::endl;
         // create and append a log_node_record BEFORE we copy the properties and override the label
         log_node_record rec(pmem_log::log_update, pmem_log::log_node, node_id, 
           n.node_label, n.from_rship_list, n.to_rship_list, n.property_list);
@@ -195,8 +234,15 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
   }
 
 void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t rel_id) {
+  // std::cout << "commit_dirty_relationship" << std::endl;
   auto xid = tx->xid();
 	auto& r = rships_->get(rel_id);
+  // If the relationship was already deleted we can skip all other entries...
+  if (r.cts() != INF) {
+    r.remove_dirty_version(0);
+    return;
+  }
+
 	  /* A dirty object was just inserted, when add_relation() or update_relation() was executed.
 	   * So there must be at least one dirty version.
 	   */
@@ -914,7 +960,7 @@ void graph_db::delete_node(node::id_t id) {
   if (n.from_rship_list != UNKNOWN || n.to_rship_list != UNKNOWN) {
     if (has_valid_from_rships(n, txid) || has_valid_to_rships(n, txid)) {
       // in this case we have to abort
-      spdlog::info("abort delete of node #{}", n.id());
+      // spdlog::info("abort delete of node #{}", n.id());
       throw orphaned_relationship();
     }
   }
@@ -1010,15 +1056,19 @@ void graph_db::detach_delete_node(node::id_t id) {
 
   // then, we make a copy of the original node which is stored in
   // the dirty list
-  std::list<p_item> pitems =
-      node_properties_->build_dirty_property_list(n.property_list);
-  // cts is set to txid
-  const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
-  oldv->elem_.set_timestamps(n.bts(), txid);
-  oldv->elem_.set_dirty();
-  // but unlock it for readers
-  oldv->elem_.unlock();
+  // do this only if the original node isn't already in the dirty list
+  bool first_update = !n.has_dirty_versions();
 
+  if (first_update) {
+    std::list<p_item> pitems =
+      node_properties_->build_dirty_property_list(n.property_list);
+    // cts is set to txid
+    const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
+    oldv->elem_.set_timestamps(n.bts(), txid);
+    oldv->elem_.set_dirty();
+    // but unlock it for readers
+    oldv->elem_.unlock();
+  }
   // ... and create another copy as the new deleted version
   const auto &newv = n.add_dirty_version(std::make_unique<dirty_node>(n, std::list<p_item>(), true /* updated */));
   newv->elem_.set_timestamps(txid, txid);
@@ -1049,7 +1099,6 @@ void graph_db::detach_delete_node(node::id_t id) {
     delete_relationship(r);
   }
   node_properties_->remove_properties(n.property_list);
- 
   nodes_->remove(id);
 #endif
 }
@@ -1073,15 +1122,19 @@ void graph_db::delete_relationship(relationship::id_t id) {
 
   // first, we make a copy of the original relationship which is stored in
   // the dirty list
-  std::list<p_item> pitems =
-      rship_properties_->build_dirty_property_list(r.property_list);
-  // cts is set to txid
-  const auto& oldv = r.add_dirty_version(std::make_unique<dirty_rship>(r, pitems));
-  oldv->elem_.set_timestamps(r.bts(), txid);
-  oldv->elem_.set_dirty();
-  // but unlock it for readers
-  oldv->elem_.unlock();
+   // do this only if the original node isn't already in the dirty list
+  bool first_update = !r.has_dirty_versions();
 
+  if (first_update) {
+    std::list<p_item> pitems =
+      rship_properties_->build_dirty_property_list(r.property_list);
+    // cts is set to txid
+    const auto& oldv = r.add_dirty_version(std::make_unique<dirty_rship>(r, pitems));
+    oldv->elem_.set_timestamps(r.bts(), txid);
+    oldv->elem_.set_dirty();
+    // but unlock it for readers
+    oldv->elem_.unlock();
+  }
   // ... and create another copy as the new deleted version
   const auto &newv = r.add_dirty_version(std::make_unique<dirty_rship>(r, std::list<p_item>(), true /* updated */));
   newv->elem_.set_timestamps(txid, txid);

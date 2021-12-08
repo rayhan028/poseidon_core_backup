@@ -18,6 +18,7 @@
  */
 #include "mm_file.hpp"
 #include <boost/filesystem.hpp>
+#include <iostream>
 
 namespace bip = boost::interprocess;
 
@@ -26,6 +27,7 @@ mm_file::mm_file(const std::string& fname, std::size_t file_size) {
     boost::filesystem::path path_obj(fname);
     // check if path exists and is of a regular file
     if (! boost::filesystem::exists(path_obj)) {
+        // std::cout << "create new mm_file: " << fname << std::endl;
         std::filebuf fbuf;
         fbuf.open(fname, std::ios_base::in | std::ios_base::out
                             | std::ios_base::trunc | std::ios_base::binary);
@@ -33,6 +35,7 @@ mm_file::mm_file(const std::string& fname, std::size_t file_size) {
         fbuf.pubseekoff(file_size-1, std::ios_base::beg);
         fbuf.sputc(0);
     }
+    // else { std::cout << "open existing mm_file: " << fname << std::endl; }
     f_mapping_ = std::make_unique<bip::file_mapping>(fname.c_str(), bip::read_write);
     // map the whole file with read-write permissions in this process
     region_ = std::make_unique<bip::mapped_region>(*f_mapping_, bip::read_write); 

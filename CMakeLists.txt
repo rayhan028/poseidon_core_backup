@@ -12,13 +12,17 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         ON)
+option(USE_MMFILE       "Use memory mapped file storage"         OFF)
+option(USE_HDICT        "Use hdict implementation"               ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
-option(USE_LLVM         "Use LLVM for query compilation"         OFF)
+option(USE_LLVM         "Use LLVM for query compilation"         ON)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
-option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
 option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
+option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
+option(BUILD_GTPC       "Build code for GTPC benchmark"          OFF)
+option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
 option(CSR_DELTA_STORE  "Use delta store for updating CSR data"  ON)
 #-------------------------------------------------------------------------------
 endif()
@@ -45,14 +49,21 @@ set(CMAKE_MACOSX_RPATH 1)
 # include(code-coverage)
 # add_code_coverage()
 
-# Require C++17
+# Require C++20
 include(c++-standards)
-cxx_17()
+cxx_20()
 
 # Include the PMDK module
 if(USE_PMDK MATCHES ON)
   message(STATUS "looking for PMDK")
   include(pmdk)
+elseif(USE_MMFILE MATCHES ON)
+  message(STATUS "use memory-mapped files")
+  add_definitions( "-DUSE_MMFILE" )
+endif()
+
+if(USE_HDICT MATCHES ON)
+  add_definitions( "-DUSE_HDICT" )
 endif()
 
 # Transaction support
@@ -129,9 +140,9 @@ endif()
 #       will not inform you, but the linker will fail to finish building Poseidon
 
 if(USE_GUNROCK MATCHES ON)
-  add_library(gunrock SHARED IMPORTED)
-  set_property(TARGET gunrock PROPERTY IMPORTED_LOCATION "/usr/lib/libgunrock.so")
-  message(STATUS "Include library gunrock. Make sure /usr/lib/libgunrock.so exists!")
+add_library(gunrock SHARED IMPORTED)
+set_property(TARGET gunrock PROPERTY IMPORTED_LOCATION "/usr/lib/libgunrock.so")
+message(STATUS "Include library gunrock. Make sure /usr/lib/libgunrock.so exists!")
 endif()
 
 # Catch =================================================================== #
@@ -139,7 +150,7 @@ include(FetchContent REQUIRED)
 FetchContent_Declare(
   catch
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v2.13.4
+  GIT_TAG        v2.13.7
 )
 # FetchContent_GetProperties(catch)
 if(NOT catch_POPULATED)
@@ -225,7 +236,7 @@ include(FetchContent REQUIRED)
  FetchContent_Declare(
   pegtl
   GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
-  GIT_TAG       3.2.0
+  GIT_TAG       3.2.1
   )
 FetchContent_GetProperties(pegtl)
 if(NOT pegtl_POPULATED)
@@ -345,7 +356,13 @@ include_directories("${LINENOISE_INCLUDE_DIR}")
 
 #-----------------------------------------------------------------------------------------
 
-if(USE_PMDK MATCHES ON)
+if(USE_HDICT MATCHES ON)
+  add_definitions( "-DUSE_HDICT" )
+  set(dict_src 
+    src/dict/string_pool.cpp 
+    src/dict/htable.cpp
+    src/dict/hdict.cpp)
+elseif(USE_PMDK MATCHES ON)
   set(dict_src src/dict/dict_kv.cpp)
 else()
   set(dict_src src/dict/dict_bimap.cpp)
@@ -363,7 +380,25 @@ else()
 endif()
 
 if(USE_LLVM MATCHES ON)
+  set(codegen_operators_src
+    src/qcomp/operators/append.cpp
+    src/qcomp/operators/aggregation.cpp
+    src/qcomp/operators/collect.cpp
+    src/qcomp/operators/connected.cpp
+    src/qcomp/operators/create.cpp
+    src/qcomp/operators/expand.cpp
+    src/qcomp/operators/filter.cpp
+    src/qcomp/operators/foreach_rship.cpp
+    src/qcomp/operators/groupby.cpp
+    src/qcomp/operators/join.cpp
+    src/qcomp/operators/limit.cpp
+    src/qcomp/operators/project.cpp
+    src/qcomp/operators/scan.cpp
+    src/qcomp/operators/sort.cpp
+  )
+
   set(llvm_src
+    ${codegen_operators_src}
     src/qcomp/codegen_inline.cpp
     src/qcomp/filter_expression.cpp
     src/qcomp/filter_expression_inline.cpp
@@ -391,9 +426,9 @@ else()
 endif()
 
 if(CSR_DELTA_STORE MATCHES ON)
-  set(csrdelta_src src/storage/csr_delta.cpp)
+  set(csr_delta_src src/storage/csr_delta.cpp)
 else()
-  set(csrdelta_src "")
+  set(csr_delta_src "")
 endif()
 
 set(src_files 
@@ -425,7 +460,7 @@ set(src_files
   src/ql/queryc_qex.cpp
   src/ql/queryc.cpp
   src/ql/ast.cpp
-  ${csrdelta_src}
+  ${csr_delta_src}
   src/analytics/bfs.cpp
   src/analytics/shortest_path.cpp
   ${gunrock_analysis}
@@ -470,6 +505,11 @@ target_include_directories( ${PROJECT_NAME}
     PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
 
+#-------------------------------------------------------------------
+# Build library for LDBC benchmark
+#
+if(BUILD_LDBC MATCHES ON)
+
 set(ldbc_files
   src/ldbc/ldbc_graphalytics.cpp
   src/ldbc/ldbc_bi.cpp
@@ -501,6 +541,17 @@ target_link_libraries(poseidon_ldbc
   poseidon_core
 )
 
+set(POSEIDON_LDBC "poseidon_ldbc")
+else()
+set(POSEIDON_LDBC "")
+
+endif()
+
+#-------------------------------------------------------------------
+# Build library for GTPC benchmark
+#
+if(BUILD_GTPC MATCHES ON)
+
 set(gtpc_files
   src/gtpc/gtpc_loader.cpp
   src/gtpc/gtpc_olap.cpp
@@ -524,6 +575,11 @@ add_library(poseidon_gtpc SHARED
 target_link_libraries(poseidon_gtpc
   poseidon_core
 )
+set(POSEIDON_GTPC "poseidon_gtpc")
+else()
+set(POSEIDON_GTPC "")
+endif()
+
 
 if (BUILD_PYTHON)
 # Python Poseidon library for loading a module into the python3 interpreter
@@ -550,6 +606,7 @@ endif()
 # Some programs for LDBC benchmarking.
 #
 
+if(BUILD_LDBC MATCHES ON)
 # The program for loading CSV files into PMem.
 #
 add_executable(run_ldbc_loader
@@ -639,13 +696,29 @@ target_link_libraries(run_ldbc_jit_reads
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
+
+# The program for executing jitted bi queries.
+#
+add_executable(run_ldbc_jit_bi
+  src/ldbc/ldbc_jit_bi.cpp
+ )
+
+target_link_libraries(run_ldbc_jit_bi
+  poseidon_ldbc
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
 endif()
 
+endif()
 #-----------------------------------------------------------------------------------------
 #
 # Some programs for GTPC benchmarking.
 #
 
+if(BUILD_GTPC MATCHES ON)
 # The program for loading CSV files into PMem.
 #
 add_executable(run_gtpc_loader
@@ -670,21 +743,8 @@ target_link_libraries(run_gtpc
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
-
-if(USE_LLVM MATCHES ON)
-# The program for executing jitted bi queries.
-#
-add_executable(run_ldbc_jit_bi
-  src/ldbc/ldbc_jit_bi.cpp
- )
-
-target_link_libraries(run_ldbc_jit_bi
-  poseidon_ldbc
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
 endif()
+
 
 #-----------------------------------------------------------------------------------------
 if(USE_LLVM MATCHES ON)
@@ -702,8 +762,7 @@ endif()
 #-----------------------------------------------------------------------------------------
 
 add_executable(qlc
-#  src/ql/ast.cpp
-  src/ql/qlc.cpp
+  src/cmds/qlc.cpp
  )
 
  target_link_libraries(qlc
@@ -713,7 +772,7 @@ add_executable(qlc
 )
 
 add_executable(csv_loader
-  src/storage/csv_loader.cpp
+  src/cmds/csv_loader.cpp
  )
 
  target_link_libraries(csv_loader

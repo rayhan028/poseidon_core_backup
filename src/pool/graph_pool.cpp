@@ -93,14 +93,22 @@ graph_db_ptr graph_pool::open_graph(const std::string& name) {
 #else
 
 graph_pool_ptr graph_pool::create(const std::string& path, unsigned long long pool_size) {
-    return std::make_unique<graph_pool>();
+    auto self = std::make_unique<graph_pool>();
+    self->path_ = path;
+    return self;
 }
 
 graph_pool_ptr graph_pool::open(const std::string& path, bool init) {
     return std::make_unique<graph_pool>();
 }
 
-void graph_pool::destroy(graph_pool_ptr& p) {}
+void graph_pool::destroy(graph_pool_ptr& p) {
+#ifdef USE_MMFILE
+    for (auto& gp : p->graphs_) { 
+        graph_db::destroy(gp.second);
+    }
+#endif    
+}
 
 graph_pool::graph_pool() {}
 

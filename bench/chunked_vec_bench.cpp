@@ -39,7 +39,7 @@ void create_data(p_ptr<node_list> nlist) {
   }
 
   unsigned long num = 0;
-  for (auto &n : nlist->as_vec()) {
+  for (__attribute__((unused)) auto &n : nlist->as_vec()) {
     num++;
   }
   assert(num == 99'000);
@@ -82,7 +82,7 @@ p_ptr<node_list> prepare_table() {
 
 void drop_table(p_ptr<node_list> nlist) {
   unsigned long num = 0;
-  for (auto &n : nlist->as_vec()) {
+  for (__attribute__((unused)) auto &n : nlist->as_vec()) {
     num++;
   }
   std::cout << num << " records found (expected: 109'000)" << std::endl;

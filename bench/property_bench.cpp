@@ -87,7 +87,7 @@ BENCHMARK(BM_CreatePItemArray);
 static void BM_AccessDoublePItem(benchmark::State &state) {
   p_item pi(42, 66.67);
   for (auto _ : state) {
-    double d = pi.get<double>();
+    __attribute__((unused)) double d = pi.get<double>();
   }
 }
 
@@ -98,7 +98,7 @@ BENCHMARK(BM_AccessDoublePItem);
 static void BM_AccessIntPItem(benchmark::State &state) {
   p_item pi(42, 69);
   for (auto _ : state) {
-    double d = pi.get<int>();
+    __attribute__((unused)) double d = pi.get<int>();
   }
 }
 

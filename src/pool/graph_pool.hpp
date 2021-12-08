@@ -80,7 +80,7 @@ private:
      * member functions.
      */
     graph_pool();
-
+   
 #ifdef USE_PMDK
     using hashmap = pmem::obj::concurrent_hash_map<string_t, graph_db_ptr, string_hasher>;
     p_ptr<hashmap> indexes_;
@@ -90,10 +90,10 @@ private:
     };
 
     pmem::obj::pool<root> pop_;
-    std::string path_;
 #else
     std::unordered_map<std::string, graph_db_ptr> graphs_;
 #endif
+    std::string path_;
 };
 
 #endif

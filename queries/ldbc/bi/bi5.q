@@ -1,23 +1,15 @@
-auto score = [&](auto &v) {
-    auto reply_cnt = boost::get<uint64_t>(v[1]);
-    auto like_cnt = boost::get<uint64_t>(v[3]);
-    auto msg_cnt = boost::get<uint64_t>(v[5 ]);
-    auto score = msg_cnt + 2 * reply_cnt + 10 * like_cnt;
-    return query_result(score);
-};
-
 Limit(100, 
     Sort([$4:uint64 DESC, $0:uint64 ASC],
-        Project([$0.id:uint64, $1, $3, $5, $6],
-            AppendToTuple(score(tuple),
-                Hashjoin({$0, $0},
-                    GroupBy([$4],
-                            [count($0)],
+        Project([$0.id:uint64, $1:uint64, $3:uint64, $5:uint64, $6:uint64],
+            Append(udf::score($1:uint64, $3:uint64, $5:uint64),
+                HashJoin([$0:node, $0:node],
+                    GroupBy([$4:node],
+                            [count($0:node)],
                         Expand(IN, "Comment",
                             ForeachRelationship(TO, ":replyOf", $2,
                                 Expand(OUT, "Person",
                                     ForeachRelationship(FROM, ":hasCreator",
-                                        Expand(IN, ["Post", "Comment"],
+                                        Expand(IN, "Post", "Comment",
                                             ForeachRelationship(TO, ":hasTag",
                                                 Filter($0.name == %tag,
                                                     NodeScan("Tag")
@@ -29,14 +21,14 @@ Limit(100,
                             )
                         )
                     ),
-                    Hashjoin({$0, $0},
-                        GroupBy([$4],
-                                [count($0)],
+                    HashJoin([$0:node, $0:node],
+                        GroupBy([$4:node],
+                                [count($0:node)],
                             Expand(IN, "Person",
                                 ForeachRelationship(TO, ":likes", $2,
                                     Expand(OUT, "Person",
                                         ForeachRelationship(FROM, ":hasCreator",
-                                            Expand(IN, ["Post", "Comment"],
+                                            Expand(IN, "Post", "Comment",
                                                 ForeachRelationship(TO, ":hasTag",
                                                     Filter($0.name == %tag,
                                                         NodeScan("Tag")
@@ -48,11 +40,11 @@ Limit(100,
                                 )
                             )
                         ),
-                        GroupBy([$4],
-                                [count($0)],
+                        GroupBy([$4:node],
+                                [count($0:node)],
                             Expand(OUT, "Person",
                                 ForeachRelationship(FROM, ":hasCreator",
-                                    Expand(IN, ["Post", "Comment"],
+                                    Expand(IN, "Post", "Comment",
                                         ForeachRelationship(TO, ":hasTag",
                                             Filter($0.name == %tag,
                                                 NodeScan("Tag")
