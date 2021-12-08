@@ -614,7 +614,7 @@ add_executable(run_ldbc_loader
  )
 
 target_link_libraries(run_ldbc_loader
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -627,7 +627,7 @@ add_executable(run_ldbc_bi
 )
 
 target_link_libraries(run_ldbc_bi
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -640,7 +640,7 @@ add_executable(run_ldbc_is
  )
 
 target_link_libraries(run_ldbc_is
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -653,7 +653,7 @@ add_executable(run_ldbc_updates
  )
 
 target_link_libraries(run_ldbc_updates
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -691,7 +691,7 @@ add_executable(run_ldbc_jit_reads
  )
 
 target_link_libraries(run_ldbc_jit_reads
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -704,7 +704,7 @@ add_executable(run_ldbc_jit_bi
  )
 
 target_link_libraries(run_ldbc_jit_bi
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -726,7 +726,7 @@ add_executable(run_gtpc_loader
  )
 
 target_link_libraries(run_gtpc_loader
-  poseidon_gtpc
+  ${POSEIDON_GTPC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -738,7 +738,7 @@ add_executable(run_gtpc
  )
 
 target_link_libraries(run_gtpc
-  poseidon_gtpc
+  ${POSEIDON_GTPC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
