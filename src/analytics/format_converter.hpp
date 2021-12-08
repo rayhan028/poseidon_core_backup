@@ -137,24 +137,25 @@ inline void parallel_poseidon_to_csr(graph_db_ptr gdb,
   }
 }
 
+#if defined CSR_DELTA_STORE && defined USE_TX
 inline void update_csr_with_delta(graph_db_ptr graph,
-    std::vector<uint64_t> &old_row_offs, std::vector<uint64_t> &old_col_inds,
-    std::vector<float> &old_edge_vals, std::vector<uint64_t> &new_row_offs,
-    std::vector<uint64_t> &new_col_inds, std::vector<float> &new_edge_vals) {
+  std::vector<uint64_t> &old_row_offs, std::vector<uint64_t> &old_col_inds,
+  std::vector<float> &old_edge_vals, std::vector<uint64_t> &new_row_offs,
+  std::vector<uint64_t> &new_col_inds, std::vector<float> &new_edge_vals) {
 
-  csr_delta::delta_map_t update_deltas;
-  csr_delta::delta_map_t append_deltas;
+  // restore update and append deltas into update and append delta maps
+  // an entry in a delta map is of the form: {node id, <[ids of neighbours], [edge weights]>}
+  csr_delta::delta_map_t update_deltas, append_deltas;
+  graph->restore_csr_delta(update_deltas, append_deltas);
 
-  graph->get_csr_delta()->restore_deltas(update_deltas, append_deltas);
-
-  auto update_edge_delta = 0; /// edge delta of existing nodes
+  auto update_edge_delta = 0; // edge delta of existing nodes i.e. from 0 to last node id in the current CSR
   for (auto &d : update_deltas) {
     int old_edges = old_row_offs[d.first + 1] - old_row_offs[d.first];
     int new_edges = d.second.first.size();
     auto diff = new_edges - old_edges;
     update_edge_delta += diff;
   }
-  auto append_edge_delta = 0; /// edge delta of newly appended nodes (no record slot reuse)
+  auto append_edge_delta = 0; // edge delta of newly appended nodes after the last node id in the current CSR
   for (auto &d : append_deltas)
     append_edge_delta += d.second.first.size();
 
@@ -164,11 +165,13 @@ inline void update_csr_with_delta(graph_db_ptr graph,
   new_col_inds.reserve(new_col_inds_size);
   new_edge_vals.reserve(new_col_inds_size);
 
-  /// entries for the first node until the last updated
+  // process entries for the first node until the last updated node
   uint64_t next_id = 0;
   new_row_offs.push_back(0);
   for (auto &d : update_deltas) { // TODO potential optimization using next_id and prev_id
-    while (next_id < d.first) { /// unchanged nodes
+    while (next_id < d.first) {
+      // possibly, some nodes between the first node and the last updated node are unchanged
+      // we just copy the entries for such nodes from the current (i.e. old) CSR to the new CSR 
       auto edges = old_row_offs[next_id + 1] - old_row_offs[next_id];
       new_row_offs.push_back(new_row_offs.back() + edges);
 
@@ -183,13 +186,15 @@ inline void update_csr_with_delta(graph_db_ptr graph,
       next_id++;
     }
     // assert(next_id == d.first);
+    // using the update delta map item, insert entries for the updated node into the new CSR
     new_row_offs.push_back(new_row_offs.back() + d.second.first.size());
     new_col_inds.insert(new_col_inds.end(), d.second.first.begin(), d.second.first.end());
     new_edge_vals.insert(new_edge_vals.end(), d.second.second.begin(), d.second.second.end());
     next_id++;
   }
 
-  /// entries for remaining unchanged nodes
+  // possibly, some nodes between the last updated node and the last node id in the current CSR are unchanged
+  // similarly, we just copy the entries for such nodes from the current (i.e. old) CSR to the new CSR 
   new_col_inds.insert(new_col_inds.end(), old_col_inds.begin() + old_row_offs[next_id], old_col_inds.end());
   new_edge_vals.insert(new_edge_vals.end(), old_edge_vals.begin() + old_row_offs[next_id], old_edge_vals.end());
   while (next_id < (old_row_offs.size() - 1)) {
@@ -198,7 +203,7 @@ inline void update_csr_with_delta(graph_db_ptr graph,
     next_id++;
   }
 
-  /// entries for newly appended nodes (no record reuse)
+  // finally, using the append delta map items, insert entries for the for newly appended nodes into the new CSR
   for (auto &d : append_deltas) {
     while (next_id < d.first) { // unused node record slots
       new_row_offs.push_back(new_row_offs.back());
@@ -211,6 +216,7 @@ inline void update_csr_with_delta(graph_db_ptr graph,
     next_id++;
   }
 }
+#endif
 
 /*
  * Struct used to store edge-coordinates in COO format

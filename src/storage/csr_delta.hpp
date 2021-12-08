@@ -15,6 +15,7 @@ struct delta_element {
 
   enum element_type { node_id, neighbour_id, rship_weight };
 
+  uint64_t txid_;
   uint64_t node_id_;
   element_type type_;
   uint64_t val_;
@@ -27,7 +28,7 @@ struct delta_element {
  */
 class csr_delta {
 public:
-  using range_iter = chunked_vec<delta_element>::range_iter;
+  using rship_weight = std::function<double(relationship&)>;
   using delta_map_t =
     std::map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<double>>>;
 
@@ -45,34 +46,52 @@ public:
   void initialize();
 
   /**
-   * Returns the underlying vector of the update delta elements.
-   */
-  chunked_vec<delta_element>& update_deltas_as_vec() { return update_deltas_; }
-
-  /**
-   * Returns the underlying vector of the append delta elements.
-   */
-  chunked_vec<delta_element>& append_deltas_as_vec() { return append_deltas_; }
-
-  /**
    * Adds the elements of an update delta to the list of update delta elements.
    */
-  void add_update_delta(uint64_t nid, std::vector<uint64_t> &&ids,
-                        std::vector<double> &&weights);
+  void add_update_delta(uint64_t txid, uint64_t nid, const std::list<uint64_t> &ids,
+                        const std::list<double> &weights);
 
   /**
    * Adds the elements of an append delta to the list of append delta elements.
    */
-  void add_append_delta(uint64_t nid, std::vector<uint64_t> &&ids,
-                        std::vector<double> &&weights);
+  void add_append_delta(uint64_t txid, uint64_t nid, const std::list<uint64_t> &ids,
+                        const std::list<double> &weights);
 
   /**
-   * TODO.
+   * Restores update and append deltas from the list of update and append delta elements 
+   * into update and append delta maps respectively.
    */
-  void restore_deltas(std::map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<double>>> &update_deltas,
-                               std::map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<double>>> &append_deltas);
+  void restore_deltas(delta_map_t &&update_deltas, delta_map_t &&append_deltas, offset_t last_id);
+
+  /**
+   * Deletes all chunks of the update and append delta lists and sets the lists as empty.
+   * And sets the bidirectional flag, relationship weight function and last node is 
+   * to the given corresponding parameters. 
+   */
+  void reset_csr_delta(bool bidir = false, rship_weight func = [](relationship &r) { return 1.3; },
+                       offset_t node_id = UNKNOWN);
+
+  /**
+   * Returns the weight of a given relationship using the weight function.
+   */
+  double get_rship_weight(relationship &r) { return weight_func_(r); }
+
+  /**
+   * Returns whether only outgoing relationships are considered (false) 
+   * or both outgoing and incoming relationships are considered (true).
+   */
+  bool get_bidirectional() { return bidirectional_; }
+
+  /**
+   * Returns the last node id in current CSR
+   */
+  offset_t get_last_node_id() { return last_node_id_; }
 
 private:
+  bool bidirectional_ = false;
+  rship_weight weight_func_ = [](relationship &r) { return 1.3; };
+  offset_t last_node_id_ = UNKNOWN;
+
   chunked_vec<delta_element> update_deltas_; // the actual list of update delta elements
   chunked_vec<delta_element> append_deltas_; // the actual list of append delta elements
 };
