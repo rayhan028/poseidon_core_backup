@@ -71,8 +71,7 @@ inline constexpr null_t null_val(-1);
 
 struct array_t {
   array_t(std::vector<uint64_t> v) : elems(v) {}
-  inline bool operator()(const array_t& one, const array_t& two) { return true; }
-  inline bool operator==(const array_t& other) const { return true; }
+  inline bool operator==(const array_t& other) const { return elems == other.elems; }
   std::vector<uint64_t> elems;
 };
 
