@@ -260,6 +260,8 @@ property_set::id_t property_list::add_properties(offset_t nid,
   property_set::id_t next_id = UNKNOWN;
   property_set::p_item_list pil;
   std::size_t pidx = 0, n = 0;
+
+  pil.fill(p_item(0));
   for (auto &kv : props) {
     pil[pidx++] = p_item(kv.first, kv.second, dct);
     if (++n == props.size() || pidx == pil.max_size()) {
@@ -273,7 +275,7 @@ property_set::id_t property_list::add_properties(offset_t nid,
 
       next_id = id;
       pidx = 0;
-      pil.fill(p_item());
+      pil.fill(p_item(0));
     }
   }
   return next_id;
@@ -286,6 +288,8 @@ property_set::id_t property_list::add_pitems(offset_t nid,
   property_set::id_t next_id = UNKNOWN;
   property_set::p_item_list pil;
   std::size_t pidx = 0, n = 0;
+
+  pil.fill(p_item(0));
   for (auto &pi : props) {
     pil[pidx++] = pi;
     if (++n == props.size() || pidx == pil.max_size()) {
@@ -294,7 +298,7 @@ property_set::id_t property_list::add_pitems(offset_t nid,
       ulock.unlock();  
       next_id = pr.first;
       pidx = 0;
-      pil.fill(p_item());
+      pil.fill(p_item(0));
     }
   }
   return next_id;
@@ -308,6 +312,8 @@ property_set::id_t property_list::update_pitems(offset_t nid, offset_t id,
   property_set::id_t head_id = id;
   property_set::p_item_list pil;
   std::size_t pidx = 0, n = 0;
+
+  pil.fill(p_item(0));
   for (auto &pi : props) {
     pil[pidx++] = pi;
     if (++n == props.size() || pidx == pil.max_size()) {
@@ -317,7 +323,7 @@ property_set::id_t property_list::update_pitems(offset_t nid, offset_t id,
         id = old.next;
         /// spdlog::info("next id: {}", id);
         pidx = 0;
-        pil.fill(p_item());
+        pil.fill(p_item(0));
       } else {
         // we have some additional properties which do not fit on the
         // current properties_ entries -> let's create a new one
@@ -331,7 +337,7 @@ property_set::id_t property_list::update_pitems(offset_t nid, offset_t id,
 
         head_id = new_id;
         pidx = 0;
-        pil.fill(p_item());
+        pil.fill(p_item(0));
       }
     }
   }
@@ -344,6 +350,8 @@ property_list::append_properties(offset_t nid, const properties_t &props,
   property_set::id_t next_id = UNKNOWN;
   property_set::p_item_list pil;
   std::size_t pidx = 0, n = 0;
+
+  pil.fill(p_item(0));
   for (auto &kv : props) {
     pil[pidx++] = p_item(kv.first, kv.second, dct);
     if (++n == props.size() || pidx == pil.max_size()) {
@@ -351,7 +359,7 @@ property_list::append_properties(offset_t nid, const properties_t &props,
           properties_.append(property_set(nid, std::move(pil), next_id));
       next_id = p.first;
       pidx = 0;
-      pil.fill(p_item());
+      pil.fill(p_item(0));
     }
   }
   return next_id;
@@ -365,6 +373,8 @@ property_set::id_t property_list::append_typed_properties(offset_t nid,
   property_set::p_item_list pil;
   std::size_t pidx = 0;
   // spdlog::info("append_typed_properties: {}, {}", values.size(), keys.size());
+
+  pil.fill(p_item(0));
   for (auto i = 0u; i < keys.size(); i++) {
     if (values[i].empty()) // we don't add empty properties
       continue;
@@ -375,7 +385,7 @@ property_set::id_t property_list::append_typed_properties(offset_t nid,
           properties_.append(property_set(nid, std::move(pil), next_id));
       next_id = p.first;
       pidx = 0;
-      pil.fill(p_item());
+      pil.fill(p_item(0));
     }
   }
   return next_id;
@@ -391,6 +401,8 @@ property_set::id_t property_list::append_typed_properties(offset_t nid,
   property_set::p_item_list pil;
   std::size_t pidx = 0;
   // spdlog::info("append_typed_properties: {}, {}", values.size(), keys.size());
+
+  pil.fill(p_item(0));
   for (auto i = 0u; i < keys.size(); i++) {
     if (values[i].empty()) // we don't add empty properties
       continue;
@@ -401,7 +413,7 @@ property_set::id_t property_list::append_typed_properties(offset_t nid,
           properties_.append(property_set(nid, std::move(pil), next_id));
       next_id = p.first;
       pidx = 0;
-      pil.fill(p_item());
+      pil.fill(p_item(0));
     }
   }
   return next_id;
@@ -540,7 +552,7 @@ property_set::id_t property_list::update_properties(offset_t nid, offset_t id,
             property_set(nid, std::move(pil), next_id));
         next_id = p.first;
         pidx = 0;
-        pil.fill(p_item());
+        pil.fill(p_item(0));
       }
     }
   }
@@ -660,4 +672,18 @@ property_list::build_properties_from_pitems(const std::list<p_item> &pitems,
     }
   }
   return pmap;
+}
+
+void property_list::dump() {
+  std::cout << "------- PROPERTY SETS -------" << std::endl;
+  for (const auto& ps : properties_) {
+    std::cout << "owner=" 
+      << ps.owner 
+      << ", next=" << uint64_to_string(ps.next) 
+      << ", items=[";
+    for (auto i = 0u; i < 3; i++) {
+      std::cout << std::hex << ps.items[i].key_ << ",";
+    }
+    std::cout << "]" << std::endl;
+  }
 }

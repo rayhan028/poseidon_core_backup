@@ -173,8 +173,8 @@ void relationship_list::dump() {
       << " [ txn-id=" << short_ts(r.txn_id()) << ", bts=" << short_ts(r.bts())
               << ", cts=" << short_ts(r.cts()) << ", dirty=" << r.d_->is_dirty_ 
               << " ], label = " << r.rship_label << ", " << r.src_node
-              << "->" << r.dest_node << ", " << r.next_src_rship << ", "
-              << r.next_dest_rship;
+              << "->" << r.dest_node << ", next_src=" << uint64_to_string(r.next_src_rship) << ", next_dest="
+              << uint64_to_string(r.next_dest_rship);
     if (r.has_dirty_versions()) {
       // print dirty list
       std::cout << " {\n";

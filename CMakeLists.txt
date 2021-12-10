@@ -224,7 +224,7 @@ include(FetchContent REQUIRED)
  FetchContent_Declare(
   pegtl
   GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
-  GIT_TAG       3.2.1
+  GIT_TAG       3.2.2
   )
 FetchContent_GetProperties(pegtl)
 if(NOT pegtl_POPULATED)

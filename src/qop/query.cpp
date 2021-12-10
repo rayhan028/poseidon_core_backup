@@ -462,6 +462,13 @@ void query_set::start() {
   }
 }
 
+void query_set::append_printer() {
+  // TODO: find the last operator
+  auto qop = queries_.at(0).plan_tail_;
+  auto op = std::make_shared<printer>();
+  return qop->connect(op, std::bind(&printer::process, op.get(), ph::_1, ph::_2));
+}
+
 #ifdef QOP_RECOVERY
 query &
 query::recover_results() {

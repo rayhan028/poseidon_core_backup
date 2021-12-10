@@ -1155,6 +1155,8 @@ dcode_t graph_db::get_code(const std::string &s) {
 void graph_db::dump() {
   nodes_->dump();
   rships_->dump();
+  node_properties_->dump();
+  rship_properties_->dump();
 }
 
 void graph_db::dump_dot(const std::string& fname) {

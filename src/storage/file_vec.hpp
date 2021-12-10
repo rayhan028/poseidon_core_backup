@@ -54,7 +54,7 @@ public:
       std::size_t region_size = data_file_.size();
       capacity_     = region_size / sizeof(T);
       data_         = new (base_addr + 2 * sizeof(offset_t)) T[capacity_];
-      slots_        = new (slot_file_.base_address()) uint64_t[capacity_ / 64];
+      slots_        = new (static_cast<uint8_t *>(slot_file_.base_address())) uint64_t[capacity_ / 64];
       // first_        = find_first_available(0);
       memcpy(&first_, base_addr, sizeof(offset_t));
       memcpy(&last_, base_addr + sizeof(offset_t), sizeof(offset_t));
@@ -89,9 +89,15 @@ public:
   class iter {
    public:
     iter(T *ptr, uint64_t *slots, offset_t last = 0) : slots_(slots), ptr_(ptr), pos_(0), last_(last) {
+      auto num_entries = 64u;
       if (ptr_ != nullptr) {
         // skip empty slots
-        while (!is_used(pos_)) pos_++;
+         while (pos_ < num_entries) {
+          if (is_used(pos_))
+            break;
+          pos_++;
+        }
+        // while (!is_used(pos_)) pos_++;
         if (pos_ > last_) { 
           // we are behind the end -> empty vector
           pos_ = last_; 

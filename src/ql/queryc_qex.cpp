@@ -44,12 +44,12 @@ query_set queryc::generate_qex_plan(graph_db_ptr &gdb, const std::string &qstr) 
   query_set qset;
   for (auto& src : sources) {
     query q(gdb, src);
-    // q.print_plan(std::cout); 
+    q.print_plan(std::cout); 
     qset.add(q);
   }
   std::cout << "query_set: " << qset.size() << std::endl;
-  qset.at(0).print_plan(std::cout);
-  qset.at(1).print_plan(std::cout);
+  // qset.at(0).print_plan(std::cout);
+  // qset.at(1).print_plan(std::cout);
   // query q(gdb, qop.first);
   qset.print_plan(std::cout);
   return qset;
@@ -60,20 +60,20 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
   std::pair<qop_ptr, qop_ptr> res, res2;
 
   if (!ast->is_source()) {
-    std::cout << "begin res\n";
     res = ast_to_qex(ast->children_[0], gdb, sources);
-    std::cout << "end res\n";
     /* TODO */
     if (ast->children_.size() == 2) {
-    std::cout << "begin res2\n";
       res2 = ast_to_qex(ast->children_[1], gdb, sources);
-    std::cout << "end res2\n";
     }    
   }
-  std::cout << "ast_to_qex: " << ast->op_ << std::endl;
+  // std::cout << "ast_to_qex: " << ast->op_ << std::endl;
   switch (ast->op_) {
     case ast_op::node_scan:
-      qop = std::make_shared<scan_nodes>(ast->get_param<std::string>(0));
+      // TODO: handle also params like [ 'label1', 'label2' ]
+      if (ast->num_params() == 0)
+        qop = std::make_shared<scan_nodes>();
+      else if (ast->num_params() == 1)
+        qop = std::make_shared<scan_nodes>(trim_string(ast->get_param<std::string>(0)));
       sources.push_back(qop);
       return std::make_pair(qop, qop);
       break;

@@ -126,7 +126,11 @@ void interpret_query(graph_db_ptr &gdb, const std::string &qstr) {
   queryc qlc;
   spdlog::debug("create AOT query code");
   auto qset = qlc.generate_qex_plan(gdb, qstr);  
-  qset.start(); 
+  qset.append_printer();
+  gdb->run_transaction([&]() {
+    qset.start(); 
+    return true;
+  });
 }
 
 /**
@@ -382,9 +386,8 @@ int main(int argc, char* argv[]) {
     run_shell(graph, qex_cc);
   }
 
+  // exec_query(graph, "NodeScan()", false);
   //exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
-
-  // exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
 
   if (!query_file.empty()) {
     // load the query from the file
