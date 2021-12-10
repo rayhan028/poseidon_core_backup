@@ -25,6 +25,7 @@
 #include "spdlog/spdlog.h"
 #include <iostream>
 #include <stdio.h>
+#include <set>
 
 #ifdef USE_MMFILE
 #include <boost/filesystem.hpp>
@@ -71,6 +72,9 @@ graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
   dict_ = p_make_ptr<dict>(prefix);
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
+#if defined CSR_DELTA_STORE && defined USE_TX
+  csr_delta_ = p_make_ptr<csr_delta>();
+#endif
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   m_ = new std::mutex();
   garbage_ = new gc_list();
@@ -102,6 +106,9 @@ void graph_db::runtime_initialize() {
   dict_->initialize();
   // perform recovery using the undo log
   apply_undo_log();
+#if defined CSR_DELTA_STORE && defined USE_TX
+  csr_delta_->initialize();
+#endif
   // recreate volatile objects: active_tx_ table and mutex
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   oldest_xid_ = 0;
@@ -228,7 +235,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
   }
 
 void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t rel_id) {
-  std::cout << "commit_dirty_relationship" << std::endl;
+  // std::cout << "commit_dirty_relationship" << std::endl;
   auto xid = tx->xid();
 	auto& r = rships_->get(rel_id);
   // If the relationship was already deleted we can skip all other entries...
@@ -327,17 +334,86 @@ bool graph_db::commit_transaction() {
     oldest_xid_ = !active_tx_->empty() ? active_tx_->begin()->first : xid;
   }
 
+#ifdef CSR_DELTA_STORE
+  std::set<node::id_t> updated_nodes, deleted_nodes, deleted_rships;
+#endif
+
   // process dirty_rships list
- for (auto rel_id : tx->dirty_relationships())  {
+  for (auto rel_id : tx->dirty_relationships())  {
+#ifdef CSR_DELTA_STORE
+    auto& r = rships_->get(rel_id);
+    if (!r.has_valid_version(xid)) {
+      // neighbour nodes that will be removed from current CSR
+      deleted_rships.insert(rel_id);
+      updated_nodes.insert(r.from_node_id());
+      updated_nodes.insert(r.to_node_id());
+    }
+#endif
     commit_dirty_relationship(tx, rel_id);
   }
 
   // process dirty_nodes list
   for (auto node_id : tx->dirty_nodes()) {
+#ifdef CSR_DELTA_STORE
+    auto& n = nodes_->get(node_id);
+    if (!n.has_valid_version(xid)) {
+      // nodes whose entire neighbour nodes will be removed from current CSR
+      deleted_nodes.insert(node_id);
+    }
+    updated_nodes.insert(node_id);
+#endif
     commit_dirty_node(tx, node_id);
   }
 
+  // log end of transaction
   ulog_->transaction_end(current_transaction_->logid());
+
+#ifdef CSR_DELTA_STORE
+  std::list<uint64_t> neigbour_node_ids;
+  std::list<double> rship_weights;
+  auto last_nid = csr_delta_->get_last_node_id(); // last node id in current CSR
+
+  for (auto node_id : updated_nodes) {
+    auto &n = nodes_->get(node_id);
+    if (deleted_nodes.find(node_id) == deleted_nodes.end()) {
+      auto rid = n.from_rship_list;
+      while (rid != UNKNOWN) {
+        auto &r = rships_->get(rid);
+        if (deleted_rships.find(rid) == deleted_rships.end()) {
+          // destination neighbour of node with id "node_id"
+          neigbour_node_ids.push_back(r.to_node_id());
+          rship_weights.push_back(csr_delta_->get_rship_weight(r));
+        }
+        rid = r.next_src_rship;
+      }
+
+      if (csr_delta_->get_bidirectional()) {
+        rid = n.to_rship_list;
+        while (rid != UNKNOWN) {
+          auto &r = rships_->get(rid);
+          if (deleted_rships.find(rid) == deleted_rships.end()) {
+            // source neighbour of node with id "node_id"
+            neigbour_node_ids.push_back(r.from_node_id());
+            rship_weights.push_back(csr_delta_->get_rship_weight(r));
+          }
+          rid = r.next_dest_rship;
+        }
+      }
+    }
+
+    if (last_nid == UNKNOWN || last_nid < node_id) {
+      // newly appended node with id "node_id"
+      csr_delta_->add_append_delta(xid, node_id, neigbour_node_ids, rship_weights);
+    }
+    else {
+      // current CSR contains node with id "node_id"
+      csr_delta_->add_update_delta(xid, node_id, neigbour_node_ids, rship_weights);
+    }
+    neigbour_node_ids.clear();
+    rship_weights.clear();
+  }
+#endif
+
   current_transaction_.reset();
   vacuum(xid);
 #endif
@@ -961,14 +1037,14 @@ void graph_db::delete_node(node::id_t id) {
 
   // then, we make a copy of the original node which is stored in
   // the dirty list
-  std::list<p_item> pitems =
-      node_properties_->build_dirty_property_list(n.property_list);
-  // cts is set to txid
-  const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
-  oldv->elem_.set_timestamps(n.bts(), txid);
-  oldv->elem_.set_dirty();
-  // but unlock it for readers
-  oldv->elem_.unlock();
+    std::list<p_item> pitems =
+        node_properties_->build_dirty_property_list(n.property_list);
+    // cts is set to txid
+    const auto& oldv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
+    oldv->elem_.set_timestamps(n.bts(), txid);
+    oldv->elem_.set_dirty();
+    // but unlock it for readers
+    oldv->elem_.unlock();
 
   // ... and create another copy as the new deleted version
   const auto &newv = n.add_dirty_version(std::make_unique<dirty_node>(n, std::list<p_item>(), true /* updated */));
@@ -1094,6 +1170,43 @@ void graph_db::detach_delete_node(node::id_t id) {
   }
   node_properties_->remove_properties(n.property_list);
   nodes_->remove(id);
+#endif
+}
+
+void graph_db::delete_relationship(node::id_t src, node::id_t dest) {
+ #ifdef USE_TX
+  // acquire lock and create a dirty object
+  check_tx_context();
+  xid_t txid = current_transaction()->xid();
+
+  auto &n = this->node_by_id(src);
+
+  auto relship_id = n.from_rship_list;
+  while (relship_id != UNKNOWN) {
+    auto& relship = rships_->get(relship_id);
+    if (relship.is_locked_by(txid)) {
+      // because the relationship is locked we know that it was already updated
+      // by us and we should look for the dirty object containing the new values
+      assert(relship.has_dirty_versions());
+      if (relship.has_valid_version(txid) && (relship.to_node_id() == dest))
+        return delete_relationship(relship_id);
+    }
+    else if (relship.is_valid_for(txid) && (relship.to_node_id() == dest))
+      return delete_relationship(relship_id);
+
+    relship_id = relship.next_src_rship;
+  }
+
+#else
+  auto &n = this->node_by_id(src);
+
+  auto relship_id = n.from_rship_list;
+  while (relship_id != UNKNOWN) {
+    auto& relship = rships_->get(relship_id);
+    if (relship.to_node_id() == dest)
+      return delete_relationship(relship_id);
+    relship_id = relship.next_src_rship;
+  }
 #endif
 }
 
@@ -1282,3 +1395,13 @@ bool graph_db::has_valid_to_rships(node &n, xid_t xid) {
   }
   return false;
 }
+
+#if defined CSR_DELTA_STORE && defined USE_TX
+void graph_db::restore_csr_delta(csr_delta::delta_map_t &update_deltas,
+                                 csr_delta::delta_map_t &append_deltas) {
+  auto last_node_id = get_nodes()->as_vec().last_used();
+  return csr_delta_->restore_deltas(std::move(update_deltas),
+                                    std::move(append_deltas),
+                                    last_node_id); 
+}
+#endif

@@ -11,17 +11,19 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK       "Use Intel PMDK"                         ON)
-option(USE_MMFILE     "Use memory mapped file storage"         OFF)
-option(USE_HDICT      "Use hdict implementation"               ON)
-option(USE_TX         "Provide Transaction Support"            ON)
-option(USE_LOGGING    "Use undo logging for failure atomicity" ON)
-option(USE_LLVM       "Use LLVM for query compilation"         ON)
-option(BUILD_PYTHON   "Build python interface for poseidon"    ON)
-option(QOP_PROFILING  "Enable query profiling"                 ON)
-option(QOP_RECOVERY   "Enable query recovery on failure"       OFF)
-option(BUILD_LDBC     "Build code for LDBC benchmark"          OFF)
-option(BUILD_GTPC     "Build code for GTPC benchmark"          OFF)
+option(USE_PMDK         "Use Intel PMDK"                         ON)
+option(USE_MMFILE       "Use memory mapped file storage"         OFF)
+option(USE_HDICT        "Use hdict implementation"               ON)
+option(USE_TX           "Provide Transaction Support"            ON)
+option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
+option(USE_LLVM         "Use LLVM for query compilation"         ON)
+option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
+option(QOP_PROFILING    "Enable query profiling"                 ON)
+option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
+option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
+option(BUILD_GTPC       "Build code for GTPC benchmark"          OFF)
+option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
+option(CSR_DELTA_STORE  "Use delta store for updating CSR"       ON)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -85,6 +87,10 @@ if(QOP_RECOVERY MATCHES ON)
   add_definitions( "-DQOP_RECOVERY" )
 endif()
 
+if(CSR_DELTA_STORE MATCHES ON)
+  add_definitions( "-DCSR_DELTA_STORE" )
+endif()
+
 configure_file(
   ${PROJECT_SOURCE_DIR}/src/config.h.in
   ${PROJECT_BINARY_DIR}/generated/config.h
@@ -132,6 +138,16 @@ if(CMAKE_BUILD_TYPE MATCHES Release)
 endif()
 
 #---------------------------------------------------------------------------
+
+# Gunrock =================================================================== #
+# TODO: Throw exception if /usr/lib/libgunrock.so is not found. Right now cmake 
+#       will not inform you, but the linker will fail to finish building Poseidon
+
+if(USE_GUNROCK MATCHES ON)
+add_library(gunrock SHARED IMPORTED)
+set_property(TARGET gunrock PROPERTY IMPORTED_LOCATION "/usr/lib/libgunrock.so")
+message(STATUS "Include library gunrock. Make sure /usr/lib/libgunrock.so exists!")
+endif()
 
 # Catch =================================================================== #
 include(FetchContent REQUIRED)
@@ -356,6 +372,17 @@ else()
   set(dict_src src/dict/dict_bimap.cpp)
 endif()
 
+
+if(USE_GUNROCK MATCHES ON)
+  set(gunrock_analysis 
+    src/analytics/gunrock_sssp.cpp
+    src/analytics/gunrock_bfs.cpp
+    src/analytics/gunrock_pr.cpp
+  )
+else()
+  set(gunrock_analysis "")
+endif()
+
 if(USE_LLVM MATCHES ON)
   set(codegen_operators_src
     src/qcomp/operators/append.cpp
@@ -402,6 +429,12 @@ else()
   set(qoprec_src "")
 endif()
 
+if(CSR_DELTA_STORE MATCHES ON)
+  set(csr_delta_src src/storage/csr_delta.cpp)
+else()
+  set(csr_delta_src "")
+endif()
+
 set(src_files 
   ${dict_src} 
   src/storage/nodes.cpp
@@ -431,9 +464,11 @@ set(src_files
   src/ql/queryc_qex.cpp
   src/ql/queryc.cpp
   src/ql/ast.cpp
+  ${csr_delta_src}
   src/analytics/bfs.cpp
   src/analytics/shortest_path.cpp
-  )
+  ${gunrock_analysis}
+)
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
 # in different libraries.
@@ -449,6 +484,12 @@ add_library(poseidon_core SHARED
   $<TARGET_OBJECTS:poseidon_obj>
 )
 
+if(USE_GUNROCK MATCHES ON)
+  set(gunrock_linkLib gunrock)
+else()
+  set(gunrock_linkLib "")
+endif()
+
 if(USE_LLVM MATCHES ON)
   set(LLVM_LIB LLVM)
 else()
@@ -461,6 +502,7 @@ target_link_libraries(poseidon_core
   Boost::date_time
   Boost::thread
   spdlog::spdlog_header_only
+  ${gunrock_linkLib}
 )
 
 target_include_directories( ${PROJECT_NAME}
@@ -576,7 +618,7 @@ add_executable(run_ldbc_loader
  )
 
 target_link_libraries(run_ldbc_loader
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -589,7 +631,7 @@ add_executable(run_ldbc_bi
 )
 
 target_link_libraries(run_ldbc_bi
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -602,7 +644,7 @@ add_executable(run_ldbc_is
  )
 
 target_link_libraries(run_ldbc_is
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -615,7 +657,7 @@ add_executable(run_ldbc_updates
  )
 
 target_link_libraries(run_ldbc_updates
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -653,7 +695,7 @@ add_executable(run_ldbc_jit_reads
  )
 
 target_link_libraries(run_ldbc_jit_reads
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -666,7 +708,7 @@ add_executable(run_ldbc_jit_bi
  )
 
 target_link_libraries(run_ldbc_jit_bi
-  poseidon_ldbc
+  ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -688,7 +730,7 @@ add_executable(run_gtpc_loader
  )
 
 target_link_libraries(run_gtpc_loader
-  poseidon_gtpc
+  ${POSEIDON_GTPC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
@@ -700,7 +742,7 @@ add_executable(run_gtpc
  )
 
 target_link_libraries(run_gtpc
-  poseidon_gtpc
+  ${POSEIDON_GTPC}
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options

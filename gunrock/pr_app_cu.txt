@@ -1,0 +1,125 @@
+// COPY TO FILE {gunrock_dir}/gunrock/app/pr/pr_app.cu BEFORE COMPILING GUNROCK!
+
+/***********************************************************************************************/
+/***************** Cusomized versions of the public Gunrock PageRank interface *********************/
+/*************** Project: Parallel Graph Algorithms for Poseidon graph databse *****************/
+/***********************************************************************************************/
+
+/*
+ * @brief Customized interface take in graph as CSR format
+ * @param[in]  num_nodes   Number of veritces in the input graph
+ * @param[in]  num_edges   Number of edges in the input graph
+ * @param[in]  row_offsets CSR-formatted graph input row offsets
+ * @param[in]  col_indices CSR-formatted graph input column indices
+ * @param[in]  num_runs    Number of runs to perform PR
+ * @param[in]  sources     Sources for personalized PR
+ * @param[in]  normalize   Whether to normalize ranking values
+ * @param[out] node_ids    Return top-ranked vertex IDs
+ * @param[out] pagerank    Return PageRank scores per node
+ * \return     double      Return accumulated elapsed times for all runs
+ */
+template <typename VertexT = unsigned long long, typename SizeT = unsigned long long, typename ValueT = float>
+double poseidon_gunrock_pr(const SizeT num_nodes, const SizeT num_edges,
+                const SizeT *row_offsets, const VertexT *col_indices,
+                const int num_runs, bool normalize, VertexT *sources,
+                VertexT **node_ids, ValueT **ranks) {
+  typedef typename gunrock::app::TestGraph<
+      VertexT, SizeT, ValueT, gunrock::graph::HAS_COO | gunrock::graph::HAS_CSC>
+      GraphT;
+  typedef typename gunrock::app::TestGraph<VertexT, SizeT, ValueT,
+                                           gunrock::graph::HAS_CSR>
+      Graph_CsrT;
+  typedef typename Graph_CsrT::CsrT CsrT;
+
+  // Setup parameters
+  gunrock::util::Parameters parameters("pr");
+  gunrock::graphio::UseParameters(parameters);
+  gunrock::app::pr::UseParameters(parameters);
+  gunrock::app::UseParameters_test(parameters);
+  parameters.Parse_CommandLine(0, NULL);
+  parameters.Set("graph-type", "by-pass");
+  parameters.Set("normalize", normalize);
+  parameters.Set("num-runs", num_runs);
+  std::vector<VertexT> srcs;
+  VertexT InvalidValue = gunrock::util::PreDefinedValues<VertexT>::InvalidValue;
+
+  for (int i = 0; i < num_runs; i++) {
+    if (sources != NULL)
+      srcs.push_back(sources[i]);
+    else
+      srcs.push_back(InvalidValue);
+  }
+  parameters.Set("srcs", srcs);
+
+  bool quiet = parameters.Get<bool>("quiet");
+
+  CsrT csr;
+  // Assign pointers into gunrock graph format
+  csr.Allocate(num_nodes, num_edges, gunrock::util::HOST);
+  csr.row_offsets.SetPointer((unsigned long long *)row_offsets, num_nodes + 1,
+                             gunrock::util::HOST);
+  csr.column_indices.SetPointer((unsigned long long *)col_indices, num_edges,
+                                gunrock::util::HOST);
+  // csr.Move(gunrock::util::HOST, gunrock::util::DEVICE);
+
+  gunrock::util::Location target = gunrock::util::HOST;
+
+  GraphT graph;
+  graph.FromCsr(csr, target, 0, quiet, true);
+  csr.Release();
+  gunrock::graphio::LoadGraph(parameters, graph);
+
+  // Run the PR
+  double elapsed_time = gunrock_pagerank(parameters, graph, node_ids, ranks);
+
+  // Cleanup
+  // graph.Release();
+  // srcs.clear();
+
+  return elapsed_time;
+}
+
+/*
+ * @brief Customized interface take in graph as CSR format
+ * @param[in]  num_nodes   Number of veritces in the input graph
+ * @param[in]  num_edges   Number of edges in the input graph
+ * @param[in]  row_offsets CSR-formatted graph input row offsets
+ * @param[in]  col_indices CSR-formatted graph input column indices
+ * @param[in]  source      Source for personalized PR
+ * @param[in]  normalize   Whether to normalize ranking values
+ * @param[out] node_ids    Return top-ranked vertex IDs
+ * @param[out] pagerank    Return PageRank scores per node
+ * \return     double      Return accumulated elapsed times for all runs
+ */
+template <typename VertexT = unsigned long long, typename SizeT = unsigned long long, typename ValueT = float>
+double poseidon_gunrock_pr(const SizeT num_nodes, const SizeT num_edges,
+                const SizeT *row_offsets, const VertexT *col_indices,
+                bool normalize, VertexT source, VertexT *node_ids,
+                ValueT *ranks) {
+  if (source == -1) {
+    return poseidon_gunrock_pr(num_nodes, num_edges, row_offsets, col_indices,
+                    1 /* num_runs */, normalize, (unsigned long long *)NULL, &node_ids,
+                    &ranks);
+  }
+
+  return poseidon_gunrock_pr(num_nodes, num_edges, row_offsets, col_indices,
+                  1 /* num_runs */, normalize, &source, &node_ids, &ranks);
+}
+
+/*
+ * @brief Customized interface take in graph as CSR format
+ * @param[in]  num_nodes   Number of veritces in the input graph
+ * @param[in]  num_edges   Number of edges in the input graph
+ * @param[in]  row_offsets CSR-formatted graph input row offsets
+ * @param[in]  col_indices CSR-formatted graph input column indices
+ * @param[in]  normalize   Whether to normalize ranking values
+ * @param[out] node_ids    Return top-ranked vertex IDs
+ * @param[out] pagerank    Return PageRank scores per node
+ * \return     double      Return accumulated elapsed times for all runs
+ */
+double poseidon_gunrock_pr(const unsigned long long num_nodes, const unsigned long long num_edges,
+                const unsigned long long *row_offsets, const unsigned long long *col_indices, bool normalize,
+                unsigned long long *node_ids, float *ranks) {
+  return poseidon_gunrock_pr(num_nodes, num_edges, row_offsets, col_indices, normalize,
+                  (unsigned long long)-1 /* source */, node_ids, ranks);
+}

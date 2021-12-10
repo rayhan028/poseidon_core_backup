@@ -765,6 +765,31 @@ struct k_weighted_shortest_path_opr : public qop {
 };
 
 /**
+ * csr_data implements an operator to get data for for conversion 
+ * to the CSR format.
+ * The ids of the neighbours of each node of the graph are obtained. 
+ * In addition, the weight of the relationship connecting each 
+ * neighbouring node is computed from the weight function. 
+ * The bidirectional flag specifies whether only outgoing relationships 
+ * are considered (false) or both outgoing and incoming relationships 
+ * are considered (true).
+ */
+struct csr_data : public qop {
+  csr_data(rship_weight func, bool bidir = false,
+           std::size_t pos = std::numeric_limits<std::size_t>::max())
+           : pos_(pos), bidirectional_(bidir), weight_func_(func) {}
+  ~csr_data() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t pos_;
+  bool bidirectional_;
+  std::function<double (relationship &)> weight_func_;
+};
+
+/**
  * Operator for printing the content of a result set.
  */
 std::ostream &operator<<(std::ostream &os, const result_set &rs);
