@@ -25,7 +25,7 @@
 #include "catch.hpp"
 #include "config.h"
 #include "graph_db.hpp"
-#include "../qop/qop.hpp"
+#include "qop.hpp"
 
 #ifdef USE_PMDK
 #define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))

@@ -36,6 +36,7 @@
 #include "relationships.hpp"
 #include "shortest_path.hpp"
 #include "profiling.hpp"
+#include "filter_expression.hpp"
 
 template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
   std::vector<T> v2;
@@ -622,7 +623,10 @@ struct distinct_tuples : public qop {
  */
 struct filter_tuple : public qop {
   filter_tuple(std::function<bool(const qr_tuple &)> func)
-      : pred_func_(func) {}
+      : pred_func1_(func) {}
+  filter_tuple(expr& ex, std::function<bool(const qr_tuple &, expr&)> func)
+      : pred_func2_(func), ex_(ex) {}
+
   ~filter_tuple() = default;
 
   void dump(std::ostream &os) const override;
@@ -631,7 +635,9 @@ struct filter_tuple : public qop {
 
   void finish(graph_db_ptr &gdb);
 
-  std::function<bool(const qr_tuple &)> pred_func_;
+  std::function<bool(const qr_tuple &)> pred_func1_;
+  std::function<bool(const qr_tuple &, expr&)> pred_func2_;
+  expr ex_;
 };
 
 /**

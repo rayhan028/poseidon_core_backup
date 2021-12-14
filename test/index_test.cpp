@@ -26,7 +26,7 @@
 #include "config.h"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
-#include "../qop/qop.hpp"
+#include "qop.hpp"
 
 const std::string test_path = poseidon::gPmemPath + "index_test";
 

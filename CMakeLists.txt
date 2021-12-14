@@ -12,7 +12,7 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         ON)
-option(USE_MMFILE       "Use memory mapped file storage"         OFF)
+option(USE_MMFILE       "Use memory mapped file storage"         ON)
 option(USE_HDICT        "Use hdict implementation"               ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
@@ -103,6 +103,10 @@ configure_file(
 
 include_directories(${PROJECT_BINARY_DIR}/generated)
 include_directories(${PROJECT_SOURCE_DIR}/src/storage)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/ast)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/utils)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/plan_op)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/interp)
 include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
@@ -449,13 +453,14 @@ set(src_files
   src/storage/graph_db_recovery.cpp
   src/storage/mm_file.cpp
   src/btree/index_map.cpp
-  src/qop/profiling.cpp
-  src/qop/qop.cpp
-  src/qop/update.cpp
-  src/qop/join.cpp
+  src/query/plan_op/qop.cpp
+  src/query/interp/expr_interpreter.cpp
+  src/query/plan_op/update.cpp
+  src/query/plan_op/join.cpp
   src/qop/query.cpp
-  src/qop/query_printer.cpp
-  src/qop/thread_pool.cpp
+  src/query/utils/query_printer.cpp
+  src/query/utils/thread_pool.cpp
+  src/query/utils/profiling.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
@@ -463,7 +468,7 @@ set(src_files
   src/ql/queryc_qcomp.cpp
   src/ql/queryc_qex.cpp
   src/ql/queryc.cpp
-  src/ql/ast.cpp
+  src/query/ast/ast.cpp
   ${csr_delta_src}
   src/analytics/bfs.cpp
   src/analytics/shortest_path.cpp

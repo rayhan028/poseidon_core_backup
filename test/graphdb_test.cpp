@@ -27,7 +27,7 @@
 #include "exceptions.hpp"
 #include "graph_pool.hpp"
 #include "graph_db.hpp"
-#include "../qop/qop.hpp"
+#include "qop.hpp"
 #include "../src/ldbc/ldbc.hpp"
 #include <boost/algorithm/string.hpp>
 

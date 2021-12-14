@@ -849,12 +849,15 @@ void distinct_tuples::process(graph_db_ptr &gdb, const qr_tuple &v) {
 /* ------------------------------------------------------------------------ */
 
 void filter_tuple::dump(std::ostream &os) const {
-  os << "filter_tuple([]) - " << PROF_DUMP;
+  os << "filter_tuple([";
+  if (ex_) 
+    os << ex_->dump();
+  os << "]) - " << PROF_DUMP;
 }
 
 void filter_tuple::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
-  bool tp = pred_func_(v);
+  bool tp = ex_ ? pred_func2_(v, ex_) : pred_func1_(v);
   if (tp) {
     consume_(gdb, v);
     PROF_POST(1);
