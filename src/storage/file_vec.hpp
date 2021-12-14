@@ -342,6 +342,15 @@ public:
     std::cout << std::endl;
   }
 
+    /**
+   * Returns the last used slot or SIZE_MAX if no slot is
+   * used.
+   */
+  std::size_t last_used() const {
+    return last_;
+  }
+
+
 private:
   offset_t find_first_available(offset_t start) const {
     auto nslots = capacity_ / 64;

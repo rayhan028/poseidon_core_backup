@@ -27,6 +27,7 @@
 #include "qop.hpp"
 #include "update.hpp"
 #include "join.hpp"
+#include "expr_interpreter.hpp"
 
 namespace ph = std::placeholders;
 
@@ -47,11 +48,11 @@ query_set queryc::generate_qex_plan(graph_db_ptr &gdb, const std::string &qstr) 
     q.print_plan(std::cout); 
     qset.add(q);
   }
-  std::cout << "query_set: " << qset.size() << std::endl;
+  // std::cout << "query_set: " << qset.size() << std::endl;
   // qset.at(0).print_plan(std::cout);
   // qset.at(1).print_plan(std::cout);
   // query q(gdb, qop.first);
-  qset.print_plan(std::cout);
+  // qset.print_plan(std::cout);
   return qset;
 }
 
@@ -85,8 +86,8 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
       break;
     case ast_op::filter:
     {
-      // TODO: filter expression
-      auto qp = std::make_shared<filter_tuple>(nullptr);
+      auto ex = ast->get_param<expr>(0);
+      auto qp = std::make_shared<filter_tuple>(ex, [&](auto &p, expr &ex) { return interpret_expression(gdb, ex, p); });
       qop = qop_append(res2.first ? res2.second : res.second, qp);
     }
       break;
