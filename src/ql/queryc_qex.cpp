@@ -88,6 +88,7 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
     {
       auto ex = ast->get_param<expr>(0);
       // auto qp = std::make_shared<filter_tuple>(ex, [&](auto &p, expr &ex) { return interpret_expression(gdb, ex, p); });
+      auto qp = std::make_shared<filter_tuple>(nullptr);
       qop = qop_append(res2.first ? res2.second : res.second, qp);
     }
       break;
