@@ -27,7 +27,7 @@
 #include "qop.hpp"
 #include "update.hpp"
 #include "join.hpp"
-#include "expr_interpreter.hpp"
+// #include "expr_interpreter.hpp"
 
 namespace ph = std::placeholders;
 
@@ -87,7 +87,7 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
     case ast_op::filter:
     {
       auto ex = ast->get_param<expr>(0);
-      auto qp = std::make_shared<filter_tuple>(ex, [&](auto &p, expr &ex) { return interpret_expression(gdb, ex, p); });
+      // auto qp = std::make_shared<filter_tuple>(ex, [&](auto &p, expr &ex) { return interpret_expression(gdb, ex, p); });
       qop = qop_append(res2.first ? res2.second : res.second, qp);
     }
       break;
