@@ -611,23 +611,10 @@ endif()
 #
 
 if(BUILD_LDBC MATCHES ON)
-# The program for loading CSV files into PMem.
-#
-add_executable(run_ldbc_loader
-  src/ldbc/run_ldbc_loader.cpp
- )
-
-target_link_libraries(run_ldbc_loader
-  ${POSEIDON_LDBC}
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-
 # The program for executing BI queries.
 #
 add_executable(run_ldbc_bi
-  src/ldbc/run_ldbc_bi.cpp
+  src/cmds/ldbc/run_ldbc_bi.cpp
 )
 
 target_link_libraries(run_ldbc_bi
@@ -640,7 +627,7 @@ target_link_libraries(run_ldbc_bi
 # The program for executing short read queries.
 #
 add_executable(run_ldbc_is
-  src/ldbc/run_ldbc_is.cpp
+  src/cmds/ldbc/run_ldbc_is.cpp
  )
 
 target_link_libraries(run_ldbc_is
@@ -653,7 +640,7 @@ target_link_libraries(run_ldbc_is
 # The program for executing interactive update queries.
 #
 add_executable(run_ldbc_updates
-  src/ldbc/run_ldbc_updates.cpp
+  src/cmds/ldbc/run_ldbc_updates.cpp
  )
 
 target_link_libraries(run_ldbc_updates
@@ -662,30 +649,6 @@ target_link_libraries(run_ldbc_updates
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
-
-# The program for executing interactive delete queries.
-#
-# add_executable(run_ldbc_deletes
-#   src/ldbc/run_ldbc_deletes.cpp
-#  )
-
-# target_link_libraries(run_ldbc_deletes
-#   poseidon_core
-#   ${PMDK_LIBRARIES}
-#   Boost::program_options
-# )
-
-# The program for executing graphalytics.
-#
-# add_executable(run_ldbc_graphalytics
-#   src/ldbc/run_ldbc_graphalytics.cpp
-#  )
-
-# target_link_libraries(run_ldbc_graphalytics
-#   poseidon_core
-#   ${PMDK_LIBRARIES}
-#   Boost::program_options
-# )
 
 if(USE_LLVM MATCHES ON)
 # The program for executing jitted short read queries.
@@ -723,22 +686,10 @@ endif()
 #
 
 if(BUILD_GTPC MATCHES ON)
-# The program for loading CSV files into PMem.
-#
-add_executable(run_gtpc_loader
-  src/gtpc/run_gtpc_loader.cpp
- )
-
-target_link_libraries(run_gtpc_loader
-  ${POSEIDON_GTPC}
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
 # The program for executing gtpc queries.
 #
 add_executable(run_gtpc
-  src/gtpc/run_gtpc.cpp
+  src/cmds/gtpc/run_gtpc.cpp
  )
 
 target_link_libraries(run_gtpc

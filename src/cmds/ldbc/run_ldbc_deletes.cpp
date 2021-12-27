@@ -28,7 +28,7 @@ double calc_avg_time(const std::vector<double>& vec) {
 }
 
 double run_query_1(graph_db_ptr gdb) {
-    ;
+  return 0.0;
 }
 
 void run_benchmark(graph_db_ptr gdb) {
