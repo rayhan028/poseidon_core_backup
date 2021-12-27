@@ -23,58 +23,36 @@
 #include "graph_db.hpp"
 
 /**
- * Typedef for a predicate to check that a relationship is followed via the search.
- */
-using rship_predicate = std::function<bool(relationship&)>;
-
-/**
- * Typedef for a node visitor callback.
- */
-using node_visitor = std::function<void(node&)>;
-
-/**
- * Typedef for a node visitor callback which receives the full path.
- */
-using path = std::vector<offset_t>;
-
-using path_visitor = std::function<void(node&, const path&)>;
-
-/**
- * Typedef for a function that computes the weight of a relationship.
- */
-using rship_weight = std::function<double(relationship&)>;
-
-/**
  * A struct containing shortest path information.
  */
 struct path_item {
-    path_item() : hops_(0), weight_(0.0) {}
+  path_item() : hops_(0), weight_(0.0) {}
 
-    void trace_path(std::vector<uint64_t> &parent, uint64_t v) {
-        if (parent[v] == UNKNOWN) {
-            path_.push_back(v);
-            return;
-        }
-        trace_path(parent, parent[v]);
-        path_.push_back(v);
+  void trace_path(std::vector<uint64_t> &parent, uint64_t v) {
+    if (parent[v] == UNKNOWN) {
+      path_.push_back(v);
+      return;
     }
-    void set_path(path &p) {
-        path_ = p;
-    }
-    void set_hops(uint64_t h) {
-        hops_ = h;
-    }
-    void set_weight(double w) {
-        weight_ = w;
-    }
-    const path& get_path() { return path_; }
-    uint64_t get_hops() { return hops_; }
-    double get_weight() { return weight_; }
+    trace_path(parent, parent[v]);
+    path_.push_back(v);
+  }
+  void set_path(path &p) {
+    path_ = p;
+  }
+  void set_hops(uint64_t h) {
+    hops_ = h;
+  }
+  void set_weight(double w) {
+    weight_ = w;
+  }
+  const path& get_path() { return path_; }
+  uint64_t get_hops() { return hops_; }
+  double get_weight() { return weight_; }
 
 private:
-    path path_;
-    uint64_t hops_;
-    double weight_;
+  path path_;
+  uint64_t hops_;
+  double weight_;
 };
 
 /**
