@@ -99,4 +99,10 @@ class query_execution_error : public std::exception {
   }
 };
 
+class invalid_csr_update : public std::exception {
+  const char *what() const noexcept override {
+    return "Cannot update CSR to an older snapshot.";
+  }
+};
+
 #endif

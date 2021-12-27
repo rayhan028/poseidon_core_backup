@@ -559,14 +559,7 @@ public:
   /**
    * Returns a reference to the CSR delta store.
    */
-  const p_ptr<csr_delta>& get_csr_delta() { return csr_delta_; }
-
-  /**
-   * Restores the update and append delta elements into updata and 
-   * append delta maps respectively.
-   */
-  void restore_csr_delta(csr_delta::delta_map_t &update_deltas,
-                         csr_delta::delta_map_t &append_deltas);
+  p_ptr<csr_delta>& get_csr_delta() { return csr_delta_; }
 #endif
 
 private:

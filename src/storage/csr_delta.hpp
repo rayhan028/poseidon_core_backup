@@ -5,9 +5,10 @@
 #include "chunked_vec.hpp"
 
 /**
- * A struct for a CSR delta element. An element can be the id of a 
- * node to which updates are associated, or the ids of it neigbouring 
- * nodes or the weight of its relationships. 
+ * A struct for a CSR delta element. A delta element is associated with a node.
+ * The element can either be the id of a node to which updates of a transaction 
+ * are associated, or the id of a neigbour to that node, or the weight of 
+ * a relationship attached to that node. 
  */
 struct delta_element {
   delta_element() = default;
@@ -15,10 +16,11 @@ struct delta_element {
 
   enum element_type { node_id, neighbour_id, rship_weight };
 
-  uint64_t txid_;
-  uint64_t node_id_;
-  element_type type_;
-  uint64_t val_;
+  uint64_t txid_; // id of the transaction that stored the delta element for its modification
+  uint64_t node_id_; // id of the node to which the delta element is associated
+  element_type type_; // type of the delta element
+  uint64_t val_; // actual value of the delta element
+  bool restored_; // a flag indicating whether the delta element has been used in a CSR restore
 };
 
 /**
@@ -28,7 +30,6 @@ struct delta_element {
  */
 class csr_delta {
 public:
-  using rship_weight = std::function<double(relationship&)>;
   using delta_map_t =
     std::map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<double>>>;
 
@@ -46,35 +47,37 @@ public:
   void initialize();
 
   /**
-   * Adds the elements of an update delta to the list of update delta elements.
+   * Stores the elements of a delta to the vector of delta elements.
    */
-  void add_update_delta(uint64_t txid, uint64_t nid, const std::list<uint64_t> &ids,
-                        const std::list<double> &weights);
+  void store_delta(uint64_t nid, const std::list<uint64_t> &ids,
+                   const std::list<double> &weights, uint64_t txid);
 
   /**
-   * Adds the elements of an append delta to the list of append delta elements.
+   * Returns a reference to the underlying vector of delta elements.
    */
-  void add_append_delta(uint64_t txid, uint64_t nid, const std::list<uint64_t> &ids,
-                        const std::list<double> &weights);
+  chunked_vec<delta_element>& get_delta_elements() { return delta_elements_; }
 
   /**
-   * Restores update and append deltas from the list of update and append delta elements 
-   * into update and append delta maps respectively.
+   * Deletes all chunks of the vector of delta elements and sets the vector as empty.
    */
-  void restore_deltas(delta_map_t &&update_deltas, delta_map_t &&append_deltas, offset_t last_id);
+  void clear_delta_elements();
 
   /**
-   * Deletes all chunks of the update and append delta lists and sets the lists as empty.
-   * And sets the bidirectional flag, relationship weight function and last node is 
-   * to the given corresponding parameters. 
+   * Restores deltas from their corresponding delta elements into a delta map.
+   * An item in a delta map is of the form: 
+   * {node id, <[ids of neighbours], [edge weights]>}
    */
-  void reset_csr_delta(bool bidir = false, rship_weight func = [](relationship &r) { return 1.3; },
-                       offset_t node_id = UNKNOWN);
+  void restore_deltas(delta_map_t &deltas, uint64_t txid);
 
   /**
-   * Returns the weight of a given relationship using the weight function.
+   * Returns the weight function.
    */
-  double get_rship_weight(relationship &r) { return weight_func_(r); }
+  const rship_weight& get_weight_func() { return weight_func_; }
+
+  /**
+   * Sets the weight function.
+   */
+  void set_weight_func(const rship_weight &func) { weight_func_ = func; }
 
   /**
    * Returns whether only outgoing relationships are considered (false) 
@@ -83,17 +86,75 @@ public:
   bool get_bidirectional() { return bidirectional_; }
 
   /**
-   * Returns the last node id in current CSR
+   * Sets whether only outgoing relationships are considered (false) 
+   * or both outgoing and incoming relationships are considered (true).
+   */
+  void set_bidirectional(bool b) { bidirectional_ = b; }
+
+  /**
+   * Returns the last node id in the current CSR
    */
   offset_t get_last_node_id() { return last_node_id_; }
 
-private:
-  bool bidirectional_ = false;
-  rship_weight weight_func_ = [](relationship &r) { return 1.3; };
-  offset_t last_node_id_ = UNKNOWN;
+  /**
+   * Sets the last node id in the current CSR
+   */
+  void set_last_node_id(offset_t id) { last_node_id_ = id; }
 
-  chunked_vec<delta_element> update_deltas_; // the actual list of update delta elements
-  chunked_vec<delta_element> append_deltas_; // the actual list of append delta elements
+  /**
+   * Returns the id of the last transaction that made a CSR update.
+   */
+  uint64_t get_last_txn_id() { return last_txn_id_; }
+
+  /**
+   * Sets the id of the last transaction that made a CSR update.
+   */
+  void set_last_txn_id(uint64_t txid) { last_txn_id_ = txid; }
+
+  /**
+   * Returns the row offsets array of the current CSR.
+   */
+  const std::vector<offset_t>& get_row_offs() { return row_offsets_; }
+
+  /**
+   * Sets the row offsets array of the current CSR.
+   */
+  void set_row_offs(std::vector<offset_t> &vec) { row_offsets_ = vec; }
+
+  /**
+   * Returns the column indices array of the current CSR.
+   */
+  const std::vector<offset_t>& get_col_inds() { return col_indices_; }
+
+  /**
+   * Sets the column indices array of the current CSR.
+   */
+  void set_col_inds(std::vector<offset_t> &vec) { col_indices_ = vec; }
+
+  /**
+   * Returns the edge values array of the current CSR.
+   */
+  const std::vector<float>& get_edge_vals() { return edge_values_; }
+
+  /**
+   * Sets the edge values array of the current CSR.
+   */
+  void set_edge_vals(std::vector<float> &vec) { edge_values_ = vec; }
+
+private:
+  bool bidirectional_ = false;  // bi/uni-directional traversal of relationships
+  rship_weight weight_func_ =
+    [](relationship &r) { return 1.3; };  // function to compute weights of relationships
+
+  offset_t last_node_id_ = UNKNOWN; // id of the last node in the current CSR
+  uint64_t last_txn_id_ = UNKNOWN;  // id of the last transaction that made a CSR update
+
+  chunked_vec<delta_element> delta_elements_; // the underlying chunked vector of delta elements
+
+  // TODO these arrays are not needed here when CSR update is done directly on GPU
+  std::vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR
+  std::vector<offset_t> col_indices_ = {};  // column indices array of the current CSR
+  std::vector<float> edge_values_ = {};     // edge values array of the current CSR
 };
 
 
