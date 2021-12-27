@@ -19,44 +19,45 @@
 
 #include "gunrock_pr.hpp"
 
-uint64_t gunrock_pr_csr(graph_db_ptr gdb, bool bidirectional,
-                     rship_predicate rpred, pr_result &result, bool quiet) {
+uint64_t gunrock_pr_csr(graph_db_ptr gdb, bool bidirectional, pr_result &result, bool quiet) {
 
-    auto t1 = std::chrono::steady_clock::now();
+  csr_arrays csr;
+  auto t1 = std::chrono::steady_clock::now();
+  gdb->run_transaction([&]() {
+    poseidon_to_csr(gdb, csr, gdb->get_csr_delta()->get_weight_func(), bidirectional);
+    return true;
+  });
+  auto t2 = std::chrono::steady_clock::now();
 
-    offset_t num_nodes = gdb->get_nodes()->as_vec().last_used() + 1;
-    offset_t num_edges = gdb->get_relationships()->as_vec().last_used() + 1;
-    std::vector<offset_t> row_offsets = {};
-    std::vector<offset_t> col_indices = {};
-    std::vector<float> edge_dists = {};
+  offset_t num_nodes = gdb->get_nodes()->as_vec().last_used() + 1;
+  offset_t num_edges = gdb->get_relationships()->as_vec().last_used() + 1;
 
-    poseidon_to_csr(gdb, row_offsets, col_indices, edge_dists, [](auto& r) { return 1; }, bidirectional);
+  // Allocate memory for Gunrock output
+  offset_t *nids = (offset_t *)malloc(sizeof(off64_t) * num_nodes);
+  float *ranks = (float *)malloc(sizeof(float) * num_nodes);
 
-    auto t2 = std::chrono::steady_clock::now();
+  // Custom-written Poseidon function for Gunrock
+  // add this to Gunrock before compiling Gunrock in order to use it!
+  double exec_time = poseidon_gunrock_pr(num_nodes, num_edges, (unsigned long long*)csr.row_offsets.data(),
+                        (unsigned long long*)csr.col_indices.data(), true, (unsigned long long*)nids, (float *)ranks);
 
-    // Allocate memory for Gunrock output
-    offset_t *nids = (offset_t *)malloc(sizeof(off64_t) * num_nodes);
-    float *ranks = (float *)malloc(sizeof(float) * num_nodes);
+  result.set_result(ranks, nids, num_nodes);
+  free(nids);
+  free(ranks);
 
-    // Custom-written Poseidon function for Gunrock
-    // add this to Gunrock before compiling Gunrock in order to use it!
-    double exec_time = poseidon_gunrock_pr(num_nodes, num_edges, (unsigned long long*)row_offsets.data(),
-                         (unsigned long long*)col_indices.data(), true,
-                         (unsigned long long*)nids, (float *)ranks);
+  auto t3 = std::chrono::steady_clock::now();
 
-    result.set_result(ranks, nids, num_nodes);
-    free(nids);
-    free(ranks);
+  if (!quiet) { // For performance analysis
+    std::cout << "Executed PR using Gunrock with CSR graph representation. \n";
+#if defined CSR_DELTA_STORE && defined USE_TX
+    std::cout << "Full CSR build:         " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << "[ms]" << "\n";
+#else
+    std::cout << "CSR update with delta:         " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << "[ms]" << "\n";
+#endif
+    std::cout << "Execution: " << std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2).count() << "[ms]" << "\n";
+    std::cout << "Execution (measurement in Gunrock): " << exec_time << "[ms]" << "\n";
+    std::cout << "Total Elapsed time:    " << std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t1).count() << "[ms]" << "\n";
+  }
 
-    auto t3 = std::chrono::steady_clock::now();
-
-    if (!quiet) { // For performance analysis
-        std::cout << "Executed PR using Gunrock with CSR graph representation. \n";
-        std::cout << "Format Conversion to CSR:         " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << "[ms]" << "\n";
-        std::cout << "Execution: " << std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2).count() << "[ms]" << "\n";
-        std::cout << "Execution (measurement in Gunrock): " << exec_time << "[ms]" << "\n";
-        std::cout << "Total Elapsed time:    " << std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t1).count() << "[ms]" << "\n";
-    }
-
-    return std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t1).count();
+  return std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t1).count();
 }

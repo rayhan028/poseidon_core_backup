@@ -27,27 +27,17 @@
 #include <boost/heap/fibonacci_heap.hpp> // used by dijkstra (sequential SSSP)
 #include <chrono> // for elapsed time measurement
 
-/**
- * Typedef for a predicate to check that a relationship is followed via the search.
- */
-using rship_predicate = std::function<bool(relationship&)>;
-
-/**
- * Typedef for a function that computes the weight of a relationship.
- */
-using rship_weight = std::function<double(relationship&)>;
-
 /*
  * Struct used for efficient sequential weighted SSSP
  */
-struct nodeFibHeap{
-    node::id_t nodeID;
-    float distance;
+struct nodeFibHeap {
+  node::id_t nodeID;
+  float distance;
 
-    nodeFibHeap(node::id_t ID, float dist){
-        nodeID = ID;
-        distance = dist;
-    }
+  nodeFibHeap(node::id_t ID, float dist) {
+    nodeID = ID;
+    distance = dist;
+  }
 };
 
 /*
@@ -56,58 +46,57 @@ struct nodeFibHeap{
  * https://stackoverflow.com/questions/16705894/defining-compare-function-for-fibonacci-heap-in-boost
  */
 struct compare_nodes{
-    bool operator()(const nodeFibHeap& n1, const nodeFibHeap& n2) const
-    {
-        return n1.distance > n2.distance;
-    }
+  bool operator()(const nodeFibHeap& n1, const nodeFibHeap& n2) const {
+    return n1.distance > n2.distance;
+  }
 };
 
 /**
  * Struct containing the results of SSSP
  */
-struct SSSP_result {
-    SSSP_result(){};
+struct sssp_result {
+  sssp_result(){};
 
-    /**
-     * Returns the predecessor of a given node. Returns 
-     * UNKNOWN for invalid or non-reachable nodes.
-    **/
-    offset_t getPredecessor(offset_t nodeID){
-        // if(nodeID <= max_index_nodes){
-        if(nodeID < max_index_nodes){
-            return offset_t(predecessors[nodeID]);
-        } else {
-            return UNKNOWN;
-        }
+  /**
+   * Returns the predecessor of a given node. Returns 
+   * UNKNOWN for invalid or non-reachable nodes.
+  **/
+  offset_t getPredecessor(offset_t nodeID){
+    // if(nodeID <= max_index_nodes){
+    if (nodeID < max_index_nodes) {
+      return offset_t(predecessors[nodeID]);
+    } else {
+      return UNKNOWN;
     }
+  }
 
-    /**
-     * Returns the predecessor of a given node. Returns 
-     * UNKNOWN for invalid or non-reachable nodes.
-    **/
-    float getDistance(offset_t nodeID){
-        // if(nodeID <= max_index_nodes){
-        if(nodeID < max_index_nodes){
-            return distances[nodeID];
-        } else {
-            return UNKNOWN;
-        }
+  /**
+   * Returns the predecessor of a given node. Returns 
+   * UNKNOWN for invalid or non-reachable nodes.
+  **/
+  float getDistance(offset_t nodeID){
+    // if(nodeID <= max_index_nodes){
+    if (nodeID < max_index_nodes) {
+      return distances[nodeID];
+    } else {
+      return UNKNOWN;
     }
+  }
 
-    /**
-     * Setter function for the private variables.
-     * Arrays dist and preds must be of length max_index_nodes!
-    **/
-    void setResult(float* dist, uint64_t* preds, uint64_t max_index_nodes){
-        distances = std::vector<float> (dist, dist+max_index_nodes);
-        predecessors = std::vector<uint64_t> (preds, preds+max_index_nodes);
-        this->max_index_nodes = max_index_nodes;
-    }
+  /**
+   * Setter function for the private variables.
+   * Arrays dist and preds must be of length max_index_nodes!
+  **/
+  void setResult(float* dist, uint64_t* preds, uint64_t max_index_nodes){
+    distances = std::vector<float> (dist, dist+max_index_nodes);
+    predecessors = std::vector<uint64_t> (preds, preds+max_index_nodes);
+    this->max_index_nodes = max_index_nodes;
+  }
 
 private:
-    std::vector<float> distances;
-    std::vector<uint64_t> predecessors;
-    uint64_t max_index_nodes;
+  std::vector<float> distances;
+  std::vector<uint64_t> predecessors;
+  uint64_t max_index_nodes;
 };
 
 /**
@@ -129,7 +118,7 @@ private:
  *   Total elapsed time in ms, measured with std::chrono
  */
 int64_t gunrock_weighted_sssp_csr(graph_db_ptr gdb, node::id_t start, bool bidirectional,
-                rship_predicate rpred, rship_weight weight_func, SSSP_result &result, bool quiet);
+                                  rship_weight weight_func, sssp_result &result, bool quiet);
 
 /**
  * An implementation of weighted SSSP leveraging the GPU-Library Gunrock, using COO graph representation. The search 
@@ -150,7 +139,7 @@ int64_t gunrock_weighted_sssp_csr(graph_db_ptr gdb, node::id_t start, bool bidir
  *   Total elapsed time in ms, measured with std::chrono
  */
 int64_t gunrock_weighted_sssp_coo(graph_db_ptr gdb, node::id_t start, bool bidirectional,
-                rship_predicate rpred, rship_weight weight_func, SSSP_result &result, bool quiet);
+                rship_predicate rpred, rship_weight weight_func, sssp_result &result, bool quiet);
 
 /**
  * A sequential implementation of weighted SSSP on the given graph, implementing Dijkstra with Fibonacci-Heap. 
@@ -172,6 +161,6 @@ int64_t gunrock_weighted_sssp_coo(graph_db_ptr gdb, node::id_t start, bool bidir
  *   Total elapsed time in ms, measured with std::chrono
  */
 int64_t weighted_SSSP_sequential(graph_db_ptr gdb, node::id_t start, bool bidirectional,
-                rship_predicate rpred, rship_weight weight_func, SSSP_result &result, bool quiet);
+                rship_predicate rpred, rship_weight weight_func, sssp_result &result, bool quiet);
 
 #endif

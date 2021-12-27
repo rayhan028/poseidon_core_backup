@@ -742,6 +742,57 @@ struct weighted_shortest_path_opr : public qop {
   std::pair<std::size_t, std::size_t> start_stop_;
 };
 
+#ifdef USE_GUNROCK
+/**
+ * gunrock_bfs_opr implements an operator for Breadth-First Search 
+ * leveraging Gunrock.
+ */
+struct gunrock_bfs_opr : public qop {
+  gunrock_bfs_opr(std::size_t start,
+                  bool bidir) : start_(start), bidirectional_(bidir) {}
+  ~gunrock_bfs_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t start_;
+  bool bidirectional_;
+};
+
+/**
+ * weighted_sssp_opr implements an operator for Single-Source
+ * Shortest Path search leveraging Gunrock.
+ */
+struct gunrock_sssp_opr : public qop {
+  gunrock_sssp_opr(std::size_t start, rship_weight weight, bool bidir) :
+                    start_(start), rweight_(weight), bidirectional_(bidir) {}
+  ~gunrock_sssp_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t start_;
+  rship_weight rweight_;
+  bool bidirectional_;
+};
+
+/**
+ * gunrock_pr implements an operator for the PageRank algorithm leveraging Gunrock.
+ */
+struct gunrock_pr_opr : public qop {
+  gunrock_pr_opr(bool bidir) : bidirectional_(bidir) {}
+  ~gunrock_pr_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  bool bidirectional_;
+};
+#endif
+
 /**
  * k_weighted_shortest_path_opr implements an operator that finds the
  * top k weighted shortest path between two nodes.
