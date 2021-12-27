@@ -96,7 +96,6 @@ void graph_db::nodes_by_label(const std::vector<std::string> &labels,
   for (auto i = 0u; i < labels.size(); i++) 
     codes[i] = dict_->lookup_string(labels[i]);
   for (auto &n : nodes_->as_vec()) {
-    dcode_t lc = 0;
 #ifdef USE_TX
     if (n.is_valid()) {
       auto &nv = get_valid_node_version(n, txid);

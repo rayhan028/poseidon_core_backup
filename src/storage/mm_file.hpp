@@ -33,9 +33,10 @@ public:
     void flush() { region_->flush(); }
 
     void *base_address() { return region_->get_address(); }
-    std::size_t size() { return region_->get_size(); }
-
+    std::size_t size() const { return region_->get_size(); }
+    const std::string& file_name() const { return file_name_; }
 private:
+    std::string file_name_;
     std::unique_ptr<boost::interprocess::file_mapping> f_mapping_;
     std::unique_ptr<boost::interprocess::mapped_region> region_;
 };

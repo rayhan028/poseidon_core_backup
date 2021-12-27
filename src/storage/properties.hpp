@@ -82,8 +82,8 @@ struct p_item {
                            // storing the value (use ptime instead) 
   };
 
-  p_item() : key_(0), flags_(0) { P_SET_VAL(flags_, p_unused); }
-
+  p_item() = default; // : key_(0), flags_(0) { P_SET_VAL(flags_, p_unused); }
+  p_item(int) : key_(0), flags_(0) { P_SET_VAL(flags_, p_unused); }
   p_item(const p_item &) = default;
 
   p_item(dcode_t k, p_typecode tc, const boost::any &v);
@@ -186,7 +186,7 @@ struct property_set {
 
   offset_t next;     // index of next property item
   offset_t owner;    // node id or relationship id owning the property
-  p_item_list items; // we are storing 5 property items per set
+  p_item_list items; // we are storing 3 property items per set
 
   /**
    * Default constructor.
@@ -367,6 +367,11 @@ public:
    * Returns the number of occupied chunks of the underlying chunked_vec.
    */
   std::size_t num_chunks() const { return properties_.num_chunks(); }
+
+  /**
+   * Output the content of the property vector.
+   */
+  void dump();
 
 private:
   props_vec properties_; // the actual list of properties

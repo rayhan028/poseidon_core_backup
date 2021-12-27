@@ -149,7 +149,6 @@ struct alignas(64) chunk {
 #endif
       return SIZE_MAX;
 
-    auto i = num_records - 1;
     for (auto i = (num_records - 1); i >= 0; i--)
 #ifdef USE_PMDK
       if (slots_.get_ro().test(i))

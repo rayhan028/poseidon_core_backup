@@ -172,6 +172,11 @@ using param_type = boost::variant<int,
     bool is_source() const { return op_ == node_scan; }
 
     /**
+     * Return the number of parameters.
+     */
+    std::size_t num_params() const { return params_.size(); }
+    
+    /**
      * Return the parameter at position i.
      */
     template<typename T>

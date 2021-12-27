@@ -7,7 +7,7 @@ Project([ $2.id:uint64, $2.content:string, $2.creationDate:datetime, $4.id:uint6
                         Expand(IN, "Comment", 
                             ForeachRelationship(TO, ":replyOf",
                                 Filter($0.id == 42,
-                                    NodeScan("Post, Comment")
+                                    NodeScan("Post", "Comment")
                                 )
                             )
                         )
@@ -16,7 +16,7 @@ Project([ $2.id:uint64, $2.content:string, $2.creationDate:datetime, $4.id:uint6
                 Expand(OUT, "Person",
                     ForeachRelationship(FROM, ":hasCreator",
                         Filter($0.id == 42,
-                            NodeScan("Post, Comment")
+                            NodeScan("Post", "Comment")
                         )
                     )
                 )

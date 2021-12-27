@@ -495,6 +495,9 @@ public:
   query& front() { return queries_.front(); }
   query &at(std::size_t i) { return queries_[i];  }
   bool empty() const { return queries_.empty(); }
+
+  void append_printer();
+
   /**
    * Start the execution of the query.
    */

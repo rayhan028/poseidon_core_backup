@@ -22,7 +22,7 @@
 
 namespace bip = boost::interprocess;
 
-mm_file::mm_file(const std::string& fname, std::size_t file_size) {
+mm_file::mm_file(const std::string& fname, std::size_t file_size) : file_name_(fname) {
     // if file doesn't exist ...
     boost::filesystem::path path_obj(fname);
     // check if path exists and is of a regular file
