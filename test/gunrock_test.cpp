@@ -156,16 +156,15 @@ void create_known_data(graph_db_ptr graph) {
  * - distance to unreachable node is std::numeric_limits<double>::max()
  */
 TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
-#ifdef USE_GUNROCK
     auto pool = graph_pool::create(test_path);
     auto graph = pool->create_graph("my_graph");
     create_known_data(graph);
     std::cout << std::endl;
 
     SECTION("bidirectional sequential") {
-        SSSP_result rslt = SSSP_result();
+        sssp_result rslt = sssp_result();
         graph->begin_transaction(); 
-        weighted_SSSP_sequential(graph, 6, true, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        weighted_SSSP_sequential(graph, 6, true, [](auto& r) { return 1; }, rslt, false);
         graph->commit_transaction();
         
         bool test = ((rslt.getPredecessor(5) == 6) &
@@ -180,9 +179,9 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
     }
 
     SECTION("unidirectional sequential") {
-        SSSP_result rslt = SSSP_result();
+        sssp_result rslt = sssp_result();
         graph->begin_transaction(); 
-        weighted_SSSP_sequential(graph, 6, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        weighted_SSSP_sequential(graph, 6, false, [](auto& r) { return 1; }, rslt, false);
         graph->commit_transaction();
         
         bool test = ((rslt.getPredecessor(5) == 5) &
@@ -197,11 +196,11 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
     }
 
     SECTION("bidirectional gunrock COO") {
-        SSSP_result rslt = SSSP_result();
+        sssp_result rslt = sssp_result();
         
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         graph->begin_transaction(); 
-        gunrock_weighted_sssp_coo(graph, 6, true, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        gunrock_weighted_sssp_coo(graph, 6, true, [](auto& r) { return 1; }, rslt, false);
         graph->commit_transaction();
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         
@@ -229,11 +228,11 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
     }
 
     SECTION("unidirectional gunrock COO") {
-        SSSP_result rslt = SSSP_result();
+        sssp_result rslt = sssp_result();
         
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         graph->begin_transaction(); 
-        gunrock_weighted_sssp_coo(graph, 6, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        gunrock_weighted_sssp_coo(graph, 6, false, [](auto& r) { return 1; }, rslt, false);
         graph->commit_transaction();
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         
@@ -258,11 +257,11 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
     }
 
     SECTION("bidirectional gunrock CSR") {
-        SSSP_result rslt = SSSP_result();
+        sssp_result rslt = sssp_result();
         
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         graph->begin_transaction(); 
-        gunrock_weighted_sssp_csr(graph, 6, true, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        gunrock_weighted_sssp_csr(graph, 6, true, [](auto& r) { return 1; }, rslt, false);
         graph->commit_transaction();
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         
@@ -278,11 +277,11 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
     }
 
     SECTION("unidirectional gunrock CSR") {
-        SSSP_result rslt = SSSP_result();
+        sssp_result rslt = sssp_result();
         
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         graph->begin_transaction(); 
-        gunrock_weighted_sssp_csr(graph, 6, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        gunrock_weighted_sssp_csr(graph, 6, false, [](auto& r) { return 1; }, rslt, false);
         graph->commit_transaction();
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         
@@ -298,7 +297,6 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
     }
 
     graph_pool::destroy(pool);
-#endif
 }
 
 /*
@@ -308,8 +306,6 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
  * of your system, if run on a regular PC or Laptop. 
  */
 /*TEST_CASE("Performance comparison: Fixed n, variable m"){
-#ifdef USE_GUNROCK
-
     // Parameters //
     uint64_t num_vertices = 110000; //60000;
     uint64_t min_edges = num_vertices;
@@ -325,7 +321,7 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
     std::cout << "\n\nPerformance comparison: Fixed n, variable m\n\n";
 
     std::vector<double> results;
-    SSSP_result sssp_rslt = SSSP_result();
+    sssp_result sssp_rslt = sssp_result();
 
     for(double exponent = exponent_min_edges; exponent <= exponent_max_edges; exponent+=exponent_delta){
         // Graph creation
@@ -337,9 +333,9 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
         // Runtime tests
         graph->begin_transaction(); 
         results.push_back(edges);
-        results.push_back(weighted_SSSP_sequential(graph, 0, bidirectional, [](auto& r) { return true; }, [](auto& r) { return 1; }, sssp_rslt, true));
-        results.push_back(weighted_SSSP_gunrock_COO(graph, 0, bidirectional, [](auto& r) { return true; }, [](auto& r) { return 1; }, sssp_rslt, true));
-        results.push_back(weighted_SSSP_gunrock_CSR(graph, 0, bidirectional, [](auto& r) { return true; }, [](auto& r) { return 1; }, sssp_rslt, true));
+        results.push_back(weighted_SSSP_sequential(graph, 0, bidirectional, [](auto& r) { return 1; }, sssp_rslt, true));
+        results.push_back(weighted_SSSP_gunrock_COO(graph, 0, bidirectional, [](auto& r) { return 1; }, sssp_rslt, true));
+        results.push_back(weighted_SSSP_gunrock_CSR(graph, 0, bidirectional, [](auto& r) { return 1; }, sssp_rslt, true));
         graph->commit_transaction();
         graph_pool::destroy(pool);
     }
@@ -357,11 +353,9 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
         std::cout << results.back() << "\n";
         results.pop_back();
     }
-#endif
 }*/
 
 /*TEST_CASE("Performance comparison: Fixed m, variable n"){
-#ifdef USE_GUNROCK
     uint64_t num_edges = 5000000;
 
     uint64_t min_vertices = 50000;
@@ -372,7 +366,7 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
     std::cout << "\n\nPerformance comparison: Fixed m, variable n\n\n";
     
     std::vector<double> results;
-    SSSP_result sssp_rslt = SSSP_result();
+    sssp_result sssp_rslt = sssp_result();
 
     for(uint64_t vertices = min_vertices; vertices <= max_vertices; vertices+=uint64_t((max_vertices-min_vertices)/(number_samples-1))){
         // Graph creation
@@ -384,9 +378,9 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
         // Runtime tests
         graph->begin_transaction(); 
         results.push_back(vertices);
-        results.push_back(weighted_SSSP_sequential(graph, bidirectional, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, sssp_rslt, true));
-        results.push_back(weighted_SSSP_gunrock_COO(graph, bidirectional, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, sssp_rslt, true));
-        results.push_back(weighted_SSSP_gunrock_CSR(graph, bidirectional, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, sssp_rslt, true));
+        results.push_back(weighted_SSSP_sequential(graph, bidirectional, false, [](auto& r) { return 1; }, sssp_rslt, true));
+        results.push_back(weighted_SSSP_gunrock_COO(graph, bidirectional, false, [](auto& r) { return 1; }, sssp_rslt, true));
+        results.push_back(weighted_SSSP_gunrock_CSR(graph, bidirectional, false, [](auto& r) { return 1; }, sssp_rslt, true));
         graph->commit_transaction();
         graph_pool::destroy(pool);
     }
@@ -404,52 +398,48 @@ TEST_CASE("Testing Gunrock implementation of SSSP", "[gunrock_sssp]"){
         std::cout << results.back() << "\n";
         results.pop_back();
     }
-#endif
 }*/
 
 /*TEST_CASE("Performance comparison - Fixed n and m, bi- and unidirectional"){
-#ifdef USE_GUNROCK
     auto pool = graph_pool::create(test_path);
     auto graph = pool->create_graph("my_graph");
     uint64_t num_vertices = 1000000;
     uint64_t num_edges = 10000000;
 
     SECTION("Bidirectional"){
-        SSSP_result rslt = SSSP_result();
+        sssp_result rslt = sssp_result();
         std::cout << std::endl << "Bidirectional performance test:\n" << std::endl;
         create_random_sparse_data(graph, num_vertices, num_edges, false);
         graph->begin_transaction(); 
         std::cout << std::endl;
-        weighted_SSSP_sequential(graph, 0, true, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        weighted_SSSP_sequential(graph, 0, true, [](auto& r) { return 1; }, rslt, false);
         std::cout << std::endl;
-        weighted_SSSP_gunrock_COO(graph, 0, true, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        weighted_SSSP_gunrock_COO(graph, 0, true, [](auto& r) { return 1; }, rslt, false);
         std::cout << std::endl;
-        weighted_SSSP_gunrock_CSR(graph, 0, true, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        weighted_SSSP_gunrock_CSR(graph, 0, true, [](auto& r) { return 1; }, rslt, false);
         std::cout << std::endl;
         graph->commit_transaction();
     }
 
     SECTION("Unidirectional"){
-        SSSP_result rslt = SSSP_result();
+        sssp_result rslt = sssp_result();
         std::cout << std::endl << "Unidirectional performance test:\n" << std::endl;
         create_random_sparse_data(graph, num_vertices, num_edges, false);
         graph->begin_transaction(); 
         std::cout << std::endl;
-        weighted_SSSP_sequential(graph, 0, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        weighted_SSSP_sequential(graph, 0, false, [](auto& r) { return 1; }, rslt, false);
         std::cout << std::endl;
-        weighted_SSSP_gunrock_COO(graph, 0, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        weighted_SSSP_gunrock_COO(graph, 0, false, [](auto& r) { return 1; }, rslt, false);
         std::cout << std::endl;
-        weighted_SSSP_gunrock_CSR(graph, 0, false, [](auto& r) { return true; }, [](auto& r) { return 1; }, rslt, false);
+        weighted_SSSP_gunrock_CSR(graph, 0, false, [](auto& r) { return 1; }, rslt, false);
         std::cout << std::endl;
         graph->commit_transaction();
     }
 
     graph_pool::destroy(pool);
-#endif
 }*/
 
 TEST_CASE("Testing Gunrock implementation of PageRank", "[gunrock_pr]"){
-#ifdef USE_GUNROCK
     auto pool = graph_pool::create(test_path);
     auto graph = pool->create_graph("my_graph");
     create_known_data(graph);
@@ -457,7 +447,7 @@ TEST_CASE("Testing Gunrock implementation of PageRank", "[gunrock_pr]"){
     pr_result res = pr_result();
     
     graph->begin_transaction(); 
-    gunrock_pr_csr(graph, true, [](auto& r) { return true; }, res, false);
+    gunrock_pr_csr(graph, true, res, false);
     graph->commit_transaction();
 
     bool first_rank = res.get_nid(0) == 6 || res.get_nid(0) == 2;
@@ -466,5 +456,4 @@ TEST_CASE("Testing Gunrock implementation of PageRank", "[gunrock_pr]"){
     REQUIRE(second_rank);
 
     graph_pool::destroy(pool);
-#endif
 }

@@ -22,7 +22,6 @@
 
 #include "graph_db.hpp"
 #include "gunrock.h"
-#include "format_converter.hpp"
 #include <vector>
 #include <boost/heap/fibonacci_heap.hpp> // used by dijkstra (sequential SSSP)
 #include <chrono> // for elapsed time measurement
@@ -101,15 +100,14 @@ private:
 
 /**
  * An implementation of weighted SSSP leveraging the GPU-Library Gunrock, using CSR graph representation. The search 
- * starts at the given start node and follows all relationships satisfying the predicate rpred. The weight of a traversed 
- * relationship is calculated from the weight function. The bidirectional flag determines whether only outgoing relationships 
- * are considered (bidirectional = false) or both outgoing and incoming relationships (bidirectional = true).
+ * starts from the given start node. The weight of a traversed relationship is calculated from the weight function. 
+ * The bidirectional flag determines whether only outgoing relationships are considered (bidirectional = false) 
+ * or both outgoing and incoming relationships (bidirectional = true).
  *
  * Input:
  *   gdb           -> Pointer to Poseidon Graph Database
  *   start         -> Source node to begin traverse
  *   bidirectional -> Set true to treat relationships bidirectionally
- *   rpred         -> Function returning a bool for each relationship
  *   weight_func   -> Function returning a weight for each relationship
  *   quiet         -> Set true to mute std::cout outputs during execution
  * Output: 
@@ -122,15 +120,14 @@ int64_t gunrock_weighted_sssp_csr(graph_db_ptr gdb, node::id_t start, bool bidir
 
 /**
  * An implementation of weighted SSSP leveraging the GPU-Library Gunrock, using COO graph representation. The search 
- * starts at the given start node and follows all relationships satisfying the predicate rpred. The weight of a traversed 
- * relationship is calculated from the weight function. The bidirectional flag determines whether only outgoing relationships 
- * are considered (bidirectional = false) or both outgoing and incoming relationships (bidirectional = true).
+ * starts from the given start node. The weight of a traversed relationship is calculated from the weight function. 
+ * The bidirectional flag determines whether only outgoing relationships are considered (bidirectional = false) 
+ * or both outgoing and incoming relationships (bidirectional = true).
  *
  * Input:
  *   gdb           -> Pointer to Poseidon Graph Database
  *   start         -> Source node to begin traverse
  *   bidirectional -> Set true to treat relationships bidirectionally
- *   rpred         -> Function returning a bool for each relationship
  *   weight_func   -> Function returning a weight for each relationship
  *   quiet         -> Set true to mute std::cout outputs during execution
  * Output: 
@@ -139,20 +136,18 @@ int64_t gunrock_weighted_sssp_csr(graph_db_ptr gdb, node::id_t start, bool bidir
  *   Total elapsed time in ms, measured with std::chrono
  */
 int64_t gunrock_weighted_sssp_coo(graph_db_ptr gdb, node::id_t start, bool bidirectional,
-                rship_predicate rpred, rship_weight weight_func, sssp_result &result, bool quiet);
+                                  rship_weight weight_func, sssp_result &result, bool quiet);
 
 /**
  * A sequential implementation of weighted SSSP on the given graph, implementing Dijkstra with Fibonacci-Heap. 
- * The search starts at the given start node and follows all relationships satisfying the predicate rpred. The 
- * weight of a traversed relationship is calculated from the weight function. The bidirectional flag determines 
- * whether only outgoing relationships are considered (bidirectional = false) or both outgoing and incoming 
- * relationships (bidirectional = true).
+ * The search starts from the given start node. The weight of a traversed relationship is calculated from the weight function. 
+ * The bidirectional flag determines whether only outgoing relationships are considered (bidirectional = false) 
+ * or both outgoing and incoming relationships (bidirectional = true).
  *
  * Input:
  *   gdb           -> Pointer to Poseidon Graph Database
  *   start         -> Source node to begin traverse
  *   bidirectional -> Set true to treat relationships bidirectionally
- *   rpred         -> Function returning a bool for each relationship
  *   weight_func   -> Function returning a weight for each relationship
  *   quiet         -> Set true to mute std::cout outputs during execution
  * Output: 
@@ -161,6 +156,6 @@ int64_t gunrock_weighted_sssp_coo(graph_db_ptr gdb, node::id_t start, bool bidir
  *   Total elapsed time in ms, measured with std::chrono
  */
 int64_t weighted_SSSP_sequential(graph_db_ptr gdb, node::id_t start, bool bidirectional,
-                rship_predicate rpred, rship_weight weight_func, sssp_result &result, bool quiet);
+                                 rship_weight weight_func, sssp_result &result, bool quiet);
 
 #endif

@@ -107,13 +107,14 @@ include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
 include_directories(${PROJECT_SOURCE_DIR}/src/ldbc)
+include_directories(${PROJECT_SOURCE_DIR}/src/gtpc)
 include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 include_directories(${PROJECT_SOURCE_DIR}/src/pool)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
 include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
 include_directories(${PROJECT_SOURCE_DIR}/src/ql)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics)
-include_directories(${PROJECT_SOURCE_DIR}/src/gtpc)
+include_directories(${PROJECT_SOURCE_DIR}/src/analytics/gunrock)
 
 #---------------------------------------------------------------------------
 
@@ -375,9 +376,9 @@ endif()
 
 if(USE_GUNROCK MATCHES ON)
   set(gunrock_analysis 
-    src/analytics/gunrock_sssp.cpp
-    src/analytics/gunrock_bfs.cpp
-    src/analytics/gunrock_pr.cpp
+    src/analytics/gunrock/gunrock_sssp.cpp
+    src/analytics/gunrock/gunrock_bfs.cpp
+    src/analytics/gunrock/gunrock_pr.cpp
   )
 else()
   set(gunrock_analysis "")
@@ -465,9 +466,9 @@ set(src_files
   src/ql/queryc.cpp
   src/ql/ast.cpp
   ${csr_delta_src}
+  ${gunrock_analysis}
   src/analytics/bfs.cpp
   src/analytics/shortest_path.cpp
-  ${gunrock_analysis}
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion

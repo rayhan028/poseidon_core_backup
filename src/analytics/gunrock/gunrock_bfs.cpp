@@ -25,7 +25,7 @@ uint64_t gunrock_bfs_csr(graph_db_ptr gdb, node::id_t start,
   csr_arrays csr;
   auto t1 = std::chrono::steady_clock::now();
   gdb->run_transaction([&]() {
-    poseidon_to_csr(gdb, csr, gdb->get_csr_delta()->get_weight_func(), bidirectional);
+    gdb->poseidon_to_csr(csr, gdb->get_csr_delta()->get_weight_func(), bidirectional);
     return true;
   });
   auto t2 = std::chrono::steady_clock::now();

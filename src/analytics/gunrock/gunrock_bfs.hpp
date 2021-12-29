@@ -22,7 +22,6 @@
 
 #include "graph_db.hpp"
 #include "gunrock.h"
-#include "format_converter.hpp"
 #include <vector>
 #include <chrono> // for elapsed time measurement
 

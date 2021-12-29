@@ -25,7 +25,7 @@ int64_t gunrock_weighted_sssp_csr(graph_db_ptr gdb, node::id_t start, bool bidir
   csr_arrays csr;
   auto start_conversion = std::chrono::steady_clock::now();
   gdb->run_transaction([&]() {
-    poseidon_to_csr(gdb, csr, weight_func, bidirectional);
+    gdb->poseidon_to_csr(csr, weight_func, bidirectional);
     return true;
   });
   auto end_conversion = std::chrono::steady_clock::now();
@@ -64,7 +64,7 @@ int64_t gunrock_weighted_sssp_csr(graph_db_ptr gdb, node::id_t start, bool bidir
 }
 
 int64_t gunrock_weighted_sssp_coo(graph_db_ptr gdb, node::id_t start, bool bidirectional,
-                rship_predicate rpred, rship_weight weight_func, sssp_result &result, bool quiet) {
+                                  rship_weight weight_func, sssp_result &result, bool quiet) {
 
   std::chrono::steady_clock::time_point start_conversion = std::chrono::steady_clock::now();
 
@@ -76,24 +76,24 @@ int64_t gunrock_weighted_sssp_coo(graph_db_ptr gdb, node::id_t start, bool bidir
   edge_coords* edge_coordinates = (edge_coords*) aligned_alloc(16, multi * max_index_edges * sizeof(edge_coords));
   float* edge_weights = (float *) malloc(sizeof(float) * multi * max_index_edges);
 
-  uint64_t max_index_nodes = 0; // n
-  uint64_t num_edges = 0;       // m
+  offset_t num_nodes = gdb->get_nodes()->as_vec().last_used() + 1; // n
+  offset_t num_edges = gdb->get_relationships()->as_vec().last_used() + 1; // m
 
-  poseidon_to_coo(gdb, bidirectional, rpred, weight_func, edge_coordinates, edge_weights, &max_index_nodes, &num_edges);
+  gdb->poseidon_to_coo(edge_coordinates, edge_weights, weight_func, bidirectional);
 
   std::chrono::steady_clock::time_point end_conversion = std::chrono::steady_clock::now();
 
   // Allocate memory for gunrock output
-  float *dist = (float *)malloc(sizeof(float) * max_index_nodes);
-  unsigned long long *preds = (unsigned long long *)malloc(sizeof(unsigned long long) * max_index_nodes);
+  float *dist = (float *)malloc(sizeof(float) * num_nodes);
+  unsigned long long *preds = (unsigned long long *)malloc(sizeof(unsigned long long) * num_nodes);
 
   // Using a custom written function within Gunrock. You need to 
   // add this to gunrock before compiling Gunrock in order to use it!
-  poseidon_gunrock_sssp_coo(max_index_nodes, num_edges, edge_coordinates, (float *)edge_weights,
+  poseidon_gunrock_sssp_coo(num_nodes, num_edges, edge_coordinates, (float *)edge_weights,
                             start, true, dist, preds);
   
   // Conversion to our output format
-  result.setResult(dist, (uint64_t*) preds, max_index_nodes);
+  result.setResult(dist, (uint64_t*) preds, num_nodes);
 
   free(edge_coordinates);
   free(edge_weights);
@@ -113,7 +113,7 @@ int64_t gunrock_weighted_sssp_coo(graph_db_ptr gdb, node::id_t start, bool bidir
 
 typedef typename boost::heap::fibonacci_heap<nodeFibHeap, boost::heap::compare<compare_nodes>>::handle_type handle_t;
 int64_t weighted_SSSP_sequential(graph_db_ptr gdb, node::id_t start, bool bidirectional,
-                rship_predicate rpred, rship_weight weight_func, sssp_result &result, bool quiet) {
+                                 rship_weight weight_func, sssp_result &result, bool quiet) {
 
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
@@ -146,29 +146,25 @@ int64_t weighted_SSSP_sequential(graph_db_ptr gdb, node::id_t start, bool bidire
 
     auto& n = gdb->node_by_id(uid);
     gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
-      if(rpred(r)){
-        auto vid = r.to_node_id();
+      auto vid = r.to_node_id();
+      auto uv_weight = weight_func(r);
+      auto alternativ = distances[uid] + uv_weight;
+      if(alternativ < distances[vid]){
+        distances[vid] = alternativ;
+        preds[vid] = uid;
+        fibHeap.increase(nodeID_to_handle[vid], nodeFibHeap(vid,alternativ));
+      }
+    });
+
+    if (bidirectional) {
+      gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
+        auto vid = r.from_node_id();
         auto uv_weight = weight_func(r);
         auto alternativ = distances[uid] + uv_weight;
         if(alternativ < distances[vid]){
           distances[vid] = alternativ;
           preds[vid] = uid;
           fibHeap.increase(nodeID_to_handle[vid], nodeFibHeap(vid,alternativ));
-        }
-      }
-    });
-
-    if (bidirectional) {
-      gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
-        if(rpred(r)){
-          auto vid = r.from_node_id();
-          auto uv_weight = weight_func(r);
-          auto alternativ = distances[uid] + uv_weight;
-          if(alternativ < distances[vid]){
-            distances[vid] = alternativ;
-            preds[vid] = uid;
-            fibHeap.increase(nodeID_to_handle[vid], nodeFibHeap(vid,alternativ));
-          }
         }
       });
     }
