@@ -385,6 +385,26 @@ query &query::algo_weighted_shortest_path(std::pair<std::size_t, std::size_t> st
                    std::bind(&weighted_shortest_path_opr::process, op.get(), ph::_1, ph::_2));
 }
 
+#ifdef USE_GUNROCK
+query &query::gunrock_bfs(std::size_t start, bool bidirectional) {
+  auto op = std::make_shared<gunrock_bfs_opr>(start, bidirectional);
+  return append_op(op,
+                   std::bind(&gunrock_bfs_opr::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::gunrock_sssp(std::size_t start, rship_weight weight, bool bidirectional) {
+  auto op = std::make_shared<gunrock_sssp_opr>(start, weight, bidirectional);
+  return append_op(op,
+                   std::bind(&gunrock_sssp_opr::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::gunrock_pr(bool bidirectional) {
+  auto op = std::make_shared<gunrock_pr_opr>(bidirectional);
+  return append_op(op,
+                   std::bind(&gunrock_pr_opr::process, op.get(), ph::_1, ph::_2));
+}
+#endif
+
 query &query::algo_k_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
       std::size_t k, rship_predicate rpred, rship_weight weight, bool bidirectional) {
   auto op = std::make_shared<k_weighted_shortest_path_opr>(start_stop, k, rpred, weight, bidirectional);

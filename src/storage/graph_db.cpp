@@ -382,7 +382,8 @@ bool graph_db::commit_transaction() {
         if (deleted_rships.find(rid) == deleted_rships.end()) {
           // destination neighbour of node with id "node_id"
           neigbour_node_ids.push_back(r.to_node_id());
-          rship_weights.push_back(csr_delta_->get_rship_weight(r));
+          auto &func = csr_delta_->get_weight_func();
+          rship_weights.push_back(func(r));
         }
         rid = r.next_src_rship;
       }
@@ -394,21 +395,14 @@ bool graph_db::commit_transaction() {
           if (deleted_rships.find(rid) == deleted_rships.end()) {
             // source neighbour of node with id "node_id"
             neigbour_node_ids.push_back(r.from_node_id());
-            rship_weights.push_back(csr_delta_->get_rship_weight(r));
+            auto &func = csr_delta_->get_weight_func();
+            rship_weights.push_back(func(r));
           }
           rid = r.next_dest_rship;
         }
       }
     }
-
-    if (last_nid == UNKNOWN || last_nid < node_id) {
-      // newly appended node with id "node_id"
-      csr_delta_->add_append_delta(xid, node_id, neigbour_node_ids, rship_weights);
-    }
-    else {
-      // current CSR contains node with id "node_id"
-      csr_delta_->add_update_delta(xid, node_id, neigbour_node_ids, rship_weights);
-    }
+    csr_delta_->store_delta(node_id, neigbour_node_ids, rship_weights, xid);
     neigbour_node_ids.clear();
     rship_weights.clear();
   }
@@ -1395,13 +1389,3 @@ bool graph_db::has_valid_to_rships(node &n, xid_t xid) {
   }
   return false;
 }
-
-#if defined CSR_DELTA_STORE && defined USE_TX
-void graph_db::restore_csr_delta(csr_delta::delta_map_t &update_deltas,
-                                 csr_delta::delta_map_t &append_deltas) {
-  auto last_node_id = get_nodes()->as_vec().last_used();
-  return csr_delta_->restore_deltas(std::move(update_deltas),
-                                    std::move(append_deltas),
-                                    last_node_id); 
-}
-#endif

@@ -23,23 +23,6 @@
 #include "graph_db.hpp"
 
 /**
- * Typedef for a predicate to check that a relationship is followed via the search.
- */
-using rship_predicate = std::function<bool(relationship&)>;
-
-/**
- * Typedef for a node visitor callback.
- */
-using node_visitor = std::function<void(node&)>;
-
-/**
- * Typedef for a node visitor callback which receives the full path.
- */
-using path = std::vector<offset_t>;
-
-using path_visitor = std::function<void(node&, const path&)>;
-
-/**
  * A sequential implementation of the breadth-first search on the given graph. The search starts at the
  * given start node and follows all edges (relationships) satisfying the predicate rpred. For each visited
  * node, the node_visitor callback is invoked. The unidirectional flag determines whether only outgoing 

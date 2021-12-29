@@ -295,7 +295,7 @@ bool w_spath_with_del_rship(graph_db_ptr gdb, node::id_t start, node::id_t stop,
 
     // TODO Optimize search for next node with minimum weight
     for (uint64_t nid = 0; nid < num_nodes; nid++) {
-        uint64_t min_nid;
+        uint64_t min_nid = UNKNOWN;
         double min_weight = std::numeric_limits<double>::max();
         for (uint64_t vid = 0; vid < num_nodes; vid++) {
             if (!visited[vid] && weight[vid] < min_weight) {

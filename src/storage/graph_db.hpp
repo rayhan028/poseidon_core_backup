@@ -555,19 +555,49 @@ public:
   const p_ptr<recovery_list>& get_rec_list() { return recovery_results_; }
 #endif
 
-#if defined CSR_DELTA_STORE && defined USE_TX
-  /**
-   * Returns a reference to the CSR delta store.
-   */
-  const p_ptr<csr_delta>& get_csr_delta() { return csr_delta_; }
+/* ---------------- Analytics support ---------------- */
 
   /**
-   * Restores the update and append delta elements into updata and 
-   * append delta maps respectively.
+   * Converts the graph data to a CSR representation. If the CSR delta store is enabled 
+   * and a CSR exists already for the graph, it updates the CSR so that it reflects the 
+   * latest snapshot of the graph data. Otherwise, it builds the CSR by scanning the entire 
+   * graph data.
+   * The weight of a traversed relationship is calculated from the weight function. 
+   * The bidirectional flag determines whether only outgoing relationships are considered 
+   * (bidirectional = false) or both outgoing and incoming relationships (bidirectional = true).
    */
-  void restore_csr_delta(csr_delta::delta_map_t &update_deltas,
-                         csr_delta::delta_map_t &append_deltas);
+  void poseidon_to_csr(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
+
+  /**
+   * Converts the graph data to a CSR representation by scanning the entire graph data.
+   */
+  void csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
+
+  /**
+   * Converts the graph data to a CSR representation from a parallel scan of the entire graph data.
+   */
+  void parallel_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
+
+#if defined CSR_DELTA_STORE && defined USE_TX
+  /**
+   * Updates the existing CSR using the appropriate deltas in the CSR delta store, such that it 
+   * represents the latest snapshot of the graph data.
+   */
+  void csr_update_with_delta(csr_arrays &csr);
+
+  /**
+   * Returns a reference to the CSR delta store. TODO
+   */
+  const p_ptr<csr_delta>& get_csr_delta() { return csr_delta_; }
 #endif
+
+  /**
+   * Converts the graph data to a COO representation.
+   * The weight of a traversed relationship is calculated from the weight function. 
+   * The bidirectional flag determines whether only outgoing relationships are considered 
+   * (bidirectional = false) or both outgoing and incoming relationships (bidirectional = true).
+   */
+  void poseidon_to_coo(edge_coords* edge_coordinates, float* edge_values, rship_weight weight_func, bool bidirectional = false);
 
 private:
   friend struct scan_task;

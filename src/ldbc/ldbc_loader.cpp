@@ -278,10 +278,10 @@ void load_snb_data(graph_db_ptr &graph,
 #endif
 }
 
+#if defined USE_PMDK && defined FPTree
 void fptree_recovery(graph_db_ptr &graph){
-
   std::vector<index_id> indexes;
-#ifdef FPTree
+
   graph->begin_transaction();
   indexes.push_back(graph->get_index("Person", "id"));
   indexes.push_back(graph->get_index("Post", "id"));
@@ -292,7 +292,8 @@ void fptree_recovery(graph_db_ptr &graph){
   indexes.push_back(graph->get_index("Organisation", "id"));
   indexes.push_back(graph->get_index("Forum", "id"));
   graph->commit_transaction();
+
   for (auto idx_ptr : indexes)
     idx_ptr->recover();
-#endif
 }
+#endif

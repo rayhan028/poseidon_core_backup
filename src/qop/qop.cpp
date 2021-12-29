@@ -28,6 +28,11 @@
 
 #include "qop.hpp"
 #include "profiling.hpp"
+#ifdef USE_GUNROCK
+#include "gunrock_bfs.hpp"
+#include "gunrock_sssp.hpp"
+#include "gunrock_pr.hpp"
+#endif
 
 using namespace boost::posix_time;
 
@@ -80,7 +85,7 @@ void index_scan::start(graph_db_ptr &gdb) {
     gdb->index_lookup(idx, key, [&](node &n) { consume_(gdb, {&n}); });
   else
     gdb->index_lookup(idxs, key, [&](node &n) { consume_(gdb, {&n}); });
-  
+
   qop::default_finish(gdb);
 }
 
@@ -97,7 +102,7 @@ void foreach_from_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
     n = boost::get<node *>(v.back());
   else
     n = boost::get<node *>(v[npos]);
-  
+
   if (lcode == 0)
     lcode = gdb->get_code(label);
 
@@ -149,7 +154,7 @@ void foreach_all_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
   node *n = npos == std::numeric_limits<int>::max() ?
             boost::get<node *>(v.back()) : boost::get<node *>(v[npos]);
-  
+
   if (lcode == 0)
     lcode = gdb->get_code(label);
 
@@ -444,7 +449,7 @@ void order_by::finish(graph_db_ptr &gdb) {
 group_by::group_by(const std::vector<std::size_t> &pos) :
     grpkey_cnt_(0), grpkey_pos_(pos) {}
 
-group_by::group_by(const std::vector<std::size_t> &pos, 
+group_by::group_by(const std::vector<std::size_t> &pos,
   const std::vector<std::pair<std::string, std::size_t>> &aggrs) :
     grpkey_cnt_(0), grpkey_pos_(pos), aggrs_(aggrs) {}
 
@@ -465,7 +470,7 @@ group_by::group_by(std::list<qr_tuple> &grps, const std::vector<std::size_t> &po
         grpkeys += std::to_string(boost::get<double>(g[pos]));
       } else if (g[pos].type() == typeid(uint64_t)) {
         grpkeys += std::to_string(boost::get<uint64_t>(g[pos]));
-      } else if (g[pos].type() == typeid(ptime)) { 
+      } else if (g[pos].type() == typeid(ptime)) {
         grpkeys += to_iso_extended_string(boost::get<ptime>(g[pos]));
       } else if (g[pos].type() == typeid(node *)) {
         grpkeys += std::to_string(boost::get<node *>(g[pos])->id());
@@ -495,7 +500,7 @@ void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
       grpkeys += std::to_string(boost::get<double>(v[pos]));
     } else if (v[pos].type() == typeid(uint64_t)) {
       grpkeys += std::to_string(boost::get<uint64_t>(v[pos]));
-    } else if (v[pos].type() == typeid(ptime)) { 
+    } else if (v[pos].type() == typeid(ptime)) {
       grpkeys += to_iso_extended_string(boost::get<ptime>(v[pos]));
     } else if (v[pos].type() == typeid(node *)) {
       grpkeys += std::to_string(boost::get<node *>(v[pos])->id());
@@ -656,7 +661,7 @@ void group_by::finish(graph_db_ptr &gdb) {
 persistent_group_by::persistent_group_by(const std::vector<std::size_t> &pos) :
     grpkey_cnt_(0), grpkey_pos_(pos) {}
 
-persistent_group_by::persistent_group_by(const std::vector<std::size_t> &pos, 
+persistent_group_by::persistent_group_by(const std::vector<std::size_t> &pos,
   const std::vector<std::pair<std::string, std::size_t>> &aggrs) :
     grpkey_cnt_(0), grpkey_pos_(pos), aggrs_(aggrs) {}
 
@@ -677,7 +682,7 @@ void persistent_group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
       grpkeys += std::to_string(boost::get<double>(v[pos]));
     } else if (v[pos].type() == typeid(uint64_t)) {
       grpkeys += std::to_string(boost::get<uint64_t>(v[pos]));
-    } else if (v[pos].type() == typeid(ptime)) { 
+    } else if (v[pos].type() == typeid(ptime)) {
       grpkeys += to_iso_extended_string(boost::get<ptime>(v[pos]));
     } else if (v[pos].type() == typeid(node *)) {
       grpkeys += std::to_string(boost::get<node *>(v[pos])->id());
@@ -719,7 +724,7 @@ void persistent_group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
 
     std::vector<std::size_t> pgrp_pos = gdb->store_query_result(gtpl, 0);
     pgrp_tpl_pos_[gpos].swap(pgrp_pos);
-  }  
+  }
 // here pls
   auto &aggr_tpl = pgrp_tpl_pos_[gpos];
   auto aggr_pos = grpkey_pos_.size();
@@ -755,7 +760,7 @@ void persistent_group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
       offset_t &gavg = ir.res_;
       double d;
       std::memcpy(&d, &gavg, sizeof(d));
-      
+
       auto gsize = grp_size_map_[gpos];
       auto val = (v[aggr.second].type() == typeid(uint64_t)) ?
                     boost::get<uint64_t>(v[aggr.second]) :
@@ -768,7 +773,7 @@ void persistent_group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
       std::memcpy(&gavg, &d, sizeof(d));
     } // process pcount (percentage count) in group_by::finish
     aggr_pos++;
-  }  
+  }
 }
 
 void persistent_group_by::finish(graph_db_ptr &gdb) {
@@ -820,7 +825,7 @@ void distinct_tuples::process(graph_db_ptr &gdb, const qr_tuple &v) {
       key += boost::get<std::string>(qres);
     } else if (qres.type() == typeid(uint64_t)) {
       key += std::to_string(boost::get<uint64_t>(qres));
-    } else if (qres.type() == typeid(ptime)) { 
+    } else if (qres.type() == typeid(ptime)) {
       key += to_iso_extended_string(boost::get<ptime>(qres));
     } else if (qres.type() == typeid(node *)) {
       key += std::to_string(boost::get<node *>(qres)->id());
@@ -1016,6 +1021,68 @@ void k_weighted_shortest_path_opr::process(graph_db_ptr &gdb, const qr_tuple &v)
   PROF_POST(spaths.size());
 }
 
+#ifdef USE_GUNROCK
+/* ------------------------------------------------------------------------ */
+
+void gunrock_bfs_opr::dump(std::ostream &os) const {
+  os << "gunrock_bfs_opr([]) - " << PROF_DUMP;
+}
+
+void gunrock_bfs_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
+  auto start_node_id = boost::get<node *>(v[start_])->id();
+
+  bfs_result bfs_res;
+  // auto exec_time =
+  //   gunrock_bfs_csr(gdb, start_node_id, bidirectional_, bfs_res, false);
+
+  qr_tuple res; // TODO finish up query
+
+  PROF_POST(0);
+  consume_(gdb, res);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void gunrock_sssp_opr::dump(std::ostream &os) const {
+  os << "gunrock_sssp_opr([]) - " << PROF_DUMP;
+}
+
+void gunrock_sssp_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
+  auto start_node_id = boost::get<node *>(v[start_])->id();
+
+  sssp_result sssp_res;
+  // auto exec_time =
+  //   gunrock_weighted_sssp_csr(gdb, start_node_id, bidirectional_,
+  //                                           rweight_, sssp_res, false);
+
+  qr_tuple res; // TODO finish up query
+
+  PROF_POST(0);
+  consume_(gdb, res);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void gunrock_pr_opr::dump(std::ostream &os) const {
+  os << "gunrock_pr_opr([]) - " << PROF_DUMP;
+}
+
+void gunrock_pr_opr::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
+
+  pr_result pr_res;
+  // auto exec_time =
+  //   gunrock_weighted_sssp_csr(gdb, bidirectional_, pr_res, false);
+
+  qr_tuple res; // TODO finish up query
+
+  PROF_POST(0);
+  consume_(gdb, res);
+}
+#endif
+
 /* ------------------------------------------------------------------------ */
 
 void csr_data::dump(std::ostream &os) const {
@@ -1107,7 +1174,7 @@ std::ostream &operator<<(std::ostream &os, const result_set &rs) {
         for (auto elem : arr.elems)
           os << elem << " ";
         os << " ]"; },
-      [&](ptime dt) { os << dt; }); 
+      [&](ptime dt) { os << dt; });
 
   for (const qr_tuple &qv : rs.data) {
     os << "{ ";
@@ -1143,7 +1210,7 @@ void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
       },
       [&](int i) { return std::to_string(i); },
       [&](double d) { return std::to_string(d); },
-      [&](const std::string &s) { return s; }, 
+      [&](const std::string &s) { return s; },
       [&](uint64_t ll) { return std::to_string(ll); },
       [&](null_t n) { return std::string("NULL"); },
       [&](array_t arr) {
@@ -1152,7 +1219,7 @@ void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
           astr += (std::to_string(elem) + std::string(" "));
         astr += std::string("]");
         return astr; },
-      [&](ptime dt) { return to_iso_extended_string(dt); }); 
+      [&](ptime dt) { return to_iso_extended_string(dt); });
   for (std::size_t i = 0; i < v.size(); i++) {
     res[i] = boost::apply_visitor(my_visitor, v[i]);
   }
@@ -1174,27 +1241,27 @@ void end_pipeline::process() { return; }
 
 void persist_result::dump(std::ostream &os) const { os << "persist()"; }
 
-void persist_result::process(graph_db_ptr &gdb, const qr_tuple &v) { 
+void persist_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
   qr_tuple t = v;
 #ifdef USE_PMDK
   gdb->store_query_result(t, 0);
 #endif
   consume_(gdb, v);
 }
- 
+
 
 void recover_scan::dump(std::ostream &os) const { os << "recover_scan()"; }
 
 void recover_scan::start(graph_db_ptr &gdb) {
   std::mutex mtx;
-  
+
   gdb->recover_scan_parallel([&](const qr_tuple &qr, int tuple_id) {
     std::lock_guard<std::mutex> lck(mtx);
     tuple_map_[tuple_id].push_back(qr.front());
     //f(tuple_map_[tuple_id].size() == 2)
      // consume_(gdb, tuple_map_[tuple_id]);
   });
-  finish(gdb);  
+  finish(gdb);
 }
 
 void recover_scan::finish(graph_db_ptr &gdb) {
@@ -1308,9 +1375,9 @@ query_result forward(projection::pr_result &pv) {
   } else if (pv.type() == typeid(node_description)) {
     auto &nd = boost::get<node_description>(pv);
     return nd.to_string();
-  } else if (pv.type() == typeid(ptime)) { 
+  } else if (pv.type() == typeid(ptime)) {
     return boost::get<ptime>(pv);
-  } else if (pv.type() == typeid(array_t)) { 
+  } else if (pv.type() == typeid(array_t)) {
     return boost::get<array_t>(pv);
   }
   spdlog::info("builtin::forward: unexpected type: {}", pv.type().name());
@@ -1326,7 +1393,7 @@ bool has_property(projection::pr_result &pv, const std::string &key) {
     auto rd = boost::get<rship_description &>(pv);
     return rd.has_property(key);
   }
-  return false; 
+  return false;
 }
 
 bool has_label(projection::pr_result &pv, const std::string &l) {
@@ -1337,7 +1404,7 @@ bool has_label(projection::pr_result &pv, const std::string &l) {
     auto rd = boost::get<rship_description &>(pv);
     return rd.label == l;
   }
-  return false; 
+  return false;
 }
 
 query_result int_property(projection::pr_result &pv, const std::string &key) {
@@ -1411,18 +1478,18 @@ query_result pr_date(projection::pr_result &pv, const std::string &key) {
     auto nd = boost::get<node_description &>(pv);
     if (nd.has_property(key)) {
       auto o = get_property<ptime>(nd.properties, key);
-      return o.has_value() ? query_result(to_iso_extended_string(o.value().date())) 
+      return o.has_value() ? query_result(to_iso_extended_string(o.value().date()))
         : query_result(null_val);
     }
   } else if (pv.type() == typeid(rship_description &)) {
     auto rd = boost::get<rship_description &>(pv);
     if (rd.has_property(key)) {
       auto o = get_property<ptime>(rd.properties, key);
-      return o.has_value() ? query_result(to_iso_extended_string(o.value().date())) 
+      return o.has_value() ? query_result(to_iso_extended_string(o.value().date()))
         : query_result(null_val);
     }
   }
-  return null_val; 
+  return null_val;
 }
 
 query_result pr_year(projection::pr_result &pv, const std::string &key) {
@@ -1449,7 +1516,7 @@ query_result pr_year(projection::pr_result &pv, const std::string &key) {
       return query_result(null_val);
     }
   }
-  return null_val; 
+  return null_val;
 }
 
 query_result pr_month(projection::pr_result &pv, const std::string &key) {
@@ -1476,7 +1543,7 @@ query_result pr_month(projection::pr_result &pv, const std::string &key) {
       return query_result(null_val);
     }
   }
-  return null_val; 
+  return null_val;
 }
 
 std::string string_rep(projection::pr_result &res) {
@@ -1495,8 +1562,8 @@ std::string string_rep(projection::pr_result &res) {
                               astr += std::string(" ]");
                               return astr; },
                             [&](const std::string &s) { return s; },
-                            [&](uint64_t ll) { return std::to_string(ll); },  
-                            [&](ptime dt) { return to_iso_extended_string(dt); } ); 
+                            [&](uint64_t ll) { return std::to_string(ll); },
+                            [&](ptime dt) { return to_iso_extended_string(dt); } );
   return boost::apply_visitor(my_visitor, res);
 }
 

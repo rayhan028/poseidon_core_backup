@@ -352,6 +352,23 @@ public:
         rship_predicate rpred, rship_weight weight, bool bidirectional = false,
         bool all_spaths = false);
 
+#ifdef USE_GUNROCK
+  /**
+   * Add an operator for Breadth-First Search algorithm leveraging Gunrock.
+  */
+  query &gunrock_bfs(std::size_t start, bool bidirectional = false);
+
+  /**
+   * Add an operator for Single-Source Shortest Path algorithm leveraging Gunrock.
+  */
+  query &gunrock_sssp(std::size_t start, rship_weight weight, bool bidirectional = false);
+
+  /**
+   * Add an operator for PageRank algorithm leveraging Gunrock.
+  */
+  query &gunrock_pr(bool bidirectional = false);
+#endif
+
   /**
    * Add an operator to find the top k weighted shortest path between the pair 
    * of nodes given their positions in the query tuple. Bidirectional 

@@ -98,7 +98,9 @@ void load_snb_data(graph_db_ptr &graph,
                     std::vector<std::string> &rship_files, bool strict = true);
 
 /* index */
+#if defined USE_PMDK && defined FPTree
 void fptree_recovery(graph_db_ptr &graph);
+#endif
 
 /* qps */
 void ldbc_is_qp2_query_1(graph_db_ptr &gdb, result_set &rs, uint64_t personId);
