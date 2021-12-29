@@ -161,6 +161,8 @@ inline p_ptr<T> p_make_ptr(Args &&... args) {
 
 #endif
 
+/* ---------------- Definitions for Analytics ---------------- */
+
 /**
  * Typedef for a function that computes the weight of a relationship.
  */
@@ -182,5 +184,25 @@ using node_visitor = std::function<void(node&)>;
 using path = std::vector<offset_t>;
 
 using path_visitor = std::function<void(node&, const path&)>;
+
+/**
+ * A wrapper struct for CSR arrays 
+ */
+struct csr_arrays {
+  csr_arrays() = default;
+  csr_arrays(const csr_arrays &) = delete;
+
+  std::vector<offset_t> row_offsets = {};
+  std::vector<offset_t> col_indices = {};
+  std::vector<float> edge_values = {};
+};
+
+/*
+ * Struct used to store edge-coordinates in COO format
+ * Needs to be allocated 16-bit alligned!
+ */
+struct edge_coords {
+  offset_t x, y;
+};
 
 #endif

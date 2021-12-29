@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -17,51 +17,31 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef format_converter_hpp_
-#define format_converter_hpp_
+#include <boost/algorithm/string.hpp>
 
+#include "graph_db.hpp"
+#include "parser.hpp"
+#include "spdlog/spdlog.h"
 #include "query.hpp"
-#include <vector>
-#include <chrono> // for elapsed time measurement
+#include <iostream>
 
-/**
- * A wrapper struct for CSR arrays 
- */
-struct csr_arrays {
-  csr_arrays() = default;
-  csr_arrays(const csr_arrays &) = delete;
 
-  std::vector<offset_t> row_offsets = {};
-  std::vector<offset_t> col_indices = {};
-  std::vector<float> edge_values = {};
-};
+void graph_db::poseidon_to_csr(csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
+#if defined CSR_DELTA_STORE && defined USE_TX
+  csr_delta_->set_weight_func(weight_func);
+  csr_delta_->set_bidirectional(bidirectional);
+  csr_update_with_delta(csr);
+#elif defined PARALLEL_CSR_BUILD
+  parallel_csr_build(csr, weight_func, bidirectional);
+#else
+  csr_build(csr, weight_func, bidirectional);
+#endif
+}
 
-/**
- * Converts a given Poseidon Graph to a CSR representation, including all relationships satisfying the
- * predicate rpred. The weight of a traversed relationship is calculated from the weight function. The 
- * bidirectional flag determines whether only outgoing relationships are considered (bidirectional = false) 
- * or both outgoing and incoming relationships (bidirectional = true).
- *
- * Input:
- *   gdb           -> Pointer to Poseidon Graph Database
- *   bidirectional -> Set true to treat relationships bidirectionally
- *   rpred         -> Function returning a bool for each relationship
- *   weight_func   -> Function returning a weight for each relationship
- * Output: 
- *   row_offsets   -> CSR-formatted graph row offsets, to be allocated in advance
- *   col_indices   -> CSR-formatted graph column indices, to be allocated in advance
- *   edge_values   -> CSR-formatted graph edge weights, to be allocated in advance
- *   num_nodes     -> Number of veritces in the input graph. Note that unused slots in
- *                    chunked_vectors are considered here as well! Sparsely populated
- *                    chunked_vectors will lead to unneccesary runtime growth. 
- *   num_edges     -> Number of edges in the input graph
- */
-inline void csr_build(graph_db_ptr gdb, csr_arrays &csr,
-              rship_weight weight_func, bool bidirectional = false) {
-
+void graph_db::csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
   offset_t edges = 0;
-  offset_t max_num_edges = gdb->get_relationships()->as_vec().last_used() + 1;
-  auto &cv_nodes = gdb->get_nodes()->as_vec();
+  offset_t max_num_edges = rships_->as_vec().last_used() + 1;
+  auto &cv_nodes = nodes_->as_vec();
   offset_t max_num_nodes = cv_nodes.last_used() + 1;
 
   auto &row_offsets = csr.row_offsets;
@@ -77,16 +57,16 @@ inline void csr_build(graph_db_ptr gdb, csr_arrays &csr,
 
   for (offset_t nid = 0; nid < max_num_nodes; nid++) {
     if (cv_nodes.is_used(nid)) {
-      auto& n = gdb->node_by_id(nid);
+      auto& n = node_by_id(nid);
 
-      gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
+      foreach_from_relationship_of_node(n, [&](auto &r) {
         col_indices.push_back(r.to_node_id());
         edge_values.push_back(weight_func(r));
         edges++;
       });
 
       if (bidirectional) {
-        gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
+        foreach_to_relationship_of_node(n, [&](auto &r) {
           col_indices.push_back(r.from_node_id());
           edge_values.push_back(weight_func(r));
           edges++;
@@ -97,12 +77,11 @@ inline void csr_build(graph_db_ptr gdb, csr_arrays &csr,
   }
 #if defined CSR_DELTA_STORE && defined USE_TX
   auto txid = current_transaction()->xid();
-  auto &delta = gdb->get_csr_delta();
-  delta->set_last_txn_id(txid); // update id of the last transaction that made a CSR update
-  delta->set_last_node_id(row_offsets.size() - 2); // update last node id in the CSR
+  csr_delta_->set_last_txn_id(txid); // update id of the last transaction that made a CSR update
+  csr_delta_->set_last_node_id(row_offsets.size() - 2); // update last node id in the CSR
 
   bool clear = true;
-  for (auto &elem : delta->get_delta_elements()) {
+  for (auto &elem : csr_delta_->get_delta_elements()) {
     if (elem.txid_ < txid) {
       // the modifications of txid_ has been included in the CSR build 
       // therefore, the delta element is not needed for later restores
@@ -119,21 +98,19 @@ inline void csr_build(graph_db_ptr gdb, csr_arrays &csr,
   }
   if (clear) {
     // no delta element is needed later for updating CSR
-    delta->get_delta_elements().clear();
+    csr_delta_->get_delta_elements().clear();
   }
 
   // TODO this is not needed when CSR update is done directly on GPU
-  delta->set_row_offs(row_offsets);
-  delta->set_col_inds(col_indices);
-  delta->set_edge_vals(edge_values);
+  csr_delta_->set_row_offs(row_offsets);
+  csr_delta_->set_col_inds(col_indices);
+  csr_delta_->set_edge_vals(edge_values);
 #endif
 }
 
-inline void parallel_csr_build(graph_db_ptr gdb, csr_arrays &csr,
-                      rship_weight weight_func, bool bidirectional = false) {
-
-  offset_t max_num_nodes = gdb->get_nodes()->as_vec().last_used() + 1;
-  offset_t max_num_edges = gdb->get_relationships()->as_vec().last_used() + 1;
+void graph_db::parallel_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
+  offset_t max_num_nodes = nodes_->as_vec().last_used() + 1;
+  offset_t max_num_edges = rships_->as_vec().last_used() + 1;
 
   auto &row_offsets = csr.row_offsets;
   auto &col_indices = csr.col_indices;
@@ -148,7 +125,7 @@ inline void parallel_csr_build(graph_db_ptr gdb, csr_arrays &csr,
   row_offsets.push_back(0); // First value is always 0
 
   result_set rs;
-  auto q = query(gdb)
+  auto q = query(this)
                 .all_nodes()
                 .csr(weight_func, bidirectional)
                 .orderby([&](const qr_tuple q1, const qr_tuple q2) {
@@ -177,12 +154,11 @@ inline void parallel_csr_build(graph_db_ptr gdb, csr_arrays &csr,
   }
 #if defined CSR_DELTA_STORE && defined USE_TX
   auto txid = current_transaction()->xid();
-  auto &delta = gdb->get_csr_delta();
-  delta->set_last_txn_id(txid); // update id of the last transaction that made a CSR update
-  delta->set_last_node_id(row_offsets.size() - 2); // update last node id in the CSR
+  csr_delta_->set_last_txn_id(txid); // update id of the last transaction that made a CSR update
+  csr_delta_->set_last_node_id(row_offsets.size() - 2); // update last node id in the CSR
 
   bool clear = true;
-  for (auto &elem : delta->get_delta_elements()) {
+  for (auto &elem : csr_delta_->get_delta_elements()) {
     if (elem.txid_ < txid) {
       // the modifications of txid_ has been included in the CSR build 
       // therefore, the delta element is not needed for later restores
@@ -199,32 +175,31 @@ inline void parallel_csr_build(graph_db_ptr gdb, csr_arrays &csr,
   }
   if (clear) {
     // no delta element is needed later for updating CSR
-    delta->get_delta_elements().clear();
+    csr_delta_->get_delta_elements().clear();
   }
 
   // TODO this is not needed when CSR update is done directly on GPU
-  delta->set_row_offs(row_offsets);
-  delta->set_col_inds(col_indices);
-  delta->set_edge_vals(edge_values);
+  csr_delta_->set_row_offs(row_offsets);
+  csr_delta_->set_col_inds(col_indices);
+  csr_delta_->set_edge_vals(edge_values);
 #endif
 }
 
 #if defined CSR_DELTA_STORE && defined USE_TX
-inline void csr_update_with_delta(graph_db_ptr graph, csr_arrays &csr) {
+void graph_db::csr_update_with_delta(csr_arrays &csr) {
   auto tx = current_transaction();
   if (!tx)
     throw out_of_transaction_scope();
 
-  auto &delta = graph->get_csr_delta();
-  auto last_txid = delta->get_last_txn_id();
+  auto last_txid = csr_delta_->get_last_txn_id();
   auto txid = tx->xid();
 
   if (last_txid == UNKNOWN) {
     // no CSR exists yet for the delta, so we make the initial CSR build
 #ifdef PARALLEL_CSR_BUILD
-    parallel_csr_build(gdb, csr, delta->get_weight_func(), delta->get_bidirectional());
+    parallel_csr_build(csr, csr_delta_->get_weight_func(), csr_delta_->get_bidirectional());
 #else
-    csr_build(graph, csr, delta->get_weight_func(), delta->get_bidirectional());
+    csr_build(csr, csr_delta_->get_weight_func(), csr_delta_->get_bidirectional());
 #endif
     return;
   }
@@ -235,9 +210,9 @@ inline void csr_update_with_delta(graph_db_ptr graph, csr_arrays &csr) {
     throw invalid_csr_update();
   }
 
-  auto &old_row_offs = delta->get_row_offs();
-  auto &old_col_inds = delta->get_col_inds();
-  auto &old_edge_vals = delta->get_edge_vals();
+  auto &old_row_offs = csr_delta_->get_row_offs();
+  auto &old_col_inds = csr_delta_->get_col_inds();
+  auto &old_edge_vals = csr_delta_->get_edge_vals();
 
   auto &new_row_offs = csr.row_offsets;
   auto &new_col_inds = csr.col_indices;
@@ -246,10 +221,10 @@ inline void csr_update_with_delta(graph_db_ptr graph, csr_arrays &csr) {
   // restore deltas into a delta map
   // an entry in a delta map is of the form: {node id, <[ids of neighbours], [edge weights]>}
   csr_delta::delta_map_t deltas;
-  delta->restore_deltas(deltas, txid);
+  csr_delta_->restore_deltas(deltas, txid);
 
   auto update_edge_delta = 0; // edge delta of existing nodes i.e. from 0 to last node id in the current (i.e. old) CSR
-  auto last_node_id = delta->get_last_node_id();
+  auto last_node_id = csr_delta_->get_last_node_id();
   const auto it1 = deltas.begin();
   const auto it2 = deltas.upper_bound(last_node_id);
   const auto it3 = deltas.end();
@@ -330,59 +305,18 @@ inline void csr_update_with_delta(graph_db_ptr graph, csr_arrays &csr) {
     next_id++;
   }
 
-  delta->set_last_txn_id(txid); // update id of the last transaction that made a CSR update
-  delta->set_last_node_id(new_row_offs.size() - 2); // update last node id in the CSR
+  csr_delta_->set_last_txn_id(txid); // update id of the last transaction that made a CSR update
+  csr_delta_->set_last_node_id(new_row_offs.size() - 2); // update last node id in the CSR
 
   // TODO this is not needed when CSR update is done directly on GPU
-  delta->set_row_offs(new_row_offs);
-  delta->set_col_inds(new_col_inds);
-  delta->set_edge_vals(new_edge_vals);
+  csr_delta_->set_row_offs(new_row_offs);
+  csr_delta_->set_col_inds(new_col_inds);
+  csr_delta_->set_edge_vals(new_edge_vals);
 }
 #endif
 
-inline void poseidon_to_csr(graph_db_ptr gdb, csr_arrays &csr,
-              rship_weight weight_func, bool bidirectional = false) {
-#if defined CSR_DELTA_STORE && defined USE_TX
-  auto &delta = gdb->get_csr_delta();
-  delta->set_weight_func(weight_func);
-  delta->set_bidirectional(bidirectional);
-  csr_update_with_delta(gdb, csr);
-#elif defined PARALLEL_CSR_BUILD
-  parallel_csr_build(gdb, csr, weight_func, bidirectional);
-#else
-  csr_build(gdb, csr, weight_func, bidirectional);
-#endif
-}
-
-/*
- * Struct used to store edge-coordinates in COO format
- * Needs to be allocated 16-bit alligned!
- */
-struct edge_coords {
-  node::id_t x, y;
-};
-
-/**
- * Converts a given Poseidon Graph to a COO representation, including all relationships satisfying the
- * predicate rpred. The weight of a traversed relationship is calculated from the weight function. The 
- * bidirectional flag determines whether only outgoing relationships are considered (bidirectional = false) 
- * or both outgoing and incoming relationships (bidirectional = true).
- *
- * Input:
- *   gdb              -> Pointer to Poseidon Graph Database
- *   bidirectional    -> Set true to treat relationships bidirectionally
- *   rpred            -> Function returning a bool for each relationship
- *   weight_func      -> Function returning a weight for each relationship
- * Output: 
- *   edge_coordinates -> COO-formatted graph edge coordinates, to be allocated in advance
- *   edge_values      -> COO-formatted graph edge weights, to be allocated in advance
- *   num_nodes        -> Number of veritces in the input graph. Note that unused slots in
- *                       chunked_vectors are considered here as well! 
- *   num_edges        -> Number of edges in the input graph
- */
-inline void poseidon_to_coo(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
-                edge_coords* edge_coordinates, float* edge_values, uint64_t* num_nodes, uint64_t* num_edges){
-  chunked_vec<relationship, RSHIP_CHUNK_SIZE> &cv_rsips = gdb->get_relationships()->as_vec();
+void graph_db::poseidon_to_coo(edge_coords* edge_coordinates, float* edge_values, rship_weight weight_func, bool bidirectional) {
+  chunked_vec<relationship, RSHIP_CHUNK_SIZE> &cv_rsips = rships_->as_vec();
   auto iter = cv_rsips.begin();
   auto last = cv_rsips.end();
   unsigned long long edges = 0;
@@ -390,23 +324,16 @@ inline void poseidon_to_coo(graph_db_ptr gdb, bool bidirectional, rship_predicat
   // Iterates over relationship list
   while (iter != last) {
     relationship r = (*iter);
-    if (rpred(r)) {
-      edge_coordinates[edges].x = r.from_node_id();
-      edge_coordinates[edges].y = r.to_node_id();
+    edge_coordinates[edges].x = r.from_node_id();
+    edge_coordinates[edges].y = r.to_node_id();
+    edge_values[edges] = weight_func(r);
+    edges++;
+    if(bidirectional){
+      edge_coordinates[edges].x = r.to_node_id();
+      edge_coordinates[edges].y = r.from_node_id();
       edge_values[edges] = weight_func(r);
       edges++;
-      if(bidirectional){
-        edge_coordinates[edges].x = r.to_node_id();
-        edge_coordinates[edges].y = r.from_node_id();
-        edge_values[edges] = weight_func(r);
-        edges++;
-      } // if bidirectional
-    } // if rpred
+    } // if bidirectional
     ++iter;
   } // Outer while loop
-
-  *num_nodes = (uint64_t) gdb->get_nodes()->as_vec().capacity();
-  *num_edges = (uint64_t) edges;
 }
-
-#endif

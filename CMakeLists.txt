@@ -469,6 +469,7 @@ set(src_files
   ${gunrock_analysis}
   src/analytics/bfs.cpp
   src/analytics/shortest_path.cpp
+  src/analytics/graph_db_analytics.cpp
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion

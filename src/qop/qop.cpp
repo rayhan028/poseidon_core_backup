@@ -28,7 +28,6 @@
 
 #include "qop.hpp"
 #include "profiling.hpp"
-#include "format_converter.hpp"
 #ifdef USE_GUNROCK
 #include "gunrock_bfs.hpp"
 #include "gunrock_sssp.hpp"

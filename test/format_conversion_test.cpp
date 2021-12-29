@@ -4,7 +4,6 @@
 #include "catch.hpp"
 #include "config.h"
 #include "graph_pool.hpp"
-#include "format_converter.hpp"
 #include <chrono>
 #include <boost/dynamic_bitset.hpp>
 
@@ -50,13 +49,13 @@ TEST_CASE("Building CSR from Sequential and parallel table scan", "[format_conve
   csr_arrays csr1;
   auto weight_func = [](auto& r) { return 1.3; };
   graph->run_transaction([&]() {
-    csr_build(graph, csr1, weight_func);
+    graph->csr_build(csr1, weight_func);
     return true;
   });
 
   csr_arrays csr2;
   graph->run_transaction([&]() {
-    parallel_csr_build(graph, csr2, weight_func);
+    graph->parallel_csr_build(csr2, weight_func);
     return true;
   });
 

@@ -4,7 +4,6 @@
 #include "catch.hpp"
 #include "config.h"
 #include "graph_pool.hpp"
-#include "format_converter.hpp"
 #include "csr_delta.hpp"
 #include <chrono>
 #include <boost/dynamic_bitset.hpp>
@@ -177,7 +176,7 @@ TEST_CASE("Removing an edge an updating CSR with delta", "[format_converter]"){
   csr_arrays csr1;
   auto weight_func = [](auto& r) { return 1.3; };
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -190,7 +189,7 @@ TEST_CASE("Removing an edge an updating CSR with delta", "[format_converter]"){
 
   csr_arrays csr2;
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     return true;
   });
 
@@ -210,7 +209,7 @@ TEST_CASE("Adding an edge and updating CSR with delta", "[format_converter]"){
   csr_arrays csr1;
   auto weight_func = [](auto& r) { return 1.3; };
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -223,7 +222,7 @@ TEST_CASE("Adding an edge and updating CSR with delta", "[format_converter]"){
 
   csr_arrays csr2;
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     return true;
   });
 
@@ -243,7 +242,7 @@ TEST_CASE("Adding a node and updating CSR with delta", "[format_converter]"){
   csr_arrays csr1;
   auto weight_func = [](auto& r) { return 1.3; };
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -264,7 +263,7 @@ TEST_CASE("Adding a node and updating CSR with delta", "[format_converter]"){
 
   csr_arrays csr2;
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     return true;
   });
 
@@ -284,7 +283,7 @@ TEST_CASE("Updating graph and updating CSR with delta in a single transaction", 
 
   // CSR build
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -312,7 +311,7 @@ TEST_CASE("Updating graph and updating CSR with delta in a single transaction", 
 
   // CSR update with delta
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     return true;
   });
 
@@ -338,7 +337,7 @@ TEST_CASE("Updating graph and updating CSR with delta in a series of transaction
 
   // CSR build
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -349,7 +348,7 @@ TEST_CASE("Updating graph and updating CSR with delta in a series of transaction
 
   // 1st CSR update with delta
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     return true;
   });
 
@@ -360,7 +359,7 @@ TEST_CASE("Updating graph and updating CSR with delta in a series of transaction
 
   // 2nd CSR update with delta
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr3, weight_func);
+    graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
@@ -371,7 +370,7 @@ TEST_CASE("Updating graph and updating CSR with delta in a series of transaction
 
   // 3rd CSR update with delta
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr4, weight_func);
+    graph->poseidon_to_csr(csr4, weight_func);
     return true;
   });
 
@@ -384,7 +383,7 @@ TEST_CASE("Updating graph and updating CSR with delta in a series of transaction
 
   // 4th CSR update with delta
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr5, weight_func);
+    graph->poseidon_to_csr(csr5, weight_func);
     return true;
   });
 
@@ -396,7 +395,7 @@ TEST_CASE("Updating graph and updating CSR with delta in a series of transaction
 
   // 5th CSR update with delta
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr6, weight_func);
+    graph->poseidon_to_csr(csr6, weight_func);
     return true;
   });
 
@@ -410,7 +409,7 @@ TEST_CASE("Updating graph and updating CSR with delta in a series of transaction
 
   // 6th CSR update with delta
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr7, weight_func);
+    graph->poseidon_to_csr(csr7, weight_func);
     return true;
   });
 
@@ -448,7 +447,7 @@ TEST_CASE("Consistency Test 1a", "[format_converter]"){
 
     // this CSR build should not include node with id 7 (and its relationship), created by t2
     // t1 tries to read the node to build the CSR and aborts
-    REQUIRE_THROWS_AS(poseidon_to_csr(graph, csr, weight_func), unknown_id);
+    REQUIRE_THROWS_AS(graph->poseidon_to_csr(csr, weight_func), unknown_id);
     graph->commit_transaction();
   });
 
@@ -490,7 +489,7 @@ TEST_CASE("Consistency Test 1b", "[format_converter]"){
 
     // this CSR build should not include node with id 7 (and its relationship), created by t2
     // t1 tries to read the uncommitted node to build the CSR and aborts
-    REQUIRE_THROWS_AS(poseidon_to_csr(graph, csr, weight_func), unknown_id);
+    REQUIRE_THROWS_AS(graph->poseidon_to_csr(csr, weight_func), unknown_id);
     b3.notify(); // inform t2 to commit
     graph->commit_transaction();
   });
@@ -532,7 +531,7 @@ TEST_CASE("Consistency Test 2a", "[format_converter]"){
     b2.wait(); // before t1 builds CSR, ensure t2 adds delta for its updates and commits
 
     // this CSR build should not include the relationship between nodes with ids 0 and 5, created by t2
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     graph->commit_transaction();
   });
 
@@ -561,7 +560,7 @@ TEST_CASE("Consistency Test 2a", "[format_converter]"){
 
   // update CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     return true;
   });
 
@@ -599,7 +598,7 @@ TEST_CASE("Consistency Test 2b", "[format_converter]"){
     b2.wait();
 
     // this CSR build should not include the relationship between nodes with ids 0 and 5, created by t2
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     b3.notify();
     graph->commit_transaction();
   });
@@ -630,7 +629,7 @@ TEST_CASE("Consistency Test 2b", "[format_converter]"){
 
   // update CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     return true;
   });
 
@@ -659,7 +658,7 @@ TEST_CASE("Consistency Test 3a", "[format_converter]"){
 
   // build CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -674,7 +673,7 @@ TEST_CASE("Consistency Test 3a", "[format_converter]"){
     b2.wait(); // before t1 updates CSR, ensure t2 adds delta for its updates and commits
 
     // this CSR update should not include node with id 7 (and its relationship), created by t2
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     graph->commit_transaction();
   });
 
@@ -704,7 +703,7 @@ TEST_CASE("Consistency Test 3a", "[format_converter]"){
 
   // update CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr3, weight_func);
+    graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
@@ -733,7 +732,7 @@ TEST_CASE("Consistency Test 3b", "[format_converter]"){
 
   // build CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -748,7 +747,7 @@ TEST_CASE("Consistency Test 3b", "[format_converter]"){
     b2.wait();
 
     // this CSR update should not include node with id 7 (and its relationship), created by t2
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     b3.notify(); // inform t2 to commit
     graph->commit_transaction();
   });
@@ -780,7 +779,7 @@ TEST_CASE("Consistency Test 3b", "[format_converter]"){
 
   // update CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr3, weight_func);
+    graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
@@ -809,7 +808,7 @@ TEST_CASE("Consistency Test 4a", "[format_converter]"){
 
   // build CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -824,7 +823,7 @@ TEST_CASE("Consistency Test 4a", "[format_converter]"){
     b2.wait(); // before t1 updates CSR, ensure t2 adds delta for its updates and commits
 
     // this CSR update should not include the relationship between nodes with ids 0 and 5, created by t2
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     graph->commit_transaction();
   });
 
@@ -853,7 +852,7 @@ TEST_CASE("Consistency Test 4a", "[format_converter]"){
 
   // update CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr3, weight_func);
+    graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
@@ -882,7 +881,7 @@ TEST_CASE("Consistency Test 4b", "[format_converter]"){
 
   // build CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -897,7 +896,7 @@ TEST_CASE("Consistency Test 4b", "[format_converter]"){
     b2.wait();
 
     // this CSR update should not include the relationship between nodes with ids 0 and 5, created by t2
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     b3.notify(); // notify t2 to commit
     graph->commit_transaction();
   });
@@ -928,7 +927,7 @@ TEST_CASE("Consistency Test 4b", "[format_converter]"){
 
   // update CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr3, weight_func);
+    graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
@@ -966,7 +965,7 @@ TEST_CASE("Consistency Test 5a", "[format_converter]"){
     b2.wait(); // before t1 builds CSR, ensure t2 adds delta for its updates and commits
 
     // this CSR build should include node with id 7 (and its relationship), created by t2
-    REQUIRE_NOTHROW(poseidon_to_csr(graph, csr, weight_func));
+    REQUIRE_NOTHROW(graph->poseidon_to_csr(csr, weight_func));
     graph->commit_transaction();
   });
 
@@ -1019,7 +1018,7 @@ TEST_CASE("Consistency Test 5b", "[format_converter]"){
 
     // this CSR build should not include node with id 7 (and its relationship), created by t2
     // t1 tries to read the dirty node with id 0 to build the CSR and aborts
-    REQUIRE_THROWS_AS(poseidon_to_csr(graph, csr1, weight_func), transaction_abort);
+    REQUIRE_THROWS_AS(graph->poseidon_to_csr(csr1, weight_func), transaction_abort);
     b3.notify(); // inform t2 to commit
     graph->commit_transaction();
   });
@@ -1061,7 +1060,7 @@ TEST_CASE("Consistency Test 6a", "[format_converter]"){
     b2.wait(); // before t1 builds CSR, ensure t2 adds delta for its updates and commits
 
     // this CSR build should include the relationship between nodes with ids 0 and 5, created by t2
-    poseidon_to_csr(graph, csr, weight_func);
+    graph->poseidon_to_csr(csr, weight_func);
     graph->commit_transaction();
   });
 
@@ -1113,7 +1112,7 @@ TEST_CASE("Consistency Test 6b", "[format_converter]"){
 
     // this CSR build should not include the relationship between nodes with ids 0 and 5, created by t2
     // t1 tries to read the dirty node with id 0 to build the CSR and aborts
-    REQUIRE_THROWS_AS(poseidon_to_csr(graph, csr, weight_func), transaction_abort);
+    REQUIRE_THROWS_AS(graph->poseidon_to_csr(csr, weight_func), transaction_abort);
     b3.notify(); // inform t2 to commit
     graph->commit_transaction();
   });
@@ -1145,7 +1144,7 @@ TEST_CASE("Consistency Test 7a", "[format_converter]"){
 
   // build CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -1160,7 +1159,7 @@ TEST_CASE("Consistency Test 7a", "[format_converter]"){
     b2.wait(); // before t1 updates CSR, ensure t2 adds delta for its updates and commits
 
     // this CSR update should include node with id 7 (and its relationship), created by t2
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     graph->commit_transaction();
   });
 
@@ -1202,7 +1201,7 @@ TEST_CASE("Consistency Test 7b", "[format_converter]"){
 
   // build CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -1217,7 +1216,7 @@ TEST_CASE("Consistency Test 7b", "[format_converter]"){
     b2.wait();
 
     // this CSR update should not include node with id 7 (and its relationship), created by t2
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     b3.notify(); // inform t2 to commit
     graph->commit_transaction();
   });
@@ -1249,7 +1248,7 @@ TEST_CASE("Consistency Test 7b", "[format_converter]"){
 
   // update CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr3, weight_func);
+    graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
@@ -1278,7 +1277,7 @@ TEST_CASE("Consistency Test 8a", "[format_converter]"){
 
   // build CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -1293,7 +1292,7 @@ TEST_CASE("Consistency Test 8a", "[format_converter]"){
     b2.wait(); // before t1 updates CSR, ensure t2 adds delta for its updates and commits
 
     // this CSR update should include the relationship between nodes with ids 0 and 5, created by t2
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     graph->commit_transaction();
   });
 
@@ -1334,7 +1333,7 @@ TEST_CASE("Consistency Test 8b", "[format_converter]"){
 
   // build CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -1349,7 +1348,7 @@ TEST_CASE("Consistency Test 8b", "[format_converter]"){
     b2.wait();
 
     // this CSR update should not include the relationship between nodes with ids 0 and 5, created by t2
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     b3.notify(); // notify t2 to commit
     graph->commit_transaction();
   });
@@ -1380,7 +1379,7 @@ TEST_CASE("Consistency Test 8b", "[format_converter]"){
 
   // update CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr3, weight_func);
+    graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
@@ -1418,7 +1417,7 @@ TEST_CASE("Consistency Test 9a", "[format_converter]"){
     b2.wait(); // ensure t2 builds CSR before t1 updates the CSR
 
     // this CSR update should abort
-    REQUIRE_THROWS_AS(poseidon_to_csr(graph, csr1, weight_func), invalid_csr_update);
+    REQUIRE_THROWS_AS(graph->poseidon_to_csr(csr1, weight_func), invalid_csr_update);
     graph->commit_transaction();
   });
 
@@ -1426,7 +1425,7 @@ TEST_CASE("Consistency Test 9a", "[format_converter]"){
     b1.wait(); // wait for t1 to start
     graph->begin_transaction();
     // build CSR
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     b2.notify(); // inform t1 to update CSR
     graph->commit_transaction();
   });
@@ -1448,7 +1447,7 @@ TEST_CASE("Consistency Test 9b", "[format_converter]"){
 
   // build CSR
   graph->run_transaction([&]() {
-    poseidon_to_csr(graph, csr1, weight_func);
+    graph->poseidon_to_csr(csr1, weight_func);
     return true;
   });
 
@@ -1467,7 +1466,7 @@ TEST_CASE("Consistency Test 9b", "[format_converter]"){
     b2.wait(); // ensure t2 updates CSR before t1 also updates the CSR
 
     // this CSR update should abort
-    REQUIRE_THROWS_AS(poseidon_to_csr(graph, csr1, weight_func), invalid_csr_update);
+    REQUIRE_THROWS_AS(graph->poseidon_to_csr(csr1, weight_func), invalid_csr_update);
     graph->commit_transaction();
   });
 
@@ -1475,7 +1474,7 @@ TEST_CASE("Consistency Test 9b", "[format_converter]"){
     b1.wait(); // wait for t1 to start
     graph->begin_transaction();
     // update CSR
-    poseidon_to_csr(graph, csr2, weight_func);
+    graph->poseidon_to_csr(csr2, weight_func);
     b2.notify(); // inform t1 to update CSR
     graph->commit_transaction();
   });
