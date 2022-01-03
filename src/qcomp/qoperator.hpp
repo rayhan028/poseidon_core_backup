@@ -5,7 +5,7 @@
 #include <limits>
 
 #include "p_context.hpp"
-#include "filter_expression.hpp"
+#include "expression.hpp"
 #include "global_definitions.hpp"
 #include "query_engine.hpp"
 

@@ -27,6 +27,7 @@
 #include "qop.hpp"
 #include "update.hpp"
 #include "join.hpp"
+#include "query_set.hpp"
 // #include "expr_interpreter.hpp"
 
 namespace ph = std::placeholders;

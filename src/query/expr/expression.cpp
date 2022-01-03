@@ -1,4 +1,4 @@
-#include "filter_expression.hpp"
+#include "expression.hpp"
 
 std::string expression::fop_str(FOP fop) const {
     switch (fop) {
@@ -27,7 +27,7 @@ std::string expression::fop_str(FOP fop) const {
 
 number_token::number_token(const int value) : value_(value) {
     name_ = "INT";
-    ftype_ = FOP_TYPE::INT;
+    rtype_ = ftype_ = FOP_TYPE::INT;
 }
 
 std::string number_token::dump() const {
@@ -54,7 +54,7 @@ void key_token::accept(int rank, expression_visitor &fep) {
 
 time_token::time_token(boost::posix_time::ptime time) : time_(time) {
     name_ = "TIME";
-    ftype_ = FOP_TYPE::TIME;
+    rtype_ = ftype_ = FOP_TYPE::TIME;
 }
 
 void time_token::accept(int rank, expression_visitor &fep) {
@@ -67,7 +67,7 @@ std::string time_token::dump() const {
 
 str_token::str_token(std::string str) : str_(str) {
     name_ = "STR";
-    ftype_ = FOP_TYPE::STRING;
+    rtype_ = ftype_ = FOP_TYPE::STRING;
 }
 
 std::string str_token::dump() const {
@@ -137,10 +137,12 @@ eq_predicate::eq_predicate(const expr left, const expr right, bool prec, bool no
         : binary_predicate(FOP::EQ, left, right, prec) {
     name_ = "EQ";
     ftype_ = FOP_TYPE::OP;
+    rtype_ = FOP_TYPE::BOOL_OP;
     if (not_) fop_ = FOP::NEQ;
 }
 
 void eq_predicate::accept(int rank, expression_visitor &fep) {
+    std::cout << "eq_predicate::accept" << std::endl;
     left_->accept(rank+1, fep);
     right_->accept(rank+1, fep);
     fep.visit(rank, shared_from_this());
@@ -151,6 +153,7 @@ gt_predicate::gt_predicate(const expr left, const expr right, bool prec, bool no
         : binary_predicate(FOP::EQ, left, right, prec) {
     name_ = "GT";
     ftype_ = FOP_TYPE::OP;
+    rtype_ = FOP_TYPE::BOOL_OP;
 }
 
 void gt_predicate::accept(int rank, expression_visitor &fep) {
@@ -164,6 +167,7 @@ ge_predicate::ge_predicate(const expr left, const expr right, bool prec, bool no
         : binary_predicate(FOP::EQ, left, right, prec) {
     name_ = "GE";
     ftype_ = FOP_TYPE::OP;
+    rtype_ = FOP_TYPE::BOOL_OP;
 }
 
 void ge_predicate::accept(int rank, expression_visitor &fep) {
@@ -177,6 +181,7 @@ lt_predicate::lt_predicate(const expr left, const expr right, bool prec, bool no
         : binary_predicate(FOP::EQ, left, right, prec) {
     name_ = "LT";
     ftype_ = FOP_TYPE::OP;
+    rtype_ = FOP_TYPE::BOOL_OP;
 }
 
 void lt_predicate::accept(int rank, expression_visitor &fep) {
@@ -190,6 +195,7 @@ le_predicate::le_predicate(const expr left, const expr right, bool prec, bool no
         : binary_predicate(FOP::EQ, left, right, prec) {
     name_ = "LE";
     ftype_ = FOP_TYPE::OP;
+    rtype_ = FOP_TYPE::BOOL_OP;
 }
 
 void le_predicate::accept(int rank, expression_visitor &fep) {
@@ -215,7 +221,7 @@ void call_predicate::accept(int rank, expression_visitor &fep) {
 
 and_predicate::and_predicate(const bin_expr left, const bin_expr right, bool prec)
         : binary_predicate(FOP::AND, left, right, prec, true) {
-    ftype_ = FOP_TYPE::BOOL_OP;
+    rtype_ = ftype_ = FOP_TYPE::BOOL_OP;
     name_ = "AND";
 }
 
@@ -228,7 +234,7 @@ void and_predicate::accept(int rank, expression_visitor &fep) {
 
 or_predicate::or_predicate(const bin_expr left, const bin_expr right, bool prec)
         : binary_predicate(FOP::OR, left, right, prec, true) {
-    ftype_ = FOP_TYPE::BOOL_OP;
+    rtype_ = ftype_ = FOP_TYPE::BOOL_OP;
     name_ = "OR";
 }
 

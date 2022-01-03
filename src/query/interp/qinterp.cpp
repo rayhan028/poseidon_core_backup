@@ -16,14 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
+#include "qinterp.hpp"
 
-#ifndef expr_interpreter_hpp_
-#define expr_interpreter_hpp_
-
-#include "qop.hpp"
-#include "query.hpp"
-#include "expression.hpp"
-
-bool interpret_expression(graph_db_ptr& gdb, expr& ex, const qr_tuple& tup);
-
-#endif
+void qinterp::start(graph_db_ptr &gdb) {
+  gdb->run_transaction([&]() {
+    qset_.start(); 
+    return true;
+  });    
+}

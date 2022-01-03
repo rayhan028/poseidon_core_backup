@@ -16,82 +16,33 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef queryc_hpp_
-#define queryc_hpp_
+#ifndef qparser_hpp_
+#define qparser_hpp_
 
-#include "qlang_grammar.hpp"
+#include <string>
+
 #include "ast.hpp"
-#include "qop.hpp"
-#include "query.hpp"
-#include "query_set.hpp"
-
-
-#ifdef USE_LLVM
-#include "qoperator.hpp"
-#include "query_engine.hpp"
-
-#endif 
+#include "expression.hpp"
 
 #include <tao/pegtl.hpp>
 #include <tao/pegtl/contrib/parse_tree.hpp>
 
-namespace ph = std::placeholders;
 using parse_tree_ptr = std::unique_ptr<tao::pegtl::parse_tree::node>;
 
 /**
- * queryc ist the query compiler for Poseidon. It accepts a simple 
- * algebraic textual query langugage and produces via an AST either
- * (a) an ahead-of-time compiled query plan of connected query operator 
- *     implementations (instances of the class qop_ptr) that can be
- *     executed or
- * (b) an intermediate plan consisting of algebra_optr instances that
- *     is used to generate IR code for LLVM.
+ * qparser is the main class for parsing textual algebraic query specifications and producing an AST.
  */
-class queryc {
 
+class qparser {
 public:
+    qparser() = default;
+    ~qparser() = default;
 
-  /**
-   * Constructor for a new query compiler.
-   */
-  queryc() = default;
-
-#ifdef USE_LLVM
-  /**
-   * Parses the given query string and construct a plan
-   * for the code compiler.
-   */
-  algebra_optr compile_to_plan(const std::string &query);
-
-  /**
-   * TODO
-   */
-  algebra_optr ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent);
-
-  /**
-   * Executes the given query plan.
-   */
-  void exec_plan(algebra_optr &plan, graph_db_ptr &gdb);
-#endif
-  /**
-   *
-   */
-  query_set generate_qex_plan(graph_db_ptr &gdb, const std::string &qstr);
 
   /**
    * Parses the given query string and returns an AST.
    */
   ast_op_ptr parse(const std::string &query);
-
-  /**
-   * Parses the given query string and saves the plan with given name.
-   */
-  void parse_and_save_plan(const std::string &name, const std::string &query);
-
-  /**
-   * Executes the given query by name.
-   */
-  void exec_plan(const std::string &qname, graph_db_ptr &gdb);
 
 private:
   /**
@@ -124,14 +75,7 @@ private:
   /**
    * TODO
    */
-  std::pair<qop_ptr, qop_ptr> ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gdb, std::vector<qop_ptr>& sources);
-
-#ifdef USE_LLVM
-  /**
-   * TODO
-   */
   expr parse_expression(parse_tree_ptr& tree);
-#endif 
 
   /**
    * Returns the property name from the variable name, 
@@ -167,20 +111,6 @@ private:
    *
    */
   properties_t jprops_to_props(const jproperty_list& jprops);
-
-  template <typename T>
-  qop_ptr qop_append(qop_ptr parent, std::shared_ptr<T> qop) { 
-    if (parent != nullptr)
-      parent->connect(qop, std::bind(&T::process, dynamic_cast<T *>(qop.get()), ph::_1, ph::_2));
-    return qop;
-  }
-
-#ifdef USE_LLVM
-  std::map<std::string, algebra_optr> query_plans_;
-#else
-  std::map<std::string, query> query_plan_;
-#endif
-
 };
 
 #endif

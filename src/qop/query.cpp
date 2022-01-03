@@ -21,7 +21,7 @@
 #include "join.hpp"
 // #include "lua_poseidon.hpp"
 #include "update.hpp"
-
+#include "query_printer.hpp"
 #include <memory>
 
 namespace ph = std::placeholders;
@@ -462,18 +462,30 @@ void query::start(std::initializer_list<query *> queries) {
   }
 }
 
-void query_set::start() {
-  for (auto &q : queries_) {
-    q.start();
-  }
+void query::print_plan(std::ostream& os) {
+    os << "----------------------------------------------------------------------\n";
+    auto qop_tree = build_qop_tree(plan_head_);
+    qop_tree.first->print(os);
+    print_plan_helper(os, qop_tree.first, "");
+    os << "----------------------------------------------------------------------\n";
 }
 
-void query_set::append_printer() {
-  // TODO: find the last operator
-  auto qop = queries_.at(0).plan_tail_;
-  auto op = std::make_shared<printer>();
-  return qop->connect(op, std::bind(&printer::process, op.get(), ph::_1, ph::_2));
+void query::print_plans(std::initializer_list<query *> queries, std::ostream& os) {
+    std::vector<qop_node_ptr> trees;
+    for (auto &q : queries) {
+        auto qop_tree = build_qop_tree(q->plan_head_);
+        trees.push_back(qop_tree.first);
+    }
+    // merge trees
+    for (auto i = 1u; i < trees.size(); i++) {
+        merge_qop_trees(trees[0], trees[i]);
+    }
+    os << "##----------------------------------------------------------------------\n";
+    trees[0]->print(os);
+    print_plan_helper(os, trees[0], "");
+    os << "##----------------------------------------------------------------------\n";
 }
+
 
 #ifdef QOP_RECOVERY
 query &

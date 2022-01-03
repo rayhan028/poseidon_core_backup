@@ -31,9 +31,7 @@
 
 #include "qlang_grammar.hpp"
 
-#ifdef USE_LLVM
-#include "filter_expression.hpp"
-#endif 
+#include "expression.hpp"
 
 struct ast_op;
 

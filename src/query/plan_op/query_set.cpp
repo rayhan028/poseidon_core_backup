@@ -1,0 +1,50 @@
+/*
+ * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ *
+ * This file is part of the Poseidon package.
+ *
+ * Poseidon is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Poseidon is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "query_set.hpp"
+#include "query_printer.hpp"
+
+void query_set::start() {
+  for (auto &q : queries_) {
+    q.start();
+  }
+}
+
+void query_set::append_printer() {
+  // TODO: find the last operator
+  auto qop = queries_.at(0).plan_tail_;
+  auto op = std::make_shared<printer>();
+  return qop->connect(op, std::bind(&printer::process, op.get(), ph::_1, ph::_2));
+}
+
+void query_set::print_plan(std::ostream& os) {
+    std::vector<qop_node_ptr> trees;
+    for (auto &q : queries_) {
+        auto qop_tree = build_qop_tree(q.plan_head_);
+        trees.push_back(qop_tree.first);
+    }
+    // merge trees
+    for (auto i = 1u; i < trees.size(); i++) {
+        merge_qop_trees(trees[0], trees[i]);
+    }
+    os << "##----------------------------------------------------------------------\n";
+    trees[0]->print(os);
+    print_plan_helper(os, trees[0], "");
+    os << "##----------------------------------------------------------------------\n";
+}

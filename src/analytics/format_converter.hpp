@@ -246,7 +246,7 @@ struct edge_coords {
  */
 inline void poseidon_to_coo(graph_db_ptr gdb, bool bidirectional, rship_predicate rpred, rship_weight weight_func, 
                 edge_coords* edge_coordinates, float* edge_values, uint64_t* num_nodes, uint64_t* num_edges){
-    chunked_vec<relationship, RSHIP_CHUNK_SIZE> &cv_rsips = gdb->get_relationships()->as_vec();
+    auto &cv_rsips = gdb->get_relationships()->as_vec();
     auto iter = cv_rsips.begin();
     auto last = cv_rsips.end();
     unsigned long long edges = 0;

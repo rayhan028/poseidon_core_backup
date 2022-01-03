@@ -12,7 +12,7 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         ON)
-option(USE_MMFILE       "Use memory mapped file storage"         ON)
+option(USE_MMFILE       "Use memory mapped file storage"         OFF)
 option(USE_HDICT        "Use hdict implementation"               ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
@@ -107,6 +107,8 @@ include_directories(${PROJECT_SOURCE_DIR}/src/query/ast)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/utils)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/plan_op)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/interp)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/expr)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/qmain)
 include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
@@ -408,7 +410,6 @@ if(USE_LLVM MATCHES ON)
   set(llvm_src
     ${codegen_operators_src}
     src/qcomp/codegen_inline.cpp
-    src/qcomp/filter_expression.cpp
     src/qcomp/filter_expression_inline.cpp
     src/qcomp/global_definitions.cpp
     src/qcomp/interpreter.cpp
@@ -454,9 +455,13 @@ set(src_files
   src/storage/mm_file.cpp
   src/btree/index_map.cpp
   src/query/plan_op/qop.cpp
+  src/query/expr/expression.cpp
   src/query/interp/expr_interpreter.cpp
+  src/query/interp/qinterp.cpp
   src/query/plan_op/update.cpp
   src/query/plan_op/join.cpp
+  src/query/plan_op/query_set.cpp
+  src/query/qmain/qparser.cpp
   src/qop/query.cpp
   src/query/utils/query_printer.cpp
   src/query/utils/thread_pool.cpp

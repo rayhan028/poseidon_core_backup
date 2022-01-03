@@ -2,7 +2,7 @@
 #define POSEIDON_CORE_INTERPRETE_FILTER_VISITOR_H
 
 #include "qoperator.hpp"
-#include "filter_expression.hpp"
+#include "expression.hpp"
 #include "query.hpp"
 
 class interprete_filter_visitor : public expression_visitor {

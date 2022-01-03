@@ -36,7 +36,7 @@
 #include "relationships.hpp"
 #include "shortest_path.hpp"
 #include "profiling.hpp"
-#include "filter_expression.hpp"
+#include "expression.hpp"
 
 template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
   std::vector<T> v2;

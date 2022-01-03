@@ -464,35 +464,5 @@ private:
   graph_db_ptr graph_db_;
 };
 
-/**
- * A query set combines multiple queries producing a joint result. This is
- * necessary because we use a push-based approach where each scan is represented
- * by a separate query object.
- */
-class query_set {
-public:
-  query_set() = default;
-
-  void add(query &q) { queries_.push_back(q); }
-  std::size_t size() const { return queries_.size(); }
-  query& front() { return queries_.front(); }
-  query &at(std::size_t i) { return queries_[i];  }
-  bool empty() const { return queries_.empty(); }
-
-  void append_printer();
-
-  /**
-   * Start the execution of the query.
-   */
-  void start();
-
- /**
-   * Print the query plan.
-   */
-  void print_plan(std::ostream& os = std::cout);
-
-private:
-  std::vector<query> queries_;
-};
 
 #endif

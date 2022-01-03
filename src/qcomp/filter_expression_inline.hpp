@@ -7,7 +7,7 @@
 #include "p_context.hpp"
 #include "filter_visitor.hpp"
 #include "p_context.hpp"
-#include "filter_expression.hpp"
+#include "expression.hpp"
 #include "codegen_inline.hpp"
 
 /**

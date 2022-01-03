@@ -307,9 +307,15 @@ int main(int argc, char* argv[]) {
     store(parse_command_line(argc, argv, desc), vm);
 
     if (vm.count("help")) {
-      std::cout << "Poseidon Graph Database Version " << POSEIDON_VERSION
-                << "\n"
-                << desc << '\n';
+      std::cout << "Poseidon Graph Database Version " << POSEIDON_VERSION << " ("
+#ifdef USE_PMDK
+                << "persistent memory"
+#elif USE_MMFILE
+                << "memory-mapped files"
+#else
+                << "in-memory"
+#endif
+                << ")\n" << desc << '\n';
       return -1;
     }
 
@@ -386,7 +392,7 @@ int main(int argc, char* argv[]) {
     run_shell(graph, qex_cc);
   }
 
-  // exec_query(graph, "NodeScan()", false);
+  //exec_query(graph, "Filter($0.customerId == 42, NodeScan())", false);
   //exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
 
   if (!query_file.empty()) {

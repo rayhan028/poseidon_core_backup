@@ -4,7 +4,7 @@
 
 #include <iostream>
 #include "catch.hpp"
-#include "queryc.hpp"
+#include "qparser.hpp"
 #include "ast.hpp"
 
 std::size_t string_diff(const std::string& s1, const std::string& s2) {
@@ -17,7 +17,7 @@ std::size_t string_diff(const std::string& s1, const std::string& s2) {
 }
 
 TEST_CASE("Constructing an AST from a query string", "[qlang]") {
-    queryc qc;
+    qparser qc;
 
     SECTION("simple scan operator") {
         auto ast = qc.parse("NodeScan('Person')");
@@ -148,7 +148,7 @@ std::string load_string(const std::string& fname) {
 }
 
 TEST_CASE("Constructing an AST from LDBC benchmark queries (IS)", "[qlang]") {
-    queryc qc;
+    qparser qc;
     char buf[1024];
     spdlog::info("getcwd {}", getcwd(buf, 1024)); 
     std::string prefix_is(buf); 
@@ -172,7 +172,7 @@ TEST_CASE("Constructing an AST from LDBC benchmark queries (IS)", "[qlang]") {
 }
 
 TEST_CASE("Constructing an AST from LDBC benchmark queries (BI)", "[qlang]") {
-    queryc qc;
+    qparser qc;
     char buf[1024];
     spdlog::info("getcwd {}", getcwd(buf, 1024)); 
     std::string prefix_is(buf); 

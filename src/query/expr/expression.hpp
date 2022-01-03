@@ -1,5 +1,5 @@
-#ifndef ART_FILTER_EXPRESSION_HPP
-#define ART_FILTER_EXPRESSION_HPP
+#ifndef expression_hpp_
+#define expression_hpp_
 
 #include <string>
 #include <memory>
@@ -90,6 +90,7 @@ struct expression {
     int opd_num;
     std::string name_;
     FOP_TYPE ftype_;
+    FOP_TYPE rtype_; // result type - deduced from the operands and the operator
 
     virtual ~expression() {};
 
@@ -98,6 +99,8 @@ struct expression {
     virtual void accept(int rank, expression_visitor &vis) = 0;
 
     std::string fop_str(FOP fop) const;
+
+    FOP_TYPE result_type() const { return rtype_; }
 };
 
 struct number_token : public expression, public std::enable_shared_from_this<number_token> {
@@ -211,7 +214,6 @@ struct binary_predicate : public expression {
 
 struct eq_predicate : public binary_predicate, std::enable_shared_from_this<eq_predicate> {
     eq_predicate(expr const left, expr const right, bool prec, bool not_ = false);
-
     void accept(int rank, expression_visitor &fep) override;
 };
 
@@ -284,4 +286,4 @@ struct grexpr {
 };
 
 
-#endif //ART_FILTER_EXPRESSION_HPP
+#endif 

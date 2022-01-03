@@ -1,32 +1,6 @@
 #include "query.hpp"
+#include "query_printer.hpp"
 
-/**
- * A helper class for representing the tree of query operators (instances of qop).
- * NOTE: The root of this tree is the final operator producing the results but
- * not the scan.
- */
-struct qop_node;
-using qop_node_ptr = std::shared_ptr<qop_node>;
-
-struct qop_node {
-    qop_ptr qop_; // pointer to the actual query operator
-    std::vector<qop_node_ptr> children_; // child nodes (publisher)
-
-    qop_node(qop_ptr p) : qop_(p) {}
-
-    bool is_binary() const { return qop_->is_binary(); }
-
-    void print(std::ostream& os = std::cout) {
-        qop_->dump(os); 
-        os << std::endl;
-    }
-};
-
-/**
- * Recursively constructs a tree of qop_nodes representing a query plan for printing.
- * This is an upside-down tree where the scan operators are the leaf nodes.
- * The function returns a pair of (root node, current node).
- */
 std::pair<qop_node_ptr, qop_node_ptr> build_qop_tree(qop_ptr root) {
     // std::cout << "build_qop_tree: "; root->dump(std::cout); std::cout << std::endl;
     if (!root->has_subscriber()) {
@@ -118,42 +92,3 @@ void print_plan_helper(std::ostream& os, qop_node_ptr root, const std::string& p
     }
 }
 
-void query::print_plan(std::ostream& os) {
-    os << "----------------------------------------------------------------------\n";
-    auto qop_tree = build_qop_tree(plan_head_);
-    qop_tree.first->print(os);
-    print_plan_helper(os, qop_tree.first, "");
-    os << "----------------------------------------------------------------------\n";
-}
-
-void query::print_plans(std::initializer_list<query *> queries, std::ostream& os) {
-    std::vector<qop_node_ptr> trees;
-    for (auto &q : queries) {
-        auto qop_tree = build_qop_tree(q->plan_head_);
-        trees.push_back(qop_tree.first);
-    }
-    // merge trees
-    for (auto i = 1u; i < trees.size(); i++) {
-        merge_qop_trees(trees[0], trees[i]);
-    }
-    os << "##----------------------------------------------------------------------\n";
-    trees[0]->print(os);
-    print_plan_helper(os, trees[0], "");
-    os << "##----------------------------------------------------------------------\n";
-}
-
-void query_set::print_plan(std::ostream& os) {
-    std::vector<qop_node_ptr> trees;
-    for (auto &q : queries_) {
-        auto qop_tree = build_qop_tree(q.plan_head_);
-        trees.push_back(qop_tree.first);
-    }
-    // merge trees
-    for (auto i = 1u; i < trees.size(); i++) {
-        merge_qop_trees(trees[0], trees[i]);
-    }
-    os << "##----------------------------------------------------------------------\n";
-    trees[0]->print(os);
-    print_plan_helper(os, trees[0], "");
-    os << "##----------------------------------------------------------------------\n";
-}
