@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -31,14 +31,14 @@ namespace pegtl = tao::pegtl;
 
 namespace ph = std::placeholders;
 
-std::string qparser::trim_string(const std::string& s) {
+std::string trim_string(const std::string& s) {
   std::string s2 = s;
   if (s2[0] == '\'' || s2[0] == '"')
     s2 = s2.substr(1, s2.size()-2);
   return s2;
 }
 
-std::string qparser::trim_ws(const std::string& str) {
+std::string trim_ws(const std::string& str) {
   auto first = str.find_first_not_of(' ');
   if (std::string::npos == first) {
     return str;
@@ -109,13 +109,6 @@ jproperty qparser::get_json_property(parse_tree_ptr& pn) {
   return jproperty{ s[0], s[1] };
 }
 
-properties_t qparser::jprops_to_props(const jproperty_list& jprops) {
-  properties_t props;
-  for (auto& jp : jprops) {
-    props[jp.pname] = jp.pval;
-  }
-  return props;
-}
 
 /* -------------------------------------------------------------------------------- */
 /*                    Methods for parsing and AST construction                      */

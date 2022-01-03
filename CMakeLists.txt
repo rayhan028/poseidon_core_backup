@@ -462,6 +462,7 @@ set(src_files
   src/query/plan_op/join.cpp
   src/query/plan_op/query_set.cpp
   src/query/qmain/qparser.cpp
+  src/query/qmain/qplanner.cpp
   src/qop/query.cpp
   src/query/utils/query_printer.cpp
   src/query/utils/thread_pool.cpp

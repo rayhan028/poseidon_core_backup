@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -27,12 +27,21 @@
 #include <tao/pegtl.hpp>
 #include <tao/pegtl/contrib/parse_tree.hpp>
 
+  /**
+   * Removes leading and trailing quotation marks from a string.
+   */
+  std::string trim_string(const std::string& s);
+
+  /**
+   * Removes leading and trailing white spaces from a string.
+   */
+   std::string trim_ws(const std::string& str);
+
 using parse_tree_ptr = std::unique_ptr<tao::pegtl::parse_tree::node>;
 
 /**
  * qparser is the main class for parsing textual algebraic query specifications and producing an AST.
  */
-
 class qparser {
 public:
     qparser() = default;
@@ -91,26 +100,12 @@ private:
 
   udf_spec parse_udf(parse_tree_ptr& tree);
 
-  /**
-   * Removes leading and trailing quotation marks from a string.
-   */
-  std::string trim_string(const std::string& s);
-
-  /**
-   * Removes leading and trailing white spaces from a string.
-   */
-   std::string trim_ws(const std::string& str);
-
    /**
     * Parses given string and returns the correspondig sort order 
     * (expects only ASC and DESC).
     */
    simple_proj_spec::sort_order parse_sort_order(const std::string &s);
 
-  /**
-   *
-   */
-  properties_t jprops_to_props(const jproperty_list& jprops);
 };
 
 #endif
