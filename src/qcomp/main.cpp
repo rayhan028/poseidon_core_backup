@@ -35,13 +35,6 @@ query_result *afunc(qr_tuple &qrt) {
 	return &qr;
 }
 
-
-
-
-
-
-
-
 int nodefunc(node *n) {
 	return n->id();
 }

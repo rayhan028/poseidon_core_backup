@@ -104,6 +104,7 @@ configure_file(
 include_directories(${PROJECT_BINARY_DIR}/generated)
 include_directories(${PROJECT_SOURCE_DIR}/src/storage)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/ast)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/codegen)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/utils)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/plan_op)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/interp)
@@ -391,38 +392,38 @@ endif()
 
 if(USE_LLVM MATCHES ON)
   set(codegen_operators_src
-    src/qcomp/operators/append.cpp
-    src/qcomp/operators/aggregation.cpp
-    src/qcomp/operators/collect.cpp
-    src/qcomp/operators/connected.cpp
-    src/qcomp/operators/create.cpp
-    src/qcomp/operators/expand.cpp
-    src/qcomp/operators/filter.cpp
-    src/qcomp/operators/foreach_rship.cpp
-    src/qcomp/operators/groupby.cpp
-    src/qcomp/operators/join.cpp
-    src/qcomp/operators/limit.cpp
-    src/qcomp/operators/project.cpp
-    src/qcomp/operators/scan.cpp
-    src/qcomp/operators/sort.cpp
+    src/query/codegen/operators/append.cpp
+    src/query/codegen/operators/aggregation.cpp
+    src/query/codegen/operators/collect.cpp
+    src/query/codegen/operators/connected.cpp
+    src/query/codegen/operators/create.cpp
+    src/query/codegen/operators/expand.cpp
+    src/query/codegen/operators/filter.cpp
+    src/query/codegen/operators/foreach_rship.cpp
+    src/query/codegen/operators/groupby.cpp
+    src/query/codegen/operators/join.cpp
+    src/query/codegen/operators/limit.cpp
+    src/query/codegen/operators/project.cpp
+    src/query/codegen/operators/scan.cpp
+    src/query/codegen/operators/sort.cpp
   )
 
   set(llvm_src
     ${codegen_operators_src}
-    src/qcomp/codegen_inline.cpp
-    src/qcomp/filter_expression_inline.cpp
-    src/qcomp/global_definitions.cpp
-    src/qcomp/interpreter.cpp
-    src/qcomp/jit_cache.cpp
-    src/qcomp/p_jit.cpp
-    src/qcomp/optimizer.cpp
+    src/query/codegen/codegen_inline.cpp
+    src/query/codegen/filter_expression_inline.cpp
+    src/query/codegen/global_definitions.cpp
+    src/query/codegen/interpreter.cpp
+    src/query/codegen/jit_cache.cpp
+    src/query/codegen/p_jit.cpp
+    src/query/codegen/optimizer.cpp
     src/qcomp/main.cpp
-    src/qcomp/p_context.cpp
-    src/qcomp/query_engine.cpp
-    src/qcomp/qoperator.cpp
-    src/qcomp/joiner.cpp
-    src/qcomp/grouper.cpp
-    src/qcomp/interprete_filter_visitor.cpp
+    src/query/codegen/p_context.cpp
+    src/query/codegen/query_engine.cpp
+    src/query/codegen/qoperator.cpp
+    src/query/codegen/joiner.cpp
+    src/query/codegen/grouper.cpp
+    src/query/codegen/interprete_filter_visitor.cpp
   )
 else()
   set(llvm_src "")

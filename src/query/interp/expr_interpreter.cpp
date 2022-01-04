@@ -67,13 +67,13 @@ public:
         auto v2 = pop(stack_);
         bool res = false;
         // type handling!
-        switch(op->left_->result_type()) {
+        /*switch(op->left_->result_type()) {
             case FOP_TYPE::INT:
                 res = int_equal(v1, v2);
                 break;
             default:
                 break;
-        }
+        }*/
         std::cout << "EQ PUSH:" << res << std::endl;
         stack_.push(query_result(res ? 1 : 0));
     }
