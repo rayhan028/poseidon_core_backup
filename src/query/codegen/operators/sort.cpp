@@ -1,4 +1,4 @@
-#include "codegen_inline.hpp"
+#include "codegen.hpp"
 
 /**
  * Generate code for the sort operator

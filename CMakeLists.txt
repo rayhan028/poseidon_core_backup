@@ -410,7 +410,7 @@ if(USE_LLVM MATCHES ON)
 
   set(llvm_src
     ${codegen_operators_src}
-    src/query/codegen/codegen_inline.cpp
+    src/query/codegen/codegen.cpp
     src/query/codegen/filter_expression_inline.cpp
     src/query/codegen/global_definitions.cpp
     src/query/codegen/interpreter.cpp

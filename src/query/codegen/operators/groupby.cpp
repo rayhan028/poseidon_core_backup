@@ -1,4 +1,4 @@
-#include "codegen_inline.hpp"
+#include "codegen.hpp"
 
 /**
  * Generates code for the group_by operation

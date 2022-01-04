@@ -1,4 +1,4 @@
-#include "codegen_inline.hpp"
+#include "codegen.hpp"
 
 // process recursively the type vector of the rhs of a join
 void get_rhs_type(std::shared_ptr<base_op>  &qop, std::vector<int> &typv) {

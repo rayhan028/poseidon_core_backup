@@ -5,7 +5,7 @@
 #include "query_engine.hpp"
 #include "interpreter.hpp"
 #include "qid_generator.hpp"
-#include "codegen_inline.hpp"
+#include "codegen.hpp"
 #include "thread_pool.hpp"
 
 #include "grouper.hpp"

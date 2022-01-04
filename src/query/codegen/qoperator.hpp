@@ -9,8 +9,6 @@
 #include "global_definitions.hpp"
 #include "query_engine.hpp"
 
-using namespace llvm;
-
 class base_op;
 class scan_op;
 class foreach_rship_op;
@@ -69,24 +67,6 @@ public:
 using algebra_optr = std::shared_ptr<base_op>;
 using algebra_optr_list = std::vector<algebra_optr>;
 
-struct result {
-    uint64_t *obj_;
-    uint64_t type_;
-    uint64_t *null;
-};
-
-struct result_list_node {
-    result_list_node *next;
-    result_list_node *prev;
-    uint64_t additional_;
-    result *res_;
-};
-
-struct result_list {
-    result_list_node *head_;
-    result_list_node *tail_;
-    uint64_t size;
-};
 
 enum class qop_type {
     none,
@@ -114,8 +94,6 @@ enum class create_type {
     node,
     rship
 };
-
-class query_engine;
 
 class base_op {
 protected:
@@ -625,23 +603,5 @@ public:
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 };
 inline algebra_optr Store(algebra_optr inp) { return std::make_shared<store_op>(inp); }
-
-struct FExp {
-    FExp(PContext &ctx, FOP fop, FTYPE type, std::string property, std::string value) : fop_(fop), type_(type),
-                                                                                        property_(property),
-                                                                                        value_(value), ctx(ctx) {
-        get_vec_back = ctx.gen_funcs["qr_list_get_front"];
-    }
-
-    void codegen(Function *parent, Value *qr_alloc, BasicBlock *next_true, BasicBlock *next_false);
-
-    FOP fop_;
-    FTYPE type_;
-    std::string property_;
-    std::string value_;
-    Value *get_vec_back;
-    PContext &ctx;
-};
-
 
 #endif //ART_QOPERATOR_HPP

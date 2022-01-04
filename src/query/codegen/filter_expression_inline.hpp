@@ -8,7 +8,7 @@
 #include "filter_visitor.hpp"
 #include "p_context.hpp"
 #include "expression.hpp"
-#include "codegen_inline.hpp"
+#include "codegen.hpp"
 
 /**
  * The visitor structure for the filter expression code generation
