@@ -28,6 +28,7 @@
 
 #include "qop.hpp"
 #include "profiling.hpp"
+#include "expr_interpreter.hpp"
 
 using namespace boost::posix_time;
 
@@ -857,7 +858,7 @@ void filter_tuple::dump(std::ostream &os) const {
 
 void filter_tuple::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
-  bool tp = ex_ ? pred_func2_(v, ex_) : pred_func1_(v);
+  bool tp = ex_ ? interpret_expression(gdb, ex_, v) : pred_func1_(v);
   if (tp) {
     consume_(gdb, v);
     PROF_POST(1);

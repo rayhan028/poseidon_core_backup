@@ -624,8 +624,7 @@ struct distinct_tuples : public qop {
 struct filter_tuple : public qop {
   filter_tuple(std::function<bool(const qr_tuple &)> func)
       : pred_func1_(func) {}
-  filter_tuple(expr& ex, std::function<bool(const qr_tuple &, expr&)> func)
-      : pred_func2_(func), ex_(ex) {}
+  filter_tuple(expr& ex): ex_(ex) {}
 
   ~filter_tuple() = default;
 

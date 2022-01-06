@@ -8,6 +8,7 @@
 
 #include "linenoise.hpp"
 #include "queryc.hpp"
+#include "qproc.hpp"
 #include "graph_db.hpp"
 
 #include "spdlog/sinks/basic_file_sink.h"
@@ -123,6 +124,11 @@ static void trim(std::string &s) {
  * Execute the query given as string by interpreting the plan.
  */
 void interpret_query(graph_db_ptr &gdb, const std::string &qstr) {
+  qproc qp(gdb);
+  auto plan = qp.prepare_query(qstr);
+  plan.append_printer();
+  qp.interp_query(plan);
+  /*
   queryc qlc;
   spdlog::debug("create AOT query code");
   auto qset = qlc.generate_qex_plan(gdb, qstr);  
@@ -131,6 +137,7 @@ void interpret_query(graph_db_ptr &gdb, const std::string &qstr) {
     qset.start(); 
     return true;
   });
+  */
 }
 
 /**
