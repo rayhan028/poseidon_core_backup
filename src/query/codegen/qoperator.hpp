@@ -7,7 +7,7 @@
 #include "p_context.hpp"
 #include "expression.hpp"
 #include "global_definitions.hpp"
-#include "query_engine.hpp"
+#include "qcompiler.hpp"
 
 class base_op;
 class scan_op;

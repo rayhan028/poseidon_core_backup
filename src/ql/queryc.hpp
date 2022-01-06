@@ -28,7 +28,7 @@
 
 #ifdef USE_LLVM
 #include "qoperator.hpp"
-#include "query_engine.hpp"
+#include "qcompiler.hpp"
 
 #endif 
 

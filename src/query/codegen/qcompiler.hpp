@@ -3,23 +3,24 @@
 
 #include "joiner.hpp"
 #include "grouper.hpp"
+#include "qexmode.hpp"
 #include "p_jit.hpp"
 #include "p_context.hpp"
 
 class base_op;
 
 
-class query_engine;
+class qcompiler;
 
 struct compile_task {
-    compile_task(query_engine & qeng, PContext &ctx, p_jit &jit, std::shared_ptr<base_op> query);
+    compile_task(qcompiler & qeng, PContext &ctx, p_jit &jit, std::shared_ptr<base_op> query);
 
     void operator()();
 
     PContext &ctx_;
     p_jit &jit_;
     std::shared_ptr<base_op> query_;
-    query_engine &qeng_;
+    qcompiler &qeng_;
 };
 
 struct arg_builder {
@@ -52,12 +53,11 @@ struct arg_builder {
 
 };
 
-class query_engine {
+class qcompiler : public qexmode {
     unsigned thread_num_;
     PContext ctx_;
     std::unique_ptr<p_jit> jit_;
 
-    std::thread sched_th;
     std::thread compile_th;
 
     transaction_ptr cur_tx_;
@@ -67,8 +67,12 @@ class query_engine {
 
     graph_db_ptr graph_;
 public: 
-    query_engine(graph_db_ptr &graph, unsigned int thread_num, unsigned cv_range);
-    ~query_engine();
+    qcompiler(graph_db_ptr &graph, unsigned int thread_num, unsigned cv_range);
+    ~qcompiler();
+
+    void add() override {}
+
+    void exec() override {}
 
     static std::unique_ptr<p_jit> initializeJitCompiler();
 
@@ -94,15 +98,10 @@ public:
     std::atomic<bool> complete_;
     std::map<int, start_ty> start_;
 
-    std::map<int, std::vector<std::string>> operator_names_;
-    std::map<int, std::vector<int>> type_vec_;
     static std::map<int, finish_fct_type> finish_;
     std::map<int, std::vector<finish_fct_type>> qpipelines_;
 
-
     std::function<void(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer)> task_callee_;
-
-    std::vector<char*> strs;
 };
 
 #endif //POSEIDON_CORE_QUERY_ENGINE_HPP
