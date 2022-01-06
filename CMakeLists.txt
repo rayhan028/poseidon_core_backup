@@ -417,7 +417,6 @@ if(USE_LLVM MATCHES ON)
     src/query/codegen/jit_cache.cpp
     src/query/codegen/p_jit.cpp
     src/query/codegen/optimizer.cpp
-    src/qcomp/main.cpp
     src/query/codegen/p_context.cpp
     src/query/codegen/query_engine.cpp
     src/query/codegen/qoperator.cpp
@@ -762,19 +761,6 @@ target_link_libraries(run_gtpc
 endif()
 
 
-#-----------------------------------------------------------------------------------------
-if(USE_LLVM MATCHES ON)
-# The program for executing the LLVM query compiler
-add_executable(qcomp
-	  src/qcomp/main.cpp
-	   )
-
-target_link_libraries(qcomp
-	     poseidon_core
-	     ${PMDK_LIBRARIES}
-	     Boost::program_options
-             )
-endif()
 #-----------------------------------------------------------------------------------------
 
 add_executable(qlc
