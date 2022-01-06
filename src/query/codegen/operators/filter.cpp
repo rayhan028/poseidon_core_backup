@@ -1,5 +1,5 @@
 #include "codegen.hpp"
-#include "filter_expression_inline.hpp"
+#include "filter_expression.hpp"
 
 /**
  * Generates code for the filter operator

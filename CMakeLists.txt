@@ -411,14 +411,13 @@ if(USE_LLVM MATCHES ON)
   set(llvm_src
     ${codegen_operators_src}
     src/query/codegen/codegen.cpp
-    src/query/codegen/filter_expression_inline.cpp
+    src/query/codegen/filter_expression.cpp
     src/query/codegen/global_definitions.cpp
     src/query/codegen/interpreter.cpp
     src/query/codegen/jit_cache.cpp
     src/query/codegen/p_jit.cpp
-    src/query/codegen/optimizer.cpp
     src/query/codegen/p_context.cpp
-    src/query/codegen/query_engine.cpp
+    src/query/codegen/qcompiler.cpp
     src/query/codegen/qoperator.cpp
     src/query/codegen/joiner.cpp
     src/query/codegen/grouper.cpp

@@ -101,7 +101,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 	auto chunks = graph->get_nodes()->num_chunks();
 
     SECTION("Scan all nodes for given label") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto expr = Scan("Person", Collect());
         arg_builder args;
 	      args.arg(1, "Person");
@@ -132,7 +132,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     arg_builder args;
     result_set rs;
     SECTION("Find a outgoing relationship from each Person node") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto expr = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", Collect()));
         
         args.arg(1, "Person");
@@ -176,7 +176,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
    
 
     SECTION("Find a ingoing relationship from each Book node") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto expr = Scan("Book", ForeachRship(RSHIP_DIR::TO, {}, ":HAS_READ", Collect()));
         arg_builder args;
         args.arg(1, "Book");
@@ -193,7 +193,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     }
  
     SECTION("Find the destination node for each relationship with the given label") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto expr = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", Expand(EXPAND::OUT, "Book", Collect())));
         arg_builder args;
         args.arg(1, "Person");
@@ -208,7 +208,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     }
 
     SECTION("Find the source node for each relationship with the given label") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto expr = Scan("Book", ForeachRship(RSHIP_DIR::TO, {}, ":HAS_READ", Expand(EXPAND::IN, "Person", Collect())));
         arg_builder args;
         args.arg(1, "Book");
@@ -223,7 +223,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     }
 
     SECTION("Filter a node for a given property condition") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto expr = Scan("Person", Filter(EQ(Key(0, "id"), Int(42)), Collect()));
         arg_builder args;
         args.arg(1, "Person");
@@ -238,7 +238,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     }
 
     SECTION("Apply a Projection to a tuple result") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto expr = Scan("Person", Filter(EQ(Key(0, "id"), Int(42)), Project({{0, "name", FTYPE::STRING}}, Collect())));
         arg_builder args;
         args.arg(1, "Person");
@@ -253,7 +253,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     }
 
     SECTION("Apply a Projection on all tuple results") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto expr = Scan("Person", Project({{0, "name", FTYPE::STRING}}, Collect()));
         arg_builder args;
         args.arg(1, "Person");
@@ -267,7 +267,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     }
 
     SECTION("CrossJoin two tuple results") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto rhs = Scan("Book", End());
         auto lhs = Scan("Person", Join(JOIN_OP::CROSS, {}, Collect(), rhs));
         
@@ -361,7 +361,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 	auto chunks = graph->get_nodes()->num_chunks();  
     
     SECTION("Single Projection - string type") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto expr4 = Scan("Person", Project({{0, "name", FTYPE::STRING}}, Collect()));
         arg_builder args;
 	      args.arg(1, "Person");
@@ -375,7 +375,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Single Projection - int type") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto expr = Scan("Person", Project({{0, "age", FTYPE::INT}}, Collect()));
         arg_builder args;
         args.arg(1, "Person");
@@ -389,7 +389,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Single Projection - uint64_t type ") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto expr = Scan("Person", Project({{0, "num", FTYPE::UINT64}}, Collect()));
         arg_builder args;
         args.arg(1, "Person");
@@ -403,7 +403,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Multi Projection - string, int, uint64_t ") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto expr = Scan("Person", Project({{0, "name", FTYPE::STRING}, 
                                             {0, "age", FTYPE::INT}, 
                                             {0, "num", FTYPE::UINT64}}, Collect()));
@@ -421,7 +421,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Project over several query results") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto r_expr = Scan("Book",  End());
 
         auto l_expr = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", 
@@ -447,7 +447,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Nested Loop Join") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto r_expr = Scan("Book",  End(JOIN_OP::NESTED_LOOP, 0));
 
         auto l_expr = Scan("Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr));
@@ -466,7 +466,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Hash Join") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto r_expr = Scan("Person",  End(JOIN_OP::HASH_JOIN, 0));
 
         auto l_expr = Scan("Person", Join(JOIN_OP::HASH_JOIN, {0,0}, Collect(), r_expr));
@@ -485,7 +485,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
   SECTION("Test the compiled variable foreach relationship operator") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph, 1, chunks);
         auto fev = Scan("Town", ForeachRship(RSHIP_DIR::FROM, {1, 2}, ":CONNECTED", 
                        Collect()));
         arg_builder args;
@@ -500,7 +500,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }   
 
     SECTION("Test Aggregation count") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph, 1, chunks);
           auto fev = Scan("Person", Project({{0, "group", FTYPE::INT}}, GroupBy({0}, Aggr({{"count", 0}, {"avg", 0}}, Collect()))));
           arg_builder args;
           grouper g1;
@@ -519,7 +519,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Test Aggregation sum") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph, 1, chunks);
           auto fev = Scan("Person", Project({{0, "group", FTYPE::INT}}, GroupBy({0}, Aggr({{"sum", 0}}, Collect()))));
           arg_builder args;
           grouper g1;
@@ -544,7 +544,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Test Aggregation avg") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph, 1, chunks);
           auto fev = Scan("Person", Project({{0, "group", FTYPE::INT}}, GroupBy({0}, Aggr({{"avg", 0}}, Collect()))));
           arg_builder args;
           grouper g1;
@@ -568,7 +568,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Test Aggregation pcount") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph, 1, chunks);
           auto fev = Scan("Person", Project({{0, "group", FTYPE::INT}}, GroupBy({0}, Aggr({{"pcount", 0}}, Collect()))));
           arg_builder args;
           grouper g1;
@@ -585,7 +585,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Test multiple aggregations") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph, 1, chunks);
           auto fev = Scan("Person", 
             Project({{0, "group", FTYPE::INT}}, 
               GroupBy({0}, Aggr({{"count", 0}}, 
@@ -610,7 +610,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Test multiple aggregations, continue pipeline") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph, 1, chunks);
           auto gs = Scan("Person",
               GroupBy({0}, Aggr({{"count", 0}}, ForeachRship(RSHIP_DIR::FROM, ":CONNECTED", 0, 
                     Collect()))));
@@ -632,7 +632,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     } 
 
     SECTION("Aggregation count with multiple tuple element keys") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph, 1, chunks);
           auto gs = Scan("Person",
                       ForeachRship(RSHIP_DIR::FROM, ":HAS_READ", 0, 
                         Expand(EXPAND::OUT, "Book", 
@@ -659,7 +659,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Aggregation sum, avg with multiple tuple element keys") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph, 1, chunks);
           auto gs = Scan("Person",
                       ForeachRship(RSHIP_DIR::FROM, ":HAS_READ", 0, 
                         Expand(EXPAND::OUT, "Book", 
@@ -740,7 +740,7 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
 
 	auto chunks = graph->get_nodes()->num_chunks();
 
-	query_engine queryEngine(graph, 1, chunks);
+	qcompiler queryEngine(graph, 1, chunks);
 
   SECTION("Test the compiled variable foreach relationship operator") {
         auto fev = Scan("Town", ForeachRship(RSHIP_DIR::FROM, {1, 2}, ":CONNECTED", 

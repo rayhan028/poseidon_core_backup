@@ -2,7 +2,7 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/InitLLVM.h>
 #include <memory>
-#include "query_engine.hpp"
+#include "qcompiler.hpp"
 #include "interpreter.hpp"
 #include "qid_generator.hpp"
 #include "codegen.hpp"
@@ -12,7 +12,7 @@
 
 using namespace std::placeholders;
 
-std::unique_ptr<p_jit> query_engine::initializeJitCompiler() {
+std::unique_ptr<p_jit> qcompiler::initializeJitCompiler() {
     InitLLVM LLVM();
     InitializeNativeTarget();
 	InitializeNativeTargetAsmPrinter();
@@ -24,7 +24,7 @@ std::unique_ptr<p_jit> query_engine::initializeJitCompiler() {
 std::mutex tp_mut;
 
 
-query_engine::query_engine(graph_db_ptr &graph, unsigned int thread_num, unsigned cv_range) 
+qcompiler::qcompiler(graph_db_ptr &graph, unsigned int thread_num, unsigned cv_range) 
     : thread_num_(thread_num), 
     ctx_(PContext(graph)), 
     jit_(initializeJitCompiler()), 
@@ -69,12 +69,12 @@ query_engine::query_engine(graph_db_ptr &graph, unsigned int thread_num, unsigne
     con_map[8] = insert_uint;
 }
 
-query_engine::~query_engine() {
+qcompiler::~qcompiler() {
     if(compile_th.joinable())
         compile_th.join();
 }
 
-void query_engine::generate(std::shared_ptr<base_op> query, bool parallel) {
+void qcompiler::generate(std::shared_ptr<base_op> query, bool parallel) {
     parallel_ = parallel;
     cur_query_ = query;
     compile_th = std::thread(compile_task(*this, ctx_, *jit_.get(), query));
@@ -89,26 +89,20 @@ void query_engine::generate(std::shared_ptr<base_op> query, bool parallel) {
 
 using call_map = std::array<int*, 32>;
 
-void query_engine::cleanup() {
+void qcompiler::cleanup() {
     start_.clear();
-    operator_names_.clear();
-    //operator_functions_.clear();
     finish_.clear();
-    type_vec_.clear();
     complete_.store(false);
     compiled_.store(false);
-    type_vec_.clear();
     qpipelines_.clear();
 }
 
-void query_engine::prepare() {
-    for(auto i = 1u; i < start_.size(); i++) {
-        type_vec_[i].insert(type_vec_[i].end(), type_vec_[i-1].begin(), type_vec_[i-1].end());
-    }
+void qcompiler::prepare() {
+
 }
 
 joiner * last_joiner;
-void query_engine::extract_arg(std::shared_ptr<base_op> op) {
+void qcompiler::extract_arg(std::shared_ptr<base_op> op) {
     switch(op->type_) {
         case qop_type::scan: {
             auto s_op = std::dynamic_pointer_cast<scan_op>(op);
@@ -171,7 +165,7 @@ void query_engine::extract_arg(std::shared_ptr<base_op> op) {
 }
 
 
-void query_engine::run(result_set * rs, arg_builder & args, bool cleanup_query) {
+void qcompiler::run(result_set * rs, arg_builder & args, bool cleanup_query) {
     //prepare();
 
     graph_->begin_transaction();
@@ -224,7 +218,7 @@ void query_engine::run(result_set * rs, arg_builder & args, bool cleanup_query) 
         cleanup();
 }
 
-void query_engine::run(result_set * rs) {
+void qcompiler::run(result_set * rs) {
     auto curop = cur_query_;
     std::vector<algebra_optr> recur; 
     while(!curop->inputs_.empty() || !recur.empty()) {
@@ -249,7 +243,7 @@ void query_engine::run(result_set * rs) {
 }
 
 //std::map<int, std::vector<consumer_fct_type>> query_engine::operator_functions_ = {};
-std::map<int, finish_fct_type> query_engine::finish_ = {};
+std::map<int, finish_fct_type> qcompiler::finish_ = {};
 
 bool has_join(algebra_optr expr) {
     auto cur = expr;
@@ -276,7 +270,7 @@ void consumer_dummy(node &n) {
 
 }
 result_set rs2;
-void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned thread_num) {
+void qcompiler::run_parallel(result_set * rs, arg_builder & args, unsigned thread_num) {
     bool interprete_started = false;
     scan_task::callee_ = scan_task::scan;
     interprete_visitor iv(graph_, args, &rs2);
@@ -315,7 +309,7 @@ void query_engine::run_parallel(result_set * rs, arg_builder & args, unsigned th
     }
 }
 
-void query_engine::finish(result_set *rs, arg_builder & args) {
+void qcompiler::finish(result_set *rs, arg_builder & args) {
     for(auto & t : rs2.data) {
         rs->append(t);
     }
@@ -330,7 +324,7 @@ void query_engine::finish(result_set *rs, arg_builder & args) {
     }
 }
 
-compile_task::compile_task(query_engine & qeng, PContext &ctx, p_jit &jit, std::shared_ptr<base_op> query) 
+compile_task::compile_task(qcompiler & qeng, PContext &ctx, p_jit &jit, std::shared_ptr<base_op> query) 
     : ctx_(ctx), jit_(jit), query_(query), qeng_(qeng) {}
 
 int query_cnt = 0;
@@ -356,14 +350,13 @@ void compile_task::operator()() {
 
     ctx_.createNewModule();
     ctx_.getModule().setDataLayout(jit_.getDataLayout());
-    qeng_.operator_names_.clear();
     
     //3. extract all operator names from query and generate type vec
     //first function name == scan => start function
     auto query_id = 0;
     auto cur_op = query_;
     std::string finish_name = "default_finish_"+internal_qid;
-    std::vector<int> type_vec;
+
     std::vector<algebra_optr> recur_list;
     qeng_.qpipelines_.clear();
     qeng_.start_.clear();
@@ -381,8 +374,6 @@ void compile_task::operator()() {
                 i++;
             }
         } else {
-            //pipe_id = std::atoi(&s.back());
-            qeng_.operator_names_[0].push_back(s);
             auto start_fc = jit_.getFunctionRaw<start_ty>(s);
             if(start_fc) {
                 qeng_.start_[i] = *start_fc;

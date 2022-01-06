@@ -1,5 +1,6 @@
 #ifndef PJIT_JITFROMSCRATCH_HPP
 #define PJIT_JITFROMSCRATCH_HPP
+
 #include <llvm/ADT/StringRef.h>
 #include <llvm/ADT/Triple.h>
 #include <llvm/ExecutionEngine/JITSymbol.h>
@@ -16,15 +17,38 @@
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Error.h>
 #include <llvm/Target/TargetMachine.h>
-#include <functional>
-#include <memory>
-#include <string>
-#include <iostream>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Scalar/GVN.h>
+#include <llvm/ExecutionEngine/Orc/Core.h>
+#include <llvm/ExecutionEngine/Orc/ThreadSafeModule.h>
+#include <llvm/Support/Error.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#include <functional>
+#include <memory>
+#include <string>
+#include <iostream>
+
 #include "jit_cache.hpp"
+
+/**
+ * Helper class to manage the IR code optimization passes and optimization level
+ */
+class Optimizer {
+public:
+    Optimizer(unsigned OptLevel) { B.OptLevel = OptLevel; }
+
+    /**
+     * Process the given optimization passes
+     */
+    llvm::Expected<llvm::orc::ThreadSafeModule>
+    operator()(llvm::orc::ThreadSafeModule TSM,
+               const llvm::orc::MaterializationResponsibility &);
+
+private:
+    llvm::PassManagerBuilder B;
+};;
 
 /*
  * The actual JIT compiler class, providing methods to compile

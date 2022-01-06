@@ -3,7 +3,7 @@
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Scalar/GVN.h>
 #include "codegen.hpp"
-#include "filter_expression_inline.hpp"
+#include "filter_expression.hpp"
 
 
 /*

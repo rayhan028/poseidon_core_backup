@@ -157,7 +157,7 @@ void compile_query(graph_db_ptr &gdb, const std::string &qstr) {
   spdlog::debug(os.str());
 */
   spdlog::debug("create query_engine");     
-	query_engine queryEngine(gdb, 1, gdb->get_nodes()->num_chunks());
+	qcompiler queryEngine(gdb, 1, gdb->get_nodes()->num_chunks());
 
 	result_set rs;
 
