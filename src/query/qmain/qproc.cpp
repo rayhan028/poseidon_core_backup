@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -16,18 +16,18 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef qinterp_hpp_
-#define qinterp_hpp_
 
-#include "query_set.hpp"
-#include "graph_db.hpp"
+#include "qproc.hpp"
 
-class qinterp {
-public:
-    qinterp() = default;
-    ~qinterp() = default;
+query_set qproc::prepare_query(const std::string& qstr) {
+    auto op_tree = parser_.parse(qstr);
+    return planner_.transform(gdb_, op_tree);
+}
+    
+void qproc::interp_query(query_set& plan) {
+    interp_.execute(gdb_, plan);
+}
 
-    void execute(graph_db_ptr &gdb, query_set& qset);
-};
+void qproc::compile_query(query_set& plan) {
 
-#endif
+}

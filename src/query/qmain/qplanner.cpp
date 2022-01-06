@@ -46,6 +46,7 @@ properties_t qplanner::jprops_to_props(const jproperty_list& jprops) {
   }
   return props;
 }
+
 std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr& gdb, std::vector<qop_ptr>& sources) {
   qop_ptr qop;
   std::pair<qop_ptr, qop_ptr> res, res2;

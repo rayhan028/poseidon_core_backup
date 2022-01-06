@@ -18,9 +18,9 @@
  */
 #include "qinterp.hpp"
 
-void qinterp::start(graph_db_ptr &gdb) {
+void qinterp::execute(graph_db_ptr &gdb, query_set& qset) {
   gdb->run_transaction([&]() {
-    qset_.start(); 
+    qset.start(); 
     return true;
   });    
 }
