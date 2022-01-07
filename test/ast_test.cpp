@@ -122,14 +122,14 @@ TEST_CASE("Constructing an AST from a query string", "[qlang]") {
         auto ast = qc.parse("Create(($0)-[r:Label { id: 'Bla'} ]->($1), HashJoin($0.Id == $1.PId, NodeScan('Person'), NodeScan('Order')))");
         std::ostringstream os;
         ast_to_stream(ast, os);
-        REQUIRE(os.str() == "CreateRelationship(-> 0 1 r:Label { id:  'Bla' } )\n└── HashJoin($0.Id==$1.Id )\n    ├── NodeScan('Order' )\n    └── NodeScan('Person' )\n");
+        REQUIRE(os.str() == "CreateRelationship(-> 0 1 r:Label { id:  'Bla' } )\n└── HashJoin($0.Id==$1.PId )\n    ├── NodeScan('Order' )\n    └── NodeScan('Person' )\n");
     }
 
    SECTION("scan + create rship") {
         auto ast = qc.parse("Create(($0)<-[r:Label]->($1), HashJoin($0.Id == $1.PId, NodeScan('Person'), NodeScan('Order')))");
         std::ostringstream os;
         ast_to_stream(ast, os);
-        REQUIRE(os.str() == "CreateRelationship(<-> 0 1 r:Label )\n└── HashJoin($0.Id==$1.Id )\n    ├── NodeScan('Order' )\n    └── NodeScan('Person' )\n");
+        REQUIRE(os.str() == "CreateRelationship(<-> 0 1 r:Label )\n└── HashJoin($0.Id==$1.PId )\n    ├── NodeScan('Order' )\n    └── NodeScan('Person' )\n");
     }
 #endif 
 }
