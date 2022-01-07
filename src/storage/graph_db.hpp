@@ -512,6 +512,12 @@ public:
   bool is_relationship_property(const relationship &r, dcode_t pcode,
                                 p_item::predicate_func pred);
 
+  p_item get_property_value(const node &n, const std::string& pkey);
+  p_item get_property_value(const node &n, dcode_t pcode);
+
+  p_item get_property_value(const relationship &r, const std::string& pkey);
+  p_item get_property_value(const relationship &r, dcode_t pcode);
+
   /**
    * Return the node version from the dirty list that is valid for the
    * transaction identified by xid.

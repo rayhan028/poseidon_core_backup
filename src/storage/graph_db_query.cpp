@@ -559,3 +559,21 @@ bool graph_db::is_relationship_property(const relationship &r, dcode_t pcode,
   auto val = rship_properties_->property_value(r.id(), pcode);
   return val.empty() ? false : pred(val);
 }
+
+p_item graph_db::get_property_value(const node &n, const std::string& pkey) {
+  auto pc = dict_->lookup_string(pkey);
+  return get_property_value(n, pc);
+}
+
+p_item graph_db::get_property_value(const node &n, dcode_t pcode) {
+  return node_properties_->property_value(n.property_list, pcode);
+}
+
+p_item graph_db::get_property_value(const relationship &r, const std::string& pkey) {
+  auto pc = dict_->lookup_string(pkey);
+  return get_property_value(r, pc);
+}
+
+p_item graph_db::get_property_value(const relationship &r, dcode_t pcode) {
+  return rship_properties_->property_value(r.property_list, pcode);
+}

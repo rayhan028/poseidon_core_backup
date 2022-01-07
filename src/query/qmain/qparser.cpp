@@ -56,7 +56,7 @@ simple_proj_spec::sort_order qparser::parse_sort_order(const std::string &s) {
     return simple_proj_spec::None;
 }
 
-std::string qparser::parse_variable_name(const std::string& var_name) {
+std::string qparser::extract_variable_name(const std::string& var_name) {
   auto dot_pos = var_name.find(".");
   return var_name.substr(dot_pos + 1);
 }
@@ -290,30 +290,16 @@ ast_op_ptr qparser::ptree_to_ast(parse_tree_ptr& pn) {
 
 /* -------------------------------------------------------------------------------- */
 
-expr qparser::parse_expression(parse_tree_ptr& tree) {
-  assert(tree != nullptr);
-   std::cout << "parse_expression: " << tree->string() << " : " 
-    << tree->children.size() << " - " << tree->type << std::endl;
-  if (tree->is_type<qlang::variable_name>()) {
-    auto v_id = parse_tuple_id(tree->string());
-    std::string v_name = "";
-    if (tree->string().find(".") != std::string::npos)
-      v_name = parse_variable_name(tree->string());
+expr qparser::parse_variable_name(parse_tree_ptr& tree) {
+  auto v_id = parse_tuple_id(tree->string());
+  std::string v_name = "";
+  if (tree->string().find(".") != std::string::npos)
+    v_name = extract_variable_name(tree->string());
     // std::cout << "variable_id = " << v_id << " - " << v_name << std::endl;
-    return Key(v_id, v_name);
-  }
-  else if (tree->is_type<qlang::var_expr>()) {
-    // std::cout << "handle var_expr..." << tree->string() << std::endl;
-    auto var = parse_expression(tree->children[0]); // variable name
-    auto vtype = tree->children[1]->string();
-    return var;
-  }
-  else if (tree->is_type<qlang::query_param>()) {
-    std::cout << "handle query_param\n";
-      // std::cout << "qparam = " << qparam << std::endl;
-    return QParam(tree->string());
-  }
-  else if (tree->is_type<qlang::udf_func_expr>()) {
+  return Key(v_id, v_name);
+}
+
+expr qparser::parse_udf_func_expr(parse_tree_ptr& tree) {
     auto& fname = tree->children[0];
     auto& params = tree->children[1];
     std::vector<expr> param_list;
@@ -322,13 +308,68 @@ expr qparser::parse_expression(parse_tree_ptr& tree) {
       param_list.push_back(pexr);
     }
     return Fct(fname->string(), param_list);
+}
+
+expr qparser::parse_expression(parse_tree_ptr& tree) {
+  assert(tree != nullptr);
+   std::cout << "parse_expression: " << tree->string() << " : " 
+    << tree->children.size() << " - " << tree->type << std::endl;
+  if (tree->is_type<qlang::variable_name>()) {
+    return parse_variable_name(tree);
+  }
+  else if (tree->is_type<qlang::var_expr>()) {
+    // std::cout << "handle var_expr..." << tree->string() << std::endl;
+    auto var = parse_expression(tree->children[0]); // variable name
+    auto vtype = tree->children[1]->string();
+    return var;
+  }
+  else if (tree->is_type<qlang::query_param>()) {
+    return QParam(tree->string());
+  }
+  else if (tree->is_type<qlang::udf_func_expr>()) {
+    return parse_udf_func_expr(tree);
+  }
+  else if (tree->is_type<qlang::decimal>()) {
+    auto str = tree->string();
+    if (is_int(str))
+      return Int(std::stoi(str)); 
+    else if (is_float(str))
+      return Float(std::stof(str));   
+    else 
+      std::cout << "unknown decimal value: '" << str << "'" << std::endl;
+
   }
   // tree is of type "expression"
   else if (tree->children.size() == 1) {
-    auto res = parse_expression(tree->children[0]);
-    return res;
+    return parse_expression(tree->children[0]);
   }
   else if (tree->children.size() == 3) {
+    auto lexpr = parse_expression(tree->children[0]);
+    auto rexpr = parse_expression(tree->children[2]);
+
+    auto& fe_op = tree->children[1];
+    expr op_expr;
+    if (boost::equals(fe_op->string(), "==")) {
+      op_expr = EQ(lexpr, rexpr);
+    }
+    else if (boost::equals(fe_op->string(), "<")) {
+      op_expr = LT(lexpr, rexpr);
+    }
+    else if (boost::equals(fe_op->string(), ">")) {
+      op_expr = GT(lexpr, rexpr);
+    }
+    else if (boost::equals(fe_op->string(), "<=")) {
+      op_expr = LE(lexpr, rexpr);
+    }
+    else if (boost::equals(fe_op->string(), ">=")) {
+      op_expr = GE(lexpr, rexpr);
+    }
+    else if (boost::equals(fe_op->string(), "!=")) {
+      op_expr = NEQ(lexpr, rexpr);
+    }
+
+    return op_expr;
+#if 0
     // TODO: expression of the form x op y
     auto& lhs_key = tree->children[0];
     unsigned int lhs_qr_id = 0;
@@ -338,7 +379,7 @@ expr qparser::parse_expression(parse_tree_ptr& tree) {
     }
 
     // extract the actual key after $X. in string
-    auto lhs_var_name = parse_variable_name(lhs_key->string());
+    auto lhs_var_name = extract_variable_name(lhs_key->string());
     auto key_se = Key(lhs_qr_id, lhs_var_name);
 
     auto& rhs_value = tree->children[2];
@@ -348,7 +389,7 @@ expr qparser::parse_expression(parse_tree_ptr& tree) {
       value_se = Int(n);
     } 
     else if (rhs_value->is_type<qlang::variable_name>()){
-      auto rhs_var_name = parse_variable_name(lhs_key->string());
+      auto rhs_var_name = extract_variable_name(lhs_key->string());
       auto rhs_qr_id = std::stoi(rhs_value->children[0]->string());
       value_se = Key(rhs_qr_id, rhs_var_name);
     }
@@ -383,5 +424,9 @@ expr qparser::parse_expression(parse_tree_ptr& tree) {
     }
 
     return op_se;
+#endif
+  }
+  else {
+    std::cout << "ERROR: unknown expr: " << tree->string() << std::endl;    
   }
 }

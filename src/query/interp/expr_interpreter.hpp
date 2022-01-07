@@ -20,9 +20,12 @@
 #ifndef expr_interpreter_hpp_
 #define expr_interpreter_hpp_
 
+#include <iostream>
 #include "qop.hpp"
 #include "query.hpp"
 #include "expression.hpp"
+
+std::ostream& operator<<(std::ostream& os, const query_result& qr);
 
 bool interpret_expression(graph_db_ptr& gdb, expr& ex, const qr_tuple& tup);
 

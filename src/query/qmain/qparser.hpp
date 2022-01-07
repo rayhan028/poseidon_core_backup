@@ -90,7 +90,17 @@ private:
    * Returns the property name from the variable name, 
    * e.g. $0.Id -> Id.
    */
-  std::string parse_variable_name(const std::string& var_name);
+  std::string extract_variable_name(const std::string& var_name);
+
+  /**
+   * TODO
+   */
+  expr parse_variable_name(parse_tree_ptr& tree);
+
+  /**
+   * TODO
+   */
+  expr parse_udf_func_expr(parse_tree_ptr& tree);
 
   /**
    * Returns the variable number from the variable name, 

@@ -18,12 +18,143 @@
  */
 #include <stack>
 
+#include "properties.hpp"
 #include "expr_interpreter.hpp"
 
-bool int_equal(const query_result& r1, const query_result& r2) {
-    int v1 = boost::get<int>(r1);
-    int v2 = boost::get<int>(r2);
-    return v1 == v2;
+std::ostream& operator<<(std::ostream& os, const query_result& qr) {
+    os << "[" << qr.which() << "]";
+    return os;
+}
+
+inline bool node_equal(const query_result& r1, const query_result& r2) {
+    auto n1 = boost::get<node*>(r1);
+    auto n2 = boost::get<node*>(r2);
+    return n1 == n2; 
+}
+
+inline bool rship_equal(const query_result& r1, const query_result& r2) {
+    auto n1 = boost::get<relationship*>(r1);
+    auto n2 = boost::get<relationship*>(r2);
+    return n1 == n2; 
+}
+
+// ----------- query_result::int -----------
+inline bool int_not_equal(const query_result& r1, const query_result& r2) {
+    return boost::get<int>(r1) != boost::get<int>(r2);
+}
+
+inline bool int_equal(const query_result& r1, const query_result& r2) {
+    return boost::get<int>(r1) == boost::get<int>(r2);
+}
+
+inline bool int_greater_than(const query_result& r1, const query_result& r2) {
+    return boost::get<int>(r1) > boost::get<int>(r2);
+}
+
+inline bool int_less_than(const query_result& r1, const query_result& r2) {
+    return boost::get<int>(r1) < boost::get<int>(r2);
+}
+
+// ----------- query_result::double -----------
+inline bool double_not_equal(const query_result& r1, const query_result& r2) {
+    return boost::get<double>(r1) != boost::get<double>(r2);
+}
+
+inline bool double_equal(const query_result& r1, const query_result& r2) {
+    return boost::get<double>(r1) == boost::get<double>(r2);
+}
+
+inline bool double_greater_than(const query_result& r1, const query_result& r2) {
+    return boost::get<double>(r1) > boost::get<double>(r2);
+}
+
+inline bool double_less_than(const query_result& r1, const query_result& r2) {
+    return boost::get<double>(r1) < boost::get<double>(r2);
+}
+
+// ----------- query_result::string -----------
+inline bool string_not_equal(const query_result& r1, const query_result& r2) {
+    return boost::get<std::string>(r1) != boost::get<std::string>(r2);
+}
+
+inline bool string_equal(const query_result& r1, const query_result& r2) {
+    return boost::get<std::string>(r1) == boost::get<std::string>(r2);
+}
+
+inline bool string_greater_than(const query_result& r1, const query_result& r2) {
+    return boost::get<std::string>(r1) > boost::get<std::string>(r2);
+}
+
+inline bool string_less_than(const query_result& r1, const query_result& r2) {
+    return boost::get<std::string>(r1) < boost::get<std::string>(r2);
+}
+
+// ----------- query_result -----------
+bool equal(const query_result& qr1, const query_result& qr2) {
+    if (qr1.which() == qr2.which()) {
+        switch (qr1.which()) {
+            case 0: // node *
+                return node_equal(qr1, qr2);
+            case 1: // relationship *
+                return rship_equal(qr1, qr2);
+                break;
+            case 2: // int
+                return int_equal(qr1, qr2);
+            case 3: // double
+                return double_equal(qr1, qr2);
+            case 4: // std::string
+                return string_equal(qr1, qr2);
+            default:
+                break;
+        }
+    } 
+    return false;
+}
+
+bool less_than(const query_result& qr1, const query_result& qr2) {
+    if (qr1.which() == qr2.which()) {
+        switch (qr1.which()) {
+            case 0: // node *
+            case 1: // relationship *
+                break;
+            case 2: // int
+                return int_less_than(qr1, qr2);
+            case 3: // double
+                return double_less_than(qr1, qr2);
+            case 4: // std::string
+                return string_less_than(qr1, qr2);
+            default:
+                break;
+        }
+    } 
+    return false;
+}
+
+bool less_or_equal(const query_result& qr1, const query_result& qr2) {
+    return less_than(qr1, qr2) || equal(qr1, qr2);
+}
+
+bool greater_than(const query_result& qr1, const query_result& qr2) {
+    if (qr1.which() == qr2.which()) {
+        switch (qr1.which()) {
+            case 0: // node *
+            case 1: // relationship *
+                break;
+            case 2: // int
+                return int_greater_than(qr1, qr2);
+            case 3: // double
+                return double_greater_than(qr1, qr2);
+            case 4: // std::string
+                return string_greater_than(qr1, qr2);
+            default:
+                break;
+        }
+    } 
+    return false;
+}
+
+bool greater_or_equal(const query_result& qr1, const query_result& qr2) {
+    return greater_than(qr1, qr2) || equal(qr1, qr2);
 }
 
 query_result pop(std::stack<query_result>& st) {
@@ -34,20 +165,54 @@ query_result pop(std::stack<query_result>& st) {
 
 struct filter_visitor : public expression_visitor {
 public:
-    filter_visitor(graph_db_ptr& gdb, const qr_tuple& tup) : gdb_(gdb) {}
-    virtual ~filter_visitor() = default;
+    filter_visitor(graph_db_ptr& gdb, const qr_tuple& tup) : gdb_(gdb), tup_(tup) {
+        /* 
+        auto n = boost::get<node *>(tup[0]);
+        std::cout << "visitor:node_id = " << n->id() << std::endl;
+        */
+     }
+    ~filter_visitor() = default;
 
-    bool result() { auto v = pop(stack_); return boost::get<int>(v) != 0; }
+    bool result() {  auto v = pop(stack_); return boost::get<int>(v) != 0; }
 
     virtual void visit(int rank, std::shared_ptr<number_token> op) override {
-        std::cout << "visit number_token: " << op->value_ << std::endl;
-        stack_.push(query_result(op->value_));
+        // std::cout << "visit number_token: " << op->dump() << std::endl;
+        stack_.push(op->ftype_ == FOP_TYPE::INT ? query_result(op->ivalue_) : query_result(op->dvalue_));
     }
 
     virtual void visit(int rank, std::shared_ptr<key_token> op) override {
-        std::cout << "visit key_token: " << op->qr_id_ << ", " << op->key_ << std::endl;
-        stack_.push(query_result(42));
-        std::cout << "PUSH: " << "???" << std::endl;
+        // std::cout << "visit key_token: " << op->qr_id_ << ", " << op->key_ << std::endl;
+        // TODO: we should replace string key_ by its dcode_t
+        auto inp = tup_[op->qr_id_];
+        p_item res;
+        switch (inp.which()) {
+            case 0: // node *
+            {
+                auto nptr = boost::get<node *>(inp);
+                res = gdb_->get_property_value(*nptr, op->key_);
+                break;
+            }
+            case 1: // relationship *
+            {
+                auto rptr = boost::get<relationship *>(inp);
+                res = gdb_->get_property_value(*rptr, op->key_);
+                break;
+            }
+            default:
+                // Ooops!!
+                break;
+        }
+        switch (res.typecode()) {
+            case p_item::p_int:
+                stack_.push(query_result(res.get<int>()));;
+                break;
+            case p_item::p_double:
+                stack_.push(query_result(res.get<double>()));
+                break;
+            default:
+                break;
+        }            
+        // std::cout << "PUSH: " << res << std::endl;
     }
 
     virtual void visit(int rank, std::shared_ptr<str_token> op) override {
@@ -63,32 +228,54 @@ public:
     }
 
     virtual void visit(int rank, std::shared_ptr<eq_predicate> op) override {
-        auto v1 = pop(stack_);
-        auto v2 = pop(stack_);
-        bool res = false;
-        // type handling!
-        /*switch(op->left_->result_type()) {
-            case FOP_TYPE::INT:
-                res = int_equal(v1, v2);
-                break;
-            default:
-                break;
-        }*/
-        std::cout << "EQ PUSH:" << res << std::endl;
-        stack_.push(query_result(res ? 1 : 0));
+        // std::cout << "visit eq_predicate: ==" << std::endl;       
+        if (valid_operands()) {
+            auto v2 = pop(stack_);
+            auto v1 = pop(stack_);
+            bool res = equal(v1, v2);
+            stack_.push(query_result(res ? 1 : 0));
+        }
     }
     
     virtual void visit(int rank, std::shared_ptr<le_predicate> op) override {
-        std::cout << "visit le_predicate" << std::endl;       
+        std::cout << "visit le_predicate: <=" << std::endl;       
+        if (valid_operands()) {
+            auto v2 = pop(stack_);
+            auto v1 = pop(stack_);
+            bool res = less_or_equal(v1, v2);
+            stack_.push(query_result(res ? 1 : 0));
+        }    
     }
 
     virtual void visit(int rank, std::shared_ptr<lt_predicate> op) override {
-        std::cout << "visit lt_predicate" << std::endl;       
+        std::cout << "visit lt_predicate: <" << std::endl;       
+        if (valid_operands()) {
+            auto v2 = pop(stack_);
+            auto v1 = pop(stack_);
+            bool res = less_than(v1, v2);
+            stack_.push(query_result(res ? 1 : 0));
+        }    
     }
 
-    virtual void visit(int rank, std::shared_ptr<ge_predicate> op) override {}
+    virtual void visit(int rank, std::shared_ptr<ge_predicate> op) override {
+        std::cout << "visit ge_predicate: >=" << std::endl;              
+        if (valid_operands()) {
+            auto v2 = pop(stack_);
+            auto v1 = pop(stack_);
+            bool res = greater_or_equal(v1, v2);
+            stack_.push(query_result(res ? 1 : 0));
+        }    
+    }
 
-    virtual void visit(int rank, std::shared_ptr<gt_predicate> op) override {}
+    virtual void visit(int rank, std::shared_ptr<gt_predicate> op) override {
+        // std::cout << "visit gt_predicate: >" << std::endl; 
+        if (valid_operands()) {
+            auto v2 = pop(stack_);
+            auto v1 = pop(stack_);
+            bool res = greater_than(v1, v2);
+            stack_.push(query_result(res ? 1 : 0));
+        }
+    }
 
     virtual void visit(int rank, std::shared_ptr<and_predicate> op) override {}
 
@@ -97,13 +284,23 @@ public:
     virtual void visit(int rank, std::shared_ptr<call_predicate> op) override {}
 
 private:
+    bool valid_operands() {
+        if (stack_.size() < 2) {
+            stack_.pop();
+            stack_.push(query_result(0));
+            return false; 
+        }
+        return true;
+    }
+
     graph_db_ptr gdb_;
+    qr_tuple tup_;
     std::stack<query_result> stack_;
 };
 
 bool interpret_expression(graph_db_ptr& gdb, expr& ex, const qr_tuple& tup) {
-    std::cout << "interpret_expression: " << ex->dump() << std::endl;
     filter_visitor vis(gdb, tup);
+    // std::cout << "interpret_expression: " << ex->dump() << std::endl;
     ex->accept(0, vis);
     return vis.result();
 }
