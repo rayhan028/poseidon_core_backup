@@ -222,7 +222,7 @@ void call_predicate::accept(int rank, expression_visitor &fep) {
     // TODO: do binary stuff here
 }
 
-and_predicate::and_predicate(const bin_expr left, const bin_expr right, bool prec)
+and_predicate::and_predicate(const expr left, const expr right, bool prec)
         : binary_predicate(FOP::AND, left, right, prec, true) {
     rtype_ = ftype_ = FOP_TYPE::BOOL_OP;
     name_ = "AND";
@@ -235,7 +235,7 @@ void and_predicate::accept(int rank, expression_visitor &fep) {
     // TODO: do binary stuff here
 }
 
-or_predicate::or_predicate(const bin_expr left, const bin_expr right, bool prec)
+or_predicate::or_predicate(const expr left, const expr right, bool prec)
         : binary_predicate(FOP::OR, left, right, prec, true) {
     rtype_ = ftype_ = FOP_TYPE::BOOL_OP;
     name_ = "OR";

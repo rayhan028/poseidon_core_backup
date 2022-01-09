@@ -373,10 +373,14 @@ void limit_result::dump(std::ostream &os) const {
 }
 
 void limit_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  bool success = false;
+  PROF_PRE;
   if (processed_ < num_) {
     consume_(gdb, v);
     processed_++;
+    success = true;
   }
+  PROF_POST(success ? 1 : 0);
 }
 
 #ifdef QOP_RECOVERY
@@ -426,10 +430,13 @@ void order_by::dump(std::ostream &os) const {
 }
 
 void order_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
   results_.append(v);
+  PROF_POST(1);
 }
 
 void order_by::finish(graph_db_ptr &gdb) {
+  PROF_PRE;
   if (cmp_func_ != nullptr)
     results_.sort(cmp_func_);
   else
@@ -438,6 +445,7 @@ void order_by::finish(graph_db_ptr &gdb) {
     consume_(gdb, v);
   }
   finish_(gdb);
+  PROF_POST(0);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1246,7 +1254,7 @@ void projection::dump(std::ostream &os) const {
   for (auto &ex : exprs_) {
     os << " " << ex.vidx;
     if (ex.func != nullptr)
-      os << "+";
+      os << ".func";
   }
   os << " ]) - " << PROF_DUMP;
 }
@@ -1281,7 +1289,7 @@ void projection::process(graph_db_ptr &gdb, const qr_tuple &v) {
     try {
       if (ex.func != nullptr)
         res[i] = ex.func(pv[var_map_[ex.vidx]]);
-      else{
+      else {
         pr_result fwd = v[ex.vidx];
         res[i] = builtin::forward(fwd);
       }
@@ -1316,6 +1324,8 @@ query_result forward(projection::pr_result &pv) {
     return boost::get<ptime>(pv);
   } else if (pv.type() == typeid(array_t)) { 
     return boost::get<array_t>(pv);
+  } else if (pv.type() == typeid(null_t)) {
+      return null_val;
   }
   spdlog::info("builtin::forward: unexpected type: {}", pv.type().name());
   return null_val;

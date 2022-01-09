@@ -36,7 +36,7 @@ void prof_metrics::post_hook(uint64_t n) {
 std::ostream& prof_metrics::dump(std::ostream& os) const {   
     os << "{ in=" << in_records_ 
        << " | out=" << out_records_ 
-       << " | time=" << std::chrono::duration_cast<std::chrono::microseconds>(proc_time_).count()
+       << " | time=" << (double)(std::chrono::duration_cast<std::chrono::microseconds>(proc_time_).count()) << " µsecs"
        << " }";
     return os;
 }

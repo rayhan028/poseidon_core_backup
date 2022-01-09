@@ -264,23 +264,23 @@ inline bin_expr GE(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<
 inline bin_expr GT(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<gt_predicate>(lhs, rhs, prec); }
 
 struct and_predicate : public binary_predicate, std::enable_shared_from_this<and_predicate> {
-    and_predicate(bin_expr const left, bin_expr const right, bool prec);
+    and_predicate(expr const left, expr const right, bool prec);
 
     void accept(int rank, expression_visitor &fep) override;
 };
 
-inline bin_expr AND(bin_expr lhs, bin_expr rhs, bool prec = 0) {
+inline bin_expr AND(expr lhs, expr rhs, bool prec = 0) {
     return std::make_shared<and_predicate>(lhs, rhs, prec);
 }
 
 
 struct or_predicate : public binary_predicate, std::enable_shared_from_this<or_predicate> {
-    or_predicate(bin_expr const left, bin_expr const right, bool prec);
+    or_predicate(expr const left, expr const right, bool prec);
 
     void accept(int rank, expression_visitor &fep) override;
 };
 
-inline bin_expr OR(bin_expr lhs, bin_expr rhs, bool prec = 0) { return std::make_shared<or_predicate>(lhs, rhs, prec); }
+inline bin_expr OR(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<or_predicate>(lhs, rhs, prec); }
 
 struct grexpr {
     expr lhs;

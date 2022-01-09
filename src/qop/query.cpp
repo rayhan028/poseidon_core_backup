@@ -463,11 +463,11 @@ void query::start(std::initializer_list<query *> queries) {
 }
 
 void query::print_plan(std::ostream& os) {
-    os << "----------------------------------------------------------------------\n";
+    os << ">>---------------------------------------------------------------------->>\n";
     auto qop_tree = build_qop_tree(plan_head_);
     qop_tree.first->print(os);
     print_plan_helper(os, qop_tree.first, "");
-    os << "----------------------------------------------------------------------\n";
+    os << "<<----------------------------------------------------------------------<<\n";
 }
 
 void query::print_plans(std::initializer_list<query *> queries, std::ostream& os) {
@@ -480,10 +480,10 @@ void query::print_plans(std::initializer_list<query *> queries, std::ostream& os
     for (auto i = 1u; i < trees.size(); i++) {
         merge_qop_trees(trees[0], trees[i]);
     }
-    os << "##----------------------------------------------------------------------\n";
+    os << ">>---------------------------------------------------------------------->>\n";
     trees[0]->print(os);
     print_plan_helper(os, trees[0], "");
-    os << "##----------------------------------------------------------------------\n";
+    os << "<<----------------------------------------------------------------------<<\n";
 }
 
 

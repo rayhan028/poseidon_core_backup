@@ -149,8 +149,8 @@ TEST_CASE("Testing query operators", "[qop]") {
     graph->add_node("Movie", {{"title", boost::any(std::string("m2"))}});
     graph->add_node("Actor", {{"name", boost::any(std::string("p1"))}});
     graph->add_node("Actor", {{"name", boost::any(std::string("p2"))}});
-    graph->dump();
-    std::cout << "code for Movie: " << graph->get_code("Movie") << std::endl;
+    // graph->dump();
+    // std::cout << "code for Movie: " << graph->get_code("Movie") << std::endl;
 
     result_set rs, expected;
     auto q = query(graph)
@@ -692,6 +692,7 @@ TEST_CASE("Testing other Join operators", "[qop]") {
     }
 
     SECTION("outerjoin on node") {
+      std::cout << "outerjoin on node\n";
       result_set rs, expected;
       auto q1 = query(graph)
                 .all_nodes("Person")
@@ -731,6 +732,7 @@ TEST_CASE("Testing other Join operators", "[qop]") {
     }
 
     SECTION("join on rship") {
+      std::cout << "join on rship\n";
       result_set rs, expected;
       auto q1 = query(graph)
                 .all_nodes("Person");
@@ -758,6 +760,7 @@ TEST_CASE("Testing other Join operators", "[qop]") {
     }
 
     SECTION("outerjoin on rship") {
+      std::cout << "outerjoin on rship\n";
       result_set rs, expected;
       auto q1 = query(graph)
                 .all_nodes("Person");
@@ -830,6 +833,7 @@ TEST_CASE("Testing the existence of relationship", "[qop]") {
   graph->run_transaction([&]() {
 
     SECTION("rship_exists without NULL append") {
+      std::cout << "rship_exists without NULL append\n";
       result_set rs, expected;
       auto q1 = query(graph)
                 .all_nodes("Person");
