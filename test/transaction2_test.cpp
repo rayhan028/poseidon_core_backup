@@ -135,7 +135,7 @@ TEST_CASE("Consistency 2", "[transaction]") {
   auto t1 = std::thread([&]() {
     b1.wait(); // wait for t2 to start first
     gdb->begin_transaction();
-    // gdb->delete_node(nid); // delete_node works, but the txn fails in GC
+    gdb->delete_node(nid);
     gdb->commit_transaction();
     b2.notify();  // inform t2 to read the deleted node
 	});

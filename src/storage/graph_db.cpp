@@ -140,7 +140,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
  	auto &n = nodes_->get(node_id);
   // If the node was already deleted we can skip all other entries...
   if (n.cts() != INF) {
-    n.remove_dirty_version(0);
+    n.remove_dirty_version(xid);
     return;
   }
 	  /* A dirty object was just inserted, when add_node() or update_node() was executed.
@@ -240,7 +240,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 	auto& r = rships_->get(rel_id);
   // If the relationship was already deleted we can skip all other entries...
   if (r.cts() != INF) {
-    r.remove_dirty_version(0);
+    r.remove_dirty_version(xid);
     return;
   }
 
@@ -702,10 +702,19 @@ node_description graph_db::get_node_description(node::id_t nid) {
     //  xid, n.is_dirty(), n.is_valid(xid));
     // dump();
     // otherwise there are two options:
-    // (1) we still can get the data from the properties_ table
     if (!n.is_dirty() && n.is_valid_for(xid)) {
-      props = node_properties_->all_properties(n.property_list, dict_);
-      label = dict_->lookup_code(n.node_label);
+      if (n.cts() == INF) {
+        // (1) we still can get the data from the properties_ table
+        props = node_properties_->all_properties(n.property_list, dict_);
+        label = dict_->lookup_code(n.node_label);
+      }
+      else {
+        // the node is deleted and its property values are no more in the properties_ table 
+        // (2) we get the property values directly from the valid version
+        const auto& dn = n.find_valid_version(xid);
+        props = node_properties_->build_properties_from_pitems(dn->properties_, dict_);
+        label = dict_->lookup_code(dn->elem_.node_label);
+      }
     }
     else {
       // (2) we get the property values directly from the p_item list
