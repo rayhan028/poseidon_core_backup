@@ -86,7 +86,7 @@ dcode_t string_pool::add(const std::string& str) {
     auto pos = last_;
     if (last_ + str.length() + 1 >= size_) {
 #if USE_MMFILE
-        std::cerr << "FATAL: cannot grow memory mapped file for dictionary - aborting." << std::endl;
+        std::cerr << "FATAL: cannot grow memory mapped file for dictionary from " << size_ << " bytes - aborting." << std::endl;
 #else
         auto old_size = size_;
         size_ += expand_;

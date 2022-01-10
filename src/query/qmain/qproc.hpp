@@ -29,9 +29,17 @@
  */
 class qproc {
 public:
+    enum mode {
+        qm_interp,
+        qm_compile,
+        qm_adaptive
+    };
+
     qproc(graph_db_ptr gdb) : gdb_(gdb) {}
     ~qproc() = default;
 
+    void execute_query(mode m, const std::string& qstr);
+    
     query_set prepare_query(const std::string& qstr);
     
     void interp_query(query_set& plan);

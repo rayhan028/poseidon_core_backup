@@ -12,7 +12,7 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         ON)
-option(USE_MMFILE       "Use memory mapped file storage"         ON)
+option(USE_MMFILE       "Use memory mapped file storage"         OFF)
 option(USE_HDICT        "Use hdict implementation"               ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)

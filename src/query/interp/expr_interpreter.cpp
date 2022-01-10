@@ -43,10 +43,6 @@ inline bool int_not_equal(const query_result& r1, const query_result& r2) {
     return boost::get<int>(r1) != boost::get<int>(r2);
 }
 
-inline bool int_equal(const query_result& r1, const query_result& r2) {
-    return boost::get<int>(r1) == boost::get<int>(r2);
-}
-
 inline bool int_greater_than(const query_result& r1, const query_result& r2) {
     return boost::get<int>(r1) > boost::get<int>(r2);
 }
@@ -58,10 +54,6 @@ inline bool int_less_than(const query_result& r1, const query_result& r2) {
 // ----------- query_result::double -----------
 inline bool double_not_equal(const query_result& r1, const query_result& r2) {
     return boost::get<double>(r1) != boost::get<double>(r2);
-}
-
-inline bool double_equal(const query_result& r1, const query_result& r2) {
-    return boost::get<double>(r1) == boost::get<double>(r2);
 }
 
 inline bool double_greater_than(const query_result& r1, const query_result& r2) {
@@ -91,6 +83,7 @@ inline bool string_less_than(const query_result& r1, const query_result& r2) {
 
 // ----------- query_result -----------
 bool equal(const query_result& qr1, const query_result& qr2) {
+    // std::cout << "equal: " << qr1.which() << "-" << qr2.which() << std::endl;
     if (qr1.which() == qr2.which()) {
         switch (qr1.which()) {
             case 0: // node *
@@ -99,15 +92,22 @@ bool equal(const query_result& qr1, const query_result& qr2) {
                 return rship_equal(qr1, qr2);
                 break;
             case 2: // int
-                return int_equal(qr1, qr2);
+                return boost::get<int>(qr1) == boost::get<int>(qr2);
             case 3: // double
-                return double_equal(qr1, qr2);
+                return boost::get<double>(qr1) == boost::get<double>(qr2);
             case 4: // std::string
                 return string_equal(qr1, qr2);
+            case 5: // uint64_t
+                return boost::get<uint64_t>(qr1) == boost::get<uint64_t>(qr2);
             default:
                 break;
         }
     } 
+    else if (qr1.which() == 2 && qr2.which() == 5)
+        return (uint64_t)boost::get<int>(qr1) == boost::get<uint64_t>(qr2);
+    else if (qr1.which() == 5 && qr2.which() == 2)
+        return boost::get<uint64_t>(qr1) == (uint64_t)boost::get<int>(qr2);
+
     return false;
 }
 
@@ -204,12 +204,16 @@ public:
         }
         switch (res.typecode()) {
             case p_item::p_int:
-                stack_.push(query_result(res.get<int>()));;
+                stack_.push(query_result(res.get<int>()));
                 break;
             case p_item::p_double:
                 stack_.push(query_result(res.get<double>()));
                 break;
+            case p_item::p_uint64:
+                stack_.push(query_result(res.get<uint64_t>()));
+                break;
             default:
+                std::cout << "cannot push: " << res.typecode() << std::endl;
                 break;
         }            
         // std::cout << "PUSH: " << res << std::endl;
@@ -233,6 +237,7 @@ public:
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
             bool res = equal(v1, v2);
+            // std::cout << "visit eq_predicate: ->" << res << std::endl;       
             stack_.push(query_result(res ? 1 : 0));
         }
     }
@@ -286,6 +291,7 @@ public:
 private:
     bool valid_operands() {
         if (stack_.size() < 2) {
+            // std::cout << "stack_size = " << stack_.size() << std::endl;
             stack_.pop();
             stack_.push(query_result(0));
             return false; 

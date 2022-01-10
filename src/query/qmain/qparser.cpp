@@ -209,7 +209,8 @@ ast_op_ptr qparser::ptree_to_ast(parse_tree_ptr& pn) {
         nptr->add_child(ptree_to_ast(param));
       }
       else if (param->is_type<qlang::literal_string>()) {
-        nptr->add_param(param->string());
+        std::cout << "param: " << param->string() << std::endl;
+        nptr->add_param(trim_string(param->string()));
       }
       else if (param->is_type<qlang::directions>()) {
         nptr->add_param(param->string());

@@ -19,6 +19,15 @@
 
 #include "qproc.hpp"
 
+void qproc::execute_query(qproc::mode m, const std::string& qstr) {
+    if (m == qm_interp) {
+        auto qplan = prepare_query(qstr);
+        qplan.append_printer();
+        // qplan.print_plan();
+        interp_query(qplan);
+    }
+}
+
 query_set qproc::prepare_query(const std::string& qstr) {
     auto op_tree = parser_.parse(qstr);
     return planner_.transform(gdb_, op_tree);

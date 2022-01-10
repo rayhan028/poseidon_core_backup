@@ -99,11 +99,11 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
     case ast_op::expand:
     {
       if (ast->get_param<std::string>(0) == "IN") {
-        auto qp = std::make_shared<get_to_node>();
+        auto qp = std::make_shared<get_from_node>();
         qop = qop_append(res2.first ? res2.second : res.second, qp);
       }
       else if (ast->get_param<std::string>(0) == "OUT") {
-        auto qp = std::make_shared<get_from_node>();
+        auto qp = std::make_shared<get_to_node>();
         qop = qop_append(res2.first ? res2.second : res.second, qp);
       }
       if (ast->params_.size() > 1) {
