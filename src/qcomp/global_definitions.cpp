@@ -25,13 +25,19 @@ void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_tim
 
 node_vec::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
     // return new node_vec::range_iter(vec->as_vec(), first, last);
+#ifdef USE_MMFILE
+    auto & nodes = vec->as_vec();
+    return vec->range_ptr(first, nodes.capacity());
+#else
     return vec->range_ptr(first, last);
+#endif
 }
 
 node_vec::range_iter *get_vec_next(node_vec::range_iter *it) {
-    return &it->operator++();;
+    return &it->operator++();
 }
 
+int ixc = 0;
  bool vec_end_reached(node_list &vec, node_vec::range_iter *it) {
     return !it->operator bool();
 }
