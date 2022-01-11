@@ -15,8 +15,8 @@
 #include <boost/thread/barrier.hpp>
 #include <boost/hana.hpp>
 
-#include "joiner.hpp"
-#include "grouper.hpp"
+#include "proc/joiner.hpp"
+#include "proc/grouper.hpp"
 
 /**
  * Tuple result types

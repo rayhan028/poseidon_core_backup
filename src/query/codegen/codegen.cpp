@@ -5,7 +5,6 @@
 #include "codegen.hpp"
 #include "filter_expression.hpp"
 
-
 /*
 * Function initialisation at first access path
 */

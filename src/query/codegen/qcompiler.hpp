@@ -1,14 +1,14 @@
 #ifndef POSEIDON_CORE_QUERY_ENGINE_HPP
 #define POSEIDON_CORE_QUERY_ENGINE_HPP
 
-#include "joiner.hpp"
-#include "grouper.hpp"
+#include "proc/joiner.hpp"
+#include "proc/grouper.hpp"
 #include "qexmode.hpp"
-#include "p_jit.hpp"
-#include "p_context.hpp"
+#include "jit/p_jit.hpp"
+#include "jit/p_context.hpp"
+#include "qoperator.hpp"
 
 class base_op;
-
 
 class qcompiler;
 
@@ -23,6 +23,12 @@ struct compile_task {
     qcompiler &qeng_;
 };
 
+/*
+    arg_builder is a helper structure for the compiled query code.
+    It is used to store arguments of operators, e.g., labels, into easy
+    accessible memory regions, according to their position in the query
+    pipeline.
+*/
 struct arg_builder {
     std::vector<uint64_t> int_args;
     std::vector<std::string> string_args;
@@ -54,31 +60,20 @@ struct arg_builder {
 };
 
 class qcompiler : public qexmode {
-    unsigned thread_num_;
-    PContext ctx_;
-    std::unique_ptr<p_jit> jit_;
+    friend class compile_task;
 
-    std::thread compile_th;
-
-    transaction_ptr cur_tx_;
-    std::shared_ptr<base_op> cur_query_;
-    arg_builder query_args;
-    unsigned arg_counter;
-
-    graph_db_ptr graph_;
 public: 
-    qcompiler(graph_db_ptr &graph, unsigned int thread_num, unsigned cv_range);
+    qcompiler(graph_db_ptr &graph);
     ~qcompiler();
 
-    void add() override {}
+    void add(query_set queries) override {}
+    void add(std::vector<std::shared_ptr<base_op>> queries) override;
 
-    void exec() override {}
+    void exec(result_set *rs) override;
 
     static std::unique_ptr<p_jit> initializeJitCompiler();
 
     void generate(std::shared_ptr<base_op> query, bool parallel = true);
-
-    void prepare();
 
     void run(result_set * rs);
     void run(result_set * rs, arg_builder & args, bool cleanup_query = true);
@@ -90,18 +85,28 @@ public:
 
     void cleanup();
 
+private:
     void extract_arg(std::shared_ptr<base_op> op);
 
-    bool parallel_;
-    static int thread_iter_range;
-    std::atomic<bool> compiled_;
-    std::atomic<bool> complete_;
-    std::map<int, start_ty> start_;
+    PContext ctx_;
+    std::unique_ptr<p_jit> jit_;
+    std::thread compile_th;
 
+    transaction_ptr cur_tx_;
+    std::shared_ptr<base_op> cur_query_;
+    arg_builder query_args;
+    unsigned arg_counter;
+
+    graph_db_ptr graph_;
+
+    bool parallel_;
+    
+    std::map<int, start_ty> start_;
     static std::map<int, finish_fct_type> finish_;
     std::map<int, std::vector<finish_fct_type>> qpipelines_;
 
     std::function<void(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer)> task_callee_;
+
 };
 
 #endif //POSEIDON_CORE_QUERY_ENGINE_HPP
