@@ -132,8 +132,8 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
         std::vector<pr_expr> pr_exprs;
 
         for(auto& p : pr_list) {
-          if (std::holds_alternative<simple_proj_spec>(p)) {
-            auto& pp = std::get<simple_proj_spec>(p);
+          if (p.which() == 0) {
+            auto& pp = boost::get<simple_proj_spec>(p);
             FTYPE type = FTYPE::INT;
             if (boost::iequals(pp.ptype, "int")) {
               type = FTYPE::INT;
@@ -230,7 +230,7 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       auto pr_list = ast->get_param<proj_spec_list>(0);
       
       auto pr_front = pr_list.front();
-      auto& pr1 = std::get<simple_proj_spec>(pr_front);
+      auto& pr1 = boost::get<simple_proj_spec>(pr_front);
       auto pv_id = parse_tuple_id(pr1.pname);
 
       auto order = pr1.porder;
@@ -268,8 +268,8 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       // Project attributes
       std::vector<pr_expr> pr_exprs;
       for(auto & p : pr_list) {
-        if (std::holds_alternative<simple_proj_spec>(p)) {
-          auto& pp = std::get<simple_proj_spec>(p);
+        if (p.which() == 0) {
+          auto& pp = boost::get<simple_proj_spec>(p);
           FTYPE type = FTYPE::INT;
           if (boost::iequals(pp.ptype, "int")) {
             type = FTYPE::INT;

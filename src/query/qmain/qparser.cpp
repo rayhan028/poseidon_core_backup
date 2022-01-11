@@ -61,7 +61,7 @@ std::string qparser::extract_variable_name(const std::string& var_name) {
   return var_name.substr(dot_pos + 1);
 }
 
-uint32_t qparser::parse_tuple_id(const std::string& var_name) {
+uint32_t qparser::extract_tuple_id(const std::string& var_name) {
   auto dot_pos = var_name.find(".");
   return std::stoi(var_name.substr(1, dot_pos - 1));
 }
@@ -209,7 +209,7 @@ ast_op_ptr qparser::ptree_to_ast(parse_tree_ptr& pn) {
         nptr->add_child(ptree_to_ast(param));
       }
       else if (param->is_type<qlang::literal_string>()) {
-        std::cout << "param: " << param->string() << std::endl;
+        // std::cout << "param: " << param->string() << std::endl;
         nptr->add_param(trim_string(param->string()));
       }
       else if (param->is_type<qlang::directions>()) {
@@ -292,7 +292,7 @@ ast_op_ptr qparser::ptree_to_ast(parse_tree_ptr& pn) {
 /* -------------------------------------------------------------------------------- */
 
 expr qparser::parse_variable_name(parse_tree_ptr& tree) {
-  auto v_id = parse_tuple_id(tree->string());
+  auto v_id = extract_tuple_id(tree->string());
   std::string v_name = "";
   if (tree->string().find(".") != std::string::npos)
     v_name = extract_variable_name(tree->string());

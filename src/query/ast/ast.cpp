@@ -24,14 +24,14 @@ std::ostream& operator<<(std::ostream& os, const proj_spec_list& plist) {
     os << "[ ";
     for (auto i = 0u; i < plist.size(); i++) {
         auto& p = plist[i];
-        if (std::holds_alternative<simple_proj_spec>(p)) {
-            auto& pi = std::get<simple_proj_spec>(p);
+        if (p.which() == 0) {
+            auto& pi = boost::get<simple_proj_spec>(p);
             os << pi.pname;
             if (pi.porder != simple_proj_spec::None)
                 os << " " << pi.porder;
         }
-        else if (std::holds_alternative<udf_spec>(p)) {
-            auto& fi = std::get<udf_spec>(p);
+        else if (p.which() == 1) {
+            auto& fi = boost::get<udf_spec>(p);
             os << fi.fname << "(";
             for (auto j = 0u; j < fi.pname_list.size(); j++) {
                 os << fi.pname_list[j] << ":" << fi.ptype_list[j];

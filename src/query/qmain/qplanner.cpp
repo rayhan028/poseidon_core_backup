@@ -17,6 +17,7 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <functional>
 #include <iostream>
 #include <vector>
 #include "qop.hpp"
@@ -78,7 +79,6 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
     case ast_op::filter:
     {
       auto ex = ast->get_param<expr>(0);
-      // auto qp = std::make_shared<filter_tuple>(ex, [&](auto &p, expr &ex) { return interpret_expression(gdb, ex, p); });
       auto qp = std::make_shared<filter_tuple>(ex);
       qop = qop_append(res2.first ? res2.second : res.second, qp);
     }
@@ -114,9 +114,37 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
       break;
     case ast_op::project:
       {
-      // TODO: projection expression
-      auto qp = std::make_shared<projection>(projection::expr_list());
-      qop = qop_append(res2.first ? res2.second : res.second, qp);
+        // TODO: projection expression
+        projection::expr_list pexprs;
+        auto plist = ast->get_param<proj_spec_list>(0);
+        for (auto& pex : plist) {
+          if (pex.which() == 0) {
+            // simple_proj_spec
+            auto spj = boost::get<simple_proj_spec>(pex);
+            auto pv_id = qparser::extract_tuple_id(spj.pname);
+            auto pv_name = qparser::extract_variable_name(spj.pname);
+
+            // std::cout << "projection: " << pv_id << " . " << pv_name << " : " << spj.ptype << std::endl;
+            // note we need 'capture by value' here for pv_name, otherwise pv_name gets out of scope
+            if (spj.ptype == "string")
+              pexprs.push_back(projection::expr(pv_id, ([=](auto res) { return builtin::string_property(res, pv_name); } )));
+            else if (spj.ptype == "int")
+              pexprs.push_back(projection::expr(pv_id, ([=](auto res) { return builtin::int_property(res, pv_name); } )));
+            else if (spj.ptype == "double")
+              pexprs.push_back(projection::expr(pv_id, ([=](auto res) { return builtin::double_property(res, pv_name); } )));
+            else if (spj.ptype == "uint64")
+              pexprs.push_back(projection::expr(pv_id, ([=](auto res) { return builtin::uint64_property(res, pv_name); } )));
+            else if (spj.ptype == "datetime")
+              pexprs.push_back(projection::expr(pv_id, ([=](auto res) { return builtin::ptime_property(res, pv_name); } )));
+          }  
+          else {
+            // udf_spec
+            auto upj = boost::get<udf_spec>(pex);
+            std::cout << "projection-udf: " << upj.fname << std::endl;
+          }
+        }
+        auto qp = std::make_shared<projection>(pexprs);
+        qop = qop_append(res2.first ? res2.second : res.second, qp);
       }
       break;
     case ast_op::sort:

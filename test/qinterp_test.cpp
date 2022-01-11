@@ -105,7 +105,7 @@ void create_data(graph_db_ptr &graph) {
         {"content", boost::any(std::string("Content of cmt12"))}});
 
     auto mahinda = graph->add_node("Person",
-      {{"id", boost::any((uint64_t)42)},
+      {{"id", boost::any((uint64_t)933)},
        {"firstName", boost::any(std::string("Mahinda"))},
        {"lastName", boost::any(std::string("Perera"))},
        {"gender", boost::any(std::string("male"))},
@@ -284,19 +284,39 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
     SECTION("IS #1") {
         auto qstr = load_string(prefix_is + "1.q");
-        qp.execute_query(qproc::qm_interp, qstr);
+        qp.execute_query(qproc::Interpret, qstr);
     }
-/*
+    /*
     SECTION("IS #2") {
         auto qstr = load_string(prefix_is + "2.q");
-        qp.execute_query(qproc::qm_interp, qstr);
+        qp.execute_query(qproc::Interpret, qstr);
     }
-
+  
     SECTION("IS #3") {
         auto qstr = load_string(prefix_is + "3.q");
-        qp.execute_query(qproc::qm_interp, qstr);
+        qp.execute_query(qproc::Interpret, qstr);
     }
-*/
-    graph_pool::destroy(pool);
+    */
+    SECTION("IS #4") {
+        auto qstr = load_string(prefix_is + "4.q");
+        qp.execute_query(qproc::Interpret, qstr);
+    }
+
+    SECTION("IS #5") {
+        auto qstr = load_string(prefix_is + "5.q");
+        qp.execute_query(qproc::Interpret, qstr);
+    }
+    /*
+    SECTION("IS #6") {
+        auto qstr = load_string(prefix_is + "6.q");
+        qp.execute_query(qproc::Interpret, qstr);
+    }
+
+    SECTION("IS #7") {
+        auto qstr = load_string(prefix_is + "7.q");
+        qp.execute_query(qproc::Interpret, qstr);
+    }
+    */
+  graph_pool::destroy(pool);
 }
 

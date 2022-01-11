@@ -53,6 +53,18 @@ public:
    */
   ast_op_ptr parse(const std::string &query);
 
+  /**
+   * Returns the property name from the variable name, 
+   * e.g. $0.Id -> Id.
+   */
+  static std::string extract_variable_name(const std::string& var_name);
+
+  /**
+   * Returns the variable number from the variable name, 
+   * e.g. $0.Id -> 0.
+   */
+  static uint32_t extract_tuple_id(const std::string& var_name);
+
 private:
   /**
    * Derives the operator type for the AST node from the
@@ -87,12 +99,6 @@ private:
   expr parse_expression(parse_tree_ptr& tree);
 
   /**
-   * Returns the property name from the variable name, 
-   * e.g. $0.Id -> Id.
-   */
-  std::string extract_variable_name(const std::string& var_name);
-
-  /**
    * TODO
    */
   expr parse_variable_name(parse_tree_ptr& tree);
@@ -102,11 +108,6 @@ private:
    */
   expr parse_udf_func_expr(parse_tree_ptr& tree);
 
-  /**
-   * Returns the variable number from the variable name, 
-   * e.g. $0.Id -> 0.
-   */
-  uint32_t parse_tuple_id(const std::string& var_name);
 
   udf_spec parse_udf(parse_tree_ptr& tree);
 

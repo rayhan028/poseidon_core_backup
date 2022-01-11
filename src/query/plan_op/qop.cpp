@@ -1284,8 +1284,8 @@ void projection::process(graph_db_ptr &gdb, const qr_tuple &v) {
   // Then, we process all projection functions...
   qr_tuple res(exprs_.size());
   for (auto i = 0u; i < exprs_.size(); i++) {
-    // spdlog::info("projection::process: pv={}, i={}", pv.size(), i);
     auto &ex = exprs_[i];
+    // spdlog::info("projection::process: pv={}, i={}, vidx={}", pv.size(), i, ex.vidx);
     try {
       if (ex.func != nullptr)
         res[i] = ex.func(pv[var_map_[ex.vidx]]);

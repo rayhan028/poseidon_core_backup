@@ -58,7 +58,7 @@ struct simple_proj_spec {
 /**
  * proj_spec represents a projection specification used in a project clause.
  */
-using proj_spec = std::variant<udf_spec, simple_proj_spec>;
+using proj_spec = boost::variant<simple_proj_spec, udf_spec>;
 
 using proj_spec_list = std::vector<proj_spec>;
 

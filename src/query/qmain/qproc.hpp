@@ -30,9 +30,9 @@
 class qproc {
 public:
     enum mode {
-        qm_interp,
-        qm_compile,
-        qm_adaptive
+        Interpret,
+        Compile,
+        Adaptive
     };
 
     qproc(graph_db_ptr gdb) : gdb_(gdb) {}

@@ -20,7 +20,7 @@
 #include "qproc.hpp"
 
 void qproc::execute_query(qproc::mode m, const std::string& qstr) {
-    if (m == qm_interp) {
+    if (m == Interpret) {
         auto qplan = prepare_query(qstr);
         qplan.append_printer();
         // qplan.print_plan();
