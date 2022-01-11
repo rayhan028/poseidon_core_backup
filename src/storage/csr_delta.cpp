@@ -117,7 +117,7 @@ void csr_delta::restore_deltas(delta_map_t &deltas, uint64_t txid) {
       else if (iter->second < elem.txid_) {
         // delta element is from a newer txn
         // overwrite the vector of neighbour ids with the more recent updates
-        deltas[elem.node_id_].first.clear();
+        deltas[elem.node_id_].second.clear();
         nid_to_txid[elem.node_id_] = elem.txid_;
         deltas[elem.node_id_].second.push_back(buf);
         elem.restored_ = true;
