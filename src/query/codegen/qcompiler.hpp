@@ -66,26 +66,34 @@ public:
     qcompiler(graph_db_ptr &graph);
     ~qcompiler();
 
+    /**
+     * add compiles queries into machine code 
+     */
     void add(query_set queries) override {}
     void add(std::vector<std::shared_ptr<base_op>> queries) override;
 
+    /**
+     * exec executes compiled queries 
+     */
     void exec(result_set *rs) override;
 
-    static std::unique_ptr<p_jit> initializeJitCompiler();
-
+    /**
+     * generate compiles a query into machine code. 
+     */
     void generate(std::shared_ptr<base_op> query, bool parallel = true);
 
+    /**
+     * run executes the compiled query with the given arguments 
+     */
     void run(result_set * rs);
     void run(result_set * rs, arg_builder & args, bool cleanup_query = true);
     void finish(result_set *rs, arg_builder & args);
-
     void run_parallel(result_set * rs, arg_builder & args, unsigned thread_num);
-
-    void add_joiner(unsigned thread_id);
 
     void cleanup();
 
 private:
+    static std::unique_ptr<p_jit> initializeJitCompiler();
     void extract_arg(std::shared_ptr<base_op> op);
 
     PContext ctx_;
@@ -100,7 +108,7 @@ private:
     graph_db_ptr graph_;
 
     bool parallel_;
-    
+
     std::map<int, start_ty> start_;
     static std::map<int, finish_fct_type> finish_;
     std::map<int, std::vector<finish_fct_type>> qpipelines_;

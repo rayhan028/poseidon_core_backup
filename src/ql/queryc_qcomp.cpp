@@ -36,7 +36,7 @@ algebra_optr queryc::compile_to_plan(const std::string &query) {
 }
 
 void queryc::exec_plan(algebra_optr &plan, graph_db_ptr &gdb) {
-  qcompiler queryEngine(gdb, 1, gdb->get_nodes()->num_chunks());
+  qcompiler queryEngine(gdb);
 
   result_set rs;
 
