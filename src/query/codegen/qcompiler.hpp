@@ -92,8 +92,8 @@ public:
 
     void cleanup();
 
-private:
     static std::unique_ptr<p_jit> initializeJitCompiler();
+private:
     void extract_arg(std::shared_ptr<base_op> op);
 
     PContext ctx_;

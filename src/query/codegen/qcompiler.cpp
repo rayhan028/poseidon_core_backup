@@ -26,8 +26,8 @@ std::mutex tp_mut;
 
 qcompiler::qcompiler(graph_db_ptr &graph) 
     :
-    ctx_(PContext(graph)), 
-    jit_(initializeJitCompiler()), 
+    jit_(initializeJitCompiler()),
+    ctx_(PContext(graph)),  
     arg_counter(1u),
     graph_(graph) 
     {

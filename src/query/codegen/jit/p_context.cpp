@@ -132,6 +132,7 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     feFromVarFctTy = FunctionType::get(voidTy, {int8PtrTy, int32Ty, nodePtrTy, int64Ty, int64Ty}, false);
     getNextRshipFctTy = FunctionType::get(rshipPtrTy, {}, false);
     fevListEndFctTy = FunctionType::get(boolTy, {}, false);
+
 //++++++++++++++++++ FILTER FCT ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     filterConsumerFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy},
                                             false);
@@ -140,12 +141,12 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     expandConsumerFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy},
                                             false);
 //++++++++++++++++++ JOIN FCT ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    joinConsumerFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, queryResultListPtrTy},
-                                          false);
+//    joinConsumerFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, queryResultListPtrTy},
+//                                          false);
     joinInsertLeftFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int64PtrTy, int64PtrTy},
                                             false); // TODO: insert name argument to identify correct join table
-    joinConsumeLeftFctTy = FunctionType::get(queryResultListPtrTy, {},
-                                             false); // TODO: insert name argument to identify correct join table
+//    joinConsumeLeftFctTy = FunctionType::get(queryResultListPtrTy, {},
+//                                            false); // TODO: insert name argument to identify correct join table
 
     projectConsumerFctTy = FunctionType::get(Type::getVoidTy(*ctx_), {int8PtrTy, int64Ty, int64PtrTy, int64PtrTy, int64Ty, int64PtrTy},
                                              false);
@@ -288,11 +289,6 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     pItemListTy->setBody(pSetRawArrTy);
     propertySetTy->setBody({int64Ty, int64Ty, pItemListTy, int8Ty}); // next, owner, items, flags
 
-    qrResultTy->setBody({int8PtrTy, int64Ty, int8Ty}); // actual result, type, is null
-    queryResultNodeTy->setBody({queryResultNodePtrTy, queryResultNodePtrTy, int64Ty,
-                                qrResultPtrTy}); //actual qr result, next, prev
-    queryResultList->setBody({queryResultNodePtrTy, queryResultNodePtrTy, int64Ty}); // head, tail, size
-
     graphDbTy->setBody({int8PtrTy, int8PtrTy, int8PtrTy});
     graphDbSharedTy->setBody({int8PtrTy, int8PtrTy});
 
@@ -316,7 +312,7 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     function_types["get_vec_next_r"] = vec_get_next;
     function_types["get_vec_begin_r"] = vec_get_begin;
     function_types["vec_end_reached_r"] = vec_end_reached;
-    function_types["list_size"] = list_size;
+    
     function_types["scan_nodes_by_label"] = scanNodesByLabelTy;
     function_types["pset_get_item_at"] = pset_get_item_at_type;
     function_types["node_by_id"] = gdb_get_node_by_id_type;
