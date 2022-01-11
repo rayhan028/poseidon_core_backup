@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -28,8 +28,7 @@
 
 void graph_db::poseidon_to_csr(csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
 #if defined CSR_DELTA_STORE && defined USE_TX
-  csr_delta_->set_weight_func(weight_func);
-  csr_delta_->set_bidirectional(bidirectional);
+  // we use weight_func and bidirectional as per the delta store
   csr_update_with_delta(csr);
 #elif defined PARALLEL_CSR_BUILD
   parallel_csr_build(csr, weight_func, bidirectional);
@@ -39,6 +38,8 @@ void graph_db::poseidon_to_csr(csr_arrays &csr, rship_weight weight_func, bool b
 }
 
 void graph_db::csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
+  auto txid = current_transaction()->xid();
+
   offset_t edges = 0;
   offset_t max_num_edges = rships_->as_vec().last_used() + 1;
   auto &cv_nodes = nodes_->as_vec();
@@ -58,25 +59,34 @@ void graph_db::csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirec
   for (offset_t nid = 0; nid < max_num_nodes; nid++) {
     if (cv_nodes.is_used(nid)) {
       auto& n = node_by_id(nid);
-
-      foreach_from_relationship_of_node(n, [&](auto &r) {
-        col_indices.push_back(r.to_node_id());
-        edge_values.push_back(weight_func(r));
-        edges++;
-      });
-
-      if (bidirectional) {
-        foreach_to_relationship_of_node(n, [&](auto &r) {
-          col_indices.push_back(r.from_node_id());
+      
+      auto rid = n.from_rship_list;
+      while (rid != UNKNOWN) {
+        auto &r = rship_by_id(rid);
+        if (r.is_valid_for(txid)) {
+          col_indices.push_back(r.to_node_id());
           edge_values.push_back(weight_func(r));
           edges++;
-        });
+        }
+        rid = r.next_src_rship;
+      }
+
+      if (bidirectional) {
+        rid = n.to_rship_list;
+        while (rid != UNKNOWN) {
+          auto &r = rship_by_id(rid);
+          if (r.is_valid_for(txid)) {
+            col_indices.push_back(r.from_node_id());
+            edge_values.push_back(weight_func(r));
+            edges++;
+          }
+          rid = r.next_dest_rship;
+        }
       }
     }
     row_offsets.push_back(edges);
   }
 #if defined CSR_DELTA_STORE && defined USE_TX
-  auto txid = current_transaction()->xid();
   csr_delta_->set_last_txn_id(txid); // update id of the last transaction that made a CSR update
   csr_delta_->set_last_node_id(row_offsets.size() - 2); // update last node id in the CSR
 
@@ -222,6 +232,11 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
   // an entry in a delta map is of the form: {node id, <[ids of neighbours], [edge weights]>}
   csr_delta::delta_map_t deltas;
   csr_delta_->restore_deltas(deltas, txid);
+
+  if (deltas.empty()) {
+    // nothing to update CSR
+    return;
+  }
 
   auto update_edge_delta = 0; // edge delta of existing nodes i.e. from 0 to last node id in the current (i.e. old) CSR
   auto last_node_id = csr_delta_->get_last_node_id();
