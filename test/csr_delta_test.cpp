@@ -116,57 +116,7 @@ void update_data(graph_db_ptr graph) {
   graph->commit_transaction();
 }
 
-TEST_CASE("Storing delta of transactional updates", "[csr_delta]"){
-  auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
-  create_known_data(graph);
-
-  csr_delta::delta_map_t deltas1, deltas2;
-
-  auto delta = graph->get_csr_delta();
-  delta->set_last_txn_id(0);
-  delta->restore_deltas(deltas1, UNKNOWN);
-  delta->set_last_node_id(deltas1.crbegin()->first);
-
-  deltas2[0] = {{6, 1}, {1.3, 1.3}};
-  deltas2[1] = {{2}, {1.3}};
-  deltas2[2] = {{3}, {1.3}};
-  deltas2[3] = {{4}, {1.3}};
-  deltas2[4] = {{}, {}};
-  deltas2[5] = {{6}, {1.3}};
-  deltas2[6] = {{2}, {1.3}};
-
-  REQUIRE(deltas1.size() == deltas2.size());
-  REQUIRE(std::equal(deltas1.begin(), deltas1.end(),
-                      deltas2.begin()));
-
-  deltas1.clear();
-  deltas2.clear();
-
-  update_data(graph);
-  delta->restore_deltas(deltas1, UNKNOWN);
-  delta->set_last_node_id(deltas1.crbegin()->first);
-
-  deltas2[0] = {{1}, {1.3}};
-  deltas2[1] = {{2}, {1.3}};
-  deltas2[2] = {{3}, {1.3}};
-  deltas2[4] = {{}, {}};
-  deltas2[5] = {{1, 4, 6}, {1.3, 1.3, 1.3}};
-  deltas2[6] = {{2}, {1.3}};
-
-  deltas2[7] = {{}, {}};
-  deltas2[8] = {{5, 6}, {1.3, 1.3}};
-  deltas2[9] = {{0}, {1.3}};
-  deltas2[10] = {{1, 0, 2}, {1.3, 1.3, 1.3}};
-
-  REQUIRE(deltas1.size() == deltas2.size());
-  REQUIRE(std::equal(deltas1.begin(), deltas1.end(),
-                      deltas2.begin()));
-
-  graph_pool::destroy(pool);
-}
-
-TEST_CASE("Removing an edge an updating CSR with delta", "[format_converter]"){
+TEST_CASE("Removing an edge and updating CSR with delta", "[format_converter]"){
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
   create_known_data(graph);
