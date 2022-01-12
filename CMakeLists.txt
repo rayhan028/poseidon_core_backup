@@ -20,7 +20,7 @@ option(USE_LLVM         "Use LLVM for query compilation"         ON)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
 option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
-option(BUILD_LDBC       "Build code for LDBC benchmark"          ON)
+option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
 option(BUILD_GTPC       "Build code for GTPC benchmark"          OFF)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
 option(CSR_DELTA_STORE  "Use delta store for updating CSR"       ON)
@@ -467,6 +467,7 @@ set(src_files
   src/query/utils/query_printer.cpp
   src/query/utils/thread_pool.cpp
   src/query/utils/profiling.cpp
+  src/query/utils/qresult_iterator.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp

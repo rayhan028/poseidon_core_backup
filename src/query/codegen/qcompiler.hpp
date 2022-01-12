@@ -60,7 +60,7 @@ struct arg_builder {
 };
 
 class qcompiler : public qexmode {
-    friend class compile_task;
+    friend struct compile_task;
 
 public: 
     qcompiler(graph_db_ptr &graph);

@@ -19,12 +19,15 @@
 
 #include "qproc.hpp"
 
-void qproc::execute_query(qproc::mode m, const std::string& qstr) {
+qresult_iterator qproc::execute_query(qproc::mode m, const std::string& qstr) {
     if (m == Interpret) {
         auto qplan = prepare_query(qstr);
-        qplan.append_printer();
+        result_set result;
+        qplan.append_collect(result);
+        // qplan.append_printer();
         // qplan.print_plan();
         interp_query(qplan);
+        return qresult_iterator(std::move(result));
     }
 }
 

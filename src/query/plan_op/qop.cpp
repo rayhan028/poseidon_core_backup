@@ -1075,66 +1075,6 @@ void csr_data::process(graph_db_ptr &gdb, const qr_tuple &v) {
 
 /* ------------------------------------------------------------------------ */
 
-void result_set::wait() {
-  std::unique_lock<std::mutex> lock(m);
-  cond_var.wait(lock, [&] { return ready.load(); });
-}
-
-void result_set::notify() {
-  std::lock_guard<std::mutex> lock(m);
-  ready = true;
-  cond_var.notify_one();
-}
-
-bool result_set::operator==(const result_set &other) const {
-  return data == other.data;
-}
-
-bool result_set::qr_compare(const qr_tuple &qr1, const qr_tuple &qr2,
-                            const sort_spec &spec) {
-  // TODO
-  return true;
-}
-
-void result_set::sort(const sort_spec &spec) {
-  data.sort([&](const qr_tuple &v1, const qr_tuple &v2) {
-    return qr_compare(v1, v2, spec);
-  });
-}
-
-void result_set::sort(
-    std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
-  data.sort(cmp);
-}
-
-std::ostream &operator<<(std::ostream &os, const result_set &rs) {
-  auto my_visitor = boost::hana::overload(
-      [&](node *n) { /*os << gdb->get_node_description(*n); */ },
-      [&](relationship *r) { /* os << gdb->get_relationship_label(*r); */ },
-      [&](int i) { os << i; }, [&](double d) { os << d; },
-      [&](const std::string &s) { os << s; }, [&](uint64_t ll) { os << ll; },
-      [&](null_t n) { os << "NULL"; },
-      [&](array_t arr) {
-        os << "[ ";
-        for (auto elem : arr.elems)
-          os << elem << " ";
-        os << " ]"; },
-      [&](ptime dt) { os << dt; }); 
-
-  for (const qr_tuple &qv : rs.data) {
-    os << "{ ";
-
-    auto i = 0u;
-    for (const auto &qr : qv) {
-      boost::apply_visitor(my_visitor, qr);
-      if (++i < qv.size())
-        os << ", ";
-    }
-    os << " }" << std::endl;
-  }
-  return os;
-}
-
 /* ------------------------------------------------------------------------ */
 
 void collect_result::dump(std::ostream &os) const {
@@ -1173,7 +1113,9 @@ void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_POST(1);
 }
 
-void collect_result::finish(graph_db_ptr &gdb) { results_.notify(); }
+void collect_result::finish(graph_db_ptr &gdb) { 
+  results_.notify(); 
+}
 
 /* ------------------------------------------------------------------------ */
 

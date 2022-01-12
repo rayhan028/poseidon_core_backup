@@ -37,6 +37,7 @@
 #include "shortest_path.hpp"
 #include "profiling.hpp"
 #include "expression.hpp"
+#include "qresult_iterator.hpp"
 
 template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
   std::vector<T> v2;
@@ -468,58 +469,6 @@ struct nodes_connected : public qop {
 
   bool append_null_;
   std::pair<int, int> src_des_nodes_;
-};
-
-/**
- * result_set is used to collect query results.
- */
-struct result_set {
-  using sort_spec = const std::vector<std::pair<std::size_t, bool>>;
-
-  /**
-   * Constructors.
-   */
-  result_set() = default;
-  result_set(const result_set &rs) : data(rs.data) {}
-
-  /**
-   * Block the current thread until the result data is complete.
-   */
-  void wait();
-
-  /**
-   * Notify the waiting thread that the result is complete.
-   */
-  void notify();
-
-  /**
-   * Append the given element to the result set.
-   */
-  inline void append(const qr_tuple &elem) { data.push_back(elem); }
-
-  /**
-   * Sort the result by the given sort specification.
-   */
-  void sort(const sort_spec &spec);
-
-  void sort(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp);
-
-  /**
-   * Comparison operator.
-   */
-  bool operator==(const result_set &other) const;
-
-  std::list<qr_tuple> data; // the result data
-
-private:
-  bool qr_compare(const qr_tuple &qr1, const qr_tuple &qr2,
-                  const sort_spec &spec);
-
-  // mutex and condition variable used to notify a waiting thread when the
-  // result set is complete
-  std::mutex m;
-  std::condition_variable cond_var;
-  std::atomic<bool> ready{false};
 };
 
 /**

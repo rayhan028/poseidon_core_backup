@@ -5,7 +5,7 @@
 #include "query_set.hpp"
 #include "qoperator.hpp"
 
-struct base_op;
+class base_op;
 /*
     qexmode is a common interface for the query execution modes in Poseidon.
     It provides two methods for to start the processing of a given query.

@@ -40,6 +40,7 @@ public:
   bool empty() const { return queries_.empty(); }
 
   void append_printer();
+  void append_collect(result_set& rs);
 
   /**
    * Start the execution of the query.
