@@ -35,9 +35,9 @@
 /**
  * Helper class to manage the IR code optimization passes and optimization level
  */
-class Optimizer {
+class ir_optimizer {
 public:
-    Optimizer(unsigned OptLevel) { B.OptLevel = OptLevel; }
+    ir_optimizer(unsigned level) { B.OptLevel = level; }
 
     /**
      * Process the given optimization passes

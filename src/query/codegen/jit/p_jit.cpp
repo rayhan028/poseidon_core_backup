@@ -28,7 +28,7 @@ using namespace llvm;
 using namespace llvm::orc;
 
 Expected<ThreadSafeModule>
-Optimizer::operator()(ThreadSafeModule TSM,
+ir_optimizer::operator()(ThreadSafeModule TSM,
                       const MaterializationResponsibility &) {
     Module &M = *TSM.getModuleUnlocked();
 
@@ -253,7 +253,6 @@ p_jit::~p_jit() {
 
 Error p_jit::addModule(std::unique_ptr<Module> M) {
 #if USE_CACHE
-    std::cout << "Use cache" << std::endl;
     auto obj = ObjCache->getCachedObject(*M);
     if(!obj) {
         M.~unique_ptr();
@@ -267,7 +266,7 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
     }
 #endif
 
-    OptimizeLayer.setTransform(Optimizer(0));
+    OptimizeLayer.setTransform(ir_optimizer(0));
     
     auto RT = MainJD.getDefaultResourceTracker();
 

@@ -8,7 +8,7 @@
 #include "codegen.hpp"
 #include "thread_pool.hpp"
 
-#include "grouper.hpp"
+#include "proc/grouper.hpp"
 
 using namespace std::placeholders;
 
@@ -24,14 +24,13 @@ std::unique_ptr<p_jit> qcompiler::initializeJitCompiler() {
 std::mutex tp_mut;
 
 
-qcompiler::qcompiler(graph_db_ptr &graph, unsigned int thread_num, unsigned cv_range) 
-    : thread_num_(thread_num), 
-    ctx_(PContext(graph)), 
-    jit_(initializeJitCompiler()), 
+qcompiler::qcompiler(graph_db_ptr &graph) 
+    :
+    jit_(initializeJitCompiler()),
+    ctx_(PContext(graph)),  
     arg_counter(1u),
-    graph_(graph), 
-    compiled_(false), 
-    complete_(false) {
+    graph_(graph) 
+    {
         
     ctx_.getModule().setDataLayout(jit_->getDataLayout());
 
@@ -92,13 +91,7 @@ using call_map = std::array<int*, 32>;
 void qcompiler::cleanup() {
     start_.clear();
     finish_.clear();
-    complete_.store(false);
-    compiled_.store(false);
     qpipelines_.clear();
-}
-
-void qcompiler::prepare() {
-
 }
 
 joiner * last_joiner;
@@ -166,7 +159,6 @@ void qcompiler::extract_arg(std::shared_ptr<base_op> op) {
 
 
 void qcompiler::run(result_set * rs, arg_builder & args, bool cleanup_query) {
-    //prepare();
 
     graph_->begin_transaction();
     current_transaction_ = current_transaction();
@@ -262,10 +254,6 @@ bool has_join(algebra_optr expr) {
     return join_found;
 }
 
-void create_tasks() {
-
-}
-
 void consumer_dummy(node &n) {
 
 }
@@ -296,7 +284,6 @@ void qcompiler::run_parallel(result_set * rs, arg_builder & args, unsigned threa
             };
 
             scan_task::callee_ = task_callee_;
-            compiled_.store(true);
         });
 
         if(t1.joinable())
@@ -382,5 +369,21 @@ void compile_task::operator()() {
         }       
     }
     
-    
+}
+
+void qcompiler::add(std::vector<std::shared_ptr<base_op>> queries) {
+    // transform query into algebra_optr
+    // TODO: for all given queries
+
+    // extract query args
+    // TODO: for all given queries
+    extract_arg(queries.front());
+
+
+    // compile query
+    generate(queries.front(), false);
+}
+
+void qcompiler::exec(result_set *rs) {
+    run(rs);
 }

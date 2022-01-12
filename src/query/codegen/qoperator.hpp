@@ -4,7 +4,7 @@
 #include <iostream>
 #include <limits>
 
-#include "p_context.hpp"
+#include "jit/p_context.hpp"
 #include "expression.hpp"
 #include "global_definitions.hpp"
 #include "qcompiler.hpp"

@@ -311,30 +311,10 @@ public:
     BasicBlock *while_rship_exist(Function *parent, Value *gdb, Value *node, BasicBlock *nextBB, int nodeGEPidx, int rshipGEPidx,
                                   BasicBlock *endBB, const std::function<void(BasicBlock *, BasicBlock *, Value *rship)> &loop_body);
 
-    Value * create_qr_node(Value *qr_element, Value *qr_prev = nullptr,
-                           Value *qr_next = nullptr);
-
-    Value *create_qr_list(Value *firstElement = nullptr);
-
-    Function *qr_list_add_end();
-
-    Function *qr_list_add_front();
-
-    Function *qr_list_get_front();
-
-    Function *qr_list_get_back();
-
-    Function *qr_list_pop_back();
-
-    Function *qr_list_pop_front(Module &module);
 
     BasicBlock *while_qr_list(Function *parent, Value *qr_list, AllocaInst *cur_node, BasicBlock *next,
                               const std::function<void(BasicBlock *, BasicBlock *)> &loop_body);
 
-    Function *qr_list_append();
-    Function *qr_list_at();
-
-    Function *qr_list_concat();
 
     Value *node_cmp_label(Value *node, Value *label_code);
     Value *rship_cmp_label(Value *rship, Value *label_code);
