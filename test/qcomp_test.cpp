@@ -242,6 +242,41 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
 #endif
 }
 
+TEST_CASE("QOP to Algebra transformation test") {
+#ifdef USE_PMDK
+	auto pop = prepare_pool();
+	graph_db_ptr graph;
+	nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
+#else
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_graph");
+#endif
+
+	p_ptr<dict> dct;
+#ifdef USE_PMDK
+	nvm::transaction::run(pop, [&] {
+#endif
+		dct = p_make_ptr<dict>();
+#ifdef USE_PMDK
+	});
+#endif
+
+    SECTION("Scan") {
+        result_set rs;
+        auto q = query(graph).all_nodes("test").collect(rs);
+        auto alg = q.get_algebra_plan();
+
+        REQUIRE(alg->type_ == qop_type::scan);
+        //REQUIRE(alg->inputs_[0]->type_ == qop_type::collect);
+    }
+
+#ifdef USE_PMDK
+	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
+	pop.close();
+	remove(test_path.c_str());
+#endif
+}
+
 #else
 TEST_CASE("dummy test qcomp") {
     REQUIRE(true);

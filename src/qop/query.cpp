@@ -64,12 +64,16 @@ query &query::all_nodes(const std::string &label) {
 }
 
 query &query::all_nodes(std::map<std::size_t, std::vector<std::size_t>> &range_map, const std::string &label) {
+  algebra_head = algebra_plan = Scan(label, End()); //TODO
+
   plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(label, range_map);
   return *this;
 }
 
 query &query::nodes_where(const std::string &label, const std::string &key,
                           std::function<bool(const p_item &)> pred) {
+  algebra_head = algebra_plan = Scan(label, End()); //TODO
+
   plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(label);
   auto op = std::make_shared<is_property>(key, pred);
   return append_op(op,
@@ -78,6 +82,8 @@ query &query::nodes_where(const std::string &label, const std::string &key,
 
 query &query::nodes_where(const std::vector<std::string> &labels, const std::string &key,
                           std::function<bool(const p_item &)> pred) {
+  algebra_head = algebra_plan = Scan(labels, End()); //TODO
+
   plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(labels);
   auto op = std::make_shared<is_property>(key, pred);
   return append_op(op,
@@ -268,13 +274,13 @@ query &query::finish() {
   auto oper = End();
   algebra_plan->inputs_[0] = oper;
   algebra_plan = oper;
-  
 
   auto op = std::make_shared<end_pipeline>();
   return append_op(op, std::bind(&end_pipeline::process, op.get()));
 }
 
 query &query::project(const projection::expr_list &exprs) {
+  algebra_head = algebra_plan = Scan("test", End()); //TODO
   auto op = std::make_shared<projection>(exprs);
   return append_op(op,
                    std::bind(&projection::process, op.get(), ph::_1, ph::_2));
@@ -383,6 +389,11 @@ query &query::crossjoin(query &other) {
 }
 
 query &query::join_on_node(std::pair<int, int> left_right, query &other) {
+  auto other_oper = other.get_algebra_plan();
+  auto oper = NestedLoopJoin(left_right, End(), other_oper);
+  algebra_plan->inputs_[0] = oper;
+  algebra_plan = oper;
+
   auto op = std::make_shared<nested_loop_join>(left_right);
   other.append_op(
       op, std::bind(&nested_loop_join::process_right, op.get(), ph::_1, ph::_2));
@@ -392,6 +403,11 @@ query &query::join_on_node(std::pair<int, int> left_right, query &other) {
 }
 
 query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
+  auto other_oper = other.get_algebra_plan();
+  auto oper = HashJoin(left_right, End(), other_oper);
+  algebra_plan->inputs_[0] = oper;
+  algebra_plan = oper;
+
   auto op = std::make_shared<hash_join>(left_right);
   other.append_op(
       op, std::bind(&hash_join::build_phase, op.get(), ph::_1, ph::_2));
@@ -401,6 +417,11 @@ query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
 }
 
 query &query::outerjoin_on_node(const std::pair<int, int> &left_right, query &other) {
+  auto other_oper = other.get_algebra_plan();
+  auto oper = LeftJoin(left_right, End(), other_oper);
+  algebra_plan->inputs_[0] = oper;
+  algebra_plan = oper;
+
   auto op = std::make_shared<left_outerjoin_on_node>(left_right);
   other.append_op(
       op, std::bind(&left_outerjoin_on_node::process_right, op.get(), ph::_1, ph::_2));
