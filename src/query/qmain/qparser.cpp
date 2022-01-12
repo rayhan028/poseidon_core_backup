@@ -138,7 +138,7 @@ ast_op_ptr qparser::parse(const std::string &query) {
   }
   // pegtl::parse_tree::print_dot(std::cout, *ptree); 
   auto ast_node = ptree_to_ast(ptree->children.front());
-  // print_ast(ast_node);
+  print_ast(ast_node);
   return ast_node;
 }
 

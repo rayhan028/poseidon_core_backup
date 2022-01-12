@@ -297,6 +297,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
         qp.execute_query(qproc::Interpret, qstr);
     }
     */
+
     SECTION("IS #4") {
         auto qstr = load_string(prefix_is + "4.q");
         qp.execute_query(qproc::Interpret, qstr);
@@ -306,12 +307,13 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
         auto qstr = load_string(prefix_is + "5.q");
         qp.execute_query(qproc::Interpret, qstr);
     }
-    /*
+    
     SECTION("IS #6") {
         auto qstr = load_string(prefix_is + "6.q");
         qp.execute_query(qproc::Interpret, qstr);
     }
 
+    /*
     SECTION("IS #7") {
         auto qstr = load_string(prefix_is + "7.q");
         qp.execute_query(qproc::Interpret, qstr);

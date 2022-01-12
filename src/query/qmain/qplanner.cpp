@@ -33,7 +33,7 @@ query_set qplanner::transform(graph_db_ptr& gdb, ast_op_ptr op_tree) {
     query_set qset;
     for (auto& src : sources) {
         query q(gdb, src);
-        q.print_plan(std::cout); 
+        // q.print_plan(std::cout); 
         qset.add(q);
     }
     return qset;
@@ -62,11 +62,17 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
   // std::cout << "ast_to_qex: " << ast->op_ << std::endl;
   switch (ast->op_) {
     case ast_op::node_scan:
-      // TODO: handle also params like [ 'label1', 'label2' ]
       if (ast->num_params() == 0)
         qop = std::make_shared<scan_nodes>();
       else if (ast->num_params() == 1)
         qop = std::make_shared<scan_nodes>(trim_string(ast->get_param<std::string>(0)));
+      else {
+      // handle also params like [ 'label1', 'label2' ]
+        std::vector<std::string> label_list;
+        for (auto i = 0u; i < ast->num_params(); i++)
+           label_list.push_back(trim_string(ast->get_param<std::string>(i)));
+        qop = std::make_shared<scan_nodes>(label_list);
+      }
       sources.push_back(qop);
       return std::make_pair(qop, qop);
       break;
@@ -150,6 +156,17 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
     case ast_op::sort:
       break;
     case ast_op::union_all:
+      {
+        auto qp = std::make_shared<union_all_qres>();
+        auto parent = res2.first ? res2.second : res.second;
+        parent->connect(qp, std::bind(&union_all_qres::process_left, qp.get(), ph::_1, ph::_2));
+        qop_ptr parent2 = sources.at(sources.size()-2);
+        while (parent2->has_subscriber()) {
+          parent2 = parent2->subscriber();
+        }
+        parent2->connect(qp, std::bind(&union_all_qres::process_right, qp.get(), ph::_1, ph::_2));
+        qop = qp;
+      }
       break;
     case ast_op::count:
       break;

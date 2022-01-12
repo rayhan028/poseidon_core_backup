@@ -26,18 +26,6 @@ std::ostream& operator<<(std::ostream& os, const query_result& qr) {
     return os;
 }
 
-inline bool node_equal(const query_result& r1, const query_result& r2) {
-    auto n1 = boost::get<node*>(r1);
-    auto n2 = boost::get<node*>(r2);
-    return n1 == n2; 
-}
-
-inline bool rship_equal(const query_result& r1, const query_result& r2) {
-    auto n1 = boost::get<relationship*>(r1);
-    auto n2 = boost::get<relationship*>(r2);
-    return n1 == n2; 
-}
-
 // ----------- query_result::int -----------
 inline bool int_not_equal(const query_result& r1, const query_result& r2) {
     return boost::get<int>(r1) != boost::get<int>(r2);
@@ -87,9 +75,9 @@ bool equal(const query_result& qr1, const query_result& qr2) {
     if (qr1.which() == qr2.which()) {
         switch (qr1.which()) {
             case 0: // node *
-                return node_equal(qr1, qr2);
+                return boost::get<node*>(qr1) == boost::get<node*>(qr2);
             case 1: // relationship *
-                return rship_equal(qr1, qr2);
+                return boost::get<relationship*>(qr1) == boost::get<relationship*>(qr2);
                 break;
             case 2: // int
                 return boost::get<int>(qr1) == boost::get<int>(qr2);
@@ -173,7 +161,16 @@ public:
      }
     ~filter_visitor() = default;
 
-    bool result() {  auto v = pop(stack_); return boost::get<int>(v) != 0; }
+    bool result() {  
+        auto v = pop(stack_); 
+        /*
+        if (boost::get<int>(v)) {
+        auto n = boost::get<node *>(tup_[0]);
+            std::cout << "filter_visitor satisfied for = " << n->id() << std::endl;
+        }
+        */
+        return boost::get<int>(v) != 0; 
+    }
 
     virtual void visit(int rank, std::shared_ptr<number_token> op) override {
         // std::cout << "visit number_token: " << op->dump() << std::endl;
