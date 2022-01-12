@@ -24,7 +24,7 @@ public:
     /*
         The method exec should contain the functionality for the actual execution of the query.
     */
-    virtual void exec(result_set *rs) = 0;
+    virtual void exec() = 0;
 
 };
 

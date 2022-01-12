@@ -384,6 +384,7 @@ void qcompiler::add(std::vector<std::shared_ptr<base_op>> queries) {
     generate(queries.front(), false);
 }
 
-void qcompiler::exec(result_set *rs) {
-    run(rs);
+void qcompiler::exec() {
+    result_set rs;
+    run(&rs);
 }

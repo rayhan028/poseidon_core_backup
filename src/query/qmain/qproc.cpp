@@ -38,5 +38,7 @@ void qproc::interp_query(query_set& plan) {
 }
 
 void qproc::compile_query(query_set& plan) {
-
+    auto algebra_plan = plan.front().get_algebra_plan();
+    compiler_.add({algebra_plan});
+    compiler_.exec();
 }

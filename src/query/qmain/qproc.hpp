@@ -22,6 +22,7 @@
 #include "qparser.hpp"
 #include "qplanner.hpp"
 #include "qinterp.hpp"
+#include "qcompiler.hpp"
 
 /**
  * qproc is the main entry class for the Poseidon query processor. It encapsulates the parser, the query planner as well as
@@ -35,7 +36,7 @@ public:
         Adaptive
     };
 
-    qproc(graph_db_ptr gdb) : gdb_(gdb) {}
+    qproc(graph_db_ptr gdb) : gdb_(gdb), compiler_(gdb) {}
     ~qproc() = default;
 
     void execute_query(mode m, const std::string& qstr);
@@ -50,6 +51,7 @@ private:
     qparser parser_;
     qplanner planner_;   
     qinterp interp_; 
+    qcompiler compiler_;
 };
 
 #endif

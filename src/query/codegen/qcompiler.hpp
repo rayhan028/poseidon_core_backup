@@ -75,7 +75,7 @@ public:
     /**
      * exec executes compiled queries 
      */
-    void exec(result_set *rs) override;
+    void exec() override;
 
     /**
      * generate compiles a query into machine code. 
