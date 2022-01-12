@@ -284,7 +284,19 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
     SECTION("IS #1") {
         auto qstr = load_string(prefix_is + "1.q");
-        qp.execute_query(qproc::Interpret, qstr);
+        auto res = qp.execute_query(qproc::Interpret, qstr);
+        // res.wait();
+        std::cout << res.result() << std::endl;
+
+        result_set expected;
+        expected.data.push_back({
+          query_result("Mahinda"), query_result("Perera"),
+          query_result("1989-12-03"), query_result("119.235.7.103"),
+          query_result("Firefox"), query_result("1353"), query_result("male"),
+          query_result("2010-02-14T15:32:10.447000")
+        });
+
+        // REQUIRE(res.result() == expected);
     }
     /*
     SECTION("IS #2") {
@@ -297,21 +309,48 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
         qp.execute_query(qproc::Interpret, qstr);
     }
     */
+
     SECTION("IS #4") {
         auto qstr = load_string(prefix_is + "4.q");
-        qp.execute_query(qproc::Interpret, qstr);
+        auto res = qp.execute_query(qproc::Interpret, qstr);
+        std::cout << res.result() << std::endl;
+
+        result_set expected;
+        expected.data.push_back({
+          query_result("2011-10-05T14:38:36.019000"), query_result("photo1374389534791.jpg")
+        });
+
+        // REQUIRE(res.result() == expected);
     }
 
     SECTION("IS #5") {
         auto qstr = load_string(prefix_is + "5.q");
-        qp.execute_query(qproc::Interpret, qstr);
+        auto res = qp.execute_query(qproc::Interpret, qstr);
+        std::cout << res.result() << std::endl;
+
+        result_set expected;
+        expected.data.push_back({
+          query_result("10995116"), query_result("Andrei"), query_result("Condariuc")
+        });
+
+        REQUIRE(res.result() == expected);
     }
-    /*
+    
     SECTION("IS #6") {
         auto qstr = load_string(prefix_is + "6.q");
-        qp.execute_query(qproc::Interpret, qstr);
+        auto res = qp.execute_query(qproc::Interpret, qstr);
+        std::cout << res.result() << std::endl;
+
+        result_set expected;
+        expected.data.push_back({
+          query_result("37"), query_result("Wall of Hồ Chí Do"), query_result("4194"),
+          query_result("Hồ Chí"), query_result("Do")
+        });
+
+        REQUIRE(res.result() == expected);
     }
 
+    /*
     SECTION("IS #7") {
         auto qstr = load_string(prefix_is + "7.q");
         qp.execute_query(qproc::Interpret, qstr);

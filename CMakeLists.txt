@@ -467,6 +467,7 @@ set(src_files
   src/query/utils/query_printer.cpp
   src/query/utils/thread_pool.cpp
   src/query/utils/profiling.cpp
+  src/query/utils/qresult_iterator.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp

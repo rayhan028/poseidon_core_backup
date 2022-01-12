@@ -30,7 +30,15 @@ void query_set::append_printer() {
   // TODO: find the last operator
   auto qop = queries_.at(0).plan_tail_;
   auto op = std::make_shared<printer>();
-  return qop->connect(op, std::bind(&printer::process, op.get(), ph::_1, ph::_2));
+  qop->connect(op, std::bind(&printer::process, op.get(), ph::_1, ph::_2));
+}
+
+void query_set::append_collect(result_set& rs) {
+  // TODO: find the last operator
+  auto qop = queries_.at(0).plan_tail_;
+  auto op = std::make_shared<collect_result>(rs);
+  qop->connect(op, std::bind(&collect_result::process, op.get(), ph::_1, ph::_2), 
+    std::bind(&collect_result::finish, op.get(), ph::_1));;
 }
 
 void query_set::print_plan(std::ostream& os) {
