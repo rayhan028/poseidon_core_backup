@@ -472,15 +472,16 @@ TEST_CASE("Consistency Test 2a", "[format_converter]"){
 
   /**
    * t1 starts before t2
-   * t2 creates a relationship and commits, then t1 builds CSR 
-   * in CSR build, t1 does not see the committed relationship
+   * t2 creates a new relationship R_add and deletes an existing relationship R_del
+   * after t2 commits, t1 builds CSR 
+   * in the CSR build, t1 sees R_del but does not see R_add
    */
   auto t1 = std::thread([&]() {
     graph->begin_transaction();
     b1.notify(); // ensure t1 starts before t2
     b2.wait(); // before t1 builds CSR, ensure t2 adds delta for its updates and commits
 
-    // this CSR build should not include the relationship between nodes with ids 0 and 5, created by t2
+    // this CSR build should include R_del but not R_add
     graph->poseidon_to_csr(csr1, weight_func);
     graph->commit_transaction();
   });
@@ -488,8 +489,9 @@ TEST_CASE("Consistency Test 2a", "[format_converter]"){
   auto t2 = std::thread([&]() {
     b1.wait(); // wait for t1 to start
     graph->begin_transaction();
-    // t1 should not see this relationship
+    // t1 should see R_del but not R_add
     graph->add_relationship(0, 5, ":knows", {});
+    graph->delete_relationship(6, 2);
     graph->commit_transaction();
     b2.notify();
   });
@@ -497,7 +499,7 @@ TEST_CASE("Consistency Test 2a", "[format_converter]"){
   t1.join();
   t2.join();
 
-  // the CSR does not include the relationship
+  // the CSR includes R_del but not R_add
   {
     std::vector<uint64_t> row_offs = {0, 2, 3, 4, 5, 5, 6, 7};
     std::vector<uint64_t> col_inds = {6, 1, 2, 3, 4, 6, 2};
@@ -508,17 +510,17 @@ TEST_CASE("Consistency Test 2a", "[format_converter]"){
     REQUIRE(csr1.edge_values == edge_vals);
   }
 
-  // update CSR
+  // update CSR again
   graph->run_transaction([&]() {
     graph->poseidon_to_csr(csr2, weight_func);
     return true;
   });
 
-  // now after CSR update, the CSR includes the relationship
+  // now after another CSR update, the CSR includes R_add but not R_del
   {
-    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 8};
-    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
+    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr2.row_offsets == row_offs);
     REQUIRE(csr2.col_indices == col_inds);
@@ -539,7 +541,8 @@ TEST_CASE("Consistency Test 2b", "[format_converter]"){
 
   /**
    * t1 starts before t2
-   * t2 creates a relationship and before it commits, t1 builds CSR 
+   * t2 creates a new relationship R_add and deletes an existing relationship R_del 
+   * before t2 commits, t1 builds CSR 
    * in CSR build, t1 does not see the uncommitted updates of t2
    */
   auto t1 = std::thread([&]() {
@@ -547,7 +550,7 @@ TEST_CASE("Consistency Test 2b", "[format_converter]"){
     b1.notify(); // ensure t1 starts before t2
     b2.wait();
 
-    // this CSR build should not include the relationship between nodes with ids 0 and 5, created by t2
+    // this CSR build should include R_del but not R_add
     graph->poseidon_to_csr(csr1, weight_func);
     b3.notify();
     graph->commit_transaction();
@@ -556,8 +559,9 @@ TEST_CASE("Consistency Test 2b", "[format_converter]"){
   auto t2 = std::thread([&]() {
     b1.wait(); // wait for t1 to start
     graph->begin_transaction();
-    // t1 should not see this relationship
+    // t1 should see R_del but not R_add
     graph->add_relationship(0, 5, ":knows", {});
+    graph->delete_relationship(6, 2);
     b2.notify(); // inform t1 to build CSR
     b3.wait(); // ensure t1 builds CSR before t2 commits
     graph->commit_transaction();
@@ -566,7 +570,7 @@ TEST_CASE("Consistency Test 2b", "[format_converter]"){
   t1.join();
   t2.join();
 
-  // the CSR does not include the relationship
+  // the CSR includes R_del but not R_add
   {
     std::vector<uint64_t> row_offs = {0, 2, 3, 4, 5, 5, 6, 7};
     std::vector<uint64_t> col_inds = {6, 1, 2, 3, 4, 6, 2};
@@ -577,17 +581,17 @@ TEST_CASE("Consistency Test 2b", "[format_converter]"){
     REQUIRE(csr1.edge_values == edge_vals);
   }
 
-  // update CSR
+  // update CSR again
   graph->run_transaction([&]() {
     graph->poseidon_to_csr(csr2, weight_func);
     return true;
   });
 
-  // now after CSR update, the CSR includes the relationship
+  // now after another CSR update, the CSR includes R_add but not R_del
   {
-    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 8};
-    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
+    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr2.row_offsets == row_offs);
     REQUIRE(csr2.col_indices == col_inds);
@@ -640,24 +644,20 @@ TEST_CASE("Consistency Test 3a", "[format_converter]"){
   t1.join();
   t2.join();
 
-  // the CSR does not include the node (and its relationship)
+  // the CSR does not include the node and its relationship (i.e. the CSR stays the same)
   {
-    std::vector<uint64_t> row_offs = {0, 2, 3, 4, 5, 5, 6, 7};
-    std::vector<uint64_t> col_inds = {6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
-
-    REQUIRE(csr2.row_offsets == row_offs);
-    REQUIRE(csr2.col_indices == col_inds);
-    REQUIRE(csr2.edge_values == edge_vals);
+    REQUIRE(csr2.row_offsets.empty());
+    REQUIRE(csr2.col_indices.empty());
+    REQUIRE(csr2.edge_values.empty());
   }
 
-  // update CSR
+  // update CSR again
   graph->run_transaction([&]() {
     graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
-  // now after CSR update, the CSR includes the node (and its relationship)
+  // now after another CSR update, the CSR includes the node and its relationship
   {
     std::vector<uint64_t> row_offs = {0, 2, 3, 4, 5, 5, 6, 7, 8};
     std::vector<uint64_t> col_inds = {6, 1, 2, 3, 4, 6, 2, 0};
@@ -716,24 +716,20 @@ TEST_CASE("Consistency Test 3b", "[format_converter]"){
   t1.join();
   t2.join();
 
-  // the CSR does not include the node (and its relationship)
+  // the CSR does not include the node and its relationship (i.e. the CSR stays the same)
   {
-    std::vector<uint64_t> row_offs = {0, 2, 3, 4, 5, 5, 6, 7};
-    std::vector<uint64_t> col_inds = {6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
-
-    REQUIRE(csr2.row_offsets == row_offs);
-    REQUIRE(csr2.col_indices == col_inds);
-    REQUIRE(csr2.edge_values == edge_vals);
+    REQUIRE(csr2.row_offsets.empty());
+    REQUIRE(csr2.col_indices.empty());
+    REQUIRE(csr2.edge_values.empty());
   }
 
-  // update CSR
+  // update CSR again
   graph->run_transaction([&]() {
     graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
-  // now after CSR update, the CSR includes the node (and its relationship)
+  // now after another CSR update, the CSR includes the node and its relationship
   {
     std::vector<uint64_t> row_offs = {0, 2, 3, 4, 5, 5, 6, 7, 8};
     std::vector<uint64_t> col_inds = {6, 1, 2, 3, 4, 6, 2, 0};
@@ -764,15 +760,16 @@ TEST_CASE("Consistency Test 4a", "[format_converter]"){
 
   /**
    * t1 starts before t2
-   * t2 creates a relationship and commits, then t1 updates CSR 
-   * in the CSR update, t1 does not see the committed relationship
+   * t2 creates a new relationship R_add and deletes an existing relationship R_del
+   * after t2 commits, t1 updates CSR 
+   * in the CSR update, t1 sees R_del but does not see R_add
    */
   auto t1 = std::thread([&]() {
     graph->begin_transaction();
     b1.notify(); // ensure t1 starts before t2
     b2.wait(); // before t1 updates CSR, ensure t2 adds delta for its updates and commits
 
-    // this CSR update should not include the relationship between nodes with ids 0 and 5, created by t2
+    // this CSR update should include R_del but not R_add (i.e. the CSR stays the same)
     graph->poseidon_to_csr(csr2, weight_func);
     graph->commit_transaction();
   });
@@ -780,8 +777,9 @@ TEST_CASE("Consistency Test 4a", "[format_converter]"){
   auto t2 = std::thread([&]() {
     b1.wait(); // wait for t1 to start
     graph->begin_transaction();
-    // t1 should not see this relationship
+    // t1 should see R_del but not R_add
     graph->add_relationship(0, 5, ":knows", {});
+    graph->delete_relationship(6, 2);
     graph->commit_transaction();
     b2.notify();
   });
@@ -789,28 +787,24 @@ TEST_CASE("Consistency Test 4a", "[format_converter]"){
   t1.join();
   t2.join();
 
-  // the CSR does not include the relationship
+  // the CSR includes R_del but not R_add (i.e. the CSR stays the same)
   {
-    std::vector<uint64_t> row_offs = {0, 2, 3, 4, 5, 5, 6, 7};
-    std::vector<uint64_t> col_inds = {6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
-
-    REQUIRE(csr2.row_offsets == row_offs);
-    REQUIRE(csr2.col_indices == col_inds);
-    REQUIRE(csr2.edge_values == edge_vals);
+    REQUIRE(csr2.row_offsets.empty());
+    REQUIRE(csr2.col_indices.empty());
+    REQUIRE(csr2.edge_values.empty());
   }
 
-  // update CSR
+  // update CSR again
   graph->run_transaction([&]() {
     graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
-  // now after CSR update, the CSR includes the relationship
+  // now after another CSR update, the CSR includes R_add but not R_del
   {
-    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 8};
-    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
+    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr3.row_offsets == row_offs);
     REQUIRE(csr3.col_indices == col_inds);
@@ -837,7 +831,8 @@ TEST_CASE("Consistency Test 4b", "[format_converter]"){
 
   /**
    * t1 starts before t2
-   * t2 creates a relationship and before it commits, t1 updates CSR 
+   * t2 creates a new relationship R_add and deletes an existing relationship R_del 
+   * before t2 commits, t1 updates CSR 
    * in the CSR update, t1 does not see the uncommitted changes of t2
    */
   auto t1 = std::thread([&]() {
@@ -845,7 +840,7 @@ TEST_CASE("Consistency Test 4b", "[format_converter]"){
     b1.notify(); // ensure t1 starts before t2
     b2.wait();
 
-    // this CSR update should not include the relationship between nodes with ids 0 and 5, created by t2
+    // this CSR update should include R_del but not R_add
     graph->poseidon_to_csr(csr2, weight_func);
     b3.notify(); // notify t2 to commit
     graph->commit_transaction();
@@ -854,8 +849,9 @@ TEST_CASE("Consistency Test 4b", "[format_converter]"){
   auto t2 = std::thread([&]() {
     b1.wait(); // wait for t1 to start
     graph->begin_transaction();
-    // t1 should not see this relationship
+    // t1 should see R_del but not R_add
     graph->add_relationship(0, 5, ":knows", {});
+    graph->delete_relationship(6, 2);
     b2.notify(); // notify t1 to update CSR
     b3.wait(); // ensure t1 updates CSR before t2 commits
     graph->commit_transaction();
@@ -864,28 +860,24 @@ TEST_CASE("Consistency Test 4b", "[format_converter]"){
   t1.join();
   t2.join();
 
-  // the CSR does not include the relationship
+  // the CSR includes R_del but not R_add (i.e. the CSR stays the same)
   {
-    std::vector<uint64_t> row_offs = {0, 2, 3, 4, 5, 5, 6, 7};
-    std::vector<uint64_t> col_inds = {6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
-
-    REQUIRE(csr2.row_offsets == row_offs);
-    REQUIRE(csr2.col_indices == col_inds);
-    REQUIRE(csr2.edge_values == edge_vals);
+    REQUIRE(csr2.row_offsets.empty());
+    REQUIRE(csr2.col_indices.empty());
+    REQUIRE(csr2.edge_values.empty());
   }
 
-  // update CSR
+  // update CSR again
   graph->run_transaction([&]() {
     graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
-  // now after CSR update, the CSR includes the relationship
+  // now after another CSR update, the CSR includes R_add but not R_del
   {
-    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 8};
-    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
+    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr3.row_offsets == row_offs);
     REQUIRE(csr3.col_indices == col_inds);
@@ -1001,15 +993,16 @@ TEST_CASE("Consistency Test 6a", "[format_converter]"){
 
   /**
    * t2 starts before t1
-   * t2 creates a relationship and commits, then t1 builds CSR 
-   * in CSR build, t1 should see the committed relationship
+   * t2 creates a new relationship R_add and deletes an existing relationship R_del 
+   * after t2 commits, t1 builds CSR 
+   * in CSR build, t1 sees R_del but does not see R_add
    */
   auto t1 = std::thread([&]() {
     b1.wait(); // wait for t2 to start
     graph->begin_transaction();
     b2.wait(); // before t1 builds CSR, ensure t2 adds delta for its updates and commits
 
-    // this CSR build should include the relationship between nodes with ids 0 and 5, created by t2
+    // this CSR build should include R_add but not R_del
     graph->poseidon_to_csr(csr, weight_func);
     graph->commit_transaction();
   });
@@ -1017,8 +1010,9 @@ TEST_CASE("Consistency Test 6a", "[format_converter]"){
   auto t2 = std::thread([&]() {
     graph->begin_transaction();
     b1.notify(); // ensure t2 starts before t1
-    // t1 should see this relationship
+    // t1 should see R_add but not R_del
     graph->add_relationship(0, 5, ":knows", {});
+    graph->delete_relationship(6, 2);
     graph->commit_transaction();
     b2.notify();
   });
@@ -1028,9 +1022,9 @@ TEST_CASE("Consistency Test 6a", "[format_converter]"){
 
   // the CSR includes the relationship
   {
-    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 8};
-    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
+    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr.row_offsets == row_offs);
     REQUIRE(csr.col_indices == col_inds);
@@ -1051,7 +1045,8 @@ TEST_CASE("Consistency Test 6b", "[format_converter]"){
 
   /**
    * t2 starts before t1
-   * t2 creates a relationship and before it commits, t1 builds CSR 
+   * t2 creates a new relationship R_add and deletes an existing relationship R_del 
+   * before t2 commits, t1 builds CSR 
    * in CSR build, a read is done for all node ids. 
    * therefore, t1 tries to read the dirty node with id 0 and aborts (dirty read)
    */
@@ -1070,8 +1065,9 @@ TEST_CASE("Consistency Test 6b", "[format_converter]"){
   auto t2 = std::thread([&]() {
     graph->begin_transaction();
     b1.notify(); // ensure t2 starts before t1
-    // t1 should see this relationship
+    // t1 should not see the uncommitted updates of t2
     graph->add_relationship(0, 5, ":knows", {});
+    graph->delete_relationship(6, 2);
     b2.notify();
     b3.wait(); // ensure t1 builds CSR before t2 commits
     graph->commit_transaction();
@@ -1185,24 +1181,20 @@ TEST_CASE("Consistency Test 7b", "[format_converter]"){
   t1.join();
   t2.join();
 
-  // the CSR does not include the node (and its relationship)
+  // the CSR does not include the node and its relationship (i.e. the CSR stays the same)
   {
-    std::vector<uint64_t> row_offs = {0, 2, 3, 4, 5, 5, 6, 7};
-    std::vector<uint64_t> col_inds = {6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
-
-    REQUIRE(csr2.row_offsets == row_offs);
-    REQUIRE(csr2.col_indices == col_inds);
-    REQUIRE(csr2.edge_values == edge_vals);
+    REQUIRE(csr2.row_offsets.empty());
+    REQUIRE(csr2.col_indices.empty());
+    REQUIRE(csr2.edge_values.empty());
   }
 
-  // update CSR
+  // update CSR again
   graph->run_transaction([&]() {
     graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
-  // now after CSR update, the CSR includes the node (and its relationship)
+  // now after another CSR update, the CSR includes the node and its relationship
   {
     std::vector<uint64_t> row_offs = {0, 2, 3, 4, 5, 5, 6, 7, 8};
     std::vector<uint64_t> col_inds = {6, 1, 2, 3, 4, 6, 2, 0};
@@ -1233,15 +1225,16 @@ TEST_CASE("Consistency Test 8a", "[format_converter]"){
 
   /**
    * t2 starts before t1
-   * t2 creates a relationship and commits, then t1 updates CSR 
-   * in the CSR update, t1 should see the committed relationship
+   * t2 creates a new relationship R_add and deletes an existing relationship R_del
+   * after t2 commits, t1 updates CSR 
+   * in the CSR update, t1 sees R_add but does not see R_del
    */
   auto t1 = std::thread([&]() {
     b1.wait(); // wait for t2 to start
     graph->begin_transaction();
     b2.wait(); // before t1 updates CSR, ensure t2 adds delta for its updates and commits
 
-    // this CSR update should include the relationship between nodes with ids 0 and 5, created by t2
+    // this CSR update should include R_add but not R_del
     graph->poseidon_to_csr(csr2, weight_func);
     graph->commit_transaction();
   });
@@ -1249,8 +1242,9 @@ TEST_CASE("Consistency Test 8a", "[format_converter]"){
   auto t2 = std::thread([&]() {
     graph->begin_transaction();
     b1.notify(); // ensure t2 starts before t1
-    // t1 should see this relationship
+    // t1 should see R_add but not R_del
     graph->add_relationship(0, 5, ":knows", {});
+    graph->delete_relationship(6, 2);
     graph->commit_transaction();
     b2.notify();
   });
@@ -1258,11 +1252,11 @@ TEST_CASE("Consistency Test 8a", "[format_converter]"){
   t1.join();
   t2.join();
 
-  // the CSR includes the relationship
+  // the CSR includes R_add but not R_del
   {
-    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 8};
-    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
+    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr2.row_offsets == row_offs);
     REQUIRE(csr2.col_indices == col_inds);
@@ -1289,7 +1283,8 @@ TEST_CASE("Consistency Test 8b", "[format_converter]"){
 
   /**
    * t2 starts before t1
-   * t2 creates a relationship and before it commits, t1 updates CSR 
+   * t2 creates a new relationship R_add and deletes an existing relationship R_del
+   * before t2 commits, t1 updates CSR  
    * in the CSR update, t1 should not see the uncommitted changes of t2
    */
   auto t1 = std::thread([&]() {
@@ -1297,7 +1292,7 @@ TEST_CASE("Consistency Test 8b", "[format_converter]"){
     graph->begin_transaction();
     b2.wait();
 
-    // this CSR update should not include the relationship between nodes with ids 0 and 5, created by t2
+    // this CSR update should include R_del but not R_add
     graph->poseidon_to_csr(csr2, weight_func);
     b3.notify(); // notify t2 to commit
     graph->commit_transaction();
@@ -1306,8 +1301,9 @@ TEST_CASE("Consistency Test 8b", "[format_converter]"){
   auto t2 = std::thread([&]() {
     graph->begin_transaction();
     b1.notify(); // ensure t2 starts before t1
-    // t1 should see this relationship
+    // t1 should see R_del but not R_add
     graph->add_relationship(0, 5, ":knows", {});
+    graph->delete_relationship(6, 2);
     b2.notify(); // notify t1 to update CSR
     b3.wait(); // ensure t1 updates CSR before t2 commits
     graph->commit_transaction();
@@ -1316,28 +1312,24 @@ TEST_CASE("Consistency Test 8b", "[format_converter]"){
   t1.join();
   t2.join();
 
-  // the CSR does not include the relationship
+  // the CSR include R_del but not R_add (i.e. the CSR stays the same)
   {
-    std::vector<uint64_t> row_offs = {0, 2, 3, 4, 5, 5, 6, 7};
-    std::vector<uint64_t> col_inds = {6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
-
-    REQUIRE(csr2.row_offsets == row_offs);
-    REQUIRE(csr2.col_indices == col_inds);
-    REQUIRE(csr2.edge_values == edge_vals);
+    REQUIRE(csr2.row_offsets.empty());
+    REQUIRE(csr2.col_indices.empty());
+    REQUIRE(csr2.edge_values.empty());
   }
 
-  // update CSR
+  // update CSR again
   graph->run_transaction([&]() {
     graph->poseidon_to_csr(csr3, weight_func);
     return true;
   });
 
-  // now after CSR update, the CSR includes the relationship
+  // now after another CSR update, the CSR includes R_add but not R_del
   {
-    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 8};
-    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6, 2};
-    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
+    std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+    std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr3.row_offsets == row_offs);
     REQUIRE(csr3.col_indices == col_inds);
