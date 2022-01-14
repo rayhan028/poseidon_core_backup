@@ -38,6 +38,8 @@
 #include "profiling.hpp"
 #include "expression.hpp"
 #include "qresult_iterator.hpp"
+#include "qop_visitor.hpp"
+#include "query_arg.hpp"
 
 template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
   std::vector<T> v2;
@@ -154,6 +156,11 @@ struct qop {
 
   PROF_ACCESSOR;
 
+  /**
+   * Accept method for code generation
+   */
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) = 0;
+
 protected:
   qop_ptr subscriber_; // pointer to the subsequent operator which receives and
                        // processes the results
@@ -179,6 +186,10 @@ struct scan_nodes : public qop {
   void dump(std::ostream &os) const override;
 
   virtual void start(graph_db_ptr &gdb) override;
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   std::string label;
   std::vector<std::string> labels;
@@ -228,44 +239,30 @@ struct index_scan : public qop {
 
   virtual void start(graph_db_ptr &gdb) override;
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   index_id idx;
   uint64_t key;
   std::list<index_id> idxs;
 };
 
-/**
- * foreach_from_relationship is a query operator that scans all outgoing
- * relationships of a given node. This node is the last elment in the vector v
- * of the consume method.
- */
-struct foreach_from_relationship : public qop {
-  foreach_from_relationship(const std::string &l, int pos = std::numeric_limits<int>::max()) : label(l), lcode(0), npos(pos) {}
-  ~foreach_from_relationship() = default;
+struct foreach_relationship : public qop {
+  foreach_relationship() = default;
+  
+  foreach_relationship(RSHIP_DIR dir, const std::string &l, int pos = std::numeric_limits<int>::max()) 
+      : dir_(dir), label(l), lcode(0), npos(pos) {}
 
-  void dump(std::ostream &os) const override;
-
-  void process(graph_db_ptr &gdb, const qr_tuple &v);
-
-  std::string label;
-  dcode_t lcode;
-  int npos;
-};
-
-/**
- * foreach_variable_from_relationship is a query operator that scans all
- * outgoing relationships of a given node recursively within the given range.
- * This node is the last elment in the vector v of the consume method.
- */
-struct foreach_variable_from_relationship : public qop {
-  foreach_variable_from_relationship(const std::string &l, std::size_t min,
+  foreach_relationship(RSHIP_DIR dir, const std::string &l, std::size_t min,
                                      std::size_t max, int pos = std::numeric_limits<int>::max())
-      : label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
-  ~foreach_variable_from_relationship() = default;
+      : dir_(dir), label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
 
-  void dump(std::ostream &os) const override;
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
-  void process(graph_db_ptr &gdb, const qr_tuple &v);
-
+  RSHIP_DIR dir_;
   std::string label;
   dcode_t lcode;
   std::size_t min_range, max_range;
@@ -273,21 +270,57 @@ struct foreach_variable_from_relationship : public qop {
 };
 
 /**
+ * foreach_from_relationship is a query operator that scans all outgoing
+ * relationships of a given node. This node is the last elment in the vector v
+ * of the consume method.
+ */
+struct foreach_from_relationship : public foreach_relationship {
+  foreach_from_relationship(const std::string &l, int pos = std::numeric_limits<int>::max()) : foreach_relationship(RSHIP_DIR::FROM, l, pos) {}
+  ~foreach_from_relationship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+};
+
+/**
+ * foreach_variable_from_relationship is a query operator that scans all
+ * outgoing relationships of a given node recursively within the given range.
+ * This node is the last elment in the vector v of the consume method.
+ */
+struct foreach_variable_from_relationship : public foreach_relationship {
+  foreach_variable_from_relationship(const std::string &l, std::size_t min,
+                                     std::size_t max, int pos = std::numeric_limits<int>::max())
+      : foreach_relationship(RSHIP_DIR::FROM, l, min, max, pos) {}
+      
+  ~foreach_variable_from_relationship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+};
+
+/**
  * foreach_bi_dir_relationship is a query operator that scans all outgoing
  * and incoming relationships of a given node. This node is the last elment 
  * in the vector v of the consume method or given by the index position pos.
  */
-struct foreach_all_relationship : public qop {
-  foreach_all_relationship(const std::string &l, int pos) : label(l), lcode(0), npos(pos) {}
+struct foreach_all_relationship : public foreach_relationship {
+  foreach_all_relationship(const std::string &l, int pos) : foreach_relationship(RSHIP_DIR::ALL, l, pos) {}
+  
   ~foreach_all_relationship() = default;
 
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
-  std::string label;
-  dcode_t lcode;
-  int npos;
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 };
 
 /**
@@ -296,20 +329,19 @@ struct foreach_all_relationship : public qop {
  * This node is the last elment in the vector v of the consume method or given by the
  * position index pos.
  */
-struct foreach_variable_all_relationship : public qop {
+struct foreach_variable_all_relationship : public foreach_relationship {
   foreach_variable_all_relationship(const std::string &l, std::size_t min,
                                      std::size_t max, int pos)
-      : label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
+      : foreach_relationship(RSHIP_DIR::ALL, l, min, max, pos) {}
   ~foreach_variable_all_relationship() = default;
 
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
-  std::string label;
-  dcode_t lcode;
-  std::size_t min_range, max_range;
-  int npos;
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 };
 
 /**
@@ -317,17 +349,17 @@ struct foreach_variable_all_relationship : public qop {
  * relationships of a given node. This node is the last elment in the vector v
  * of the consume method.
  */
-struct foreach_to_relationship : public qop {
-  foreach_to_relationship(const std::string &l, int pos = std::numeric_limits<int>::max()) : label(l), lcode(0), npos(pos) {}
+struct foreach_to_relationship : public foreach_relationship {
+  foreach_to_relationship(const std::string &l, int pos = std::numeric_limits<int>::max()) : foreach_relationship(RSHIP_DIR::TO, l, pos) {}
   ~foreach_to_relationship() = default;
 
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
-  std::string label;
-  dcode_t lcode;
-  int npos;
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 };
 
 /**
@@ -335,20 +367,15 @@ struct foreach_to_relationship : public qop {
  * relationships of a given node recursively within the given range.
  * This node is the last elment in the vector v of the consume method.
  */
-struct foreach_variable_to_relationship : public qop {
+struct foreach_variable_to_relationship : public foreach_relationship {
   foreach_variable_to_relationship(const std::string &l, std::size_t min,
                                    std::size_t max, int pos = std::numeric_limits<int>::max())
-      : label(l), lcode(0), min_range(min), max_range(max), npos(pos) {}
+      : foreach_relationship(RSHIP_DIR::TO, l, min, max, pos) {}
   ~foreach_variable_to_relationship() = default;
 
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
-
-  std::string label;
-  dcode_t lcode;
-  std::size_t min_range, max_range;
-  int npos;
 };
 
 /**
@@ -364,6 +391,10 @@ struct is_property : public qop {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   std::string property;
   dcode_t pcode;
@@ -383,17 +414,31 @@ struct node_has_label : public qop {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   std::vector<std::string> labels;
   std::string label;
   dcode_t lcode;
+};
+
+struct expand : public qop {
+  expand(EXPAND dir) : dir_(dir) {}
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
+  EXPAND dir_;
 };
 
 /**
  * get_from_node is a query operator for retrieving the node at the FROM side of
  * a relationship which is given in the last element of vector v.
  */
-struct get_from_node : public qop {
-  get_from_node() = default;
+struct get_from_node : public expand {
+  get_from_node() : expand(EXPAND::IN) {}
 
   void dump(std::ostream &os) const override;
 
@@ -404,8 +449,8 @@ struct get_from_node : public qop {
  * get_to_node is a query operator for retrieving the node at the TO side of
  * a relationship which is given in the last element of vector v.
  */
-struct get_to_node : public qop {
-  get_to_node() = default;
+struct get_to_node : public expand {
+  get_to_node() : expand(EXPAND::OUT) {}
 
   void dump(std::ostream &os) const override;
 
@@ -422,6 +467,10 @@ struct printer : public qop {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 };
 
 /**
@@ -435,6 +484,10 @@ struct limit_result : public qop {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   std::size_t num_, processed_;
 };
@@ -467,6 +520,10 @@ struct nodes_connected : public qop {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   bool append_null_;
   std::pair<int, int> src_des_nodes_;
 };
@@ -486,6 +543,10 @@ struct order_by : public qop {
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   result_set results_;
   result_set::sort_spec sort_spec_;
@@ -514,6 +575,10 @@ struct group_by : public qop {
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   std::mutex m_;
   std::size_t grpkey_cnt_;
@@ -562,6 +627,10 @@ struct distinct_tuples : public qop {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   std::mutex m_;
   std::set<std::string> keys_;
 };
@@ -582,6 +651,10 @@ struct filter_tuple : public qop {
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   std::function<bool(const qr_tuple &)> pred_func1_;
   std::function<bool(const qr_tuple &, expr&)> pred_func2_;
@@ -604,6 +677,10 @@ struct qr_tuple_append : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   std::function<query_result(const qr_tuple &)> func_;
 };
 
@@ -625,6 +702,10 @@ struct union_all_qres : public qop {
   void r_finish(graph_db_ptr &gdb);
   void finish(graph_db_ptr &gdb);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   bool is_binary() const override { return true; }
   bool init;
   std::list<qr_tuple> res_;
@@ -643,6 +724,10 @@ struct count_result : public qop {
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   uint64_t count_;
 };
@@ -664,6 +749,10 @@ struct shortest_path_opr : public qop {
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   path_item path_;
   bool bidirectional_;
@@ -688,6 +777,10 @@ struct weighted_shortest_path_opr : public qop {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   path_item path_;
   bool bidirectional_;
   bool all_spaths_;
@@ -709,6 +802,10 @@ struct k_weighted_shortest_path_opr : public qop {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   std::size_t k_;
   path_item path_;
@@ -738,6 +835,10 @@ struct csr_data : public qop {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   std::size_t pos_;
   bool bidirectional_;
   std::function<double (relationship &)> weight_func_;
@@ -763,6 +864,10 @@ struct collect_result : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   result_set &results_;
 };
 
@@ -776,6 +881,10 @@ struct end_pipeline : public qop {
   void dump(std::ostream &os) const override;
 
   void process();
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 };
 
 #ifdef QOP_RECOVERY
@@ -826,6 +935,11 @@ struct projection : public qop {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   expr_list exprs_;
   std::size_t nvars_, npvars_;

@@ -23,7 +23,6 @@
 #include "update.hpp"
 #include "query_printer.hpp"
 #include <memory>
-#include "qoperator.hpp"
 
 namespace ph = std::placeholders;
 
@@ -56,24 +55,18 @@ query &query::append_op(qop_ptr op, qop::consume_func cf, qop::finish_func ff) {
   return *this;
 }
 
-query &query::all_nodes(const std::string &label) {
-  algebra_head = algebra_plan = Scan(label, End());
-  
+query &query::all_nodes(const std::string &label) {  
   plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(label);
   return *this;
 }
 
 query &query::all_nodes(std::map<std::size_t, std::vector<std::size_t>> &range_map, const std::string &label) {
-  algebra_head = algebra_plan = Scan(label, End()); //TODO
-
   plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(label, range_map);
   return *this;
 }
 
 query &query::nodes_where(const std::string &label, const std::string &key,
                           std::function<bool(const p_item &)> pred) {
-  algebra_head = algebra_plan = Scan(label, End()); //TODO
-
   plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(label);
   auto op = std::make_shared<is_property>(key, pred);
   return append_op(op,
@@ -82,8 +75,6 @@ query &query::nodes_where(const std::string &label, const std::string &key,
 
 query &query::nodes_where(const std::vector<std::string> &labels, const std::string &key,
                           std::function<bool(const p_item &)> pred) {
-  algebra_head = algebra_plan = Scan(labels, End()); //TODO
-
   plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(labels);
   auto op = std::make_shared<is_property>(key, pred);
   return append_op(op,
@@ -108,10 +99,6 @@ query &query::nodes_where_indexed(const std::vector<std::string> &labels,
 }
 
 query &query::to_relationships(const std::string &label, int pos) {
-  auto oper = ForeachRship(RSHIP_DIR::TO, label, pos, End());
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<foreach_to_relationship>(label, pos);
   return append_op(op, std::bind(&foreach_to_relationship::process, op.get(),
                                  ph::_1, ph::_2));
@@ -119,10 +106,6 @@ query &query::to_relationships(const std::string &label, int pos) {
 
 query &query::to_relationships(std::pair<int, int> range,
                                const std::string &label, int pos) {
-  auto oper = ForeachRship(RSHIP_DIR::TO, label, pos, End());
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<foreach_variable_to_relationship>(
       label, range.first, range.second, pos);
   return append_op(op, std::bind(&foreach_variable_to_relationship::process,
@@ -130,10 +113,6 @@ query &query::to_relationships(std::pair<int, int> range,
 }
 
 query &query::from_relationships(const std::string &label, int pos) {
-  auto oper = ForeachRship(RSHIP_DIR::FROM, label, pos, End());
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<foreach_from_relationship>(label, pos);
   return append_op(op, std::bind(&foreach_from_relationship::process, op.get(),
                                  ph::_1, ph::_2));
@@ -141,10 +120,6 @@ query &query::from_relationships(const std::string &label, int pos) {
 
 query &query::from_relationships(std::pair<int, int> range,
                                  const std::string &label, int pos) {
-  auto oper = ForeachRship(RSHIP_DIR::TO, label, pos, End());
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-  
   auto op = std::make_shared<foreach_variable_from_relationship>(
       label, range.first, range.second, pos);
   return append_op(op, std::bind(&foreach_variable_from_relationship::process,
@@ -173,10 +148,6 @@ query &query::property(const std::string &key,
 }
 
 query &query::to_node(const std::string &label) {
-  auto oper = ExpandOut(label, End());
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<get_to_node>();
   append_op(op, std::bind(&get_to_node::process, op.get(), ph::_1, ph::_2));
   if (!label.empty()) {
@@ -188,10 +159,6 @@ query &query::to_node(const std::string &label) {
 }
 
 query &query::to_node(const std::vector<std::string> &labels) {
-  auto oper = ExpandOut(labels, End());
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-  
   auto op = std::make_shared<get_to_node>();
   append_op(op, std::bind(&get_to_node::process, op.get(), ph::_1, ph::_2));
   auto op2 = std::make_shared<node_has_label>(labels);
@@ -200,10 +167,6 @@ query &query::to_node(const std::vector<std::string> &labels) {
 }
 
 query &query::from_node(const std::string &label) {
-  auto oper = ExpandIn(label, End());
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<get_from_node>();
   append_op(op, std::bind(&get_from_node::process, op.get(), ph::_1, ph::_2));
   if (!label.empty()) {
@@ -215,10 +178,6 @@ query &query::from_node(const std::string &label) {
 }
 
 query &query::from_node(const std::vector<std::string> &labels) {
-  auto oper = ExpandOut(labels, End());
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<get_from_node>();
   append_op(op, std::bind(&get_from_node::process, op.get(), ph::_1, ph::_2));
   auto op2 = std::make_shared<node_has_label>(labels);
@@ -239,10 +198,6 @@ query &query::has_label(const std::vector<std::string> &labels) {
 }
 
 query &query::limit(std::size_t n) {
-  auto oper = Limit(n, End());
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-  
   auto op = std::make_shared<limit_result>(n);
   return append_op(op,
                    std::bind(&limit_result::process, op.get(), ph::_1, ph::_2));
@@ -260,10 +215,6 @@ query &query::print() {
 }
 
 query &query::collect(result_set &rs) {
-  auto oper = Collect();
-  algebra_plan->inputs_.push_back(oper);
-  algebra_plan = oper;
-
   auto op = std::make_shared<collect_result>(rs);
   return append_op(
       op, std::bind(&collect_result::process, op.get(), ph::_1, ph::_2),
@@ -271,26 +222,17 @@ query &query::collect(result_set &rs) {
 }
 
 query &query::finish() {
-  auto oper = End();
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<end_pipeline>();
   return append_op(op, std::bind(&end_pipeline::process, op.get()));
 }
 
 query &query::project(const projection::expr_list &exprs) {
-  algebra_head = algebra_plan = Scan("test", End()); //TODO
   auto op = std::make_shared<projection>(exprs);
   return append_op(op,
                    std::bind(&projection::process, op.get(), ph::_1, ph::_2));
 }
 
 query &query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
-  auto oper = Sort(cmp, End());
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<order_by>(cmp);
   return append_op(op, std::bind(&order_by::process, op.get(), ph::_1, ph::_2),
                    std::bind(&order_by::finish, op.get(), ph::_1));
@@ -298,10 +240,6 @@ query &query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cm
 
 query &
 query::groupby(const std::vector<std::size_t> &pos) {
-  auto oper = GroupBy(pos, End());
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<group_by>(pos);
   return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
                    std::bind(&group_by::finish, op.get(), ph::_1));
@@ -310,11 +248,6 @@ query::groupby(const std::vector<std::size_t> &pos) {
 query &
 query::groupby(const std::vector<std::size_t> &pos,
   const std::vector<std::pair<std::string, std::size_t>> &aggrs) {
-  auto oper1 = Aggr(aggrs, End());
-  auto oper2 = GroupBy(pos, oper1);
-  algebra_plan->inputs_[0] = oper2;
-  algebra_plan = oper1;
-
   auto op = std::make_shared<group_by>(pos, aggrs);
   return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
                    std::bind(&group_by::finish, op.get(), ph::_1));
@@ -375,11 +308,6 @@ query &query::count() {
 }
 
 query &query::crossjoin(query &other) {
-  auto other_oper = other.get_algebra_plan();
-  auto oper = CrossJoin(End(), other_oper);
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<cross_join>();
   other.append_op(
       op, std::bind(&cross_join::process_right, op.get(), ph::_1, ph::_2));
@@ -389,11 +317,6 @@ query &query::crossjoin(query &other) {
 }
 
 query &query::join_on_node(std::pair<int, int> left_right, query &other) {
-  auto other_oper = other.get_algebra_plan();
-  auto oper = NestedLoopJoin(left_right, End(), other_oper);
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<nested_loop_join>(left_right);
   other.append_op(
       op, std::bind(&nested_loop_join::process_right, op.get(), ph::_1, ph::_2));
@@ -403,11 +326,6 @@ query &query::join_on_node(std::pair<int, int> left_right, query &other) {
 }
 
 query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
-  auto other_oper = other.get_algebra_plan();
-  auto oper = HashJoin(left_right, End(), other_oper);
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<hash_join>(left_right);
   other.append_op(
       op, std::bind(&hash_join::build_phase, op.get(), ph::_1, ph::_2));
@@ -417,11 +335,6 @@ query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
 }
 
 query &query::outerjoin_on_node(const std::pair<int, int> &left_right, query &other) {
-  auto other_oper = other.get_algebra_plan();
-  auto oper = LeftJoin(left_right, End(), other_oper);
-  algebra_plan->inputs_[0] = oper;
-  algebra_plan = oper;
-
   auto op = std::make_shared<left_outerjoin_on_node>(left_right);
   other.append_op(
       op, std::bind(&left_outerjoin_on_node::process_right, op.get(), ph::_1, ph::_2));

@@ -36,6 +36,10 @@ struct create_node : public qop {
   virtual void start(graph_db_ptr &gdb) override;
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   std::string label;
   properties_t props;
 };
@@ -55,6 +59,10 @@ struct create_relationship : public qop {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   std::string label;
   properties_t props;
@@ -83,6 +91,10 @@ struct create_rship_on_join : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   std::string label;
   properties_t props;
   int l_node_pos;
@@ -103,6 +115,10 @@ struct update_node : public qop {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   std::size_t var_no_;
   properties_t props;
 };
@@ -121,6 +137,10 @@ struct detach_node : public qop {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   std::size_t pos_;
   // std::vector<std::size_t> rels_;
 };
@@ -137,6 +157,10 @@ struct remove_node : public qop {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   std::size_t pos_;
 };
 
@@ -152,6 +176,10 @@ struct remove_rship : public qop {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+  
   std::size_t pos_;
 };
 

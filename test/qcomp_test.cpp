@@ -242,6 +242,7 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
 #endif
 }
 
+/*
 TEST_CASE("QOP to Algebra transformation test") {
 #ifdef USE_PMDK
 	auto pop = prepare_pool();
@@ -266,8 +267,38 @@ TEST_CASE("QOP to Algebra transformation test") {
         auto q = query(graph).all_nodes("test").collect(rs);
         auto alg = q.get_algebra_plan();
 
-        REQUIRE(alg->type_ == qop_type::scan);
-        //REQUIRE(alg->inputs_[0]->type_ == qop_type::collect);
+        REQUIRE(alg->type_ == qop_type::scan); 
+        REQUIRE(alg->inputs_[0]->type_ == qop_type::collect);
+    }
+
+    SECTION("ForeachRelationship and Expand") {
+        result_set rs;
+        auto q = query(graph).all_nodes("test").from_relationships("test").to_node("test").collect(rs);
+        auto alg = q.get_algebra_plan();
+
+        REQUIRE(alg->type_ == qop_type::scan); 
+        auto fe = alg->inputs_[0];
+        REQUIRE(fe->type_ == qop_type::foreach_rship);
+        auto exp = fe->inputs_[0];
+        REQUIRE(exp->type_ == qop_type::expand);
+        REQUIRE(exp->inputs_[0]->type_ == qop_type::collect);
+    }
+
+    SECTION("Join") {
+        result_set rs;
+        auto q1 = query(graph).all_nodes("test");
+        auto q2 = query(graph).all_nodes("test").crossjoin(q1).collect(rs);
+
+        auto alg1 = q1.get_algebra_plan();
+        auto alg2 = q2.get_algebra_plan();
+
+        REQUIRE(alg1->type_ == qop_type::scan);
+        REQUIRE(alg2->type_ == qop_type::scan);
+        auto join = alg2->inputs_[0];
+        std::cout << "Name: " << join->name_ << std::endl;
+        REQUIRE(join->type_ == qop_type::cross_join);
+        //REQUIRE(join->inputs_[1]->type_ == qop_type::scan);
+        REQUIRE(join->inputs_[0]->type_ == qop_type::end);
     }
 
 #ifdef USE_PMDK
@@ -276,7 +307,7 @@ TEST_CASE("QOP to Algebra transformation test") {
 	remove(test_path.c_str());
 #endif
 }
-
+*/
 #else
 TEST_CASE("dummy test qcomp") {
     REQUIRE(true);

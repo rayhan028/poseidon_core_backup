@@ -458,18 +458,12 @@ public:
    */
   graph_db_ptr &get_graph_db() { return graph_db_; }
 
-  std::shared_ptr<base_op> get_algebra_plan() { return algebra_head; }
-
-
 private:
   query &append_op(qop_ptr op, qop::consume_func cf, qop::finish_func ff);
   query &append_op(qop_ptr op, qop::consume_func cf);
 
   qop_ptr plan_head_, plan_tail_;
   graph_db_ptr graph_db_;
-
-  std::shared_ptr<base_op> algebra_head;
-  std::shared_ptr<base_op> algebra_plan;
 };
 
 

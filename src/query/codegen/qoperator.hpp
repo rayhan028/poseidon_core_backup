@@ -8,6 +8,7 @@
 #include "expression.hpp"
 #include "global_definitions.hpp"
 #include "qcompiler.hpp"
+#include "query_arg.hpp"
 
 class base_op;
 class scan_op;
@@ -104,15 +105,12 @@ public:
 
     base_op(algebra_optr inp) { inputs_.push_back(inp); }
 
-    void set_consumer(Function *fct) { consumer_ = fct; }
-
     virtual ~base_op() = default;
 
     virtual void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false) = 0;
 
     qop_type type_;
     std::string name_;
-    Function *consumer_;
     unsigned op_id_;
     int produced_type_;
 };
@@ -147,11 +145,6 @@ public:
 inline algebra_optr Scan(std::string label, algebra_optr op) { return std::make_shared<scan_op>(label, false, op); }
 inline algebra_optr Scan(std::vector<std::string> labels, algebra_optr op) { return std::make_shared<scan_op>(labels, false, op); }
 inline algebra_optr IndexScan(algebra_optr op) { return std::make_shared<scan_op>("", true, op); }
-
-enum class RSHIP_DIR {
-    FROM = 0,
-    TO = 1
-};
 
 class foreach_rship_op : public base_op, public std::enable_shared_from_this<foreach_rship_op> {
 public:
@@ -272,11 +265,6 @@ public:
 };
 
 inline algebra_optr Project(std::vector<pr_expr> prexpr, algebra_optr op) { return std::make_shared<project>(prexpr, op); }
-
-enum class EXPAND {
-    IN,
-    OUT
-};
 
 std::string expand_str(EXPAND exp);
 

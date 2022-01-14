@@ -37,6 +37,10 @@ struct cross_join : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   bool is_binary() const override { return true; }
 
 private:
@@ -59,6 +63,10 @@ struct nested_loop_join : public qop {
   void process_right(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   bool is_binary() const override { return true; }
   
@@ -86,6 +94,10 @@ struct hash_join : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   bool is_binary() const override { return true; }
   
 private:
@@ -111,6 +123,10 @@ struct left_outerjoin : public qop {
 
   void finish(graph_db_ptr &gdb);
   
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   bool is_binary() const override { return true; }
   
 private:
@@ -135,6 +151,10 @@ struct left_outerjoin_on_node : public qop {
 
   void finish(graph_db_ptr &gdb);
   
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   bool is_binary() const override { return true; }
   
 private:
@@ -161,6 +181,10 @@ struct rship_join : public qop {
 
   void finish(graph_db_ptr &gdb);
 
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+
   bool is_binary() const override { return true; }
   
 private:
@@ -185,6 +209,10 @@ struct left_outerjoin_on_rship : public qop {
   void process_right(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
 
   bool is_binary() const override { return true; }
   
