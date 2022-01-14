@@ -5,7 +5,16 @@ void csr_delta::initialize() {}
 
 void csr_delta::store_delta(uint64_t nid, const std::vector<uint64_t> &ids,
                             const std::vector<double> &weights, uint64_t txid) {
+#ifdef VOLATILE_DELTA
+  delta_element elem;
+  elem.txid_ = txid;
+  elem.node_id_ = nid;
+  elem.ids_ = ids;
+  elem.weights_ = weights;
+  elem.restored_ = false;
 
+  delta_elements_.store(std::move(elem));
+#else
   auto inserter = [&](delta_element &elem, 
         delta_element::element_type type, uint64_t val) {
     elem.txid_ = txid;
@@ -32,6 +41,7 @@ void csr_delta::store_delta(uint64_t nid, const std::vector<uint64_t> &ids,
     delta_element rweight_elem;
     inserter(rweight_elem, delta_element::element_type::rship_weight, buf);
   }
+#endif
 }
 
 void csr_delta::restore_deltas(delta_map_t &deltas, uint64_t txid) {
@@ -67,6 +77,31 @@ void csr_delta::restore_deltas(delta_map_t &deltas, uint64_t txid) {
       }
     }
 
+#ifdef VOLATILE_DELTA
+    auto iter = nid_to_txid.find(elem.node_id_);
+    if (iter == nid_to_txid.end()) {
+      // first insertion of neighbour ids associated with nid
+      deltas[elem.node_id_].first = elem.ids_;
+      deltas[elem.node_id_].second = elem.weights_;
+      nid_to_txid[elem.node_id_] = elem.txid_;
+      elem.restored_ = true;
+    }
+    else if (iter->second < elem.txid_) {
+      // delta element is from a newer txn
+      // overwrite the vector of neighbour ids with the more recent updates
+      deltas[elem.node_id_].first.clear();
+      deltas[elem.node_id_].second.clear();
+      deltas[elem.node_id_].first = elem.ids_;
+      deltas[elem.node_id_].second = elem.weights_;
+      nid_to_txid[elem.node_id_] = elem.txid_;
+      elem.restored_ = true;
+    }
+    else if (iter->second > elem.txid_) {
+      // delta element is from an older txn 
+      // do nothing
+      ;
+    }
+#else
     if (elem.type_ == delta_element::element_type::node_id) {
       deltas[elem.node_id_];
       elem.restored_ = true;
@@ -128,6 +163,7 @@ void csr_delta::restore_deltas(delta_map_t &deltas, uint64_t txid) {
         ;
       }
     }
+#endif
   }
   if (clear) {
     // no delta element is needed for later restores
