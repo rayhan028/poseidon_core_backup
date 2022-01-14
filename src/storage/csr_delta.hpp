@@ -49,22 +49,18 @@ public:
   /**
    * Stores the elements of a delta to the vector of delta elements.
    */
-  void store_delta(uint64_t nid, const std::list<uint64_t> &ids,
-                   const std::list<double> &weights, uint64_t txid);
+  void store_delta(uint64_t nid, const std::vector<uint64_t> &ids,
+                   const std::vector<double> &weights, uint64_t txid);
 
   /**
    * Returns a reference to the underlying vector of delta elements.
    */
-  chunked_vec<delta_element>& get_delta_elements() { return delta_elements_; }
-
-  /**
-   * Deletes all chunks of the vector of delta elements and sets the vector as empty.
-   */
-  void clear_delta_elements();
+  const chunked_vec<delta_element>& get_delta_elements() { return delta_elements_; }
 
   /**
    * Restores deltas from their corresponding delta elements into a delta map.
-   * An item in a delta map is of the form: 
+   * The deltas are used to update the existing CSR representations to reflect 
+   * the latest snapshot of the graph. A delta in the delta map is of the form: 
    * {node id, <[ids of neighbours], [edge weights]>}
    */
   void restore_deltas(delta_map_t &deltas, uint64_t txid);
@@ -75,21 +71,10 @@ public:
   const rship_weight& get_weight_func() { return weight_func_; }
 
   /**
-   * Sets the weight function.
-   */
-  void set_weight_func(const rship_weight &func) { weight_func_ = func; }
-
-  /**
    * Returns whether only outgoing relationships are considered (false) 
    * or both outgoing and incoming relationships are considered (true).
    */
   bool get_bidirectional() { return bidirectional_; }
-
-  /**
-   * Sets whether only outgoing relationships are considered (false) 
-   * or both outgoing and incoming relationships are considered (true).
-   */
-  void set_bidirectional(bool b) { bidirectional_ = b; }
 
   /**
    * Returns the last node id in the current CSR
@@ -97,51 +82,13 @@ public:
   offset_t get_last_node_id() { return last_node_id_; }
 
   /**
-   * Sets the last node id in the current CSR
-   */
-  void set_last_node_id(offset_t id) { last_node_id_ = id; }
-
-  /**
    * Returns the id of the last transaction that made a CSR update.
    */
   uint64_t get_last_txn_id() { return last_txn_id_; }
 
-  /**
-   * Sets the id of the last transaction that made a CSR update.
-   */
-  void set_last_txn_id(uint64_t txid) { last_txn_id_ = txid; }
-
-  /**
-   * Returns the row offsets array of the current CSR.
-   */
-  const std::vector<offset_t>& get_row_offs() { return row_offsets_; }
-
-  /**
-   * Sets the row offsets array of the current CSR.
-   */
-  void set_row_offs(std::vector<offset_t> &vec) { row_offsets_ = vec; }
-
-  /**
-   * Returns the column indices array of the current CSR.
-   */
-  const std::vector<offset_t>& get_col_inds() { return col_indices_; }
-
-  /**
-   * Sets the column indices array of the current CSR.
-   */
-  void set_col_inds(std::vector<offset_t> &vec) { col_indices_ = vec; }
-
-  /**
-   * Returns the edge values array of the current CSR.
-   */
-  const std::vector<float>& get_edge_vals() { return edge_values_; }
-
-  /**
-   * Sets the edge values array of the current CSR.
-   */
-  void set_edge_vals(std::vector<float> &vec) { edge_values_ = vec; }
-
 private:
+  friend class graph_db;
+
   bool bidirectional_ = false;  // bi/uni-directional traversal of relationships
   rship_weight weight_func_ =
     [](relationship &r) { return 1.3; };  // function to compute weights of relationships
@@ -152,9 +99,9 @@ private:
   chunked_vec<delta_element> delta_elements_; // the underlying chunked vector of delta elements
 
   // TODO these arrays are not needed here when CSR update is done directly on GPU
-  std::vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR
-  std::vector<offset_t> col_indices_ = {};  // column indices array of the current CSR
-  std::vector<float> edge_values_ = {};     // edge values array of the current CSR
+  pmem::obj::vector<offset_t> row_offsets_; // row offsets array of the current CSR
+  pmem::obj::vector<offset_t> col_indices_; // column indices array of the current CSR
+  pmem::obj::vector<float> edge_values_; // edge values array of the current CSR
 };
 
 

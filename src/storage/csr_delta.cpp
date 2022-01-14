@@ -3,8 +3,8 @@
 
 void csr_delta::initialize() {}
 
-void csr_delta::store_delta(uint64_t nid, const std::list<uint64_t> &ids,
-                            const std::list<double> &weights, uint64_t txid) {
+void csr_delta::store_delta(uint64_t nid, const std::vector<uint64_t> &ids,
+                            const std::vector<double> &weights, uint64_t txid) {
 
   auto inserter = [&](delta_element &elem, 
         delta_element::element_type type, uint64_t val) {
@@ -75,8 +75,8 @@ void csr_delta::restore_deltas(delta_map_t &deltas, uint64_t txid) {
       auto iter = nid_to_txid.find(elem.node_id_);
       if (iter == nid_to_txid.end()) {
         // first insertion of neighbour ids associated with nid
-        nid_to_txid[elem.node_id_] = elem.txid_;
         deltas[elem.node_id_].first.push_back(elem.val_);
+        nid_to_txid[elem.node_id_] = elem.txid_;
         elem.restored_ = true;
       }
       else if (iter->second == elem.txid_) {
@@ -88,8 +88,8 @@ void csr_delta::restore_deltas(delta_map_t &deltas, uint64_t txid) {
         // delta element is from a newer txn
         // overwrite the vector of neighbour ids with the more recent updates
         deltas[elem.node_id_].first.clear();
-        nid_to_txid[elem.node_id_] = elem.txid_;
         deltas[elem.node_id_].first.push_back(elem.val_);
+        nid_to_txid[elem.node_id_] = elem.txid_;
         elem.restored_ = true;
       }
       else if (iter->second > elem.txid_) {
@@ -105,8 +105,8 @@ void csr_delta::restore_deltas(delta_map_t &deltas, uint64_t txid) {
       auto iter = nid_to_txid.find(elem.node_id_);
       if (iter == nid_to_txid.end()) {
         // first insertion of relationship weights associated with nid
-        nid_to_txid[elem.node_id_] = elem.txid_;
         deltas[elem.node_id_].second.push_back(buf);
+        nid_to_txid[elem.node_id_] = elem.txid_;
         elem.restored_ = true;
       }
       else if (iter->second == elem.txid_) {
@@ -118,8 +118,8 @@ void csr_delta::restore_deltas(delta_map_t &deltas, uint64_t txid) {
         // delta element is from a newer txn
         // overwrite the vector of neighbour ids with the more recent updates
         deltas[elem.node_id_].second.clear();
-        nid_to_txid[elem.node_id_] = elem.txid_;
         deltas[elem.node_id_].second.push_back(buf);
+        nid_to_txid[elem.node_id_] = elem.txid_;
         elem.restored_ = true;
       }
       else if (iter->second > elem.txid_) {

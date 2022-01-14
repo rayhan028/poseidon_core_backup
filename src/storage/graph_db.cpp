@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -369,9 +369,8 @@ bool graph_db::commit_transaction() {
   ulog_->transaction_end(current_transaction_->logid());
 
 #ifdef CSR_DELTA_STORE
-  std::list<uint64_t> neigbour_node_ids;
-  std::list<double> rship_weights;
-  auto last_nid = csr_delta_->get_last_node_id(); // last node id in current CSR
+  std::vector<uint64_t> neigbour_node_ids;
+  std::vector<double> rship_weights;
 
   for (auto node_id : updated_nodes) {
     auto &n = nodes_->get(node_id);
@@ -382,8 +381,7 @@ bool graph_db::commit_transaction() {
         if (deleted_rships.find(rid) == deleted_rships.end()) {
           // destination neighbour of node with id "node_id"
           neigbour_node_ids.push_back(r.to_node_id());
-          auto &func = csr_delta_->get_weight_func();
-          rship_weights.push_back(func(r));
+          rship_weights.push_back(csr_delta_->weight_func_(r));
         }
         rid = r.next_src_rship;
       }
@@ -396,7 +394,7 @@ bool graph_db::commit_transaction() {
             // source neighbour of node with id "node_id"
             neigbour_node_ids.push_back(r.from_node_id());
             auto &func = csr_delta_->get_weight_func();
-            rship_weights.push_back(func(r));
+            rship_weights.push_back(csr_delta_->weight_func_(r));
           }
           rid = r.next_dest_rship;
         }
