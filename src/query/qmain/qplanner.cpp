@@ -120,7 +120,6 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
       break;
     case ast_op::project:
       {
-        // TODO: projection expression
         projection::expr_list pexprs;
         auto plist = ast->get_param<proj_spec_list>(0);
         for (auto& pex : plist) {
@@ -154,6 +153,34 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
       }
       break;
     case ast_op::sort:
+      {
+        auto slist = ast->get_param<proj_spec_list>(0);
+        result_set::sort_spec_list sort_list;
+
+        for (auto& pex : slist) {
+          if (pex.which() == 0) {
+            // simple_proj_spec
+            auto spj = boost::get<simple_proj_spec>(pex); 
+            auto pv_name = qparser::extract_variable_name(spj.pname);
+            result_set::sort_spec spc;
+            spc.vidx = qparser::extract_tuple_id(spj.pname);
+            spc.pcode = gdb->get_code(pv_name);
+            if (spj.ptype == "uint64")
+              spc.cmp_type = 5;
+            else if (spj.ptype == "string")
+              spc.cmp_type = 4; 
+            else if (spj.ptype == "int")
+              spc.cmp_type = 2; 
+            else if (spj.ptype == "double")
+              spc.cmp_type = 3; 
+            else if (spj.ptype == "datetime")
+              spc.cmp_type = 6;            
+            sort_list.push_back(spc);
+          }
+        }
+        auto qp = std::make_shared<order_by>(sort_list);
+        qop = qop_append(res2.first ? res2.second : res.second, qp);
+      }
       break;
     case ast_op::union_all:
       {

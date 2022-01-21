@@ -27,12 +27,24 @@
 #include <iterator>
 #include <condition_variable>
 #include "defs.hpp"
+#include "ast.hpp"
 
 /**
  * result_set is used to collect query results.
  */
 struct result_set {
-  using sort_spec = const std::vector<std::pair<std::size_t, bool>>;
+//  using sort_spec = const std::vector<std::pair<std::size_t, bool>>; // std::vector<simple_proj_spec>
+  
+  struct sort_spec {
+    enum sort_order { None, Asc, Desc } s_order; // sort order - used only for the Sort operator
+    std::size_t vidx;  // index of the variable in result tuple 
+    dcode_t pcode;     // dictionary code of the referenced property
+    std::size_t cmp_type; // typecode of comparison - corresponds to query_result.which()
+
+    sort_spec() = default;
+    sort_spec(std::size_t idx, std::size_t cmp, sort_order so = Asc) : s_order(so), vidx(idx), pcode(UNKNOWN_CODE), cmp_type (cmp) {}
+  };
+  using sort_spec_list = std::vector<sort_spec>;
   using iterator = std::list<qr_tuple>::iterator;
 
   /**
@@ -62,7 +74,8 @@ struct result_set {
   /**
    * Sort the result by the given sort specification.
    */
-  void sort(const sort_spec &spec);
+  void sort(const sort_spec_list &spec);
+  void sort(std::initializer_list<sort_spec> l);
 
   void sort(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp);
 
@@ -75,7 +88,7 @@ struct result_set {
 
 private:
   bool qr_compare(const qr_tuple &qr1, const qr_tuple &qr2,
-                  const sort_spec &spec);
+                  const sort_spec_list &spec);
 
   // mutex and condition variable used to notify a waiting thread when the
   // result set is complete

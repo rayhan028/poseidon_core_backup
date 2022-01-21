@@ -44,12 +44,93 @@ bool result_set::operator==(const result_set &other) const {
 }
 
 bool result_set::qr_compare(const qr_tuple &qr1, const qr_tuple &qr2,
-                            const sort_spec &spec) {
-  // TODO
-  return true;
+                            const sort_spec_list &spec) {
+  auto qr_less = [](const qr_tuple &q1, const qr_tuple &q2, sort_spec sp) -> int {
+    auto v1 = q1[sp.vidx];
+    auto v2 = q2[sp.vidx];
+    switch (sp.cmp_type) {
+      case 5: // uint64_t
+        {
+          auto i1 = boost::get<uint64_t>(v1);
+          auto i2 = boost::get<uint64_t>(v2);
+          if (i1 == i2)
+            return 0;
+          else if (i1 < i2)
+            return -1;
+          else 
+            return 1;
+        }
+        break;
+      case 4: // string
+        {
+          auto& i1 = boost::get<std::string>(v1);
+          auto& i2 = boost::get<std::string>(v2);
+          if (i1 == i2)
+            return 0;
+          else if (i1 < i2)
+            return -1;
+          else 
+            return 1;
+        }
+        break; 
+      case 2: // int
+        {
+          auto i1 = boost::get<int>(v1);
+          auto i2 = boost::get<int>(v2);
+          if (i1 == i2)
+            return 0;
+          else if (i1 < i2)
+            return -1;
+          else 
+            return 1;
+        }
+        break;
+      case 3: // double
+        {
+          auto i1 = boost::get<double>(v1);
+          auto i2 = boost::get<double>(v2);
+          if (i1 == i2)
+            return 0;
+          else if (i1 < i2)
+            return -1;
+          else 
+            return 1;
+        }
+        break;
+      case 6: // datetime
+        {
+          auto i1 = boost::get<boost::posix_time::ptime>(v1);
+          auto i2 = boost::get<boost::posix_time::ptime>(v2);
+          if (i1 == i2)
+            return 0;
+          else if (i1 < i2)
+            return -1;
+          else 
+            return 1;
+        }
+        break;
+      default:
+        break;
+    }
+    return true;
+  };
+  for (auto& sp : spec) {
+    auto res = qr_less(qr1, qr2, sp);
+    if (res < 0)
+      return true;
+    else if (res == 0)
+      continue;
+    else
+      return false;
+  }
+  return false;
 }
 
-void result_set::sort(const sort_spec &spec) {
+void result_set::sort(std::initializer_list<sort_spec> l) {
+  sort(sort_spec_list(l));
+}
+
+void result_set::sort(const sort_spec_list &spec) {
   data.sort([&](const qr_tuple &v1, const qr_tuple &v2) {
     return qr_compare(v1, v2, spec);
   });

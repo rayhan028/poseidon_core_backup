@@ -25,8 +25,6 @@
 #include "graph_db.hpp"
 #include "qop.hpp"
 
-struct base_op;
-
 /**
  * The query class allows to construct a plan for executing a graph query in dot
  * notation. The individual methods represent plan operators which can be

@@ -25,7 +25,7 @@ qresult_iterator qproc::execute_query(qproc::mode m, const std::string& qstr) {
         result_set result;
         qplan.append_collect(result);
         // qplan.append_printer();
-        // qplan.print_plan();
+        qplan.print_plan();
         interp_query(qplan);
         return qresult_iterator(std::move(result));
     }

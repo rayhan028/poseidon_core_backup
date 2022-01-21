@@ -533,7 +533,7 @@ struct nodes_connected : public qop {
  * comparison function or a specificaton of sorting criteria.
  */
 struct order_by : public qop {
-  order_by(const result_set::sort_spec &spec) : sort_spec_(spec) {}
+  order_by(const result_set::sort_spec_list &spec) : sort_spec_(spec) {}
   order_by(std::function<bool(const qr_tuple &, const qr_tuple &)> func)
       : cmp_func_(func) {}
   ~order_by() = default;
@@ -549,7 +549,7 @@ struct order_by : public qop {
   }
 
   result_set results_;
-  result_set::sort_spec sort_spec_;
+  result_set::sort_spec_list sort_spec_;
   std::function<bool(const qr_tuple &, const qr_tuple &)> cmp_func_;
 };
 

@@ -260,7 +260,6 @@ void create_data(graph_db_ptr &graph) {
 
 std::string load_string(const std::string& fname) {
     std::string qstr, line;
-
     std::ifstream myfile(fname);
     REQUIRE (myfile.is_open());
     while (getline(myfile, line)) {
@@ -278,18 +277,19 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
     qproc qp(graph);
     char buf[1024];
-    spdlog::info("getcwd {}", getcwd(buf, 1024)); 
+    getcwd(buf, 1024);
     std::string prefix_is(buf); 
     prefix_is += "/../../queries/ldbc/is/is";  
 
     SECTION("IS #1") {
+      spdlog::info("LDBC IS#1"); 
         auto qstr = load_string(prefix_is + "1.q");
         auto res = qp.execute_query(qproc::Interpret, qstr);
         // res.wait();
         std::cout << res.result() << std::endl;
 
         result_set expected;
-        expected.data.push_back({
+        expected.append({
           query_result("Mahinda"), query_result("Perera"),
           query_result("1989-12-03"), query_result("119.235.7.103"),
           query_result("Firefox"), query_result("1353"), query_result("male"),
@@ -298,25 +298,88 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
         // REQUIRE(res.result() == expected);
     }
-    /*
+    
     SECTION("IS #2") {
+      spdlog::info("LDBC IS#2"); 
         auto qstr = load_string(prefix_is + "2.q");
-        qp.execute_query(qproc::Interpret, qstr);
+        auto res = qp.execute_query(qproc::Interpret, qstr);
+        std::cout << res.result() << std::endl;
+
+        result_set expected;
+        expected.append(
+          {query_result("1768"), query_result("Content of cmt12"),
+          query_result("2013-12-27T11:32:19.336000"), query_result("13743895"),
+          query_result("1121"), query_result("Karl"), query_result("Beran")});
+        expected.append(
+          {query_result("1171"), query_result("Content of cmt11"),
+          query_result("2013-11-26T17:09:07.283000"), query_result("13743895"),
+          query_result("1121"), query_result("Karl"), query_result("Beran")});
+    expected.append(
+        {query_result("1126"), query_result("Content of cmt10"),
+        query_result("2013-10-26T23:46:18.580000"), query_result("13743894"),
+        query_result("65"), query_result("Marc"), query_result("Ravalomanana")});
+    expected.append(
+        {query_result("1978"), query_result("Content of cmt9"),
+        query_result("2013-09-27T09:41:01.413000"), query_result("1976"),
+        query_result("1379"), query_result("Muhammad"), query_result("Iqbal")});
+    expected.append(
+        {query_result("1877"), query_result("Content of cmt8"),
+        query_result("2013-08-25T12:56:57.280000"), query_result("137438956"),
+        query_result("1291"), query_result("Wei"), query_result("Li")});
+    expected.append(
+        {query_result("1865"), query_result("Content of cmt7"),
+        query_result("2013-07-25T07:54:01.976000"), query_result("137438956"),
+        query_result("1291"), query_result("Wei"), query_result("Li")});
+    expected.append(
+        {query_result("1768"), query_result("Content of cmt6"),
+        query_result("2013-06-29T17:57:51.844000"), query_result("1863"),
+        query_result("65"), query_result("Marc"), query_result("Ravalomanana")});
+    expected.append(
+        {query_result("1171"), query_result("Content of cmt5"),
+        query_result("2013-05-17T19:37:26.339000"), query_result("1863"),
+        query_result("65"), query_result("Marc"), query_result("Ravalomanana")});
+    expected.append(
+        {query_result("1126"), query_result("Content of cmt4"),
+        query_result("2013-04-16T21:16:03.354000"), query_result("137438956"),
+        query_result("1291"), query_result("Wei"), query_result("Li")});
+    expected.append(
+        {query_result("1978"), query_result("Content of cmt3"),
+        query_result("2013-03-14T16:57:46.045000"), query_result("1976"),
+        query_result("1379"), query_result("Muhammad"), query_result("Iqbal")});
     }
   
     SECTION("IS #3") {
+      spdlog::info("LDBC IS#3"); 
         auto qstr = load_string(prefix_is + "3.q");
-        qp.execute_query(qproc::Interpret, qstr);
-    }
-    */
+        auto res = qp.execute_query(qproc::Interpret, qstr);
+        std::cout << res.result() << std::endl;
 
+        result_set expected;
+        expected.append({
+          query_result("833579"), query_result("Otto"),
+          query_result("Becker"), query_result("2012-09-07T01:11:30.195000")});
+        expected.append({
+          query_result("838375"), query_result("Otto"),
+          query_result("Richter"), query_result("2012-09-07T01:11:30.195000")});
+        expected.append({
+          query_result("10995116"), query_result("Andrei"),
+          query_result("Condariuc"), query_result("2011-01-02T06:43:41.955000")});
+        expected.append({
+          query_result("65970697"), query_result("Fritz"),
+          query_result("Muller"), query_result("2010-09-20T09:42:43.187000")});
+        expected.append({
+          query_result("4139"), query_result("Baruch"),
+          query_result("Dego"), query_result("2010-03-13T07:37:21.718000")});
+    }
+    
     SECTION("IS #4") {
+      spdlog::info("LDBC IS#4"); 
         auto qstr = load_string(prefix_is + "4.q");
         auto res = qp.execute_query(qproc::Interpret, qstr);
         std::cout << res.result() << std::endl;
 
         result_set expected;
-        expected.data.push_back({
+        expected.append({
           query_result("2011-10-05T14:38:36.019000"), query_result("photo1374389534791.jpg")
         });
 
@@ -324,12 +387,13 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
     }
 
     SECTION("IS #5") {
+      spdlog::info("LDBC IS#5"); 
         auto qstr = load_string(prefix_is + "5.q");
         auto res = qp.execute_query(qproc::Interpret, qstr);
         std::cout << res.result() << std::endl;
 
         result_set expected;
-        expected.data.push_back({
+        expected.append({
           query_result("10995116"), query_result("Andrei"), query_result("Condariuc")
         });
 
@@ -337,12 +401,13 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
     }
     
     SECTION("IS #6") {
+      spdlog::info("LDBC IS#6"); 
         auto qstr = load_string(prefix_is + "6.q");
         auto res = qp.execute_query(qproc::Interpret, qstr);
         std::cout << res.result() << std::endl;
 
         result_set expected;
-        expected.data.push_back({
+        expected.append({
           query_result("37"), query_result("Wall of Hồ Chí Do"), query_result("4194"),
           query_result("Hồ Chí"), query_result("Do")
         });
@@ -350,12 +415,23 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
         REQUIRE(res.result() == expected);
     }
 
-    /*
     SECTION("IS #7") {
+      spdlog::info("LDBC IS#7"); 
         auto qstr = load_string(prefix_is + "7.q");
-        qp.execute_query(qproc::Interpret, qstr);
+        auto res = qp.execute_query(qproc::Interpret, qstr);
+        std::cout << res.result() << std::endl;
+
+        result_set expected;
+        expected.append({
+          query_result("1642217"), query_result("Content of comment_1642217"), query_result("2012-01-10T06:31:18.533000"),
+          query_result("15393"), query_result("Lomana Trésor"), query_result("Kanam"), query_result("true")
+        });
+        expected.append({
+          query_result("16492677"), query_result("Content of comment_16492677"), query_result("2012-01-10T14:57:10.420000"),
+          query_result("19791"), query_result("Amin"), query_result("Kamkar"), query_result("false")
+        });
     }
-    */
+  
   graph_pool::destroy(pool);
 }
 
