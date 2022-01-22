@@ -36,7 +36,7 @@ struct result_set {
 //  using sort_spec = const std::vector<std::pair<std::size_t, bool>>; // std::vector<simple_proj_spec>
   
   struct sort_spec {
-    enum sort_order { None, Asc, Desc } s_order; // sort order - used only for the Sort operator
+    enum sort_order { None = 0, Asc = 1, Desc = 2 } s_order; // sort order - used only for the Sort operator
     std::size_t vidx;  // index of the variable in result tuple 
     dcode_t pcode;     // dictionary code of the referenced property
     std::size_t cmp_type; // typecode of comparison - corresponds to query_result.which()

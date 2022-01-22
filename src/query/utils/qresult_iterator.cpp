@@ -114,9 +114,10 @@ bool result_set::qr_compare(const qr_tuple &qr1, const qr_tuple &qr2,
     }
     return true;
   };
+
   for (auto& sp : spec) {
     auto res = qr_less(qr1, qr2, sp);
-    if (res < 0)
+    if ((sp.s_order == sort_spec::Asc && res < 0) || (sp.s_order == sort_spec::Desc && res > 0))
       return true;
     else if (res == 0)
       continue;
