@@ -83,6 +83,8 @@ using query_result =
     boost::variant<node *, relationship *, int, double, std::string, 
                     uint64_t, boost::posix_time::ptime, array_t, null_t>;
 
+#define qv_ query_result
+
 /**
  * Typedef for a list of result elements which are passed to the next query
  * operator in an execution plan.

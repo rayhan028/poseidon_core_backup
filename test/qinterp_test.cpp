@@ -290,10 +290,8 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
         result_set expected;
         expected.append({
-          query_result("Mahinda"), query_result("Perera"),
-          query_result("1989-12-03"), query_result("119.235.7.103"),
-          query_result("Firefox"), query_result("1353"), query_result("male"),
-          query_result("2010-02-14T15:32:10.447000")
+          qv_("Mahinda"), qv_("Perera"), qv_("1989-12-03"), qv_("119.235.7.103"),
+          qv_("Firefox"), qv_("1353"), qv_("male"), qv_("2010-02-14T15:32:10.447000")
         });
 
         // REQUIRE(res.result() == expected);
@@ -307,45 +305,45 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
         result_set expected;
         expected.append(
-          {query_result("1768"), query_result("Content of cmt12"),
-          query_result("2013-12-27T11:32:19.336000"), query_result("13743895"),
-          query_result("1121"), query_result("Karl"), query_result("Beran")});
+          {qv_("1768"), qv_("Content of cmt12"),
+          qv_("2013-12-27T11:32:19.336000"), qv_("13743895"),
+          qv_("1121"), qv_("Karl"), qv_("Beran")});
         expected.append(
-          {query_result("1171"), query_result("Content of cmt11"),
-          query_result("2013-11-26T17:09:07.283000"), query_result("13743895"),
-          query_result("1121"), query_result("Karl"), query_result("Beran")});
+          {qv_("1171"), qv_("Content of cmt11"),
+          qv_("2013-11-26T17:09:07.283000"), qv_("13743895"),
+          qv_("1121"), qv_("Karl"), qv_("Beran")});
     expected.append(
-        {query_result("1126"), query_result("Content of cmt10"),
-        query_result("2013-10-26T23:46:18.580000"), query_result("13743894"),
-        query_result("65"), query_result("Marc"), query_result("Ravalomanana")});
+        {qv_("1126"), qv_("Content of cmt10"),
+        qv_("2013-10-26T23:46:18.580000"), qv_("13743894"),
+        qv_("65"), qv_("Marc"), qv_("Ravalomanana")});
     expected.append(
-        {query_result("1978"), query_result("Content of cmt9"),
-        query_result("2013-09-27T09:41:01.413000"), query_result("1976"),
-        query_result("1379"), query_result("Muhammad"), query_result("Iqbal")});
+        {qv_("1978"), qv_("Content of cmt9"),
+        qv_("2013-09-27T09:41:01.413000"), qv_("1976"),
+        qv_("1379"), qv_("Muhammad"), qv_("Iqbal")});
     expected.append(
-        {query_result("1877"), query_result("Content of cmt8"),
-        query_result("2013-08-25T12:56:57.280000"), query_result("137438956"),
-        query_result("1291"), query_result("Wei"), query_result("Li")});
+        {qv_("1877"), qv_("Content of cmt8"),
+        qv_("2013-08-25T12:56:57.280000"), qv_("137438956"),
+        qv_("1291"), qv_("Wei"), qv_("Li")});
     expected.append(
-        {query_result("1865"), query_result("Content of cmt7"),
-        query_result("2013-07-25T07:54:01.976000"), query_result("137438956"),
-        query_result("1291"), query_result("Wei"), query_result("Li")});
+        {qv_("1865"), qv_("Content of cmt7"),
+        qv_("2013-07-25T07:54:01.976000"), qv_("137438956"),
+        qv_("1291"), qv_("Wei"), qv_("Li")});
     expected.append(
-        {query_result("1768"), query_result("Content of cmt6"),
-        query_result("2013-06-29T17:57:51.844000"), query_result("1863"),
-        query_result("65"), query_result("Marc"), query_result("Ravalomanana")});
+        {qv_("1768"), qv_("Content of cmt6"),
+        qv_("2013-06-29T17:57:51.844000"), qv_("1863"),
+        qv_("65"), qv_("Marc"), qv_("Ravalomanana")});
     expected.append(
-        {query_result("1171"), query_result("Content of cmt5"),
-        query_result("2013-05-17T19:37:26.339000"), query_result("1863"),
-        query_result("65"), query_result("Marc"), query_result("Ravalomanana")});
+        {qv_("1171"), qv_("Content of cmt5"),
+        qv_("2013-05-17T19:37:26.339000"), qv_("1863"),
+        qv_("65"), qv_("Marc"), qv_("Ravalomanana")});
     expected.append(
-        {query_result("1126"), query_result("Content of cmt4"),
-        query_result("2013-04-16T21:16:03.354000"), query_result("137438956"),
-        query_result("1291"), query_result("Wei"), query_result("Li")});
+        {qv_("1126"), qv_("Content of cmt4"),
+        qv_("2013-04-16T21:16:03.354000"), qv_("137438956"),
+        qv_("1291"), qv_("Wei"), qv_("Li")});
     expected.append(
-        {query_result("1978"), query_result("Content of cmt3"),
-        query_result("2013-03-14T16:57:46.045000"), query_result("1976"),
-        query_result("1379"), query_result("Muhammad"), query_result("Iqbal")});
+        {qv_("1978"), qv_("Content of cmt3"),
+        qv_("2013-03-14T16:57:46.045000"), qv_("1976"),
+        qv_("1379"), qv_("Muhammad"), qv_("Iqbal")});
     }
   
     SECTION("IS #3") {
@@ -356,20 +354,20 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
         result_set expected;
         expected.append({
-          query_result("833579"), query_result("Otto"),
-          query_result("Becker"), query_result("2012-09-07T01:11:30.195000")});
+          qv_("833579"), qv_("Otto"),
+          qv_("Becker"), qv_("2012-09-07T01:11:30.195000")});
         expected.append({
-          query_result("838375"), query_result("Otto"),
-          query_result("Richter"), query_result("2012-09-07T01:11:30.195000")});
+          qv_("838375"), qv_("Otto"),
+          qv_("Richter"), qv_("2012-09-07T01:11:30.195000")});
         expected.append({
-          query_result("10995116"), query_result("Andrei"),
-          query_result("Condariuc"), query_result("2011-01-02T06:43:41.955000")});
+          qv_("10995116"), qv_("Andrei"),
+          qv_("Condariuc"), qv_("2011-01-02T06:43:41.955000")});
         expected.append({
-          query_result("65970697"), query_result("Fritz"),
-          query_result("Muller"), query_result("2010-09-20T09:42:43.187000")});
+          qv_("65970697"), qv_("Fritz"),
+          qv_("Muller"), qv_("2010-09-20T09:42:43.187000")});
         expected.append({
-          query_result("4139"), query_result("Baruch"),
-          query_result("Dego"), query_result("2010-03-13T07:37:21.718000")});
+          qv_("4139"), qv_("Baruch"),
+          qv_("Dego"), qv_("2010-03-13T07:37:21.718000")});
     }
     
     SECTION("IS #4") {
@@ -380,7 +378,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
         result_set expected;
         expected.append({
-          query_result("2011-10-05T14:38:36.019000"), query_result("photo1374389534791.jpg")
+          qv_("2011-10-05T14:38:36.019000"), qv_("photo1374389534791.jpg")
         });
 
         // REQUIRE(res.result() == expected);
@@ -394,7 +392,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
         result_set expected;
         expected.append({
-          query_result("10995116"), query_result("Andrei"), query_result("Condariuc")
+          qv_("10995116"), qv_("Andrei"), qv_("Condariuc")
         });
 
         REQUIRE(res.result() == expected);
@@ -408,8 +406,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
         result_set expected;
         expected.append({
-          query_result("37"), query_result("Wall of Hồ Chí Do"), query_result("4194"),
-          query_result("Hồ Chí"), query_result("Do")
+          qv_("37"), qv_("Wall of Hồ Chí Do"), qv_("4194"), qv_("Hồ Chí"), qv_("Do")
         });
 
         REQUIRE(res.result() == expected);
@@ -423,12 +420,12 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
         result_set expected;
         expected.append({
-          query_result("1642217"), query_result("Content of comment_1642217"), query_result("2012-01-10T06:31:18.533000"),
-          query_result("15393"), query_result("Lomana Trésor"), query_result("Kanam"), query_result("true")
+          qv_("1642217"), qv_("Content of comment_1642217"), qv_("2012-01-10T06:31:18.533000"),
+          qv_("15393"), qv_("Lomana Trésor"), qv_("Kanam"), qv_("true")
         });
         expected.append({
-          query_result("16492677"), query_result("Content of comment_16492677"), query_result("2012-01-10T14:57:10.420000"),
-          query_result("19791"), query_result("Amin"), query_result("Kamkar"), query_result("false")
+          qv_("16492677"), qv_("Content of comment_16492677"), qv_("2012-01-10T14:57:10.420000"),
+          qv_("19791"), qv_("Amin"), qv_("Kamkar"), qv_("false")
         });
     }
   
