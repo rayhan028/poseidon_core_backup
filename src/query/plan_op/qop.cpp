@@ -436,7 +436,7 @@ void order_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
 }
 
 void order_by::finish(graph_db_ptr &gdb) {
-  PROF_PRE;
+  PROF_PRE0;
   if (cmp_func_ != nullptr)
     results_.sort(cmp_func_);
   else

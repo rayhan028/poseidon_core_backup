@@ -49,6 +49,15 @@ private:
       parent->connect(qop, std::bind(&T::process, dynamic_cast<T *>(qop.get()), ph::_1, ph::_2));
     return qop;
   }
+
+    template <typename T>
+  qop_ptr qop_append2(qop_ptr parent, std::shared_ptr<T> qop) { 
+    if (parent != nullptr)
+      parent->connect(qop, 
+        std::bind(&T::process, dynamic_cast<T *>(qop.get()), ph::_1, ph::_2), 
+        std::bind(&T::finish, dynamic_cast<T *>(qop.get()), ph::_1));
+    return qop;
+  }
 };
 
 #endif

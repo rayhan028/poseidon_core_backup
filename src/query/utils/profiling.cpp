@@ -22,8 +22,8 @@
 
 #ifdef QOP_PROFILING
 
-void prof_metrics::pre_hook() {
-    in_records_++;
+void prof_metrics::pre_hook(bool in) {
+    in_records_ += (in ? 1 : 0);
     start_ = std::chrono::steady_clock::now();
 }
 

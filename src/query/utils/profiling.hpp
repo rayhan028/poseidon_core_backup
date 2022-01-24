@@ -48,7 +48,7 @@ struct prof_metrics {
      * current time. 
      * NOTE: this function shouldn't be used directly but only via PROF_PRE. 
      */
-    void pre_hook();
+    void pre_hook(bool in);
 
     /**
      * This function is called at the end of the processing method
@@ -67,7 +67,8 @@ struct prof_metrics {
 inline std::ostream& operator<< (std::ostream& os, const prof_metrics& pm) { return pm.dump(os); }
 
 #define PROF_DATA prof_metrics pfm_
-#define PROF_PRE pfm_.pre_hook()
+#define PROF_PRE0 pfm_.pre_hook(false)
+#define PROF_PRE pfm_.pre_hook(true)
 #define PROF_POST(n) pfm_.post_hook(n)
 #define PROF_DUMP pfm_
 #define PROF_ACCESSOR inline const prof_metrics& profiling_data() const { return pfm_; }

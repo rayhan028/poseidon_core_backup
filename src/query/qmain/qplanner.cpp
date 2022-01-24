@@ -179,7 +179,7 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
           }
         }
         auto qp = std::make_shared<order_by>(sort_list);
-        qop = qop_append(res2.first ? res2.second : res.second, qp);
+        qop = qop_append2(res2.first ? res2.second : res.second, qp);
       }
       break;
     case ast_op::union_all:
@@ -241,6 +241,7 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
       }
       break;
     default:
+      std::cout << "ERROR: op-type not handled: " <<  ast->op_ << std::endl;
       break;
   } 
 
