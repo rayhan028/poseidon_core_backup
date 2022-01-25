@@ -97,6 +97,10 @@ bool node_description::has_property(const std::string& pname) const {
   return properties.find(pname) != properties.end();
 }
 
+bool node_description::operator==(const node_description& other) const {
+  return id == other.id && label == other.label/* && properties == other.properties*/;
+}
+
 /* ------------------------------------------------------------------------ */
 
 

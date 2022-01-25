@@ -917,15 +917,11 @@ struct persist_result : public qop {
  * projection implements a project operator.
  */
 struct projection : public qop {
-  using pr_result = boost::variant<node_description, node *, rship_description,
-                                   relationship *, int, double, 
-                                   std::string, uint64_t, boost::posix_time::ptime, array_t, null_t>;
-
   struct expr {
     std::size_t vidx;
-    std::function<query_result(pr_result)> func;
+    std::function<query_result(const query_result&)> func;
     expr() = default;
-    expr(std::size_t i, std::function<query_result(pr_result)> f) : vidx(i), func(f) {}
+    expr(std::size_t i, std::function<query_result(const query_result&)> f) : vidx(i), func(f) {}
   };
 
   using expr_list = std::vector<expr>;
@@ -952,82 +948,82 @@ struct projection : public qop {
  */
 namespace builtin {
 
-query_result forward(projection::pr_result &res);
+query_result forward(query_result &res);
 
 
 /**
  * Returns true if the node/relationship has the property specified by
  * the key. Otherwise, return false.
  */	
-bool has_property(projection::pr_result &pv, const std::string &key);
+bool has_property(query_result &pv, const std::string &key);
 
 /**
  * Returns true if the node/relationship has the given label specified. 
  * Otherwise, return false.
  */	
-bool has_label(projection::pr_result &pv, const std::string &l);
+bool has_label(query_result &pv, const std::string &l);
 
 /**
  * Return the integer value of the property of a node/relationship stored in
  * projection_result res and identified by the given key.
  */
-query_result int_property(projection::pr_result &res, 
+query_result int_property(query_result &res, 
                  const std::string &key);
 
 /**
  * Return the double value of the property of a node/relationship stored in
  * projection_result res and identified by the given key.
  */
-query_result double_property(projection::pr_result &res, 
+query_result double_property(query_result &res, 
                        const std::string &key);
 
 /**
  * Return the string value of the property of a node/relationship stored in
  * projection_result res and identified by the given key.
  */
-query_result string_property(projection::pr_result &res, 
+query_result string_property(query_result &res, 
                             const std::string &key);
 
 /**
  * Return the unsigned 64-bit integer value of the property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-query_result uint64_property(projection::pr_result &res, 
+query_result uint64_property(query_result &res, 
                  const std::string &key);
 
 /**
  * Return the ptime value of the property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-query_result ptime_property(projection::pr_result &res, 
+query_result ptime_property(query_result &res, 
                  const std::string &key);
 
 /**
  * Return the string representation of the date property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-query_result pr_date(projection::pr_result &pv, 
+query_result pr_date(query_result &pv, 
                  const std::string &key);
 
 /**
  * Return the year of the date property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-query_result pr_year(projection::pr_result &pv, 
+query_result pr_year(query_result &pv, 
                  const std::string &key);
 
 /**
  * Return the month of the date property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-query_result pr_month(projection::pr_result &pv, 
+query_result pr_month(query_result &pv, 
                  const std::string &key);
 
 /**
  * Return the string representation of a node/relationship stored in
  * projection_result res.
  */
-std::string string_rep(projection::pr_result &res);
+std::string string_rep(query_result &res);
 
 /**
  * Convert the given string value into an integer.

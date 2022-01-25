@@ -3,6 +3,8 @@
 
 #include "defs.hpp"
 #include "chunked_vec.hpp"
+#include "relationships.hpp"
+#include "nodes.hpp"
 
 /**
  * A struct for a CSR delta element. An element can be the id of a 

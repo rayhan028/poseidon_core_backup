@@ -49,6 +49,10 @@ bool rship_description::has_property(const std::string& pname) const {
   return properties.find(pname) != properties.end();
 }
 
+bool rship_description::operator==(const rship_description& other) const {
+  return id == other.id && from_id == other.from_id && to_id == other.to_id && label == other.label /* && properties == other.properties */;
+}
+
 /* ------------------------------------------------------------------------ */
 
 

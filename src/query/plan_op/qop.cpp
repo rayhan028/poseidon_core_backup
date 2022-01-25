@@ -347,6 +347,8 @@ void printer::dump(std::ostream &os) const { os << "printer()"; }
 
 void printer::process(graph_db_ptr &gdb, const qr_tuple &v) {
   auto my_visitor = boost::hana::overload(
+      [&](const node_description& n) { std::cout << n; },
+      [&](const rship_description& r) { std::cout << r; },
       [&](node *n) { std::cout << gdb->get_node_description(n->id()); },
       [&](relationship *r) { std::cout << gdb->get_relationship_label(*r); },
       [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
@@ -1089,6 +1091,8 @@ void collect_result::process(graph_db_ptr &gdb, const qr_tuple &v) {
   qr_tuple res(v.size());
 
   auto my_visitor = boost::hana::overload(
+      [&](const node_description& n) { return n.to_string(); },
+      [&](const rship_description& r) { return r.to_string(); },
       [&](node *n) { return gdb->get_node_description(n->id()).to_string(); },
       [&](relationship *r) {
         return gdb->get_rship_description(r->id()).to_string();
@@ -1207,7 +1211,7 @@ void projection::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
   auto i = 0;
   auto num_accessed_vars = accessed_vars_.size();
-  std::vector<projection::pr_result> pv(num_accessed_vars * 2);
+  std::vector<query_result> pv(num_accessed_vars * 2);
   for (auto index : accessed_vars_) {
     pv[i] = v[index];
     if (var_map_[index] == 0)
@@ -1232,7 +1236,7 @@ void projection::process(graph_db_ptr &gdb, const qr_tuple &v) {
       if (ex.func != nullptr)
         res[i] = ex.func(pv[var_map_[ex.vidx]]);
       else {
-        pr_result fwd = v[ex.vidx];
+        query_result fwd = v[ex.vidx];
         res[i] = builtin::forward(fwd);
       }
     } catch (unknown_property& exc) { }
@@ -1246,7 +1250,7 @@ void projection::process(graph_db_ptr &gdb, const qr_tuple &v) {
 
 namespace builtin {
 
-query_result forward(projection::pr_result &pv) {
+query_result forward(query_result &pv) {
   if (pv.type() == typeid(node *)) {
     return boost::get<node *>(pv);
   } else if (pv.type() == typeid(relationship *)) {
@@ -1274,7 +1278,7 @@ query_result forward(projection::pr_result &pv) {
 }
 
 
-bool has_property(projection::pr_result &pv, const std::string &key) {
+bool has_property(query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
     return nd.has_property(key);
@@ -1285,7 +1289,7 @@ bool has_property(projection::pr_result &pv, const std::string &key) {
   return false; 
 }
 
-bool has_label(projection::pr_result &pv, const std::string &l) {
+bool has_label(query_result &pv, const std::string &l) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
     return nd.label == l;
@@ -1296,7 +1300,7 @@ bool has_label(projection::pr_result &pv, const std::string &l) {
   return false; 
 }
 
-query_result int_property(projection::pr_result &pv, const std::string &key) {
+query_result int_property(query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
     auto o = get_property<int>(nd.properties, key);
@@ -1309,7 +1313,7 @@ query_result int_property(projection::pr_result &pv, const std::string &key) {
   return null_val;
 }
 
-query_result double_property(projection::pr_result &pv, const std::string &key) {
+query_result double_property(query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
     auto o = get_property<double>(nd.properties, key);
@@ -1322,7 +1326,7 @@ query_result double_property(projection::pr_result &pv, const std::string &key) 
   return null_val;
 }
 
-query_result string_property(projection::pr_result &pv, const std::string &key) {
+query_result string_property(query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
     auto o = get_property<std::string>(nd.properties, key);
@@ -1336,7 +1340,7 @@ query_result string_property(projection::pr_result &pv, const std::string &key) 
   return null_val;
 }
 
-query_result uint64_property(projection::pr_result &pv, const std::string &key) {
+query_result uint64_property(query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
     auto o = get_property<uint64_t>(nd.properties, key);
@@ -1349,7 +1353,7 @@ query_result uint64_property(projection::pr_result &pv, const std::string &key) 
   return null_val;
 }
 
-query_result  ptime_property(projection::pr_result &pv, const std::string &key) {
+query_result  ptime_property(query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
     auto o = get_property<ptime>(nd.properties, key);
@@ -1362,7 +1366,7 @@ query_result  ptime_property(projection::pr_result &pv, const std::string &key) 
   return null_val;
 }
 
-query_result pr_date(projection::pr_result &pv, const std::string &key) {
+query_result pr_date(query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
     if (nd.has_property(key)) {
@@ -1381,7 +1385,7 @@ query_result pr_date(projection::pr_result &pv, const std::string &key) {
   return null_val; 
 }
 
-query_result pr_year(projection::pr_result &pv, const std::string &key) {
+query_result pr_year(query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
     if (nd.has_property(key)) {
@@ -1408,7 +1412,7 @@ query_result pr_year(projection::pr_result &pv, const std::string &key) {
   return null_val; 
 }
 
-query_result pr_month(projection::pr_result &pv, const std::string &key) {
+query_result pr_month(query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
     if (nd.has_property(key)) {
@@ -1435,7 +1439,7 @@ query_result pr_month(projection::pr_result &pv, const std::string &key) {
   return null_val; 
 }
 
-std::string string_rep(projection::pr_result &res) {
+std::string string_rep(query_result &res) {
   auto my_visitor =
       boost::hana::overload([&](node_description &n) { return n.to_string(); },
                             [&](rship_description &r) { return r.to_string(); },

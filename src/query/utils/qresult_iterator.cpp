@@ -144,6 +144,8 @@ void result_set::sort(
 
 std::ostream &operator<<(std::ostream &os, const result_set &rs) {
   auto my_visitor = boost::hana::overload(
+      [&](const node_description& n) { os << n; },
+      [&](const rship_description& r) { os << r; },
       [&](node *n) { /*os << gdb->get_node_description(*n); */ },
       [&](relationship *r) { /* os << gdb->get_relationship_label(*r); */ },
       [&](int i) { os << i; }, [&](double d) { os << d; },

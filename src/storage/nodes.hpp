@@ -136,6 +136,8 @@ struct node_description {
    * Return true if a property with the given name exists.
    */
   bool has_property(const std::string& pname) const;
+
+  bool operator==(const node_description& other) const;
 };
 
 /**

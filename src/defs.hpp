@@ -58,38 +58,6 @@ inline std::string uint64_to_string(uint64_t v) {
   return v == UNKNOWN ? std::string("<null>") : std::to_string(v);
 }
 
-struct node;
-struct relationship;
-
-struct null_t {
-    explicit constexpr null_t(int) {}
-  inline bool operator()(const null_t& one, const null_t& two) { return true; }
- inline bool operator==(const null_t& other) const { return true; }
-};
-
-inline constexpr null_t null_val(-1);
-
-struct array_t {
-  array_t(std::vector<uint64_t> v) : elems(v) {}
-  inline bool operator==(const array_t& other) const { return elems == other.elems; }
-  std::vector<uint64_t> elems;
-};
-
-/**
- * Typedef for an element (node, relationship, value) that might be part of a
- * query result. null_t is used to represent NULL values.
- */
-using query_result =
-    boost::variant<node *, relationship *, int, double, std::string, 
-                    uint64_t, boost::posix_time::ptime, array_t, null_t>;
-
-#define qv_ query_result
-
-/**
- * Typedef for a list of result elements which are passed to the next query
- * operator in an execution plan.
- */
-using qr_tuple = std::vector<query_result>;
 
 #ifdef USE_PMDK
 
