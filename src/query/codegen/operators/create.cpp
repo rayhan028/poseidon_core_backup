@@ -3,6 +3,7 @@
 /**
  * Generates code for the create operation
  */
+/*
 void codegen_inline_visitor::visit(std::shared_ptr<create_op> op) {
     op->name_ = "";
     BasicBlock *bb;
@@ -72,4 +73,4 @@ void codegen_inline_visitor::visit(std::shared_ptr<create_op> op) {
         ctx.getBuilder().SetInsertPoint(main_return);
         ctx.getBuilder().CreateRetVoid();
     }
-}
+}*/

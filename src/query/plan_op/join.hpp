@@ -26,7 +26,7 @@
  * cross_join implements a binary operator for constructing the cartesian
  * product of the results provided by the two input query operators.
  */
-struct cross_join : public qop {
+struct cross_join : public qop, public std::enable_shared_from_this<cross_join> {
   cross_join() = default;
   ~cross_join() = default;
 
@@ -38,7 +38,11 @@ struct cross_join : public qop {
   void finish(graph_db_ptr &gdb);
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
   }
 
   bool is_binary() const override { return true; }
@@ -53,7 +57,7 @@ private:
    * is the same as the node at another given position in the right tuple.
    * The node positions are specified by the pos pair.
    */
-struct nested_loop_join : public qop {
+struct nested_loop_join : public qop, public std::enable_shared_from_this<nested_loop_join> {
   nested_loop_join(std::pair<int, int> pos) : left_right_nodes_(pos) {} 
   ~nested_loop_join() = default;
 
@@ -82,7 +86,7 @@ private:
    * is the same as the node at another given position in the right tuple.
    * The node positions are specified by the pos pair.
    */
-struct hash_join : public qop {
+struct hash_join : public qop, public std::enable_shared_from_this<hash_join> {
   hash_join(std::pair<int, int> pos) : left_right_nodes_(pos) {} 
   ~hash_join() = default;
 
@@ -112,7 +116,7 @@ private:
  * of two queries based on the given join condition. 
  * Dangling tuples are padded with "null_val" 
  */
-struct left_outerjoin : public qop {
+struct left_outerjoin : public qop, public std::enable_shared_from_this<left_outerjoin> {
   left_outerjoin(std::function<bool(const qr_tuple &, const qr_tuple &)> pred) : pred_(pred) {} 
   ~left_outerjoin() = default;
 
@@ -140,7 +144,7 @@ private:
  * the node at another given position in the right tuple. The node positions are
  * specified by the pos pair. Dangling tuples are padded with "NULL" 
  */
-struct left_outerjoin_on_node : public qop {
+struct left_outerjoin_on_node : public qop, public std::enable_shared_from_this<left_outerjoin_on_node> {
   left_outerjoin_on_node(const std::pair<int, int> &pos) : left_right_nodes_(pos) {} 
   ~left_outerjoin_on_node() = default;
 
@@ -170,7 +174,7 @@ private:
  * object (at a given position) in the right tuple as the destination 
  * node.
  */
-struct rship_join : public qop {
+struct rship_join : public qop, public std::enable_shared_from_this<rship_join> {
   rship_join(std::pair<int, int> src_des) : src_des_nodes_(src_des) {} 
   ~rship_join() = default;
 
@@ -199,7 +203,7 @@ private:
  * object (at a given position) in the right tuple as the destination 
  * node. Dangling tuples are padded with "NULL" 
  */
-struct left_outerjoin_on_rship : public qop {
+struct left_outerjoin_on_rship : public qop, public std::enable_shared_from_this<left_outerjoin_on_rship> {
   left_outerjoin_on_rship(std::pair<int, int> src_des) : src_des_nodes_(src_des) {} 
   ~left_outerjoin_on_rship() = default;
 

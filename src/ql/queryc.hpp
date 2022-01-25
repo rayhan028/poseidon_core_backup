@@ -44,7 +44,7 @@ using parse_tree_ptr = std::unique_ptr<tao::pegtl::parse_tree::node>;
  * (a) an ahead-of-time compiled query plan of connected query operator 
  *     implementations (instances of the class qop_ptr) that can be
  *     executed or
- * (b) an intermediate plan consisting of algebra_optr instances that
+ * (b) an intermediate plan consisting of qop_ptr instances that
  *     is used to generate IR code for LLVM.
  */
 class queryc {
@@ -61,17 +61,17 @@ public:
    * Parses the given query string and construct a plan
    * for the code compiler.
    */
-  algebra_optr compile_to_plan(const std::string &query);
+  qop_ptr compile_to_plan(const std::string &query);
 
   /**
    * TODO
    */
-  algebra_optr ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent);
+  qop_ptr ast_to_algoptr(ast_op_ptr &ast, qop_ptr parent);
 
   /**
    * Executes the given query plan.
    */
-  void exec_plan(algebra_optr &plan, graph_db_ptr &gdb);
+  void exec_plan(qop_ptr &plan, graph_db_ptr &gdb);
 #endif
   /**
    *
@@ -176,7 +176,7 @@ private:
   }
 
 #ifdef USE_LLVM
-  std::map<std::string, algebra_optr> query_plans_;
+  std::map<std::string, qop_ptr> query_plans_;
 #else
   std::map<std::string, query> query_plan_;
 #endif

@@ -3,10 +3,10 @@
 /**
  * Generates code for the expand operator
  */ 
-void codegen_inline_visitor::visit(std::shared_ptr<expand_op> op) {
+void codegen_inline_visitor::visit(std::shared_ptr<expand> op) {
     // get the id of the appropriate expand operation (to or from rship)
     unsigned exp_id;
-    switch (op->exp_) {
+    switch (op->dir_) {
         case EXPAND::OUT:
             exp_id = 3;
             break;
@@ -14,7 +14,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<expand_op> op) {
             exp_id = 2;
             break;
     }
-    op->name_ = "";
 
     // create the basic blocks of the expand operator
     BasicBlock *entry = BasicBlock::Create(ctx.getContext(), "expand_entry", cur_pipeline);
@@ -59,17 +58,17 @@ void codegen_inline_visitor::visit(std::shared_ptr<expand_op> op) {
     auto cmp = ctx.getBuilder().CreateICmpEQ(null_node, cmp_node);
 
     // branch to different positions, when node label is given
-    if(op->label_.empty())
+    if(op->label.empty())
         ctx.getBuilder().CreateCondBr(cmp, null, consume);
     else {
         //label_code = ctx.extract_arg_label(op->op_id_, gdb, queryArgs);
         auto args = cur_pipeline->args().begin()+1;
-        label_code = ctx.extract_arg_label(op->op_id_, g, args);
+        label_code = ctx.extract_arg_label(op->operator_id_, g, args);
         ctx.getBuilder().CreateCondBr(cmp, null, check_label);
     }
 
     // node label is given
-    if(!op->label_.empty())
+    if(!op->label.empty())
     {
         ctx.getBuilder().SetInsertPoint(check_label);
         {
@@ -80,16 +79,16 @@ void codegen_inline_visitor::visit(std::shared_ptr<expand_op> op) {
             // branch to appropriate block
             ctx.getBuilder().CreateCondBr(cond, consume, null);
         }
-    } else if(!op->labels_.empty()) {        
+    } else if(!op->label.empty()) {        
         FunctionCallee dict_lookup_label = ctx.extern_func("dict_lookup_label");
         ctx.getBuilder().SetInsertPoint(check_label);
-        auto opid = ConstantInt::get(ctx.int64Ty, op->op_id_);
+        auto opid = ConstantInt::get(ctx.int64Ty, op->operator_id_);
             
         std::vector<Value*> label_codes;
         std::vector<BasicBlock*> multi_label_conds;
         auto i = 0u;
         Value *id = opid;
-        for(auto & label : op->labels_) {
+        for(auto & label : op->label) {
             auto str = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(queryArgs, {ctx.LLVM_ZERO, id}));
             label_codes.push_back(ctx.getBuilder().
                                      CreateCall(dict_lookup_label, 
@@ -120,7 +119,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<expand_op> op) {
     {
         if(profiling) {
             t_end = ctx.getBuilder().CreateCall(fadd_now, {});
-            ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+            ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->operator_id_), t_start, t_end});
         }
         reg_query_results.push_back({node, 0});
 

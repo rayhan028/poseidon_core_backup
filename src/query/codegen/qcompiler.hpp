@@ -13,13 +13,13 @@ class base_op;
 class qcompiler;
 
 struct compile_task {
-    compile_task(qcompiler & qeng, PContext &ctx, p_jit &jit, std::shared_ptr<base_op> query);
+    compile_task(qcompiler & qeng, PContext &ctx, p_jit &jit, qop_ptr query);
 
     void operator()();
 
     PContext &ctx_;
     p_jit &jit_;
-    std::shared_ptr<base_op> query_;
+    qop_ptr query_;
     qcompiler &qeng_;
 };
 
@@ -67,20 +67,14 @@ public:
     ~qcompiler();
 
     /**
-     * add compiles queries into machine code 
-     */
-    void add(query_set queries) override {}
-    void add(std::vector<std::shared_ptr<base_op>> queries) override;
-
-    /**
      * exec executes compiled queries 
      */
-    void exec() override;
+    void execute(query_set &queries) override;
 
     /**
      * generate compiles a query into machine code. 
      */
-    void generate(std::shared_ptr<base_op> query, bool parallel = true);
+    void generate(qop_ptr query, bool parallel = true);
 
     /**
      * run executes the compiled query with the given arguments 
@@ -94,14 +88,14 @@ public:
 
     static std::unique_ptr<p_jit> initializeJitCompiler();
 private:
-    void extract_arg(std::shared_ptr<base_op> op);
+    void extract_arg(qop_ptr op);
 
     PContext ctx_;
     std::unique_ptr<p_jit> jit_;
     std::thread compile_th;
 
     transaction_ptr cur_tx_;
-    std::shared_ptr<base_op> cur_query_;
+    qop_ptr cur_query_;
     arg_builder query_args;
     unsigned arg_counter;
 

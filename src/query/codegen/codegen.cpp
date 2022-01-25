@@ -110,6 +110,7 @@ AllocaInst *codegen_inline_visitor::insert_alloca(Type *ty) {
     return alloc;
 }
 
+/*
 void codegen_inline_visitor::visit(std::shared_ptr<store_op> op) {
     auto obtain_mat_tuple = ctx.extern_func("obtain_mat_tuple");
     auto mat_node = ctx.extern_func("mat_node");
@@ -140,4 +141,4 @@ void codegen_inline_visitor::visit(std::shared_ptr<store_op> op) {
 
     ctx.getBuilder().CreateCall(persist, {gdb, tp});
     prev_bb = store_entry;
-}
+}*/

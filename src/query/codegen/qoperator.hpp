@@ -68,29 +68,6 @@ public:
 using algebra_optr = std::shared_ptr<base_op>;
 using algebra_optr_list = std::vector<algebra_optr>;
 
-
-enum class qop_type {
-    none,
-    any,
-    scan,
-    project,
-    filter,
-    foreach_rship,
-    expand,
-    cross_join,
-    left_join,
-    hash_join,
-    nest_loop_join,
-    sort,
-    limit,
-    collect,
-    create,
-    group,
-    aggr,
-    store,
-    end
-};
-
 enum class create_type {
     node,
     rship
@@ -206,7 +183,6 @@ inline algebra_optr ToRships(std::string label, algebra_optr op) {
     std::pair<int, int> p = {};
     return std::make_shared<foreach_rship_op>(dir, p, label, op);
 }
-
 
 struct pr_expr {
     enum PROJECTION_TYPE {
@@ -403,7 +379,7 @@ public:
     bool print_on_collect_;
 };
 
-inline algebra_optr Collect(bool print = false) { return std::make_shared<collect_op>(print); }
+//inline algebra_optr Collect(bool print = false) { return std::make_shared<collect_op>(print); }
 inline algebra_optr Print() { return std::make_shared<collect_op>(true); }
 
 

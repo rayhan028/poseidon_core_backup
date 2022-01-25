@@ -3,8 +3,7 @@
 /**
  * Generates code for the limit operator
  */ 
-void codegen_inline_visitor::visit(std::shared_ptr<limit_op> op) {
-    op->name_ = "";
+void codegen_inline_visitor::visit(std::shared_ptr<limit_result> op) {
     BasicBlock *limit = BasicBlock::Create(ctx.getContext(), "limit_entry", main_function);
     BasicBlock *limit_reached = BasicBlock::Create(ctx.getContext(), "limit_entry", main_function);
     BasicBlock *limit_cont = BasicBlock::Create(ctx.getContext(), "limit_entry", main_function);
@@ -24,7 +23,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<limit_op> op) {
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
 
     // get the given limit
-    auto res_limit = ConstantInt::get(ctx.int64Ty, op->limit_);
+    auto res_limit = ConstantInt::get(ctx.int64Ty, op->num_);
 
     // load the value from the global result counter
     auto cur_cnt = ctx.getBuilder().CreateLoad(res_counter);
@@ -38,7 +37,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<limit_op> op) {
 
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
-        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->operator_id_), t_start, t_end});
     }
 
     ctx.getBuilder().CreateBr(scan_nodes_end);
@@ -50,7 +49,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<limit_op> op) {
     ctx.getBuilder().CreateStore(incr, res_counter);
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
-        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->operator_id_), t_start, t_end});
     }
     prev_bb = limit_cont;
 

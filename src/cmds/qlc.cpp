@@ -163,7 +163,7 @@ void compile_query(graph_db_ptr &gdb, const std::string &qstr) {
 
   auto start_qp = std::chrono::steady_clock::now();
   spdlog::debug("generate query code");     
-  queryEngine.generate(plan, false);
+  //queryEngine.generate(plan, false);
   auto end_qc = std::chrono::steady_clock::now();
   
   spdlog::debug("execute query code");     

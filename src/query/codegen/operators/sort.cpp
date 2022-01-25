@@ -4,9 +4,8 @@
  * Generate code for the sort operator
  * For now it execute the given sorting predicate
  */ 
-void codegen_inline_visitor::visit(std::shared_ptr<sort_op> op) {
-    op->name_ = "sort_finish_"+qid_;
-    Function *df_finish = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, op->name_,
+void codegen_inline_visitor::visit(std::shared_ptr<order_by> op) {
+    Function *df_finish = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, "order_by",
                                            ctx.getModule());
 
     BasicBlock *sort_entry = BasicBlock::Create(ctx.getContext(), "entry", main_finish);
@@ -33,7 +32,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<sort_op> op) {
 
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
-        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->operator_id_), t_start, t_end});
     }
     df_finish_bb = sort_entry;
     //ctx.getBuilder().CreateRetVoid();

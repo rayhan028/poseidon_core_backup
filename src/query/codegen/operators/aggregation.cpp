@@ -3,6 +3,8 @@
 /**
  * Generates code for aggr operations
  */
+
+/*
 void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
     op->name_ = "";
     auto init_grp_aggr = ctx.extern_func("init_grp_aggr");
@@ -124,4 +126,4 @@ void codegen_inline_visitor::visit(std::shared_ptr<aggr_op> op) {
     //df_finish = aggr_finish;
     //main_function = main_finish;
     cur_pipeline = main_finish;
-}
+}*/

@@ -147,6 +147,12 @@ query &query::property(const std::string &key,
                    std::bind(&is_property::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::filter(const expr &ex) {
+  auto op = std::make_shared<filter_tuple>(ex);
+  return append_op(op,
+                   std::bind(&filter_tuple::process, op.get(), ph::_1, ph::_2));
+}
+
 query &query::to_node(const std::string &label) {
   auto op = std::make_shared<get_to_node>();
   append_op(op, std::bind(&get_to_node::process, op.get(), ph::_1, ph::_2));
@@ -230,6 +236,12 @@ query &query::project(const projection::expr_list &exprs) {
   auto op = std::make_shared<projection>(exprs);
   return append_op(op,
                    std::bind(&projection::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::project(std::vector<projection_expr> prexpr) {
+  auto op = std::make_shared<projection>(prexpr);
+  return append_op(op,
+                   std::bind(&projection::process, op.get(), ph::_1, ph::_2));  
 }
 
 query &query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {

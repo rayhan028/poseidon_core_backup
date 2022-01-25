@@ -3,9 +3,8 @@
 /**
  * Generates code for the collection
  */ 
-void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
-    cur_size = op->op_id_;
-    op->name_ = "";
+void codegen_inline_visitor::visit(std::shared_ptr<collect_result> op) {
+    cur_size = op->operator_id_;
 
     // obtain all relevant FunctionCallees
     auto mat_reg = ctx.extern_func("mat_reg_value");
@@ -44,7 +43,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
     if(profiling) 
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
 
-    auto print_tuple = ConstantInt::get(ctx.boolTy, op->print_on_collect_);
+    auto print_on_collect = 0;
+    auto print_tuple = ConstantInt::get(ctx.boolTy, print_on_collect);
 
     // create a single materialization call for each register value
     // each register will be materialized into thread local storage
@@ -64,7 +64,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_op> op) {
 
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
-        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->operator_id_), t_start, t_end});
     }
     
     ctx.getBuilder().CreateBr(main_return);

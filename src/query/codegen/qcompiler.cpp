@@ -73,7 +73,7 @@ qcompiler::~qcompiler() {
         compile_th.join();
 }
 
-void qcompiler::generate(std::shared_ptr<base_op> query, bool parallel) {
+void qcompiler::generate(qop_ptr query, bool parallel) {
     parallel_ = parallel;
     cur_query_ = query;
     compile_th = std::thread(compile_task(*this, ctx_, *jit_.get(), query));
@@ -95,24 +95,27 @@ void qcompiler::cleanup() {
 }
 
 joiner * last_joiner;
-void qcompiler::extract_arg(std::shared_ptr<base_op> op) {
+void qcompiler::extract_arg(qop_ptr op) {
     switch(op->type_) {
         case qop_type::scan: {
-            auto s_op = std::dynamic_pointer_cast<scan_op>(op);
-            query_args.arg(arg_counter++, s_op->label_);
-            if(s_op->indexed_) {
-                    //TODO: 2nd index argument
-            }
+            auto s_op = std::dynamic_pointer_cast<scan_nodes>(op);
+            query_args.arg(arg_counter++, s_op->label);
             break;
         }
         case qop_type::foreach_rship: {
-            auto fe_op = std::dynamic_pointer_cast<foreach_rship_op>(op);
-            query_args.arg(arg_counter++, fe_op->label_);
+            auto fe_op = std::dynamic_pointer_cast<foreach_relationship>(op);
+            query_args.arg(arg_counter++, fe_op->label);
             break;
         }
         case qop_type::expand: {
-            auto exp_op = std::dynamic_pointer_cast<expand_op>(op);
-            query_args.arg(arg_counter++, exp_op->label_);
+            auto exp_op = std::dynamic_pointer_cast<expand>(op);
+            if(!exp_op->label.empty())
+                query_args.arg(arg_counter++, exp_op->label);
+            break;
+        }
+        case qop_type::node_has_label: {
+            auto hl_op = std::dynamic_pointer_cast<node_has_label>(op);
+            query_args.arg(arg_counter++, hl_op->label);
             break;
         }
         case qop_type::filter: {
@@ -165,9 +168,9 @@ void qcompiler::run(result_set * rs, arg_builder & args, bool cleanup_query) {
     if(parallel_) {
         unsigned int op_start = 1;
         arg_builder args;
-        interprete_visitor iv(graph_, args, rs);
-        cur_query_->codegen(iv, op_start, true);
-        iv.start();
+        //interprete_visitor iv(graph_, args, rs);
+        //cur_query_->codegen(iv, op_start, true);
+        //iv.start();
         compile_th.join();
     }
     
@@ -213,7 +216,7 @@ void qcompiler::run(result_set * rs, arg_builder & args, bool cleanup_query) {
 void qcompiler::run(result_set * rs) {
     auto curop = cur_query_;
     std::vector<algebra_optr> recur; 
-    while(!curop->inputs_.empty() || !recur.empty()) {
+/*    while(!curop->inputs_.empty() || !recur.empty()) {
         extract_arg(curop);
         if(curop->inputs_.empty()) {
             if(!recur.empty()) {
@@ -230,7 +233,7 @@ void qcompiler::run(result_set * rs) {
                 curop = curop->inputs_[0];
         }
     }
-    
+*/    
     run(rs, query_args);
 }
 
@@ -261,9 +264,9 @@ result_set rs2;
 void qcompiler::run_parallel(result_set * rs, arg_builder & args, unsigned thread_num) {
     bool interprete_started = false;
     scan_task::callee_ = scan_task::scan;
-    interprete_visitor iv(graph_, args, &rs2);
+    //interprete_visitor iv(graph_, args, &rs2);
     auto start = 1u;
-    cur_query_->codegen(iv, start, false);
+    //cur_query_->codegen(iv, start, false);
 
     auto pipeline_num = 1;
 
@@ -271,7 +274,7 @@ void qcompiler::run_parallel(result_set * rs, arg_builder & args, unsigned threa
         auto ctx = current_transaction_;
         std::thread interpreter_thread([&]{
             current_transaction_ = ctx;
-            iv.start();
+            //iv.start();
         });
         std::thread t1([&] {
             if(compile_th.joinable())
@@ -290,9 +293,9 @@ void qcompiler::run_parallel(result_set * rs, arg_builder & args, unsigned threa
             t1.join();
         if(interpreter_thread.joinable())
            interpreter_thread.join();
-        if(has_join(cur_query_) && (pipeline != pipeline_num-1)) {
-            graph_->parallel_nodes(consumer_dummy);
-        }
+        //if(has_join(cur_query_) && (pipeline != pipeline_num-1)) {
+        //    graph_->parallel_nodes(consumer_dummy);
+        //}
     }
 }
 
@@ -311,7 +314,7 @@ void qcompiler::finish(result_set *rs, arg_builder & args) {
     }
 }
 
-compile_task::compile_task(qcompiler & qeng, PContext &ctx, p_jit &jit, std::shared_ptr<base_op> query) 
+compile_task::compile_task(qcompiler & qeng, PContext &ctx, p_jit &jit, qop_ptr query) 
     : ctx_(ctx), jit_(jit), query_(query), qeng_(qeng) {}
 
 int query_cnt = 0;
@@ -322,15 +325,15 @@ void compile_task::operator()() {
     unsigned int op_start = 1;
     unsigned int cg_start = 1;
     query_->codegen(qd, op_start, true);
-    
+    query_->dump(std::cout);
+
     auto internal_qid = qd.qid;//+std::to_string(query_cnt);
     query_cnt++;
-
+    
     //1. generate LLVM IR code & compile into machine code
     bool inlined = true;
     codegen_inline_visitor cv(ctx_, internal_qid);
     query_->codegen(cv, cg_start, inlined);
-
     //2. add LLVM module with IR to jit for compilation
     ctx_.getModule().setModuleIdentifier(internal_qid);
     jit_.get_exit()(jit_.addModule(ctx_.moveModule()));
@@ -338,7 +341,7 @@ void compile_task::operator()() {
     ctx_.createNewModule();
     ctx_.getModule().setDataLayout(jit_.getDataLayout());
     
-    //3. extract all operator names from query and generate type vec
+    //3. extract all operator names from query 
     //first function name == scan => start function
     auto query_id = 0;
     auto cur_op = query_;
@@ -368,23 +371,13 @@ void compile_task::operator()() {
             }
         }       
     }
-    
 }
 
-void qcompiler::add(std::vector<std::shared_ptr<base_op>> queries) {
-    // transform query into algebra_optr
-    // TODO: for all given queries
-
-    // extract query args
-    // TODO: for all given queries
-    extract_arg(queries.front());
-
-
-    // compile query
-    generate(queries.front(), false);
-}
-
-void qcompiler::exec() {
+void qcompiler::execute(query_set &queries) {
     result_set rs;
-    run(&rs);
+    for(int i = 0; i < queries.size(); i++) {
+        auto p = queries.at(i).plan_head();
+        generate(p, false);
+        run(&rs);
+    }
 }

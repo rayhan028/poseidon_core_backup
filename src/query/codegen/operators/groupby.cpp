@@ -3,10 +3,7 @@
 /**
  * Generates code for the group_by operation
  */
-void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
-    
-    op->name_ = "";
-
+void codegen_inline_visitor::visit(std::shared_ptr<group_by> op) {
     if(pipelined_finish) {
         //main_function = Function::Create(ctx.startFctTy, Function::ExternalLinkage, query_id_str, ctx.getModule());
         main_finish   = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, "finish_"+query_id_str, ctx.getModule());
@@ -43,7 +40,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
     auto qarg = cur_pipeline->args().begin() + 1;
     auto g = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(qctx, 0));
 
-    auto opid = ConstantInt::get(ctx.int64Ty, op->op_id_);
+    auto opid = ConstantInt::get(ctx.int64Ty, op->operator_id_);
     auto arg_pos = ConstantInt::get(ctx.int64Ty, 3);
     //auto qargs = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(qctx, 3));
     
@@ -101,7 +98,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_op> op) {
     
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
-        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->operator_id_), t_start, t_end});
     }
 
     ctx.getBuilder().CreateBr(main_return);

@@ -10,28 +10,13 @@
 #include <storage/nodes.hpp>
 #include <defs.hpp>
 #include <iostream>
-#include <qop.hpp>
+#include "qop.hpp"
 
 #include <boost/thread/barrier.hpp>
 #include <boost/hana.hpp>
 
 #include "proc/joiner.hpp"
 #include "proc/grouper.hpp"
-
-/**
- * Tuple result types
- * TODO: consistent type id mapping for all classes
- */
-enum class FTYPE {
-    INT = 0,
-    DOUBLE = 1,
-    STRING = 2,
-    DATE = 3,
-    TIME = 4,
-    BOOLEAN = 5,
-    UINT64 = 6,
-    NONE = 7
-};
 
 /**
  * Thread local storage to store the Projection of a tuple. These values are

@@ -15,16 +15,9 @@ public:
     qexmode() = default;
 
     /*
-        The method add should contain the functionality for pre-processing of the queries.
-        E.g. transforming the queries into another format.
-    */
-    virtual void add(query_set queries) = 0;
-    virtual void add(std::vector<std::shared_ptr<base_op>> queries) = 0;
-
-    /*
         The method exec should contain the functionality for the actual execution of the query.
     */
-    virtual void exec() = 0;
+    virtual void execute(query_set &queries) = 0;
 
 };
 

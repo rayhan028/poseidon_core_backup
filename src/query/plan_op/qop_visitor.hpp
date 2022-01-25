@@ -52,80 +52,81 @@ class qop_visitor {
 public:
     virtual ~qop_visitor() = default;
 
-    virtual void visit(std::shared_ptr<scan_nodes> op) = 0;
+    virtual void visit(std::shared_ptr<scan_nodes> op) { }
 
-    virtual void visit(std::shared_ptr<foreach_relationship> op) = 0;
+    virtual void visit(std::shared_ptr<index_scan> op) { }
 
-    virtual void visit(std::shared_ptr<is_property> op) = 0;
+    virtual void visit(std::shared_ptr<foreach_relationship> op) { }
 
-    virtual void visit(std::shared_ptr<node_has_label> op) = 0;
+    virtual void visit(std::shared_ptr<is_property> op) { }
+
+    virtual void visit(std::shared_ptr<node_has_label> op) { }
     
-    virtual void visit(std::shared_ptr<expand> op) = 0;
+    virtual void visit(std::shared_ptr<expand> op) { }
 
-    virtual void visit(std::shared_ptr<printer> op) = 0;
+    virtual void visit(std::shared_ptr<printer> op) { }
 
-    virtual void visit(std::shared_ptr<limit_result> op) = 0;
+    virtual void visit(std::shared_ptr<limit_result> op) { }
 
-    virtual void visit(std::shared_ptr<nodes_connected> op) = 0;
+    virtual void visit(std::shared_ptr<nodes_connected> op) { }
 
-    virtual void visit(std::shared_ptr<order_by> op) = 0;
+    virtual void visit(std::shared_ptr<order_by> op) { }
 
-    virtual void visit(std::shared_ptr<group_by> op) = 0;
+    virtual void visit(std::shared_ptr<group_by> op) { }
 
-    virtual void visit(std::shared_ptr<distinct_tuples> op) = 0;
+    virtual void visit(std::shared_ptr<distinct_tuples> op) { }
 
-    virtual void visit(std::shared_ptr<filter_tuple> op) = 0;
+    virtual void visit(std::shared_ptr<filter_tuple> op) { }
 
-    virtual void visit(std::shared_ptr<qr_tuple_append> op) = 0;
+    virtual void visit(std::shared_ptr<qr_tuple_append> op) { }
 
-    virtual void visit(std::shared_ptr<union_all_qres> op) = 0;
+    virtual void visit(std::shared_ptr<union_all_qres> op) { }
 
-    virtual void visit(std::shared_ptr<count_result> op) = 0;
+    virtual void visit(std::shared_ptr<count_result> op) { }
 
-    virtual void visit(std::shared_ptr<shortest_path_opr> op) = 0;
+    virtual void visit(std::shared_ptr<shortest_path_opr> op) { }
 
-    virtual void visit(std::shared_ptr<weighted_shortest_path_opr> op) = 0;
+    virtual void visit(std::shared_ptr<weighted_shortest_path_opr> op) { }
 
-    virtual void visit(std::shared_ptr<k_weighted_shortest_path_opr> op) = 0;
+    virtual void visit(std::shared_ptr<k_weighted_shortest_path_opr> op) { }
 
-    virtual void visit(std::shared_ptr<csr_data> op) = 0;
+    virtual void visit(std::shared_ptr<csr_data> op) { }
 
-    virtual void visit(std::shared_ptr<collect_result> op) = 0;
+    virtual void visit(std::shared_ptr<collect_result> op) { }
 
-    virtual void visit(std::shared_ptr<end_pipeline> op) = 0;
+    virtual void visit(std::shared_ptr<end_pipeline> op) { }
 
-    virtual void visit(std::shared_ptr<projection> op) = 0;
+    virtual void visit(std::shared_ptr<projection> op) { }
 
-    virtual void visit(std::shared_ptr<cross_join> op) = 0;
+    virtual void visit(std::shared_ptr<cross_join> op) { }
 
-    virtual void visit(std::shared_ptr<nested_loop_join> op) = 0;
+    virtual void visit(std::shared_ptr<nested_loop_join> op) { }
 
-    virtual void visit(std::shared_ptr<hash_join> op) = 0;
+    virtual void visit(std::shared_ptr<hash_join> op) { }
 
-    virtual void visit(std::shared_ptr<left_outerjoin> op) = 0;
+    virtual void visit(std::shared_ptr<left_outerjoin> op) { }
 
-    virtual void visit(std::shared_ptr<left_outerjoin_on_node> op) = 0;
+    virtual void visit(std::shared_ptr<left_outerjoin_on_node> op) { }
 
-    virtual void visit(std::shared_ptr<rship_join> op) = 0;
+    virtual void visit(std::shared_ptr<rship_join> op) { }
 
-    virtual void visit(std::shared_ptr<left_outerjoin_on_rship> op) = 0;
+    virtual void visit(std::shared_ptr<left_outerjoin_on_rship> op) { }
 
-    virtual void visit(std::shared_ptr<create_node> op) = 0;
+    virtual void visit(std::shared_ptr<create_node> op) { }
 
-    virtual void visit(std::shared_ptr<create_relationship> op) = 0;
+    virtual void visit(std::shared_ptr<create_relationship> op) { }
 
-    virtual void visit(std::shared_ptr<create_rship_on_join> op) = 0;
+    virtual void visit(std::shared_ptr<create_rship_on_join> op) { }
 
-    virtual void visit(std::shared_ptr<update_node> op) = 0;
+    virtual void visit(std::shared_ptr<update_node> op) { }
 
-    virtual void visit(std::shared_ptr<detach_node> op) = 0;
+    virtual void visit(std::shared_ptr<detach_node> op) { }
 
-    virtual void visit(std::shared_ptr<remove_node> op) = 0;
+    virtual void visit(std::shared_ptr<remove_node> op) { }
 
-    virtual void visit(std::shared_ptr<remove_rship> op) = 0;
+    virtual void visit(std::shared_ptr<remove_rship> op) { }
 /*
     virtual void visit(std::shared_ptr<project> op) = 0;
-
 
     virtual void visit(std::shared_ptr<collect_op> op) = 0;
 

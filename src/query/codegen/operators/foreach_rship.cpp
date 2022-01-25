@@ -3,9 +3,7 @@
 /**
  * Generates code for the foreach relationship operator.
  */
-void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
-    op->name_ = "";
-    
+void codegen_inline_visitor::visit(std::shared_ptr<foreach_relationship> op) {
     // obtain the relationship field ids from the direction
     int node_rship_idx = 2;
     int next_rship_idx = 4;
@@ -40,7 +38,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
 
     // basic blocks for the fev operator
     BasicBlock *loop_head = BasicBlock::Create(ctx.getContext(), "fev_loop_head", cur_pipeline);
-    BasicBlock *loop_body = BasicBlock::Create(ctx.getContext(), "fev_loop_body", cur_pipeline);
+    //BasicBlock *loop_body = BasicBlock::Create(ctx.getContext(), "fev_loop_body", cur_pipeline);
     //BasicBlock *loop_next = BasicBlock::Create(ctx.getContext(), "fev_loop_next", main_function);
 
     // link the entry point with the block of the previous operator
@@ -54,17 +52,17 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     Value *node = nullptr;
 
     // get the previous tuple result
-    if(op->node_pos_ == std::numeric_limits<int>::max())
+    if(op->npos == std::numeric_limits<int>::max())
         node = reg_query_results.back().reg_val;
     else
-        node = reg_query_results.at(op->node_pos_).reg_val;
+        node = reg_query_results.at(op->npos).reg_val;
 
     auto UNKNOWN_REL_ID = ConstantInt::get(ctx.int64Ty,
                                            std::numeric_limits<int64_t>::max()); // TODO: UNKNOWN VALUE = std::numeric_limits<int64_t>::max()
     auto nr = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
     ctx.getBuilder().CreateStore(UNKNOWN_REL_ID, nr);
 
-    GlobalVariable *label = ctx.getBuilder().CreateGlobalString(StringRef(op->label_), "rship_label");
+    GlobalVariable *label = ctx.getBuilder().CreateGlobalString(StringRef(op->label), "rship_label");
 
     auto strPtr = ctx.getBuilder().CreateBitCast(label, ctx.int8PtrTy);
     auto stra = ctx.getBuilder().CreateAlloca(ctx.int8PtrTy);
@@ -76,7 +74,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     auto qctx = cur_pipeline->args().begin();
     auto g = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(qctx, 0));
     auto args = cur_pipeline->args().begin()+1;
-    auto label_code = ctx.extract_arg_label(op->op_id_, g, args);
+    auto label_code = ctx.extract_arg_label(op->operator_id_, g, args);
 
     // extract the first relationship id from the node
     auto node_rship_id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(node, node_rship_idx));
@@ -87,7 +85,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
     Value *rship;
 
     // generate code depending on variable traversion or single
-    if(op->is_variable()) {
+/*    if(op->is_variable()) {
         // for variable traversion
         // transform min and max hop into constants
         auto min_hop = ConstantInt::get(ctx.int64Ty, op->hops_.first);
@@ -111,41 +109,41 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
         // branch to the next operator
         ctx.getBuilder().CreateBr(consumeBB);
 
-    } else {
+    } else {*/
         // iterate through the relationship list of the node
-        auto loop_body = ctx.while_loop_condition(cur_pipeline, lhs, nr, PContext::WHILE_COND::LT, foreach_rship_end,
-                                                [&](BasicBlock *, BasicBlock *) {
-                                                    if(profiling)
-                                                        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
+    auto loop_body = ctx.while_loop_condition(cur_pipeline, lhs, nr, PContext::WHILE_COND::LT, foreach_rship_end,
+                                            [&](BasicBlock *, BasicBlock *) {
+                                                if(profiling)
+                                                    t_start = ctx.getBuilder().CreateCall(fadd_now, {});
 
-                                                    // extract relationship id from alloca
-                                                    auto lhsi = ctx.getBuilder().CreateLoad(lhs);
+                                                // extract relationship id from alloca
+                                                auto lhsi = ctx.getBuilder().CreateLoad(lhs);
 
-                                                    // obtain the relationship through an extern function call
-                                                    rship = ctx.getBuilder().CreateCall(rship_by_id, {g, lhsi});
+                                                // obtain the relationship through an extern function call
+                                                rship = ctx.getBuilder().CreateCall(rship_by_id, {g, lhsi});
 
-                                                    // check for the given label
-                                                    auto consume_cond = ctx.rship_cmp_label(rship, label_code);
+                                                // check for the given label
+                                                auto consume_cond = ctx.rship_cmp_label(rship, label_code);
 
-                                                    // branch if relationship label is equal to the given label
-                                                    ctx.getBuilder().CreateCondBr(consume_cond, consumeBB, nextBB);
-                                                });
+                                                // branch if relationship label is equal to the given label
+                                                ctx.getBuilder().CreateCondBr(consume_cond, consumeBB, nextBB);
+                                            });
 
-        // obtain the next relationship 
-        ctx.getBuilder().SetInsertPoint(nextBB);
-        {
-            auto next_rship = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(rship, next_rship_idx));
-            ctx.getBuilder().CreateStore(next_rship, lhs);
-            ctx.getBuilder().CreateBr(loop_body);
-        }
+    // obtain the next relationship 
+    ctx.getBuilder().SetInsertPoint(nextBB);
+    {
+        auto next_rship = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(rship, next_rship_idx));
+        ctx.getBuilder().CreateStore(next_rship, lhs);
+        ctx.getBuilder().CreateBr(loop_body);
     }
+//    }
 
     // consume the given relationship
     ctx.getBuilder().SetInsertPoint(consumeBB);
     {
         if(profiling) {
             t_end = ctx.getBuilder().CreateCall(fadd_now, {});
-            ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+            ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->operator_id_), t_start, t_end});
         }
 
         reg_query_results.push_back({rship, 1});
@@ -159,11 +157,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<foreach_rship_op> op) {
         ctx.getBuilder().CreateBr(main_return);
     }
 
-    if(op->is_variable()) {
+    /*if(op->is_variable()) {
         main_return = loop_head;
-    } else {
+    } else {*/
         // set backflow to the iteration loop
-        main_return = nextBB;
-    }
+    main_return = nextBB;
+    //}
 
 }

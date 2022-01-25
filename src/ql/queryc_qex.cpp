@@ -89,7 +89,7 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
     {
       auto ex = ast->get_param<expr>(0);
       // auto qp = std::make_shared<filter_tuple>(ex, [&](auto &p, expr &ex) { return interpret_expression(gdb, ex, p); });
-      auto qp = std::make_shared<filter_tuple>(nullptr);
+      auto qp = std::make_shared<filter_tuple>(ex);
       qop = qop_append(res2.first ? res2.second : res.second, qp);
     }
       break;
@@ -108,11 +108,11 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
       break;
     case ast_op::expand:
     {
-      if (ast->get_param<std::string>(0) == "IN") {
+      if (ast->get_param<std::string>(0) == "OUT" || ast->get_param<std::string>(0) == "TO") {
         auto qp = std::make_shared<get_to_node>();
         qop = qop_append(res2.first ? res2.second : res.second, qp);
       }
-      else if (ast->get_param<std::string>(0) == "OUT") {
+      else if (ast->get_param<std::string>(0) == "IN" || ast->get_param<std::string>(0) == "FROM") {
         auto qp = std::make_shared<get_from_node>();
         qop = qop_append(res2.first ? res2.second : res.second, qp);
       }
@@ -123,11 +123,32 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
     }
       break;
     case ast_op::project:
-      {
-      // TODO: projection expression
-      auto qp = std::make_shared<projection>(projection::expr_list());
-      qop = qop_append(res2.first ? res2.second : res.second, qp);
+    {
+      auto pr_list = ast->get_param<proj_spec_list>(0);
+      std::vector<projection_expr> pr_exprs;
+      
+      for(auto& p : pr_list) {
+        if (p.which() == 0) {
+          auto& pp = boost::get<simple_proj_spec>(p);
+          FTYPE type = FTYPE::INT;
+          if (boost::iequals(pp.ptype, "int")) {
+            type = FTYPE::INT;
+          } else if (boost::iequals(pp.ptype, "string")) {
+            type = FTYPE::STRING;
+          } else if (boost::iequals(pp.ptype, "uint64")) {
+            type = FTYPE::UINT64;
+          } /// TODO: improve type handling
+
+          auto pv_id = parse_tuple_id(pp.pname);
+          auto pv_name = parse_variable_name(pp.pname);
+          pr_exprs.push_back({pv_id, pv_name, type});
+        }
       }
+
+      // TODO: projection expression
+      auto qp = std::make_shared<projection>(pr_exprs);
+      qop = qop_append(res2.first ? res2.second : res.second, qp);
+    }
       break;
     case ast_op::sort:
       break;

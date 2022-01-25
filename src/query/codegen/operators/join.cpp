@@ -55,6 +55,7 @@ void get_rhs_type(std::shared_ptr<base_op>  &qop, std::vector<int> &typv) {
 /**
  * Generate code for the join operator
  */
+/*
 void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     pipelined = true;
     jids.push_back(query_id_inline);
@@ -370,13 +371,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
         main_return = return_handle;
     else 
         main_return = loop_body;
-}
+}*/
 
 /**
  * Generates code for the materialization of the rhs of the join
  */
-void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
-    op->name_ = "";
+void codegen_inline_visitor::visit(std::shared_ptr<end_pipeline> op) {
     //auto join_insert_left = ctx.extern_func("join_insert_left");
 
     auto obtain_mat_tuple = ctx.extern_func("obtain_mat_tuple");
@@ -398,7 +398,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     ctx.getBuilder().CreateBr(bb);
     ctx.getBuilder().SetInsertPoint(bb);
 
-    auto opid = ConstantInt::get(ctx.int64Ty, op->op_id_);
+    auto opid = ConstantInt::get(ctx.int64Ty, op->operator_id_);
     auto qctx_f = main_function->args().begin() + 1;
 
     auto joiner_arg = ctx.getBuilder().CreateBitCast(
@@ -418,6 +418,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
     
     Value *remainder = nullptr;
 
+/*
     if(op->join_op_ == JOIN_OP::NESTED_LOOP) {
         auto n = reg_query_results[op->qr_pos_].reg_val;
         auto id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(n, 1));
@@ -460,7 +461,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_op> op) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
         ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
     }
-
+*/
     ctx.getBuilder().CreateBr(main_return);
 
     ctx.getBuilder().SetInsertPoint(df_finish_bb);

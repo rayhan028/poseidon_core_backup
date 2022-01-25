@@ -3,9 +3,7 @@
 /**
  * Generates code for a projection operator
  */ 
-void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
-    op->name_ = "";
-
+void codegen_inline_visitor::visit(std::shared_ptr<projection> op) {
     // obtain FunctionCallee for apply_pexpr
     //auto apply_pexpr = ctx.extern_func("apply_pexpr");
     auto apply_pexpr_node = ctx.extern_func("apply_pexpr_node");
@@ -35,7 +33,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
     std::vector<QR_VALUE> nqrv;
     for(auto & pe : op->prexpr_) {
         auto r = reg_query_results[pe.id];
-        if(pe.prt == pr_expr::PROJECTION_TYPE::PROPERTY_PR) {
+        if(pe.prt == projection_expr::PROJECTION_TYPE::PROPERTY_PR) {
             if(pe.type == FTYPE::BOOLEAN) {
                 nqrv.push_back(reg_query_results[pe.id]);
             } else {
@@ -57,11 +55,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
                 nqrv.push_back({pv[i], static_cast<int>(pe.type)+2});
 
             }
-        } else if(pe.prt == pr_expr::PROJECTION_TYPE::FORWARD_PR) {
+        } else if(pe.prt == projection_expr::PROJECTION_TYPE::FORWARD_PR) {
             nqrv.push_back({r.reg_val, r.type});
             i++;
             continue;
-        } else if(pe.prt == pr_expr::PROJECTION_TYPE::FUNCTIONAL_VAL) {
+        } else if(pe.prt == projection_expr::PROJECTION_TYPE::FUNCTIONAL_VAL) {
             pe.type = FTYPE::INT;
             auto fc_raw = ConstantInt::get(ctx.int64Ty, (int64_t)pe.int_node_func);
             auto fc_ptr = ctx.getBuilder().CreateIntToPtr(fc_raw, ctx.int64PtrTy);
@@ -71,7 +69,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
             auto i_pr = ctx.getBuilder().CreateCall(fc_ty, fc, {r.reg_val});
             ctx.getBuilder().CreateStore(i_pr, pv[i]);
             nqrv.push_back({pv[i], static_cast<int>(FTYPE::INT)+2});
-        } else if(pe.prt == pr_expr::PROJECTION_TYPE::CONDITIONAL_VAL) {
+        } else if(pe.prt == projection_expr::PROJECTION_TYPE::CONDITIONAL_VAL) {
             std::vector<Value*> prop_exists;
             std::vector<Value*> then_else;
 
@@ -108,7 +106,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<project> op) {
 
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
-        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->operator_id_), t_start, t_end});
     }
 
     // switch old register list with the new one

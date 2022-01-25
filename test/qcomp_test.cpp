@@ -55,106 +55,101 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
 
     SECTION("Transform a scan query into a valid graph algebra expression") {
         std::string scan_query = "NodeScan('Person')";
-        auto op = qlc.compile_to_plan(scan_query);
+        result_set rs;
+        auto op = qlc.generate_qex_plan(graph, scan_query).front().plan_head();
 
         REQUIRE(op->type_ == qop_type::scan);
-
-        auto scanop = std::dynamic_pointer_cast<scan_op>(op);
-        REQUIRE(boost::equals(scanop->label_, "Person"));
-
-        REQUIRE(op->inputs_[0]->name_ == "Collect");
-        REQUIRE(op->inputs_[0]->type_ == qop_type::collect);
+        auto scanop = std::dynamic_pointer_cast<scan_nodes>(op);
+        REQUIRE(boost::equals(scanop->label, "Person"));
     }
 
     SECTION("Transform a ForeachRship FROM query into a valid graph algebra expression") {
         std::string scan_query = "ForeachRelationship(FROM, ':HAS_READ', NodeScan('Person'))";
-        auto op = qlc.compile_to_plan(scan_query);
+        auto op = qlc.generate_qex_plan(graph, scan_query).front().plan_head();
 
         REQUIRE(op->type_ == qop_type::scan);
         
-        auto fe = op->inputs_[0];
+        auto fe = op->subscriber();
         REQUIRE(fe->type_ == qop_type::foreach_rship);
 
-        auto fe_op = std::dynamic_pointer_cast<foreach_rship_op>(fe);
-        REQUIRE(boost::equals(fe_op->label_, ":HAS_READ"));
+        auto fe_op = std::dynamic_pointer_cast<foreach_relationship>(fe);
+        REQUIRE(boost::equals(fe_op->label, "':HAS_READ'"));
         REQUIRE(fe_op->dir_ == RSHIP_DIR::FROM);
-
-        REQUIRE(fe->inputs_[0]->type_ == qop_type::collect);
     }
 
     SECTION("Transform a ForeachRship TO query into a valid graph algebra expression") {
         std::string scan_query = "ForeachRelationship(TO, ':HAS_READ', NodeScan('Person'))";
-        auto op = qlc.compile_to_plan(scan_query);
+        auto op = qlc.generate_qex_plan(graph, scan_query).front().plan_head();
 
         REQUIRE(op->type_ == qop_type::scan);
         
-        auto fe = op->inputs_[0];
+        auto fe = op->subscriber();
         REQUIRE(fe->type_ == qop_type::foreach_rship);
 
-        auto fe_op = std::dynamic_pointer_cast<foreach_rship_op>(fe);
-        REQUIRE(boost::equals(fe_op->label_, ":HAS_READ"));
+        auto fe_op = std::dynamic_pointer_cast<foreach_relationship>(fe);
+        REQUIRE(boost::equals(fe_op->label, "':HAS_READ'"));
         REQUIRE(fe_op->dir_ == RSHIP_DIR::TO);
-
-        REQUIRE(fe->inputs_[0]->type_ == qop_type::collect);
     }
 
     SECTION("Transform a ExpandIn query into a valid graph algebra expression") {
-        std::string scan_query = "Expand(IN, 'Book', ForeachRelationship('FROM', ':HAS_READ', NodeScan('Person')))";
-        auto op = qlc.compile_to_plan(scan_query);
+        std::string scan_query = "Expand(IN, 'Book', ForeachRelationship(FROM, ':HAS_READ', NodeScan('Person')))";
+        auto op = qlc.generate_qex_plan(graph, scan_query).front().plan_head();
 
         REQUIRE(op->type_ == qop_type::scan);
         
-        auto fe = op->inputs_[0];
+        auto fe = op->subscriber();
         REQUIRE(fe->type_ == qop_type::foreach_rship);
 
-        auto fe_op = std::dynamic_pointer_cast<foreach_rship_op>(fe);
-        REQUIRE(boost::equals(fe_op->label_, ":HAS_READ"));
+        auto fe_op = std::dynamic_pointer_cast<foreach_relationship>(fe);
+        REQUIRE(boost::equals(fe_op->label, "':HAS_READ'"));
         REQUIRE(fe_op->dir_ == RSHIP_DIR::FROM);
 
-        auto exp = fe->inputs_[0];
+        auto exp = fe->subscriber();
         REQUIRE(exp->type_ == qop_type::expand);
 
-        auto exp_op = std::dynamic_pointer_cast<expand_op>(exp);
-        REQUIRE(boost::equals(exp_op->label_, "Book"));
-        REQUIRE(exp_op->exp_ == EXPAND::IN);
+        auto exp_op = std::dynamic_pointer_cast<expand>(exp);
+        REQUIRE(exp_op->dir_ == EXPAND::IN);
 
-        REQUIRE(exp->inputs_[0]->type_ == qop_type::collect);
+        auto hl = exp_op->subscriber();
+        auto hl_op = std::dynamic_pointer_cast<node_has_label>(hl);
+        REQUIRE(hl_op->label == "'Book'");
     }
 
     SECTION("Transform a ExpandOut query into a valid graph algebra expression") {
         std::string scan_query = "Expand(OUT, 'Book', ForeachRelationship(FROM, ':HAS_READ', NodeScan('Person')))";
-        auto op = qlc.compile_to_plan(scan_query);
+        auto op = qlc.generate_qex_plan(graph, scan_query).front().plan_head();
 
         REQUIRE(op->type_ == qop_type::scan);
         
-        auto fe = op->inputs_[0];
+        auto fe = op->subscriber();
         REQUIRE(fe->type_ == qop_type::foreach_rship);
 
-        auto fe_op = std::dynamic_pointer_cast<foreach_rship_op>(fe);
-        REQUIRE(boost::equals(fe_op->label_, ":HAS_READ"));
+        auto fe_op = std::dynamic_pointer_cast<foreach_relationship>(fe);
+        REQUIRE(boost::equals(fe_op->label, "':HAS_READ'"));
         REQUIRE(fe_op->dir_ == RSHIP_DIR::FROM);
 
-        auto exp = fe->inputs_[0];
+        auto exp = fe->subscriber();
         REQUIRE(exp->type_ == qop_type::expand);
 
-        auto exp_op = std::dynamic_pointer_cast<expand_op>(exp);
-        REQUIRE(boost::equals(exp_op->label_, "Book"));
-        REQUIRE(exp_op->exp_ == EXPAND::OUT);
+        auto exp_op = std::dynamic_pointer_cast<expand>(exp);
+        REQUIRE(exp_op->dir_ == EXPAND::OUT);
 
-        REQUIRE(exp->inputs_[0]->type_ == qop_type::collect);
+        auto hl = exp_op->subscriber();
+        auto hl_op = std::dynamic_pointer_cast<node_has_label>(hl);
+        REQUIRE(hl_op->label == "'Book'");
     }
 
     SECTION("Transform a Filter query into a valid graph algebra expression") {
         std::string filter_query = "Filter($2.age == 42, NodeScan('Person'))";
-        auto op = qlc.compile_to_plan(filter_query);
+        auto op = qlc.generate_qex_plan(graph, filter_query).front().plan_head();
 
         REQUIRE(op->type_ == qop_type::scan);
 
-        auto filter = op->inputs_[0];
+        auto filter = op->subscriber();
         REQUIRE(filter->type_ == qop_type::filter);
 
-        auto fil_op = std::dynamic_pointer_cast<filter_op>(filter);
-        auto fexp = fil_op->fexpr_;
+        auto fil_op = std::dynamic_pointer_cast<filter_tuple>(filter);
+        auto fexp = fil_op->ex_;
 
         REQUIRE(fexp->name_ == "EQ");
 
@@ -168,16 +163,17 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
         REQUIRE(rhs->ftype_ == FOP_TYPE::INT);
     }
 
+
     SECTION("Transform a Projection query into a valid graph algebra expression") {
         std::string prj_query = "Project([$0.age:int, $42.name:string], NodeScan('Person'))";
-        auto op = qlc.compile_to_plan(prj_query);
+        auto op = qlc.generate_qex_plan(graph, prj_query).front().plan_head();
 
         REQUIRE(op->type_ == qop_type::scan);
 
-        auto prj = op->inputs_[0];
+        auto prj = op->subscriber();
         REQUIRE(prj->type_ == qop_type::project);
 
-        auto prj_op = std::dynamic_pointer_cast<project>(prj);
+        auto prj_op = std::dynamic_pointer_cast<projection>(prj);
         auto pexp = prj_op->prexpr_;
         REQUIRE(pexp.size() == 2);
 
@@ -195,15 +191,15 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
 
     SECTION("Transform a Filter and Projection into valid graph algebra expression") {
         std::string prj_query = "Project([$0.age:int, $42.name:string], Filter($2.age == 42 ,NodeScan('Person')))";
-        auto op = qlc.compile_to_plan(prj_query);
+        auto op = qlc.generate_qex_plan(graph, prj_query).front().plan_head();
 
         REQUIRE(op->type_ == qop_type::scan);
 
-        auto filter = op->inputs_[0];
+        auto filter = op->subscriber();
         REQUIRE(filter->type_ == qop_type::filter);
 
-        auto fil_op = std::dynamic_pointer_cast<filter_op>(filter);
-        auto fexp = fil_op->fexpr_;
+        auto fil_op = std::dynamic_pointer_cast<filter_tuple>(filter);
+        auto fexp = fil_op->ex_;
 
         REQUIRE(fexp->name_ == "EQ");
 
@@ -216,10 +212,10 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
         auto rhs = bin_expr->right_;
         REQUIRE(rhs->ftype_ == FOP_TYPE::INT);
 
-        auto prj = filter->inputs_[0];
+        auto prj = filter->subscriber();
         REQUIRE(prj->type_ == qop_type::project);
 
-        auto prj_op = std::dynamic_pointer_cast<project>(prj);
+        auto prj_op = std::dynamic_pointer_cast<projection>(prj);
         auto pexp = prj_op->prexpr_;
         REQUIRE(pexp.size() == 2);
 
@@ -242,72 +238,6 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
 #endif
 }
 
-/*
-TEST_CASE("QOP to Algebra transformation test") {
-#ifdef USE_PMDK
-	auto pop = prepare_pool();
-	graph_db_ptr graph;
-	nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
-#else
-  auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
-#endif
-
-	p_ptr<dict> dct;
-#ifdef USE_PMDK
-	nvm::transaction::run(pop, [&] {
-#endif
-		dct = p_make_ptr<dict>();
-#ifdef USE_PMDK
-	});
-#endif
-
-    SECTION("Scan") {
-        result_set rs;
-        auto q = query(graph).all_nodes("test").collect(rs);
-        auto alg = q.get_algebra_plan();
-
-        REQUIRE(alg->type_ == qop_type::scan); 
-        REQUIRE(alg->inputs_[0]->type_ == qop_type::collect);
-    }
-
-    SECTION("ForeachRelationship and Expand") {
-        result_set rs;
-        auto q = query(graph).all_nodes("test").from_relationships("test").to_node("test").collect(rs);
-        auto alg = q.get_algebra_plan();
-
-        REQUIRE(alg->type_ == qop_type::scan); 
-        auto fe = alg->inputs_[0];
-        REQUIRE(fe->type_ == qop_type::foreach_rship);
-        auto exp = fe->inputs_[0];
-        REQUIRE(exp->type_ == qop_type::expand);
-        REQUIRE(exp->inputs_[0]->type_ == qop_type::collect);
-    }
-
-    SECTION("Join") {
-        result_set rs;
-        auto q1 = query(graph).all_nodes("test");
-        auto q2 = query(graph).all_nodes("test").crossjoin(q1).collect(rs);
-
-        auto alg1 = q1.get_algebra_plan();
-        auto alg2 = q2.get_algebra_plan();
-
-        REQUIRE(alg1->type_ == qop_type::scan);
-        REQUIRE(alg2->type_ == qop_type::scan);
-        auto join = alg2->inputs_[0];
-        std::cout << "Name: " << join->name_ << std::endl;
-        REQUIRE(join->type_ == qop_type::cross_join);
-        //REQUIRE(join->inputs_[1]->type_ == qop_type::scan);
-        REQUIRE(join->inputs_[0]->type_ == qop_type::end);
-    }
-
-#ifdef USE_PMDK
-	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-	pop.close();
-	remove(test_path.c_str());
-#endif
-}
-*/
 #else
 TEST_CASE("dummy test qcomp") {
     REQUIRE(true);

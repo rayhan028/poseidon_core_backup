@@ -1,7 +1,6 @@
 #include "codegen.hpp"
 
-void codegen_inline_visitor::visit(std::shared_ptr<connected_op> op) {
-    op->name_ = "";
+void codegen_inline_visitor::visit(std::shared_ptr<nodes_connected> op) {
     auto rship_by_id = ctx.extern_func("rship_by_id");
     auto fadd_now = ctx.extern_func("get_now");
     auto fadd_time_diff = ctx.extern_func("add_time_diff");
@@ -27,8 +26,8 @@ void codegen_inline_visitor::visit(std::shared_ptr<connected_op> op) {
     ctx.getBuilder().CreateStore(ctx.LLVM_ZERO, found);
 
     // get the src and dest node
-    auto src = reg_query_results[op->src_des_.first].reg_val;
-    auto dst = reg_query_results[op->src_des_.second].reg_val;
+    auto src = reg_query_results[op->src_des_nodes_.first].reg_val;
+    auto dst = reg_query_results[op->src_des_nodes_.second].reg_val;
 
     // get the first from rship
     auto rship_id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(src, 2));
@@ -68,7 +67,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<connected_op> op) {
 
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
-        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->operator_id_), t_start, t_end});
     }
 
     ctx.getBuilder().CreateStore(ctx.LLVM_ONE, consume);

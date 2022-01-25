@@ -129,6 +129,8 @@ public:
   query &property(const std::string &key,
                   std::function<bool(const p_item &)> pred);
 
+  query &filter(const expr &ex);
+
   /**
    * Add an operator the retrieves the node at the destination side of the
    * currently processed relationship with an optional filter for label(s).
@@ -176,6 +178,8 @@ public:
    * functions to the query result.
    */
   query &project(const projection::expr_list &exprs);
+
+  query &project(std::vector<projection_expr> prexpr);
 
   /**
    * Add an operator for sorting the results.
@@ -455,6 +459,8 @@ public:
    * Return the pointer to the graph database.
    */
   graph_db_ptr &get_graph_db() { return graph_db_; }
+
+  qop_ptr &plan_head() { return plan_head_; }
 
 private:
   query &append_op(qop_ptr op, qop::consume_func cf, qop::finish_func ff);

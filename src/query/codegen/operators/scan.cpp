@@ -6,7 +6,7 @@ int qcnt = 0;
 /*
 * Generates code for a scan operator.
 */
-void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
+void codegen_inline_visitor::visit(std::shared_ptr<scan_nodes> op) {
     // clear register mapping of previous access path
     reg_query_results.clear();
     // process the appropriate query length
@@ -15,12 +15,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     // create unique function name for the JIT instance
     int cnt = 0;
 
-    op->name_ = qid_+std::to_string(qcnt++);
-    std::string finish_name = "finish_"+op->name_;
+    std::string name = qid_+std::to_string(qcnt++);
+    std::string finish_name = "finish_"+name;
     //}
 
-    query_id_str = op->name_;
-    main_function = Function::Create(ctx.startFctTy, Function::ExternalLinkage, op->name_, ctx.getModule());
+    query_id_str = name;
+    main_function = Function::Create(ctx.startFctTy, Function::ExternalLinkage, name, ctx.getModule());
     main_finish   = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, finish_name, ctx.getModule());
 
     pipelines.push_back(std::string(main_function->getName()));
@@ -81,83 +81,83 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
     Value *t_end;
 
     // scan all
-    if(!op->indexed_) {
-        // SCAN NODES
-        // 1 get nodes vector from graph db
-        auto nodes_vec = ctx.getBuilder().CreateCall(gdb_get_nodes, {gdb});
+ //   if(!op->indexed_) {
+    // SCAN NODES
+    // 1 get nodes vector from graph db
+    auto nodes_vec = ctx.getBuilder().CreateCall(gdb_get_nodes, {gdb});
 
-        // 3 obtain iterator from nodes vector
-        auto node_begin_it = ctx.getBuilder().CreateCall(get_begin, {nodes_vec, first, last});
+    // 3 obtain iterator from nodes vector
+    auto node_begin_it = ctx.getBuilder().CreateCall(get_begin, {nodes_vec, first, last});
 
-        // 2 lookup single label in dict
-        if(op->labels_.empty()) {
-            auto label_code = ctx.extract_arg_label(op->op_id_, gdb, queryArgs);
+    // 2 lookup single label in dict
+    if(op->labels.empty()) {
+        auto label_code = ctx.extract_arg_label(op->operator_id_, gdb, queryArgs);
 
-            // 4 iterate through node list
-            curBB = ctx.while_loop(main_function, get_begin, get_next, is_end, node_begin_it, nodes_vec,
-                                            scan_nodes_end, [&](BasicBlock *curBB, BasicBlock *epilog) {
-                        if(profiling)
-                            t_start = ctx.getBuilder().CreateCall(fadd_now, {});
-                        // 5 obtain node from iterator
-                        auto node_raw = ctx.getBuilder().CreateCall(gdb_get_node_from_it, {node_begin_it});
+        // 4 iterate through node list
+        curBB = ctx.while_loop(main_function, get_begin, get_next, is_end, node_begin_it, nodes_vec,
+                                        scan_nodes_end, [&](BasicBlock *curBB, BasicBlock *epilog) {
+                    if(profiling)
+                        t_start = ctx.getBuilder().CreateCall(fadd_now, {});
+                    // 5 obtain node from iterator
+                    auto node_raw = ctx.getBuilder().CreateCall(gdb_get_node_from_it, {node_begin_it});
 
-                        // 6 obtain valid node
-                        node = ctx.getBuilder().CreateCall(get_valid_node, {gdb, node_raw, tx_ptr});
+                    // 6 obtain valid node
+                    node = ctx.getBuilder().CreateCall(get_valid_node, {gdb, node_raw, tx_ptr});
 
-                        // 7 compare labels
-                        auto cond = ctx.node_cmp_label(node, label_code);
+                    // 7 compare labels
+                    auto cond = ctx.node_cmp_label(node, label_code);
 
-                        // 8 if equal -> consume
-                        ctx.getBuilder().CreateCondBr(cond, consumeBB, epilog);
-                    }, consumeBB);
-        } else {
-            FunctionCallee dict_lookup_label = ctx.extern_func("dict_lookup_label");
-            auto opid = ConstantInt::get(ctx.int64Ty, op->op_id_);
-            
-            std::vector<Value*> label_codes;
-            std::vector<BasicBlock*> multi_label_conds;
-            auto i = 0u;
-            Value *id = opid;
-            for(auto & label : op->labels_) {
-                auto str = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(queryArgs, {ctx.LLVM_ZERO, id}));
-                label_codes.push_back(ctx.getBuilder().
-                                        CreateCall(dict_lookup_label, 
-                                        {gdb, ctx.getBuilder().CreateBitCast(str, ctx.int8PtrTy)}
-                                        ));
-                id = ctx.getBuilder().CreateAdd(id, ctx.LLVM_ONE);
-                multi_label_conds.push_back(BasicBlock::Create(ctx.getModule().getContext(), "condition_"+label, main_function));
-            }
+                    // 8 if equal -> consume
+                    ctx.getBuilder().CreateCondBr(cond, consumeBB, epilog);
+                }, consumeBB);
+    } else {
+        FunctionCallee dict_lookup_label = ctx.extern_func("dict_lookup_label");
+        auto opid = ConstantInt::get(ctx.int64Ty, op->operator_id_);
+        
+        std::vector<Value*> label_codes;
+        std::vector<BasicBlock*> multi_label_conds;
+        auto i = 0u;
+        Value *id = opid;
+        for(auto & label : op->labels) {
+            auto str = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(queryArgs, {ctx.LLVM_ZERO, id}));
+            label_codes.push_back(ctx.getBuilder().
+                                    CreateCall(dict_lookup_label, 
+                                    {gdb, ctx.getBuilder().CreateBitCast(str, ctx.int8PtrTy)}
+                                    ));
+            id = ctx.getBuilder().CreateAdd(id, ctx.LLVM_ONE);
+            multi_label_conds.push_back(BasicBlock::Create(ctx.getModule().getContext(), "condition_"+label, main_function));
+        }
 
-            BasicBlock *loop_epilog;
-            curBB = ctx.while_loop(main_function, get_begin, get_next, is_end, node_begin_it, nodes_vec,
-                                            scan_nodes_end, [&](BasicBlock *curBB, BasicBlock *epilog) {
-                        loop_epilog = epilog;
-                        // 5 obtain node from iterator
-                        auto node_raw = ctx.getBuilder().CreateCall(gdb_get_node_from_it, {node_begin_it});
+        BasicBlock *loop_epilog;
+        curBB = ctx.while_loop(main_function, get_begin, get_next, is_end, node_begin_it, nodes_vec,
+                                        scan_nodes_end, [&](BasicBlock *curBB, BasicBlock *epilog) {
+                    loop_epilog = epilog;
+                    // 5 obtain node from iterator
+                    auto node_raw = ctx.getBuilder().CreateCall(gdb_get_node_from_it, {node_begin_it});
 
-                        // 6 obtain valid node
-                        node = ctx.getBuilder().CreateCall(get_valid_node, {gdb, node_raw, tx_ptr});
+                    // 6 obtain valid node
+                    node = ctx.getBuilder().CreateCall(get_valid_node, {gdb, node_raw, tx_ptr});
 
-                        ctx.getBuilder().CreateBr(multi_label_conds.front());
-                    }, consumeBB);
+                    ctx.getBuilder().CreateBr(multi_label_conds.front());
+                }, consumeBB);
 
 
-            i = 0;
-            for(auto cond : multi_label_conds) {
-                ctx.getBuilder().SetInsertPoint(cond);
-                auto label_cmp = ctx.node_cmp_label(node, label_codes[i++]);
-                if(i == multi_label_conds.size()) {
-                    ctx.getBuilder().CreateCondBr(label_cmp, consumeBB, loop_epilog);
-                } else {
-                    ctx.getBuilder().CreateCondBr(label_cmp, consumeBB, multi_label_conds[i]);
-                }
-
+        i = 0;
+        for(auto cond : multi_label_conds) {
+            ctx.getBuilder().SetInsertPoint(cond);
+            auto label_cmp = ctx.node_cmp_label(node, label_codes[i++]);
+            if(i == multi_label_conds.size()) {
+                ctx.getBuilder().CreateCondBr(label_cmp, consumeBB, loop_epilog);
+            } else {
+                ctx.getBuilder().CreateCondBr(label_cmp, consumeBB, multi_label_conds[i]);
             }
 
         }
 
+    }
 
-    } else { // index scan
+
+/*    } else { // index scan
 
         // for index scan call extern gdb function and branch to consumer
         auto get_index_node = ctx.extern_func("index_get_node");
@@ -182,13 +182,13 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
         ctx.getBuilder().CreateCondBr(nullptr_cmp, consumeBB, scan_nodes_end);
         curBB = scan_nodes_end;
     }
-
+*/
     // branch to the next oeprator
     ctx.getBuilder().SetInsertPoint(consumeBB);
     {
         if(profiling) {
             t_end = ctx.getBuilder().CreateCall(fadd_now, {});
-            ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+            ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->operator_id_), t_start, t_end});
         }
         // add current node to register
         reg_query_results.push_back({node, 0});
@@ -207,5 +207,9 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_op> op) {
 
     // set appropriate backflow
     prev_bb = consumeBB;
-    ctx.gen_funcs[op->name_] = main_function;
+    ctx.gen_funcs[name] = main_function;
+}
+
+void codegen_inline_visitor::visit(std::shared_ptr<index_scan> op) {
+    
 }

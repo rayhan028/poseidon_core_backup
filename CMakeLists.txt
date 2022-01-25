@@ -401,6 +401,7 @@ if(USE_LLVM MATCHES ON)
     src/query/codegen/operators/filter.cpp
     src/query/codegen/operators/foreach_rship.cpp
     src/query/codegen/operators/groupby.cpp
+    src/query/codegen/operators/has_label.cpp
     src/query/codegen/operators/join.cpp
     src/query/codegen/operators/limit.cpp
     src/query/codegen/operators/project.cpp
