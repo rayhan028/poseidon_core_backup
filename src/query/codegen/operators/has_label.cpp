@@ -8,14 +8,12 @@ void codegen_inline_visitor::visit(std::shared_ptr<node_has_label> op) {
     ctx.getBuilder().CreateBr(has_label_entry);
     ctx.getBuilder().SetInsertPoint(has_label_entry);
 
-/*
     auto node = reg_query_results.back().reg_val;
     auto label_code = ctx.extract_arg_label(op->operator_id_, gdb, queryArgs);
     auto cond = ctx.node_cmp_label(node, label_code);
 
-    ctx.getBuilder().CreateCondBr(cond, consume, main_return);*/
+    ctx.getBuilder().CreateCondBr(cond, consume, main_return);
 
-    ctx.getBuilder().CreateBr(consume);
     ctx.getBuilder().SetInsertPoint(consume);
     
     prev_bb = consume;

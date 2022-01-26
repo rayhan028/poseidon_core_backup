@@ -170,7 +170,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         auto expr3 = query(graph).all_nodes("Person").from_relationships(":HAS_READ").to_node("Book").collect(rs).plan_head();
         args.arg(1, "Person");
         args.arg(2, ":HAS_READ");
-        args.arg(3, "Book");
+        args.arg(4, "Book");
 
         queryEngine.generate(expr3, false);
         queryEngine.run(&rs, args);
@@ -206,7 +206,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         arg_builder args;
         args.arg(1, "Person");
         args.arg(2, ":HAS_READ");
-        args.arg(3, "Book");
+        args.arg(4, "Book");
 
         
         queryEngine.generate(expr, false);
@@ -218,12 +218,12 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     SECTION("Find the source node for each relationship with the given label") {
         qcompiler queryEngine(graph);
         result_set rs;
-        auto expr = query(graph).all_nodes("Book").to_relationships(":HAS_READ").to_node("Person").collect(rs).plan_head();
+        auto expr = query(graph).all_nodes("Book").to_relationships(":HAS_READ").from_node("Person").collect(rs).plan_head();
 
         arg_builder args;
         args.arg(1, "Book");
         args.arg(2, ":HAS_READ");
-        args.arg(3, "Person");
+        args.arg(4, "Person");
 
         queryEngine.generate(expr, false);
         queryEngine.run(&rs, args);

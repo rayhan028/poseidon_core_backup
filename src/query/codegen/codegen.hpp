@@ -96,39 +96,7 @@ public:
     void visit(std::shared_ptr<remove_node> op) { } 
 
     void visit(std::shared_ptr<remove_rship> op) { } 
-/*
-    void visit(std::shared_ptr<scan_op> op) override;
 
-    void visit(std::shared_ptr<foreach_rship_op> op) override;
-
-    void visit(std::shared_ptr<project> op) override;
-
-    void visit(std::shared_ptr<expand_op> op) override;
-
-    void visit(std::shared_ptr<filter_op> op) override;
-
-    void visit(std::shared_ptr<collect_op> op) override;
-
-    void visit(std::shared_ptr<join_op> op) override;
-
-    void visit(std::shared_ptr<sort_op> op) override;
-
-    void visit(std::shared_ptr<limit_op> op) override;
-
-    void visit(std::shared_ptr<end_op> op) override;
-
-    void visit(std::shared_ptr<create_op> op) override;
-
-    void visit(std::shared_ptr<group_op> op) override;
-
-    void visit(std::shared_ptr<aggr_op> op) override;
-
-    void visit(std::shared_ptr<connected_op> op) override;
-
-    void visit(std::shared_ptr<append_op> op) override;
-
-    void visit(std::shared_ptr<store_op> op) override;
-*/
     /*
      * Initializer for the main function
      */
