@@ -211,6 +211,7 @@ void foreach_variable_all_relationship::dump(std::ostream &os) const {
 /* ------------------------------------------------------------------------ */
 
 void foreach_to_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
+  PROF_PRE;
   node *n = nullptr;
   if (npos == std::numeric_limits<int>::max())
     n = boost::get<node *>(v.back());
@@ -219,10 +220,14 @@ void foreach_to_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
 
   if (lcode == 0)
     lcode = gdb->get_code(label);
+
+  uint64_t num = 0;
   gdb->foreach_to_relationship_of_node(*n, lcode, [&](relationship &r) {
     auto v2 = append(v, query_result(&r));
     consume_(gdb, v2);
+    num++;
   });
+  PROF_POST(num);
 }
 
 void foreach_to_relationship::dump(std::ostream &os) const {
@@ -232,6 +237,7 @@ void foreach_to_relationship::dump(std::ostream &os) const {
 /* ------------------------------------------------------------------------ */
 void foreach_variable_to_relationship::process(graph_db_ptr &gdb,
                                                const qr_tuple &v) {
+  PROF_PRE;
   node *n = nullptr;
   if (npos == std::numeric_limits<int>::max())
     n = boost::get<node *>(v.back());
@@ -241,11 +247,14 @@ void foreach_variable_to_relationship::process(graph_db_ptr &gdb,
   if (lcode == 0)
     lcode = gdb->get_code(label);
 
+  uint64_t num = 0;
   gdb->foreach_variable_to_relationship_of_node(
       *n, lcode, min_range, max_range, [&](relationship &r) {
         auto v2 = append(v, query_result(&r));
         consume_(gdb, v2);
+        num++;
       });
+  PROF_POST(num);
 }
 
 void foreach_variable_to_relationship::dump(std::ostream &os) const {

@@ -1,5 +1,6 @@
 #define CATCH_CONFIG_MAIN // This tells Catch to provide a main() - only do
                           // this in one cpp file
+#define CATCH_CONFIG_CONSOLE_WIDTH 160
 
 #include <boost/algorithm/string.hpp>
 
@@ -17,7 +18,7 @@ const std::string test_path = poseidon::gPmemPath + "qinterp_test";
 void create_data(graph_db_ptr &graph) {
   graph->run_transaction([&]() {
     auto ravalomanana = graph->add_node("Person",
-      {{"id", boost::any((uint64_t)64)},
+      {{"id", boost::any((uint64_t)65)},
        {"firstName", boost::any(std::string("Marc"))},
        {"lastName", boost::any(std::string("Ravalomanana"))}});
     auto p1 = graph->add_node( "Person",
@@ -303,51 +304,53 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
     
     SECTION("IS #2") {
       spdlog::info("LDBC IS#2"); 
-        auto qstr = load_string(prefix_is + "2.q");
-        auto res = qp.execute_query(qproc::Interpret, qstr, true);
-        std::cout << res.result() << std::endl;
+      auto qstr = load_string(prefix_is + "2.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr, true);
+      // std::cout << res.result() << std::endl;
 
-        result_set expected;
-        expected.append(
+      result_set expected;
+      expected.append(
           {qv_("1768"), qv_("Content of cmt12"),
           qv_("2013-12-27T11:32:19.336000"), qv_("13743895"),
           qv_("1121"), qv_("Karl"), qv_("Beran")});
-        expected.append(
+      expected.append(
           {qv_("1171"), qv_("Content of cmt11"),
           qv_("2013-11-26T17:09:07.283000"), qv_("13743895"),
           qv_("1121"), qv_("Karl"), qv_("Beran")});
-    expected.append(
+      expected.append(
         {qv_("1126"), qv_("Content of cmt10"),
         qv_("2013-10-26T23:46:18.580000"), qv_("13743894"),
         qv_("65"), qv_("Marc"), qv_("Ravalomanana")});
-    expected.append(
+      expected.append(
         {qv_("1978"), qv_("Content of cmt9"),
         qv_("2013-09-27T09:41:01.413000"), qv_("1976"),
         qv_("1379"), qv_("Muhammad"), qv_("Iqbal")});
-    expected.append(
+      expected.append(
         {qv_("1877"), qv_("Content of cmt8"),
         qv_("2013-08-25T12:56:57.280000"), qv_("137438956"),
         qv_("1291"), qv_("Wei"), qv_("Li")});
-    expected.append(
+      expected.append(
         {qv_("1865"), qv_("Content of cmt7"),
         qv_("2013-07-25T07:54:01.976000"), qv_("137438956"),
         qv_("1291"), qv_("Wei"), qv_("Li")});
-    expected.append(
+      expected.append(
         {qv_("1768"), qv_("Content of cmt6"),
         qv_("2013-06-29T17:57:51.844000"), qv_("1863"),
         qv_("65"), qv_("Marc"), qv_("Ravalomanana")});
-    expected.append(
+      expected.append(
         {qv_("1171"), qv_("Content of cmt5"),
         qv_("2013-05-17T19:37:26.339000"), qv_("1863"),
         qv_("65"), qv_("Marc"), qv_("Ravalomanana")});
-    expected.append(
+      expected.append(
         {qv_("1126"), qv_("Content of cmt4"),
         qv_("2013-04-16T21:16:03.354000"), qv_("137438956"),
         qv_("1291"), qv_("Wei"), qv_("Li")});
-    expected.append(
+      expected.append(
         {qv_("1978"), qv_("Content of cmt3"),
         qv_("2013-03-14T16:57:46.045000"), qv_("1976"),
         qv_("1379"), qv_("Muhammad"), qv_("Iqbal")});
+
+      REQUIRE(res.result() == expected);
     }
   
     SECTION("IS #3") {
@@ -406,33 +409,33 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
     
     SECTION("IS #6") {
       spdlog::info("LDBC IS#6"); 
-        auto qstr = load_string(prefix_is + "6.q");
-        auto res = qp.execute_query(qproc::Interpret, qstr);
+      auto qstr = load_string(prefix_is + "6.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr);
        // std::cout << res.result() << std::endl;
 
-        result_set expected;
-        expected.append({
+      result_set expected;
+      expected.append({
           qv_("37"), qv_("Wall of Hồ Chí Do"), qv_("4194"), qv_("Hồ Chí"), qv_("Do")
-        });
+      });
 
-        REQUIRE(res.result() == expected);
+      REQUIRE(res.result() == expected);
     }
 
     SECTION("IS #7") {
       spdlog::info("LDBC IS#7"); 
-        auto qstr = load_string(prefix_is + "7.q");
-        auto res = qp.execute_query(qproc::Interpret, qstr, true);
-        std::cout << res.result() << std::endl;
+      auto qstr = load_string(prefix_is + "7.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr, true);
+      std::cout << res.result() << std::endl;
 
-        result_set expected;
-        expected.append({
+      result_set expected;
+      expected.append({
           qv_("1642217"), qv_("Content of comment_1642217"), qv_("2012-01-10T06:31:18.533000"),
           qv_("15393"), qv_("Lomana Trésor"), qv_("Kanam"), qv_("true")
-        });
-        expected.append({
+      });
+      expected.append({
           qv_("16492677"), qv_("Content of comment_16492677"), qv_("2012-01-10T14:57:10.420000"),
           qv_("19791"), qv_("Amin"), qv_("Kamkar"), qv_("false")
-        });
+      });
     }
   
   graph_pool::destroy(pool);
