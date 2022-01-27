@@ -786,6 +786,21 @@ add_executable(csv_loader
 )
 
 #-----------------------------------------------------------------------------------------
+
+add_library(ldbc_udf SHARED
+  queries/ldbc/is/is_udf.cpp
+)
+
+target_link_libraries(ldbc_udf
+  ${LLVM_LIB}
+  Boost::filesystem
+  Boost::date_time
+  Boost::thread
+  poseidon_core
+  ${PMDK_LIBRARIES}
+)
+
+#-----------------------------------------------------------------------------------------
 #
 # Unit tests using Catch
 #

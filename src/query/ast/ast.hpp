@@ -53,11 +53,6 @@ struct simple_proj_spec {
     std::string pname; // name in the form of $1.name
     std::string ptype; // typename
     sort_order porder;
-    struct qex_info_spec {
-        std::size_t ridx;  // index of the variable in result tuple 
-        dcode_t pcode;     // dictionary code of the referenced property
-        std::size_t cmp_type; // typecode of comparison - corresponds to query_result.which()
-    } qex_info;
 };
 
 /**

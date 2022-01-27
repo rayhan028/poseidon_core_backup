@@ -45,7 +45,7 @@ bool result_set::operator==(const result_set &other) const {
 
 bool result_set::qr_compare(const qr_tuple &qr1, const qr_tuple &qr2,
                             const sort_spec_list &spec) {
-  auto qr_less = [](const qr_tuple &q1, const qr_tuple &q2, sort_spec sp) -> int {
+  auto qr_less = [](const qr_tuple &q1, const qr_tuple &q2, const sort_spec& sp) -> int {
     auto v1 = q1[sp.vidx];
     auto v2 = q2[sp.vidx];
     switch (sp.cmp_type) {

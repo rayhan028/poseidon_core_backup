@@ -33,12 +33,14 @@ query_set qplanner::transform(graph_db_ptr& gdb, ast_op_ptr op_tree) {
     query_set qset;
     for (auto& src : sources) {
         query q(gdb, src);
-        // q.print_plan(std::cout); 
         qset.add(q);
     }
     return qset;
 }
 
+void qplanner::add_udf_library(std::shared_ptr<boost::dll::shared_library> udf_lib) {
+  udf_lib_ = udf_lib;
+}
 
 properties_t qplanner::jprops_to_props(const jproperty_list& jprops) {
   properties_t props;
@@ -145,7 +147,13 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
           else {
             // udf_spec
             auto upj = boost::get<udf_spec>(pex);
-            std::cout << "projection-udf: " << upj.fname << std::endl;
+            auto func_name = upj.fname.substr(5); // get rid of udf:
+            std::cout << "projection-udf: " << func_name << " : " << upj.pname_list.size() << std::endl;
+            if (upj.pname_list.size() == 1) { 
+              auto pv_id = qparser::extract_tuple_id(upj.pname_list[0]);
+              auto func = udf_lib_->get<query_result(query_result&)>(func_name);
+              pexprs.push_back(projection::expr(pv_id, ([=](auto res) { return func(res); } )));
+            }
           }
         }
         auto qp = std::make_shared<projection>(pexprs);
@@ -163,6 +171,12 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
             auto spj = boost::get<simple_proj_spec>(pex); 
             auto pv_name = qparser::extract_variable_name(spj.pname);
             result_set::sort_spec spc;
+
+            if (spj.porder == simple_proj_spec::Asc)
+              spc.s_order = result_set::sort_spec::Asc;
+            else
+              spc.s_order = result_set::sort_spec::Desc;
+
             spc.vidx = qparser::extract_tuple_id(spj.pname);
             spc.pcode = gdb->get_code(pv_name);
             if (spj.ptype == "uint64")

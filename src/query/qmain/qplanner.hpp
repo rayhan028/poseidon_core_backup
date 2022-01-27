@@ -20,6 +20,8 @@
 #ifndef qplanner_hpp_
 #define qplanner_hpp_
 
+#include <boost/dll/import.hpp> 
+
 #include "ast.hpp"
 #include "query_set.hpp"
 
@@ -34,9 +36,11 @@ public:
      */
     query_set transform(graph_db_ptr& gdb, ast_op_ptr op_tree);
 
+    void add_udf_library(std::shared_ptr<boost::dll::shared_library> udf_lib);
+
 private:
     std::pair<qop_ptr, qop_ptr> ast_to_qset(ast_op_ptr &ast, graph_db_ptr& gdb, std::vector<qop_ptr>& sources);
-
+    std::shared_ptr<boost::dll::shared_library> udf_lib_;
 
   /**
    *

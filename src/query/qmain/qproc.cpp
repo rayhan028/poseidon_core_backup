@@ -19,20 +19,23 @@
 
 #include "qproc.hpp"
 
-qresult_iterator qproc::execute_query(qproc::mode m, const std::string& qstr) {
+qresult_iterator qproc::execute_query(qproc::mode m, const std::string& qstr, bool print_plan) {
     if (m == Interpret) {
-        auto qplan = prepare_query(qstr);
+        auto qplan = prepare_query(qstr, print_plan);
         result_set result;
         qplan.append_collect(result);
         // qplan.append_printer();
         interp_query(qplan);
-        qplan.print_plan();
+        if (print_plan)
+            qplan.print_plan();
         return qresult_iterator(std::move(result));
     }
 }
 
-query_set qproc::prepare_query(const std::string& qstr) {
+query_set qproc::prepare_query(const std::string& qstr, bool print_plan) {
     auto op_tree = parser_.parse(qstr);
+    if (print_plan)
+        print_ast(op_tree);
     return planner_.transform(gdb_, op_tree);
 }
     
@@ -43,3 +46,13 @@ void qproc::interp_query(query_set& plan) {
 void qproc::compile_query(query_set& plan) {
     compiler_.execute(plan);    
 }
+
+bool qproc::load_library(const std::string& lib_path) {
+    udf_lib_ = std::make_shared<boost::dll::shared_library>(lib_path);
+    if (udf_lib_->is_loaded()) {
+        planner_.add_udf_library(udf_lib_);
+        return true;
+    }
+    return false;
+}
+ 

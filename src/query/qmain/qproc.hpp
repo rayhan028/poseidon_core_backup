@@ -19,6 +19,8 @@
 #ifndef qproc_hpp_
 #define qproc_hpp_
 
+#include <boost/dll/import.hpp> 
+
 #include "qparser.hpp"
 #include "qplanner.hpp"
 #include "qinterp.hpp"
@@ -40,12 +42,14 @@ public:
     qproc(graph_db_ptr gdb) : gdb_(gdb), compiler_(gdb) {}
     ~qproc() = default;
 
-    qresult_iterator execute_query(mode m, const std::string& qstr);
+    qresult_iterator execute_query(mode m, const std::string& qstr, bool print_plan = false);
     
-    query_set prepare_query(const std::string& qstr);
+    query_set prepare_query(const std::string& qstr, bool print_plan = false);
     
     void interp_query(query_set& plan);
     void compile_query(query_set& plan);
+
+    bool load_library(const std::string& lib_path);
 
 private:
     graph_db_ptr gdb_;
@@ -53,6 +57,7 @@ private:
     qplanner planner_;   
     qinterp interp_; 
     qcompiler compiler_;
+    std::shared_ptr<boost::dll::shared_library> udf_lib_;
 };
 
 #endif

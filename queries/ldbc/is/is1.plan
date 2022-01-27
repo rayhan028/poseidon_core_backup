@@ -1,4 +1,4 @@
-Project([ $0.firstName, $0.lastName, udf::getDate($0:qresult), $0.locationIP, $0.browserUsed, $2.id, $0.gender, $0.creationDate ] )
+Project([ $0.firstName, $0.lastName, $0.birthday, $0.locationIP, $0.browserUsed, $2.id, $0.gender, $0.creationDate ] )
 └── Expand(OUT Place )
     └── ForeachRelationship(FROM :isLocatedIn )
         └── Filter($0.id==933 )

@@ -1087,10 +1087,6 @@ struct projection_expr {
  * projection implements a project operator.
  */
 struct projection : public qop, public std::enable_shared_from_this<projection> {
-  using pr_result = boost::variant<node_description, node *, rship_description,
-                                   relationship *, int, double, 
-                                   std::string, uint64_t, boost::posix_time::ptime, array_t, null_t>;
-
   struct expr {
     std::size_t vidx;
     std::function<query_result(const query_result&)> func;

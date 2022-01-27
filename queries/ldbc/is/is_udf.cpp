@@ -1,24 +1,27 @@
-// is1
-query_result getDate(query_result &res) {
-    return pj::pr_date(res, "birthday");
-};
+#include "defs.hpp"
+#include "qresult_iterator.hpp"
+#include "qop.hpp"
+
+namespace pj = builtin;
 
 // is2
-query_result getPost(query_result &res) {
+extern "C" query_result getPost(query_result &res) {
+    std::cout << "CALL: getPost" << std::endl;
     return boost::get<std::string>(pj::string_property(res, "imageFile")).empty() ?
         pj::string_property(res, "content") : pj::string_property(res, "imageFile");
-};
+}
 
 // is4
-query_result getMessage(query_result &res) {
+extern "C" query_result getMessage(query_result &res) {
+    std::cout << "CALL: getMessage" << std::endl;
     return !pj::has_property(res, "imageFile") ?
             pj::string_property(res, "content") :
             boost::get<std::string>(pj::string_property(res, "imageFile")).empty() ?
             pj::string_property(res, "content") : pj::string_property(res, "imageFile");
-};
+}
 
 // is7
-query_result nodesConnected = (query_result &p1, query_result &p2) {
+query_result nodesConnected (graph_db_ptr gdb, query_result &p1, query_result &p2) {
     auto src = boost::get<node *>(p1);
     auto des = boost::get<node *>(p2);
     auto connected = false;
@@ -27,9 +30,9 @@ query_result nodesConnected = (query_result &p1, query_result &p2) {
         connected = true;
     });
     return query_result(connected);
-});
+}
 
-query_result knowsStatus(query_result &res) {
+extern "C" query_result knowsStatus(query_result &res) {
     return res.type() == typeid(null_val) ?
-        query_result(std::string("false")) : query_result(std::string("true"))
-});
+        query_result(std::string("false")) : query_result(std::string("true"));
+}
