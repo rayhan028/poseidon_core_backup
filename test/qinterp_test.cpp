@@ -305,7 +305,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
     SECTION("IS #2") {
       spdlog::info("LDBC IS#2"); 
       auto qstr = load_string(prefix_is + "2.q");
-      auto res = qp.execute_query(qproc::Interpret, qstr, true);
+      auto res = qp.execute_query(qproc::Interpret, qstr);
       // std::cout << res.result() << std::endl;
 
       result_set expected;
@@ -395,16 +395,16 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
     SECTION("IS #5") {
       spdlog::info("LDBC IS#5"); 
-        auto qstr = load_string(prefix_is + "5.q");
-        auto res = qp.execute_query(qproc::Interpret, qstr);
-        // std::cout << res.result() << std::endl;
+      auto qstr = load_string(prefix_is + "5.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr);
+      // std::cout << res.result() << std::endl;
 
-        result_set expected;
-        expected.append({
+      result_set expected;
+      expected.append({
           qv_("10995116"), qv_("Andrei"), qv_("Condariuc")
-        });
+      });
 
-        REQUIRE(res.result() == expected);
+      REQUIRE(res.result() == expected);
     }
     
     SECTION("IS #6") {

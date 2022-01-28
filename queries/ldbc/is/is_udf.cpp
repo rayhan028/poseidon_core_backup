@@ -6,14 +6,12 @@ namespace pj = builtin;
 
 // is2
 extern "C" query_result getPost(query_result &res) {
-    std::cout << "CALL: getPost" << std::endl;
     return boost::get<std::string>(pj::string_property(res, "imageFile")).empty() ?
         pj::string_property(res, "content") : pj::string_property(res, "imageFile");
 }
 
 // is4
 extern "C" query_result getMessage(query_result &res) {
-    std::cout << "CALL: getMessage" << std::endl;
     return !pj::has_property(res, "imageFile") ?
             pj::string_property(res, "content") :
             boost::get<std::string>(pj::string_property(res, "imageFile")).empty() ?

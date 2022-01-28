@@ -661,6 +661,7 @@ struct group_by : public qop, public std::enable_shared_from_this<group_by> {
   }
 
   std::mutex m_;
+  std::mutex grp_mutex_;
   std::size_t grpkey_cnt_;
   std::vector<std::string> grpkey_set_;
   std::vector<std::size_t> grpkey_pos_;

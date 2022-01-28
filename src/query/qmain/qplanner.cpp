@@ -93,12 +93,28 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
       break;
     case ast_op::foreach_rship:
       if (ast->get_param<std::string>(0) == "TO") {
-        auto qp = std::make_shared<foreach_to_relationship>(ast->get_param<std::string>(1));
-        qop = qop_append(res2.first ? res2.second : res.second, qp);
+        if (ast->num_params() == 2) {
+          auto qp = std::make_shared<foreach_to_relationship>(ast->get_param<std::string>(1));
+          qop = qop_append(res2.first ? res2.second : res.second, qp);
+        }
+        else if (ast->num_params() == 4) {
+          auto m1 = ast->get_param<int>(2);
+          auto m2 = ast->get_param<int>(3);
+          auto qp = std::make_shared<foreach_variable_to_relationship>(ast->get_param<std::string>(1), m1, m2);
+          qop = qop_append(res2.first ? res2.second : res.second, qp);
+        }
       }
       else if (ast->get_param<std::string>(0) == "FROM") {
-        auto qp = std::make_shared<foreach_from_relationship>(ast->get_param<std::string>(1));
-        qop = qop_append(res2.first ? res2.second : res.second, qp);
+        if (ast->num_params() == 2) {
+          auto qp = std::make_shared<foreach_from_relationship>(ast->get_param<std::string>(1));
+          qop = qop_append(res2.first ? res2.second : res.second, qp);
+        }
+        else if (ast->num_params() == 4) {
+          auto m1 = ast->get_param<int>(2);
+          auto m2 = ast->get_param<int>(3);
+          auto qp = std::make_shared<foreach_variable_from_relationship>(ast->get_param<std::string>(1), m1, m2);
+          qop = qop_append(res2.first ? res2.second : res.second, qp);
+        }
       }
       else if (ast->get_param<std::string>(0) == "ALL") {
         // TODO
@@ -147,8 +163,7 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
           else {
             // udf_spec
             auto upj = boost::get<udf_spec>(pex);
-            auto func_name = upj.fname.substr(5); // get rid of udf:
-            std::cout << "projection-udf: " << func_name << " : " << upj.pname_list.size() << std::endl;
+            auto func_name = upj.fname.substr(5); // get rid of udf::
             if (upj.pname_list.size() == 1) { 
               auto pv_id = qparser::extract_tuple_id(upj.pname_list[0]);
               auto func = udf_lib_->get<query_result(query_result&)>(func_name);
@@ -259,6 +274,5 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
       break;
   } 
 
-  if (res2.first) std::cout << "return res2\n";
   return std::make_pair(res.first, qop);
 } 

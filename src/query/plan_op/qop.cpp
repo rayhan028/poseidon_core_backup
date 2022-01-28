@@ -502,9 +502,8 @@ group_by::group_by(std::list<qr_tuple> &grps, const std::vector<std::size_t> &po
   }
 }
 
-std::mutex grp_mutex;
 void group_by::process(graph_db_ptr &gdb, const qr_tuple &v) {
-  std::lock_guard<std::mutex> lck(grp_mutex);
+  std::lock_guard<std::mutex> lck(grp_mutex_);
   std::string grpkeys = "";
   for (auto pos : grpkey_pos_) {
     if (v[pos].type() == typeid(std::string)) {

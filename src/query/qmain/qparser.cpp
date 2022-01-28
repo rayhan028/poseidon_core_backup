@@ -220,8 +220,6 @@ ast_op_ptr qparser::ptree_to_ast(parse_tree_ptr& pn) {
       }
 #ifdef USE_LLVM
       else if (param->is_type<qlang::expression>()) {
-        std::cout << "expr = " << param->string() << std::endl;
-          //nptr->add_param(std::move(param));
           nptr->add_param(parse_expression(param));
       }
 #endif
