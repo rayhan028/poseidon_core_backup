@@ -25,6 +25,7 @@
 #include "update.hpp"
 #include "qplanner.hpp"
 #include "qparser.hpp"
+#include "query_ctx.hpp"
 
 query_set qplanner::transform(graph_db_ptr& gdb, ast_op_ptr op_tree) {
     std::vector<qop_ptr> sources;
@@ -150,15 +151,15 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
             // std::cout << "projection: " << pv_id << " . " << pv_name << " : " << spj.ptype << std::endl;
             // note we need 'capture by value' here for pv_name, otherwise pv_name gets out of scope
             if (spj.ptype == "string")
-              pexprs.push_back(projection::expr(pv_id, ([=](auto res) { return builtin::string_property(res, pv_name); } )));
+              pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return builtin::string_property(res, pv_name); } )));
             else if (spj.ptype == "int")
-              pexprs.push_back(projection::expr(pv_id, ([=](auto res) { return builtin::int_property(res, pv_name); } )));
+              pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return builtin::int_property(res, pv_name); } )));
             else if (spj.ptype == "double")
-              pexprs.push_back(projection::expr(pv_id, ([=](auto res) { return builtin::double_property(res, pv_name); } )));
+              pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return builtin::double_property(res, pv_name); } )));
             else if (spj.ptype == "uint64")
-              pexprs.push_back(projection::expr(pv_id, ([=](auto res) { return builtin::uint64_property(res, pv_name); } )));
+              pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return builtin::uint64_property(res, pv_name); } )));
             else if (spj.ptype == "datetime")
-              pexprs.push_back(projection::expr(pv_id, ([=](auto res) { return builtin::ptime_property(res, pv_name); } )));
+              pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return builtin::ptime_property(res, pv_name); } )));
           }  
           else {
             // udf_spec
@@ -166,8 +167,11 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
             auto func_name = upj.fname.substr(5); // get rid of udf::
             if (upj.pname_list.size() == 1) { 
               auto pv_id = qparser::extract_tuple_id(upj.pname_list[0]);
-              auto func = udf_lib_->get<query_result(query_result&)>(func_name);
-              pexprs.push_back(projection::expr(pv_id, ([=](auto res) { return func(res); } )));
+              auto func = udf_lib_->get<query_result(query_ctx&, query_result&)>(func_name);
+              pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return func(ctx, res); } )));
+            }
+            else {
+              // TODO: handle UDFs with more than one parameter
             }
           }
         }
@@ -232,9 +236,7 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
       break;
     case ast_op::leftouter_join:
     {
-      // TODO: outerjoin_on_rship or outerjoin_on_node??
-      // TODO: identify src and des positions
-      std::cout << "join: " << sources.size() << std::endl;
+      /*
       auto qp = std::make_shared<left_outerjoin_on_rship>(std::make_pair(1, 2));
       auto parent = res2.first ? res2.second : res.second;
       parent->connect(qp, std::bind(&left_outerjoin_on_rship::process_left, qp.get(), ph::_1, ph::_2));
@@ -243,6 +245,16 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
         parent2 = parent2->subscriber();
       }
       parent2->connect(qp, std::bind(&left_outerjoin_on_rship::process_right, qp.get(), ph::_1, ph::_2));
+      */
+      auto ex = ast->get_param<expr>(0);
+      auto qp = std::make_shared<left_outerjoin>(ex);
+      auto parent = res2.first ? res2.second : res.second;
+      parent->connect(qp, std::bind(&left_outerjoin::process_left, qp.get(), ph::_1, ph::_2));
+      qop_ptr parent2 = sources.at(sources.size()-2);
+      while (parent2->has_subscriber()) {
+        parent2 = parent2->subscriber();
+      }
+      parent2->connect(qp, std::bind(&left_outerjoin::process_right, qp.get(), ph::_1, ph::_2));
       qop = qp;
     }
       break;

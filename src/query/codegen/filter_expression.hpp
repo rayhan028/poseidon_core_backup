@@ -53,7 +53,9 @@ struct fep_visitor_inline : public expression_visitor {
 
     void visit(int rank, std::shared_ptr<fct_call> fct) override;
 
-    void visit(int rank, std::shared_ptr<eq_predicate> eq) override;
+    void visit(int rank, std::shared_ptr<func_call> fct) override;
+
+   void visit(int rank, std::shared_ptr<eq_predicate> eq) override;
 
     void visit(int rank, std::shared_ptr<le_predicate> eq) override;
 

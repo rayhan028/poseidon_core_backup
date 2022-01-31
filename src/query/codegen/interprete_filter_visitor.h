@@ -48,6 +48,8 @@ public:
 
     void visit(int rank, std::shared_ptr<fct_call> str) override;
 
+   void visit(int rank, std::shared_ptr<func_call> str) override;
+
     void visit(int rank, std::shared_ptr<eq_predicate> eq) override;
 
     void visit(int rank, std::shared_ptr<le_predicate> eq) override;

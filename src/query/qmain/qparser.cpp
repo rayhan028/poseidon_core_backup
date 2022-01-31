@@ -27,6 +27,9 @@
 
 #include "qparser.hpp"
 
+#include "expression.hpp"
+#include "func_call_expr.hpp"
+
 namespace pegtl = tao::pegtl;
 
 namespace ph = std::placeholders;

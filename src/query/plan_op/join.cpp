@@ -19,6 +19,7 @@
 
 #include "join.hpp"
 #include "profiling.hpp"
+#include "expr_interpreter.hpp"
 
 #define HASHER
 
@@ -116,7 +117,7 @@ void hash_join::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
 
 /* ------------------------------------------------------------------------ */
 
-void left_outerjoin_on_node::dump(std::ostream &os) const { // TODO
+void left_outerjoin_on_node::dump(std::ostream &os) const {
   os << "left_outerjoin_on_node() - " << PROF_DUMP;
 }
 
@@ -152,21 +153,25 @@ void left_outerjoin_on_node::finish(graph_db_ptr &gdb) { qop::default_finish(gdb
 
 /* ------------------------------------------------------------------------ */
 
-void left_outerjoin::dump(std::ostream &os) const { // TODO
-  os << "left_outerjoin() - " << PROF_DUMP;
+void left_outerjoin::dump(std::ostream &os) const {
+  os << "left_outerjoin(";
+  if (ex_) 
+    os << ex_->dump();
+  os << ") - " << PROF_DUMP;
 }
 
 void left_outerjoin::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
-
   bool dangling_tuple = true;
+  query_ctx ctx(gdb);
   for (auto &t : input_) {
-    if (pred_(v, t)){
+    bool tp = ex_ ? interpret_expression(ctx, ex_, v) : pred_(v, t);
+    if (tp) {
       dangling_tuple = false;
       auto res = concat(v, t);
       consume_(gdb, res);
     }
   }
-  if (dangling_tuple){
+  if (dangling_tuple) {
     qr_tuple nll(input_.front().size(), query_result(null_t(-1)));
     auto res = concat(v, nll);
     consume_(gdb, res);

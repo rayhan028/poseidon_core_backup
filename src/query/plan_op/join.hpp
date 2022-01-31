@@ -37,6 +37,12 @@ struct cross_join : public qop, public std::enable_shared_from_this<cross_join> 
 
   void finish(graph_db_ptr &gdb);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
     auto next_offset = 0;
@@ -68,6 +74,12 @@ struct nested_loop_join : public qop, public std::enable_shared_from_this<nested
 
   void finish(graph_db_ptr &gdb);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
   }
@@ -98,6 +110,12 @@ struct hash_join : public qop, public std::enable_shared_from_this<hash_join> {
 
   void finish(graph_db_ptr &gdb);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
   }
@@ -117,6 +135,7 @@ private:
  * Dangling tuples are padded with "null_val" 
  */
 struct left_outerjoin : public qop, public std::enable_shared_from_this<left_outerjoin> {
+  left_outerjoin(const expr &ex) : ex_(ex) {}
   left_outerjoin(std::function<bool(const qr_tuple &, const qr_tuple &)> pred) : pred_(pred) {} 
   ~left_outerjoin() = default;
 
@@ -127,15 +146,22 @@ struct left_outerjoin : public qop, public std::enable_shared_from_this<left_out
 
   void finish(graph_db_ptr &gdb);
   
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
   }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {}
 
   bool is_binary() const override { return true; }
   
+  expr get_expression() { return ex_; }
+
 private:
   std::vector<qr_tuple> input_;
   std::function<bool(const qr_tuple &, const qr_tuple &)> pred_;
+  expr ex_;  
 };
 
 /**
@@ -155,6 +181,12 @@ struct left_outerjoin_on_node : public qop, public std::enable_shared_from_this<
 
   void finish(graph_db_ptr &gdb);
   
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
   }
@@ -185,6 +217,12 @@ struct rship_join : public qop, public std::enable_shared_from_this<rship_join> 
 
   void finish(graph_db_ptr &gdb);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
   }
@@ -213,6 +251,12 @@ struct left_outerjoin_on_rship : public qop, public std::enable_shared_from_this
   void process_right(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     

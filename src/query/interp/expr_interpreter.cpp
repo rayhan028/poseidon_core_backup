@@ -20,6 +20,7 @@
 
 #include "properties.hpp"
 #include "expr_interpreter.hpp"
+#include "func_call_expr.hpp"
 
 std::ostream& operator<<(std::ostream& os, const query_result& qr) {
     os << "[" << qr.which() << "]";
@@ -153,7 +154,7 @@ query_result pop(std::stack<query_result>& st) {
 
 struct filter_visitor : public expression_visitor {
 public:
-    filter_visitor(graph_db_ptr& gdb, const qr_tuple& tup) : gdb_(gdb), tup_(tup) {
+    filter_visitor(query_ctx& ctx, const qr_tuple& tup) : ctx_(ctx), tup_(tup) {
         /* 
         auto n = boost::get<node *>(tup[0]);
         std::cout << "visitor:node_id = " << n->id() << std::endl;
@@ -179,20 +180,30 @@ public:
 
     virtual void visit(int rank, std::shared_ptr<key_token> op) override {
         // std::cout << "visit key_token: " << op->qr_id_ << ", " << op->key_ << std::endl;
-        // TODO: we should replace string key_ by its dcode_t
+        // TODO: we should replace string key_ by its dcode_t in prepare_expr_visitor
         auto inp = tup_[op->qr_id_];
         p_item res;
         switch (inp.which()) {
             case 0: // node *
             {
                 auto nptr = boost::get<node *>(inp);
-                res = gdb_->get_property_value(*nptr, op->key_);
+                // if key_ is empty then the node is requested ($i:node)
+                if (op->key_.empty())
+                    stack_.push(query_result(nptr));
+                else
+                    // otherwise the property value ($i.prop:dtype) which is handled later
+                    res = ctx_.gdb_->get_property_value(*nptr, op->key_);
                 break;
             }
             case 1: // relationship *
             {
                 auto rptr = boost::get<relationship *>(inp);
-                res = gdb_->get_property_value(*rptr, op->key_);
+                // if key_ is empty then the relationship is requested
+                if (op->key_.empty())
+                    stack_.push(query_result(rptr));
+                else
+                    // otherwise the property value ($i.prop:dtype) which is handled later
+                    res = ctx_.gdb_->get_property_value(*rptr, op->key_);
                 break;
             }
             default:
@@ -208,6 +219,9 @@ public:
                 break;
             case p_item::p_uint64:
                 stack_.push(query_result(res.get<uint64_t>()));
+                break;
+            case p_item::p_unused:
+                // node* or relationship*
                 break;
             default:
                 std::cout << "cannot push: " << res.typecode() << std::endl;
@@ -226,6 +240,21 @@ public:
 
     virtual void visit(int rank, std::shared_ptr<fct_call> op) override {
         std::cout << "visit fct_call" << std::endl;         
+    }
+
+    virtual void visit(int rank, std::shared_ptr<func_call> op) override {
+        // std::cout << "visit func_call: " << op->func_name_ << " : " << op->param_list_.size() << std::endl;
+        if (op->param_list_.size() == 1) {
+            auto arg = pop(stack_);
+            auto res = op->func1_ptr_(ctx_, arg);
+            stack_.push(res);
+        }
+        else if (op->param_list_.size() == 2) {
+            auto arg1 = pop(stack_);
+            auto arg2 = pop(stack_);
+            auto res = op->func2_ptr_(ctx_, arg1, arg2);
+            stack_.push(res);
+        }      
     }
 
     virtual void visit(int rank, std::shared_ptr<eq_predicate> op) override {
@@ -296,13 +325,13 @@ private:
         return true;
     }
 
-    graph_db_ptr gdb_;
+    query_ctx ctx_;
     qr_tuple tup_;
     std::stack<query_result> stack_;
 };
 
-bool interpret_expression(graph_db_ptr& gdb, expr& ex, const qr_tuple& tup) {
-    filter_visitor vis(gdb, tup);
+bool interpret_expression(query_ctx& ctx, expr& ex, const qr_tuple& tup) {
+    filter_visitor vis(ctx, tup);
     // std::cout << "interpret_expression: " << ex->dump() << std::endl;
     ex->accept(0, vis);
     return vis.result();

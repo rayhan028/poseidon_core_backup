@@ -23,10 +23,11 @@
 #include <iostream>
 #include "qop.hpp"
 #include "query.hpp"
+#include "query_ctx.hpp"
 #include "expression.hpp"
 
 std::ostream& operator<<(std::ostream& os, const query_result& qr);
 
-bool interpret_expression(graph_db_ptr& gdb, expr& ex, const qr_tuple& tup);
+bool interpret_expression(query_ctx& ctx, expr& ex, const qr_tuple& tup);
 
 #endif

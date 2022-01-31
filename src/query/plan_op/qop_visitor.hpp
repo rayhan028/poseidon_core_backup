@@ -125,6 +125,7 @@ public:
     virtual void visit(std::shared_ptr<remove_node> op) { }
 
     virtual void visit(std::shared_ptr<remove_rship> op) { }
+
 /*
     virtual void visit(std::shared_ptr<project> op) = 0;
 

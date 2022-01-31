@@ -32,6 +32,10 @@ void interprete_filter_visitor::visit(int rank, std::shared_ptr<fct_call> fct) {
     //TODO: implement
 }
 
+void interprete_filter_visitor::visit(int rank, std::shared_ptr<func_call> fct) {
+    //TODO: implement
+}
+
 void interprete_filter_visitor::visit(int rank, std::shared_ptr<eq_predicate> eq) {
     pred_ = predicate::eq;
 }

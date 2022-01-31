@@ -52,6 +52,8 @@ public:
     bool load_library(const std::string& lib_path);
 
 private:
+    void prepare_plan(query_set& qplan);
+    
     graph_db_ptr gdb_;
     qparser parser_;
     qplanner planner_;   

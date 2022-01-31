@@ -6,7 +6,7 @@
 #include <iostream>
 #include "jit/p_context.hpp"
 #include "filter_visitor.hpp"
-
+// #include "qresult_iterator.hpp"
 
 enum class FOP {
     EQ = 0,
@@ -41,6 +41,7 @@ struct str_token;
 struct qparam_token;
 struct time_token;
 struct fct_call;
+struct func_call;
 struct eq_predicate;
 struct le_predicate;
 struct lt_predicate;
@@ -59,31 +60,33 @@ protected:
 public:
     virtual ~expression_visitor() = default;
 
-    virtual void visit(int rank, std::shared_ptr<number_token> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<number_token> op) {}
 
-    virtual void visit(int rank, std::shared_ptr<key_token> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<key_token> op) {}
 
-    virtual void visit(int rank, std::shared_ptr<str_token> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<str_token> op) {}
 
-    virtual void visit(int rank, std::shared_ptr<time_token> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<time_token> op) {}
 
-    virtual void visit(int rank, std::shared_ptr<fct_call> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<fct_call> op) {}
 
-    virtual void visit(int rank, std::shared_ptr<eq_predicate> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<func_call> op) {}
+
+    virtual void visit(int rank, std::shared_ptr<eq_predicate> op) {}
     
-    virtual void visit(int rank, std::shared_ptr<le_predicate> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<le_predicate> op) {}
 
-    virtual void visit(int rank, std::shared_ptr<lt_predicate> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<lt_predicate> op) {}
 
-    virtual void visit(int rank, std::shared_ptr<ge_predicate> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<ge_predicate> op) {}
 
-    virtual void visit(int rank, std::shared_ptr<gt_predicate> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<gt_predicate> op) {}
 
-    virtual void visit(int rank, std::shared_ptr<and_predicate> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<and_predicate> op) {}
 
-    virtual void visit(int rank, std::shared_ptr<or_predicate> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<or_predicate> op) {}
 
-    virtual void visit(int rank, std::shared_ptr<call_predicate> op) = 0;
+    virtual void visit(int rank, std::shared_ptr<call_predicate> op) {}
 };
 
 struct expression {
@@ -186,20 +189,6 @@ struct fct_call : public expression, std::enable_shared_from_this<fct_call> {
     void accept(int rank, expression_visitor &fep) override;
 };
 
-struct func_call : public expression, std::enable_shared_from_this<func_call> {
-    std::string func_name_;
-    std::vector<expr> param_list_;
-
-    func_call(const std::string& fn, const std::vector<expr>& pl) : func_name_(fn), param_list_(pl) {}
-
-    std::string dump() const override;
-
-    void accept(int rank, expression_visitor &fep) override {}
-};
-
-inline expr Fct(const std::string& fname, const std::vector<expr>& params) { 
-    return std::make_shared<func_call>(fname, params); 
-}
 
 inline expr Fct(fct_call::fct_int_t fct) { return std::make_shared<fct_call>(fct); }
 

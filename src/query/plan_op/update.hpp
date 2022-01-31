@@ -26,7 +26,7 @@
  * create_node represents a query operator for creating a new node. The operator
  * can act as a root operator (via start) are also as subscriber.
  */
-struct create_node : public qop {
+struct create_node : public qop, public std::enable_shared_from_this<create_node> {
   create_node(const std::string &l) : label(l) {}
   create_node(const std::string &l, const properties_t &p) : label(l), props(p) {}
   ~create_node() = default;
@@ -35,6 +35,12 @@ struct create_node : public qop {
 
   virtual void start(graph_db_ptr &gdb) override;
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
@@ -49,7 +55,7 @@ struct create_node : public qop {
  * relationship. The operator connects two nodes at any given positions 
  * in the query result.
  */
-struct create_relationship : public qop {
+struct create_relationship : public qop, public std::enable_shared_from_this<create_relationship> {
   create_relationship(const std::string &l) : label(l) {}
   create_relationship(const std::string &l, const properties_t &p,
                       std::pair<int, int> src_des)
@@ -59,6 +65,12 @@ struct create_relationship : public qop {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
@@ -77,7 +89,7 @@ struct create_relationship : public qop {
  * last position in the right query. The default relationship direction can be
  * changed via a flag.
  */
-struct create_rship_on_join : public qop {
+struct create_rship_on_join : public qop, public std::enable_shared_from_this<create_rship_on_join> {
   create_rship_on_join(const std::string &l) : label(l) {}
   create_rship_on_join(const std::string &l, const properties_t &p,
                       int pos, bool dir_flag)
@@ -90,6 +102,12 @@ struct create_rship_on_join : public qop {
   void process_right(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
@@ -106,7 +124,7 @@ struct create_rship_on_join : public qop {
  * update_node represents a query operator for updating properties of a node
  * which is passed via consume parameters.
  */
-struct update_node : public qop {
+struct update_node : public qop, public std::enable_shared_from_this<update_node> {
   update_node(std::size_t var, properties_t &p) : var_no_(var), props(p) {}
   update_node() : var_no_(0) {}
   ~update_node() = default;
@@ -114,6 +132,12 @@ struct update_node : public qop {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
@@ -128,7 +152,7 @@ struct update_node : public qop {
  * All relationship objects connected to the node are also deleted.
  * The optional p specifies a node to be deleted at other positions in the tuple.
  */
-struct detach_node : public qop {
+struct detach_node : public qop, public std::enable_shared_from_this<detach_node> {
   // detach_node(const std::vector<std::size_t> &r, std::size_t p)  : pos_(p), /*rels_(r)*/ {} 
   detach_node(std::size_t p)  : pos_(p) {}
   ~detach_node() = default;
@@ -136,6 +160,12 @@ struct detach_node : public qop {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
@@ -149,13 +179,19 @@ struct detach_node : public qop {
  * remove_node implements an operator for deleting the last node in a query tuple.
  * The optional p specifies a node to be deleted at other positions in the tuple.
  */
-struct remove_node : public qop {
+struct remove_node : public qop, public std::enable_shared_from_this<remove_node> {
   remove_node(std::size_t p)  : pos_(p) {} 
   ~remove_node() = default;
 
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
@@ -168,13 +204,19 @@ struct remove_node : public qop {
  * remove_rship implements an operator for deleting the last relationship in a query tuple.
  * The optional p specifies a relationship to be deleted at other positions in the tuple.
  */
-struct remove_rship : public qop {
+struct remove_rship : public qop, public std::enable_shared_from_this<remove_rship> {
   remove_rship(std::size_t p)  : pos_(p) {} 
   ~remove_rship() = default;
 
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     

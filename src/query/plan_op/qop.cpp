@@ -876,7 +876,8 @@ void filter_tuple::dump(std::ostream &os) const {
 
 void filter_tuple::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
-  bool tp = ex_ ? interpret_expression(gdb, ex_, v) : pred_func1_(v);
+  query_ctx ctx(gdb);
+  bool tp = ex_ ? interpret_expression(ctx, ex_, v) : pred_func1_(v);
   if (tp) {
     consume_(gdb, v);
     PROF_POST(1);
@@ -1219,6 +1220,7 @@ void projection::process(graph_db_ptr &gdb, const qr_tuple &v) {
   PROF_PRE;
   auto i = 0;
   auto num_accessed_vars = accessed_vars_.size();
+  query_ctx ctx(gdb);
   std::vector<query_result> pv(num_accessed_vars * 2);
   for (auto index : accessed_vars_) {
     pv[i] = v[index];
@@ -1242,7 +1244,7 @@ void projection::process(graph_db_ptr &gdb, const qr_tuple &v) {
     // spdlog::info("projection::process: pv={}, i={}, vidx={}", pv.size(), i, ex.vidx);
     try {
       if (ex.func != nullptr)
-        res[i] = ex.func(pv[var_map_[ex.vidx]]);
+        res[i] = ex.func(ctx, pv[var_map_[ex.vidx]]);
       else {
         query_result fwd = v[ex.vidx];
         res[i] = builtin::forward(fwd);

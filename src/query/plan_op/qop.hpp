@@ -40,6 +40,7 @@
 #include "qresult_iterator.hpp"
 #include "qop_visitor.hpp"
 #include "query_arg.hpp"
+#include "query_ctx.hpp"
 
 template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
   std::vector<T> v2;
@@ -185,6 +186,11 @@ struct qop {
   PROF_ACCESSOR;
 
   /**
+   * Accept method for generic visitor
+   */
+  virtual void accept(qop_visitor& vis) = 0;
+
+  /**
    * Accept method for code generation
    */
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) = 0;
@@ -218,6 +224,12 @@ struct scan_nodes : public qop, public std::enable_shared_from_this<scan_nodes> 
   void dump(std::ostream &os) const override;
 
   virtual void start(graph_db_ptr &gdb) override;
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -275,6 +287,12 @@ struct index_scan : public qop, public std::enable_shared_from_this<index_scan> 
   void dump(std::ostream &os) const override;
 
   virtual void start(graph_db_ptr &gdb) override;
+  
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -298,6 +316,12 @@ struct foreach_relationship : public qop, public std::enable_shared_from_this<fo
   foreach_relationship(RSHIP_DIR dir, const std::string &l, std::size_t min,
                                      std::size_t max, int pos = std::numeric_limits<int>::max())
       : dir_(dir), label(l), lcode(0), min_range(min), max_range(max), npos(pos) { type_ = qop_type::foreach_rship;  }
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -326,6 +350,12 @@ struct foreach_from_relationship : public foreach_relationship {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 };
 
 /**
@@ -343,6 +373,12 @@ struct foreach_variable_from_relationship : public foreach_relationship {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
@@ -362,6 +398,12 @@ struct foreach_all_relationship : public foreach_relationship {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
@@ -384,6 +426,12 @@ struct foreach_variable_all_relationship : public foreach_relationship {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     
   }
@@ -401,6 +449,13 @@ struct foreach_to_relationship : public foreach_relationship {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+    void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
 };
 
 /**
@@ -417,6 +472,13 @@ struct foreach_variable_to_relationship : public foreach_relationship {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+    void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
 };
 
 /**
@@ -432,6 +494,12 @@ struct is_property : public qop, public std::enable_shared_from_this<is_property
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -463,6 +531,12 @@ struct node_has_label : public qop, public std::enable_shared_from_this<node_has
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
     auto next_offset = labels.empty() ? 1 : labels.size();
@@ -478,6 +552,12 @@ struct node_has_label : public qop, public std::enable_shared_from_this<node_has
 
 struct expand : public qop, public std::enable_shared_from_this<expand> {
   expand(EXPAND dir) : dir_(dir) { type_ = qop_type::expand;  }
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -501,6 +581,13 @@ struct get_from_node : public expand {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
 };
 
 /**
@@ -513,6 +600,13 @@ struct get_to_node : public expand {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
 };
 
 /**
@@ -525,6 +619,12 @@ struct printer : public qop, public std::enable_shared_from_this<printer> {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -547,6 +647,12 @@ struct limit_result : public qop, std::enable_shared_from_this<limit_result> {
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -587,6 +693,12 @@ struct nodes_connected : public qop, public std::enable_shared_from_this<nodes_c
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
     auto next_offset = 0;
@@ -615,6 +727,12 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -651,6 +769,12 @@ struct group_by : public qop, public std::enable_shared_from_this<group_by> {
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -708,6 +832,12 @@ struct distinct_tuples : public qop, public std::enable_shared_from_this<distinc
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
     auto next_offset = 0;
@@ -736,6 +866,14 @@ struct filter_tuple : public qop, public std::enable_shared_from_this<filter_tup
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  expr get_expression() { return ex_; }
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -766,6 +904,12 @@ struct qr_tuple_append : public qop, public std::enable_shared_from_this<qr_tupl
 
   void finish(graph_db_ptr &gdb);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
     auto next_offset = 0;
@@ -795,6 +939,12 @@ struct union_all_qres : public qop, public std::enable_shared_from_this<union_al
   void r_finish(graph_db_ptr &gdb);
   void finish(graph_db_ptr &gdb);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
     auto next_offset = 0;
@@ -821,6 +971,12 @@ struct count_result : public qop, public std::enable_shared_from_this<count_resu
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -850,6 +1006,12 @@ struct shortest_path_opr : public qop, public std::enable_shared_from_this<short
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
   void finish(graph_db_ptr &gdb);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -882,6 +1044,12 @@ struct weighted_shortest_path_opr : public qop, public std::enable_shared_from_t
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
     auto next_offset = 0;
@@ -911,6 +1079,12 @@ struct k_weighted_shortest_path_opr : public qop, public std::enable_shared_from
   void dump(std::ostream &os) const override;
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -948,6 +1122,12 @@ struct csr_data : public qop, public std::enable_shared_from_this<csr_data> {
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
     auto next_offset = 0;
@@ -981,6 +1161,12 @@ struct collect_result : public qop, public std::enable_shared_from_this<collect_
 
   void finish(graph_db_ptr &gdb);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
     auto next_offset = 0;
@@ -1004,6 +1190,12 @@ struct end_pipeline : public qop, public std::enable_shared_from_this<end_pipeli
   void dump(std::ostream &os) const override;
 
   void process();
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -1034,7 +1226,7 @@ struct persist_result : public qop {
  */
 #define PExpr_(i, func)                                                        \
   projection::expr {                                                           \
-    i, [&](auto res) { return func; }                                          \
+    i, [&](auto ctx, auto res) { return func; }                                \
   }
 
 #define PVar_(i)                                                               \
@@ -1090,9 +1282,9 @@ struct projection_expr {
 struct projection : public qop, public std::enable_shared_from_this<projection> {
   struct expr {
     std::size_t vidx;
-    std::function<query_result(const query_result&)> func;
+    std::function<query_result(query_ctx&, const query_result&)> func;
     expr() = default;
-    expr(std::size_t i, std::function<query_result(const query_result&)> f) : vidx(i), func(f) {}
+    expr(std::size_t i, std::function<query_result(query_ctx&, const query_result&)> f) : vidx(i), func(f) {}
   };
 
   using expr_list = std::vector<expr>;
@@ -1107,6 +1299,11 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
 
   void process(graph_db_ptr &gdb, const qr_tuple &v);
 
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;

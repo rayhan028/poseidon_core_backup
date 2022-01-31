@@ -1,4 +1,5 @@
 #include "expression.hpp"
+#include "func_call_expr.hpp"
 
 std::string expression::fop_str(FOP fop) const {
     switch (fop) {
@@ -123,6 +124,12 @@ std::string func_call::dump() const {
             params += ", ";
     }
     return func_name_ + "(" + params + ")";
+}
+
+void func_call::accept(int rank, expression_visitor &fep) {
+    for (auto& p : param_list_)    
+        p->accept(rank+1, fep);
+    fep.visit(rank, shared_from_this());
 }
 
 binary_predicate::binary_predicate(FOP fop, const expr left, const expr right, bool prec, bool is_bool)

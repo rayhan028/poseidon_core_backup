@@ -190,11 +190,15 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<time_token> time) {
     opd_cnt++;
 }
 
+void fep_visitor_inline::visit(int rank, std::shared_ptr<func_call> fct) {
+    // TODO!!!
+}
+
 void fep_visitor_inline::visit(int rank, std::shared_ptr<fct_call> fct) {
     fct->opd_num = opd_cnt;
     expr_stack.insert(expr_stack.begin(), fct);
 
-    Value* fct_raw;
+    Value* fct_raw = nullptr;
 
     FunctionType* fct_callee_type = nullptr;
 

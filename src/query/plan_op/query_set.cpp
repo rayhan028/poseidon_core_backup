@@ -56,3 +56,9 @@ void query_set::print_plan(std::ostream& os) {
     print_plan_helper(os, trees[0], "");
     os << "##----------------------------------------------------------------------\n";
 }
+
+void query_set::accept(qop_visitor& visitor) {
+    for (auto &q : queries_) {  
+      q.plan_head()->accept(visitor);
+    }
+}

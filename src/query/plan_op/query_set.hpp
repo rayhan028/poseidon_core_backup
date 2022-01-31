@@ -39,6 +39,8 @@ public:
   query &at(std::size_t i) { return queries_[i];  }
   bool empty() const { return queries_.empty(); }
 
+  void accept(qop_visitor& visitor);
+  
   void append_printer();
   void append_collect(result_set& rs);
 
