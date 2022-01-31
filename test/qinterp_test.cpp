@@ -279,7 +279,11 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
     create_data(graph);
 
     qproc qp(graph);
+#ifdef __APPLE__
     REQUIRE(qp.load_library("../libldbc_udf.dylib"));
+#else
+    REQUIRE(qp.load_library("../libldbc_udf.so"));
+#endif
 
     char buf[1024];
     getcwd(buf, 1024);
