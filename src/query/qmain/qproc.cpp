@@ -96,6 +96,8 @@ public:
     }
 
     void visit(std::shared_ptr<left_outerjoin> op) override { 
+        std::cout << "visit left_outerjoin..." << std::endl;
+
         auto ex = op->get_expression();
         if (ex) {
             ex->accept(0, expr_visitor_);
