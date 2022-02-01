@@ -33,8 +33,8 @@ struct create_node : public qop, public std::enable_shared_from_this<create_node
 
   void dump(std::ostream &os) const override;
 
-  virtual void start(graph_db_ptr &gdb) override;
-  void process(graph_db_ptr &gdb, const qr_tuple &v);
+  virtual void start(query_ctx &ctx) override;
+  void process(query_ctx &ctx, const qr_tuple &v);
 
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
@@ -64,7 +64,7 @@ struct create_relationship : public qop, public std::enable_shared_from_this<cre
 
   void dump(std::ostream &os) const override;
 
-  void process(graph_db_ptr &gdb, const qr_tuple &v);
+  void process(query_ctx &ctx, const qr_tuple &v);
 
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
@@ -98,10 +98,10 @@ struct create_rship_on_join : public qop, public std::enable_shared_from_this<cr
 
   void dump(std::ostream &os) const override;
 
-  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
-  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_left(query_ctx &ctx, const qr_tuple &v);
+  void process_right(query_ctx &ctx, const qr_tuple &v);
 
-  void finish(graph_db_ptr &gdb);
+  void finish(query_ctx &ctx);
 
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
@@ -131,7 +131,7 @@ struct update_node : public qop, public std::enable_shared_from_this<update_node
 
   void dump(std::ostream &os) const override;
 
-  void process(graph_db_ptr &gdb, const qr_tuple &v);
+  void process(query_ctx &ctx, const qr_tuple &v);
 
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
@@ -159,7 +159,7 @@ struct detach_node : public qop, public std::enable_shared_from_this<detach_node
 
   void dump(std::ostream &os) const override;
 
-  void process(graph_db_ptr &gdb, const qr_tuple &v);
+  void process(query_ctx &ctx, const qr_tuple &v);
 
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
@@ -185,7 +185,7 @@ struct remove_node : public qop, public std::enable_shared_from_this<remove_node
 
   void dump(std::ostream &os) const override;
 
-  void process(graph_db_ptr &gdb, const qr_tuple &v);
+  void process(query_ctx &ctx, const qr_tuple &v);
 
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
@@ -210,7 +210,7 @@ struct remove_rship : public qop, public std::enable_shared_from_this<remove_rsh
 
   void dump(std::ostream &os) const override;
 
-  void process(graph_db_ptr &gdb, const qr_tuple &v);
+  void process(query_ctx &ctx, const qr_tuple &v);
 
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 

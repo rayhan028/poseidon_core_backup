@@ -37,15 +37,15 @@ void create_node::dump(std::ostream &os) const {
   os << ")";
 }
 
-void create_node::start(graph_db_ptr &gdb) { 
-  auto &n = gdb->node_by_id(gdb->add_node(label, props, true));
-  consume_(gdb, {&n});
+void create_node::start(query_ctx &ctx) { 
+  auto &n = ctx.gdb_->node_by_id(ctx.gdb_->add_node(label, props, true));
+  consume_(ctx, {&n});
 }
 
-void create_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
-  auto &n = gdb->node_by_id(gdb->add_node(label, props, true));
+void create_node::process(query_ctx &ctx, const qr_tuple &v) {
+  auto &n = ctx.gdb_->node_by_id(ctx.gdb_->add_node(label, props, true));
   auto v2 = append(v, query_result(&n));
-  consume_(gdb, v2);
+  consume_(ctx, v2);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -66,14 +66,14 @@ void create_relationship::dump(std::ostream &os) const {
   os << ")";
 }
 
-void create_relationship::process(graph_db_ptr &gdb, const qr_tuple &v) {
+void create_relationship::process(query_ctx &ctx, const qr_tuple &v) {
   auto n1 = boost::get<node *>(v[src_des_nodes_.first]);
   auto n2 = boost::get<node *>(v[src_des_nodes_.second]);
-  auto rid = gdb->add_relationship(n1->id(), n2->id(), label, props, true);
-  auto& r = gdb->rship_by_id(rid);
+  auto rid = ctx.gdb_->add_relationship(n1->id(), n2->id(), label, props, true);
+  auto& r = ctx.gdb_->rship_by_id(rid);
   auto v2 = append(v, query_result(&r));
   
-  consume_(gdb, v2);
+  consume_(ctx, v2);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -94,23 +94,23 @@ void create_rship_on_join::dump(std::ostream &os) const {
   os << ")";
 }
 
-void create_rship_on_join::process_left(graph_db_ptr &gdb, const qr_tuple &v) {
+void create_rship_on_join::process_left(query_ctx &ctx, const qr_tuple &v) {
   auto n = boost::get<node *>(v[l_node_pos]);
   if (src_to_des) {
-    gdb->add_relationship(n->id(), r_node_->id(), label, props, true);
-    consume_(gdb, v);
+    ctx.gdb_->add_relationship(n->id(), r_node_->id(), label, props, true);
+    consume_(ctx, v);
   }
   else {
-    gdb->add_relationship(r_node_->id(), n->id(), label, props, true);
-    consume_(gdb, v);
+    ctx.gdb_->add_relationship(r_node_->id(), n->id(), label, props, true);
+    consume_(ctx, v);
   }
 }
 
-void create_rship_on_join::process_right(graph_db_ptr &gdb, const qr_tuple &v) {
+void create_rship_on_join::process_right(query_ctx &ctx, const qr_tuple &v) {
   r_node_ = boost::get<node *>(v.back());
 }
 
-void create_rship_on_join::finish(graph_db_ptr &gdb) { qop::default_finish(gdb); }
+void create_rship_on_join::finish(query_ctx &ctx) { qop::default_finish(ctx); }
 
 /* ------------------------------------------------------------------------ */
 
@@ -132,14 +132,14 @@ void update_node::dump(std::ostream &os) const {
     subscriber_->dump(os);
 }
 
-void update_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
+void update_node::process(query_ctx &ctx, const qr_tuple &v) {
   // fetch the node to be updated
   auto &ge = v[var_no_];
   assert(ge.which() == 0); // TODO: raise exception
   auto n = boost::get<node *>(ge);
   // update the node
-  gdb->update_node(*n, props);
-  consume_(gdb, v);
+  ctx.gdb_->update_node(*n, props);
+  consume_(ctx, v);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -150,7 +150,7 @@ void detach_node::dump(std::ostream &os) const {
     subscriber_->dump(os);
 }
 
-void detach_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
+void detach_node::process(query_ctx &ctx, const qr_tuple &v) {
   qr_tuple res = v;
   node * n = nullptr;
   if (pos_ == std::numeric_limits<std::size_t>::max()) {
@@ -163,20 +163,20 @@ void detach_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
   }
 
   std::list<relationship::id_t> rships;
-  gdb->foreach_from_relationship_of_node(*n, [&](relationship &r) {
+  ctx.gdb_->foreach_from_relationship_of_node(*n, [&](relationship &r) {
     rships.push_back(r.id()); });
-  gdb->foreach_to_relationship_of_node(*n, [&](relationship &r) {
+  ctx.gdb_->foreach_to_relationship_of_node(*n, [&](relationship &r) {
     rships.push_back(r.id()); });
 
   for (auto rid : rships)
-    gdb->delete_relationship(rid);
+    ctx.gdb_->delete_relationship(rid);
 
   // for(auto rel : rels_)
   //   res[rel] = query_result(null_t(-1));
 
-  gdb->delete_node(n->id());
+  ctx.gdb_->delete_node(n->id());
 
-  consume_(gdb, res);
+  consume_(ctx, res);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -187,7 +187,7 @@ void remove_node::dump(std::ostream &os) const {
     subscriber_->dump(os);
 }
 
-void remove_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
+void remove_node::process(query_ctx &ctx, const qr_tuple &v) {
   qr_tuple res = v;
   node * n = nullptr;
   if (pos_ == std::numeric_limits<std::size_t>::max()) {
@@ -199,8 +199,8 @@ void remove_node::process(graph_db_ptr &gdb, const qr_tuple &v) {
     res[pos_] = query_result(null_t(-1));
   }
 
-  gdb->delete_node(n->id());
-  consume_(gdb, res);
+  ctx.gdb_->delete_node(n->id());
+  consume_(ctx, res);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -211,7 +211,7 @@ void remove_rship::dump(std::ostream &os) const {
     subscriber_->dump(os);
 }
 
-void remove_rship::process(graph_db_ptr &gdb, const qr_tuple &v) {
+void remove_rship::process(query_ctx &ctx, const qr_tuple &v) {
   qr_tuple res = v;
   relationship * r = nullptr;
   if (pos_ == std::numeric_limits<std::size_t>::max()) {
@@ -223,6 +223,6 @@ void remove_rship::process(graph_db_ptr &gdb, const qr_tuple &v) {
     res[pos_] = query_result(null_t(-1));
   }
 
-  gdb->delete_relationship(r->id());
-  consume_(gdb, res);
+  ctx.gdb_->delete_relationship(r->id());
+  consume_(ctx, res);
 }

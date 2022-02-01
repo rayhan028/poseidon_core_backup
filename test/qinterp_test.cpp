@@ -9,6 +9,7 @@
 #include "defs.hpp"
 #include "graph_pool.hpp"
 #include "qproc.hpp"
+#include "qop.hpp"
 
 using namespace boost::posix_time;
 namespace dll = boost::dll;
@@ -273,6 +274,55 @@ std::string load_string(const std::string& fname) {
     return qstr;
 }
 
+namespace pj = builtin;
+void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
+  std::vector<std::string> message = {"Post", "Comment"};
+
+  auto q1 = query(gdb)
+                .nodes_where(message, "id",
+                            [&](auto &p) { return p.equal(messageId); })
+                .from_relationships(":hasCreator")
+                .to_node("Person");
+
+  auto q2 = query(gdb)
+                .nodes_where(message, "id",
+                            [&](auto &p) { return p.equal(messageId); })
+                .to_relationships(":replyOf")
+                .from_node("Comment")
+                .from_relationships(":hasCreator")
+                .to_node("Person")
+                .outerjoin(q1, [&](const qr_tuple &lv, const qr_tuple &rv) {
+                  auto connected = false;
+                  auto src = boost::get<node *>(lv[4]);
+                  auto des = boost::get<node *>(rv[2]);
+                  gdb->foreach_from_relationship_of_node((*src), [&](auto &r) {
+                    if (r.to_node_id() == des->id())
+                      connected = true;
+                  });
+                  return connected; })
+                .append_to_qr_tuple([&](const qr_tuple &v) {
+                  return v[7].type() == typeid(null_val) ?
+                    query_result(std::string("false")) : query_result(std::string("true")); })
+                .project({PExpr_(2, pj::uint64_property(res, "id")),
+                          PExpr_(2, pj::string_property(res, "content")),
+                          PExpr_(2, pj::ptime_property(res, "creationDate")),
+                          PExpr_(4, pj::uint64_property(res, "id")),
+                          PExpr_(4, pj::string_property(res, "firstName")),
+                          PExpr_(4, pj::string_property(res, "lastName")),
+                          PVar_(8)})
+                .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
+                        if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
+                          return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
+                        return boost::get<boost::posix_time::ptime>(qr1[2]) < boost::get<boost::posix_time::ptime>(qr2[2]); })
+                .collect(rs);
+ gdb->run_transaction([&]() {
+    query::start({&q1, &q2});
+    return true;
+  });  
+
+  rs.wait();
+}
+
 TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
     auto pool = graph_pool::create(test_path);
     auto graph = pool->create_graph("my_graph");
@@ -430,6 +480,10 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
       auto qstr = load_string(prefix_is + "7.q");
       auto res = qp.execute_query(qproc::Interpret, qstr, true);
       std::cout << res.result() << std::endl;
+
+      result_set res2;
+      ldbc_is_query_7(graph, res2, 16492676);
+      std::cout << res2 << std::endl;
 
       result_set expected;
       expected.append({

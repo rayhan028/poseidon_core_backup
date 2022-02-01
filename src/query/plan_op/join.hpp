@@ -33,10 +33,10 @@ struct cross_join : public qop, public std::enable_shared_from_this<cross_join> 
 
   void dump(std::ostream &os) const override;
 
-  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
-  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_left(query_ctx &ctx, const qr_tuple &v);
+  void process_right(query_ctx &ctx, const qr_tuple &v);
 
-  void finish(graph_db_ptr &gdb);
+  void finish(query_ctx &ctx);
 
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
@@ -72,10 +72,10 @@ struct nested_loop_join : public qop, public std::enable_shared_from_this<nested
 
   void dump(std::ostream &os) const override;
 
-  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
-  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_left(query_ctx &ctx, const qr_tuple &v);
+  void process_right(query_ctx &ctx, const qr_tuple &v);
 
-  void finish(graph_db_ptr &gdb);
+  void finish(query_ctx &ctx);
 
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
@@ -112,11 +112,11 @@ struct hash_join : public qop, public std::enable_shared_from_this<hash_join> {
 
   void dump(std::ostream &os) const override;
 
-  void build_phase(graph_db_ptr &gdb, const qr_tuple &v);
-  void probe_phase(graph_db_ptr &gdb, const qr_tuple &v);
+  void build_phase(query_ctx &ctx, const qr_tuple &v);
+  void probe_phase(query_ctx &ctx, const qr_tuple &v);
   static uint64_t hasher(uint64_t id);
 
-  void finish(graph_db_ptr &gdb);
+  void finish(query_ctx &ctx);
 
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
@@ -156,10 +156,10 @@ struct left_outerjoin : public qop, public std::enable_shared_from_this<left_out
 
   void dump(std::ostream &os) const override;
 
-  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
-  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_left(query_ctx &ctx, const qr_tuple &v);
+  void process_right(query_ctx &ctx, const qr_tuple &v);
 
-  void finish(graph_db_ptr &gdb);
+  void finish(query_ctx &ctx);
   
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
@@ -192,10 +192,10 @@ struct left_outerjoin_on_node : public qop, public std::enable_shared_from_this<
 
   void dump(std::ostream &os) const override;
 
-  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
-  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_left(query_ctx &ctx, const qr_tuple &v);
+  void process_right(query_ctx &ctx, const qr_tuple &v);
 
-  void finish(graph_db_ptr &gdb);
+  void finish(query_ctx &ctx);
   
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
@@ -235,10 +235,10 @@ struct rship_join : public qop, public std::enable_shared_from_this<rship_join> 
 
   void dump(std::ostream &os) const override;
 
-  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
-  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_left(query_ctx &ctx, const qr_tuple &v);
+  void process_right(query_ctx &ctx, const qr_tuple &v);
 
-  void finish(graph_db_ptr &gdb);
+  void finish(query_ctx &ctx);
 
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
@@ -270,10 +270,10 @@ struct left_outerjoin_on_rship : public qop, public std::enable_shared_from_this
 
   void dump(std::ostream &os) const override;
 
-  void process_left(graph_db_ptr &gdb, const qr_tuple &v);
-  void process_right(graph_db_ptr &gdb, const qr_tuple &v);
+  void process_left(query_ctx &ctx, const qr_tuple &v);
+  void process_right(query_ctx &ctx, const qr_tuple &v);
 
-  void finish(graph_db_ptr &gdb);
+  void finish(query_ctx &ctx);
 
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 

@@ -466,7 +466,10 @@ query &query::delete_rship(const std::size_t pos) {
                    std::bind(&remove_rship::process, op.get(), ph::_1, ph::_2));
 }
 
-void query::start() { plan_head_->start(graph_db_); }
+void query::start() { 
+  query_ctx ctx(graph_db_);
+  plan_head_->start(ctx); 
+}
 
 void query::start(std::initializer_list<query *> queries) {
   for (auto &q : queries) {
