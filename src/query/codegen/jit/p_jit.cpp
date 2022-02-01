@@ -32,7 +32,7 @@ ir_optimizer::operator()(ThreadSafeModule TSM,
                       const MaterializationResponsibility &) {
     Module &M = *TSM.getModuleUnlocked();
 
-    M.dump();
+    //M.dump();
 
     legacy::FunctionPassManager FPM(&M);
     FPM.add(createPromoteMemoryToRegisterPass());
