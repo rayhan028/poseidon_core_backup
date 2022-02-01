@@ -14,6 +14,7 @@ void csr_delta::store_delta(uint64_t nid, const std::vector<uint64_t> &ids,
   elem.restored_ = false;
 
   delta_elements_.store(std::move(elem));
+  num_delta_elements_++;
 #else
   auto inserter = [&](delta_element &elem, 
         delta_element::element_type type, uint64_t val) {
@@ -28,10 +29,12 @@ void csr_delta::store_delta(uint64_t nid, const std::vector<uint64_t> &ids,
 
   delta_element nid_elem;
   inserter(nid_elem, delta_element::element_type::node_id, nid);
+  num_delta_elements_++;
 
   for (auto id : ids) {
     delta_element ngbr_id_elem;
     inserter(ngbr_id_elem, delta_element::element_type::neighbour_id, id);
+    num_delta_elements_++;
   }
 
   for (auto w : weights) {
@@ -40,6 +43,7 @@ void csr_delta::store_delta(uint64_t nid, const std::vector<uint64_t> &ids,
 
     delta_element rweight_elem;
     inserter(rweight_elem, delta_element::element_type::rship_weight, buf);
+    num_delta_elements_++;
   }
 #endif
 }
@@ -168,5 +172,7 @@ void csr_delta::restore_deltas(delta_map_t &deltas, uint64_t txid) {
   if (clear) {
     // no delta element is needed for later restores
     delta_elements_.clear();
+    num_delta_elements_ = 0;
+    delta_mode_ = true;
   }
 }

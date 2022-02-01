@@ -336,11 +336,9 @@ bool graph_db::commit_transaction() {
 
 #ifdef CSR_DELTA_STORE
   std::set<node::id_t> updated_nodes, deleted_nodes, deleted_rships;
-#endif
 
   // process dirty_rships list
   for (auto rel_id : tx->dirty_relationships())  {
-#ifdef CSR_DELTA_STORE
     auto& r = rships_->get(rel_id);
     if (!r.has_valid_version(xid)) {
       // neighbour nodes that will be removed from current CSR
@@ -348,64 +346,78 @@ bool graph_db::commit_transaction() {
       updated_nodes.insert(r.from_node_id());
       updated_nodes.insert(r.to_node_id());
     }
-#endif
     commit_dirty_relationship(tx, rel_id);
   }
 
   // process dirty_nodes list
   for (auto node_id : tx->dirty_nodes()) {
-#ifdef CSR_DELTA_STORE
     auto& n = nodes_->get(node_id);
     if (!n.has_valid_version(xid)) {
       // nodes whose entire neighbour nodes will be removed from current CSR
       deleted_nodes.insert(node_id);
     }
     updated_nodes.insert(node_id);
-#endif
     commit_dirty_node(tx, node_id);
   }
 
-  // log end of transaction
-  ulog_->transaction_end(current_transaction_->logid());
+  if (!csr_delta_->delta_mode_) {
+    // do nothing
+    ;
+  }
+  else if (auto count = csr_delta_->num_delta_elements_ + updated_nodes.size();
+            count > csr_delta_->max_delta_elements_) {
+    csr_delta_->delta_mode_ = false;
+  }
+  else {
+    // store deltas
+    std::vector<uint64_t> neigbour_node_ids;
+    std::vector<double> rship_weights;
 
-#ifdef CSR_DELTA_STORE
-  std::vector<uint64_t> neigbour_node_ids;
-  std::vector<double> rship_weights;
-
-  for (auto node_id : updated_nodes) {
-    auto &n = nodes_->get(node_id);
-    if (deleted_nodes.find(node_id) == deleted_nodes.end()) {
-      auto rid = n.from_rship_list;
-      while (rid != UNKNOWN) {
-        auto &r = rships_->get(rid);
-        if (deleted_rships.find(rid) == deleted_rships.end()) {
-          // destination neighbour of node with id "node_id"
-          neigbour_node_ids.push_back(r.to_node_id());
-          rship_weights.push_back(csr_delta_->weight_func_(r));
-        }
-        rid = r.next_src_rship;
-      }
-
-      if (csr_delta_->get_bidirectional()) {
-        rid = n.to_rship_list;
+    for (auto node_id : updated_nodes) {
+      auto &n = nodes_->get(node_id);
+      if (deleted_nodes.find(node_id) == deleted_nodes.end()) {
+        auto rid = n.from_rship_list;
         while (rid != UNKNOWN) {
           auto &r = rships_->get(rid);
           if (deleted_rships.find(rid) == deleted_rships.end()) {
-            // source neighbour of node with id "node_id"
-            neigbour_node_ids.push_back(r.from_node_id());
-            auto &func = csr_delta_->get_weight_func();
+            // destination neighbour of node with id "node_id"
+            neigbour_node_ids.push_back(r.to_node_id());
             rship_weights.push_back(csr_delta_->weight_func_(r));
           }
-          rid = r.next_dest_rship;
+          rid = r.next_src_rship;
+        }
+
+        if (csr_delta_->get_bidirectional()) {
+          rid = n.to_rship_list;
+          while (rid != UNKNOWN) {
+            auto &r = rships_->get(rid);
+            if (deleted_rships.find(rid) == deleted_rships.end()) {
+              // source neighbour of node with id "node_id"
+              neigbour_node_ids.push_back(r.from_node_id());
+              rship_weights.push_back(csr_delta_->weight_func_(r));
+            }
+            rid = r.next_dest_rship;
+          }
         }
       }
+      csr_delta_->store_delta(node_id, neigbour_node_ids, rship_weights, xid);
+      neigbour_node_ids.clear();
+      rship_weights.clear();
     }
-    csr_delta_->store_delta(node_id, neigbour_node_ids, rship_weights, xid);
-    neigbour_node_ids.clear();
-    rship_weights.clear();
+  }
+#else
+  // process dirty_rships list
+  for (auto rel_id : tx->dirty_relationships())  {
+    commit_dirty_relationship(tx, rel_id);
+  }
+
+  // process dirty_nodes list
+  for (auto node_id : tx->dirty_nodes()) {
+    commit_dirty_node(tx, node_id);
   }
 #endif
 
+  ulog_->transaction_end(current_transaction_->logid());
   current_transaction_.reset();
   vacuum(xid);
 #endif

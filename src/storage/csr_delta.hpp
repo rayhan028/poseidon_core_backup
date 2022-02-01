@@ -75,6 +75,16 @@ struct alignas(64) vchunk {
     return SIZE_MAX;
   }
 
+  std::size_t last_used() const {
+    if (slots_.none())
+      return SIZE_MAX;
+
+    for (auto i = (num_records - 1); i >= 0; i--)
+      if (slots_.test(i))
+        return i;
+    return SIZE_MAX;
+  }
+
   inline bool is_full() const {
     return slots_.all();
   }
@@ -83,15 +93,15 @@ struct alignas(64) vchunk {
 /**
  * vchunked_vec is a strictly volatile version of chunked_vec.
  */
-template <typename T, int chunk_size = DEFAULT_CHUNK_SIZE>
+template <typename T, int vchunk_size = DEFAULT_CHUNK_SIZE>
 class vchunked_vec {
-  static constexpr auto num_entries = chunk_size / sizeof(T);
+  static constexpr auto num_entries = vchunk_size / sizeof(T);
 
   using vchunk_ptr = vchunk<T, num_entries> *;
 
  public:
   /**
-   * An implementation of an iterator for chunked_vec.
+   * An implementation of an iterator for vchunked_vec.
    */
   class iter {
    public:
@@ -106,7 +116,7 @@ class vchunked_vec {
         if (pos_ == num_entries) {
           cptr_ = nullptr;
           pos_ = 0;
-          // TODO: we assume that we don't have empty chunks
+          // TODO: we assume that we don't have empty vchunks
         }
       }
     }
@@ -132,13 +142,13 @@ class vchunked_vec {
     }
 
   private:
-    vchunk_ptr cptr_; // pointer to the current chunk
-    offset_t pos_;   // position within the current chunk
+    vchunk_ptr cptr_; // pointer to the current vchunk
+    offset_t pos_;   // position within the current vchunk
   };
 
   vchunked_vec(const std::string& unused = "")
       : capacity_(0), available_slots_(0),
-        elems_per_chunk_(num_entries) {}
+        elems_per_vchunk_(num_entries) {}
 
   ~vchunked_vec() {
     for (auto p : vchunk_list_)
@@ -176,7 +186,7 @@ class vchunked_vec {
     else {
       // otherwise we find the next available vchunk in the freelist
       idx = find_in_free_list();
-      ch = find_chunk(idx);
+      ch = find_vchunk(idx);
     }
     offset_t pos = ch->first_available();
     assert(pos != SIZE_MAX);
@@ -202,19 +212,27 @@ class vchunked_vec {
         return offs + first;
       }
       ptr = ptr->next_;
-      offs += elems_per_chunk_;
+      offs += elems_per_vchunk_;
     }
     return UNKNOWN;
   }
 
-  void resize(int nchunks) {
-    int num = nchunks;
+  offset_t last_used() const {
+    if (vchunk_list_.empty())
+      return UNKNOWN;
+    vchunk_ptr ch = vchunk_list_.back();
+    std::size_t idx = (vchunk_list_.size() - 1) * elems_per_vchunk_ + ch->last_used();
+    return idx;
+  }
+
+  void resize(int nvchunks) {
+    int num = nvchunks;
     vchunk_ptr ptr = nullptr;
 
     if (vchunk_list_.empty()) {
       ptr = new vchunk<T, num_entries>();
       vchunk_list_.push_back(ptr);
-      available_slots_ = capacity_ = elems_per_chunk_;
+      available_slots_ = capacity_ = elems_per_vchunk_;
       num--;
       add_to_free_list(0);
     } else {
@@ -226,9 +244,9 @@ class vchunked_vec {
       ptr->next_ = c;
       ptr = c;
       vchunk_list_.push_back(ptr);
-      capacity_ += elems_per_chunk_;
-      available_slots_ += elems_per_chunk_;
-      add_to_free_list((vchunk_list_.size() - 1) * elems_per_chunk_);
+      capacity_ += elems_per_vchunk_;
+      available_slots_ += elems_per_vchunk_;
+      add_to_free_list((vchunk_list_.size() - 1) * elems_per_vchunk_);
     }
   }
 
@@ -252,8 +270,8 @@ private:
     return free_list_.front();
   }
 
-  vchunk_ptr find_chunk(offset_t idx) const {
-    auto n = idx / elems_per_chunk_;
+  vchunk_ptr find_vchunk(offset_t idx) const {
+    auto n = idx / elems_per_vchunk_;
     if (n >= vchunk_list_.size())
       throw index_out_of_range();
     return vchunk_list_[n];
@@ -261,7 +279,7 @@ private:
 
   offset_t capacity_;
   offset_t available_slots_;
-  uint32_t elems_per_chunk_;
+  uint32_t elems_per_vchunk_;
   std::vector<vchunk_ptr> vchunk_list_;
   std::vector<offset_t> free_list_;
   mutable std::shared_mutex fl_mtx_;
@@ -364,8 +382,12 @@ private:
   offset_t last_node_id_ = UNKNOWN; // id of the last node in the current CSR
   uint64_t last_txn_id_ = UNKNOWN;  // id of the last transaction that made a CSR update
 
+  bool delta_mode_ = true;    // delta mode of CSR update (mode for adaptive mechanism)
+  uint64_t num_delta_elements_ = 0;  // the current number of stored delta elements
+  uint64_t max_delta_elements_ = 18174889;  // maximum number of delta elements (threshold for adaptive mechanism)
+
 #ifdef VOLATILE_DELTA
-  vchunked_vec<delta_element> delta_elements_; // the underlying chunked vector of delta elements
+  vchunked_vec<delta_element> delta_elements_; // the underlying vchunked vector of delta elements
   
   // TODO these arrays are not needed here when CSR update is done directly on GPU
   std::vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR
@@ -377,7 +399,7 @@ private:
   // TODO these arrays are not needed here when CSR update is done directly on GPU
   pmem::obj::vector<offset_t> row_offsets_; // row offsets array of the current CSR
   pmem::obj::vector<offset_t> col_indices_; // column indices array of the current CSR
-  pmem::obj::vector<float> edge_values_; // edge values array of the current CSR
+  pmem::obj::vector<float> edge_values_;    // edge values array of the current CSR
 #endif
 };
 

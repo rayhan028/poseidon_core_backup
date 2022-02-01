@@ -28,8 +28,17 @@
 
 void graph_db::poseidon_to_csr(csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
 #if defined CSR_DELTA_STORE && defined USE_TX
-  // we use weight_func and bidirectional as per the delta store
-  csr_update_with_delta(csr);
+  if (csr_delta_->delta_mode_ ) {
+    // we use weight_func and bidirectional as per the delta store
+    csr_update_with_delta(csr);
+  }
+  else {
+#ifdef PARALLEL_CSR_BUILD
+    parallel_csr_build(csr, weight_func, bidirectional);
+#else
+    csr_build(csr, weight_func, bidirectional);
+#endif
+  }
 #elif defined PARALLEL_CSR_BUILD
   parallel_csr_build(csr, weight_func, bidirectional);
 #else
@@ -109,6 +118,8 @@ void graph_db::csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirec
   if (clear) {
     // no delta element is needed later for updating CSR
     csr_delta_->delta_elements_.clear();
+    csr_delta_->num_delta_elements_ = 0;
+    csr_delta_->delta_mode_ = true;
   }
 
   // TODO this is not needed when CSR update is done directly on GPU
@@ -186,6 +197,8 @@ void graph_db::parallel_csr_build(csr_arrays &csr, rship_weight weight_func, boo
   if (clear) {
     // no delta element is needed later for updating CSR
     csr_delta_->delta_elements_.clear();
+    csr_delta_->num_delta_elements_ = 0;
+    csr_delta_->delta_mode_ = true;
   }
 
   // TODO this is not needed when CSR update is done directly on GPU
