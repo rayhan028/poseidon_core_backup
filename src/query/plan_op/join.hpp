@@ -28,6 +28,7 @@
  */
 struct cross_join : public qop, public std::enable_shared_from_this<cross_join> {
   cross_join() = default;
+  cross_join(qop_ptr &rhs) : rhs_(rhs) {}
   ~cross_join() = default;
 
   void dump(std::ostream &os) const override;
@@ -53,8 +54,10 @@ struct cross_join : public qop, public std::enable_shared_from_this<cross_join> 
 
   bool is_binary() const override { return true; }
 
+  qop_ptr &get_rhs() { return rhs_; }
 private:
   std::list<qr_tuple> input_;
+  qop_ptr rhs_;
 };
 
   /**
@@ -86,10 +89,14 @@ struct nested_loop_join : public qop, public std::enable_shared_from_this<nested
 
   bool is_binary() const override { return true; }
   
+  qop_ptr &get_rhs() { return rhs_; }
+
+  std::pair<int, int> left_right_nodes_;
 private:
   std::vector<qr_tuple> input_;
   std::vector<node::id_t> join_ids_;
-  std::pair<int, int> left_right_nodes_;
+  
+  qop_ptr rhs_;
 };
 
   /**
@@ -100,6 +107,7 @@ private:
    */
 struct hash_join : public qop, public std::enable_shared_from_this<hash_join> {
   hash_join(std::pair<int, int> pos) : left_right_nodes_(pos) {} 
+  hash_join(std::pair<int, int> pos, qop_ptr &rhs) : left_right_nodes_(pos), rhs_(rhs) {} 
   ~hash_join() = default;
 
   void dump(std::ostream &os) const override;
@@ -117,16 +125,23 @@ struct hash_join : public qop, public std::enable_shared_from_this<hash_join> {
   }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
   }
 
   bool is_binary() const override { return true; }
-  
+
+  qop_ptr &get_rhs() { return rhs_; }
+
+  std::pair<int, int> left_right_nodes_;
 private:
   const static int BUCKETS = 10;
   std::vector<qr_tuple> input_[BUCKETS];
   std::vector<node::id_t> join_ids_[BUCKETS];
-  std::pair<int, int> left_right_nodes_;
+  qop_ptr rhs_;
 };
 
 /**
@@ -171,7 +186,8 @@ private:
  * specified by the pos pair. Dangling tuples are padded with "NULL" 
  */
 struct left_outerjoin_on_node : public qop, public std::enable_shared_from_this<left_outerjoin_on_node> {
-  left_outerjoin_on_node(const std::pair<int, int> &pos) : left_right_nodes_(pos) {} 
+  left_outerjoin_on_node(const std::pair<int, int> &pos) : left_right_nodes_(pos) {}
+  left_outerjoin_on_node(const std::pair<int, int> &pos, qop_ptr &rhs) : left_right_nodes_(pos), rhs_(rhs) {} 
   ~left_outerjoin_on_node() = default;
 
   void dump(std::ostream &os) const override;
@@ -188,15 +204,22 @@ struct left_outerjoin_on_node : public qop, public std::enable_shared_from_this<
   }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);     
   }
 
   bool is_binary() const override { return true; }
+
+  qop_ptr &get_rhs() { return rhs_; }
   
+  std::pair<int, int> left_right_nodes_;
 private:
   std::vector<qr_tuple> input_;
   std::vector<node::id_t> join_ids_;
-  std::pair<int, int> left_right_nodes_;
+  qop_ptr rhs_;
 };
 
 /**

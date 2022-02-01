@@ -73,7 +73,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
   int num_persons = 100;
   int num_books = 42;
 
-  for (auto i = 0; i < num_persons; i++) {
+  for (int i = 0; i < num_persons; i++) {
     graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
@@ -103,17 +103,16 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     SECTION("Scan all nodes for given label") {
         qcompiler queryEngine(graph);
 
-        result_set rs;
-        auto q = query(graph).all_nodes("Person").collect(rs);
+        result_set rss;
+        auto q = query(graph).all_nodes("Person").collect(rss);
 
         arg_builder args;
 	      args.arg(1, "Person");
 
         queryEngine.generate(q.plan_head(), false);
-	      //queryEngine.run(&rs, args);
+	      queryEngine.run(&rss, args);
 
-        REQUIRE(true);
-        //REQUIRE(rs.data.size() == (unsigned int)num_persons);
+        REQUIRE(rss.data.size() == (unsigned int)num_persons);
         //REQUIRE(boost::get<std::string>(rs.data[43][0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\"}");
     }
 
@@ -131,8 +130,8 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         queryEngine.run(&rs, args);
 
         REQUIRE(rs.data.size() == 1);
-    }*/
-
+    }
+  */
     arg_builder args;
     result_set rs;
     SECTION("Find a outgoing relationship from each Person node") {
@@ -266,14 +265,17 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         //REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "John Doe");
     }
 
-/*
+
     SECTION("Apply a Projection on all tuple results") {
         qcompiler queryEngine(graph);
-        auto expr = Scan("Person", Project({{0, "name", FTYPE::STRING}}, Collect()));
+        result_set rs;
+        auto expr = query(graph).all_nodes("Person")
+                        .project({{0, "name", FTYPE::STRING}})
+                          .collect(rs).plan_head();
         arg_builder args;
         args.arg(1, "Person");
 
-        result_set rs;
+        
         queryEngine.generate(expr, false);
         queryEngine.run(&rs, args);
 
@@ -283,41 +285,53 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
     SECTION("CrossJoin two tuple results") {
         qcompiler queryEngine(graph);
-        auto rhs = Scan("Book", End());
-        auto lhs = Scan("Person", Join(JOIN_OP::CROSS, {}, Collect(), rhs));
+
+        result_set rss;        
+        auto rhs = query(graph).all_nodes("Book").finish();
+        auto rhsp = rhs.plan_head();
+        auto lhs = query(graph).all_nodes("Person").crossjoin(rhs).collect(rs).plan_head();
+
+        arg_builder args;
+        joiner j;
+        args.arg(1, "Person");
+        args.arg(2, &j);
         
-        arg_builder args;
-        joiner j;
-        args.arg(4, &j);
+        queryEngine.generate(rhsp, false);
+        queryEngine.run(&rss, args);
+        
         args.arg(1, "Book");
-        args.arg(2, &j);
-        args.arg(3, "Person");
 
-        result_set rs;
         queryEngine.generate(lhs, false);
-        queryEngine.run(&rs, args);
-
-        REQUIRE(rs.data.size() == (unsigned int)num_persons * (unsigned int)num_books);
+        queryEngine.run(&rss, args);
+        
+        REQUIRE(rss.data.size() == (unsigned int)num_persons * (unsigned int)num_books);
     }
-
-/* TODO: merge joiner branch
+/*
     SECTION("Find connected nodes between two results with a LeftJoin") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto rhs = Scan("Book", End());
-        auto lhs = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0,0}, Collect(), rhs));
+        qcompiler queryEngine(graph);
+
+        //auto rhs = Scan("Book", End());
+        //auto lhs = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0,0}, Collect(), rhs));
+
+        result_set rss;        
+        auto rhs = query(graph).all_nodes("Book").finish();
+        auto rhsp = rhs.plan_head();
+        auto lhs = query(graph).all_nodes("Person").outerjoin_on_node({0,0}, rhs).collect(rss).plan_head();
 
         arg_builder args;
         joiner j;
-        args.arg(4, &j);
+
         args.arg(1, "Book");
         args.arg(2, &j);
-        args.arg(3, "Person");
 
-        result_set rs;
+        queryEngine.generate(rhsp, false);
+        queryEngine.run(&rss, args);
+
+        args.arg(1, "Person");
         queryEngine.generate(lhs, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(&rss, args);
 
-        REQUIRE(rs.data.size() == num_persons * num_books);
+        REQUIRE(rss.data.size() == num_persons * num_books);
     }   
 */
     REQUIRE(true);

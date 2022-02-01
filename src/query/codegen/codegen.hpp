@@ -3,7 +3,11 @@
 
 #include "qoperator.hpp"
 #include "qop.hpp"
+#include "join.hpp"
 #include "qop_visitor.hpp"
+
+void get_rhs_type(qop_ptr  &qop, std::vector<int> &typv);
+
 /**
  * Visitor class for inlined query code generation.
  * Each operator code will generated into the same LLVM IR function.
@@ -50,6 +54,19 @@ public:
 
     void visit(std::shared_ptr<node_has_label> op);
     
+    void visit(std::shared_ptr<cross_join> op);
+
+    void visit(std::shared_ptr<nested_loop_join> op); 
+
+    void visit(std::shared_ptr<hash_join> op);
+
+    void visit(std::shared_ptr<left_outerjoin> op); 
+
+    void visit(std::shared_ptr<left_outerjoin_on_node> op); 
+
+    void visit(std::shared_ptr<rship_join> op);
+
+
 
     void visit(std::shared_ptr<is_property> op) { } 
 
@@ -69,19 +86,7 @@ public:
 
     void visit(std::shared_ptr<csr_data> op) { } 
 
-    void visit(std::shared_ptr<cross_join> op) { } 
-
-    void visit(std::shared_ptr<nested_loop_join> op) { } 
-
-    void visit(std::shared_ptr<hash_join> op) { } 
-
-    void visit(std::shared_ptr<left_outerjoin> op) { } 
-
-    void visit(std::shared_ptr<left_outerjoin_on_node> op) { } 
-
-    void visit(std::shared_ptr<rship_join> op) { } 
-
-    void visit(std::shared_ptr<left_outerjoin_on_rship> op) { } 
+    void visit(std::shared_ptr<left_outerjoin_on_rship> op); 
 
     void visit(std::shared_ptr<create_node> op) { } 
 
@@ -366,6 +371,12 @@ public:
             cur = cur->subscriber();
         }
         return count;
+    }
+
+    void link_operator(BasicBlock *next) {
+        ctx.getBuilder().SetInsertPoint(prev_bb);
+        ctx.getBuilder().CreateBr(next);
+        ctx.getBuilder().SetInsertPoint(next);
     }
 
     Value *first;

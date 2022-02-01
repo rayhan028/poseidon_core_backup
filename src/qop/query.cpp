@@ -320,7 +320,7 @@ query &query::count() {
 }
 
 query &query::crossjoin(query &other) {
-  auto op = std::make_shared<cross_join>();
+  auto op = std::make_shared<cross_join>(other.plan_head());
   other.append_op(
       op, std::bind(&cross_join::process_right, op.get(), ph::_1, ph::_2));
   return append_op(
@@ -338,7 +338,7 @@ query &query::join_on_node(std::pair<int, int> left_right, query &other) {
 }
 
 query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
-  auto op = std::make_shared<hash_join>(left_right);
+  auto op = std::make_shared<hash_join>(left_right, other.plan_head());
   other.append_op(
       op, std::bind(&hash_join::build_phase, op.get(), ph::_1, ph::_2));
   return append_op(
@@ -347,7 +347,7 @@ query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
 }
 
 query &query::outerjoin_on_node(const std::pair<int, int> &left_right, query &other) {
-  auto op = std::make_shared<left_outerjoin_on_node>(left_right);
+  auto op = std::make_shared<left_outerjoin_on_node>(left_right, other.plan_head());
   other.append_op(
       op, std::bind(&left_outerjoin_on_node::process_right, op.get(), ph::_1, ph::_2));
   return append_op(

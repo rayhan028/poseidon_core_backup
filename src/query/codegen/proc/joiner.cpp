@@ -3,7 +3,7 @@
 void joiner::materialize_rhs(int jid, qr_tuple *qr) {
     std::lock_guard<std::mutex> lck(materialize_mutex);
     rhs_input_[jid].push_back(*qr);
-    qr->clear();
+    qr->clear();;
 }
 
 void joiner::materialize_rhs_id(int jid, offset_t id) {

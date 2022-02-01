@@ -1185,7 +1185,9 @@ struct collect_result : public qop, public std::enable_shared_from_this<collect_
  * collecting the query results.
  */
 struct end_pipeline : public qop, public std::enable_shared_from_this<end_pipeline> {
-  end_pipeline() = default;
+  end_pipeline() {
+    type_ = qop_type::end;
+  }
 
   void dump(std::ostream &os) const override;
 
@@ -1202,7 +1204,9 @@ struct end_pipeline : public qop, public std::enable_shared_from_this<end_pipeli
     auto next_offset = 0;
 
     vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
+    if(has_subscriber()) {
+      //subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
+    }
   }
 };
 

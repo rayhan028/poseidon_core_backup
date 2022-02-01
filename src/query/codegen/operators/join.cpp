@@ -1,57 +1,5 @@
 #include "codegen.hpp"
 
-// process recursively the type vector of the rhs of a join
-void get_rhs_type(std::shared_ptr<base_op>  &qop, std::vector<int> &typv) {
-    auto op = qop;
-    while(op->inputs_.size() > 0) {
-        if(op->type_ == qop_type::scan)
-            typv.push_back(0);
-        else if(op->type_ == qop_type::foreach_rship)
-            typv.push_back(1);
-        else if(op->type_ == qop_type::expand)
-            typv.push_back(0);
-        else if(op->type_ == qop_type::project) {
-            auto prj = std::dynamic_pointer_cast<project>(op);
-            std::vector<int> new_types;
-            for(auto & pe : prj->prexpr_) {
-                new_types.push_back((int)pe.type + 2);
-            }
-            typv = new_types;
-        }
-        else if(op->type_ == qop_type::group) {
-            auto grp = std::dynamic_pointer_cast<group_op>(op);
-            std::vector<int> new_types;
-            for(auto g : grp->grpkey_pos_) {
-                new_types.push_back(typv[g]);
-            }
-            typv = new_types;
-        } else if(op->type_ == qop_type::aggr) {
-            auto aggr = std::dynamic_pointer_cast<aggr_op>(op);
-            for(auto a : aggr->aggrs_) {
-                if((a.first.compare("count") == 0) || (a.first.compare("sum") == 0) ) {
-                    typv.push_back(2);
-                } else {
-                    typv.push_back(3);
-                }
-            }
-        }
-        else if(op->type_ == qop_type::cross_join) {
-            auto jop = std::dynamic_pointer_cast<join_op>(op);
-            get_rhs_type(jop->inputs_[1], typv);
-        } else if(op->type_ == qop_type::left_join) {
-            auto jop = std::dynamic_pointer_cast<join_op>(op);
-            get_rhs_type(jop->inputs_[1], typv);
-        } else if(op->type_ == qop_type::nest_loop_join) {
-            auto jop = std::dynamic_pointer_cast<join_op>(op);
-            get_rhs_type(jop->inputs_[1], typv);
-        } else if(op->type_ == qop_type::hash_join) {
-            auto jop = std::dynamic_pointer_cast<join_op>(op);
-            get_rhs_type(jop->inputs_[1], typv);
-        }
-        op = op->inputs_[0];
-    }
-}
-
 /**
  * Generate code for the join operator
  */
@@ -137,7 +85,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
     //auto rhs_id_alloc = insert_alloca(ctx.int64Ty);
     auto rhs_id_alloc = insert_alloca(ctx.int64Ty);
     auto rship_join = insert_alloca(ctx.rshipTy);
-
     
     BasicBlock *loop_body = nullptr;
     
@@ -330,6 +277,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<join_op> op) {
             reg_query_results.push_back({i_alloc, 2});
         } 
     }
+
     // add the dangling flag to the tuple result
     if(op->jop_ == JOIN_OP::LEFT_OUTER)
         reg_query_results.push_back({dangling, 7});
@@ -391,7 +339,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_pipeline> op) {
     auto fadd_now = ctx.extern_func("get_now");
     auto fadd_time_diff = ctx.extern_func("add_time_diff");
 
-    //FunctionCallee mat_reg = ctx.extern_func("mat_reg_value");
     BasicBlock *bb = BasicBlock::Create(ctx.getContext(), "entry_join_rhs", main_function);
 
     ctx.getBuilder().SetInsertPoint(prev_bb);
@@ -412,13 +359,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_pipeline> op) {
         t_start = ctx.getBuilder().CreateCall(fadd_now, {});
 
     // collect materialized tuple -> joiner rhs_input @ join id
-    auto last_jid = jids.front();
-    jids.pop_front();
-    auto jid = ConstantInt::get(ctx.int64Ty, last_jid);
+    auto jid = ConstantInt::get(ctx.int64Ty, 0);
     
     Value *remainder = nullptr;
-
 /*
+
     if(op->join_op_ == JOIN_OP::NESTED_LOOP) {
         auto n = reg_query_results[op->qr_pos_].reg_val;
         auto id = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(n, 1));
@@ -430,13 +375,13 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_pipeline> op) {
         remainder = ctx.getBuilder().CreateSRem(id, num_bucket);
         ctx.getBuilder().CreateCall(insert_join_bucket_input, {joiner_arg, jid, remainder, id});
     }
+*/
     // obtain tuple object for materialization -> joiner mat_tuple
     auto tp = ctx.getBuilder().CreateCall(obtain_mat_tuple, {});
 
 
     // materialize each result from registers
     for(auto & res : reg_query_results) {
-        //auto type = ConstantInt::get(ctx.int64Ty, res.type);
         if(res.type == 0) {
             ctx.getBuilder().CreateCall(mat_node, {res.reg_val, tp});
         } else if(res.type == 1) {
@@ -450,18 +395,18 @@ void codegen_inline_visitor::visit(std::shared_ptr<end_pipeline> op) {
         }
     }
 
-    if(op->join_op_ == JOIN_OP::HASH_JOIN) {
-        ctx.getBuilder().CreateCall(collect_tuple_hash_join, {joiner_arg, jid, remainder, tp});
-    } else {
-        ctx.getBuilder().CreateCall(collect_tuple_join, {joiner_arg, jid, tp});
-    }
+ //   if(op->join_op_ == JOIN_OP::HASH_JOIN) {
+ //       ctx.getBuilder().CreateCall(collect_tuple_hash_join, {joiner_arg, jid, remainder, tp});
+ //   } else {
+    ctx.getBuilder().CreateCall(collect_tuple_join, {joiner_arg, jid, tp});
+ //   }
     
 
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});
-        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->op_id_), t_start, t_end});
+        ctx.getBuilder().CreateCall(fadd_time_diff, {query_context, ConstantInt::get(ctx.int64Ty, op->operator_id_), t_start, t_end});
     }
-*/
+
     ctx.getBuilder().CreateBr(main_return);
 
     ctx.getBuilder().SetInsertPoint(df_finish_bb);

@@ -407,6 +407,10 @@ if(USE_LLVM MATCHES ON)
     src/query/codegen/operators/project.cpp
     src/query/codegen/operators/scan.cpp
     src/query/codegen/operators/sort.cpp
+    src/query/codegen/operators/join/cross_join.cpp
+    src/query/codegen/operators/join/hash_join.cpp
+    src/query/codegen/operators/join/nested_loop_join.cpp
+    src/query/codegen/operators/join/outer_join.cpp
   )
 
   set(llvm_src

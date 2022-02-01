@@ -27,15 +27,6 @@
 #include "queryc.hpp"
 
 #ifdef USE_LLVM
-qop_ptr queryc::compile_to_plan(const std::string &query) {
-    auto ast = parse(query);
-    if (!ast) 
-      throw query_execution_error();
-    
-    //auto collect = Collect(rs);
-    //return ast_to_algoptr(ast, collect);
-    return nullptr;
-}
 
 void queryc::exec_plan(qop_ptr &plan, graph_db_ptr &gdb) {
   qcompiler queryEngine(gdb);
@@ -76,8 +67,8 @@ void queryc::exec_plan(const std::string &qname, graph_db_ptr &gdb) {
 }
 
 void queryc::parse_and_save_plan(const std::string &name, const std::string &query) {
-  auto plan = compile_to_plan(query);
-  query_plans_[name] = plan;
+  //auto plan = compile_to_plan(query);
+  //query_plans_[name] = plan;
 }
 
 qop_ptr queryc::ast_to_algoptr(ast_op_ptr &ast, qop_ptr parent) {

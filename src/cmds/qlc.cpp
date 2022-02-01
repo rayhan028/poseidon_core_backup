@@ -148,7 +148,7 @@ void compile_query(graph_db_ptr &gdb, const std::string &qstr) {
 #ifdef USE_LLVM
   spdlog::debug("compile to plan via LLVM");     
 
-  auto plan = qlc.compile_to_plan(qstr);
+  auto plan = qlc.generate_qex_plan(gdb, qstr).front().plan_head();
 /*
   std::ostringstream os;
   os << "Execution plan: '";

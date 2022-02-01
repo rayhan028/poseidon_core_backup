@@ -128,28 +128,7 @@ public:
 
 /*
     virtual void visit(std::shared_ptr<project> op) = 0;
-
-    virtual void visit(std::shared_ptr<collect_op> op) = 0;
-
-    virtual void visit(std::shared_ptr<join_op> op) = 0;
-
-    virtual void visit(std::shared_ptr<sort_op> op) = 0;
-
-    virtual void visit(std::shared_ptr<limit_op> op) = 0;
-
-    virtual void visit(std::shared_ptr<end_op> op) = 0;
-
-    virtual void visit(std::shared_ptr<create_op> op) = 0;
-
-    virtual void visit(std::shared_ptr<group_op> op) = 0;
-
-    virtual void visit(std::shared_ptr<aggr_op> op) = 0;
-
-    virtual void visit(std::shared_ptr<connected_op> op) = 0;
-
-    virtual void visit(std::shared_ptr<append_op> op) = 0;
-
-    virtual void visit(std::shared_ptr<store_op> op) = 0;*/
+*/
 };
 
 #endif

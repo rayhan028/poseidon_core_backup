@@ -57,11 +57,6 @@ public:
   queryc() = default;
 
 #ifdef USE_LLVM
-  /**
-   * Parses the given query string and construct a plan
-   * for the code compiler.
-   */
-  qop_ptr compile_to_plan(const std::string &query);
 
   /**
    * TODO

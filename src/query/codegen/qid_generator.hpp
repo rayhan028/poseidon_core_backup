@@ -66,6 +66,10 @@ public:
         qid += "+";
     }
     
+    virtual void visit(std::shared_ptr<left_outerjoin_on_node> op) {
+        qid += "JN";
+    }
+
     /*virtual void visit(std::shared_ptr<store_op> op) {
         qid += "$";
     }*/
