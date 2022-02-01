@@ -480,6 +480,8 @@ class chunked_vec {
    * chunk. The index is a global offset in the chunked_vec.
    */
   offset_t last_used() const {
+    if (chunk_list_.empty())
+      return UNKNOWN;
     chunk_ptr ch = chunk_list_.back();
     std::size_t idx = (chunk_list_.size() - 1) * elems_per_chunk_ + ch->last_used();
     return idx;
