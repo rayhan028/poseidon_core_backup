@@ -9,6 +9,7 @@
 #include "global_definitions.hpp"
 #include "qcompiler.hpp"
 #include "query_arg.hpp"
+#include "query_ctx.hpp"
 
 class base_op;
 class scan_op;
@@ -414,7 +415,8 @@ public:
     }
 
     static void sort(result_set *rs) {
-        rs->sort(cmp_);
+        query_ctx ctx; // TODO!!!!
+        rs->sort(ctx, cmp_);
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);

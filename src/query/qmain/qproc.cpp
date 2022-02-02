@@ -69,7 +69,7 @@ public:
 
     void visit(int rank, std::shared_ptr<func_call> op) override {
         auto func_name = op->func_name_.substr(5);
-        std::cout << "prepare func_call: " << func_name << " : " << op->param_list_.size() << std::endl;     
+        // std::cout << "prepare func_call: " << func_name << " : " << op->param_list_.size() << std::endl;     
         if (op->param_list_.size() == 1) {          
             op->func1_ptr_ = udf_lib_->get<query_result(query_ctx&, query_result&)>(func_name);
         } 
@@ -96,8 +96,6 @@ public:
     }
 
     void visit(std::shared_ptr<left_outerjoin> op) override { 
-        std::cout << "visit left_outerjoin..." << std::endl;
-
         auto ex = op->get_expression();
         if (ex) {
             ex->accept(0, expr_visitor_);

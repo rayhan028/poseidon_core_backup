@@ -315,12 +315,13 @@ void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
                           return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
                         return boost::get<boost::posix_time::ptime>(qr1[2]) < boost::get<boost::posix_time::ptime>(qr2[2]); })
                 .collect(rs);
- gdb->run_transaction([&]() {
+  gdb->run_transaction([&]() {
     query::start({&q1, &q2});
     return true;
   });  
 
   rs.wait();
+  query::print_plans({&q1, &q2});
 }
 
 TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
@@ -477,13 +478,14 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
     SECTION("IS #7") {
       spdlog::info("LDBC IS#7"); 
-      auto qstr = load_string(prefix_is + "7.q");
-      auto res = qp.execute_query(qproc::Interpret, qstr, true);
-      std::cout << res.result() << std::endl;
-
+      /*
       result_set res2;
       ldbc_is_query_7(graph, res2, 16492676);
-      std::cout << res2 << std::endl;
+      std::cout << "res2 = \n" << res2 << std::endl;
+      */
+      auto qstr = load_string(prefix_is + "7.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr, true);
+      // std::cout << res.result() << std::endl;
 
       result_set expected;
       expected.append({
@@ -494,6 +496,8 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
           qv_("16492677"), qv_("Content of comment_16492677"), qv_("2012-01-10T14:57:10.420000"),
           qv_("19791"), qv_("Amin"), qv_("Kamkar"), qv_("false")
       });
+
+      REQUIRE(res.result() == expected);
     }
   
   graph_pool::destroy(pool);

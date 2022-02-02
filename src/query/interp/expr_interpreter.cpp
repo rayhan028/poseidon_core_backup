@@ -188,8 +188,10 @@ public:
             {
                 auto nptr = boost::get<node *>(inp);
                 // if key_ is empty then the node is requested ($i:node)
-                if (op->key_.empty())
+                if (op->key_.empty()) {
+                    // std::cout << "id = " << nptr->id() << std::endl;
                     stack_.push(query_result(nptr));
+                }
                 else
                     // otherwise the property value ($i.prop:dtype) which is handled later
                     res = ctx_.gdb_->get_property_value(*nptr, op->key_);
@@ -250,8 +252,8 @@ public:
             stack_.push(res);
         }
         else if (op->param_list_.size() == 2) {
-            auto arg1 = pop(stack_);
             auto arg2 = pop(stack_);
+            auto arg1 = pop(stack_);
             auto res = op->func2_ptr_(ctx_, arg1, arg2);
             stack_.push(res);
         }      

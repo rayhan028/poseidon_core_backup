@@ -28,6 +28,30 @@
 
 using namespace boost::posix_time;
 
+query_result qv_from_pitem(const p_item& p) {
+  query_result qr;
+  switch(p.typecode()) {
+    case p_item::p_int: 
+      qr = p.get<int>();
+      break;
+    case p_item::p_double:
+      qr = p.get<double>();
+      break;
+    case p_item::p_dcode:
+      qr = (int)p.get<dcode_t>();
+      break;
+    case p_item::p_uint64:
+      qr = p.get<uint64_t>();
+      break;
+    case p_item::p_ptime:
+      qr = p.get<boost::posix_time::ptime>();
+      break;
+    default:
+      break;
+  }
+  return qr;
+}
+
 void result_set::wait() {
   std::unique_lock<std::mutex> lock(m);
   cond_var.wait(lock, [&] { return ready.load(); });
@@ -43,11 +67,27 @@ bool result_set::operator==(const result_set &other) const {
   return data == other.data;
 }
 
-bool result_set::qr_compare(const qr_tuple &qr1, const qr_tuple &qr2,
+bool result_set::qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple &qr2,
                             const sort_spec_list &spec) {
-  auto qr_less = [](const qr_tuple &q1, const qr_tuple &q2, const sort_spec& sp) -> int {
-    auto v1 = q1[sp.vidx];
-    auto v2 = q2[sp.vidx];
+  auto qr_less = [&](const qr_tuple &q1, const qr_tuple &q2, const sort_spec& sp) -> int {
+    query_result v1 = q1[sp.vidx];
+    query_result v2 = q2[sp.vidx];
+    if (sp.pcode > 0) {
+      // sort criteria are properties of nodes or relationships
+      if (v1.which() == 0) {
+        // node*
+        auto n1 = boost::get<node *>(v1);
+        auto pv1 = ctx.gdb_->get_property_value(*n1, sp.pcode);
+        v1 = qv_from_pitem(pv1);
+        auto n2 = boost::get<node *>(v2);
+        auto pv2 = ctx.gdb_->get_property_value(*n2, sp.pcode);
+        v2 = qv_from_pitem(pv2);
+      } 
+      else if (v1.which() == 1) {
+        // relationship*
+      }
+    }
+    try {
     switch (sp.cmp_type) {
       case 5: // uint64_t
         {
@@ -112,6 +152,9 @@ bool result_set::qr_compare(const qr_tuple &qr1, const qr_tuple &qr2,
       default:
         break;
     }
+    } catch (std::exception& exc) {
+      std::cout << "exception in boost::get at #" << sp.vidx << std::endl;
+    }
     return true;
   };
 
@@ -127,18 +170,17 @@ bool result_set::qr_compare(const qr_tuple &qr1, const qr_tuple &qr2,
   return false;
 }
 
-void result_set::sort(std::initializer_list<sort_spec> l) {
-  sort(sort_spec_list(l));
+void result_set::sort(query_ctx& ctx, std::initializer_list<sort_spec> l) {
+  sort(ctx, sort_spec_list(l));
 }
 
-void result_set::sort(const sort_spec_list &spec) {
+void result_set::sort(query_ctx& ctx, const sort_spec_list &spec) {
   data.sort([&](const qr_tuple &v1, const qr_tuple &v2) {
-    return qr_compare(v1, v2, spec);
+    return qr_compare(ctx, v1, v2, spec);
   });
 }
 
-void result_set::sort(
-    std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
+void result_set::sort(query_ctx& ctx, std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
   data.sort(cmp);
 }
 

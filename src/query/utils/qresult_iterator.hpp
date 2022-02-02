@@ -28,6 +28,7 @@
 #include <condition_variable>
 #include "defs.hpp"
 #include "ast.hpp"
+#include "query_ctx.hpp"
 
 struct node;
 struct relationship;
@@ -61,6 +62,11 @@ using query_result =
  * operator in an execution plan.
  */
 using qr_tuple = std::vector<query_result>;
+
+/**
+ * Create a query_result object from a property value.
+ */
+query_result qv_from_pitem(const p_item& p);
 
 /**
  * result_set is used to collect query results.
@@ -107,10 +113,10 @@ struct result_set {
   /**
    * Sort the result by the given sort specification.
    */
-  void sort(const sort_spec_list &spec);
-  void sort(std::initializer_list<sort_spec> l);
+  void sort(query_ctx& ctx, const sort_spec_list &spec);
+  void sort(query_ctx& ctx, std::initializer_list<sort_spec> l);
 
-  void sort(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp);
+  void sort(query_ctx& ctx, std::function<bool(const qr_tuple &, const qr_tuple &)> cmp);
 
   /**
    * Comparison operator.
@@ -120,7 +126,7 @@ struct result_set {
   std::list<qr_tuple> data; // the result data
 
 private:
-  bool qr_compare(const qr_tuple &qr1, const qr_tuple &qr2,
+  bool qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple &qr2,
                   const sort_spec_list &spec);
 
   // mutex and condition variable used to notify a waiting thread when the

@@ -28,6 +28,7 @@
  */
 
 struct query_ctx {
+    query_ctx() = default;
     query_ctx(graph_db_ptr& gdb) : gdb_(gdb) {}
     graph_db_ptr gdb_;
 };

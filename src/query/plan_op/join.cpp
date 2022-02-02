@@ -165,7 +165,13 @@ void left_outerjoin::process_left(query_ctx &ctx, const qr_tuple &v) {
   bool dangling_tuple = true;
   uint64_t n = 0;
   for (auto &t : input_) {
-    bool tp = ex_ ? interpret_expression(ctx, ex_, v) : pred_(v, t);
+    bool tp = false;
+    if (ex_) {
+      auto tv = concat(v, t);
+      tp = interpret_expression(ctx, ex_, tv);
+    }
+    else
+      tp = pred_(v, t);
     if (tp) {
       dangling_tuple = false;
       auto res = concat(v, t);

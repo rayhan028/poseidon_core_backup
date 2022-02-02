@@ -449,9 +449,9 @@ void order_by::process(query_ctx &ctx, const qr_tuple &v) {
 void order_by::finish(query_ctx &ctx) {
   PROF_PRE0;
   if (cmp_func_ != nullptr)
-    results_.sort(cmp_func_);
+    results_.sort(ctx, cmp_func_);
   else
-    results_.sort(sort_spec_);
+    results_.sort(ctx, sort_spec_);
   for (auto &v : results_.data) {
     consume_(ctx, v);
   }
@@ -1230,6 +1230,9 @@ void projection::process(query_ctx &ctx, const qr_tuple &v) {
     } else if (v[index].type() == typeid(relationship *)) {
       auto r = boost::get<relationship *>(v[index]);
       pv[num_accessed_vars + i] = ctx.gdb_->get_rship_description(r->id());
+    }
+    else {
+      pv[num_accessed_vars + i]  = null_val;
     }
     var_map_[index] = num_accessed_vars + i; // we update mapping table
     i++;

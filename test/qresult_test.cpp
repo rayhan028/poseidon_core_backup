@@ -21,8 +21,10 @@
 
 #include "catch.hpp"
 #include "qresult_iterator.hpp"
+#include "query_ctx.hpp"
 
 TEST_CASE("Testing sort of result_set - [int ASC, string ASC]", "[qresult]") {
+    query_ctx ctx;
     result_set rs, expected;
     rs.append({ query_result(5), query_result("CCC") });
     rs.append({ query_result(3), query_result("BBB") });
@@ -30,7 +32,7 @@ TEST_CASE("Testing sort of result_set - [int ASC, string ASC]", "[qresult]") {
     rs.append({ query_result(3), query_result("AAA") });
     rs.append({ query_result(1), query_result("DDD") });
 
-    rs.sort({ result_set::sort_spec(0, 2), result_set::sort_spec(1, 4) }); 
+    rs.sort(ctx, { result_set::sort_spec(0, 2), result_set::sort_spec(1, 4) }); 
 
     expected.append({ query_result(1), query_result("DDD") });
     expected.append({ query_result(3), query_result("AAA") });
@@ -42,6 +44,7 @@ TEST_CASE("Testing sort of result_set - [int ASC, string ASC]", "[qresult]") {
 }
 
 TEST_CASE("Testing sort of result_set - [string ASC, int ASC]", "[qresult]") {
+    query_ctx ctx;
     result_set rs, expected;
     rs.append({ query_result("BBB"), query_result(5) });
     rs.append({ query_result("EEE"), query_result(3) });
@@ -49,7 +52,7 @@ TEST_CASE("Testing sort of result_set - [string ASC, int ASC]", "[qresult]") {
     rs.append({ query_result("AAA"), query_result(3) });
     rs.append({ query_result("CCC"), query_result(1) });
 
-    rs.sort({ result_set::sort_spec(0, 4), result_set::sort_spec(1, 2) }); 
+    rs.sort(ctx, { result_set::sort_spec(0, 4), result_set::sort_spec(1, 2) }); 
     
     expected.append({ query_result("AAA"), query_result(3) });
     expected.append({ query_result("BBB"), query_result(4) });
@@ -61,6 +64,7 @@ TEST_CASE("Testing sort of result_set - [string ASC, int ASC]", "[qresult]") {
 }
 
 TEST_CASE("Testing sort of result_set - [int DESC, string ASC]", "[qresult]") {
+    query_ctx ctx;
     result_set rs, expected;
     rs.append({ query_result(5), query_result("CCC") });
     rs.append({ query_result(3), query_result("BBB") });
@@ -68,7 +72,7 @@ TEST_CASE("Testing sort of result_set - [int DESC, string ASC]", "[qresult]") {
     rs.append({ query_result(3), query_result("AAA") });
     rs.append({ query_result(1), query_result("DDD") });
 
-    rs.sort({ result_set::sort_spec(0, 2, result_set::sort_spec::Desc), result_set::sort_spec(1, 4) }); 
+    rs.sort(ctx, { result_set::sort_spec(0, 2, result_set::sort_spec::Desc), result_set::sort_spec(1, 4) }); 
 
     expected.append({ query_result(5), query_result("CCC") });
     expected.append({ query_result(4), query_result("EEE") });
