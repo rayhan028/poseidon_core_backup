@@ -118,8 +118,7 @@ void codegen_inline_visitor::init_function(BasicBlock *bb) {
     loop_cnt = ctx.getBuilder().CreateAlloca(ctx.int64Ty);
 
     cross_join_idx.push_back(ctx.getBuilder().CreateAlloca(ctx.int64Ty));
-    //cross_join_rship = ctx.getBuilder().CreateAlloca(ctx.rshipPtrTy);
-    dangling = ctx.getBuilder().CreateAlloca(ctx.int64Ty);    
+    //cross_join_rship = ctx.getBuilder().CreateAlloca(ctx.rshipPtrTy);   
 }
 
 void codegen_inline_visitor::init_finish(BasicBlock *bb) {

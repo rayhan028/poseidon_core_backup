@@ -86,8 +86,6 @@ void qcompiler::generate(qop_ptr query, bool parallel) {
 
 }
 
-using call_map = std::array<int*, 32>;
-
 void qcompiler::cleanup() {
     start_.clear();
     finish_.clear();

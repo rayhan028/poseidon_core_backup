@@ -97,9 +97,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 #ifdef USE_TX
   graph->commit_transaction();
 #endif
-
-	auto chunks = graph->get_nodes()->num_chunks();
-
+/*
     SECTION("Scan all nodes for given label") {
         qcompiler queryEngine(graph);
 
@@ -131,7 +129,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
         REQUIRE(rs.data.size() == 1);
     }
-  */
+  
     arg_builder args;
     result_set rs;
     SECTION("Find a outgoing relationship from each Person node") {
@@ -306,7 +304,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         
         REQUIRE(rss.data.size() == (unsigned int)num_persons * (unsigned int)num_books);
     }
-/*
+*/
     SECTION("Find connected nodes between two results with a LeftJoin") {
         qcompiler queryEngine(graph);
 
@@ -333,7 +331,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
         REQUIRE(rss.data.size() == num_persons * num_books);
     }   
-*/
+
     REQUIRE(true);
 
 #ifdef USE_PMDK

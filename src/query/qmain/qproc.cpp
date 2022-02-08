@@ -35,6 +35,14 @@ qresult_iterator qproc::execute_query(qproc::mode m, const std::string& qstr, bo
     }
     else {
         // TODO: compile & execute query
+        auto qplan = prepare_query(qstr, print_plan);
+        result_set result;
+        qplan.append_collect(result);
+        prepare_plan(qplan);
+        compile_query(qplan);
+        if (print_plan)
+            qplan.print_plan();
+        return qresult_iterator(std::move(result));
     }
 }
 
