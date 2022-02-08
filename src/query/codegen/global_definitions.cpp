@@ -309,7 +309,6 @@ void persist_tuple(graph_db *gdb, qr_tuple *qr) {
 }
 
  qr_tuple *get_join_tp_at(joiner *j, int jid, int pos) {
-     std::cout << "Get tp at" << std::endl;
     return &j->rhs_input_[jid].at(pos);
 }
 
