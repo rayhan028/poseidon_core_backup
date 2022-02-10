@@ -197,6 +197,9 @@ struct csr_arrays {
   std::vector<float> edge_values = {};
 };
 
+#define VOLATILE_DELTA
+// #define PERSISTENT_DELTA
+
 /*
  * Struct used to store edge-coordinates in COO format
  * Needs to be allocated 16-bit alligned!

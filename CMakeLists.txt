@@ -23,7 +23,7 @@ option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
 option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
 option(BUILD_GTPC       "Build code for GTPC benchmark"          OFF)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
-option(CSR_DELTA_STORE  "Use delta store for updating CSR"       ON)
+option(CSR_DELTA        "Use delta store for updating CSR"       ON)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -87,8 +87,8 @@ if(QOP_RECOVERY MATCHES ON)
   add_definitions( "-DQOP_RECOVERY" )
 endif()
 
-if(CSR_DELTA_STORE MATCHES ON)
-  add_definitions( "-DCSR_DELTA_STORE" )
+if(CSR_DELTA MATCHES ON)
+  add_definitions( "-DCSR_DELTA" )
 endif()
 
 configure_file(
@@ -430,7 +430,7 @@ else()
   set(qoprec_src "")
 endif()
 
-if(CSR_DELTA_STORE MATCHES ON)
+if(CSR_DELTA MATCHES ON)
   set(csr_delta_src src/storage/csr_delta.cpp)
 else()
   set(csr_delta_src "")

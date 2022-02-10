@@ -56,3 +56,17 @@ void check_tx_context() {
 }
 
 transaction_ptr current_transaction() { return current_transaction_; }
+
+#if defined CSR_DELTA && defined USE_TX
+  void transaction::add_updated_node(offset_t nid) {
+    delta_ids_.updated_nodes_.push_back(nid);
+  }
+
+  void transaction::add_deleted_node(offset_t nid) {
+    delta_ids_.deleted_nodes_.insert(nid);
+  }
+
+  void transaction::add_deleted_rship(offset_t rid) {
+    delta_ids_.deleted_rships_.insert(rid);
+  }
+#endif

@@ -72,8 +72,8 @@ graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
   dict_ = p_make_ptr<dict>(prefix);
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
-#if defined CSR_DELTA_STORE && defined USE_TX
-  csr_delta_ = p_make_ptr<csr_delta>();
+#if defined CSR_DELTA && defined USE_TX
+  delta_store_ = p_make_ptr<delta_store>();
 #endif
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   m_ = new std::mutex();
@@ -106,8 +106,8 @@ void graph_db::runtime_initialize() {
   dict_->initialize();
   // perform recovery using the undo log
   apply_undo_log();
-#if defined CSR_DELTA_STORE && defined USE_TX
-  csr_delta_->initialize();
+#if defined CSR_DELTA && defined USE_TX
+  delta_store_->initialize();
 #endif
   // recreate volatile objects: active_tx_ table and mutex
   active_tx_ = new std::map<xid_t, transaction_ptr>();
@@ -334,39 +334,28 @@ bool graph_db::commit_transaction() {
     oldest_xid_ = !active_tx_->empty() ? active_tx_->begin()->first : xid;
   }
 
-#ifdef CSR_DELTA_STORE
-  std::set<node::id_t> updated_nodes, deleted_nodes, deleted_rships;
-
   // process dirty_rships list
   for (auto rel_id : tx->dirty_relationships())  {
-    auto& r = rships_->get(rel_id);
-    if (!r.has_valid_version(xid)) {
-      // neighbour nodes that will be removed from current CSR
-      deleted_rships.insert(rel_id);
-      updated_nodes.insert(r.from_node_id());
-      updated_nodes.insert(r.to_node_id());
-    }
     commit_dirty_relationship(tx, rel_id);
   }
 
   // process dirty_nodes list
   for (auto node_id : tx->dirty_nodes()) {
-    auto& n = nodes_->get(node_id);
-    if (!n.has_valid_version(xid)) {
-      // nodes whose entire neighbour nodes will be removed from current CSR
-      deleted_nodes.insert(node_id);
-    }
-    updated_nodes.insert(node_id);
     commit_dirty_node(tx, node_id);
   }
 
-  if (!csr_delta_->delta_mode_) {
+#ifdef CSR_DELTA
+  auto &updated_nodes = tx->csr_delta_ids().updated_nodes_;
+  auto &deleted_nodes = tx->csr_delta_ids().deleted_nodes_;
+  auto &deleted_rships = tx->csr_delta_ids().deleted_rships_;
+  auto count = delta_store_->num_delta_recs_ + updated_nodes.size();
+
+  if (!delta_store_->delta_mode_) {
     // do nothing
     ;
   }
-  else if (auto count = csr_delta_->num_delta_elements_ + updated_nodes.size();
-            count > csr_delta_->max_delta_elements_) {
-    csr_delta_->delta_mode_ = false;
+  else if (count > delta_store_->max_delta_recs_) {
+    delta_store_->delta_mode_ = false;
   }
   else {
     // store deltas
@@ -382,38 +371,28 @@ bool graph_db::commit_transaction() {
           if (deleted_rships.find(rid) == deleted_rships.end()) {
             // destination neighbour of node with id "node_id"
             neigbour_node_ids.push_back(r.to_node_id());
-            rship_weights.push_back(csr_delta_->weight_func_(r));
+            rship_weights.push_back(delta_store_->weight_func_(r));
           }
           rid = r.next_src_rship;
         }
 
-        if (csr_delta_->get_bidirectional()) {
+        if (delta_store_->bidirectional_) {
           rid = n.to_rship_list;
           while (rid != UNKNOWN) {
             auto &r = rships_->get(rid);
             if (deleted_rships.find(rid) == deleted_rships.end()) {
               // source neighbour of node with id "node_id"
               neigbour_node_ids.push_back(r.from_node_id());
-              rship_weights.push_back(csr_delta_->weight_func_(r));
+              rship_weights.push_back(delta_store_->weight_func_(r));
             }
             rid = r.next_dest_rship;
           }
         }
       }
-      csr_delta_->store_delta(node_id, neigbour_node_ids, rship_weights, xid);
+      delta_store_->store_delta(xid, node_id, neigbour_node_ids, rship_weights);
       neigbour_node_ids.clear();
       rship_weights.clear();
     }
-  }
-#else
-  // process dirty_rships list
-  for (auto rel_id : tx->dirty_relationships())  {
-    commit_dirty_relationship(tx, rel_id);
-  }
-
-  // process dirty_nodes list
-  for (auto node_id : tx->dirty_nodes()) {
-    commit_dirty_node(tx, node_id);
   }
 #endif
 
@@ -541,6 +520,10 @@ node::id_t graph_db::add_node(const std::string &label,
   }
 #endif
 
+#if defined CSR_DELTA && defined USE_TX
+  current_transaction()->add_updated_node(node_id);
+#endif
+
   return node_id;
 }
 
@@ -609,6 +592,14 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
     to_node.to_rship_list = rid;
   }
 #endif
+
+#if defined CSR_DELTA && defined USE_TX
+  current_transaction()->add_updated_node(from_id);
+  if (delta_store_->bidirectional_) {
+    current_transaction()->add_updated_node(to_id);
+  }
+#endif
+
   return rid;
 }
 
@@ -1079,6 +1070,11 @@ void graph_db::delete_node(node::id_t id) {
   // delete the node object
   nodes_->remove(id);
 #endif
+
+#if defined CSR_DELTA && defined USE_TX
+  current_transaction()->add_updated_node(id);
+  current_transaction()->add_deleted_node(id);
+#endif
 }
 
 void graph_db::detach_delete_node(node::id_t id) {
@@ -1184,6 +1180,11 @@ void graph_db::detach_delete_node(node::id_t id) {
   node_properties_->remove_properties(n.property_list);
   nodes_->remove(id);
 #endif
+
+#if defined CSR_DELTA && defined USE_TX
+  current_transaction()->add_updated_node(id);
+  current_transaction()->add_deleted_node(id);
+#endif
 }
 
 void graph_db::delete_relationship(node::id_t src, node::id_t dest) {
@@ -1269,6 +1270,16 @@ void graph_db::delete_relationship(relationship::id_t id) {
 
   // delete the relationship object
   rships_->remove(id);
+#endif
+
+#if defined CSR_DELTA && defined USE_TX
+  auto from_id = newv->elem_.from_node_id();
+  auto to_id = newv->elem_.to_node_id();
+  current_transaction()->add_updated_node(from_id);
+  if (delta_store_->bidirectional_) {
+    current_transaction()->add_updated_node(to_id);
+  }
+  current_transaction()->add_deleted_rship(id);
 #endif
 }
 

@@ -25,6 +25,7 @@
 #include "properties.hpp"
 #include <atomic>
 #include <list>
+#include <set>
 #include "ts_list.hpp"
 
 /**
@@ -103,6 +104,43 @@ public:
    */
   std::size_t logid() const { return logid_; }
 
+#if defined CSR_DELTA && defined USE_TX
+  /**
+   * A struct for storing ids of nodes and relationships updated 
+   * by the current transaction, for updates that modify the current CSR.
+   * These ids are used for storing delta records when the transaction commits.
+   */
+  struct delta_ids {
+    delta_ids() = default;
+    delta_ids(const delta_ids &) = delete;
+
+    std::vector<uint64_t> updated_nodes_; // ids of updated and deleted nodes
+    std::set<uint64_t> deleted_nodes_;    // ids of deleted nodes
+    std::set<uint64_t> deleted_rships_;   // ids of deleted relationships
+  };
+
+  /**
+   * Return a reference to the deltas for the updates made in this transaction.
+   */
+  const delta_ids& csr_delta_ids() { return delta_ids_; }
+
+  /**
+   * Store the id of a node updated or deleted by this transaction
+   */
+  void add_updated_node(offset_t nid);
+
+  /**
+   * Store the id of a node deleted by this transaction
+   */
+  void add_deleted_node(offset_t nid);
+
+  /**
+   * Store the id of a relationship deleted by this transaction
+   */
+  void add_deleted_rship(offset_t rid);
+
+#endif
+
 private:
   xid_t xid_; // transaction identifier
   std::size_t logid_; // log identifier
@@ -110,6 +148,10 @@ private:
       dirty_nodes_; // the vector of ids of nodes which were modified by this transaction
   std::vector<offset_t> dirty_rships_; // the vector of ids of relationships which
                                        // were modified by this transaction
+#if defined CSR_DELTA && defined USE_TX
+  delta_ids delta_ids_; // ids of nodes and relationships which were modified 
+                        // by this transaction (for storing delta records) 
+#endif
 };
 
 using transaction_ptr = std::shared_ptr<transaction>;
