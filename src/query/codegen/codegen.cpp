@@ -8,11 +8,14 @@
 // process recursively the type vector of the rhs of a join
 void get_rhs_type(qop_ptr  &qop, std::vector<int> &typv) {
     auto op = qop;
+
     while(op->has_subscriber()) {
-        if(op->type_ == qop_type::scan)
+        if(op->type_ == qop_type::scan) {
             typv.push_back(0);
-        else if(op->type_ == qop_type::foreach_rship)
+        }
+        else if(op->type_ == qop_type::foreach_rship) {
             typv.push_back(1);
+        }
         else if(op->type_ == qop_type::expand)
             typv.push_back(0);
         else if(op->type_ == qop_type::project) {
@@ -30,29 +33,9 @@ void get_rhs_type(qop_ptr  &qop, std::vector<int> &typv) {
                 new_types.push_back(typv[g]);
             }
             typv = new_types;
-        } /*else if(op->type_ == qop_type::aggr) {
-            auto aggr = std::dynamic_pointer_cast<aggr_op>(op);
-            for(auto a : aggr->aggrs_) {
-                if((a.first.compare("count") == 0) || (a.first.compare("sum") == 0) ) {
-                    typv.push_back(2);
-                } else {
-                    typv.push_back(3);
-                }
-            }
+        } else if(op->type_ == qop_type::end) {
+            break;
         }
-        else if(op->type_ == qop_type::cross_join) {
-            auto jop = std::dynamic_pointer_cast<cross_join>(op);
-            get_rhs_type(jop->inputs_[1], typv);
-        } else if(op->type_ == qop_type::left_join) {
-            auto jop = std::dynamic_pointer_cast<join_op>(op);
-            get_rhs_type(jop->inputs_[1], typv);
-        } else if(op->type_ == qop_type::nest_loop_join) {
-            auto jop = std::dynamic_pointer_cast<join_op>(op);
-            get_rhs_type(jop->inputs_[1], typv);
-        } else if(op->type_ == qop_type::hash_join) {
-            auto jop = std::dynamic_pointer_cast<hash_join>(op);
-            get_rhs_type(jop->inputs_[1], typv);
-        }*/
         op = op->subscriber();
     }
 }

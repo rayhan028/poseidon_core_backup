@@ -52,7 +52,7 @@ bool vec_end_reached_r(relationship_list &vec, rship_vec::iter it) {
     return gdb->get_code(label);
 }
 
- node *get_node_from_it(node_vec::range_iter *it) { 
+node *get_node_from_it(node_vec::range_iter *it) { 
     return &it->operator*();
 }
 
