@@ -436,6 +436,8 @@ void nodes_connected::process(query_ctx &ctx, const qr_tuple &v) {
 
 /* ------------------------------------------------------------------------ */
 
+std::function<bool(const qr_tuple &, const qr_tuple &)> order_by::cmp_func_ = 0;
+
 void order_by::dump(std::ostream &os) const {
   os << "order_by([]) - " << PROF_DUMP;
 }

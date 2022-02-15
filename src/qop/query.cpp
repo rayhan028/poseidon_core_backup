@@ -329,7 +329,7 @@ query &query::crossjoin(query &other) {
 }
 
 query &query::join_on_node(std::pair<int, int> left_right, query &other) {
-  auto op = std::make_shared<nested_loop_join>(left_right);
+  auto op = std::make_shared<nested_loop_join>(left_right, other.plan_head());
   other.append_op(
       op, std::bind(&nested_loop_join::process_right, op.get(), ph::_1, ph::_2));
   return append_op(

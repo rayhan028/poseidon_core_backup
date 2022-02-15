@@ -191,7 +191,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<time_token> time) {
 }
 
 void fep_visitor_inline::visit(int rank, std::shared_ptr<func_call> fct) {
-    // TODO!!!
+    
 }
 
 void fep_visitor_inline::visit(int rank, std::shared_ptr<fct_call> fct) {

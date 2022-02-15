@@ -24,11 +24,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<order_by> op) {
 
     auto res = df_finish->args().begin();
 
-    auto sort_fc_raw = ConstantInt::get(ctx.int64Ty, (int64_t)sort_op::sort);
+    auto sort_fc_raw = ConstantInt::get(ctx.int64Ty, (int64_t)op->sort);
     auto sort_fc_ptr = ctx.getBuilder().CreateIntToPtr(sort_fc_raw, ctx.int64PtrTy);
     auto sort_fc = ctx.getBuilder().CreateBitCast(sort_fc_ptr, FunctionType::get(ctx.voidTy, {ctx.int64PtrTy}, false)->getPointerTo());
 
-    ctx.getBuilder().CreateCall(FunctionType::get(ctx.voidTy, {ctx.int64PtrTy}, false), sort_fc, {main_finish->arg_begin()+2});
+    ctx.getBuilder().CreateCall(FunctionType::get(ctx.boolTy, {ctx.int64PtrTy}, false), sort_fc, {main_finish->arg_begin()+2});
 
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});

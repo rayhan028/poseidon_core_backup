@@ -68,6 +68,7 @@ private:
    */
 struct nested_loop_join : public qop, public std::enable_shared_from_this<nested_loop_join> {
   nested_loop_join(std::pair<int, int> pos) : left_right_nodes_(pos) {} 
+  nested_loop_join(std::pair<int, int> pos, qop_ptr &rhs) : left_right_nodes_(pos), rhs_(rhs) {}
   ~nested_loop_join() = default;
 
   void dump(std::ostream &os) const override;
@@ -84,7 +85,11 @@ struct nested_loop_join : public qop, public std::enable_shared_from_this<nested
   }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
   }
 
   bool is_binary() const override { return true; }

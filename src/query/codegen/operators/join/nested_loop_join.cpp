@@ -105,6 +105,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<nested_loop_join> op) {
 
     ctx.getBuilder().SetInsertPoint(end);
     ctx.getBuilder().CreateBr(main_return);
+    
     main_return = loop_body;
     prev_bb = consume;
 }

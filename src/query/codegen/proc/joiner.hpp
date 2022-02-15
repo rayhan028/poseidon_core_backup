@@ -7,6 +7,53 @@
 using input = std::vector<qr_tuple>;
 using id_input = std::vector<offset_t>;
 
+
+class base_joiner {
+protected:
+    input tuples_;
+public:
+    base_joiner() = default;
+
+    virtual void insert_tuple(qr_tuple *qr) = 0;
+    
+    virtual qr_tuple * get_tuple_at(int id) {
+        return &tuples_.at(id);
+    }
+
+    virtual int get_input_size() {
+        return tuples_.size();
+    }
+};
+
+class cross_joiner : public base_joiner {
+    std::mutex materialize_mutex;
+public:
+    virtual void insert_tuple(qr_tuple *qr) override {
+        std::lock_guard<std::mutex> lck(materialize_mutex);
+        tuples_.push_back(*qr);
+    }
+};
+
+class nested_loop_joiner : public base_joiner {
+    id_input id_inputs_;
+    std::size_t id_pos_;
+    std::mutex materialize_mutex;
+public:
+    nested_loop_joiner(std::size_t id) : id_pos_(id) {}
+
+    virtual void insert_tuple(qr_tuple *qr) override {
+        std::lock_guard<std::mutex> lck(materialize_mutex);
+        auto n = boost::get<node*>(qr->at(id_pos_));
+        id_inputs_.push_back(n->id());
+        tuples_.push_back(*qr);
+    }
+
+    offset_t get_input_id(std::size_t pos) {
+        return id_inputs_[pos];
+    }
+};
+
+
 class joiner {
 public:
     joiner() = default;
@@ -30,16 +77,6 @@ public:
     int get_input_id(int jid, int bucket, int idx);
     qr_tuple * get_query_result(int jid, int bucket, int idx);
 };
-
-/*
-class base_join {
-    std::vector<qr_tuple> tuples_;
-public:
-    base_joiner() = default;
-
-    virtual insert_tuple(qr_tuple *qr);
-    virtual int get_input_size();
-}*/
 
 
 #endif //POSEIDON_CORE_JOINER_HPP

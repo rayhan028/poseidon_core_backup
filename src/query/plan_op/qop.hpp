@@ -719,7 +719,11 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
     order_by(const result_set::sort_spec_list &spec) : sort_spec_(spec) { type_ = qop_type::order_by;  }
  
   order_by(std::function<bool(const qr_tuple &, const qr_tuple &)> func)
-      : cmp_func_(func) { type_ = qop_type::order_by;  }
+      //: cmp_func_(func) 
+  { 
+    cmp_func_ = func;
+    type_ = qop_type::order_by;  
+  }
   ~order_by() = default;
 
   void dump(std::ostream &os) const override;
@@ -734,6 +738,11 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
       subscriber_->accept(vis);
   }
 
+  static void sort(result_set *rs) {
+      query_ctx ctx; // TODO!!!!
+      rs->sort(ctx, cmp_func_);
+  }
+
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
     auto next_offset = 0;
@@ -744,7 +753,7 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
 
   result_set results_;
   result_set::sort_spec_list sort_spec_;
-  std::function<bool(const qr_tuple &, const qr_tuple &)> cmp_func_;
+  static std::function<bool(const qr_tuple &, const qr_tuple &)> cmp_func_;
 };
 
 /**

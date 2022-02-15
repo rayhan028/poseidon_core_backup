@@ -489,26 +489,69 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
         REQUIRE(rss.data.front().size() == 3);
     }
-/*
-    SECTION("Nested Loop Join") {
+
+    SECTION("Limit results") {
         qcompiler queryEngine(graph);
-        auto r_expr = Scan("Book",  End(JOIN_OP::NESTED_LOOP, 0));
+        result_set rss;
+        auto r = query(graph).all_nodes("Book").limit(3).collect(rss);
+        auto r_expr = r.plan_head();
 
-        auto l_expr = Scan("Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr));
         arg_builder args;
-        joiner j;
-        args.arg(4, &j);
         args.arg(1, "Book");
-        args.arg(2, &j);
-        args.arg(3, "Book");
 
-        result_set rs;
-        queryEngine.generate(l_expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.generate(r.plan_head(), false);
+        queryEngine.run(&rss, args);
 
-        REQUIRE(rs.data.front().size() == 2);
+        REQUIRE(rss.data.size() == 3);
     }
 
+    SECTION("Sort results") {
+        auto srtfct = [&](const qr_tuple &qr1, const qr_tuple &qr2) {
+          return boost::get<int>(qr1[0]) > boost::get<int>(qr2[0]); 
+        };
+
+        qcompiler queryEngine(graph);
+        result_set rss;
+        auto r = query(graph).all_nodes("Book")
+                            .project({{0, "id", FTYPE::INT}})
+                            .orderby(srtfct)
+                            .collect(rss);
+
+        auto r_expr = r.plan_head();
+
+        arg_builder args;
+        args.arg(1, "Book");
+
+        queryEngine.generate(r.plan_head(), false);
+        queryEngine.run(&rss, args);
+
+        REQUIRE(boost::get<int>(rss.data.front()[0]) == 83);
+    }
+
+
+/*    SECTION("Nested Loop Join") {
+        qcompiler queryEngine(graph);
+        result_set rs;
+        arg_builder args;
+
+        nested_loop_joiner j(0);
+
+        auto r_expr = query(graph).all_nodes("Book").finish();
+        args.arg(1, "Book");
+        args.arg(2, &j);
+        queryEngine.generate(r_expr.plan_head(), false);
+        queryEngine.run(&rs, args);
+*/
+/*
+        auto l_expr = query(graph).all_nodes("Person").join_on_node({0,0}, r_expr).collect(rs);
+        args.arg(1, "Book");
+        args.arg(2, &j);
+        queryEngine.generate(l_expr.plan_head(), false);
+        queryEngine.run(&rs, args);
+*/
+//        REQUIRE(rs.data.front().size() == 2);
+//    }
+/*
     SECTION("Hash Join") {
         qcompiler queryEngine(graph);
         auto r_expr = Scan("Person",  End(JOIN_OP::HASH_JOIN, 0));
