@@ -16,11 +16,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<cross_join> op) {
     auto get_join_tp_at = ctx.extern_func("get_join_tp_at");
     auto node_reg = ctx.extern_func("get_node_res_at");
     auto rship_reg = ctx.extern_func("get_rship_res_at");
-    auto rship_by_id = ctx.extern_func("rship_by_id");
     auto get_size = ctx.extern_func("get_mat_res_size");
-    auto insert_join_id_input = ctx.extern_func("insert_join_id_input");
-    auto get_join_id_at = ctx.extern_func("get_join_id_at");
-    auto print_int = ctx.extern_func("print_int");
     auto int_to_reg = ctx.extern_func("int_to_reg");
 
     // link with previous operator

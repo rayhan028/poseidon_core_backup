@@ -32,6 +32,8 @@ extern thread_local std::string grpkey_buffer;
 extern std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
 
 class joiner;
+class base_joiner;
+class nested_loop_joiner;
 
 using query_time_point = std::chrono::time_point<std::chrono::high_resolution_clock>;
 struct query_context {
@@ -245,12 +247,12 @@ qr_tuple &get_qr_tuple();
  * collect_tuple_join inserts the thread local tuple storage to a list of
  * the appropriate join operation with the id jid
  */
- void collect_tuple_join(joiner *j, int jid, qr_tuple *qr);
+ void collect_tuple_join(base_joiner *j, int jid, qr_tuple *qr);
 
 /**
  * get_join_tp_at returns a tuple from the join list at the given position
  */
- qr_tuple *get_join_tp_at(joiner *j, int jid, int pos);
+ qr_tuple *get_join_tp_at(base_joiner *j, int jid, int pos);
 
 /**
  * get_node_res_at returns a ptr to the node from the tuple at the given postion
@@ -265,7 +267,7 @@ qr_tuple &get_qr_tuple();
 /**
  * get_mat_res_size returns the size of the materialized rhs list of a join with the id = jid
  */
- int get_mat_res_size(joiner *j, int jid);
+ int get_mat_res_size(base_joiner *j, int jid);
 
 /**
  * index_get_node is a helper method in order to process a index scan for a specific node
@@ -315,8 +317,8 @@ qr_tuple &get_qr_tuple();
 
  void append_to_tuple(query_result qr);
 
-void insert_join_id_input(joiner *j, int jid, offset_t id);
-offset_t get_join_id_at(joiner *j, int jid, int pos);
+void insert_join_id_input(nested_loop_joiner *j, int jid, offset_t id);
+offset_t get_join_id_at(nested_loop_joiner *j, int jid, int pos);
 
 void collect_tuple_hash_join(joiner *j, int jid, int remainder, qr_tuple *qr);
 void insert_join_bucket_input(joiner *j, int jid, int remainder, int id);

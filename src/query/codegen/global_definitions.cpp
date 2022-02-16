@@ -304,12 +304,12 @@ void persist_tuple(graph_db *gdb, qr_tuple *qr) {
     qr->push_back(r);
 }
 
- void collect_tuple_join(joiner *j, int jid, qr_tuple *qr) {
-    j->materialize_rhs(jid, qr);
+ void collect_tuple_join(base_joiner *j, int jid, qr_tuple *qr) {
+    j->insert_tuple(qr);
 }
 
- qr_tuple *get_join_tp_at(joiner *j, int jid, int pos) {
-    return &j->rhs_input_[jid].at(pos);
+ qr_tuple *get_join_tp_at(base_joiner *j, int jid, int pos) {
+    return &j->tuples_.at(pos);
 }
 
  node *get_node_res_at(qr_tuple *tuple, int pos) {
@@ -321,8 +321,8 @@ void persist_tuple(graph_db *gdb, qr_tuple *qr) {
     return x;
 }
 
- int get_mat_res_size(joiner *j, int jid) {
-    return j->rhs_input_[jid].size();
+ int get_mat_res_size(base_joiner *j, int jid) {
+    return j->tuples_.size();
 }
 
  node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t value) {
@@ -486,12 +486,14 @@ int double_to_reg(qr_tuple* qr, int pos) {
     return g->get_group_sum_uint(pos);
 }
 
-void insert_join_id_input(joiner *j, int jid, offset_t id) {
-    j->materialize_rhs_id(jid, id);
+void insert_join_id_input(nested_loop_joiner *j, int jid, offset_t id) {
+    std::cout << "Add join" << std::endl;
+
+    //j->insert_tuple(jid, id);
 }
 
-offset_t get_join_id_at(joiner *j, int jid, int pos) {
-    return j->id_input_[jid][pos];
+offset_t get_join_id_at(nested_loop_joiner *j, int jid, int pos) {
+    return j->get_input_id(pos);
 }
 
 void collect_tuple_hash_join(joiner *j, int jid, int remainder, qr_tuple *qr) {

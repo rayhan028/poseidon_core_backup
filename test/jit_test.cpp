@@ -290,7 +290,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         auto lhs = query(graph).all_nodes("Person").crossjoin(rhs).collect(rs).plan_head();
 
         arg_builder args;
-        joiner j;
+        cross_joiner j;
         args.arg(1, "Person");
         args.arg(2, &j);
         
@@ -317,7 +317,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         auto lhs = query(graph).all_nodes("Person").outerjoin_on_node({0,0}, rhs).collect(rss).plan_head();
 
         arg_builder args;
-        joiner j;
+        cross_joiner j;
 
         args.arg(1, "Book");
         args.arg(2, &j);
@@ -463,7 +463,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         auto r_expr = r.plan_head();
 
         arg_builder args;
-        joiner j;
+        cross_joiner j;
 
         args.arg(1, "Person");
         args.arg(2, &j);
@@ -529,7 +529,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
 
-/*    SECTION("Nested Loop Join") {
+    SECTION("Nested Loop Join") {
         qcompiler queryEngine(graph);
         result_set rs;
         arg_builder args;
@@ -541,16 +541,16 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         args.arg(2, &j);
         queryEngine.generate(r_expr.plan_head(), false);
         queryEngine.run(&rs, args);
-*/
-/*
+
         auto l_expr = query(graph).all_nodes("Person").join_on_node({0,0}, r_expr).collect(rs);
         args.arg(1, "Book");
         args.arg(2, &j);
         queryEngine.generate(l_expr.plan_head(), false);
         queryEngine.run(&rs, args);
-*/
-//        REQUIRE(rs.data.front().size() == 2);
-//    }
+
+        REQUIRE(rs.data.size() == 42);
+        REQUIRE(rs.data.front().size() == 2);
+    }
 /*
     SECTION("Hash Join") {
         qcompiler queryEngine(graph);

@@ -9,8 +9,7 @@ using id_input = std::vector<offset_t>;
 
 
 class base_joiner {
-protected:
-    input tuples_;
+
 public:
     base_joiner() = default;
 
@@ -23,6 +22,8 @@ public:
     virtual int get_input_size() {
         return tuples_.size();
     }
+
+    input tuples_;
 };
 
 class cross_joiner : public base_joiner {
@@ -31,6 +32,7 @@ public:
     virtual void insert_tuple(qr_tuple *qr) override {
         std::lock_guard<std::mutex> lck(materialize_mutex);
         tuples_.push_back(*qr);
+        qr->clear();
     }
 };
 
@@ -46,6 +48,7 @@ public:
         auto n = boost::get<node*>(qr->at(id_pos_));
         id_inputs_.push_back(n->id());
         tuples_.push_back(*qr);
+        qr->clear();
     }
 
     offset_t get_input_id(std::size_t pos) {

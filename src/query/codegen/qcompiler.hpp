@@ -52,6 +52,14 @@ struct arg_builder {
         args[op_id] = (uint64_t*)j;
     }
 
+    void arg(int op_id, base_joiner *j) {
+        args[op_id] = (uint64_t*)j;
+    }
+
+    void arg(int op_id, cross_joiner *j) {
+        args[op_id] = (uint64_t*)j;
+    }
+
     void arg(int op_id, properties_t & props) {
         prop_args[op_id] = props;
         args[op_id] = (uint64_t*)&(prop_args[op_id]);
