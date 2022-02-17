@@ -60,6 +60,11 @@ struct arg_builder {
         args[op_id] = (uint64_t*)j;
     }
 
+    void arg(int op_id, result_set *rs) {
+        args[op_id] = (uint64_t*)rs;
+    }
+
+
     void arg(int op_id, properties_t & props) {
         prop_args[op_id] = props;
         args[op_id] = (uint64_t*)&(prop_args[op_id]);
@@ -87,10 +92,10 @@ public:
     /**
      * run executes the compiled query with the given arguments 
      */
-    void run(result_set * rs);
-    void run(result_set * rs, arg_builder & args, bool cleanup_query = true);
-    void finish(result_set *rs, arg_builder & args);
-    void run_parallel(result_set * rs, arg_builder & args, unsigned thread_num);
+    void run();
+    void run(arg_builder & args, bool cleanup_query = true);
+    void finish(arg_builder & args);
+    void run_parallel(arg_builder & args, unsigned thread_num);
 
     void cleanup();
 

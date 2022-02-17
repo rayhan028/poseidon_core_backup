@@ -159,7 +159,7 @@ void qcompiler::extract_arg(qop_ptr op) {
 }
 
 
-void qcompiler::run(result_set * rs, arg_builder & args, bool cleanup_query) {
+void qcompiler::run(arg_builder & args, bool cleanup_query) {
 
     graph_->begin_transaction();
     current_transaction_ = current_transaction();
@@ -177,17 +177,16 @@ void qcompiler::run(result_set * rs, arg_builder & args, bool cleanup_query) {
 
     auto start_idx = start_.size()-1;
     auto last = graph_->get_nodes()->num_chunks();
-    query_context qtx = {graph_.get(), 0, last, current_transaction_, &rs, args.args.data()};
+    query_context qtx = {graph_.get(), 0, last, current_transaction_, args.args.data()};
     qtx.gdb = graph_.get();
-    qtx.rs = &rs;
     *qtx.args = *args.args.data();
     qtx.tx = current_transaction_;
 
     for(i = start_idx; i >= 0; i--) {
-        start_[i](&qtx, args.args.data(), rs);
+        start_[i](&qtx, args.args.data());
         //finish_[i](&qtx, args.args.data(), rs);
        for(auto finish : qpipelines_[i]) {
-           finish(&qtx, args.args.data(), rs);
+           finish(&qtx, args.args.data());
        }
     }
 
@@ -211,7 +210,7 @@ void qcompiler::run(result_set * rs, arg_builder & args, bool cleanup_query) {
         cleanup();
 }
 
-void qcompiler::run(result_set * rs) {
+void qcompiler::run() {
     auto curop = cur_query_;
     std::vector<algebra_optr> recur; 
 /*    while(!curop->inputs_.empty() || !recur.empty()) {
@@ -232,7 +231,7 @@ void qcompiler::run(result_set * rs) {
         }
     }
 */    
-    run(rs, query_args);
+    run(query_args);
 }
 
 //std::map<int, std::vector<consumer_fct_type>> query_engine::operator_functions_ = {};
@@ -259,7 +258,7 @@ void consumer_dummy(node &n) {
 
 }
 result_set rs2;
-void qcompiler::run_parallel(result_set * rs, arg_builder & args, unsigned thread_num) {
+void qcompiler::run_parallel(arg_builder & args, unsigned thread_num) {
     bool interprete_started = false;
     scan_task::callee_ = scan_task::scan;
     //interprete_visitor iv(graph_, args, &rs2);
@@ -280,8 +279,8 @@ void qcompiler::run_parallel(result_set * rs, arg_builder & args, unsigned threa
            
             task_callee_ = [&](transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer) {
                 current_transaction_ = tx;
-                query_context qtx = {gdb, first, last, tx, &rs, args.args.data()};
-                start_[pipeline](&qtx, args.args.data(), rs);
+                query_context qtx = {gdb, first, last, tx, args.args.data()};
+                start_[pipeline](&qtx, args.args.data());
             };
 
             scan_task::callee_ = task_callee_;
@@ -297,18 +296,14 @@ void qcompiler::run_parallel(result_set * rs, arg_builder & args, unsigned threa
     }
 }
 
-void qcompiler::finish(result_set *rs, arg_builder & args) {
-    for(auto & t : rs2.data) {
-        rs->append(t);
-    }
+void qcompiler::finish(arg_builder & args) {
 
-    query_context qtx = {graph_.get(), 0,  graph_->get_nodes()->num_chunks(), current_transaction_, &rs, args.args.data()};
+    query_context qtx = {graph_.get(), 0,  graph_->get_nodes()->num_chunks(), current_transaction_, args.args.data()};
     qtx.gdb = graph_.get();
-    qtx.rs = &rs;
     *qtx.args = *args.args.data();
     
     for(int i = start_.size()-1; i >= 0; i--) {
-        finish_[i](&qtx, args.args.data(), rs);
+        finish_[i](&qtx, args.args.data());
     }
 }
 
@@ -372,10 +367,9 @@ void compile_task::operator()() {
 }
 
 void qcompiler::execute(query_set &queries) {
-    result_set rs;
     for(int i = 0; i < queries.size(); i++) {
         auto p = queries.at(i).plan_head();
         generate(p, false);
-        run(&rs);
+        run();
     }
 }

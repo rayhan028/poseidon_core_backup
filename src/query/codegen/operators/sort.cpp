@@ -28,7 +28,11 @@ void codegen_inline_visitor::visit(std::shared_ptr<order_by> op) {
     auto sort_fc_ptr = ctx.getBuilder().CreateIntToPtr(sort_fc_raw, ctx.int64PtrTy);
     auto sort_fc = ctx.getBuilder().CreateBitCast(sort_fc_ptr, FunctionType::get(ctx.voidTy, {ctx.int64PtrTy}, false)->getPointerTo());
 
-    ctx.getBuilder().CreateCall(FunctionType::get(ctx.boolTy, {ctx.int64PtrTy}, false), sort_fc, {main_finish->arg_begin()+2});
+    auto args = main_finish->args().begin()+1;
+    auto opid = ConstantInt::get(ctx.int64Ty, op->operator_id_);
+    auto rs_arg = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(args, {ctx.LLVM_ZERO, opid}));
+
+    ctx.getBuilder().CreateCall(FunctionType::get(ctx.boolTy, {ctx.int64PtrTy}, false), sort_fc, {rs_arg});
 
     if(profiling) {
         t_end = ctx.getBuilder().CreateCall(fadd_now, {});

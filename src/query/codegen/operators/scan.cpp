@@ -62,7 +62,6 @@ void codegen_inline_visitor::visit(std::shared_ptr<scan_nodes> op) {
 
     query_context = main_function->args().begin();
     queryArgs = main_function->args().begin() + 1;
-    rs = main_function->args().begin() + 2;
 
     BasicBlock *curBB;
 

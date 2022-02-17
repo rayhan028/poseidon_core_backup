@@ -46,7 +46,7 @@ struct cross_join : public qop, public std::enable_shared_from_this<cross_join> 
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
-    auto next_offset = 0;
+    auto next_offset = 1;
 
     vis.visit(shared_from_this());
     subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
@@ -86,7 +86,7 @@ struct nested_loop_join : public qop, public std::enable_shared_from_this<nested
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
-    auto next_offset = 0;
+    auto next_offset = 1;
 
     vis.visit(shared_from_this());
     subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
@@ -131,7 +131,7 @@ struct hash_join : public qop, public std::enable_shared_from_this<hash_join> {
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
-    auto next_offset = 0;
+    auto next_offset = 1;
 
     vis.visit(shared_from_this());
     subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
@@ -210,7 +210,7 @@ struct left_outerjoin_on_node : public qop, public std::enable_shared_from_this<
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
-    auto next_offset = 0;
+    auto next_offset = 1;
 
     vis.visit(shared_from_this());
     subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);     

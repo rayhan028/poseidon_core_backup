@@ -41,14 +41,13 @@ struct query_context {
     std::size_t first_chunk;
     std::size_t last_chunk;
     transaction_ptr tx;
-    result_set** rs;
     uint64_t** args;
 
     std::vector<std::pair<int,size_t>> profiling_time;
     std::map<int, size_t> profiling_count;
 
-    query_context(graph_db *g, std::size_t first, std::size_t last, transaction_ptr t, result_set** r, uint64_t **qargs) :
-        gdb(g), first_chunk(first), last_chunk(last), tx(t), rs(r), args(qargs) {}
+    query_context(graph_db *g, std::size_t first, std::size_t last, transaction_ptr t, uint64_t **qargs) :
+        gdb(g), first_chunk(first), last_chunk(last), tx(t), args(qargs) {}
 
     void add_time(int operator_id,  query_time_point start, query_time_point end) {
         auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
@@ -67,8 +66,8 @@ void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_tim
  * The type for the generated query function.
  */ 
 //using start_ty = void(*)(graph_db*, int, int, transaction_ptr, int, std::vector<int>*, result_set*, int**, finish_fct_type, uint64_t, uint64_t**);
-using start_ty = void(*)(query_context*, uint64_t**, result_set* rs);
-using finish_fct_type = void(*)(query_context*, uint64_t**, result_set* rs);
+using start_ty = void(*)(query_context*, uint64_t**);
+using finish_fct_type = void(*)(query_context*, uint64_t**);
 
 /**
  * Function to obtain the iterator of a node vector

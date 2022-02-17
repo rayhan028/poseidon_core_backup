@@ -5,7 +5,7 @@
  */ 
 void codegen_inline_visitor::visit(std::shared_ptr<collect_result> op) {
     cur_size = op->operator_id_;
-
+    
     // obtain all relevant FunctionCallees
     auto mat_reg = ctx.extern_func("mat_reg_value");
     auto collect_regs = ctx.extern_func("collect_tuple");
@@ -19,19 +19,23 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_result> op) {
 
     if(pipelined_finish) {
         collect_fct = main_finish;
-        rs_arg = main_finish->args().begin()+2;
+        //rs_arg = main_finish->args().begin()+2;
     } else {
         collect_fct = main_function;
-        rs_arg = rs;
         gdb_ptr = gdb;
     }
-
+    
     // link with previous operator
     BasicBlock *entry = BasicBlock::Create(ctx.getContext(), "collect_entry", collect_fct);
     pre_tuple_mat = BasicBlock::Create(ctx.getModule().getContext(), "pre_tuple_mat", collect_fct);
     ctx.getBuilder().SetInsertPoint(prev_bb);
     ctx.getBuilder().CreateBr(entry);
     ctx.getBuilder().SetInsertPoint(entry);
+
+    // extract result_set from args
+    auto args = collect_fct->args().begin()+1;
+    auto opid = ConstantInt::get(ctx.int64Ty, op->operator_id_);
+    rs_arg = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateInBoundsGEP(args, {ctx.LLVM_ZERO, opid}));
 
     if(pipelined_finish) {
         gdb_ptr = ctx.getBuilder().CreateLoad(ctx.getBuilder().CreateStructGEP(collect_fct->args().begin(), 0));

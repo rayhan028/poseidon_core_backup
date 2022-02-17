@@ -106,9 +106,10 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
         arg_builder args;
 	      args.arg(1, "Person");
+        args.arg(2, &rss);
 
         queryEngine.generate(q.plan_head(), false);
-	      queryEngine.run(&rss, args);
+	      queryEngine.run(args);
 
         REQUIRE(rss.data.size() == (unsigned int)num_persons);
         //REQUIRE(boost::get<std::string>(rs.data[43][0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\"}");
@@ -138,9 +139,10 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         
         args.arg(1, "Person");
         args.arg(2, ":HAS_READ");
+        args.arg(3, &rs);
         
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_books);
         //REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "Person[0]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 0, name: \"John Doe\", num: 1234567890123412}");
@@ -153,9 +155,10 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
   
         args.arg(1, "Book");
         args.arg(2, ":HAS_READ");
+        args.arg(3, &rs);
 
         queryEngine.generate(expr2, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_books);
         //REQUIRE(boost::get<std::string>(rs.data.front()[1]) == "::HAS_READ[0]{}");
@@ -168,9 +171,10 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         args.arg(1, "Person");
         args.arg(2, ":HAS_READ");
         args.arg(4, "Book");
+        args.arg(5, &rs);
 
         queryEngine.generate(expr3, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_books);
     }
@@ -184,10 +188,11 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         arg_builder args;
         args.arg(1, "Book");
         args.arg(2, ":HAS_READ");
+        args.arg(3, &rs);
 
         
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(true);
         //REQUIRE(rs.data.size() == num_books);
@@ -204,10 +209,11 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         args.arg(1, "Person");
         args.arg(2, ":HAS_READ");
         args.arg(4, "Book");
+        args.arg(5, &rs);
 
         
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_books);
     }
@@ -221,9 +227,10 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         args.arg(1, "Book");
         args.arg(2, ":HAS_READ");
         args.arg(4, "Person");
+        args.arg(5, &rs);
 
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_books);
     }
@@ -236,9 +243,10 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         arg_builder args;
         args.arg(1, "Person");
         args.arg(2, 42);
+        args.arg(3, &rs);
 
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == 1);
         //REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\", num: 1234567890123412}");
@@ -255,9 +263,10 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         arg_builder args;
         args.arg(1, "Person");
         args.arg(2, 42);
+        args.arg(3, &rs);
 
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == 1);
         //REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "John Doe");
@@ -272,10 +281,11 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
                           .collect(rs).plan_head();
         arg_builder args;
         args.arg(1, "Person");
+        args.arg(2, &rs);
 
         
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_persons);
         //REQUIRE(boost::get<std::string>(rs.data.back()[0]) == "John Doe");     
@@ -295,12 +305,14 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         args.arg(2, &j);
         
         queryEngine.generate(rhsp, false);
-        queryEngine.run(&rss, args);
+        queryEngine.run(args);
         
         args.arg(1, "Book");
+        args.arg(2, &j);
+        args.arg(3, &rss);
 
         queryEngine.generate(lhs, false);
-        queryEngine.run(&rss, args);
+        queryEngine.run(args);
         
         REQUIRE(rss.data.size() == (unsigned int)num_persons * (unsigned int)num_books);
     }
@@ -323,11 +335,14 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         args.arg(2, &j);
 
         queryEngine.generate(rhsp, false);
-        queryEngine.run(&rss, args);
+        queryEngine.run(args);
 
         args.arg(1, "Person");
+        args.arg(2, &j);
+        args.arg(3, &rss);
+
         queryEngine.generate(lhs, false);
-        queryEngine.run(&rss, args);
+        queryEngine.run(args);
 
         REQUIRE(rss.data.size() == num_books);
     }   
@@ -395,10 +410,11 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
         arg_builder args;
 	      args.arg(1, "Person");
+        args.arg(2, &rs);
 
         
         queryEngine.generate(q.plan_head(), false);
-	      queryEngine.run(&rs, args);
+	      queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_persons);
         REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "John Doe");
@@ -411,10 +427,11 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         auto q = query(graph).all_nodes("Person").project({{0, "age", FTYPE::INT}}).collect(rs);
         arg_builder args;
         args.arg(1, "Person");
+        args.arg(2, &rs);
 
         
         queryEngine.generate(q.plan_head(), false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_persons);
         REQUIRE(boost::get<int>(rs.data.front()[0]) == 42);
@@ -428,9 +445,10 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
         arg_builder args;
         args.arg(1, "Person");
+        args.arg(2, &rs);
 
         queryEngine.generate(q.plan_head(), false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_persons);
         REQUIRE(boost::get<uint64_t>(rs.data.front()[0]) == 1234567890123412);
@@ -446,9 +464,10 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
         arg_builder args;
         args.arg(1, "Person");
+        args.arg(2, &rs);
 
         queryEngine.generate(q.plan_head(), false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_persons);
         REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "John Doe");
@@ -469,7 +488,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         args.arg(2, &j);
 
         queryEngine.generate(r.plan_head(), false);
-        queryEngine.run(&rss, args);
+        queryEngine.run(args);
 
         auto l_expr = query(graph).all_nodes("Person")
                         .from_relationships(":HAS_READ")
@@ -483,9 +502,10 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         args.arg(2, ":HAS_READ");
         args.arg(4, "Book");
         args.arg(5, &j);
+        args.arg(6, &rss);
 
         queryEngine.generate(l_expr, false);
-        queryEngine.run(&rss, args);        
+        queryEngine.run(args);        
 
         REQUIRE(rss.data.front().size() == 3);
     }
@@ -498,9 +518,10 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
         arg_builder args;
         args.arg(1, "Book");
+        args.arg(2, &rss);
 
         queryEngine.generate(r.plan_head(), false);
-        queryEngine.run(&rss, args);
+        queryEngine.run(args);
 
         REQUIRE(rss.data.size() == 3);
     }
@@ -521,9 +542,10 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
         arg_builder args;
         args.arg(1, "Book");
+        args.arg(2, &rss);
 
         queryEngine.generate(r.plan_head(), false);
-        queryEngine.run(&rss, args);
+        queryEngine.run(args);
 
         REQUIRE(boost::get<int>(rss.data.front()[0]) == 83);
     }
@@ -540,13 +562,15 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         args.arg(1, "Book");
         args.arg(2, &j);
         queryEngine.generate(r_expr.plan_head(), false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         auto l_expr = query(graph).all_nodes("Person").join_on_node({0,0}, r_expr).collect(rs);
         args.arg(1, "Book");
         args.arg(2, &j);
+        args.arg(3, &rs);
+
         queryEngine.generate(l_expr.plan_head(), false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == 42);
         REQUIRE(rs.data.front().size() == 2);

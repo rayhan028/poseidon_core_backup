@@ -39,7 +39,7 @@ void queryc::exec_plan(qop_ptr &plan, graph_db_ptr &gdb) {
   auto end_qc = std::chrono::steady_clock::now();
 
   spdlog::debug("execute query code");     
-	queryEngine.run(&rs);
+	queryEngine.run();
 
   auto end_qp = std::chrono::steady_clock::now();
   
