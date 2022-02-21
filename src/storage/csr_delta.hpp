@@ -10,25 +10,10 @@
 #endif
 
 /**
- * A struct for a CSR delta record. A delta record is associated with a node 
- * updated by a transaction. It contains the id of the updated node, the ids of the nodes 
- * connected to it (column indices) and the corresponding relationship weights (edge values). 
+ * A struct for a CSR delta record. A delta record is associated with a node
+ * updated by a transaction. It contains the id of the updated node, the ids of the nodes
+ * connected to it (column indices) and the corresponding relationship weights (edge values).
  */
-#ifdef VOLATILE_DELTA
-struct delta_rec {
-  delta_rec() = default;
-  delta_rec(const delta_rec &) = delete;
-  delta_rec(uint64_t txid, uint64_t nid,
-    const std::vector<uint64_t> &ids, const std::vector<double> &weights)
-    : txid_(txid), node_id_(nid), ids_(std::move(ids)), weights_(std::move(weights)) {}
-
-  uint64_t txid_;               // id of the transaction that stored the delta record
-  uint64_t node_id_;            // id of the node associated with the delta record
-  std::vector<uint64_t> ids_;   // list of the neigbour node ids (column indices)
-  std::vector<double> weights_; // list of corresponding relationship weights (edge values)
-  bool merged_ = false;         // a flag indicating whether the delta record has been merged in a CSR update
-};
-#elif defined PERSISTENT_DELTA
 struct delta_rec {
   delta_rec() = default;
   delta_rec(const delta_rec &) = delete;
@@ -42,7 +27,6 @@ struct delta_rec {
   int count_;           // number of the neighbour nodes (with corresponding relationship weights)
   bool merged_ = false; // a flag indicating whether the delta record has been merged in a CSR update
 };
-#endif
 
 #ifdef VOLATILE_DELTA
 /**
@@ -67,7 +51,7 @@ struct alignas(64) vchunk {
     slots_.set(i, b);
     if (!b && i < first_) {
       // the record was deleted - update first_
-      first_ = i;   
+      first_ = i;
       return;
     }
     if (b && i == first_) {
@@ -275,8 +259,8 @@ private:
 
   void remove_from_free_list(offset_t idx) {
     // spdlog::info("remove_from_free_list: {}", idx);
-    free_list_.erase(std::remove_if(std::begin(free_list_), std::end(free_list_), 
-      [idx](auto i) { return i == idx; }), 
+    free_list_.erase(std::remove_if(std::begin(free_list_), std::end(free_list_),
+      [idx](auto i) { return i == idx; }),
       std::end(free_list_));
 
   }
@@ -304,9 +288,9 @@ private:
 #endif
 
 /**
- * The CSR delta store manages delta records. Delta records are merged to 
- * update the current CSR representation of the main PMem Graph so that 
- * analytics are executed on the latest snapshot of the graph. 
+ * The CSR delta store manages delta records. Delta records are merged to
+ * update the current CSR representation of the main PMem Graph so that
+ * analytics are executed on the latest snapshot of the graph.
  */
 class delta_store {
 public:
@@ -343,8 +327,8 @@ public:
 
   /**
    * Merge valid delta records from different transactions into a delta map.
-   * The deltas in the delta map are used to update the current CSR. 
-   * Each delta in the delta map is of the form: 
+   * The deltas in the delta map are used to update the current CSR.
+   * Each delta in the delta map is of the form:
    * {node id, <[ids of neighbours], [relationship weights]>}
    */
   void merge_deltas(delta_map_t &deltas, uint64_t txid);
@@ -360,7 +344,7 @@ public:
   const rship_weight& weight_func() { return weight_func_; }
 
   /**
-   * Returns whether only outgoing relationships are considered (false) 
+   * Returns whether only outgoing relationships are considered (false)
    * or both outgoing and incoming relationships are considered (true).
    */
   bool bidirectional() { return bidirectional_; }
@@ -378,20 +362,24 @@ public:
 private:
   friend class graph_db;
 
-  bool bidirectional_ = false;            // bi/uni-directional traversal of relationships
+  bool bidirectional_ = false;              // bi/uni-directional traversal of relationships
   rship_weight weight_func_ =
-    [](relationship &r) { return 1.3; };  // function to compute weights of relationships
+    [](relationship &r) { return 1.3; };    // function to compute weights of relationships
 
-  offset_t last_node_id_ = UNKNOWN;       // id of the last node in the current CSR
-  uint64_t last_txn_id_ = UNKNOWN;        // id of the last transaction that made a CSR update
+  offset_t last_node_id_ = UNKNOWN;         // id of the last node in the current CSR
+  uint64_t last_txn_id_ = UNKNOWN;          // id of the last transaction that made a CSR update
 
-  bool delta_mode_ = true;                // delta mode for adaptive CSR update
-  uint64_t num_delta_recs_ = 0;           // number of stored delta records
-  uint64_t max_delta_recs_ = 18174889;    // maximum number of delta records for adaptive CSR update
+  bool delta_mode_ = true;                  // delta mode for adaptive CSR update
+  uint64_t num_delta_recs_ = 0;             // number of stored delta records
+  uint64_t max_delta_recs_ = 18174889;      // maximum number of delta records for adaptive CSR update
 
 #ifdef VOLATILE_DELTA
-  vchunked_vec<delta_rec> delta_recs_;    // the underlying vchunked vector of volatile delta records
-  
+  std::vector<uint64_t> ids_;               // ids of deleted neighbours for all deltas records
+  std::vector<double> weights_;             // relationship weights for all deltas delta records
+  offset_t next_pos_ = 0;                        // start of empty slots in the "ids_" and "weights_" vectors
+
+  vchunked_vec<delta_rec> delta_recs_;      // the underlying vchunked vector of volatile delta records
+
   // TODO these arrays are not needed here when CSR update is done directly on GPU
   std::vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR
   std::vector<offset_t> col_indices_ = {};  // column indices array of the current CSR
@@ -399,7 +387,7 @@ private:
 #elif defined PERSISTENT_DELTA
   pmem::obj::vector<uint64_t> ids_;         // ids of deleted neighbours for all deltas records
   pmem::obj::vector<double> weights_;       // relationship weights for all deltas delta records
-  offset_t pos_ = 0;                        // start of empty slots in the "ids_" and "weights_" vectors
+  offset_t next_pos_ = 0;                        // start of empty slots in the "ids_" and "weights_" vectors
 
   chunked_vec<delta_rec> delta_recs_;       // the underlying chunked vector of persistent delta records
 

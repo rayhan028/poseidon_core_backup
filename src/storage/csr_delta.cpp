@@ -5,15 +5,9 @@ void delta_store::initialize() {}
 
 void delta_store::store_delta(uint64_t txid, uint64_t nid,
   const std::vector<uint64_t> &ids, const std::vector<double> &weights) {
-#ifdef VOLATILE_DELTA
-  delta_rec rec(txid, nid, std::move(ids), std::move(weights));
+  delta_rec rec(txid, nid, next_pos_, ids.size());
 
-  delta_recs_.store(std::move(rec));
-  num_delta_recs_++;
-#elif defined PERSISTENT_DELTA
-  delta_rec rec(txid, nid, pos_, ids.size());
-
-  pos_ += ids.size();
+  next_pos_ += ids.size();
   ids_.insert(ids_.end(),
     std::make_move_iterator(ids.begin()),
       std::make_move_iterator(ids.end()));
@@ -23,7 +17,6 @@ void delta_store::store_delta(uint64_t txid, uint64_t nid,
 
   delta_recs_.store(std::move(rec));
   num_delta_recs_++;
-#endif
 }
 
 void delta_store::merge_deltas(delta_map_t &deltas, uint64_t txid) {
@@ -34,58 +27,31 @@ void delta_store::merge_deltas(delta_map_t &deltas, uint64_t txid) {
     if (rec.txid_ > txid) {
       // transaction with id "txid_" started after the one with id "txid" but committed before it
       // therefore, delta records inserted by txid_ should not be visible to txid
-      
-      // however, this delta record is still needed later for CSR update 
-      // therefore, we do not clear the vector of delta records at the end of this merge 
+
+      // however, this delta record is still needed later for CSR update
+      // therefore, we do not clear the vector of delta records at the end of this merge
       clear = false;
       continue;
     }
     else if (rec.txid_ < last_txn_id_) {
-      // delta records inserted by transactions with id < last_txn_id_ would have been included in the 
+      // delta records inserted by transactions with id < last_txn_id_ would have been included in the
       // previous merge and cleared. If such record still exists in the delta store, then either
       // 1) the record was not cleared after the last merge, or
       // 2) txid_ committed after last_txn_id_
-      
+
       if (rec.merged_) {
-        // 1) the delta record was not cleared after the last merge 
+        // 1) the delta record was not cleared after the last merge
         // since the delta record has been merged already, we do not include it in this merge.
         continue;
       }
       else {
-        // 2) txid_ committed after last_txn_id_, i.e. txid_ added the delta after the last merge 
+        // 2) txid_ committed after last_txn_id_, i.e. txid_ added the delta after the last merge
         // since txid_ has committed, there is no transaction with id > txid_ that added a delta for rec.nid_
         // therefore, we include the delta record in this merge
         ;
       }
     }
 
-#ifdef VOLATILE_DELTA
-    auto iter = nid_to_txid.find(rec.node_id_);
-    if (iter == nid_to_txid.end()) {
-      // first insertion of neighbour ids associated with nid
-      deltas[rec.node_id_].first = rec.ids_;
-      deltas[rec.node_id_].second = rec.weights_;
-      nid_to_txid[rec.node_id_] = rec.txid_;
-      rec.merged_ = true;
-    }
-    else if (iter->second < rec.txid_) {
-      // delta record is from a newer txn
-      // overwrite the vector of neighbour ids with the more recent updates
-      deltas[rec.node_id_].first.clear();
-      deltas[rec.node_id_].first = rec.ids_;
-      deltas[rec.node_id_].second.clear();
-      deltas[rec.node_id_].second = rec.weights_;
-      nid_to_txid[rec.node_id_] = rec.txid_;
-      rec.merged_ = true;
-    }
-    else if (iter->second > rec.txid_) {
-      // delta record is from an older txn 
-      // do nothing
-      ;
-    }
-  }
-#elif defined PERSISTENT_DELTA
-
     auto iter = nid_to_txid.find(rec.node_id_);
     if (iter == nid_to_txid.end()) {
       // first insertion of neighbour ids associated with nid
@@ -125,14 +91,13 @@ void delta_store::merge_deltas(delta_map_t &deltas, uint64_t txid) {
       rec.merged_ = true;
     }
     else if (iter->second > rec.txid_) {
-      // delta record is from an older txn 
+      // delta record is from an older txn
       // do nothing
       ;
     }
   }
-#endif
   if (clear) {
-    // no delta record is needed later for CSR update 
+    // no delta record is needed later for CSR update
     clear_deltas();
   }
 }
