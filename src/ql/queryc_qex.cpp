@@ -36,7 +36,7 @@ query_set queryc::generate_qex_plan(graph_db_ptr &gdb, const std::string &qstr) 
   spdlog::debug("generate_qop_plan");
   auto ast = parse(qstr);
   if (!ast) 
-    throw query_execution_error();
+    throw query_processing_error();
   
   print_ast(ast);
 

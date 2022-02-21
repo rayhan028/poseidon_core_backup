@@ -274,10 +274,10 @@ TEST_CASE("Testing join operators", "[qop]") {
     query::start({&q1, &q2});
 
     rs.wait();
-    expected.data.push_back({query_result("1"), query_result("3")});
-    expected.data.push_back({query_result("1"), query_result("4")});
-    expected.data.push_back({query_result("2"), query_result("3")});
-    expected.data.push_back({query_result("2"), query_result("4")});
+    expected.data.push_back({query_result("3"), query_result("1")});
+    expected.data.push_back({query_result("4"), query_result("1")});
+    expected.data.push_back({query_result("3"), query_result("2")});
+    expected.data.push_back({query_result("4"), query_result("2")});
     REQUIRE(rs == expected);
     query::print_plans({&q1, &q2});
   }
@@ -836,11 +836,11 @@ TEST_CASE("Testing the existence of relationship", "[qop]") {
       std::cout << "rship_exists without NULL append\n";
       result_set rs, expected;
       auto q1 = query(graph)
-                .all_nodes("Person");
+                .all_nodes("Person")
+                .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); });
 
       auto q2 = query(graph)
                 .all_nodes("Person")
-                .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .crossjoin(q1)
                 .rship_exists({0,1}, false)
                 .project({PExpr_(0, pj::string_property(res, "firstName")),
@@ -862,11 +862,11 @@ TEST_CASE("Testing the existence of relationship", "[qop]") {
     SECTION("rship_exists with NULL append") {
       result_set rs, expected;
       auto q1 = query(graph)
-                .all_nodes("Person");
+                .all_nodes("Person")
+                .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); });
 
       auto q2 = query(graph)
                 .all_nodes("Person")
-                .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .crossjoin(q1)
                 .rship_exists({0,1}, true)
                 .project({PExpr_(0, pj::string_property(res, "firstName")),

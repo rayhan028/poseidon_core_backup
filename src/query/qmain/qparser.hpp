@@ -117,6 +117,11 @@ private:
     */
    simple_proj_spec::sort_order parse_sort_order(const std::string &s);
 
+  /**
+   * TODO
+   */
+  std::string get_relationship_label(parse_tree_ptr& pn);
+
 };
 
 #endif
