@@ -34,7 +34,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<projection> op) {
     for(auto & pe : op->prexpr_) {
         auto r = reg_query_results[pe.id];
         if(pe.prt == projection_expr::PROJECTION_TYPE::PROPERTY_PR) {
-            if(pe.type == FTYPE::BOOLEAN) {
+            if(pe.type == result_type::boolean) {
                 nqrv.push_back(reg_query_results[pe.id]);
             } else {
                 
@@ -52,7 +52,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<projection> op) {
                 }
 
                 // add new register value to global list
-                nqrv.push_back({pv[i], static_cast<int>(pe.type)+2});
+                nqrv.push_back({pv[i], static_cast<int>(pe.type)});
 
             }
         } else if(pe.prt == projection_expr::PROJECTION_TYPE::FORWARD_PR) {
@@ -60,7 +60,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<projection> op) {
             i++;
             continue;
         } else if(pe.prt == projection_expr::PROJECTION_TYPE::FUNCTIONAL_VAL) {
-            pe.type = FTYPE::INT;
+            pe.type = result_type::integer;
             auto fc_raw = ConstantInt::get(ctx.int64Ty, (int64_t)pe.int_node_func);
             auto fc_ptr = ctx.getBuilder().CreateIntToPtr(fc_raw, ctx.int64PtrTy);
             auto fc_ty = FunctionType::get(ctx.int64Ty, {ctx.nodePtrTy}, false);
@@ -68,7 +68,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<projection> op) {
 
             auto i_pr = ctx.getBuilder().CreateCall(fc_ty, fc, {r.reg_val});
             ctx.getBuilder().CreateStore(i_pr, pv[i]);
-            nqrv.push_back({pv[i], static_cast<int>(FTYPE::INT)+2});
+            nqrv.push_back({pv[i], static_cast<int>(result_type::integer)});
         } else if(pe.prt == projection_expr::PROJECTION_TYPE::CONDITIONAL_VAL) {
             std::vector<Value*> prop_exists;
             std::vector<Value*> then_else;

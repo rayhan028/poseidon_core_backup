@@ -159,12 +159,12 @@ rship_vec *gdb_get_rships(graph_db *gdb);
 /**
  * Applies a given Projection on a node result and writes the result at a memory address, given by the caller.
  */
- void apply_pexpr_node(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int *ret);
+ void apply_pexpr_node(graph_db *gdb, const char *key, result_type val_type, int *qr, int *ret);
 
 /**
  * Applies a given Projection on a relationship result and writes the result at a memory address, given by the caller.
  */
- void apply_pexpr_rship(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int *ret);
+ void apply_pexpr_rship(graph_db *gdb, const char *key, result_type val_type, int *qr, int *ret);
 
 /**
  * External function to count all potential 1-hop relationships, used by the variable ForeachRelationship operator
@@ -189,7 +189,7 @@ rship_vec *gdb_get_rships(graph_db *gdb);
 /**
  * Method that processes the actual projection on a tuple result
  */
- void apply_pexpr(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int idx, std::vector<int> types, int *ret);
+ void apply_pexpr(graph_db *gdb, const char *key, result_type val_type, int *qr, int idx, std::vector<int> types, int *ret);
 
 /**
  * Function to lookup a given dictionary code

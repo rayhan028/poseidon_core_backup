@@ -130,13 +130,13 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
       for(auto& p : pr_list) {
         if (p.which() == 0) {
           auto& pp = boost::get<simple_proj_spec>(p);
-          FTYPE type = FTYPE::INT;
+          result_type type = result_type::integer;
           if (boost::iequals(pp.ptype, "int")) {
-            type = FTYPE::INT;
+            type = result_type::integer;
           } else if (boost::iequals(pp.ptype, "string")) {
-            type = FTYPE::STRING;
+            type = result_type::string;
           } else if (boost::iequals(pp.ptype, "uint64")) {
-            type = FTYPE::UINT64;
+            type = result_type::uint64;
           } /// TODO: improve type handling
 
           auto pv_id = parse_tuple_id(pp.pname);

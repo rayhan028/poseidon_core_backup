@@ -182,11 +182,11 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
 
         REQUIRE(prj1.id == 0);
         REQUIRE(prj1.key == "age");
-        REQUIRE(prj1.type == FTYPE::INT);
+        REQUIRE(prj1.type == result_type::integer);
 
         REQUIRE(prj2.id == 42);
         REQUIRE(prj2.key == "name");
-        REQUIRE(prj2.type == FTYPE::STRING);
+        REQUIRE(prj2.type == result_type::string);
     }
 
     SECTION("Transform a Filter and Projection into valid graph algebra expression") {
@@ -224,11 +224,11 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
 
         REQUIRE(prj1.id == 0);
         REQUIRE(prj1.key == "age");
-        REQUIRE(prj1.type == FTYPE::INT);
+        REQUIRE(prj1.type == result_type::integer);
 
         REQUIRE(prj2.id == 42);
         REQUIRE(prj2.key == "name");
-        REQUIRE(prj2.type == FTYPE::STRING);
+        REQUIRE(prj2.type == result_type::string);
     }
 
 #ifdef USE_PMDK

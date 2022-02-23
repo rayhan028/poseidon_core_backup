@@ -92,28 +92,31 @@ void qcompiler::cleanup() {
     qpipelines_.clear();
 }
 
+
 joiner * last_joiner;
 void qcompiler::extract_arg(qop_ptr op) {
     switch(op->type_) {
+        arg_counter = op->operator_id_;
+        std::cout << "ID: " << arg_counter << std::endl; 
         case qop_type::scan: {
             auto s_op = std::dynamic_pointer_cast<scan_nodes>(op);
-            query_args.arg(arg_counter++, s_op->label);
+            query_args.arg(arg_counter, s_op->label);
             break;
         }
         case qop_type::foreach_rship: {
             auto fe_op = std::dynamic_pointer_cast<foreach_relationship>(op);
-            query_args.arg(arg_counter++, fe_op->label);
+            query_args.arg(arg_counter, fe_op->label);
             break;
         }
         case qop_type::expand: {
             auto exp_op = std::dynamic_pointer_cast<expand>(op);
             if(!exp_op->label.empty())
-                query_args.arg(arg_counter++, exp_op->label);
+                query_args.arg(arg_counter, exp_op->label);
             break;
         }
         case qop_type::node_has_label: {
             auto hl_op = std::dynamic_pointer_cast<node_has_label>(op);
-            query_args.arg(arg_counter++, hl_op->label);
+            query_args.arg(arg_counter, hl_op->label);
             break;
         }
         case qop_type::filter: {
@@ -145,11 +148,15 @@ void qcompiler::extract_arg(qop_ptr op) {
             query_args.arg(arg_counter++, new grouper());
             break;
         }
+        case qop_type::collect: {
+            auto cop = std::dynamic_pointer_cast<collect_result>(op);
+            query_args.arg(arg_counter++, &cop->results_);
+            break;
+        }
         case qop_type::limit:
         // inline argument, nothing to do here
         case qop_type::project:
         case qop_type::aggr:
-        case qop_type::collect:
         case qop_type::sort:
         case qop_type::any:
         case qop_type::none:
@@ -212,25 +219,20 @@ void qcompiler::run(arg_builder & args, bool cleanup_query) {
 
 void qcompiler::run() {
     auto curop = cur_query_;
-    std::vector<algebra_optr> recur; 
-/*    while(!curop->inputs_.empty() || !recur.empty()) {
+    std::vector<qop_ptr> recur; 
+    while(curop->has_subscriber() || !recur.empty()) {
         extract_arg(curop);
-        if(curop->inputs_.empty()) {
+        if(!curop->has_subscriber()) {
             if(!recur.empty()) {
                 curop = recur.front();
                 recur.erase(recur.begin());
                 continue;
             }
         }
-        if(curop->inputs_.size() > 1) {
-            recur.push_back(curop->inputs_[0]);
-            curop = curop->inputs_[1];
-        } else {
-            if(!curop->inputs_.empty())
-                curop = curop->inputs_[0];
+        if(curop->has_subscriber()) {
+            curop = curop->subscriber();
         }
-    }
-*/    
+    }    
     run(query_args);
 }
 

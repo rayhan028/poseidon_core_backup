@@ -110,7 +110,7 @@ std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
     return ret;
 }
 
-void apply_pexpr_node(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int *ret) {
+void apply_pexpr_node(graph_db *gdb, const char *key, result_type val_type, int *qr, int *ret) {
     // cast the query result to a node
     auto n = (node*)qr;
     
@@ -121,60 +121,64 @@ void apply_pexpr_node(graph_db *gdb, const char *key, FTYPE val_type, int *qr, i
     auto nd = descs[n->id()];
 
     switch(val_type) {
-        case FTYPE::INT: { // an integer type can be directly written to the memory
+        case result_type::integer: { // an integer type can be directly written to the memory
             *ret = get_property<int>(nd.properties, key).value();
             break;
         }
-        case FTYPE::UINT64: { // store the uint64 result in thread local memory and return the result id to the caller
+        case result_type::uint64: { // store the uint64 result in thread local memory and return the result id to the caller
             uint_result[str_res_ctr] = get_property<uint64_t>(nd.properties, key).value(); 
             *ret = str_res_ctr++;
             break;
         }
-        case FTYPE::STRING: { // store the string in thread local memory and return the result id to the caller
+        case result_type::string: { // store the string in thread local memory and return the result id to the caller
             str_result[str_res_ctr] = boost::any_cast<std::string>(nd.properties[std::string(key)]);
             *ret = str_res_ctr++;
             break;
         }
-        case FTYPE::TIME: // TODO: wip
-        case FTYPE::DATE: { // store the time object in thread local memory and return the result id to the caller
+        case result_type::time: // TODO: wip
+        case result_type::date: { // store the time object in thread local memory and return the result id to the caller
             time_result[str_res_ctr] = get_property<boost::posix_time::ptime>(nd.properties, key).value();
             *ret = str_res_ctr++;
             break;
         }
-        case FTYPE::DOUBLE:
-        case FTYPE::BOOLEAN:
+        case result_type::double_t:
+        case result_type::boolean:
+        case result_type::node:
+        case result_type::relationship:
         default:
             break;   
     }
 }
 
-void apply_pexpr_rship(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int *ret) {
+void apply_pexpr_rship(graph_db *gdb, const char *key, result_type val_type, int *qr, int *ret) {
     auto r = (relationship*)qr;
     if(rdescs.find(r->id()) == rdescs.end())
         rdescs[r->id()] = gdb->get_rship_description(r->id());
     auto rd = rdescs[r->id()];
 
     switch(val_type) {
-        case FTYPE::INT: { // an integer type can be directly written to the memory
+        case result_type::integer: { // an integer type can be directly written to the memory
             *ret = get_property<int>(rd.properties, key).value();
             break;
         }
-        case FTYPE::UINT64: { // store the uint64 result in thread local memory and return the result id to the caller
+        case result_type::uint64: { // store the uint64 result in thread local memory and return the result id to the caller
             break;
         }
-        case FTYPE::STRING: { // store the string in thread local memory and return the result id to the caller
+        case result_type::string: { // store the string in thread local memory and return the result id to the caller
             str_result[str_res_ctr] = boost::any_cast<std::string>(rd.properties[std::string(key)]);;
             *ret = str_res_ctr++;
             break;
         }
-        case FTYPE::TIME: // TODO: wip
-        case FTYPE::DATE: { // store the time object in thread local memory and return the result id to the caller
+        case result_type::time: // TODO: wip
+        case result_type::date: { // store the time object in thread local memory and return the result id to the caller
             time_result[str_res_ctr] = get_property<boost::posix_time::ptime>(rd.properties, key).value();
             *ret = str_res_ctr++;
             break;
         }
-        case FTYPE::DOUBLE:
-        case FTYPE::BOOLEAN:
+        case result_type::double_t:
+        case result_type::boolean:
+        case result_type::node:
+        case result_type::relationship:
         default:
             break;   
     }
@@ -182,7 +186,7 @@ void apply_pexpr_rship(graph_db *gdb, const char *key, FTYPE val_type, int *qr, 
 
 std::mutex prj_mutex;
 
- void apply_pexpr(graph_db *gdb, const char *key, FTYPE val_type, int *qr, int idx, std::vector<int> types, int *ret) {
+ void apply_pexpr(graph_db *gdb, const char *key, result_type val_type, int *qr, int idx, std::vector<int> types, int *ret) {
     std::lock_guard<std::mutex> lock(prj_mutex);
     if(types.at(idx) == 0) { // is node
         apply_pexpr_node(gdb, key, val_type, qr, ret);
