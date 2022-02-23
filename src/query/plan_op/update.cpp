@@ -51,7 +51,9 @@ void create_node::process(query_ctx &ctx, const qr_tuple &v) {
 /* ------------------------------------------------------------------------ */
 
 void create_relationship::dump(std::ostream &os) const {
-  os << "create_relationship([" << label << "]";
+  os << "create_relationship(" << src_des_nodes_.first;
+  os << "->"; 
+  os << src_des_nodes_.second << ", [" << label << "]";
   if (!props.empty()) {
     os << ", {";
     bool first = true;

@@ -234,6 +234,19 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
       break;
     case ast_op::hash_join:
       break;
+    case ast_op::cross_join:
+    {
+      auto qp = std::make_shared<cross_join>();
+      auto parent = res2.first ? res2.second : res.second;
+      parent->connect(qp, std::bind(&cross_join::process_left, qp.get(), ph::_1, ph::_2));
+      qop_ptr parent2 = sources.at(sources.size()-2);
+      while (parent2->has_subscriber()) {
+        parent2 = parent2->subscriber();
+      }
+      parent2->connect(qp, std::bind(&cross_join::process_right, qp.get(), ph::_1, ph::_2));
+      qop = qp;
+      break;
+    }
     case ast_op::leftouter_join:
     {
       auto ex = ast->get_param<expr>(0);

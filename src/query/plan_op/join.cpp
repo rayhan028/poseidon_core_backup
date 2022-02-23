@@ -29,7 +29,7 @@ void cross_join::dump(std::ostream &os) const {
 
 void cross_join::process_left(query_ctx &ctx, const qr_tuple &v) {
   for (auto &inp : input_) {
-    auto res = concat(v, inp);
+    auto res = concat(inp, v);
     consume_(ctx, res);
   }
 }
@@ -52,7 +52,7 @@ void nested_loop_join::process_left(query_ctx &ctx, const qr_tuple &v) {
 
   auto i = 0;
   for (auto id : join_ids_) {
-    if (id == nid){
+    if (id == nid){ 
       auto res = concat(v, input_[i]);
       consume_(ctx, res);
     }

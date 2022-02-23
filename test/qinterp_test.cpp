@@ -88,7 +88,7 @@ void create_data(graph_db_ptr &graph) {
         {"creationDate", boost::any(time_from_string(std::string("2013-07-25 07:54:01.976")))},
         {"content", boost::any(std::string("Content of cmt7"))}});
     auto cmt8 = graph->add_node("Comment",
-      {{"id", boost::any((uint64_t)1877)},
+      {{"id", boost::any((uint64_t)1878)},
         {"creationDate", boost::any(time_from_string(std::string("2013-08-25 12:56:57.280")))},
         {"content", boost::any(std::string("Content of cmt8"))}});
     auto cmt9 = graph->add_node("Comment",
@@ -274,56 +274,6 @@ std::string load_string(const std::string& fname) {
     return qstr;
 }
 
-namespace pj = builtin;
-void ldbc_is_query_7(graph_db_ptr &gdb, result_set &rs, uint64_t messageId) {
-  std::vector<std::string> message = {"Post", "Comment"};
-
-  auto q1 = query(gdb)
-                .nodes_where(message, "id",
-                            [&](auto &p) { return p.equal(messageId); })
-                .from_relationships(":hasCreator")
-                .to_node("Person");
-
-  auto q2 = query(gdb)
-                .nodes_where(message, "id",
-                            [&](auto &p) { return p.equal(messageId); })
-                .to_relationships(":replyOf")
-                .from_node("Comment")
-                .from_relationships(":hasCreator")
-                .to_node("Person")
-                .outerjoin(q1, [&](const qr_tuple &lv, const qr_tuple &rv) {
-                  auto connected = false;
-                  auto src = boost::get<node *>(lv[4]);
-                  auto des = boost::get<node *>(rv[2]);
-                  gdb->foreach_from_relationship_of_node((*src), [&](auto &r) {
-                    if (r.to_node_id() == des->id())
-                      connected = true;
-                  });
-                  return connected; })
-                .append_to_qr_tuple([&](const qr_tuple &v) {
-                  return v[7].type() == typeid(null_val) ?
-                    query_result(std::string("false")) : query_result(std::string("true")); })
-                .project({PExpr_(2, pj::uint64_property(res, "id")),
-                          PExpr_(2, pj::string_property(res, "content")),
-                          PExpr_(2, pj::ptime_property(res, "creationDate")),
-                          PExpr_(4, pj::uint64_property(res, "id")),
-                          PExpr_(4, pj::string_property(res, "firstName")),
-                          PExpr_(4, pj::string_property(res, "lastName")),
-                          PVar_(8)})
-                .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
-                        if (boost::get<boost::posix_time::ptime>(qr1[2]) == boost::get<boost::posix_time::ptime>(qr2[2]))
-                          return boost::get<uint64_t>(qr1[0]) > boost::get<uint64_t>(qr2[0]);
-                        return boost::get<boost::posix_time::ptime>(qr1[2]) < boost::get<boost::posix_time::ptime>(qr2[2]); })
-                .collect(rs);
-  gdb->run_transaction([&]() {
-    query::start({&q1, &q2});
-    return true;
-  });  
-
-  rs.wait();
-  query::print_plans({&q1, &q2});
-}
-
 TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
     auto pool = graph_pool::create(test_path);
     auto graph = pool->create_graph("my_graph");
@@ -381,7 +331,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
         qv_("2013-09-27T09:41:01.413000"), qv_("1976"),
         qv_("1379"), qv_("Muhammad"), qv_("Iqbal")});
       expected.append(
-        {qv_("1877"), qv_("Content of cmt8"),
+        {qv_("1878"), qv_("Content of cmt8"),
         qv_("2013-08-25T12:56:57.280000"), qv_("137438956"),
         qv_("1291"), qv_("Wei"), qv_("Li")});
       expected.append(
@@ -478,11 +428,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
     SECTION("IS #7") {
       spdlog::info("LDBC IS#7"); 
-      /*
-      result_set res2;
-      ldbc_is_query_7(graph, res2, 16492676);
-      std::cout << "res2 = \n" << res2 << std::endl;
-      */
+
       auto qstr = load_string(prefix_is + "7.q");
       auto res = qp.execute_query(qproc::Interpret, qstr, true);
       // std::cout << res.result() << std::endl;
@@ -503,3 +449,74 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
   graph_pool::destroy(pool);
 }
 
+TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
+    auto pool = graph_pool::create(test_path);
+    auto graph = pool->create_graph("my_graph");
+    create_data(graph);
+
+    qproc qp(graph);
+
+    char buf[1024];
+    getcwd(buf, 1024);
+    std::string prefix_iu(buf); 
+    prefix_iu += "/../../queries/ldbc/iu/iu";  
+
+    SECTION("IU #2") {
+      spdlog::info("LDBC IU#2"); 
+      auto qstr = load_string(prefix_iu + "2.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr);
+
+      auto res2 = qp.execute_query(qproc::Interpret, "Project([$0.id:uint64, $2.id:uint64, $1.creationDate:datetime], Expand(OUT, 'Post', ForeachRelationship(FROM, 'likes', Filter($0.id == 933, NodeScan('Person')))))");
+ 
+      result_set expected;
+      expected.append({
+          qv_("933"), qv_("1976"), qv_("2012-06-10T03:00:31.490000")
+        });
+
+      REQUIRE(res2.result() == expected);
+    }
+    SECTION("IU #3") {
+      spdlog::info("LDBC IU#3"); 
+      auto qstr = load_string(prefix_iu + "3.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr);
+
+      auto res2 = qp.execute_query(qproc::Interpret, "Project([$0.id:uint64, $2.id:uint64, $1.creationDate:datetime], Expand(OUT, 'Comment', ForeachRelationship(FROM, 'likes', Filter($0.id == 933, NodeScan('Person')))))");
+ 
+      result_set expected;
+      expected.append({
+          qv_("933"), qv_("1877"), qv_("2012-02-09T08:35:10.880000")
+        });
+
+      REQUIRE(res2.result() == expected);
+    }
+
+    SECTION("IU #5") {
+      spdlog::info("LDBC IU#5"); 
+      auto qstr = load_string(prefix_iu + "5.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr);
+
+      auto res2 = qp.execute_query(qproc::Interpret, "Project([$0.id:uint64, $2.id:uint64, $1.joinDate:datetime], Expand(OUT, 'Person', ForeachRelationship(FROM, 'hasMember', Filter($0.id == 37, NodeScan('Forum')))))");
+ 
+      result_set expected;
+      expected.append({
+          qv_("37"), qv_("90796"), qv_("2012-01-06T11:21:05.645000")
+        });
+
+      REQUIRE(res2.result() == expected);
+    }
+
+    SECTION("IU #8") {
+      spdlog::info("LDBC IU#8"); 
+      auto qstr = load_string(prefix_iu + "8.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr);
+
+      auto res2 = qp.execute_query(qproc::Interpret, "Project([$0.id:uint64, $2.id:uint64, $1.creationDate:datetime], Expand(OUT, 'Person', ForeachRelationship(FROM, 'knows', Filter($0.id == 838375, NodeScan('Person')))))");
+ 
+      result_set expected;
+      expected.append({
+          qv_("838375"), qv_("833579"), qv_("2010-07-21T10:45:29.157000")
+        });
+
+      REQUIRE(res2.result() == expected);
+    }
+}

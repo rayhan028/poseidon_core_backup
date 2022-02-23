@@ -25,6 +25,7 @@
 #include <tao/pegtl/contrib/parse_tree.hpp>
 #include <tao/pegtl/contrib/parse_tree_to_dot.hpp>
 
+#include "exceptions.hpp"
 #include "qparser.hpp"
 
 #include "expression.hpp"
@@ -107,12 +108,17 @@ aggr_spec qparser::get_aggregate_spec(parse_tree_ptr& pn) {
 
 jproperty qparser::get_json_property(parse_tree_ptr& pn) {
   assert (pn->is_type<qlang::property>());
+  auto& pchild = pn->children[0];
   std::vector<std::string> s;
   boost::split(s, pn->string(), boost::is_any_of(":"));
-  return jproperty{ s[0], s[1] };
+  return jproperty{ s[0], trim_string(pchild->string()) };
 }
 
-
+std::string qparser::get_relationship_label(parse_tree_ptr& pn) {
+  std::vector<std::string> s;
+  boost::split(s, pn->string(), boost::is_any_of(":"));
+  return s[1]; 
+}
 /* -------------------------------------------------------------------------------- */
 /*                    Methods for parsing and AST construction                      */
 /* -------------------------------------------------------------------------------- */   
@@ -129,15 +135,14 @@ ast_op_ptr qparser::parse(const std::string &query) {
     ptree = pegtl::parse_tree::parse<qlang::qoperator,
                                     qlang::my_selector, qlang::my_control>(in);
     if (!ptree) {
-      std::cerr << "uknown parse error" << std::endl;
-      return nullptr;
+      throw query_processing_error("unknown parse error");
     }
   } catch (const pegtl::parse_error &e) {
     const auto p = e.positions().front();
     std::cerr << e.what() << std::endl
               << in.line_at(p) << std::endl
               << std::string(p.column, ' ') << '^' << std::endl;
-    return nullptr;
+    throw query_processing_error(e.what());
   }
   // pegtl::parse_tree::print_dot(std::cout, *ptree); 
   auto ast_node = ptree_to_ast(ptree->children.front());
@@ -194,7 +199,9 @@ ast_op::op_type qparser::get_op_type(parse_tree_ptr& pn) {
         }
         return ast_op::unknown;
       }
-      // TODO
+      else {
+        std::cout << "operator not handled: " << name << std::endl;
+      }
     }
   }
   return ast_op::unknown;
@@ -221,11 +228,9 @@ ast_op_ptr qparser::ptree_to_ast(parse_tree_ptr& pn) {
       else if (param->is_type<qlang::integer>()) {
         nptr->add_param(std::stoi(param->string()));
       }
-#ifdef USE_LLVM
       else if (param->is_type<qlang::expression>()) {
           nptr->add_param(parse_expression(param));
       }
-#endif
       else if (param->is_type<qlang::proj_array>()) {
         proj_spec_list plist;
         for (auto& p : param->children) {
@@ -245,7 +250,8 @@ ast_op_ptr qparser::ptree_to_ast(parse_tree_ptr& pn) {
       else if (param->is_type<qlang::node_pattern>()) {
         auto& p = param->children.front();
         // p->children[0] > node_or_rship_label
-        nptr->add_param(p->children[0]->string());
+        auto label = get_relationship_label(p->children[0]);
+        nptr->add_param(label);
         // p->children[1] -> prop_list
         jproperty_list plist;
         for (auto& prop : p->children[1]->children) {
@@ -267,12 +273,13 @@ ast_op_ptr qparser::ptree_to_ast(parse_tree_ptr& pn) {
           nptr->add_param(std::string("-"));
         
         auto& p0 = param->children[0];
-        nptr->add_param(p0->string());
+        nptr->add_param(std::stoi(p0->string()));
         auto& p = param->children[2];
         auto& p1 = param->children[4];
-        nptr->add_param(p1->string());
+        nptr->add_param(std::stoi(p1->string()));
         // p->children[0] > node_or_rship_label
-        nptr->add_param(p->children[0]->string());
+        auto label = get_relationship_label(p->children[0]);
+        nptr->add_param(label);
         // p->children[1] -> prop_list
         if (p->children.size() > 1) {
           jproperty_list plist;
