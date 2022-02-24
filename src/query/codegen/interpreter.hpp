@@ -1,7 +1,6 @@
 #ifndef POSEIDON_CORE_INTERPRETER_HPP
 #define POSEIDON_CORE_INTERPRETER_HPP
 
-#include "qoperator.hpp"
 #include "expression.hpp"
 #include "query.hpp"
 #include "interprete_filter_visitor.h"

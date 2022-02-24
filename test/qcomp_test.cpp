@@ -13,8 +13,6 @@
 #include "graph_pool.hpp"
 
 #ifdef USE_LLVM
-
-#include "qoperator.hpp"
 #include "queryc.hpp"
 
 

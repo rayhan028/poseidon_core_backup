@@ -3,7 +3,6 @@
 
 #include <vector>
 #include "query_set.hpp"
-#include "qoperator.hpp"
 
 class base_op;
 /*

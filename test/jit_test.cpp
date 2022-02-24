@@ -30,7 +30,6 @@
 #include <boost/variant.hpp>
 
 #ifdef USE_LLVM
-#include "qoperator.hpp"
 #include "queryc.hpp"
 #include "query.hpp"
 #endif
@@ -550,7 +549,6 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         REQUIRE(boost::get<int>(rss.data.front()[0]) == 83);
     }
 
-
     SECTION("Nested Loop Join") {
         qcompiler queryEngine(graph);
         result_set rs;
@@ -575,7 +573,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         REQUIRE(rs.data.size() == 42);
         REQUIRE(rs.data.front().size() == 2);
     }
-/*
+
     SECTION("Argument generation") {
       qcompiler queryEngine(graph);
       result_set rs;
@@ -586,7 +584,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
       REQUIRE(rs.data.size() != 0);
     }
-*/
+
 /*
     SECTION("Hash Join") {
         qcompiler queryEngine(graph);

@@ -1,7 +1,7 @@
 #ifndef POSEIDON_CORE_INTERPRETE_FILTER_VISITOR_H
 #define POSEIDON_CORE_INTERPRETE_FILTER_VISITOR_H
 
-#include "qoperator.hpp"
+#include "qcompiler.hpp"
 #include "expression.hpp"
 #include "query.hpp"
 
@@ -48,7 +48,7 @@ public:
 
     void visit(int rank, std::shared_ptr<fct_call> str) override;
 
-   void visit(int rank, std::shared_ptr<func_call> str) override;
+    void visit(int rank, std::shared_ptr<func_call> str) override;
 
     void visit(int rank, std::shared_ptr<eq_predicate> eq) override;
 

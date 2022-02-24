@@ -3,12 +3,13 @@
 #include <llvm/Support/InitLLVM.h>
 #include <memory>
 #include "qcompiler.hpp"
-#include "interpreter.hpp"
 #include "qid_generator.hpp"
 #include "codegen.hpp"
 #include "thread_pool.hpp"
 
 #include "proc/grouper.hpp"
+
+#include "query_args.hpp"
 
 using namespace std::placeholders;
 
@@ -95,16 +96,17 @@ void qcompiler::cleanup() {
 
 joiner * last_joiner;
 void qcompiler::extract_arg(qop_ptr op) {
+    arg_counter = op->operator_id_;
     switch(op->type_) {
-        arg_counter = op->operator_id_;
-        std::cout << "ID: " << arg_counter << std::endl; 
         case qop_type::scan: {
             auto s_op = std::dynamic_pointer_cast<scan_nodes>(op);
+            std::cout << "Scan: " << op->operator_id_ << std::endl; 
             query_args.arg(arg_counter, s_op->label);
             break;
         }
         case qop_type::foreach_rship: {
             auto fe_op = std::dynamic_pointer_cast<foreach_relationship>(op);
+            std::cout << "FE: " << arg_counter << std::endl; 
             query_args.arg(arg_counter, fe_op->label);
             break;
         }
@@ -116,6 +118,7 @@ void qcompiler::extract_arg(qop_ptr op) {
         }
         case qop_type::node_has_label: {
             auto hl_op = std::dynamic_pointer_cast<node_has_label>(op);
+            std::cout << "Label: " << arg_counter << std::endl; 
             query_args.arg(arg_counter, hl_op->label);
             break;
         }
@@ -129,28 +132,29 @@ void qcompiler::extract_arg(qop_ptr op) {
         }
         case qop_type::cross_join: {
             last_joiner = new joiner();
-            query_args.arg(arg_counter++, last_joiner);
+            query_args.arg(arg_counter, last_joiner);
             break;
         }
         case qop_type::hash_join:
         case qop_type::left_join:
         case qop_type::nest_loop_join: {
             last_joiner = new joiner();
-            query_args.arg(arg_counter++, last_joiner);
+            query_args.arg(arg_counter, last_joiner);
             break;
         }
         case qop_type::end: {
-            query_args.arg(arg_counter++, last_joiner);
+            query_args.arg(arg_counter, last_joiner);
             break;
         }
         case qop_type::group: {
-            query_args.arg(arg_counter++, new grouper()); //TODO: allocation
-            query_args.arg(arg_counter++, new grouper());
+            query_args.arg(arg_counter, new grouper()); //TODO: allocation
+            query_args.arg(arg_counter, new grouper());
             break;
         }
         case qop_type::collect: {
+            std::cout << "Collect: " << op->operator_id_ << std::endl; 
             auto cop = std::dynamic_pointer_cast<collect_result>(op);
-            query_args.arg(arg_counter++, &cop->results_);
+            query_args.arg(arg_counter, &cop->results_);
             break;
         }
         case qop_type::limit:
@@ -218,43 +222,14 @@ void qcompiler::run(arg_builder & args, bool cleanup_query) {
 }
 
 void qcompiler::run() {
-    auto curop = cur_query_;
-    std::vector<qop_ptr> recur; 
-    while(curop->has_subscriber() || !recur.empty()) {
-        extract_arg(curop);
-        if(!curop->has_subscriber()) {
-            if(!recur.empty()) {
-                curop = recur.front();
-                recur.erase(recur.begin());
-                continue;
-            }
-        }
-        if(curop->has_subscriber()) {
-            curop = curop->subscriber();
-        }
-    }    
-    run(query_args);
+    arg_extractor ax;
+    unsigned i = 1;
+    cur_query_->codegen(ax, i);
+
+    run(ax.get_args());
 }
 
-//std::map<int, std::vector<consumer_fct_type>> query_engine::operator_functions_ = {};
 std::map<int, finish_fct_type> qcompiler::finish_ = {};
-
-bool has_join(algebra_optr expr) {
-    auto cur = expr;
-
-    bool join_found = false;
-
-    while(cur->inputs_.size() > 0) {
-        if(cur->type_ == qop_type::cross_join ||
-           cur->type_ == qop_type::left_join) {
-            join_found = true;
-            break;
-        }
-        cur = cur->inputs_[0];
-    }
-
-    return join_found;
-}
 
 void consumer_dummy(node &n) {
 
@@ -342,7 +317,6 @@ void compile_task::operator()() {
     auto cur_op = query_;
     std::string finish_name = "default_finish_"+internal_qid;
 
-    std::vector<algebra_optr> recur_list;
     qeng_.qpipelines_.clear();
     qeng_.start_.clear();
     qeng_.finish_.clear();

@@ -6,7 +6,6 @@
 #include "qexmode.hpp"
 #include "jit/p_jit.hpp"
 #include "jit/p_context.hpp"
-#include "qoperator.hpp"
 
 class base_op;
 

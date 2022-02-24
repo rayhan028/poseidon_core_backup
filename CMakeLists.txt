@@ -418,12 +418,10 @@ if(USE_LLVM MATCHES ON)
     src/query/codegen/codegen.cpp
     src/query/codegen/filter_expression.cpp
     src/query/codegen/global_definitions.cpp
-    src/query/codegen/interpreter.cpp
     src/query/codegen/jit/jit_cache.cpp
     src/query/codegen/jit/p_jit.cpp
     src/query/codegen/jit/p_context.cpp
     src/query/codegen/qcompiler.cpp
-    src/query/codegen/qoperator.cpp
     src/query/codegen/proc/joiner.cpp
     src/query/codegen/proc/grouper.cpp
     src/query/codegen/interprete_filter_visitor.cpp

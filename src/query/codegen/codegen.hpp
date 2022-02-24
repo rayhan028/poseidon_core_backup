@@ -1,7 +1,6 @@
 #ifndef POSEIDON_CORE_CODEGEN_INLINE_HPP
 #define POSEIDON_CORE_CODEGEN_INLINE_HPP
 
-#include "qoperator.hpp"
 #include "qop.hpp"
 #include "join.hpp"
 #include "qop_visitor.hpp"

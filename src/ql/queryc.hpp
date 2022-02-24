@@ -27,7 +27,6 @@
 
 
 #ifdef USE_LLVM
-#include "qoperator.hpp"
 #include "qcompiler.hpp"
 
 #endif 

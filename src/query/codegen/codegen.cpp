@@ -19,18 +19,10 @@ void get_rhs_type(qop_ptr  &qop, std::vector<int> &typv) {
         else if(op->type_ == qop_type::expand)
             typv.push_back(0);
         else if(op->type_ == qop_type::project) {
-            auto prj = std::dynamic_pointer_cast<project>(op);
+            auto prj = std::dynamic_pointer_cast<projection>(op);
             std::vector<int> new_types;
             for(auto & pe : prj->prexpr_) {
                 new_types.push_back((int)pe.type + 2);
-            }
-            typv = new_types;
-        }
-        else if(op->type_ == qop_type::group) {
-            auto grp = std::dynamic_pointer_cast<group_by>(op);
-            std::vector<int> new_types;
-            for(auto g : grp->grpkey_pos_) {
-                new_types.push_back(typv[g]);
             }
             typv = new_types;
         } else if(op->type_ == qop_type::end) {

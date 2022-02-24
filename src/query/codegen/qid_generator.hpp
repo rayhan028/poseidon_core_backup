@@ -30,14 +30,6 @@ public:
         qid += "C";
     }
 
-    virtual void visit(std::shared_ptr<join_op> op) {
-        qid += "J";
-    }
-
-    virtual void visit(std::shared_ptr<order_by> op) {
-        qid += "S";
-    }
-
     virtual void visit(std::shared_ptr<limit_result> op) override {
         qid += "L";
     }
@@ -54,9 +46,6 @@ public:
         qid += "G";
     }
 
-    virtual void visit(std::shared_ptr<aggr_op> op) {
-        qid += "A";
-    }
 
     virtual void visit(std::shared_ptr<nodes_connected> op) override {
         qid += "-";
