@@ -544,4 +544,5 @@ TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
 
       REQUIRE(res2.result() == expected);
     }
+  graph_pool::destroy(pool);
 }
