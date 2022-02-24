@@ -83,6 +83,22 @@ enum class qop_type {
     end
 };
 
+/**
+ * Tuple result types
+ */
+enum class result_type {
+    node = 0,
+    relationship = 1,
+    integer = 2,
+    double_t = 3,
+    string = 4,
+    date = 5,
+    time = 6,
+    boolean = 7,
+    uint64 = 8,
+    none = 9
+};
+
 struct qop;
 using qop_ptr = std::shared_ptr<qop>;
 
@@ -1247,21 +1263,12 @@ struct persist_result : public qop {
   projection::expr { i, nullptr }
 
 /**
- * Tuple result types
- * TODO: consistent type id mapping for all classes
+ * Structure to express projections on tuple elements
  */
-enum class FTYPE {
-    INT = 0,
-    DOUBLE = 1,
-    STRING = 2,
-    DATE = 3,
-    TIME = 4,
-    BOOLEAN = 5,
-    UINT64 = 6,
-    NONE = 7
-};
-
 struct projection_expr {
+    /**
+     * Possible projection types
+     */
     enum PROJECTION_TYPE {
         PROPERTY_PR,
         FORWARD_PR,
@@ -1271,21 +1278,50 @@ struct projection_expr {
 
     typedef int (*int_prj_func_node)(node *n);
 
+    /**
+     * The position of the tuple element to project
+     */
     std::size_t id;
+
+    /**
+     * The projection key / property name
+     */
     std::string key;
-    FTYPE type;
+
+    /**
+     * The property type
+     */
+    result_type type;
+
+    /**
+     * Flag to project only if the key exists
+     */
     bool if_exist_;
+
+    /**
+     * List to check if a tuple element has the properties
+     */
     std::vector<std::string> has_properties;
+
+    /**
+     * If/Else construct to express an alternative projection
+     */
     std::pair<std::string, std::string> then_else;
     
+    /**
+     * UDF for projection
+     */
     int_prj_func_node int_node_func;
 
+    /**
+     * The actual projection type
+     */
     PROJECTION_TYPE prt;
 
     
-    projection_expr(std::size_t i) : id(i), type(FTYPE::NONE), int_node_func(nullptr), prt(PROJECTION_TYPE::FORWARD_PR)  {}
+    projection_expr(std::size_t i) : id(i), type(result_type::none), int_node_func(nullptr), prt(PROJECTION_TYPE::FORWARD_PR)  {}
     projection_expr(std::size_t i, int_prj_func_node func) : id(i), int_node_func(func), prt(PROJECTION_TYPE::FUNCTIONAL_VAL) {}
-    projection_expr(std::size_t i, std::string k, FTYPE t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist), prt(PROJECTION_TYPE::PROPERTY_PR) {}
+    projection_expr(std::size_t i, std::string k, result_type t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist), prt(PROJECTION_TYPE::PROPERTY_PR) {}
     projection_expr(std::size_t i, std::vector<std::string> properties, std::pair<std::string, std::string> then) : 
         id(i), has_properties(properties), then_else(then), prt(PROJECTION_TYPE::CONDITIONAL_VAL) {}
 };

@@ -197,7 +197,7 @@ struct pr_expr {
 
     std::size_t id;
     std::string key;
-    FTYPE type;
+    result_type type;
     bool if_exist_;
     std::vector<std::string> has_properties;
     std::pair<std::string, std::string> then_else;
@@ -207,9 +207,9 @@ struct pr_expr {
     PROJECTION_TYPE prt;
 
     
-    pr_expr(std::size_t i) : id(i), type(FTYPE::NONE), int_node_func(nullptr), prt(PROJECTION_TYPE::FORWARD_PR)  {}
+    pr_expr(std::size_t i) : id(i), type(result_type::none), int_node_func(nullptr), prt(PROJECTION_TYPE::FORWARD_PR)  {}
     pr_expr(std::size_t i, int_prj_func_node func) : id(i), int_node_func(func), prt(PROJECTION_TYPE::FUNCTIONAL_VAL) {}
-    pr_expr(std::size_t i, std::string k, FTYPE t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist), prt(PROJECTION_TYPE::PROPERTY_PR) {}
+    pr_expr(std::size_t i, std::string k, result_type t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist), prt(PROJECTION_TYPE::PROPERTY_PR) {}
     pr_expr(std::size_t i, std::vector<std::string> properties, std::pair<std::string, std::string> then) : 
         id(i), has_properties(properties), then_else(then), prt(PROJECTION_TYPE::CONDITIONAL_VAL) {}
 };
@@ -548,16 +548,16 @@ class append_op : public base_op, public std::enable_shared_from_this<append_op>
 public:
     typedef query_result* (*append_func)(qr_tuple&);
 
-    append_op(append_func func, FTYPE type, algebra_optr inp) : func_(func), type_(type) {
+    append_op(append_func func, result_type type, algebra_optr inp) : func_(func), type_(type) {
         inputs_.push_back(inp);
     }
 
     void codegen(op_visitor & vis, unsigned & op_id, bool interpreted = false);
 
     append_func func_;
-    FTYPE type_;
+    result_type type_;
 };
-inline algebra_optr Append(append_op::append_func func, FTYPE type, algebra_optr inp) { return std::make_shared<append_op>(func, type, inp); }
+inline algebra_optr Append(append_op::append_func func, result_type type, algebra_optr inp) { return std::make_shared<append_op>(func, type, inp); }
 
 class store_op : public base_op, public std::enable_shared_from_this<store_op> {
 public:

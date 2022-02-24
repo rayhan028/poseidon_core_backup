@@ -88,38 +88,40 @@ void interprete_visitor::visit(std::shared_ptr<project> op) {
         projection::expr pe;
 
         switch(p.type) {
-            case FTYPE::UINT64:
+            case result_type::uint64:
             {
                 pe = PExpr_(p.id, builtin::uint64_property(res, p.key));
                 break;
             }
-            case FTYPE::INT:
+            case result_type::integer:
             {
                 pe = PExpr_(p.id, builtin::int_property(res, p.key));
                 break;
             }
-            case FTYPE::DOUBLE:
+            case result_type::double_t:
             {
                 pe = PExpr_(p.id, builtin::double_property(res, p.key));
                 break;
             }
-            case FTYPE::STRING:
+            case result_type::string:
             {
                 pe = PExpr_(p.id, builtin::string_property(res, p.key));
                 break;
             }
-            case FTYPE::DATE:
+            case result_type::date:
             {
                 pe = PExpr_(p.id, builtin::ptime_property(res, p.key));
                 break;
             }
-            case FTYPE::TIME:
+            case result_type::time:
             {
                 pe = PExpr_(p.id, builtin::ptime_property(res, p.key));
                 break;
             }
-            case FTYPE::BOOLEAN:
-            case FTYPE::NONE:
+            case result_type::boolean:
+            case result_type::none:
+            case result_type::node:
+            case result_type::relationship:
                 continue;
         }
 

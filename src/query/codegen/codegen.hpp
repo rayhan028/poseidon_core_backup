@@ -328,26 +328,26 @@ public:
             //projection->name_ = projection->name_ + e.key;
             project_string.push_back(e.key);
             switch(e.type) {
-                case FTYPE::NONE:
+                case result_type::none:
                     prj->new_types.push_back(0);
                     break;
-                case FTYPE::INT:
+                case result_type::integer:
                     prj->new_types.push_back(2);
                     break;
-                case FTYPE::DOUBLE:
+                case result_type::double_t:
                     prj->new_types.push_back(3);
                     break;
-                case FTYPE::STRING:
+                case result_type::string:
                     prj->new_types.push_back(4);
                     break;
-                case FTYPE::TIME:
+                case result_type::time:
                     prj->new_types.push_back(5);
                     break;
-                case FTYPE::DATE:
+                case result_type::date:
                     prj->new_types.push_back(6);
                     break;
-                case FTYPE::BOOLEAN:
-                case FTYPE::UINT64:
+                case result_type::boolean:
+                case result_type::uint64:
                     continue; //TODO
             }
         }
