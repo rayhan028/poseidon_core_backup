@@ -168,7 +168,10 @@ using param_type = boost::variant<int,
     /**
      * Return true if the AST operator is a source parameter.
      */
-    bool is_source() const { return op_ == node_scan; }
+    bool is_source() const { 
+        return op_ == node_scan || // scan operator
+        ((op_ == create_node || op_ == create_rship) && children_.empty()); // create operator without children
+    }
 
     /**
      * Return the number of parameters.

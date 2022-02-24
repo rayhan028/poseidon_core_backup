@@ -28,14 +28,20 @@ void cross_join::dump(std::ostream &os) const {
 }
 
 void cross_join::process_left(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE;
+  uint64_t n = 0;
   for (auto &inp : input_) {
     auto res = concat(inp, v);
     consume_(ctx, res);
+    n++;
   }
+  PROF_POST(n);
 }
 
 void cross_join::process_right(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE0;
   input_.push_back(v);
+  PROF_POST(0);
 }
 
 void cross_join::finish(query_ctx &ctx) { qop::default_finish(ctx); }

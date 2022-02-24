@@ -491,9 +491,14 @@ void query::print_plans(std::initializer_list<query *> queries, std::ostream& os
         auto qop_tree = build_qop_tree(q->plan_head_);
         trees.push_back(qop_tree.first);
     }
+
+    std::list<qop_node_ptr> bin_ops;
+    for (auto& t : trees) {
+      collect_binary_ops(t, bin_ops);
+    }
     // merge trees
     for (auto i = 1u; i < trees.size(); i++) {
-        merge_qop_trees(trees[0], trees[i]);
+        merge_qop_trees(trees[0], trees[i], bin_ops);
     }
     os << ">>---------------------------------------------------------------------->>\n";
     trees[0]->print(os);

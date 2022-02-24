@@ -93,33 +93,44 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
     }
       break;
     case ast_op::foreach_rship:
-      if (ast->get_param<std::string>(0) == "TO") {
-        if (ast->num_params() == 2) {
-          auto qp = std::make_shared<foreach_to_relationship>(ast->get_param<std::string>(1));
+    {
+      std::size_t dir_param = 0;
+      int origin_idx = std::numeric_limits<int>::max();
+      if (ast->params_[0].which() == 2) { // expression, e.g. $0
+        auto p0 = ast->get_param<expr>(0);
+        if (p0->ftype_ == FOP_TYPE::KEY) {
+          origin_idx = dynamic_cast<key_token *>(p0.get())->qr_id_;
+        }
+        dir_param = 1;
+      }
+      if (ast->get_param<std::string>(dir_param) == "TO") {
+        if (ast->num_params() == dir_param + 2) {
+          auto qp = std::make_shared<foreach_to_relationship>(ast->get_param<std::string>(dir_param + 1), origin_idx);
           qop = qop_append(res2.first ? res2.second : res.second, qp);
         }
-        else if (ast->num_params() == 4) {
-          auto m1 = ast->get_param<int>(2);
-          auto m2 = ast->get_param<int>(3);
-          auto qp = std::make_shared<foreach_variable_to_relationship>(ast->get_param<std::string>(1), m1, m2);
+        else if (ast->num_params() == dir_param + 4) {
+          auto m1 = ast->get_param<int>(dir_param + 2);
+          auto m2 = ast->get_param<int>(dir_param + 3);
+          auto qp = std::make_shared<foreach_variable_to_relationship>(ast->get_param<std::string>(dir_param + 1), m1, m2, origin_idx);
           qop = qop_append(res2.first ? res2.second : res.second, qp);
         }
       }
-      else if (ast->get_param<std::string>(0) == "FROM") {
-        if (ast->num_params() == 2) {
-          auto qp = std::make_shared<foreach_from_relationship>(ast->get_param<std::string>(1));
+      else if (ast->get_param<std::string>(dir_param) == "FROM") {
+        if (ast->num_params() == dir_param + 2) {
+          auto qp = std::make_shared<foreach_from_relationship>(ast->get_param<std::string>(dir_param + 1), origin_idx);
           qop = qop_append(res2.first ? res2.second : res.second, qp);
         }
-        else if (ast->num_params() == 4) {
-          auto m1 = ast->get_param<int>(2);
-          auto m2 = ast->get_param<int>(3);
-          auto qp = std::make_shared<foreach_variable_from_relationship>(ast->get_param<std::string>(1), m1, m2);
+        else if (ast->num_params() == dir_param + 4) {
+          auto m1 = ast->get_param<int>(dir_param + 2);
+          auto m2 = ast->get_param<int>(dir_param + 3);
+          auto qp = std::make_shared<foreach_variable_from_relationship>(ast->get_param<std::string>(dir_param + 1), m1, m2, origin_idx);
           qop = qop_append(res2.first ? res2.second : res.second, qp);
         }
       }
-      else if (ast->get_param<std::string>(0) == "ALL") {
+      else if (ast->get_param<std::string>(dir_param) == "ALL") {
         // TODO
       }
+    }
       break;
     case ast_op::expand:
     {
@@ -239,6 +250,7 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
       auto qp = std::make_shared<cross_join>();
       auto parent = res2.first ? res2.second : res.second;
       parent->connect(qp, std::bind(&cross_join::process_left, qp.get(), ph::_1, ph::_2));
+      assert(sources.size() >= 2);
       qop_ptr parent2 = sources.at(sources.size()-2);
       while (parent2->has_subscriber()) {
         parent2 = parent2->subscriber();
@@ -253,6 +265,7 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
       auto qp = std::make_shared<left_outerjoin>(ex);
       auto parent = res2.first ? res2.second : res.second;
       parent->connect(qp, std::bind(&left_outerjoin::process_left, qp.get(), ph::_1, ph::_2));
+      assert(sources.size() >= 2);
       qop_ptr parent2 = sources.at(sources.size()-2);
       while (parent2->has_subscriber()) {
         parent2 = parent2->subscriber();
@@ -266,6 +279,8 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
       properties_t props = jprops_to_props(ast->get_param<jproperty_list>(1));
       auto qp = std::make_shared<create_node>(ast->get_param<std::string>(0), props);
       qop = qop_append(res2.first ? res2.second : res.second, qp);
+      if (ast->is_source())
+        sources.push_back(qp);
     }
       break;
     case ast_op::create_rship:
@@ -277,6 +292,8 @@ std::pair<qop_ptr, qop_ptr> qplanner::ast_to_qset(ast_op_ptr &ast, graph_db_ptr&
       auto qp = std::make_shared<create_relationship>(ast->get_param<std::string>(3), props, 
         std::make_pair(ast->get_param<int>(1), ast->get_param<int>(2)));
       qop = qop_append(res2.first ? res2.second : res.second, qp);
+      if (ast->is_source())
+        sources.push_back(qp);
     }
       break;
     case ast_op::algo:

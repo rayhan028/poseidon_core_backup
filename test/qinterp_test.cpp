@@ -160,7 +160,7 @@ void create_data(graph_db_ptr &graph) {
     auto forum_37 = graph->add_node("Forum",
       {{"id", boost::any((uint64_t)37)},
        {"title", boost::any(std::string("Wall of Hồ Chí Do"))}});
-    auto post_1374389595 = graph->add_node("Post",
+    graph->add_node("Post",
       {{"id", boost::any((uint64_t)1374389595)},
         {"imageFile", boost::any(std::string("photo1374389534791.jpg"))},
         {"creationDate", boost::any(time_from_string(std::string("2011-10-05 14:38:36.019")))},
@@ -257,6 +257,14 @@ void create_data(graph_db_ptr &graph) {
     graph->add_relationship(comment_16492677, amin, ":hasCreator", {});
     graph->add_relationship(comment_16492676, bingbing, ":hasCreator", {});
     graph->add_relationship(lomana, bingbing, ":knows", {});
+
+    // IU 4
+
+    graph->add_node("Tag",
+      {{"id", boost::any((uint64_t)2)},
+        {"name", boost::any(std::string("Snowboard"))},
+        {"url", boost::any(std::string("http://dbpedia.org/resource/Snowboard"))},
+        {"hasType", boost::any((uint64_t)3)}});
 
     return true;
   });
@@ -430,7 +438,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
       spdlog::info("LDBC IS#7"); 
 
       auto qstr = load_string(prefix_is + "7.q");
-      auto res = qp.execute_query(qproc::Interpret, qstr, true);
+      auto res = qp.execute_query(qproc::Interpret, qstr);
       // std::cout << res.result() << std::endl;
 
       result_set expected;
@@ -490,13 +498,29 @@ TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
       REQUIRE(res2.result() == expected);
     }
 
+    SECTION("IU #4") {
+      spdlog::info("LDBC IU#4"); 
+      auto qstr = load_string(prefix_iu + "4.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr);
+      
+      auto res2 = qp.execute_query(qproc::Interpret, 
+        "Project([$0.title:string, $2.lastName:string, $4.name:string], Expand(OUT, 'Tag', ForeachRelationship($0, FROM, 'hasTag', Expand(OUT, 'Person', ForeachRelationship(FROM, 'hasModerator', Filter($0.id == 290292, NodeScan('Forum')))))))");
+ 
+      result_set expected;
+      expected.append({
+          qv_("Album 14 of Marcelo Souza"), qv_("Muller"), qv_("Snowboard")
+        });
+
+      REQUIRE(res2.result() == expected);
+    }
+
     SECTION("IU #5") {
       spdlog::info("LDBC IU#5"); 
       auto qstr = load_string(prefix_iu + "5.q");
       auto res = qp.execute_query(qproc::Interpret, qstr);
 
       auto res2 = qp.execute_query(qproc::Interpret, "Project([$0.id:uint64, $2.id:uint64, $1.joinDate:datetime], Expand(OUT, 'Person', ForeachRelationship(FROM, 'hasMember', Filter($0.id == 37, NodeScan('Forum')))))");
- 
+
       result_set expected;
       expected.append({
           qv_("37"), qv_("90796"), qv_("2012-01-06T11:21:05.645000")

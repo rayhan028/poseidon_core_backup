@@ -46,7 +46,8 @@ struct qop_node {
 };
 
 void print_plan_helper(std::ostream& os, qop_node_ptr root, const std::string& prefix);
-void merge_qop_trees(qop_node_ptr master, qop_node_ptr tree);
+void merge_qop_trees(qop_node_ptr master, qop_node_ptr tree, std::list<qop_node_ptr>& bin_ops);
+void collect_binary_ops(qop_node_ptr tree, std::list<qop_node_ptr>& ops);
 
 /**
  * Recursively constructs a tree of qop_nodes representing a query plan for printing.

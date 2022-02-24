@@ -32,7 +32,6 @@ TEST_CASE("Constructing an AST from a query string", "[qlang]") {
         REQUIRE(os.str() == "Project([ $0.firstName, $0.lastName ] )\n└── NodeScan(Person )\n");
     }
 
-#ifdef USE_LLVM
     SECTION("filter") {
         auto ast = qc.parse("Filter($0.id == 42)");
         std::ostringstream os;
@@ -68,6 +67,13 @@ TEST_CASE("Constructing an AST from a query string", "[qlang]") {
         REQUIRE(os.str() == "Expand(OUT Place )\n└── ForeachRelationship(FROM :isLocatedIn )\n    └── NodeScan(Person )\n");
     }
 
+    SECTION("multiple expand + foreach") {
+        auto ast = qc.parse("Expand(OUT, 'Person', ForeachRelationship($0, FROM, ':knows', Expand(OUT, 'Place', ForeachRelationship(FROM, ':isLocatedIn', NodeScan('Person')))))");
+        std::ostringstream os;
+        ast_to_stream(ast, os);
+        REQUIRE(os.str() == "Expand(OUT Person )\n└── ForeachRelationship($0 FROM :knows )\n    └── Expand(OUT Place )\n        └── ForeachRelationship(FROM :isLocatedIn )\n            └── NodeScan(Person )\n");
+    }
+
     SECTION("left outer join") {
         auto ast = qc.parse("LeftOuterJoin($0.id == $0.id, NodeScan('Person'), NodeScan('Post'))");
         std::ostringstream os;
@@ -81,7 +87,6 @@ TEST_CASE("Constructing an AST from a query string", "[qlang]") {
         ast_to_stream(ast, os);
         REQUIRE(os.str() == "HashJoin($0.id==$0.id )\n├── NodeScan(Post )\n└── NodeScan(Person )\n");
     }
-#endif
 
     SECTION("sort + limit") {
         auto ast = qc.parse("Limit(20, Sort([$4.Age:int DESC, $1.Name:string ASC]))");

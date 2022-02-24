@@ -31,57 +31,55 @@ std::pair<qop_node_ptr, qop_node_ptr> build_qop_tree(qop_ptr root) {
     return std::make_pair(np.first, rn);
 }
 
-/**
- * Try to find the first binary operator in the tree.
- * We assume that the tree is actually only a list.
- */
-qop_node_ptr find_binary_qop(qop_node_ptr tree) {
-    // we know that this tree is only a list!
+void collect_binary_ops(qop_node_ptr tree, std::list<qop_node_ptr>& ops) {
     while (tree != nullptr) {
-        if (tree->is_binary()) 
-            return tree;
+        if (tree->is_binary()) { 
+            auto it = std::find_if(ops.begin(), ops.end(), [&](auto o) { return o->qop_ == tree->qop_;});
+            if (it == ops.end()) {
+                // add to front
+                ops.push_front(tree);
+            }
+        }
         assert(tree->children_.size() <= 1);
         tree = tree->children_.empty() ? nullptr : tree->children_.front();
     }
-    return nullptr;
 }
 
-qop_node_ptr find_matching_qop(qop_node_ptr tree, qop_node_ptr node) {
-    if (tree->qop_ == node->qop_)
-        return tree;
-    for (auto& qp : tree->children_) {
-        auto tp = find_matching_qop(qp, node);
-        if (tp)
-            return tp;
+std::pair<qop_node_ptr, qop_node_ptr> 
+find_common_binary_qop(qop_node_ptr master, qop_node_ptr tree, std::list<qop_node_ptr>& bin_ops) {
+    for (auto op : bin_ops) {
+        auto m = master;
+        while (m != nullptr) {
+            if (m->qop_ == op->qop_)
+                break;
+            m = m->children_.empty() ? nullptr : m->children_[0];
+        }
+        auto t = tree;
+        while (t != nullptr) {
+            if (t->qop_ == op->qop_)
+                break;
+            t = t->children_.empty() ? nullptr : t->children_[0];
+        }
+        if (m != nullptr && t != nullptr) {
+            return std::make_pair(m, t);
+        }
     }
-    return nullptr;
+    return std::make_pair<qop_node_ptr, qop_node_ptr>(nullptr, nullptr);
 }
 
-void merge_qop_trees(qop_node_ptr master, qop_node_ptr tree) {
-    // std::cout << "merge_qop_trees... "; master->print(); tree->print(); 
+void merge_qop_trees(qop_node_ptr master, qop_node_ptr tree, std::list<qop_node_ptr>& bin_op_list) {
     // 1. find the first binary operator in tree
-    qop_node_ptr bin_op = find_binary_qop(tree);
-    if (! bin_op)
+    std::pair<qop_node_ptr, qop_node_ptr> bin_op = find_common_binary_qop(master, tree, bin_op_list);
+    if (! bin_op.first || ! bin_op.second)
         return;
 
-    // std::cout << "merge_qop_trees: found .."; bin_op->print();
-    // 2. try to find the corresponding operator in master
-    qop_node_ptr master_bin_op = find_matching_qop(master, bin_op);
+    // 2. merge the trees
+    assert(bin_op.second->children_.size() == 1);
+    bin_op.first->children_.push_back(bin_op.second->children_[0]);
 
-    // 3. merge both trees on this operator
-    if (!master_bin_op)
-        return;
-
-    // std::cout << "merge_qop_trees: found .."; master_bin_op->print();
-    
-    // std::cout << "merge: ";
-    // bin_op->children_.front()->print();
-    // std::cout << " --- ";
-    // master_bin_op->print();
-
-    master_bin_op->children_.push_back(bin_op->children_.front());
+    // 3. remove the bin_op from the list
+    bin_op_list.remove(bin_op.first);
 }
-
 // --------------------------------------------------------------------------------------
 
 void print_plan_helper(std::ostream& os, qop_node_ptr root, const std::string& prefix) {
