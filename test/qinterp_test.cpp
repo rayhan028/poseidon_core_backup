@@ -14,7 +14,8 @@
 using namespace boost::posix_time;
 namespace dll = boost::dll;
 
-const std::string test_path = poseidon::gPmemPath + "qinterp_test";
+const std::string test_path = poseidon::gPmemPath + "qinterp_is_test";
+const std::string test_path2 = poseidon::gPmemPath + "qinterp_iu_test";
 
 void create_data(graph_db_ptr &graph) {
   graph->run_transaction([&]() {
@@ -458,7 +459,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 }
 
 TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
-    auto pool = graph_pool::create(test_path);
+    auto pool = graph_pool::create(test_path2);
     auto graph = pool->create_graph("my_graph");
     create_data(graph);
 
