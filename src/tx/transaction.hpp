@@ -106,10 +106,51 @@ public:
 
 #if defined CSR_DELTA && defined USE_TX
   /**
-   * A struct for storing ids of nodes and relationships updated 
+   * A struct for storing ids of nodes and relationships updated
    * by the current transaction, for updates that modify the current CSR.
    * These ids are used for storing delta records when the transaction commits.
    */
+
+  struct delta_ids {
+    delta_ids() = default;
+    delta_ids(const delta_ids &) = delete;
+
+    // ids of deleted nodes
+    std::vector<uint64_t> deleted_nodes_;
+
+    // map of a node and the ids of its deleted neighbours
+    std::map<uint64_t, std::vector<uint64_t>> deleted_neighbours_;
+
+    // map of a node and the ids its inserted neighbours and relationship weights
+    std::map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<double>>> inserted_neighbours_;
+  };
+
+  /**
+   * Return a reference to the deltas for the updates made in this transaction.
+   */
+  const delta_ids& csr_delta_ids() { return delta_ids_; }
+
+  /**
+   * Store the id of a node deleted by this transaction.
+   */
+  void add_deleted_node(offset_t nid);
+
+  /**
+   * Store the id of a neighbour deleted by this transaction.
+   */
+  void add_deleted_neighbour(offset_t nid, offset_t id);
+
+  /**
+   * Store the id of a node inserted by this transaction.
+   */
+  void add_inserted_node(offset_t nid);
+
+  /**
+   * Store the id of a neighbour inserted by this transaction.
+   */
+  void add_inserted_neighbour(offset_t nid, offset_t id, double weight);
+
+#if 0
   struct delta_ids {
     delta_ids() = default;
     delta_ids(const delta_ids &) = delete;
@@ -138,6 +179,7 @@ public:
    * Store the id of a relationship deleted by this transaction
    */
   void add_deleted_rship(offset_t rid);
+#endif
 
 #endif
 
@@ -149,8 +191,8 @@ private:
   std::vector<offset_t> dirty_rships_; // the vector of ids of relationships which
                                        // were modified by this transaction
 #if defined CSR_DELTA && defined USE_TX
-  delta_ids delta_ids_; // ids of nodes and relationships which were modified 
-                        // by this transaction (for storing delta records) 
+  delta_ids delta_ids_; // ids of nodes and relationships which were modified
+                        // by this transaction (for storing delta records)
 #endif
 };
 

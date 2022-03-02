@@ -266,7 +266,10 @@ TEST_CASE("Updating graph and updating CSR with delta in a single transaction", 
   });
 
   std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7, 7, 9, 10, 13};
+  std::vector<uint64_t> col_inds = {6, 1, 5, 2, 3, 4, 6, 6, 5, 0, 2, 0, 1}; // same col_inds
+#if 0
   std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6, 5, 6, 0, 1, 0, 2};
+#endif
   std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3,
                           1.3, 1.3, 1.3, 1.3, 1.3, 1.3,};
 
@@ -364,7 +367,10 @@ TEST_CASE("Updating graph and updating CSR with delta in a series of transaction
   });
 
   std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7, 7, 9, 10, 13};
+  std::vector<uint64_t> col_inds = {6, 1, 5, 2, 3, 4, 6, 6, 5, 0, 2, 0, 1}; // same col_inds
+#if 0
   std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6, 5, 6, 0, 1, 0, 2};
+#endif
   std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3,
                           1.3, 1.3, 1.3, 1.3, 1.3, 1.3,};
 
@@ -519,7 +525,10 @@ TEST_CASE("Consistency Test 2a", "[format_converter]"){
   // now after another CSR update, the CSR includes R_add but not R_del
   {
     std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {6, 1, 5, 2, 3, 4, 6}; // same col_inds
+#if 0
     std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+#endif
     std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr2.row_offsets == row_offs);
@@ -590,7 +599,10 @@ TEST_CASE("Consistency Test 2b", "[format_converter]"){
   // now after another CSR update, the CSR includes R_add but not R_del
   {
     std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {6, 1, 5, 2, 3, 4, 6};  // same col_inds
+#if 0
     std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+#endif
     std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr2.row_offsets == row_offs);
@@ -803,7 +815,10 @@ TEST_CASE("Consistency Test 4a", "[format_converter]"){
   // now after another CSR update, the CSR includes R_add but not R_del
   {
     std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {6, 1, 5, 2, 3, 4, 6}; // same col_inds
+#if 0
     std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+#endif
     std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr3.row_offsets == row_offs);
@@ -876,7 +891,10 @@ TEST_CASE("Consistency Test 4b", "[format_converter]"){
   // now after another CSR update, the CSR includes R_add but not R_del
   {
     std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {6, 1, 5, 2, 3, 4, 6}; // same col_inds
+#if 0
     std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+#endif
     std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr3.row_offsets == row_offs);
@@ -1255,7 +1273,10 @@ TEST_CASE("Consistency Test 8a", "[format_converter]"){
   // the CSR includes R_add but not R_del
   {
     std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {6, 1, 5, 2, 3, 4, 6}; // same col_inds
+#if 0
     std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+#endif
     std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr2.row_offsets == row_offs);
@@ -1328,7 +1349,10 @@ TEST_CASE("Consistency Test 8b", "[format_converter]"){
   // now after another CSR update, the CSR includes R_add but not R_del
   {
     std::vector<uint64_t> row_offs = {0, 3, 4, 5, 6, 6, 7, 7};
+    std::vector<uint64_t> col_inds = {6, 1, 5, 2, 3, 4, 6}; // same col_inds
+#if 0
     std::vector<uint64_t> col_inds = {5, 6, 1, 2, 3, 4, 6};
+#endif
     std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
 
     REQUIRE(csr3.row_offsets == row_offs);

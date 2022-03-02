@@ -1,7 +1,7 @@
 #ifndef csr_delta_hpp_
 #define csr_delta_hpp_
 
-#include "defs.hpp"
+#include "transaction.hpp"
 #include "chunked_vec.hpp"
 
 #ifdef VOLATILE_DELTA
@@ -9,6 +9,50 @@
 #include <shared_mutex>
 #endif
 
+/**
+ * A struct for a CSR delta record. A delta record is associated with 
+ * a node updated by a transaction. It contains the id of the updated node. 
+ * If the updated node is not deleted, the delta record contains either 
+ * the ids of the inserted nodes connected to it and the corresponding 
+ * relationship weights, or the ids of the deleted nodes, or both.
+ */
+struct delta_rec {
+  delta_rec() = default;
+  delta_rec(const delta_rec &) = delete;
+  delta_rec(uint64_t txid, offset_t nid, bool d)
+    : txid_(txid), node_id_(nid), deleted_(d) {}
+
+  uint64_t txid_;         // id of the transaction that stored the delta record
+  offset_t node_id_;      // id of the node associated with the delta record
+
+  bool deleted_;          // whether the node with id "node_id_" is deleted 
+
+  offset_t deletes_pos_;  // offset of the deleted neigbour node ids in the vector "deletes_"
+  int deletes_count_ = 0; // number of the deleted neighbour nodes
+  offset_t inserts_pos_;  // offset of the inserted neigbour node ids in the vector "inserts_"
+                          // and the corresponding relationship weights in the vector "weights_"
+  int inserts_count_ = 0; // number of the inserted neighbour nodes (with corresponding relationship weights)
+
+  bool merged_ = false;   // a flag indicating whether the delta record has been merged in a CSR update
+};
+
+/**
+ * A struct for merged CSR delta record(s) associated with the same node.
+ */
+struct delta {
+  delta() = default;
+  delta(const delta &) = delete;
+  delta(offset_t nid, bool d) : node_id_(nid), deleted_(d) {}
+
+  offset_t node_id_;              // id of the node associated with the delta
+  bool deleted_;                  // whether the node with id "node_id_" is deleted  
+
+  std::vector<uint64_t> deletes_; // ids of the deleted neighbours
+  std::vector<uint64_t> inserts_; // ids of the inserted neighbours
+  std::vector<double> weights_;   // relationship weights (for the inserted neighbours)
+};
+
+#if 0
 /**
  * A struct for a CSR delta record. A delta record is associated with a node
  * updated by a transaction. It contains the id of the updated node, the ids of the nodes
@@ -22,11 +66,12 @@ struct delta_rec {
 
   uint64_t txid_;       // id of the transaction that stored the delta record
   uint64_t node_id_;    // id of the node associated with the delta record
-  offset_t pos_;    // offset of the neigbour node ids in the persistent vector "ids_"
-                        // and the corresponding relationship weights in the persistent vector "weights_"
+  offset_t pos_;        // offset of the neigbour node ids in the vector "ids_"
+                        // and the corresponding relationship weights in the vector "weights_"
   int count_;           // number of the neighbour nodes (with corresponding relationship weights)
   bool merged_ = false; // a flag indicating whether the delta record has been merged in a CSR update
 };
+#endif
 
 #ifdef VOLATILE_DELTA
 /**
@@ -294,8 +339,16 @@ private:
  */
 class delta_store {
 public:
+  using delta_map_t = std::map<uint64_t, delta>;
+
+#if 0
+  /**
+   * Each delta in the delta map is of the form:
+   * {node id, <[ids of neighbours], [relationship weights]>}
+   */
   using delta_map_t =
     std::map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<double>>>;
+#endif
 
   /**
    * Constructor
@@ -311,10 +364,14 @@ public:
   void initialize();
 
   /**
-   * Stores updates of a transaction as a delta record in the vector of delta records.
+   * Stores updates of a transaction as a delta records in the vector of delta records.
    */
+  void store_deltas(uint64_t txid, const transaction::delta_ids &txn_delta_ids);
+
+#if 0
   void store_delta(uint64_t txid, uint64_t nid,
     const std::vector<uint64_t> &ids, const std::vector<double> &weights);
+#endif
 
   /**
    * Returns a reference to the underlying vector of delta records.
@@ -328,8 +385,6 @@ public:
   /**
    * Merge valid delta records from different transactions into a delta map.
    * The deltas in the delta map are used to update the current CSR.
-   * Each delta in the delta map is of the form:
-   * {node id, <[ids of neighbours], [relationship weights]>}
    */
   void merge_deltas(delta_map_t &deltas, uint64_t txid);
 
@@ -374,9 +429,17 @@ private:
   uint64_t max_delta_recs_ = 18174889;      // maximum number of delta records for adaptive CSR update
 
 #ifdef VOLATILE_DELTA
-  std::vector<uint64_t> ids_;               // ids of deleted neighbours for all deltas records
-  std::vector<double> weights_;             // relationship weights for all deltas delta records
-  offset_t next_pos_ = 0;                        // start of empty slots in the "ids_" and "weights_" vectors
+  std::vector<uint64_t> deletes_;           // ids of the deleted neighbours for all deltas records
+  std::vector<uint64_t> inserts_;           // ids of the inserted neighbours for all deltas records
+  std::vector<double> weights_;             // relationship weights (for inserted neighbours) for all deltas delta records
+  offset_t next_deletes_pos_ = 0;           // start of empty slots in the "deletes_" vector
+  offset_t next_inserts_pos_ = 0;           // start of empty slots in the "inserts_" and "weights_" vectors
+
+#if 0
+  std::vector<uint64_t> ids_;               // ids of neighbours (column indices) for all deltas records
+  std::vector<double> weights_;             // relationship weights (edge values) for all deltas delta records
+  offset_t next_pos_ = 0;                   // start of empty slots in the "ids_" and "weights_" vectors
+#endif
 
   vchunked_vec<delta_rec> delta_recs_;      // the underlying vchunked vector of volatile delta records
 
@@ -385,9 +448,17 @@ private:
   std::vector<offset_t> col_indices_ = {};  // column indices array of the current CSR
   std::vector<float> edge_values_ = {};     // edge values array of the current CSR
 #elif defined PERSISTENT_DELTA
-  pmem::obj::vector<uint64_t> ids_;         // ids of deleted neighbours for all deltas records
-  pmem::obj::vector<double> weights_;       // relationship weights for all deltas delta records
-  offset_t next_pos_ = 0;                        // start of empty slots in the "ids_" and "weights_" vectors
+  pmem::obj::vector<uint64_t> deletes_;     // ids of the deleted neighbours for all deltas records
+  pmem::obj::vector<uint64_t> inserts_;     // ids of the inserted neighbours for all deltas records
+  pmem::obj::vector<double> weights_;       // relationship weights (for inserted neighbours) for all deltas delta records
+  offset_t next_deletes_pos_ = 0;           // start of empty slots in the "deletes_" vector
+  offset_t next_inserts_pos_ = 0;           // start of empty slots in the "inserts_" and "weights_" vectors
+
+#if 0
+  pmem::obj::vector<uint64_t> ids_;         // ids of neighbours (column indices) for all deltas records
+  pmem::obj::vector<double> weights_;       // relationship weights (edge values) for all deltas delta records
+  offset_t next_pos_ = 0;                   // start of empty slots in the "ids_" and "weights_" vectors
+#endif
 
   chunked_vec<delta_rec> delta_recs_;       // the underlying chunked vector of persistent delta records
 

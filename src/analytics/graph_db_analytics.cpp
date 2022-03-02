@@ -237,7 +237,7 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
   auto &new_col_inds = csr.col_indices;
   auto &new_edge_vals = csr.edge_values;
 
-  // merge delta records into a delta map. Each entry in the delta map is of the form: 
+  // merge delta records into a delta map. Each entry in the delta map is of the form:
   // {node id, <[ids of neighbours], [edge weights]>}
   delta_store::delta_map_t deltas;
   delta_store_->merge_deltas(deltas, txid);
@@ -247,13 +247,194 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
     return;
   }
 
-  auto edge_diff = 0; // difference between the sum of edges of all existing nodes 
+  auto edge_diff = 0; // difference between the sum of edges of all existing nodes
                       // (i.e. from 0 to last node id) in the new and current (i.e. old) CSR
   auto lnid = delta_store_->last_node_id();
   const auto beg_iter = deltas.begin();
   const auto lnid_iter = deltas.upper_bound(lnid);
   const auto end_iter = deltas.end();
 
+  for (auto iter = beg_iter; iter != lnid_iter; ++iter) {
+    auto nid = iter->first;
+    auto &delta = iter->second;
+    int ins_edges = delta.inserts_.size();
+    int del_edges = delta.deletes_.size();
+    auto diff = ins_edges - del_edges;
+    edge_diff += diff;
+  }
+
+  auto num_new_nodes = 0; // number of newly appended nodes after the last node id
+                          // in the current (i.e. old) CSR
+  auto num_new_edges = 0; // sum of edges of newly appended nodes
+  for (auto iter = lnid_iter; iter != end_iter; ++iter) {
+    auto nid = iter->first;
+    auto &delta = iter->second;
+    num_new_nodes++;
+    num_new_edges += delta.inserts_.size();
+  }
+
+  uint64_t new_row_offs_size = old_row_offs.size() + num_new_nodes;
+  uint64_t new_col_inds_size = old_col_inds.size() + edge_diff + num_new_edges;
+
+  new_row_offs.reserve(new_row_offs_size);
+  new_col_inds.reserve(new_col_inds_size);
+  new_edge_vals.reserve(new_col_inds_size);
+
+  // process entries for the first node until the last updated node
+  uint64_t next_nid = 0; // TODO potential optimization using next_nid and prev_nid
+  new_row_offs.push_back(0);
+  for (auto iter = beg_iter; iter != lnid_iter; ++iter) {
+    auto nid = iter->first;
+    auto &delta = iter->second;
+    while (next_nid < nid) {
+      // possibly, some nodes between the first node and the last updated node are unchanged
+      // we just copy the entries for such nodes from the current (i.e. old) CSR to the new CSR
+      auto edges = old_row_offs[next_nid + 1] - old_row_offs[next_nid];
+      new_row_offs.push_back(new_row_offs.back() + edges);
+
+      auto beg_col_inds_iter = old_col_inds.begin() + old_row_offs[next_nid];
+      auto end_col_inds_iter = beg_col_inds_iter + edges;
+      new_col_inds.insert(new_col_inds.end(),
+        std::make_move_iterator(beg_col_inds_iter),
+          std::make_move_iterator(end_col_inds_iter));
+
+      auto beg_edge_vals_iter = old_edge_vals.begin() + old_row_offs[next_nid];
+      auto end_edge_vals_iter = beg_edge_vals_iter + edges;
+      new_edge_vals.insert(new_edge_vals.end(),
+        std::make_move_iterator(beg_edge_vals_iter),
+          std::make_move_iterator(end_edge_vals_iter));
+
+      next_nid++;
+    }
+    // assert(next_nid == d.first);
+
+    // get a temporary copy of old neighbours
+    std::vector<offset_t> tmp_col_inds;
+    auto edges = old_row_offs[next_nid + 1] - old_row_offs[next_nid];
+    tmp_col_inds.reserve(edges + delta.inserts_.size());
+    {
+      auto beg_iter = old_col_inds.begin() + old_row_offs[next_nid];
+      auto end_iter = beg_iter + edges;
+      tmp_col_inds.insert(tmp_col_inds.end(),
+        std::make_move_iterator(beg_iter),
+          std::make_move_iterator(end_iter));
+    }
+
+    // add inserted neighbours
+    {
+      auto beg_iter = delta.inserts_.begin();
+      auto end_iter = delta.inserts_.end();
+      tmp_col_inds.insert(tmp_col_inds.end(),
+        std::make_move_iterator(beg_iter),
+          std::make_move_iterator(end_iter));
+    }
+
+    // get a temporary copy of old weights
+    std::vector<double> tmp_edge_vals;
+    tmp_edge_vals.reserve(edges + delta.inserts_.size());
+    {
+      auto beg_iter = old_edge_vals.begin() + old_row_offs[next_nid];
+      auto end_iter = beg_iter + edges;
+      tmp_edge_vals.insert(tmp_edge_vals.end(),
+        std::make_move_iterator(beg_iter),
+          std::make_move_iterator(end_iter));
+    }
+
+    // add inserted neighbours
+    {
+      auto beg_iter = delta.weights_.begin();
+      auto end_iter = delta.weights_.end();
+      tmp_edge_vals.insert(tmp_edge_vals.end(),
+        std::make_move_iterator(beg_iter),
+          std::make_move_iterator(end_iter));
+    }
+
+    auto tmp_col_inds_iter = tmp_col_inds.begin();
+    auto tmp_edge_vals_iter = tmp_edge_vals.begin();
+    while (tmp_col_inds_iter != tmp_col_inds.end()) {
+      bool deleted = false;
+      for (auto dels_iter = delta.deletes_.begin();
+              dels_iter != delta.deletes_.end(); ++dels_iter) {
+        if (*tmp_col_inds_iter == *dels_iter) {
+          // delta.deletes_.erase(k);
+          deleted = true;
+          break;
+        }
+      }
+      if (deleted) {
+        tmp_col_inds.erase(tmp_col_inds_iter);
+        tmp_edge_vals.erase(tmp_edge_vals_iter);
+      }
+      else {
+        ++tmp_col_inds_iter;
+        ++tmp_edge_vals_iter;
+      }
+    }
+    // using the delta map item, insert entries for the updated node into the new CSR
+    new_row_offs.push_back(new_row_offs.back() + tmp_col_inds.size());
+
+    auto beg_col_inds_iter = tmp_col_inds.begin();
+    auto end_col_inds_iter = tmp_col_inds.end();
+    new_col_inds.insert(new_col_inds.end(),
+      std::make_move_iterator(beg_col_inds_iter),
+        std::make_move_iterator(end_col_inds_iter));
+
+    auto beg_edge_vals_iter = tmp_edge_vals.begin();
+    auto end_edge_vals_iter = tmp_edge_vals.end();
+    new_edge_vals.insert(new_edge_vals.end(),
+      std::make_move_iterator(beg_edge_vals_iter),
+        std::make_move_iterator(end_edge_vals_iter));
+
+    next_nid++;
+  }
+
+  // possibly, some nodes between the last updated node and the last node id in the current (i.e. old) CSR are unchanged
+  // similarly, we just copy the entries for such nodes from the current (i.e. old) CSR to the new CSR
+  auto beg_col_inds_iter = old_col_inds.begin() + old_row_offs[next_nid];
+  auto end_col_inds_iter = old_col_inds.end();
+  new_col_inds.insert(new_col_inds.end(),
+    std::make_move_iterator(beg_col_inds_iter),
+      std::make_move_iterator(end_col_inds_iter));
+
+  auto beg_edge_vals_iter = old_edge_vals.begin() + old_row_offs[next_nid];
+  auto end_edge_vals_iter = old_edge_vals.end();
+  new_edge_vals.insert(new_edge_vals.end(),
+    std::make_move_iterator(beg_edge_vals_iter),
+      std::make_move_iterator(end_edge_vals_iter));
+
+  while (next_nid < (old_row_offs.size() - 1)) {
+    auto edges = old_row_offs[next_nid + 1] - old_row_offs[next_nid];
+    new_row_offs.push_back(new_row_offs.back() + edges);
+    next_nid++;
+  }
+
+  // finally, using the remaining delta map items, insert entries for the newly appended nodes into the new CSR
+  for (auto iter = lnid_iter; iter != end_iter; ++iter) {
+    auto nid = iter->first;
+    auto &delta = iter->second;
+    while (next_nid < nid) { // unused node record slots
+      new_row_offs.push_back(new_row_offs.back());
+      next_nid++;
+    }
+    // assert(next_nid == d.first);
+    new_row_offs.push_back(new_row_offs.back() + delta.inserts_.size());
+
+    auto beg_col_inds_iter = delta.inserts_.begin();
+    auto end_col_inds_iter = delta.inserts_.end();
+    new_col_inds.insert(new_col_inds.end(),
+      std::make_move_iterator(beg_col_inds_iter),
+        std::make_move_iterator(end_col_inds_iter));
+
+    auto beg_edge_vals_iter = delta.weights_.begin();
+    auto end_edge_vals_iter = delta.weights_.end();
+    new_edge_vals.insert(new_edge_vals.end(),
+      std::make_move_iterator(beg_edge_vals_iter),
+        std::make_move_iterator(end_edge_vals_iter));
+
+    next_nid++;
+  }
+
+#if 0
   for (auto iter = beg_iter; iter != lnid_iter; ++iter) {
     auto nid = iter->first;
     auto &ids = iter->second.first;
@@ -263,7 +444,7 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
     edge_diff += diff;
   }
 
-  auto num_new_nodes = 0; // number of newly appended nodes after the last node id 
+  auto num_new_nodes = 0; // number of newly appended nodes after the last node id
                           // in the current (i.e. old) CSR
   auto num_new_edges = 0; // sum of edges of newly appended nodes
   for (auto iter = lnid_iter; iter != end_iter; ++iter) {
@@ -371,6 +552,7 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
 
     next_nid++;
   }
+#endif
 
   delta_store_->last_txn_id_ = txid; // update id of the last transaction that made a CSR update
   delta_store_->last_node_id_ = new_row_offs.size() - 2; // update last node id in the CSR
