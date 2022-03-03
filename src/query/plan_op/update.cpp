@@ -69,7 +69,9 @@ void create_relationship::dump(std::ostream &os) const {
 }
 
 void create_relationship::process(query_ctx &ctx, const qr_tuple &v) {
+  assert(v[src_des_nodes_.first].which() == 0);
   auto n1 = boost::get<node *>(v[src_des_nodes_.first]);
+  assert(v[src_des_nodes_.second].which() == 0);
   auto n2 = boost::get<node *>(v[src_des_nodes_.second]);
   auto rid = ctx.gdb_->add_relationship(n1->id(), n2->id(), label, props, true);
   auto& r = ctx.gdb_->rship_by_id(rid);

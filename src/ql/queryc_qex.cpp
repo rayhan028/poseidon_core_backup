@@ -81,7 +81,7 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
       break;
     case ast_op::limit:
     {
-      auto qp = std::make_shared<limit_result>(ast->get_param<int>(0));
+      auto qp = std::make_shared<limit_result>(ast->get_param<int64_t>(0));
       qop = qop_append(res2.first ? res2.second : res.second, qp);
     }
       break;
@@ -190,7 +190,7 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
       if (ast->params_.size() > 4) 
         props = jprops_to_props(ast->get_param<jproperty_list>(4));
       auto qp = std::make_shared<create_relationship>(ast->get_param<std::string>(3), props, 
-        std::make_pair(ast->get_param<int>(1), ast->get_param<int>(2)));
+        std::make_pair<int, int>(ast->get_param<int64_t>(1), ast->get_param<int64_t>(2)));
       qop = qop_append(res2.first ? res2.second : res.second, qp);
     }
       break;

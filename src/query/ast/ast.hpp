@@ -105,7 +105,7 @@ struct ast_op {
 
 #ifdef USE_LLVM
 
-    using param_type = boost::variant<int, 
+    using param_type = boost::variant<int64_t, 
                                         std::string, 
                                         expr,
                                         proj_spec_list, 
@@ -137,7 +137,7 @@ using param_type = boost::variant<int,
     /**
      * Add an integer parameter.
      */
-    void add_param(int i) { params_.push_back(i); }
+    void add_param(int64_t i) { params_.push_back(i); }
 
     /**
      * Add a string parameter.

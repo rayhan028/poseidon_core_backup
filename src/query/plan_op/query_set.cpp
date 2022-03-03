@@ -53,6 +53,7 @@ void query_set::print_plan(std::ostream& os) {
     }
     // merge trees
     for (auto i = 1u; i < trees.size(); i++) {
+      // std::cout << "try to merge: #0 + #" << i << "...\n";
         merge_qop_trees(trees[0], trees[i], bin_ops);
     }
     os << "##----------------------------------------------------------------------\n";

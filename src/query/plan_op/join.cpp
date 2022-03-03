@@ -185,7 +185,7 @@ void left_outerjoin::process_left(query_ctx &ctx, const qr_tuple &v) {
       n++;
     }
   }
-  if (dangling_tuple) {
+  if (!input_.empty() && dangling_tuple) {
     qr_tuple nll(input_.front().size(), query_result(null_t(-1)));
     auto res = concat(v, nll);
     consume_(ctx, res);

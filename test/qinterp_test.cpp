@@ -283,6 +283,7 @@ std::string load_string(const std::string& fname) {
     return qstr;
 }
 
+#if 1
 TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
     auto pool = graph_pool::create(test_path);
     auto graph = pool->create_graph("my_graph");
@@ -457,6 +458,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
   
   graph_pool::destroy(pool);
 }
+#endif
 
 TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
     auto pool = graph_pool::create(test_path2);
@@ -470,6 +472,7 @@ TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
     std::string prefix_iu(buf); 
     prefix_iu += "/../../queries/ldbc/iu/iu";  
 
+#if 1
     SECTION("IU #2") {
       spdlog::info("LDBC IU#2"); 
       auto qstr = load_string(prefix_iu + "2.q");
@@ -529,7 +532,27 @@ TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
 
       REQUIRE(res2.result() == expected);
     }
+#endif
+  SECTION("IU #7") {
+      spdlog::info("LDBC IU#7"); 
+      auto qstr = load_string(prefix_iu + "7.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr);
+      std::cout << res.result() << std::endl;
 
+      result_set expected;
+      expected.append({
+          qv_("Post[8]{content: \"\", creationDate: 2010-Mar-16 15:05:23.955000, id: 13743894, imageFile: \"photo1374991234791.jpg\"}"), 
+          qv_("Comment[42]{browserUsed: \"Firefox\", content: \"I see\", creationDate: 2010-Nov-01 03:44:38.424000, id: 12362345, length: 5, locationIP: \"14.99.62.99\"}"), 
+          qv_("Person[25]{firstName: \"Otto\", id: 838375, lastName: \"Richter\"}"),
+          qv_(":hasCreator[48]{}"), qv_(":replyOf[49]{}"),
+          qv_("Place[32]{id: 129}"), qv_(":isLocatedIn[50]{}"), 
+          qv_("Tag[41]{hasType: 3, id: 2, name: \"Snowboard\", url: \"http://dbpedia.org/resource/Snowboard\"}"), 
+          qv_(":hasTag[51]{}")
+        });
+
+      REQUIRE(res.result() == expected);
+    }
+#if 1
     SECTION("IU #8") {
       spdlog::info("LDBC IU#8"); 
       auto qstr = load_string(prefix_iu + "8.q");
@@ -544,5 +567,6 @@ TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
 
       REQUIRE(res2.result() == expected);
     }
+  #endif
   graph_pool::destroy(pool);
 }

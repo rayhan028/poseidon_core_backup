@@ -127,7 +127,8 @@ std::string qparser::get_relationship_label(parse_tree_ptr& pn) {
  * Parse the given query string and construct an abstract syntax tree (AST).
  */
 ast_op_ptr qparser::parse(const std::string &query) {
-  pegtl::memory_input<> in(query, "");
+  auto qstr = trim_ws(query);
+  pegtl::memory_input<> in(qstr, "");
 
   parse_tree_ptr ptree;
 
@@ -226,7 +227,7 @@ ast_op_ptr qparser::ptree_to_ast(parse_tree_ptr& pn) {
         nptr->add_param(param->string());
       }
       else if (param->is_type<qlang::integer>()) {
-        nptr->add_param(std::stoi(param->string()));
+        nptr->add_param(std::stol(param->string()));
       }
       else if (param->is_type<qlang::expression>()) {
           nptr->add_param(parse_expression(param));

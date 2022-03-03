@@ -23,27 +23,25 @@
 #include "func_call_expr.hpp"
 
 qresult_iterator qproc::execute_query(qproc::mode m, const std::string& qstr, bool print_plan) {
+    auto qplan = prepare_query(qstr, print_plan);
+    result_set result;
+    qplan.append_collect(result);
+    prepare_plan(qplan);
+
     if (m == Interpret) {
-        auto qplan = prepare_query(qstr, print_plan);
-        result_set result;
-        qplan.append_collect(result);
-        prepare_plan(qplan);
+        //if (print_plan)
+        //    qplan.print_plan();
         interp_query(qplan);
         if (print_plan)
             qplan.print_plan();
-        return qresult_iterator(std::move(result));
     }
     else {
         // TODO: compile & execute query
-        auto qplan = prepare_query(qstr, print_plan);
-        result_set result;
-        qplan.append_collect(result);
-        prepare_plan(qplan);
         compile_query(qplan);
         if (print_plan)
             qplan.print_plan();
-        return qresult_iterator(std::move(result));
     }
+    return qresult_iterator(std::move(result));
 }
 
 query_set qproc::prepare_query(const std::string& qstr, bool print_plan) {

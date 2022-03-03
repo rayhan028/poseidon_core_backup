@@ -39,8 +39,24 @@ public:
     void add_udf_library(std::shared_ptr<boost::dll::shared_library> udf_lib);
 
 private:
-    std::pair<qop_ptr, qop_ptr> ast_to_qset(ast_op_ptr &ast, graph_db_ptr& gdb, std::vector<qop_ptr>& sources);
+    /**
+     * Transform the given ast recursively into a tree of qop_ptr. The source operators are 
+     * collected in the sources vector. Note, that this requires a conversion from to 
+     * top-to-bottom AST representation into a bottom-to-top (push-based) qop representation.
+     */
+    qop_ptr ast_to_qplan(graph_db_ptr& gdb, ast_op_ptr ast, std::vector<qop_ptr>& sources);
+
+    // std::pair<qop_ptr, qop_ptr> ast_to_qset(ast_op_ptr &ast, graph_db_ptr& gdb, std::vector<qop_ptr>& sources);
     std::shared_ptr<boost::dll::shared_library> udf_lib_;
+
+  qop_ptr node_scan_to_qplan(ast_op_ptr ast);
+  qop_ptr foreach_rship_to_qplan(ast_op_ptr ast, qop_ptr child);
+  qop_ptr expand_to_qplan(ast_op_ptr ast, qop_ptr child);
+  qop_ptr project_to_qplan(ast_op_ptr ast, qop_ptr child);
+  qop_ptr sort_to_qplan(graph_db_ptr gdb, ast_op_ptr ast, qop_ptr child);
+  qop_ptr union_to_qplan(ast_op_ptr ast, qop_ptr child1, qop_ptr child2);
+  qop_ptr cross_join_to_qplan(ast_op_ptr ast, qop_ptr child1, qop_ptr child2);
+  qop_ptr leftouter_join_to_qplan(ast_op_ptr ast, qop_ptr child1, qop_ptr child2);
 
   /**
    *
