@@ -472,7 +472,6 @@ TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
     std::string prefix_iu(buf); 
     prefix_iu += "/../../queries/ldbc/iu/iu";  
 
-#if 1
     SECTION("IU #2") {
       spdlog::info("LDBC IU#2"); 
       auto qstr = load_string(prefix_iu + "2.q");
@@ -532,12 +531,32 @@ TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
 
       REQUIRE(res2.result() == expected);
     }
-#endif
+
+    SECTION("IU #6") {
+      spdlog::info("LDBC IU#6"); 
+      auto qstr = load_string(prefix_iu + "6.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr);
+      
+      result_set expected;
+      expected.append({
+        qv_("Forum[33]{id: 37, title: \"Wall of Hồ Chí Do\"}"), 
+        qv_("Post[42]{id: 1234}"), 
+        qv_("Person[3]{firstName: \"Karl\", id: 1121, lastName: \"Beran\"}"), 
+        qv_(":hasCreator[48]{}"), 
+        qv_(":containerOf[49]{}"), 
+        qv_("Place[32]{id: 129}"), 
+        qv_(":isLocatedIn[50]{}"), 
+        qv_("Tag[41]{hasType: 3, id: 2, name: \"Snowboard\", url: \"http://dbpedia.org/resource/Snowboard\"}"), 
+        qv_(":hasTag[51]{}")
+        });
+
+      REQUIRE(res.result() == expected);
+    }
+    
   SECTION("IU #7") {
       spdlog::info("LDBC IU#7"); 
       auto qstr = load_string(prefix_iu + "7.q");
       auto res = qp.execute_query(qproc::Interpret, qstr);
-      std::cout << res.result() << std::endl;
 
       result_set expected;
       expected.append({
@@ -552,7 +571,7 @@ TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
 
       REQUIRE(res.result() == expected);
     }
-#if 1
+
     SECTION("IU #8") {
       spdlog::info("LDBC IU#8"); 
       auto qstr = load_string(prefix_iu + "8.q");
@@ -567,6 +586,6 @@ TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
 
       REQUIRE(res2.result() == expected);
     }
-  #endif
+
   graph_pool::destroy(pool);
 }

@@ -46,7 +46,6 @@ private:
      */
     qop_ptr ast_to_qplan(graph_db_ptr& gdb, ast_op_ptr ast, std::vector<qop_ptr>& sources);
 
-    // std::pair<qop_ptr, qop_ptr> ast_to_qset(ast_op_ptr &ast, graph_db_ptr& gdb, std::vector<qop_ptr>& sources);
     std::shared_ptr<boost::dll::shared_library> udf_lib_;
 
   qop_ptr node_scan_to_qplan(ast_op_ptr ast);
