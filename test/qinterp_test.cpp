@@ -426,9 +426,12 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
       spdlog::info("LDBC IS#6"); 
       auto qstr = load_string(prefix_is + "6.q");
       auto res = qp.execute_query(qproc::Interpret, qstr);
-       // std::cout << res.result() << std::endl;
+      // std::cout << res.result() << std::endl;
 
       result_set expected;
+      expected.append({
+          qv_("37"), qv_("Wall of Hồ Chí Do"), qv_("4194"), qv_("Hồ Chí"), qv_("Do")
+      });
       expected.append({
           qv_("37"), qv_("Wall of Hồ Chí Do"), qv_("4194"), qv_("Hồ Chí"), qv_("Do")
       });
