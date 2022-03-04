@@ -259,8 +259,31 @@ void create_data(graph_db_ptr &graph) {
     graph->add_relationship(comment_16492676, bingbing, ":hasCreator", {});
     graph->add_relationship(lomana, bingbing, ":knows", {});
 
+    // IU1
+   graph->add_node("Organisation",
+                              {{"id", boost::any(21)},
+                               {"type", boost::any(std::string("company"))},
+                               {"name", boost::any(std::string("Aerolíneas_Argentinas"))},
+                               {"url", boost::any(std::string("http://dbpedia.org/resource/Aerolíneas_Argentinas"))}},
+                              true);
+      graph->add_node("Organisation",
+                              {{"id", boost::any(3985)},
+                               {"type", boost::any(std::string("company"))},
+                               {"name", boost::any(std::string("Aerolíneas_Argentinas"))},
+                               {"url", boost::any(std::string("http://dbpedia.org/resource/Aerolíneas_Argentinas"))}},
+                              true);
+        graph->add_node("Place",
+                              {{"id", boost::any(32)},
+                               {"type", boost::any(std::string("country"))},
+                               {"name", boost::any(std::string("Norway"))},
+                               {"url", boost::any(std::string("http://dbpedia.org/resource/Norwa"))}},
+                              true);
+         graph->add_node("Tag",
+                              {{"id", boost::any(19)},
+                               {"name", boost::any(std::string("José_Acasus"))},
+                               {"url", boost::any(std::string("http://dbpedia.org/resource/José_Acasuso"))}},
+                              true);
     // IU 4
-
     graph->add_node("Tag",
       {{"id", boost::any((uint64_t)2)},
         {"name", boost::any(std::string("Snowboard"))},
@@ -475,6 +498,29 @@ TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
     std::string prefix_iu(buf); 
     prefix_iu += "/../../queries/ldbc/iu/iu";  
 
+
+    SECTION("IU #1") {
+      spdlog::info("LDBC IU#1"); 
+      auto qstr = load_string(prefix_iu + "1.q");
+      auto res = qp.execute_query(qproc::Interpret, qstr);
+      // std::cout << res.result() << std::endl;
+
+      result_set expected;
+      expected.append({
+        qv_("Person[46]{birthday: 1980-Nov-23 00:00:00, browserUsed: \"Chrome\", creationDate: 2011-Jun-20 22:41:36.349000, email: \"Jose@gmail.com\", firstName: \"Jose\", gender: \"male\", id: 290292, language: \"Acholi\", lastName: \"Rodriguez\", locationIP: \"170.25.1.157\"}"),
+        qv_("Place[43]{id: 32, name: \"Norway\", type: \"country\", url: \"http://dbpedia.org/resource/Norwa\"}"), 
+        qv_(":isLocatedIn[48]{}"), 
+        qv_("Tag[44]{id: 19, name: \"José_Acasus\", url: \"http://dbpedia.org/resource/José_Acasuso\"}"), 
+        qv_(":hasInterest[49]{}"), 
+        qv_("Organisation[41]{id: 21, name: \"Aerolíneas_Argentinas\", type: \"company\", url: \"http://dbpedia.org/resource/Aerolíneas_Argentinas\"}"), 
+        qv_(":studyAt[50]{classYear: 2001}"), 
+        qv_("Organisation[42]{id: 3985, name: \"Aerolíneas_Argentinas\", type: \"company\", url: \"http://dbpedia.org/resource/Aerolíneas_Argentinas\"}"),
+        qv_(":workAt[51]{workFrom: 2000}")
+        });
+
+      REQUIRE(res.result() == expected);
+    }
+
     SECTION("IU #2") {
       spdlog::info("LDBC IU#2"); 
       auto qstr = load_string(prefix_iu + "2.q");
@@ -543,13 +589,13 @@ TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
       result_set expected;
       expected.append({
         qv_("Forum[33]{id: 37, title: \"Wall of Hồ Chí Do\"}"), 
-        qv_("Post[42]{id: 1234}"), 
+        qv_("Post[46]{id: 1234}"), 
         qv_("Person[3]{firstName: \"Karl\", id: 1121, lastName: \"Beran\"}"), 
         qv_(":hasCreator[48]{}"), 
         qv_(":containerOf[49]{}"), 
         qv_("Place[32]{id: 129}"), 
         qv_(":isLocatedIn[50]{}"), 
-        qv_("Tag[41]{hasType: 3, id: 2, name: \"Snowboard\", url: \"http://dbpedia.org/resource/Snowboard\"}"), 
+        qv_("Tag[45]{hasType: 3, id: 2, name: \"Snowboard\", url: \"http://dbpedia.org/resource/Snowboard\"}"), 
         qv_(":hasTag[51]{}")
         });
 
@@ -564,11 +610,11 @@ TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
       result_set expected;
       expected.append({
           qv_("Post[8]{content: \"\", creationDate: 2010-Mar-16 15:05:23.955000, id: 13743894, imageFile: \"photo1374991234791.jpg\"}"), 
-          qv_("Comment[42]{browserUsed: \"Firefox\", content: \"I see\", creationDate: 2010-Nov-01 03:44:38.424000, id: 12362345, length: 5, locationIP: \"14.99.62.99\"}"), 
+          qv_("Comment[46]{browserUsed: \"Firefox\", content: \"I see\", creationDate: 2010-Nov-01 03:44:38.424000, id: 12362345, length: 5, locationIP: \"14.99.62.99\"}"), 
           qv_("Person[25]{firstName: \"Otto\", id: 838375, lastName: \"Richter\"}"),
           qv_(":hasCreator[48]{}"), qv_(":replyOf[49]{}"),
           qv_("Place[32]{id: 129}"), qv_(":isLocatedIn[50]{}"), 
-          qv_("Tag[41]{hasType: 3, id: 2, name: \"Snowboard\", url: \"http://dbpedia.org/resource/Snowboard\"}"), 
+          qv_("Tag[45]{hasType: 3, id: 2, name: \"Snowboard\", url: \"http://dbpedia.org/resource/Snowboard\"}"), 
           qv_(":hasTag[51]{}")
         });
 
