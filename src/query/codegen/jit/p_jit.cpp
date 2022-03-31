@@ -52,6 +52,11 @@ ir_optimizer::operator()(ThreadSafeModule TSM,
     legacy::PassManager MPM;
     B.populateModulePassManager(MPM);
     
+std::error_code EC;
+llvm::raw_fd_ostream OS("module", EC, llvm::sys::fs::F_None);
+WriteBitcodeToFile(M, OS);
+OS.flush();
+
     return std::move(TSM);
 }
 
@@ -131,6 +136,8 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&collect_tuple), JITSymbolFlags::Exported);
         M[Mangle("obtain_mat_tuple")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&obtain_mat_tuple), JITSymbolFlags::Exported);
+        M[Mangle("reg_to_qres")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&reg_to_qres), JITSymbolFlags::Exported);
         M[Mangle("mat_node")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&mat_node), JITSymbolFlags::Exported);
         M[Mangle("mat_rship")] = JITEvaluatedSymbol(
@@ -235,6 +242,8 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&add_time_diff), JITSymbolFlags::Exported);
         M[Mangle("end_notify")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&end_notify), JITSymbolFlags::Exported);
+        M[Mangle("node_to_description")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&node_to_description), JITSymbolFlags::Exported);
 #ifdef QOP_RECOVERY
         M[Mangle("persist_tuple")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&persist_tuple), JITSymbolFlags::Exported);
@@ -266,7 +275,7 @@ Error p_jit::addModule(std::unique_ptr<Module> M) {
     }
 #endif
 
-    OptimizeLayer.setTransform(ir_optimizer(0));
+    OptimizeLayer.setTransform(ir_optimizer(3));
     
     auto RT = MainJD.getDefaultResourceTracker();
 

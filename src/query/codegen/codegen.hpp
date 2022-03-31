@@ -364,8 +364,10 @@ public:
             if(cur->type_ != qop_type::filter || cur->type_ != qop_type::project || cur->type_ != qop_type::sort || cur->type_ != qop_type::collect)
                 count++;
 
-            if(cur->type_ == qop_type::project)
+            if(cur->type_ == qop_type::project) {
                 get_projection_keys(cur);
+            }
+                
 
             cur = cur->subscriber();
         }

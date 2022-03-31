@@ -1,9 +1,8 @@
 #include "global_definitions.hpp"
 
-
 thread_local std::map<int, std::string> str_result;
 thread_local std::map<int, uint64_t> uint_result;
-thread_local std::map<int, boost::posix_time::ptime> time_result;
+thread_local std::map<int, std::string> time_result;
 thread_local int str_res_ctr = 0;
 
 thread_local std::map<int, node_description> descs;
@@ -48,8 +47,8 @@ bool vec_end_reached_r(relationship_list &vec, rship_vec::iter it) {
     return !(it != vec.as_vec().end());
 }
 
- dcode_t dict_lookup_label(graph_db *gdb, char *label) {
-    return gdb->get_code(label);
+ dcode_t dict_lookup_label(query_ctx *ctx, char *label) {
+    return ctx->gdb_->get_code(label);
 }
 
 node *get_node_from_it(node_vec::range_iter *it) { 
@@ -60,42 +59,42 @@ node *get_node_from_it(node_vec::range_iter *it) {
     return &it->operator*();
 }
 
-node_vec *gdb_get_nodes(graph_db *gdb) {
-    return &gdb->get_nodes()->as_vec();
+node_vec *gdb_get_nodes(query_ctx *ctx) {
+    return &ctx->gdb_->get_nodes()->as_vec();
 }
 
-rship_vec *gdb_get_rships(graph_db *gdb) {
-    return &gdb->get_relationships()->as_vec();
+rship_vec *gdb_get_rships(query_ctx *ctx) {
+    return &ctx->gdb_->get_relationships()->as_vec();
 }
 
  void test_ints(uint64_t a, uint64_t b) {
     std::cout << "A: " << a << " B: " << b << "EQ: " << (a == b) << std::endl;
 }
 
- relationship *rship_by_id(graph_db *gdb, offset_t id) {
-    return &gdb->rship_by_id(id);
+ relationship *rship_by_id(query_ctx *ctx, offset_t id) {
+    return &ctx->gdb_->rship_by_id(id);
 }
 
- node *node_by_id(graph_db *gdb, offset_t id) {
-    return &gdb->node_by_id(id);
+ node *node_by_id(query_ctx *ctx, offset_t id) {
+    return &ctx->gdb_->node_by_id(id);
 }
 
- dcode_t gdb_get_dcode(graph_db *gdb, char *property) {
-    return gdb->get_code(property);
+ dcode_t gdb_get_dcode(query_ctx *ctx, char *property) {
+    return ctx->gdb_->get_code(property);
 }
 
- const property_set *pset_get_item_at(graph_db *gdb, offset_t id) {
-    return &gdb->get_node_properties()->get(id);
+ const property_set *pset_get_item_at(query_ctx *ctx, offset_t id) {
+    return &ctx->gdb_->get_node_properties()->get(id);
 }
 
-std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
+std::map<int, std::function<std::string(graph_db_ptr*, int*)>> con_map;
 
  xid_t get_tx(transaction_ptr tx) {
     return tx->xid();
 }
 
- node * get_valid_node(graph_db *gdb, node * n, transaction_ptr tx) {
-    return &gdb->get_valid_node_version(*n, current_transaction_->xid());
+ node * get_valid_node(query_ctx *ctx, node * n, transaction_ptr tx) {
+    return &ctx->gdb_->get_valid_node_version(*n, current_transaction_->xid());
 }
 
  char* get_str_property(const properties_t &p, const std::string &key) {
@@ -110,14 +109,14 @@ std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
     return ret;
 }
 
-void apply_pexpr_node(graph_db *gdb, const char *key, result_type val_type, int *qr, int *ret) {
+void apply_pexpr_node(query_ctx *ctx, const char *key, result_type val_type, int *qr, int *ret) {
     // cast the query result to a node
     auto n = (node*)qr;
     
     // try to find the description in the thread local result memory
     // if it is not present, generate the description and write it to the thread local memory
     if(descs.find(n->id()) == descs.end())
-        descs[n->id()] = gdb->get_node_description(n->id());
+        descs[n->id()] = ctx->gdb_->get_node_description(n->id());
     auto nd = descs[n->id()];
 
     switch(val_type) {
@@ -137,7 +136,7 @@ void apply_pexpr_node(graph_db *gdb, const char *key, result_type val_type, int 
         }
         case result_type::time: // TODO: wip
         case result_type::date: { // store the time object in thread local memory and return the result id to the caller
-            time_result[str_res_ctr] = get_property<boost::posix_time::ptime>(nd.properties, key).value();
+            time_result[str_res_ctr] = to_iso_extended_string(get_property<boost::posix_time::ptime>(nd.properties, key).value());
             *ret = str_res_ctr++;
             break;
         }
@@ -150,10 +149,10 @@ void apply_pexpr_node(graph_db *gdb, const char *key, result_type val_type, int 
     }
 }
 
-void apply_pexpr_rship(graph_db *gdb, const char *key, result_type val_type, int *qr, int *ret) {
+void apply_pexpr_rship(query_ctx *ctx, const char *key, result_type val_type, int *qr, int *ret) {
     auto r = (relationship*)qr;
     if(rdescs.find(r->id()) == rdescs.end())
-        rdescs[r->id()] = gdb->get_rship_description(r->id());
+        rdescs[r->id()] = ctx->gdb_->get_rship_description(r->id());
     auto rd = rdescs[r->id()];
 
     switch(val_type) {
@@ -171,7 +170,7 @@ void apply_pexpr_rship(graph_db *gdb, const char *key, result_type val_type, int
         }
         case result_type::time: // TODO: wip
         case result_type::date: { // store the time object in thread local memory and return the result id to the caller
-            time_result[str_res_ctr] = get_property<boost::posix_time::ptime>(rd.properties, key).value();
+            time_result[str_res_ctr] = to_iso_extended_string(get_property<boost::posix_time::ptime>(rd.properties, key).value());
             *ret = str_res_ctr++;
             break;
         }
@@ -186,51 +185,56 @@ void apply_pexpr_rship(graph_db *gdb, const char *key, result_type val_type, int
 
 std::mutex prj_mutex;
 
- void apply_pexpr(graph_db *gdb, const char *key, result_type val_type, int *qr, int idx, std::vector<int> types, int *ret) {
+ void apply_pexpr(query_ctx *ctx, const char *key, result_type val_type, int *qr, int idx, std::vector<int> types, int *ret) {
     std::lock_guard<std::mutex> lock(prj_mutex);
     if(types.at(idx) == 0) { // is node
-        apply_pexpr_node(gdb, key, val_type, qr, ret);
+        apply_pexpr_node(ctx, key, val_type, qr, ret);
 
     } else if(types.at(idx) == 1) { // is rship
-        apply_pexpr_rship(gdb, key, val_type, qr, ret);
+        apply_pexpr_rship(ctx, key, val_type, qr, ret);
     } else if(types.at(idx) == 2) { // is rship
         ret = qr;
     }
 }
 
- const char* lookup_dc(graph_db *gdb, dcode_t dc) {
-    return gdb->get_string(dc);
+ const char* lookup_dc(query_ctx *ctx, dcode_t dc) {
+    return ctx->gdb_->get_string(dc);
 }
 
 
-extern "C" node* create_node_func(graph_db *gdb, char *label, properties_t *props) {
-    auto node_id = gdb->add_node(std::string(label), *props, true);
-    return &gdb->node_by_id(node_id);
+extern "C" node* create_node_func(query_ctx *ctx, char *label, properties_t *props) {
+    auto node_id = ctx->gdb_->add_node(std::string(label), *props, true);
+    return &ctx->gdb_->node_by_id(node_id);
 }
 
-extern "C" relationship* create_rship_func(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props) {
-    auto rid = gdb->add_relationship(n1->id(), n2->id(), label, *props, true);
-    return &gdb->rship_by_id(rid);
+extern "C" relationship* create_rship_func(query_ctx *ctx, char *label, node *n1, node *n2, properties_t *props) {
+    auto rid = ctx->gdb_->add_relationship(n1->id(), n2->id(), label, *props, true);
+    return &ctx->gdb_->rship_by_id(rid);
 }
 
 
 std::map<std::thread::id, qr_tuple> tp_m;
 int tcnt = 0;
 std::mutex mat_reg_mut;
- void mat_reg_value(graph_db *gdb, int *reg, int type) {
+ void mat_reg_value(query_ctx *ctx, int *reg, int type) {
     std::lock_guard<std::mutex> lck(mat_reg_mut);
     
     auto & tp = tp_m[std::this_thread::get_id()];
     {
         if(type == 2) {
-            int res = std::stoi(con_map[type](gdb, reg));
+            int res = std::stoi(con_map[type](&ctx->gdb_, reg));
             tp.push_back(res);
         } else if(type == 3) {
             tp.push_back(*(double*)reg);
         } else if(type == 5 || type == 6) {
             tp.push_back(time_result[*reg]);
         } else if(type == 8) {
-            tp.push_back(uint64_t(std::stoull(con_map[type](gdb, reg))));
+            tp.push_back(uint64_t(std::stoull(con_map[type](&ctx->gdb_, reg))));
+        } else if(type == 10) {
+            //auto x = *(query_result*)reg;
+            //auto str = boost::get<std::string>(x);
+            std::cout << "collect projection: " << 2 << std::endl;
+            tp.push_back("testc");
         } else if(type == 90) { // special handling for direct node access when grouping
             tp.push_back((node*)reg);
         } else if(type == 91) { // special handling for direct rship access when grouping
@@ -240,15 +244,15 @@ std::mutex mat_reg_mut;
         } else if(type == 93) {
             tp.push_back(*(double*)reg);
         } else {
-            tp.push_back(con_map[type](gdb, reg));
+            tp.push_back(con_map[type](&ctx->gdb_, reg));
         }
-    }
-    
+    }   
 }
 
- void append_to_tuple(query_result qr) {
+query_result tl_qres;
+void append_to_tuple(query_result qr) {
     auto & tp = tp_m[std::this_thread::get_id()];
-    tp.push_back(qr);
+    tp.push_back(tl_qres);
 }
 
 qr_tuple &get_qr_tuple() {
@@ -257,7 +261,7 @@ qr_tuple &get_qr_tuple() {
 }
 
 std::mutex ct_mut;
-void collect_tuple(graph_db *gdb, result_set *rs, bool print) {
+void collect_tuple(query_ctx *ctx, result_set *rs, bool print) {
 std::lock_guard<std::mutex> lck(mat_reg_mut);
 auto & tp = tp_m[std::this_thread::get_id()];
 
@@ -266,8 +270,8 @@ auto & tp = tp_m[std::this_thread::get_id()];
     /*if(print) {
         std::cout << "{";
         auto my_visitor = boost::hana::overload(
-            [&](node *n) { os << gdb->get_node_description(*n);  },
-            [&](relationship *r) {  os << gdb->get_relationship_label(*r);  },
+            [&](node *n) { os << ctx->gdb_->get_node_description(*n);  },
+            [&](relationship *r) {  os << ctx->gdb_->get_relationship_label(*r);  },
             [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
             [&](const std::string &s) { std::cout << s; }, [&](uint64_t ll) { std::cout << ll; },
             [&](null_t n) { std::cout << "NULL"; },
@@ -285,20 +289,33 @@ auto & tp = tp_m[std::this_thread::get_id()];
 }
 }
 #ifdef QOP_RECOVERY
-void persist_tuple(graph_db *gdb, qr_tuple *qr) {
+void persist_tuple(query_ctx *ctx, qr_tuple *qr) {
 #ifdef USE_PMDK
-    gdb->store_query_result(*qr, 0);
+    ctx->gdb_->store_query_result(*qr, 0);
 #endif
     qr->clear();
 }
 #endif
 
- qr_tuple *obtain_mat_tuple() {
+qr_tuple *obtain_mat_tuple() {
     //auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
     //return &joiner::mat_tuple_[tid];
     auto & tp = tp_m[std::this_thread::get_id()];
     return &tp;
 }
+
+query_result *reg_to_qres(int *reg) {
+    tl_qres = query_result((node*)reg);
+    //tl_qres = (node*)reg;
+    return &tl_qres;
+}
+
+void * node_to_description(query_ctx *ctx) {
+    auto n = boost::get<node*>(tl_qres);
+    tl_qres = ctx->gdb_->get_node_description(n->id());
+    return (void*)&tl_qres;
+}
+
 
  void mat_node(node *n, qr_tuple *qr) {
     qr->push_back(n);
@@ -329,23 +346,23 @@ void persist_tuple(graph_db *gdb, qr_tuple *qr) {
     return j->tuples_.size();
 }
 
- node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t value) {
-    auto idx = gdb->get_index(std::string(label), std::string(prop));
+ node *index_get_node(query_ctx *ctx, char *label, char *prop, uint64_t value) {
+    auto idx = ctx->gdb_->get_index(std::string(label), std::string(prop));
 
     node *n_ptr;
     auto found = false;
-    gdb->index_lookup(idx, value, [&](auto& n) {
+    ctx->gdb_->index_lookup(idx, value, [&](auto& n) {
         found = true;
         n_ptr = &n;
     });
     return n_ptr;
 }
 
- int count_potential_o_hop(graph_db *gdb, offset_t rship_id) {
+ int count_potential_o_hop(query_ctx *ctx, offset_t rship_id) {
     auto cnt = 0;
     while(rship_id != UNKNOWN) {
         cnt++;
-        rship_id = gdb->rship_by_id(rship_id).next_src_rship;
+        rship_id = ctx->gdb_->rship_by_id(rship_id).next_src_rship;
     }
     return cnt;
 }
@@ -364,8 +381,8 @@ void persist_tuple(graph_db *gdb, qr_tuple *qr) {
 }
 
 
- void foreach_from_variable_rship(graph_db *gdb, dcode_t lcode, node *n, std::size_t min, std::size_t max) {
-    gdb->foreach_variable_from_relationship_of_node(*n, lcode, min, max, [&](relationship &r) {
+ void foreach_from_variable_rship(query_ctx *ctx, dcode_t lcode, node *n, std::size_t min, std::size_t max) {
+    ctx->gdb_->foreach_variable_from_relationship_of_node(*n, lcode, min, max, [&](relationship &r) {
         fev_rship_list.push_back(&r);
     });
     fev_list_iter = fev_rship_list.begin();
@@ -410,7 +427,7 @@ std::set<unsigned> pos_set;
 
  void get_time_grpkey(int* time_ptr, unsigned pos) {
     pos_set.insert(pos);
-    std::string dt = to_iso_extended_string(time_result[*time_ptr]);
+    std::string dt = time_result[*time_ptr];
     grpkey_buffer += dt.substr(0, dt.find("-"));
 }
 
@@ -457,7 +474,7 @@ int double_to_reg(qr_tuple* qr, int pos) {
 }
 
  int time_to_reg(qr_tuple* qr, int pos) { 
-    time_result[str_res_ctr] = boost::get<boost::posix_time::ptime>(qr->at(pos));
+    time_result[str_res_ctr] = to_iso_extended_string(boost::get<boost::posix_time::ptime>(qr->at(pos)));
     return str_res_ctr++;
 }
 
@@ -491,8 +508,6 @@ int double_to_reg(qr_tuple* qr, int pos) {
 }
 
 void insert_join_id_input(nested_loop_joiner *j, int jid, offset_t id) {
-    std::cout << "Add join" << std::endl;
-
     //j->insert_tuple(jid, id);
 }
 
@@ -519,13 +534,13 @@ qr_tuple * get_query_result(joiner *j, int jid, int bucket, int idx) {
     return j->get_query_result(jid, bucket, idx);
 }
 
-int node_has_property(graph_db *gdb, node *n, char *property) {
-    auto nd = gdb->get_node_description(n->id());
+int node_has_property(query_ctx *ctx, node *n, char *property) {
+    auto nd = ctx->gdb_->get_node_description(n->id());
     return nd.has_property(std::string(property));
 }
 
-int rship_has_property(graph_db *gdb, relationship *r, char *property) {
-    auto rd = gdb->get_rship_description(r->id());
+int rship_has_property(query_ctx *ctx, relationship *r, char *property) {
+    auto rd = ctx->gdb_->get_rship_description(r->id());
     return rd.has_property(std::string(property));
 }
 

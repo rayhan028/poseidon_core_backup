@@ -75,7 +75,7 @@ class qcompiler : public qexmode {
     friend struct compile_task;
 
 public: 
-    qcompiler(graph_db_ptr &graph);
+    qcompiler(query_ctx ctx);
     ~qcompiler();
 
     /**
@@ -111,7 +111,7 @@ private:
     arg_builder query_args;
     unsigned arg_counter;
 
-    graph_db_ptr graph_;
+    query_ctx query_ctx_;
 
     bool parallel_;
 

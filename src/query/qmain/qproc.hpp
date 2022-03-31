@@ -39,7 +39,7 @@ public:
         Adaptive
     };
 
-    qproc(graph_db_ptr gdb) : gdb_(gdb), compiler_(gdb) {}
+    qproc(graph_db_ptr gdb) : gdb_(gdb), compiler_(query_ctx(gdb)) {}
     ~qproc() = default;
 
     qresult_iterator execute_query(mode m, const std::string& qstr, bool print_plan = false);

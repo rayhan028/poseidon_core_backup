@@ -137,8 +137,8 @@ qop_ptr qplanner::expand_to_qplan(ast_op_ptr ast, qop_ptr child) {
 qop_ptr qplanner::project_to_qplan(ast_op_ptr ast, qop_ptr child) {
   qop_ptr qop = nullptr;
   projection::expr_list pexprs;
+  std::vector<projection_expr> prexprs;
   auto plist = ast->get_param<proj_spec_list>(0);
-  
   for (auto& pex : plist) {
     if (pex.which() == 0) {
       // simple_proj_spec
@@ -148,21 +148,22 @@ qop_ptr qplanner::project_to_qplan(ast_op_ptr ast, qop_ptr child) {
 
       // std::cout << "projection: " << pv_id << " . " << pv_name << " : " << spj.ptype << std::endl;
       // note we need 'capture by value' here for pv_name, otherwise pv_name gets out of scope
-      if (spj.ptype == "string")
-        pexprs.push_back(projection::expr(pv_id, 
-          ([=](auto ctx, auto res) { return builtin::string_property(res, pv_name); } )));
-      else if (spj.ptype == "int")
-        pexprs.push_back(projection::expr(pv_id, 
-          ([=](auto ctx, auto res) { return builtin::int_property(res, pv_name); } )));
-      else if (spj.ptype == "double")
-        pexprs.push_back(projection::expr(pv_id, 
-          ([=](auto ctx, auto res) { return builtin::double_property(res, pv_name); } )));
-      else if (spj.ptype == "uint64")
-        pexprs.push_back(projection::expr(pv_id, 
-          ([=](auto ctx, auto res) { return builtin::uint64_property(res, pv_name); } )));
-      else if (spj.ptype == "datetime")
-        pexprs.push_back(projection::expr(pv_id, 
-          ([=](auto ctx, auto res) { return builtin::ptime_property(res, pv_name); } )));
+      if (spj.ptype == "string") {
+        pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return builtin::string_property(res, pv_name); } )));
+        prexprs.push_back({pv_id, pv_name, result_type::string});
+      } else if (spj.ptype == "int") {
+        pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return builtin::int_property(res, pv_name); } )));
+        prexprs.push_back({pv_id, pv_name, result_type::integer});
+      } else if (spj.ptype == "double") {
+        pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return builtin::double_property(res, pv_name); } )));
+        prexprs.push_back({pv_id, pv_name, result_type::double_t});
+      } else if (spj.ptype == "uint64") {
+        pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return builtin::uint64_property(res, pv_name); } )));
+        prexprs.push_back({pv_id, pv_name, result_type::uint64});
+      } else if (spj.ptype == "datetime") {
+        pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return builtin::ptime_property(res, pv_name); } )));
+        prexprs.push_back({pv_id, pv_name, result_type::date});
+      }
     }  
     else {
       // udf_spec
@@ -170,8 +171,9 @@ qop_ptr qplanner::project_to_qplan(ast_op_ptr ast, qop_ptr child) {
       auto func_name = upj.fname.substr(5); // get rid of udf::
       if (upj.pname_list.size() == 1) { 
         auto pv_id = qparser::extract_tuple_id(upj.pname_list[0]);
-        auto func = udf_lib_->get<query_result(query_ctx&, query_result&)>(func_name);
-        pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return func(ctx, res); } )));
+        auto func = udf_lib_->get<query_result(query_ctx*, void*)>(func_name);
+        pexprs.push_back(projection::expr(pv_id, ([=](auto ctx, auto res) { return func(&ctx, &res); } )));
+        prexprs.push_back({func}); 
       }
       else {
         // TODO: handle UDFs with more than one parameter
@@ -179,6 +181,7 @@ qop_ptr qplanner::project_to_qplan(ast_op_ptr ast, qop_ptr child) {
     }
   }
   auto qp = std::make_shared<projection>(pexprs);
+  qp->prexpr_ = prexprs;
   return qop_append(child, qp);
 }
 

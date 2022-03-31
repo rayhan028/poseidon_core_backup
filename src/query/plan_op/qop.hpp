@@ -96,7 +96,8 @@ enum class result_type {
     time = 6,
     boolean = 7,
     uint64 = 8,
-    none = 9
+    none = 9,
+    qres = 10
 };
 
 struct qop;
@@ -756,7 +757,10 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
 
   static void sort(result_set *rs) {
       query_ctx ctx; // TODO!!!!
-      rs->sort(ctx, cmp_func_);
+      if (cmp_func_ != nullptr)
+        rs->sort(ctx, cmp_func_);
+      //else
+      //  rs->sort(ctx, sort_spec_);
   }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
@@ -1214,6 +1218,7 @@ private:
 struct end_pipeline : public qop, public std::enable_shared_from_this<end_pipeline> {
   end_pipeline() {
     type_ = qop_type::end;
+    other_ = qop_type::none;
   }
 
   void dump(std::ostream &os) const override;
@@ -1234,6 +1239,14 @@ struct end_pipeline : public qop, public std::enable_shared_from_this<end_pipeli
       //subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
     }
   }
+
+  void set_other(qop_type other, std::size_t other_idx = -1) {
+    other_ = other;
+    other_idx_ = other_idx;
+  }
+
+  qop_type other_;
+  std::size_t other_idx_;
 };
 
 #ifdef QOP_RECOVERY
@@ -1278,6 +1291,7 @@ struct projection_expr {
 
     typedef int (*int_prj_func_node)(node *n);
 
+    typedef query_result (*udf_projection)(query_ctx*, void*);
     /**
      * The position of the tuple element to project
      */
@@ -1312,13 +1326,14 @@ struct projection_expr {
      * UDF for projection
      */
     int_prj_func_node int_node_func;
+    udf_projection udf_function;
 
     /**
      * The actual projection type
      */
     PROJECTION_TYPE prt;
 
-    
+    projection_expr(udf_projection udf) : prt(PROJECTION_TYPE::FUNCTIONAL_VAL), udf_function(udf) {}
     projection_expr(std::size_t i) : id(i), type(result_type::none), int_node_func(nullptr), prt(PROJECTION_TYPE::FORWARD_PR)  {}
     projection_expr(std::size_t i, int_prj_func_node func) : id(i), int_node_func(func), prt(PROJECTION_TYPE::FUNCTIONAL_VAL) {}
     projection_expr(std::size_t i, std::string k, result_type t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist), prt(PROJECTION_TYPE::PROPERTY_PR) {}
