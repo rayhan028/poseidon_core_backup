@@ -25,7 +25,7 @@
  */
 extern thread_local std::map<int, uint64_t> uint_result;
 extern thread_local std::map<int, std::string> str_result;
-extern thread_local std::map<int, std::string> time_result;
+extern thread_local std::map<int, boost::posix_time::ptime> time_result;
 extern thread_local std::vector<relationship*> fev_rship_list;
 extern thread_local std::vector<relationship*>::iterator fev_list_iter;
 extern thread_local std::string grpkey_buffer;

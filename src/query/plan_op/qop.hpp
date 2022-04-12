@@ -728,12 +728,13 @@ struct nodes_connected : public qop, public std::enable_shared_from_this<nodes_c
   std::pair<int, int> src_des_nodes_;
 };
 
+extern result_set::sort_spec_list sort_spec_;
 /**
  * order_by implements an operator for sorting results either by giving a
  * comparison function or a specificaton of sorting criteria.
  */
 struct order_by : public qop, public std::enable_shared_from_this<order_by> {
-    order_by(const result_set::sort_spec_list &spec) : sort_spec_(spec) { type_ = qop_type::order_by;  }
+    order_by(const result_set::sort_spec_list &spec) /*: sort_spec_(spec)*/ { type_ = qop_type::order_by; sort_spec_=spec; }
  
   order_by(std::function<bool(const qr_tuple &, const qr_tuple &)> func)
       //: cmp_func_(func) 
@@ -759,8 +760,9 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
       query_ctx ctx; // TODO!!!!
       if (cmp_func_ != nullptr)
         rs->sort(ctx, cmp_func_);
-      //else
-      //  rs->sort(ctx, sort_spec_);
+      else {
+        rs->sort(ctx, sort_spec_);
+      }
   }
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
@@ -772,7 +774,6 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
   }
 
   result_set results_;
-  result_set::sort_spec_list sort_spec_;
   static std::function<bool(const qr_tuple &, const qr_tuple &)> cmp_func_;
 };
 

@@ -32,6 +32,8 @@
 
 using namespace boost::posix_time;
 
+result_set::sort_spec_list sort_spec_;
+
 /* ------------------------------------------------------------------------ */
 
 void scan_nodes::start(query_ctx &ctx) {

@@ -2,7 +2,7 @@
 
 thread_local std::map<int, std::string> str_result;
 thread_local std::map<int, uint64_t> uint_result;
-thread_local std::map<int, std::string> time_result;
+thread_local std::map<int, boost::posix_time::ptime> time_result;
 thread_local int str_res_ctr = 0;
 
 thread_local std::map<int, node_description> descs;
@@ -136,7 +136,8 @@ void apply_pexpr_node(query_ctx *ctx, const char *key, result_type val_type, int
         }
         case result_type::time: // TODO: wip
         case result_type::date: { // store the time object in thread local memory and return the result id to the caller
-            time_result[str_res_ctr] = to_iso_extended_string(get_property<boost::posix_time::ptime>(nd.properties, key).value());
+            //
+            time_result[str_res_ctr] = get_property<boost::posix_time::ptime>(nd.properties, key).value();
             *ret = str_res_ctr++;
             break;
         }
@@ -170,7 +171,8 @@ void apply_pexpr_rship(query_ctx *ctx, const char *key, result_type val_type, in
         }
         case result_type::time: // TODO: wip
         case result_type::date: { // store the time object in thread local memory and return the result id to the caller
-            time_result[str_res_ctr] = to_iso_extended_string(get_property<boost::posix_time::ptime>(rd.properties, key).value());
+            //time_result[str_res_ctr] = to_iso_extended_string(get_property<boost::posix_time::ptime>(rd.properties, key).value());
+            time_result[str_res_ctr] = get_property<boost::posix_time::ptime>(rd.properties, key).value();
             *ret = str_res_ctr++;
             break;
         }
@@ -427,8 +429,8 @@ std::set<unsigned> pos_set;
 
  void get_time_grpkey(int* time_ptr, unsigned pos) {
     pos_set.insert(pos);
-    std::string dt = time_result[*time_ptr];
-    grpkey_buffer += dt.substr(0, dt.find("-"));
+    //std::string dt = time_result[*time_ptr];
+    //grpkey_buffer += dt.substr(0, dt.find("-"));
 }
 
  void add_to_group(grouper *g) {
@@ -474,7 +476,7 @@ int double_to_reg(qr_tuple* qr, int pos) {
 }
 
  int time_to_reg(qr_tuple* qr, int pos) { 
-    time_result[str_res_ctr] = to_iso_extended_string(boost::get<boost::posix_time::ptime>(qr->at(pos)));
+    time_result[str_res_ctr] = boost::get<boost::posix_time::ptime>(qr->at(pos));
     return str_res_ctr++;
 }
 
