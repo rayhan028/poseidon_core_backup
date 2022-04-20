@@ -103,6 +103,7 @@ configure_file(
 
 include_directories(${PROJECT_BINARY_DIR}/generated)
 include_directories(${PROJECT_SOURCE_DIR}/src/storage)
+include_directories(${PROJECT_SOURCE_DIR}/src/bp_file)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/ast)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/codegen)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/utils)
@@ -217,7 +218,7 @@ endif()
 FetchContent_Declare(
   benchmark
   GIT_REPOSITORY https://github.com/google/benchmark.git
-  GIT_TAG        v1.5.0
+  GIT_TAG        v1.6.1
   GIT_SHALLOW    TRUE
 )
 FetchContent_GetProperties(benchmark)
@@ -455,6 +456,8 @@ set(src_files
   src/storage/graph_db_gc.cpp
   src/storage/graph_db_recovery.cpp
   src/storage/mm_file.cpp
+  src/bp_file/paged_file.cpp
+  src/bp_file/bufferpool.cpp
   src/btree/index_map.cpp
   src/query/plan_op/qop.cpp
   src/query/expr/expression.cpp
