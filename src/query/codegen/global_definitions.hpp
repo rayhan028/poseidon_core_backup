@@ -29,7 +29,7 @@ extern thread_local std::map<int, boost::posix_time::ptime> time_result;
 extern thread_local std::vector<relationship*> fev_rship_list;
 extern thread_local std::vector<relationship*>::iterator fev_list_iter;
 extern thread_local std::string grpkey_buffer;
-extern std::map<int, std::function<std::string(graph_db*, int*)>> con_map;
+extern std::map<int, std::function<std::string(graph_db_ptr*, int*)>> con_map;
 
 class joiner;
 class base_joiner;
@@ -37,7 +37,7 @@ class nested_loop_joiner;
 
 using query_time_point = std::chrono::time_point<std::chrono::high_resolution_clock>;
 struct query_context {
-    graph_db* gdb;
+    query_ctx* ctx;
     std::size_t first_chunk;
     std::size_t last_chunk;
     transaction_ptr tx;
@@ -46,8 +46,8 @@ struct query_context {
     std::vector<std::pair<int,size_t>> profiling_time;
     std::map<int, size_t> profiling_count;
 
-    query_context(graph_db *g, std::size_t first, std::size_t last, transaction_ptr t, uint64_t **qargs) :
-        gdb(g), first_chunk(first), last_chunk(last), tx(t), args(qargs) {}
+    query_context(query_ctx *c, std::size_t first, std::size_t last, transaction_ptr t, uint64_t **qargs) :
+        ctx(c), first_chunk(first), last_chunk(last), tx(t), args(qargs) {}
 
     void add_time(int operator_id,  query_time_point start, query_time_point end) {
         auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
@@ -102,7 +102,7 @@ bool vec_end_reached_r(relationship_list &vec, rship_vec::iter it);
 /**
  * Function to lookup a label
  */
- dcode_t dict_lookup_label(graph_db *gdb, char *label);
+ dcode_t dict_lookup_label(query_ctx *ctx, char *label);
 
 /**
  * Obtains the pointer to a node from a node vector iterator
@@ -117,34 +117,34 @@ bool vec_end_reached_r(relationship_list &vec, rship_vec::iter it);
 /**
  * Returns a pointer to the node chunked vector of a given graph
  */
-node_vec *gdb_get_nodes(graph_db *gdb);
+node_vec *gdb_get_nodes(query_ctx *ctx);
 
 /**
  * Returns a pointer to the relationship chunked vector of a given graph
  */
-rship_vec *gdb_get_rships(graph_db *gdb);
+rship_vec *gdb_get_rships(query_ctx *ctx);
 
  void test_ints(uint64_t a, uint64_t b);
 
 /**
  * Return the relationship pointer with the given id
  */
- relationship *rship_by_id(graph_db *gdb, offset_t id);
+ relationship *rship_by_id(query_ctx *ctx, offset_t id);
 
 /**
  * Return the node pointer with the given id
  */
- node *node_by_id(graph_db *gdb, offset_t id);
+ node *node_by_id(query_ctx *ctx, offset_t id);
 
 /**
  * Returns the dictionary code of a given string
  */
- dcode_t gdb_get_dcode(graph_db *gdb, char *property);
+ dcode_t gdb_get_dcode(query_ctx *ctx, char *property);
 
 /**
  * Returns the property item at the given position in the property set
  */
- const property_set *pset_get_item_at(graph_db *gdb, offset_t id);
+ const property_set *pset_get_item_at(query_ctx *ctx, offset_t id);
 
 /**
  * Init of the transaction processing
@@ -154,22 +154,22 @@ rship_vec *gdb_get_rships(graph_db *gdb);
 /**
  * Checks if the current node is valid for transactional processing
  */
- node * get_valid_node(graph_db *gdb, node * n, transaction_ptr tx);
+ node * get_valid_node(query_ctx *ctx, node * n, transaction_ptr tx);
 
 /**
  * Applies a given Projection on a node result and writes the result at a memory address, given by the caller.
  */
- void apply_pexpr_node(graph_db *gdb, const char *key, result_type val_type, int *qr, int *ret);
+ void apply_pexpr_node(query_ctx *ctx, const char *key, result_type val_type, int *qr, int *ret);
 
 /**
  * Applies a given Projection on a relationship result and writes the result at a memory address, given by the caller.
  */
- void apply_pexpr_rship(graph_db *gdb, const char *key, result_type val_type, int *qr, int *ret);
+ void apply_pexpr_rship(query_ctx *ctx, const char *key, result_type val_type, int *qr, int *ret);
 
 /**
  * External function to count all potential 1-hop relationships, used by the variable ForeachRelationship operator
  */
- int count_potential_o_hop(graph_db *gdb, offset_t rship_id);
+ int count_potential_o_hop(query_ctx *ctx, offset_t rship_id);
 
 /**
  * Allocates a queue in order to scan all relationships recursively
@@ -189,39 +189,39 @@ rship_vec *gdb_get_rships(graph_db *gdb);
 /**
  * Method that processes the actual projection on a tuple result
  */
- void apply_pexpr(graph_db *gdb, const char *key, result_type val_type, int *qr, int idx, std::vector<int> types, int *ret);
+ void apply_pexpr(query_ctx *ctx, const char *key, result_type val_type, int *qr, int idx, std::vector<int> types, int *ret);
 
 /**
  * Function to lookup a given dictionary code
  */
- const char* lookup_dc(graph_db *gdb, dcode_t dc);
+ const char* lookup_dc(query_ctx *ctx, dcode_t dc);
 
 // void get_nodes(graph_db gdb, consumer_fct_type consumer);
 
 /**
  * Function for the creation of a node with given properties
  */
-extern "C" node* create_node_func(graph_db *gdb, char *label, properties_t *props);
+extern "C" node* create_node_func(query_ctx *ctx, char *label, properties_t *props);
 
 /**
  * Function for the creation of a relationship with given properties
  */
-extern "C" relationship* create_rship_func(graph_db *gdb, char *label, node *n1, node *n2, properties_t *props);
+extern "C" relationship* create_rship_func(query_ctx *ctx, char *label, node *n1, node *n2, properties_t *props);
 
 /**
  * Function to transform a register value into the appropriate type and materialize to 
  * thread local storage.
  */
- void mat_reg_value(graph_db *gdb, int *reg, int type);
+ void mat_reg_value(query_ctx *ctx, int *reg, int type);
 
 /**
  * collect_tuple inserts the tuple from thread_local storage into the given result_set.  
  * If print is true, the tuple will be printed to the standard output
  */
- void collect_tuple(graph_db *gdb, result_set *rs, bool print);
+ void collect_tuple(query_ctx *ctx, result_set *rs, bool print);
 
 #ifdef QOP_RECOVERY
- void persist_tuple(graph_db *gdb, qr_tuple *qr);
+ void persist_tuple(query_ctx *ctx, qr_tuple *qr);
 #endif
 
 qr_tuple &get_qr_tuple();
@@ -231,6 +231,13 @@ qr_tuple &get_qr_tuple();
  * rhs side of a join.
  */
  qr_tuple *obtain_mat_tuple();
+
+/**
+ * reg_to_qres converts a register result into a thread local query_result 
+ */
+ query_result *reg_to_qres(int *reg);
+
+ void *node_to_description(query_ctx *ctx);
 
 /**
  * mat_node materialize a node to a thread local tuple storage
@@ -271,9 +278,9 @@ qr_tuple &get_qr_tuple();
 /**
  * index_get_node is a helper method in order to process a index scan for a specific node
  */
- node *index_get_node(graph_db *gdb, char *label, char *prop, uint64_t value);
+ node *index_get_node(query_ctx *ctx, char *label, char *prop, uint64_t value);
 
- void foreach_from_variable_rship(graph_db *gdb, dcode_t lcode, node *n, std::size_t min, std::size_t max);
+ void foreach_from_variable_rship(query_ctx *ctx, dcode_t lcode, node *n, std::size_t min, std::size_t max);
 
  relationship *get_next_rship_fev();
 
@@ -326,8 +333,8 @@ int get_hj_input_size(joiner *j, int jid, int bucket);
 int get_hj_input_id(joiner *j, int jid, int bucket, int idx);
 qr_tuple * get_query_result(joiner *j, int jid, int bucket, int idx);
 
-int node_has_property(graph_db *gdb, node *n, char *property);
-int rship_has_property(graph_db *gdb, relationship *r, char *property);
+int node_has_property(query_ctx *ctx, node *n, char *property);
+int rship_has_property(query_ctx *ctx, relationship *r, char *property);
 void apply_has_property(int has_properties_cnt, char *then_res, char *else_res, int *result);
 void apply_if_property_exist(int has_property, char *property, int *result);
 

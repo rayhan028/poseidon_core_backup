@@ -12,7 +12,7 @@ extern "C" query_result getPost(query_ctx& ctx, query_result &res) {
 }
 
 // is4
-extern "C" query_result getMessage(query_ctx& ctx, query_result &res) {
+extern "C" query_result getMessage(query_ctx& ctx, query_result &res) {  
     return !pj::has_property(res, "imageFile") ?
             pj::string_property(res, "content") :
             boost::get<std::string>(pj::string_property(res, "imageFile")).empty() ?

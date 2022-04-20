@@ -12,6 +12,7 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_result> op) {
     auto fadd_now = ctx.extern_func("get_now");
     auto fadd_time_diff = ctx.extern_func("add_time_diff");
     auto endnotify = ctx.extern_func("end_notify");
+    auto atp = ctx.extern_func("append_to_tuple");
 
     Value *gdb_ptr;
     Value *rs_arg;
@@ -54,10 +55,14 @@ void codegen_inline_visitor::visit(std::shared_ptr<collect_result> op) {
     // each register will be materialized into thread local storage
     for(auto & res : reg_query_results) {
         // value type 7 => boolean, already transformed into integer
-        auto type_id = (res.type == 7 ? 2 : res.type);
-        auto type = ConstantInt::get(ctx.int64Ty, type_id);
-        auto cv_reg = ctx.getBuilder().CreateBitCast(res.reg_val, ctx.int64PtrTy);
-        ctx.getBuilder().CreateCall(mat_reg, {gdb_ptr, cv_reg, type});
+        if(res.type == 10) {
+            ctx.getBuilder().CreateCall(atp, {res.reg_val});
+        } else {
+            auto type_id = (res.type == 7 ? 2 : res.type);
+            auto type = ConstantInt::get(ctx.int64Ty, type_id);
+            auto cv_reg = ctx.getBuilder().CreateBitCast(res.reg_val, ctx.int64PtrTy);
+            ctx.getBuilder().CreateCall(mat_reg, {gdb_ptr, cv_reg, type});
+        }
     }
 
     ctx.getBuilder().CreateBr(pre_tuple_mat);

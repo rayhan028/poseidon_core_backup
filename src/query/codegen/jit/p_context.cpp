@@ -190,9 +190,11 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     collect_reg_ty = FunctionType::get(voidTy, {int8PtrTy, int64PtrTy, boolTy}, false);
 
     obtain_mat_tuple_ty = FunctionType::get(int8PtrTy, {}, false);
+    reg_to_qres_ty = FunctionType::get(int8PtrTy, {nodePtrTy}, false);
     mat_node_ty = FunctionType::get(voidTy, {nodePtrTy, int8PtrTy}, false);
     mat_rship_ty = FunctionType::get(voidTy, {rshipPtrTy, int8PtrTy}, false);
     collect_tuple_join_ty = FunctionType::get(voidTy, {int8PtrTy, int64Ty, int8PtrTy}, false);
+    node_to_description_ty = FunctionType::get(int8PtrTy, {int8PtrTy}, false);
 
     get_join_tp_at_ty = FunctionType::get(int8PtrTy, {int8PtrTy, int64Ty, int64Ty}, false);
     get_node_res_at_ty = FunctionType::get(nodePtrTy, {int8PtrTy, int64Ty}, false);
@@ -332,9 +334,11 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     function_types["mat_reg_value"] = mat_reg_val_ty;
     function_types["collect_tuple"] = collect_reg_ty;
     function_types["obtain_mat_tuple"] = obtain_mat_tuple_ty;
+    function_types["reg_to_qres"] = reg_to_qres_ty;
     function_types["mat_node"] = mat_node_ty;
     function_types["mat_rship"] = mat_rship_ty;
     function_types["collect_tuple_join"] = collect_tuple_join_ty;
+    function_types["node_to_description"] = node_to_description_ty;
 
     function_types["get_join_tp_at"] = get_join_tp_at_ty;
     function_types["get_node_res_at"] = get_node_res_at_ty;
@@ -604,53 +608,6 @@ BasicBlock * PContext::while_rship_exist(Function *parent, Value *gdb, Value *no
 
     return body_epilog;
 }
-
-BasicBlock *PContext::while_qr_list(Function *parent, Value *qr_list, AllocaInst *cur_node, BasicBlock *next,
-                          const std::function<void(BasicBlock *, BasicBlock *)> &loop_body) {
-    BasicBlock *condition = BasicBlock::Create(getContext(), "while_condition");
-    BasicBlock *body = BasicBlock::Create(getContext(), "while_body");
-    BasicBlock *body_epilog = BasicBlock::Create(getContext(), "while_body_epilog");
-    BasicBlock *end = BasicBlock::Create(getContext(), "while_end");
-
-    auto null_ptr = Constant::getNullValue(queryResultNodePtrTy);
-    auto list_head = Builder->CreateLoad(Builder->CreateStructGEP(qr_list, 0));
-    Builder->CreateStore(list_head, cur_node);
-
-    Builder->CreateBr(condition);
-
-    parent->getBasicBlockList().push_back(condition);
-    Builder->SetInsertPoint(condition);
-    {
-        auto node = Builder->CreateLoad(cur_node);
-        auto cond = Builder->CreateICmpEQ(node, null_ptr);
-        Builder->CreateCondBr(cond, end, body);
-    }
-
-    parent->getBasicBlockList().push_back(body);
-    Builder->SetInsertPoint(body);
-    {
-        loop_body(body, body_epilog);
-
-    }
-
-    parent->getBasicBlockList().push_back(body_epilog);
-    Builder->SetInsertPoint(body_epilog);
-    {
-        auto node = Builder->CreateLoad(cur_node);
-        auto nextn = Builder->CreateLoad(Builder->CreateStructGEP(node, 0));
-        Builder->CreateStore(nextn, cur_node);
-        Builder->CreateBr(condition);
-    }
-
-    parent->getBasicBlockList().push_back(end);
-    Builder->SetInsertPoint(end);
-    {
-        Builder->CreateBr(next);
-    }
-
-    return body_epilog;
-}
-
 
 Value *PContext::node_cmp_label(Value *node, Value *label_code) {
     auto node_lc = getBuilder().CreateLoad(

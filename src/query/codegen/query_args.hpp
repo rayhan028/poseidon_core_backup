@@ -13,7 +13,13 @@ public:
 
     virtual void visit(std::shared_ptr<scan_nodes> op) override {
        auto s_op = std::dynamic_pointer_cast<scan_nodes>(op);
-       ab_.arg(arg_cnt_++, s_op->label);
+       if(s_op->labels.size() == 0) {
+           ab_.arg(arg_cnt_++, s_op->label);
+       } else {
+           for(auto & l : s_op->labels) {
+               ab_.arg(arg_cnt_++, l);
+           }
+       }
     }
 
     virtual void visit(std::shared_ptr<foreach_relationship> op) override {
@@ -38,9 +44,41 @@ public:
         ab_.arg(arg_cnt_++, &cop->results_);
     }
 
+    virtual void visit(std::shared_ptr<filter_tuple> op) override {
+        auto ft = std::dynamic_pointer_cast<filter_tuple>(op);
+        
+        if(ft->ex_->ftype_ == FOP_TYPE::OP) {
+            auto bexpr = std::dynamic_pointer_cast<eq_predicate>(ft->ex_);
+            
+            auto iexpr = std::dynamic_pointer_cast<number_token>(bexpr->right_);
+            ab_.arg(arg_cnt_++, iexpr->ivalue_);
+        }
+    }
+
     virtual void visit(std::shared_ptr<end_pipeline> op) override {
         auto cop = std::dynamic_pointer_cast<end_pipeline>(op);
-        //TODO: create joiner 
+
+        switch(cop->other_) {
+            case qop_type::cross_join: {
+                auto cj = new cross_joiner();
+                joiner_list_.push_back(cj);
+                break;
+            }
+            case qop_type::hash_join: {
+                break;
+            }
+            case qop_type::left_join: {
+                break;
+            }
+            case qop_type::nest_loop_join: {
+                auto nlj = new nested_loop_joiner(cop->other_idx_);
+                joiner_list_.push_back(nlj);
+                break;
+            }
+        }
+
+        auto j = joiner_list_.back();
+        ab_.arg(arg_cnt_++, j);
     }
 
     virtual void visit(std::shared_ptr<cross_join> op) override {

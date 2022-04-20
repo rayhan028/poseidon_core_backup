@@ -29,7 +29,7 @@
 #ifdef USE_LLVM
 
 void queryc::exec_plan(qop_ptr &plan, graph_db_ptr &gdb) {
-  qcompiler queryEngine(gdb);
+  /*qcompiler queryEngine(gdb);
 
   result_set rs;
 
@@ -53,7 +53,7 @@ void queryc::exec_plan(qop_ptr &plan, graph_db_ptr &gdb) {
                    .count()
             << " ms" << std::endl;
 
-  std::cout << rs << std::endl;
+  std::cout << rs << std::endl;*/
 }
 
 void queryc::exec_plan(const std::string &qname, graph_db_ptr &gdb) {

@@ -32,6 +32,8 @@
 
 using namespace boost::posix_time;
 
+result_set::sort_spec_list sort_spec_;
+
 /* ------------------------------------------------------------------------ */
 
 void scan_nodes::start(query_ctx &ctx) {
@@ -1176,6 +1178,7 @@ void recover_scan::finish(query_ctx &ctx) {
 /* ------------------------------------------------------------------------ */
 
 projection::projection(const expr_list &exprs) : exprs_(exprs) {
+  type_ = qop_type::project;
   if (exprs_.empty())
     return;
   // we build a mapping table where for each expression variable refering to a

@@ -25,39 +25,39 @@ std::unique_ptr<p_jit> qcompiler::initializeJitCompiler() {
 std::mutex tp_mut;
 
 
-qcompiler::qcompiler(graph_db_ptr &graph) 
+qcompiler::qcompiler(query_ctx ctx) 
     :
     jit_(initializeJitCompiler()),
-    ctx_(PContext(graph)),  
+    ctx_(PContext(ctx.gdb_)),  
     arg_counter(1u),
-    graph_(graph) 
+    query_ctx_(ctx) 
     {
         
     ctx_.getModule().setDataLayout(jit_->getDataLayout());
 
-    auto insert_nd = [&] (graph_db* gdb, int *ptr) -> std::string {
+    auto insert_nd = [&] (graph_db_ptr* gdb, int *ptr) -> std::string {
         auto n = (node*)ptr;
-        return gdb->get_node_description(n->id()).to_string();
+        return (*gdb)->get_node_description(n->id()).to_string();
     };
 
-    auto insert_rd = [&] (graph_db* gdb, int *ptr) -> std::string {
+    auto insert_rd = [&] (graph_db_ptr* gdb, int *ptr) -> std::string {
         auto r = (relationship*)ptr;
-        return gdb->get_rship_description(r->id()).to_string();
+        return (*gdb)->get_rship_description(r->id()).to_string();
     };
 
-    auto insert_int = [&] (graph_db* gdb, int *ptr) -> std::string {
+    auto insert_int = [&] (graph_db_ptr* gdb, int *ptr) -> std::string {
         return std::to_string(*ptr);
     };
 
-    auto insert_double = [&] (graph_db* gdb, int *ptr) -> std::string {
+    auto insert_double = [&] (graph_db_ptr* gdb, int *ptr) -> std::string {
         return std::to_string(*reinterpret_cast<double*>(ptr));
     };
 
-    auto insert_str = [&] (graph_db* gdb, int *ptr) -> std::string {
+    auto insert_str = [&] (graph_db_ptr* gdb, int *ptr) -> std::string {
         return str_result[*ptr];
     };
 
-    auto insert_uint = [&] (graph_db* gdb, int *ptr) -> std::string {
+    auto insert_uint = [&] (graph_db_ptr* gdb, int *ptr) -> std::string {
         return std::to_string(uint_result[*ptr]);
     }; 
 
@@ -84,7 +84,6 @@ void qcompiler::generate(qop_ptr query, bool parallel) {
     /*codegen_visitor cv(ctx_);
     query->codegen(cv);
     jit.addModule(ctx_.moveModule());*/
-
 }
 
 void qcompiler::cleanup() {
@@ -93,9 +92,9 @@ void qcompiler::cleanup() {
     qpipelines_.clear();
 }
 
-
 joiner * last_joiner;
 void qcompiler::extract_arg(qop_ptr op) {
+    std::cout << "Extract args" << std::endl;
     arg_counter = op->operator_id_;
     switch(op->type_) {
         case qop_type::scan: {
@@ -172,7 +171,7 @@ void qcompiler::extract_arg(qop_ptr op) {
 
 void qcompiler::run(arg_builder & args, bool cleanup_query) {
 
-    graph_->begin_transaction();
+    query_ctx_.gdb_->begin_transaction();
     current_transaction_ = current_transaction();
     if(parallel_) {
         unsigned int op_start = 1;
@@ -187,9 +186,9 @@ void qcompiler::run(arg_builder & args, bool cleanup_query) {
 
 
     auto start_idx = start_.size()-1;
-    auto last = graph_->get_nodes()->num_chunks();
-    query_context qtx = {graph_.get(), 0, last, current_transaction_, args.args.data()};
-    qtx.gdb = graph_.get();
+    auto last = query_ctx_.gdb_->get_nodes()->num_chunks();
+    query_context qtx = {&query_ctx_, 0, last, current_transaction_, args.args.data()};
+    qtx.ctx = &query_ctx_;
     *qtx.args = *args.args.data();
     qtx.tx = current_transaction_;
 
@@ -201,7 +200,7 @@ void qcompiler::run(arg_builder & args, bool cleanup_query) {
        }
     }
 
-    graph_->commit_transaction();
+    query_ctx_.gdb_->commit_transaction();
 
     auto bench = qtx.profiling_time;
 
@@ -256,7 +255,7 @@ void qcompiler::run_parallel(arg_builder & args, unsigned thread_num) {
            
             task_callee_ = [&](transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer) {
                 current_transaction_ = tx;
-                query_context qtx = {gdb, first, last, tx, args.args.data()};
+                query_context qtx = {&query_ctx_, first, last, tx, args.args.data()};
                 start_[pipeline](&qtx, args.args.data());
             };
 
@@ -265,8 +264,10 @@ void qcompiler::run_parallel(arg_builder & args, unsigned thread_num) {
 
         if(t1.joinable())
             t1.join();
+
         if(interpreter_thread.joinable())
            interpreter_thread.join();
+
         //if(has_join(cur_query_) && (pipeline != pipeline_num-1)) {
         //    graph_->parallel_nodes(consumer_dummy);
         //}
@@ -275,8 +276,8 @@ void qcompiler::run_parallel(arg_builder & args, unsigned thread_num) {
 
 void qcompiler::finish(arg_builder & args) {
 
-    query_context qtx = {graph_.get(), 0,  graph_->get_nodes()->num_chunks(), current_transaction_, args.args.data()};
-    qtx.gdb = graph_.get();
+    query_context qtx = {&query_ctx_, 0,  query_ctx_.gdb_->get_nodes()->num_chunks(), current_transaction_, args.args.data()};
+    qtx.ctx = &query_ctx_;
     *qtx.args = *args.args.data();
     
     for(int i = start_.size()-1; i >= 0; i--) {
@@ -304,6 +305,7 @@ void compile_task::operator()() {
     bool inlined = true;
     codegen_inline_visitor cv(ctx_, internal_qid);
     query_->codegen(cv, cg_start, inlined);
+
     //2. add LLVM module with IR to jit for compilation
     ctx_.getModule().setModuleIdentifier(internal_qid);
     jit_.get_exit()(jit_.addModule(ctx_.moveModule()));

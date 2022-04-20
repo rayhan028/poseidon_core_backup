@@ -77,11 +77,6 @@ public:
 //++++++++++++++++++ DATA_STRUCTURES +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++ QR_LIST +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    StructType *queryResultNodeTy;
-    PointerType *queryResultNodePtrTy;
-    StructType *queryResultList;
-    PointerType *queryResultListPtrTy;
-
     FunctionType *list_size;
 
     ArrayType *callMapTy;
@@ -215,9 +210,11 @@ public:
     FunctionType *collect_reg_ty;
 
     FunctionType *obtain_mat_tuple_ty;
+    FunctionType *reg_to_qres_ty;
     FunctionType *mat_node_ty;
     FunctionType *mat_rship_ty;
     FunctionType *collect_tuple_join_ty;
+    FunctionType *node_to_description_ty;
 
     FunctionType *get_join_tp_at_ty;
     FunctionType *get_node_res_at_ty;
