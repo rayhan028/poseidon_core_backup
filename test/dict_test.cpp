@@ -20,10 +20,23 @@
 #define CATCH_CONFIG_MAIN // This tells Catch to provide a main() - only do
                           // this in one cpp file
 
+#include <boost/filesystem.hpp>
 #include "catch.hpp"
 #include "config.h"
 #include "defs.hpp"
 #include "dict.hpp"
+
+void create_dir(const std::string& path) {
+    boost::filesystem::path path_obj(path);
+    // check if path exists and is of a regular file
+    if (! boost::filesystem::exists(path_obj))
+        boost::filesystem::create_directory(path_obj);
+}
+
+void delete_dir(const std::string& path) {
+    boost::filesystem::path path_obj(path);
+    boost::filesystem::remove_all(path_obj);
+}
 
 #ifdef USE_PMDK
 #define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
@@ -47,8 +60,9 @@ TEST_CASE("Inserting some strings", "[dict]") {
   dict &d = *(root_obj->dict_p);
   d.initialize();
 #elif defined(PAGED_FILE)
+  create_dir("dict1");
   bufferpool bpool;
-  dict d(bpool);
+  dict d(bpool, "dict1");
 #else
   dict d;
 #endif
@@ -67,7 +81,7 @@ TEST_CASE("Inserting some strings", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 #elif defined(PAGED_FILE)
-  remove("dict.db");
+  delete_dir("dict1");
 #endif
 }
 
@@ -82,8 +96,9 @@ TEST_CASE("Inserting duplicate strings", "[dict]") {
   dict &d = *(root_obj->dict_p);
   d.initialize();
 #elif defined(PAGED_FILE)
+  create_dir("dict2");
   bufferpool bpool;
-  dict d(bpool);
+  dict d(bpool, "dict2");
 #else
   dict d;
 #endif
@@ -100,7 +115,7 @@ TEST_CASE("Inserting duplicate strings", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 #elif defined(PAGED_FILE)
-  remove("dict.db");  
+  delete_dir("dict2");  
 #endif
 }
 
@@ -115,8 +130,9 @@ TEST_CASE("Looking up some strings", "[dict]") {
   dict &d = *(root_obj->dict_p);
   d.initialize();
 #elif defined(PAGED_FILE)
+  create_dir("dict3");
   bufferpool bpool;
-  dict d(bpool);
+  dict d(bpool, "dict3");
 #else
   dict d;
 #endif
@@ -135,7 +151,7 @@ TEST_CASE("Looking up some strings", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 #elif defined(PAGED_FILE)
-  remove("dict.db"); 
+  delete_dir("dict3"); 
 #endif
 }
 
@@ -150,8 +166,9 @@ TEST_CASE("Looking up some codes", "[dict]") {
   dict &d = *(root_obj->dict_p);
   d.initialize();
 #elif defined(PAGED_FILE)
+create_dir("dict4");
   bufferpool bpool;
-  dict d(bpool);
+  dict d(bpool, "dict4");
 #else
   dict d;
 #endif
@@ -170,7 +187,7 @@ TEST_CASE("Looking up some codes", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 #elif defined(PAGED_FILE)
-  remove("dict.db"); 
+  delete_dir("dict4"); 
 #endif
 }
 
@@ -185,8 +202,9 @@ TEST_CASE("Looking up some non-existing strings", "[dict]") {
   dict &d = *(root_obj->dict_p);
   d.initialize();
 #elif defined(PAGED_FILE)
+  create_dir("dict5");
   bufferpool bpool;
-  dict d(bpool);
+  dict d(bpool, "dict5");
 #else
   dict d;
 #endif
@@ -202,7 +220,7 @@ TEST_CASE("Looking up some non-existing strings", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 #elif defined(PAGED_FILE)
-  remove("dict.db"); 
+  delete_dir("dict5"); 
 #endif
 }
 
@@ -239,9 +257,10 @@ TEST_CASE("Test persistency of dict", "[dict]") {
 #elif defined(PAGED_FILE)
 TEST_CASE("Test persistency of dict", "[dict]") {
   dcode_t c;
+  create_dir("dict6");
   {
     bufferpool bpool;
-    dict d(bpool);
+    dict d(bpool, "dict6");
 
     d.insert("String #1");
     d.insert("String #2");
@@ -253,11 +272,11 @@ TEST_CASE("Test persistency of dict", "[dict]") {
 
   {
     bufferpool bpool;
-    dict d2(bpool);
+    dict d2(bpool, "dict6");
 
     REQUIRE(d2.lookup_string("String #4") == c);
   }
-  remove("dict.db");
+  delete_dir("dict6");
 }
 #endif
 

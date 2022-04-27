@@ -38,19 +38,7 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
 	nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
-#endif
-
-#ifdef USE_PMDK
-  p_ptr<dict> dct;
-	nvm::transaction::run(pop, [&] {
-		dct = p_make_ptr<dict>();
-	});
-#elif defined(PAGED_FILE)
-  bufferpool bpool;
-  p_ptr<dict> dct = p_make_ptr<dict>(bpool);
-#else
-  p_ptr<dict> dct = p_make_ptr<dict>();
+  auto graph = pool->create_graph("my_qc_graph");
 #endif
 
     queryc qlc;

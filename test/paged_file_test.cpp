@@ -25,6 +25,7 @@ TEST_CASE("Creating a paged file", "[paged_file]") {
     REQUIRE(p2.payload[0] == 0xff);
     REQUIRE(p2.payload[PAGE_SIZE-1] == 0xff);
     pf.close();
+    remove("test.dat");
 }
 
 TEST_CASE("Creating a larger paged file", "[paged_file]") {
@@ -58,6 +59,7 @@ TEST_CASE("Creating a larger paged file", "[paged_file]") {
         REQUIRE(n == PAGE_SIZE);
         pf.close();
     }
+    remove("test2.dat");
 }
 
 TEST_CASE("Creating another larger paged file", "[paged_file]") {
@@ -100,6 +102,7 @@ TEST_CASE("Creating another larger paged file", "[paged_file]") {
         }
         pf.close();
     }
+    remove("test3.dat");
 }
 
 TEST_CASE("Creating a paged file and delete some pages", "[paged_file]") {
@@ -127,6 +130,8 @@ TEST_CASE("Creating a paged file and delete some pages", "[paged_file]") {
 
         REQUIRE(pf.allocate_page() == 42);
         pf.close();
+        remove("test4.dat");
+
 }
 
 TEST_CASE("Checking last valid page", "[paged_file]") {
@@ -145,4 +150,5 @@ TEST_CASE("Checking last valid page", "[paged_file]") {
     REQUIRE(pf.last_valid_page() == 6);
     REQUIRE(pf.free_page(3));
     REQUIRE(pf.last_valid_page() == 6);
+    remove("test5.dat");
 }

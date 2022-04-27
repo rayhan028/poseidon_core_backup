@@ -30,9 +30,12 @@ bool paged_file::open(const std::string& path, int file_type) {
         header_.ftype_ = file_type;
         header_.slots_.reset();
         file_.write((const char *)&header_, sizeof(header_));
+        std::cout << "create new paged_file: " << path << std::endl;
     }
     else {
         file_.open(path, std::fstream::in | std::fstream::out | std::fstream::binary);
+        std::cout << "open existing paged_file: " << path << std::endl;
+
         // read & check header
         file_.read((char *) &header_, sizeof(header_));
         if (memcmp(header_.fid_, "PSDN", 4) || header_.ftype_ != file_type) {

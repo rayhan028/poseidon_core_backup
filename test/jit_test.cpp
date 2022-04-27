@@ -62,7 +62,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_jit_graph");
 #endif
 
 #ifdef USE_TX
@@ -365,7 +365,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph2");
+  auto graph = pool->create_graph("my_jit_graph2");
 #endif
 
 #ifdef USE_TX

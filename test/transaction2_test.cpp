@@ -35,7 +35,7 @@ const std::string test_path = poseidon::gPmemPath + "transaction2_test";
 
 TEST_CASE("Test node update followed by delete"  "[transaction]") {  
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph30");
 
   node::id_t nid;
   gdb->run_transaction([&]() {
@@ -63,7 +63,7 @@ TEST_CASE("Test node update followed by delete"  "[transaction]") {
 
 TEST_CASE("Test relationship update followed by delete"  "[transaction]") {  
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph31");
 
   relationship::id_t rid;
   gdb->run_transaction([&]() {

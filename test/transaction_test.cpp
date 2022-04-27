@@ -66,7 +66,7 @@ const std::string test_path = poseidon::gPmemPath + "transaction_test";
 
 TEST_CASE("Test transaction execution"  "[transaction]") {  
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph1");
 
   gdb->run_transaction([&]() {
     gdb->add_node("Actor",
@@ -80,7 +80,7 @@ TEST_CASE("Test transaction execution"  "[transaction]") {
 
 TEST_CASE("Test concurrency: update during read"  "[transaction]") {  
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph2");
 
 	  node::id_t nid = 0;
 	  barrier  b1{}, b2{}, b3{};
@@ -142,7 +142,7 @@ TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {
 	* nodes created
 	*/
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph3");
 
 	  node::id_t nid = 0;
 	  barrier  b1{}, b2{}, b3{};
@@ -204,7 +204,7 @@ TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {
 
 TEST_CASE("Test concurrency between update abort and read"  "[transaction]") { 
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph4");
 
   node::id_t nid = 0;
   barrier  b1{}, b2{}, b3{};
@@ -264,7 +264,7 @@ TEST_CASE("Test two concurrent transactions trying to create nodes"  "[transacti
 * nodes created
 */
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph5");
 
   node::id_t nid1 = 0, nid2 = 0;
 
@@ -321,7 +321,7 @@ TEST_CASE("Test two concurrent transactions trying to create nodes"  "[transacti
 TEST_CASE("Checking that a newly inserted node exist in the transaction",
           "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph6");
 
   gdb->begin_transaction();
   auto nid = gdb->add_node("Movie", {});
@@ -337,7 +337,7 @@ TEST_CASE("Checking that a newly inserted node exist in the transaction",
 TEST_CASE("Checking that a newly inserted relationship exist in the transaction",
           "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph7");
 
   gdb->begin_transaction();
   auto m = gdb->add_node("Movie", {});
@@ -355,7 +355,7 @@ TEST_CASE("Checking that a newly inserted relationship exist in the transaction"
 
 TEST_CASE("Checking that a node update is undone after abort", "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph8");
 
   node::id_t nid = 0;
   {
@@ -398,7 +398,7 @@ TEST_CASE("Checking that a node update is undone after abort", "[transaction]") 
 
 TEST_CASE("Checking that a relationship update is undone after abort", "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph9");
 
   relationship::id_t rid = 0;
   {
@@ -442,7 +442,7 @@ TEST_CASE("Checking that a relationship update is undone after abort", "[transac
 
 TEST_CASE("Checking that a node insert is undone after abort", "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph10");
 
   node::id_t nid = 0;
   {
@@ -465,7 +465,7 @@ TEST_CASE("Checking that a node insert is undone after abort", "[transaction]") 
 
 TEST_CASE("Checking that a relationship insert is undone after abort", "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph11");
 
   node::id_t m, a;
   relationship::id_t rid;
@@ -515,7 +515,7 @@ TEST_CASE("Checking that a newly inserted node is not visible in another "
           "transaction",
           "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph12");
 
   node::id_t nid = 0;
   barrier b1, b2;
@@ -563,7 +563,7 @@ TEST_CASE("Checking that a newly inserted relationship is not visible in another
           "transaction",
           "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph13");
 
   node::id_t m, a;
   {
@@ -618,7 +618,7 @@ TEST_CASE("Checking that a newly inserted relationship is not visible in another
 TEST_CASE("Checking that a newly inserted node becomes visible after commit",
           "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph14");
 
   node::id_t nid = 0;
   {
@@ -647,7 +647,7 @@ TEST_CASE("Checking that a newly inserted node becomes visible after commit",
 TEST_CASE("Checking that a newly inserted relationship becomes visible after commit",
           "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph15");
 
   node::id_t m, a;
   {
@@ -682,7 +682,7 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
           "updated node",
           "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph16");
 
   node::id_t nid = 0;
   barrier b1, b2;
@@ -768,7 +768,7 @@ TEST_CASE("Checking that a update transaction is aborted if the object is "
           "already locked by another transaction",
           "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph17");
 
 barrier b1, b2, b3;
   // 1. create a new node
@@ -830,7 +830,7 @@ barrier b1, b2, b3;
 
 TEST_CASE("Checking basic transaction level GC", "[transaction][gc]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph18");
 
   node::id_t nid = 0;
 	{
@@ -857,7 +857,7 @@ TEST_CASE("Checking basic transaction level GC", "[transaction][gc]") {
 
 TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph19");
 
 	barrier b1, b2, b3, b4;
   node::id_t nid = 0;
@@ -952,7 +952,7 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
 
 TEST_CASE("Checking that deleting a node works", "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph20");
 
   node::id_t nid;
   {
@@ -987,7 +987,7 @@ TEST_CASE("Checking that deleting a node works", "[transaction]") {
 
 TEST_CASE("Checking that deleting a node works also within a transaction", "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph21");
 
   node::id_t nid;
   {
@@ -1018,7 +1018,7 @@ TEST_CASE("Checking that deleting a node works also within a transaction", "[tra
 
 TEST_CASE("Checking that detach delete a node works", "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph22");
 
   node::id_t a, b, c, d, e;
   {
@@ -1057,7 +1057,7 @@ TEST_CASE("Checking that detach delete a node works", "[transaction]") {
 
 TEST_CASE("Checking that detach delete also works within a transaction", "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph23");
 
   node::id_t a, b, c, d, e;
   {
@@ -1090,7 +1090,7 @@ TEST_CASE("Checking that detach delete also works within a transaction", "[trans
 
 TEST_CASE("Checking that aborting a delete transaction works", "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph24");
 
   node::id_t nid;
   {
@@ -1120,7 +1120,7 @@ TEST_CASE("Checking that aborting a delete transaction works", "[transaction]") 
 
 TEST_CASE("Checking that a delete transaction does not interfer with another transaction", "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph25");
 
   barrier b1, b2, b3;
   node::id_t nid;
@@ -1178,7 +1178,7 @@ TEST_CASE("Checking that a delete transaction does not interfer with another tra
 
 TEST_CASE("Checking two concurrent transactions trying to create node", "[transaction]") {
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph2");
+  auto gdb = pool->create_graph("my_tx_graph26");
 
   node::id_t nid1 = 0, nid2 = 0;
 

@@ -23,7 +23,7 @@
 
 dict::dict(bufferpool& bpool, const std::string& prefix, uint32_t init_pool_size) : bpool_(bpool) {
     dict_file_ = std::make_shared<paged_file>();
-    dict_file_->open(prefix + "dict.db", DICT_FILE_ID);
+    dict_file_->open(prefix == "" ? "dict.db" : prefix + "/dict.db", DICT_FILE_ID);
     bpool_.register_file(DICT_FILE_ID, dict_file_);
     pool_ = p_make_ptr<paged_string_pool>(bpool_, DICT_FILE_ID);
     initialize();

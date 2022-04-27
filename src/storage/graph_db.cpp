@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <set>
 
-#ifdef USE_MMFILE
+#if defined(USE_MMFILE) || defined(PAGED_FILE)
 #include <boost/filesystem.hpp>
 #endif
 
@@ -36,25 +36,16 @@ namespace nvm = pmem::obj;
 #endif
 
 void graph_db::destroy(graph_db_ptr gp) {
-#ifdef USE_MMFILE
-  auto prefix = gp->database_name_ + "/";
-  boost::filesystem::remove(prefix + "nodes.db");
-  boost::filesystem::remove(prefix + "slots_nodes.db");
-  boost::filesystem::remove(prefix + "rships.db");
-  boost::filesystem::remove(prefix + "slots_rships.db");
-  boost::filesystem::remove(prefix + "nprops.db");
-  boost::filesystem::remove(prefix + "slots_nprops.db");
-  boost::filesystem::remove(prefix + "rprops.db");
-  boost::filesystem::remove(prefix + "slots_rprops.db");
-  boost::filesystem::remove(prefix + "dict.db");
-  boost::filesystem::remove(prefix);
+#if defined(USE_MMFILE) || defined(PAGED_FILE)
+  boost::filesystem::path path_obj(gp->database_name_);
+  boost::filesystem::remove_all(path_obj);
 #endif
 }
 
 
 graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
   std::string prefix = "";
-#ifdef USE_MMFILE
+#if defined(USE_MMFILE) || defined(PAGED_FILE)
   boost::filesystem::path path_obj(db_name);
   // check if path exists and is of a regular file
   if (! boost::filesystem::exists(path_obj))
