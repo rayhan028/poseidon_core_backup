@@ -23,6 +23,7 @@
 #include <string>
 #include <memory>
 #include <bitset>
+#include <functional>
 
 #define PAGE_SIZE      1048576 // 1024 * 1024
 
@@ -32,7 +33,7 @@
 struct file_header {
     char fid_[4] = { 'P', 'S', 'D', 'N' }; // file identifier
     uint8_t ftype_;                        // items stored in the file (nodes, rships, properties)
-    std::bitset<65536> slots_;             // slots representing which pages are not used (1) or in use (0)
+    std::bitset<65536> slots_;             // slots representing which pages are not used (0) or in use (1)
 };
 
 /**
@@ -114,6 +115,8 @@ public:
      * Return true of the page_id refers to a valid page.
      */
     bool is_valid(page_id pid) const { return (pid < 1 || pid > npages_) ? false : header_.slots_.test(pid-1); }
+
+    void scan_pages(page& p, std::function<void(page&, page_id)> cb);
 
 private:
     /**

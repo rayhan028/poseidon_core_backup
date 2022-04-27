@@ -29,7 +29,6 @@ bool paged_file::open(const std::string& path, int file_type) {
         file_.open(path, std::fstream::in | std::fstream::out | std::fstream::trunc | std::fstream::binary);
         header_.ftype_ = file_type;
         header_.slots_.reset();
-        // memset((char *) header_.slots_, 0, sizeof(uint64_t) * 1024 / 8);
         file_.write((const char *)&header_, sizeof(header_));
     }
     else {
@@ -51,6 +50,8 @@ paged_file::~paged_file() {
 }
 
 void paged_file::close() {
+    if (!is_open()) return;
+
     // sync header
     file_.seekp(0, file_.beg);
     file_.write((char *) &header_, sizeof(header_));
@@ -88,7 +89,7 @@ paged_file::page_id paged_file::allocate_page() {
 
 paged_file::page_id paged_file::last_valid_page() {
     if (npages_ == 0) return allocate_page();
-    auto i = npages_-1;
+    auto i = npages_ - 1;
     while (i >= 0 && i < npages_) {
         if (header_.slots_.test(i)) {
             return i+1;
@@ -113,7 +114,7 @@ bool paged_file::read_page(paged_file::page_id pid, page& pg) {
         std::cout << "ERROR in read_page: " << (pid-1) << ", " << npages_ << std::endl;
         throw index_out_of_range();
     }
-//    std::cout << "read from pos " << (pid-1) * PAGE_SIZE + sizeof(file_header) << std::endl;
+    // std::cout << "read from pos " << (pid-1) * PAGE_SIZE + sizeof(file_header) << std::endl;
 
     file_.seekg((pid-1) * PAGE_SIZE + sizeof(file_header));
     file_.read((char *) pg.payload, PAGE_SIZE);     
@@ -127,7 +128,6 @@ bool paged_file::write_page(paged_file::page_id pid, page& pg) {
         std::cout << "ERROR in write_page: " << pid << ", " << npages_ << std::endl;
         throw index_out_of_range();
     }
-    // std::cout << "write at pos " << (pid-1) * PAGE_SIZE + sizeof(file_header) << std::endl;
     file_.seekp((pid-1) * PAGE_SIZE + sizeof(file_header));
     file_.write((char *) pg.payload, PAGE_SIZE); 
 
@@ -141,3 +141,17 @@ paged_file::page_id paged_file::find_first_slot() {
     }
     return 0;
 }
+
+void paged_file::scan_pages(page& pg, std::function<void(page&, paged_file::page_id)> cb) {
+    paged_file::page_id pid = 1;
+    file_.seekg(sizeof(file_header));
+    while (!file_.eof()) {
+        file_.read((char *) pg.payload, PAGE_SIZE);   
+        if (header_.slots_.test(pid-1))  
+            cb(pg, pid);
+        pid++;
+    }
+    // reset the eof flag, otherwise tellp will fail
+    file_.clear();
+}
+

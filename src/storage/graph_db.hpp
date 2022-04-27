@@ -44,6 +44,10 @@
 #include "csr_delta.hpp"
 #endif
 
+#ifdef PAGED_FILE
+#include "bufferpool.hpp"
+#endif
+
 /**
  * graph_db represents a graph consisting of nodes and relationships with
  * properties stored in a database. The class provides methods for constructing
@@ -635,6 +639,9 @@ private:
   void vacuum(xid_t tx);
 
   std::string database_name_;
+#ifdef PAGED_FILE
+  bufferpool bpool_;
+#endif
   p_ptr<node_list> nodes_; // the list of all nodes of the graph
   p_ptr<relationship_list>
       rships_; // the list of all relationships of the graph

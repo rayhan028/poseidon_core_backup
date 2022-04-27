@@ -1334,7 +1334,7 @@ struct projection_expr {
      */
     PROJECTION_TYPE prt;
 
-    projection_expr(udf_projection udf) : prt(PROJECTION_TYPE::FUNCTIONAL_VAL), udf_function(udf) {}
+    projection_expr(udf_projection udf) : udf_function(udf), prt(PROJECTION_TYPE::FUNCTIONAL_VAL) {}
     projection_expr(std::size_t i) : id(i), type(result_type::none), int_node_func(nullptr), prt(PROJECTION_TYPE::FORWARD_PR)  {}
     projection_expr(std::size_t i, int_prj_func_node func) : id(i), int_node_func(func), prt(PROJECTION_TYPE::FUNCTIONAL_VAL) {}
     projection_expr(std::size_t i, std::string k, result_type t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist), prt(PROJECTION_TYPE::PROPERTY_PR) {}

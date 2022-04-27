@@ -25,6 +25,7 @@ bufferpool::bufferpool(std::size_t bsize) : bsize_(bsize), slots_(bsize_) {
 }
 
 bufferpool::~bufferpool() {
+    flush_all();
     delete [] buffer_;
 }
 
@@ -38,10 +39,21 @@ paged_file_ptr bufferpool::get_file(uint8_t file_id) {
     return files_[file_id];
 }
 
-page* bufferpool::last_valid_page(uint8_t file_id) {
+void bufferpool::scan_file(uint8_t file_id, std::function<void(page *p)> cb) {
+    assert(file_id < 10 && files_[file_id]);
+    auto pos = slots_.find_first();
+    slots_.flip(pos);
+
+    files_[file_id]->scan_pages(buffer_[pos], [&](page& pg, paged_file::page_id pid) {
+        cb(&pg);
+    });
+    slots_.flip(pos);
+}
+ 
+std::pair<page*, paged_file::page_id> bufferpool::last_valid_page(uint8_t file_id) {
     assert(file_id < 10 && files_[file_id]);
     auto pid = files_[file_id]->last_valid_page();
-    return fetch_page(pid);
+    return std::make_pair(fetch_page(pid | (static_cast<uint64_t>(file_id) << 60)), pid);
 }
 
 page *bufferpool::fetch_page(paged_file::page_id pid) {
@@ -56,7 +68,7 @@ page *bufferpool::fetch_page(paged_file::page_id pid) {
         return iter->second.p_;
     }
     if (lru_list_.size() == bsize_)
-        // TODO: evict page from lru_list_.front();
+        // evict page from lru_list_.front();
         evict_page();
 
     // load page from file
@@ -68,10 +80,10 @@ page *bufferpool::fetch_page(paged_file::page_id pid) {
     return p;
 }
     
-page* bufferpool::allocate_page(uint8_t file_id) {
+std::pair<page*, paged_file::page_id> bufferpool::allocate_page(uint8_t file_id) {
     assert(file_id < 10 && files_[file_id]);
     paged_file::page_id pid = files_[file_id]->allocate_page();
-    return fetch_page(pid | (static_cast<uint64_t>(file_id) << 60)); 
+    return std::make_pair(fetch_page(pid | (static_cast<uint64_t>(file_id) << 60)), pid);
 }
  
 void bufferpool::mark_dirty(paged_file::page_id pid) {

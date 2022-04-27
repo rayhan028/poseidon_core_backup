@@ -381,4 +381,5 @@ expr qparser::parse_expression(parse_tree_ptr& tree) {
   else {
     std::cout << "ERROR: unknown expr: " << tree->string() << std::endl;    
   }
+  return nullptr;
 }

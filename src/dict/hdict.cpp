@@ -19,24 +19,28 @@
 #include <iostream>
 #include "hdict.hpp"
 
-dict::dict(const std::string& prefix, uint32_t init_pool_size)
-#ifdef USE_MMFILE
-   : dict_file_(prefix + "dict.db", init_pool_size)
-#endif
- {
-#ifdef USE_MMFILE
-    uint8_t *base_addr = static_cast<uint8_t *>(dict_file_.base_address());
-    std::size_t region_size = dict_file_.size();
-    pool_ = std::make_shared<string_pool>(base_addr, region_size);
-#else
-    pool_ = p_make_ptr<string_pool>(init_pool_size);
-#endif
+#ifdef PAGED_FILE
+
+dict::dict(bufferpool& bpool, const std::string& prefix, uint32_t init_pool_size) : bpool_(bpool) {
+    dict_file_ = std::make_shared<paged_file>();
+    dict_file_->open(prefix + "dict.db", DICT_FILE_ID);
+    bpool_.register_file(DICT_FILE_ID, dict_file_);
+    pool_ = p_make_ptr<paged_string_pool>(bpool_, DICT_FILE_ID);
     initialize();
 }
 
+#else
+
+dict::dict(const std::string& prefix, uint32_t init_pool_size) {
+    pool_ = p_make_ptr<string_pool>(init_pool_size);
+    initialize();
+}
+#endif
+
 dict::~dict() {
-#ifdef USE_MMFILE
-    dict_file_.close();
+#ifdef PAGED_FILE
+    bpool_.flush_all();
+    dict_file_->close();
 #elif defined(USE_PMDK)
  auto pop = pmem::obj::pool_by_vptr(this);
   pmem::obj::transaction::run(pop, [&] {

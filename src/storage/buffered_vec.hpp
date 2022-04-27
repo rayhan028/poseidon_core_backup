@@ -486,7 +486,7 @@ class buffered_vec {
     for (auto i = 0; i < nchunks; i++) {
       auto pg = bpool_.allocate_page(file_id_);
       // initialize pg with chunk
-      auto chk = new(pg->payload) chunk<T, num_entries>();
+      auto chk = new(pg.first->payload) chunk<T, num_entries>();
       chk->slots_.reset();
       chk->first_ = 0;
       capacity_ += elems_per_chunk_;
@@ -565,7 +565,7 @@ private:
 
   chunk_ptr get_last_chunk() const {
     auto pg = bpool_.last_valid_page(file_id_);
-    return pg != nullptr ? reinterpret_cast<chunk_ptr>(pg->payload) : nullptr;
+    return pg.first != nullptr ? reinterpret_cast<chunk_ptr>(pg.first->payload) : nullptr;
   }
 
   //--

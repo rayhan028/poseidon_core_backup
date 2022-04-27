@@ -22,12 +22,14 @@
 #include <string>
 #include <memory>
 #include "defs.hpp"
-#include "string_pool.hpp"
-#include "htable.hpp"
 
-#ifdef USE_MMFILE
-#include "mm_file.hpp"
+#ifdef PAGED_FILE
+#include "bufferpool.hpp"
+#include "paged_string_pool.hpp"
+#else
+#include "string_pool.hpp"
 #endif
+#include "htable.hpp"
 
 /**
  * This class implements an (updatable) string dictionary. Strings are stored in
@@ -35,7 +37,7 @@
  * memory region is used as the code which replaces the string value. To get the
  * mapping between the code and the actual string a hash table (htable) is used.
  * 
- * The string_pool is stored persistently (either in PMem or in a memory mapped file),
+ * The string_pool is stored persistently (either in PMem or in a paged file),
  * the hash table is maintained in memory.
  */ 
 class dict {
@@ -44,7 +46,11 @@ public:
      * Create a new dictionary with the initial string pool size. The prefix argument 
      * is used only for the path of a memory-mapped file.
      */
+#ifdef PAGED_FILE
+    dict(bufferpool& bpool, const std::string& prefix = "", uint32_t init_pool_size = 100000);
+#else
     dict(const std::string& prefix = "", uint32_t init_pool_size = 100000);
+#endif
 
     /**
      * Destructor.
@@ -91,11 +97,14 @@ public:
     std::size_t size() const;
 
 private:
-#ifdef USE_MMFILE
-    mm_file dict_file_;              // the memory-mapped file
-#endif
+#ifdef PAGED_FILE
+    bufferpool& bpool_;
+    std::shared_ptr<paged_file> dict_file_;
+    p_ptr<paged_string_pool> pool_;  // the string pool for storing the actual strings
+#else
     p_ptr<string_pool> pool_;        // the string pool for storing the actual strings
-    htable *table_;  		     // the hash table for mapping codes to strings
+#endif
+    htable *table_;  		             // the hash table for mapping codes to strings
     std::mutex m_;                   // a mutex for synchronizing access to the dictionary
 };
 

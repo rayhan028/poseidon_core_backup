@@ -372,6 +372,7 @@ if(USE_HDICT MATCHES ON)
   add_definitions( "-DUSE_HDICT" )
   set(dict_src 
     src/dict/string_pool.cpp 
+    src/dict/paged_string_pool.cpp 
     src/dict/htable.cpp
     src/dict/hdict.cpp)
 elseif(USE_PMDK MATCHES ON)

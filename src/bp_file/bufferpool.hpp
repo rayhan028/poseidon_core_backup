@@ -23,6 +23,7 @@
 #include <array>
 #include <unordered_map>
 #include <shared_mutex>
+#include <functional>
 #include <boost/dynamic_bitset.hpp>
 #include "paged_file.hpp"
 
@@ -66,14 +67,16 @@ public:
     /**
      * Allocate a new page in the given file.
      */
-    page* allocate_page(uint8_t file_id);
+    std::pair<page*, paged_file::page_id> allocate_page(uint8_t file_id);
+
+    void scan_file(uint8_t file_id, std::function<void(page *)> cb);
 
     /**
      * Return the page_id of the last valid page of the given file.
      * If it doesn't exist (in case of an empty file) then a new
      * page is allocated.
      */
-    page* last_valid_page(uint8_t file_id);
+    std::pair<page*, paged_file::page_id> last_valid_page(uint8_t file_id);
 
     /**
      * Mark the page identified by the given id as dirty, i.e.

@@ -33,6 +33,12 @@
 
 #define POSEIDON_VERSION "0.0.4"
 
+#define PAGED_FILE
+
+#define DICT_FILE_ID  0
+#define NODE_FILE_ID  1
+#define RSHIP_FILE_ID 2
+
 /**
  * Typedef used for codes in string dictionaries and type tables.
  */

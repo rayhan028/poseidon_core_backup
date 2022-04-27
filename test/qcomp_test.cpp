@@ -9,6 +9,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "config.h"
+#include "defs.hpp"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
 
@@ -40,13 +41,16 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
   auto graph = pool->create_graph("my_graph");
 #endif
 
-	p_ptr<dict> dct;
 #ifdef USE_PMDK
+  p_ptr<dict> dct;
 	nvm::transaction::run(pop, [&] {
-#endif
 		dct = p_make_ptr<dict>();
-#ifdef USE_PMDK
 	});
+#elif defined(PAGED_FILE)
+  bufferpool bpool;
+  p_ptr<dict> dct = p_make_ptr<dict>(bpool);
+#else
+  p_ptr<dict> dct = p_make_ptr<dict>();
 #endif
 
     queryc qlc;

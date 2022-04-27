@@ -69,7 +69,11 @@ graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
 #endif
+#ifdef PAGED_FILE
+  dict_ = p_make_ptr<dict>(bpool_, prefix);
+#else
   dict_ = p_make_ptr<dict>(prefix);
+#endif
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
 #if defined CSR_DELTA_STORE && defined USE_TX

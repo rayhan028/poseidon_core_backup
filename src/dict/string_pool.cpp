@@ -68,8 +68,8 @@ void string_pool::scan(std::function<void(const char *s, dcode_t c)> cb) {
 
 const char *string_pool::extract(dcode_t pos) const {
     assert(pos < last_);
-    auto p = pos;
-    while (p < last_ && pool_[p++] != '\0') ;
+    // auto p = pos;
+    // while (p < last_ && pool_[p++] != '\0') ;
     // return std::string(&pool_[pos], p - pos - 1);
     return &pool_[pos];
 }

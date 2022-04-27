@@ -81,7 +81,7 @@ struct result_set {
     std::size_t cmp_type; // typecode of comparison - corresponds to query_result.which()
 
     sort_spec() = default;
-    sort_spec(std::size_t idx, std::size_t cmp, sort_order so = Asc) : s_order(so), vidx(idx), pcode(UNKNOWN), cmp_type (cmp) {}
+    sort_spec(std::size_t idx, std::size_t cmp, sort_order so = Asc) : s_order(so), vidx(idx), pcode(UNKNOWN_CODE), cmp_type (cmp) {}
   };
   using sort_spec_list = std::vector<sort_spec>;
   using iterator = std::list<qr_tuple>::iterator;

@@ -34,7 +34,6 @@ const std::string test_path = poseidon::gPmemPath + "dict_test";
 struct root {
   nvm::persistent_ptr<dict> dict_p;
 };
-
 #endif
 
 TEST_CASE("Inserting some strings", "[dict]") {
@@ -47,6 +46,9 @@ TEST_CASE("Inserting some strings", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
+#elif defined(PAGED_FILE)
+  bufferpool bpool;
+  dict d(bpool);
 #else
   dict d;
 #endif
@@ -61,12 +63,10 @@ TEST_CASE("Inserting some strings", "[dict]") {
   d.insert("String #2");
   REQUIRE(d.size() == 5);
 
-  std::cout << "end of test" << std::endl;
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif defined(USE_MMFILE)
-  std::cout << "remove dict file..." << std::endl;
+#elif defined(PAGED_FILE)
   remove("dict.db");
 #endif
 }
@@ -81,6 +81,9 @@ TEST_CASE("Inserting duplicate strings", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
+#elif defined(PAGED_FILE)
+  bufferpool bpool;
+  dict d(bpool);
 #else
   dict d;
 #endif
@@ -96,7 +99,7 @@ TEST_CASE("Inserting duplicate strings", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif defined(USE_MMFILE)
+#elif defined(PAGED_FILE)
   remove("dict.db");  
 #endif
 }
@@ -111,6 +114,9 @@ TEST_CASE("Looking up some strings", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
+#elif defined(PAGED_FILE)
+  bufferpool bpool;
+  dict d(bpool);
 #else
   dict d;
 #endif
@@ -128,7 +134,7 @@ TEST_CASE("Looking up some strings", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif defined(USE_MMFILE)
+#elif defined(PAGED_FILE)
   remove("dict.db"); 
 #endif
 }
@@ -143,6 +149,9 @@ TEST_CASE("Looking up some codes", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
+#elif defined(PAGED_FILE)
+  bufferpool bpool;
+  dict d(bpool);
 #else
   dict d;
 #endif
@@ -160,7 +169,7 @@ TEST_CASE("Looking up some codes", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif defined(USE_MMFILE)
+#elif defined(PAGED_FILE)
   remove("dict.db"); 
 #endif
 }
@@ -175,6 +184,9 @@ TEST_CASE("Looking up some non-existing strings", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
+#elif defined(PAGED_FILE)
+  bufferpool bpool;
+  dict d(bpool);
 #else
   dict d;
 #endif
@@ -189,7 +201,7 @@ TEST_CASE("Looking up some non-existing strings", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif defined(USE_MMFILE)
+#elif defined(PAGED_FILE)
   remove("dict.db"); 
 #endif
 }
@@ -224,23 +236,26 @@ TEST_CASE("Test persistency of dict", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 }
-#elif defined(USE_MMFILE)
+#elif defined(PAGED_FILE)
 TEST_CASE("Test persistency of dict", "[dict]") {
   dcode_t c;
   {
-  dict d;
+    bufferpool bpool;
+    dict d(bpool);
 
-  d.insert("String #1");
-  d.insert("String #2");
-  d.insert("String #3");
-  c = d.insert("String #4");
-  d.insert("String #5");
+    d.insert("String #1");
+    d.insert("String #2");
+    d.insert("String #3");
+    c = d.insert("String #4");
+    d.insert("String #5");
+
   }
 
   {
-  dict d2;
+    bufferpool bpool;
+    dict d2(bpool);
 
-  REQUIRE(d2.lookup_string("String #4") == c);
+    REQUIRE(d2.lookup_string("String #4") == c);
   }
   remove("dict.db");
 }
