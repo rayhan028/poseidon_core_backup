@@ -89,7 +89,7 @@ void update_data(graph_db_ptr graph) {
 TEST_CASE("Storing delta of transactional updates", "[csr_delta]"){
 #if defined CSR_DELTA_STORE && defined USE_TX
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_dgraph1");
   create_known_data(graph);
 
   csr_delta::delta_map_t update_deltas, append_deltas;

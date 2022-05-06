@@ -25,6 +25,19 @@
 #include "nodes.hpp"
 
 #include <sstream>
+#include <boost/filesystem.hpp>
+
+void create_dir(const std::string& path) {
+    boost::filesystem::path path_obj(path);
+    // check if path exists and is of a regular file
+    if (! boost::filesystem::exists(path_obj))
+        boost::filesystem::create_directory(path_obj);
+}
+
+void delete_dir(const std::string& path) {
+    boost::filesystem::path path_obj(path);
+    boost::filesystem::remove_all(path_obj);
+}
 
 #ifdef USE_PMDK
 #define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
@@ -92,12 +105,20 @@ TEST_CASE("Creating a few nodes in the node list", "[nodes]") {
   nvm::transaction::run(
       pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list>(); });
 #endif
+  create_dir("ntest1");
 
   SECTION("Creating nodes") {
 #ifdef USE_PMDK
   node_list &nlist = *(root_obj->nlist_p);
+#elif defined(PAGED_FILE)
+  auto test_file = std::make_shared<paged_file>();
+  test_file->open("ntest1/nodes1.db", 1);
+  bufferpool bpool;
+  bpool.register_file(1, test_file);
+
+  node_list nlist(bpool, 1);
 #else
-  node_list nlist("nodes1.db");
+  node_list nlist;
 #endif
 
   auto n1 = nlist.add(node(62));
@@ -127,9 +148,8 @@ TEST_CASE("Creating a few nodes in the node list", "[nodes]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif USE_MMFILE
-  remove("nodes1.db");
-  remove("slots_nodes1.db");
+#elif defined(PAGED_FILE)
+  delete_dir("ntest1");
 #endif
 }
 
@@ -146,8 +166,16 @@ TEST_CASE("Creating and restoring a persistent node list", "[nodes]") {
   nvm::transaction::run(
       pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list>(); });
   node_list &nlist = *(root_obj->nlist_p);
+#elif defined(PAGED_FILE)
+  create_dir("ntest2");
+  auto test_file = std::make_shared<paged_file>();
+  test_file->open("ntest2/nodes2.db", 1);
+  bufferpool bpool;
+  bpool.register_file(1, test_file);
+
+  node_list nlist(bpool, 1);
 #else
-  node_list nlist("nodes2.db");
+  node_list nlist;
 #endif
   n1 = nlist.add(node(62));
   n2 = nlist.add(node(63));
@@ -173,8 +201,15 @@ TEST_CASE("Creating and restoring a persistent node list", "[nodes]") {
   root_obj = pop.root();
 
   node_list &nlist2 = *(root_obj->nlist_p);
+#elif defined(PAGED_FILE)  
+  auto test_file = std::make_shared<paged_file>();
+  test_file->open("ntest2/nodes2.db", 1);
+  bufferpool bpool;
+  bpool.register_file(1, test_file);
+
+  node_list nlist2(bpool, 1);
 #else
-  node_list nlist2("nodes2.db");
+  node_list nlist2;
 #endif
 
   REQUIRE(nlist2.get(n1).id() == n1);
@@ -193,9 +228,8 @@ TEST_CASE("Creating and restoring a persistent node list", "[nodes]") {
 
 #ifdef USE_PMDK
   remove(test_path.c_str());
-#else
-  remove("nodes2.db");
-  remove("slots_nodes2.db");
+#elif defined(PAGED_FILE)
+  delete_dir("ntest2");
 #endif
 }
 #endif
@@ -212,8 +246,16 @@ TEST_CASE("Deleting a node", "[nodes]") {
   SECTION("Delete") {
 #ifdef USE_PMDK
   node_list &nlist = *(root_obj->nlist_p);
+#elif defined(PAGED_FILE)
+  create_dir("ntest3");
+  auto test_file = std::make_shared<paged_file>();
+  test_file->open("ntest3/nodes3.db", 1);
+  bufferpool bpool;
+  bpool.register_file(1, test_file);
+
+  node_list nlist(bpool, 1);
 #else
-  node_list nlist("nodes3.db");
+  node_list nlist;
 #endif
   auto n1 = nlist.add(node(62));
   auto n2 = nlist.add(node(63));
@@ -234,9 +276,53 @@ TEST_CASE("Deleting a node", "[nodes]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif USE_MMFILE
-  remove("nodes3.db");
-  remove("slots_nodes3.db");
+#elif defined(PAGED_FILE)
+  delete_dir("ntest3");
+#endif
+}
+
+TEST_CASE("Appending a node", "[nodes]") {
+#ifdef USE_PMDK
+  auto pop = nvm::pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
+  auto root_obj = pop.root();
+
+  nvm::transaction::run(
+      pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list>(); });
+  node_list &nlist = *(root_obj->nlist_p);
+#elif defined(PAGED_FILE)
+  create_dir("ntest4");
+  auto test_file = std::make_shared<paged_file>();
+  test_file->open("ntest4/nodes4.db", 1);
+  bufferpool bpool;
+  bpool.register_file(1, test_file);
+
+  node_list nlist(bpool, 1);
+#else
+  node_list nlist;
+#endif
+
+  auto n1 = nlist.append(node(62));
+  REQUIRE(n1 == 0);
+
+  REQUIRE(nlist.get(n1).id() == n1);
+  REQUIRE(nlist.get(n1).node_label == 62);
+
+  for (auto i = 0u; i < 100; i++)
+    nlist.append(node(100 + i));
+  
+  nlist.dump();
+
+  int num = 0;
+  for (auto& ni : nlist.as_vec()) {
+    num++;
+  }
+  REQUIRE(num == 101);
+  
+#ifdef USE_PMDK
+  pop.close();
+  remove(test_path.c_str());
+#elif defined(PAGED_FILE)
+  delete_dir("ntest4");
 #endif
 }
 

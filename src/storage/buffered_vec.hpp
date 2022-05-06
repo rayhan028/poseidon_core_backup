@@ -1,9 +1,6 @@
 /*
 TODO:
-- range_iter
 - clear
-- store
-- last_used
 */
 
 /*
@@ -44,29 +41,29 @@ TODO:
 #include "paged_file.hpp"
 #include "spdlog/spdlog.h"
 
-#define DEFAULT_CHUNK_SIZE PAGE_SIZE
+#define DEFAULT_BCHUNK_SIZE PAGE_SIZE
 
 /**
- * chunk is a contiguous buffer of a fixed size which stores records (byte
- * sequences) of the type given as template parameter. chunks can form a linked
- * list.
+ * bchunk is a contiguous buffer of a fixed size which stores records (byte
+ * sequences) of the type given as template parameter. 
+ * 
  * @tparam T type to records
  * @tparam num_records number of records to store per chunk
  */
 template <typename T, int num_records>
-struct chunk {
+struct bchunk {
   T data_[num_records];             // the array of data
   std::bitset<num_records> slots_;  // bitstring representing empty slots (0), used slots (1)
   uint32_t first_;                  // the index of the first available slot
   /**
    * Create a new chunk, allocate and initialize the memory.
    */
-  chunk() : first_(0) {}
+  bchunk() : first_(0) {}
 
   /**
    * Deallocate the memory.
    */
-  ~chunk() = default;
+  ~bchunk() = default;
 
   /**
    * Returns true if the slot at position i is used by a record.
@@ -156,12 +153,12 @@ struct chunk {
  * iteration while range allows to specifiy a start and end chunk for the
  * iteration.
  */
-template <typename T, int chunk_size = DEFAULT_CHUNK_SIZE>
+template <typename T, int chunk_size = DEFAULT_BCHUNK_SIZE>
 class buffered_vec {
   static constexpr auto num_entries = static_cast<int>((chunk_size - 5) / (sizeof(T) + 1/8.0));
 
 /// The type for pointers to single chunks.
-  using chunk_ptr = chunk<T, num_entries> *;
+  using bchunk_ptr = bchunk<T, num_entries> *;
 
  public:
   /**
@@ -170,7 +167,9 @@ class buffered_vec {
   class iter {
    public:
     iter(buffered_vec& bv, paged_file::page_id pid, paged_file::page_id num, offset_t p = 0) : 
-      bvec_(bv), curr_pid_(pid), npages_(num), pos_(p) {
+      bvec_(bv), curr_pid_(pid), npages_(num), cptr_(nullptr), pos_(p) {
+        if (pid == 0) 
+          return; 
         cptr_ = bvec_.load_chunk(pid); 
       // make sure the element at pos_ isn't deleted
       if (cptr_ != nullptr) {
@@ -188,7 +187,7 @@ class buffered_vec {
     }
 
     bool operator!=(const iter &other) const {
-      return cptr_ != other.cptr_|| pos_ != other.pos_;
+      return cptr_ != other.cptr_ || pos_ != other.pos_;
     }
 
     T &operator*() const {
@@ -211,55 +210,51 @@ class buffered_vec {
     buffered_vec& bvec_;
     paged_file::page_id curr_pid_;  // page_id of the current chunk
     paged_file::page_id npages_;    // number of chunks
-    chunk_ptr cptr_;                // pointer to the current chunk
+    bchunk_ptr cptr_;                // pointer to the current chunk
     offset_t pos_;                  // position within the current chunk
   };
 
-#if 0
   struct range_iter {
-    range_iter(chunked_vec &v, std::size_t first, std::size_t last, std::size_t pos = 0)
-        : vec_(v), range_(first, last), current_chunk_(first),
+    range_iter(buffered_vec &v, paged_file::page_id first, paged_file::page_id last, std::size_t pos = 0)
+        : bvec_(v), range_(first, last), current_pid_(first),
           cptr_(nullptr), pos_(pos) {
-            if (vec_.chunk_list_.size() > 0)
-              cptr_ = vec_.chunk_list_[first];
+          cptr_ = bvec_.load_chunk(current_pid_); 
         }
 
-    operator bool() const { return current_chunk_ <= range_.second && cptr_; }
+    operator bool() const { return current_pid_ <= range_.second && cptr_; }
 
     T &operator*() const { return cptr_->data_[pos_]; }
 
     range_iter &operator++() {
       do {
         if (++pos_ == num_entries) {
-          cptr_ = cptr_->next_;
-          current_chunk_++;
+          cptr_ = bvec_.load_chunk(++current_pid_); 
           pos_ = 0;
         }
         // make sure, cptr_[pos_] is valid
-      } while (current_chunk_ <= range_.second && cptr_ &&
+      } while (current_pid_ <= range_.second && cptr_ &&
                !cptr_->is_used(pos_));
       return *this;
     }
 
-    std::size_t get_cur_chunk() { return current_chunk_; }
+    std::size_t get_cur_chunk() { return current_pid_; }
     std::size_t get_cur_pos() { return pos_; }
 
   private:
-    chunked_vec &vec_; // reference to the actual chunked_vec
-    std::pair<std::size_t, std::size_t> range_; // range of chunks to visit
-    std::size_t current_chunk_; // position of the current chunk (initially
+    buffered_vec &bvec_; // reference to the actual chunked_vec
+    std::pair<paged_file::page_id, paged_file::page_id> range_; // range of chunks to visit
+    paged_file::page_id current_pid_; // position of the current chunk (initially
                                 // range_.first)
-    chunk_ptr cptr_;            // pointer to the current chunk
+    bchunk_ptr cptr_;            // pointer to the current chunk
     offset_t pos_;              // position within the current chunk
   };
-#endif
 
   /**
    * Create a new vector associated with a file in the bufferpool.
    */
   buffered_vec(bufferpool& pool, uint64_t file_id)
       : bpool_(pool), file_id_(file_id), file_mask_(file_id << 60),
-        available_slots_(0), elems_per_chunk_(num_entries) {
+        available_slots_(0), elems_per_chunk_(num_entries), capacity_(0) {
           // TODO: initialize available_slots_ for an existing file
   }
 
@@ -285,17 +280,17 @@ class buffered_vec {
   /**
    * Return an iterator pointing to the end of the chunked_vec.
    */
-  iter end() { return iter(*this, num_chunks(), num_chunks()); }
+  iter end() { 
+    return iter(*this, 0, 0); 
+  }
 
-#if 0
   range_iter range(std::size_t first_chunk, std::size_t last_chunk, std::size_t start_pos = 0) {
-    return range_iter(*this, first_chunk, last_chunk, start_pos);
+    return range_iter(*this, first_chunk + 1, last_chunk + 1, start_pos);
   }
 
   range_iter* range_ptr(std::size_t first_chunk, std::size_t last_chunk, std::size_t start_pos = 0) {
     return new range_iter(*this, first_chunk, last_chunk, start_pos);
   }
-#endif
 
   /**
    * Store the given record at position idx (note: move semantics) and mark this
@@ -327,12 +322,12 @@ class buffered_vec {
 
     if (is_full())
       resize(1);
-    auto tail = get_last_chunk();
+    auto tail = get_last_chunk(true); // TODO: not always necessary!
     assert(tail != nullptr);
 
     if (tail->is_full()) {
       resize(1);
-      tail = get_last_chunk();
+      tail = get_last_chunk(true);
     }
     auto pos = tail->first_available();
     assert(pos != SIZE_MAX);
@@ -354,35 +349,30 @@ class buffered_vec {
    * pointer(!) to the record as a pair.
    */
   std::pair<offset_t, T *> store(T &&o, std::function<void(offset_t)> callback = nullptr) {
-    chunk_ptr ch;
-    offset_t idx = 0;
-
-    std::unique_lock lock(fl_mtx_);
-    if (free_list_.empty()) {
-      // if we don't have anything in the freelist, we have to resize
+     if (is_full())
       resize(1);
-      // the new chunk is at the end of the chunklist
-      ch = chunk_list_.back();
-      // and we find its idx in the freelist
-      //idx = find_in_free_list();
+    // TODO: find a chunk with empty slots
+
+    auto chk = get_last_chunk(true); // TODO: not always necessary!
+    assert(chk != nullptr);
+
+    if (chk->is_full()) {
+      resize(1);
+      chk = get_last_chunk(true);
     }
-    else {
-      // otherwise we find the next available chunk in the freelist
-      //idx = find_in_free_list();
-      ch = find_chunk(idx);
-    }
-    offset_t pos = ch->first_available();
+    auto pos = chk->first_available();
     assert(pos != SIZE_MAX);
-    if (callback != nullptr) callback(idx + pos);
+    auto offs = (bpool_.get_file(file_id_)->num_pages() - 1) * elems_per_chunk_;
+    if (callback != nullptr) callback(offs + pos);
     available_slots_--;
-    ch->set(pos, true);
-    ch->data_[pos] = o;
+    chk->set(pos, true);
+    chk->data_[pos] = o;
     /*
-    if (ch->is_full()) {
-      remove_from_free_list(idx);
+    if (tail->is_full()) {
+      remove_from_free_list(offs);
     }
     */
-    return std::make_pair(idx + pos, &ch->data_[pos]);
+    return std::make_pair(offs + pos, &chk->data_[pos]);
   }
 
   /**
@@ -434,8 +424,10 @@ class buffered_vec {
    * chunk. The index is a global offset in the chunked_vec.
    */
   offset_t last_used() const {
-    chunk_ptr ch = chunk_list_.back();
-    std::size_t idx = (chunk_list_.size() - 1) * elems_per_chunk_ + ch->last_used();
+    auto pg = bpool_.last_valid_page(file_id_);
+    assert(pg.first != nullptr);
+    bchunk_ptr ch = reinterpret_cast<bchunk_ptr>(pg.first->payload);
+    std::size_t idx = (pg.second - 1) * elems_per_chunk_ + ch->last_used();
     return idx;
   }
 
@@ -486,7 +478,7 @@ class buffered_vec {
     for (auto i = 0; i < nchunks; i++) {
       auto pg = bpool_.allocate_page(file_id_);
       // initialize pg with chunk
-      auto chk = new(pg.first->payload) chunk<T, num_entries>();
+      auto chk = new(pg.first->payload) bchunk<T, num_entries>();
       chk->slots_.reset();
       chk->first_ = 0;
       capacity_ += elems_per_chunk_;
@@ -516,7 +508,7 @@ class buffered_vec {
    */
   uint32_t elements_per_chunk() const { return elems_per_chunk_; }
 
-  uint32_t real_chunk_size() const { return sizeof(chunk<T, num_entries>); }
+  uint32_t real_chunk_size() const { return sizeof(bchunk<T, num_entries>); }
 
 private:
 #if 0
@@ -544,7 +536,7 @@ private:
    * Finds the chunk that stores the record at the given index or raises
    * an exception if the index is out of range.
    */
-  chunk_ptr find_chunk(offset_t idx, bool modify = false) const {
+  bchunk_ptr find_chunk(offset_t idx, bool modify = false) const {
     auto page_id = idx / elems_per_chunk_ + 1;
     auto pg = bpool_.fetch_page(page_id | file_mask_);
     
@@ -552,20 +544,22 @@ private:
 
     if (modify)
       bpool_.mark_dirty(page_id | file_mask_);
-    return reinterpret_cast<chunk_ptr>(pg->payload);
+    return reinterpret_cast<bchunk_ptr>(pg->payload);
   }
 
-  chunk_ptr load_chunk(paged_file::page_id pid) const {
+  bchunk_ptr load_chunk(paged_file::page_id pid) const {
     if (!bpool_.get_file(file_id_)->is_valid(pid))
       return nullptr;
 
     auto pg = bpool_.fetch_page(pid | file_mask_);
-    return reinterpret_cast<chunk_ptr>(pg->payload);
+    return reinterpret_cast<bchunk_ptr>(pg->payload);
   }
 
-  chunk_ptr get_last_chunk() const {
+  bchunk_ptr get_last_chunk(bool modify = false) const {
     auto pg = bpool_.last_valid_page(file_id_);
-    return pg.first != nullptr ? reinterpret_cast<chunk_ptr>(pg.first->payload) : nullptr;
+    if (modify && pg.first)
+      bpool_.mark_dirty(pg.second);
+    return pg.first != nullptr ? reinterpret_cast<bchunk_ptr>(pg.first->payload) : nullptr;
   }
 
   //--
@@ -576,9 +570,10 @@ private:
   offset_t capacity_; // total capacity of the chunked_vec in number of records
 
   //--
-  std::vector<chunk_ptr> chunk_list_; // the list of pointers to all chunks
+  std::vector<bchunk_ptr> chunk_list_; // the list of pointers to all chunks
   std::vector<offset_t> free_list_;   // the list of chunks with empty slots (described by their indexes)
   mutable std::shared_mutex fl_mtx_;  // mutex for accessing the free list
 };
+
 
 #endif

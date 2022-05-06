@@ -35,9 +35,11 @@
 
 #define PAGED_FILE
 
-#define DICT_FILE_ID  0
-#define NODE_FILE_ID  1
-#define RSHIP_FILE_ID 2
+#define DICT_FILE_ID   0
+#define NODE_FILE_ID   1
+#define RSHIP_FILE_ID  2
+#define NPROPS_FILE_ID 3
+#define RPROPS_FILE_ID 4
 
 /**
  * Typedef used for codes in string dictionaries and type tables.

@@ -69,6 +69,8 @@ public:
      */
     graph_db_ptr open_graph(const std::string& name);
 
+    void drop_graph(const std::string& name);
+    
     /**
      * Close the graph_pool.
      */

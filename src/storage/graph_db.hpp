@@ -640,7 +640,11 @@ private:
 
   std::string database_name_;
 #ifdef PAGED_FILE
+  void prepare_files(const std::string &prefix);
+
   bufferpool bpool_;
+  std::shared_ptr<paged_file> node_file_, rship_file_, nprops_file_, rprops_file_;
+
 #endif
   p_ptr<node_list> nodes_; // the list of all nodes of the graph
   p_ptr<relationship_list>

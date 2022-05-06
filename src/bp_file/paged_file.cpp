@@ -158,3 +158,7 @@ void paged_file::scan_pages(page& pg, std::function<void(page&, paged_file::page
     file_.clear();
 }
 
+void paged_file::truncate() {
+     header_.slots_.reset();
+    // TODO: truncate file    
+}

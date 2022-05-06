@@ -76,7 +76,7 @@ void create_join_data(graph_db_ptr graph) {
 
 TEST_CASE("Testing query operators", "[qop]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph1");
 
   create_data(graph);
 
@@ -252,7 +252,7 @@ TEST_CASE("Testing query operators", "[qop]") {
 
 TEST_CASE("Testing join operators", "[qop]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph2");
 
   // prepare some data
   create_join_data(graph);
@@ -289,7 +289,7 @@ TEST_CASE("Testing join operators", "[qop]") {
 
 TEST_CASE("Projecting node and relationship datetime properties", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph3");
 
   graph->begin_transaction();
 
@@ -332,7 +332,7 @@ TEST_CASE("Projecting node and relationship datetime properties", "[graph_db]") 
 
 TEST_CASE("Testing query profiling", "[qop]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph4");
 
   create_data(graph);
   auto dc = graph->get_code("aaa3");
@@ -352,7 +352,7 @@ TEST_CASE("Testing query profiling", "[qop]") {
 
 TEST_CASE("Testing union_all operator", "[qop]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph5");
 
   namespace pj = builtin;
 
@@ -388,7 +388,7 @@ TEST_CASE("Testing union_all operator", "[qop]") {
 
 TEST_CASE("Testing union_all operator 2", "[qop]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph6");
 
   namespace pj = builtin;
 
@@ -438,7 +438,7 @@ TEST_CASE("Testing union_all operator 2", "[qop]") {
 
 TEST_CASE("Testing outgoing traversal operators", "[qop]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph7");
 
   namespace pj = builtin;
 
@@ -518,7 +518,7 @@ TEST_CASE("Testing outgoing traversal operators", "[qop]") {
 
 TEST_CASE("Testing incoming traversal operators", "[qop]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph8");
 
   namespace pj = builtin;
 
@@ -594,7 +594,7 @@ TEST_CASE("Testing incoming traversal operators", "[qop]") {
 
 TEST_CASE("Testing other Join operators", "[qop]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph9");
 
   namespace pj = builtin;
 
@@ -803,7 +803,7 @@ TEST_CASE("Testing other Join operators", "[qop]") {
 
 TEST_CASE("Testing the existence of relationship", "[qop]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph10");
 
   namespace pj = builtin;
 
@@ -895,7 +895,7 @@ TEST_CASE("Testing the existence of relationship", "[qop]") {
 
 TEST_CASE("Testing Groupby operator", "[qop]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph11");
 
   namespace pj = builtin;
 
@@ -960,7 +960,7 @@ TEST_CASE("Testing Groupby operator", "[qop]") {
 
 TEST_CASE("Testing Bi-directional traversal operator", "[qop]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph11");
 
   namespace pj = builtin;
 
@@ -1021,7 +1021,7 @@ TEST_CASE("Testing Bi-directional traversal operator", "[qop]") {
 
 TEST_CASE("Testing distinct operator", "[qop]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_qgraph12");
 
   namespace pj = builtin;
 

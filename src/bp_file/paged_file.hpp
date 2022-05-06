@@ -118,6 +118,8 @@ public:
 
     void scan_pages(page& p, std::function<void(page&, page_id)> cb);
 
+    void truncate();
+    
 private:
     /**
      * Find the first available slot (page) which can be reused.

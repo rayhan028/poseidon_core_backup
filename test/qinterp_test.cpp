@@ -309,7 +309,7 @@ std::string load_string(const std::string& fname) {
 #if 1
 TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
     auto pool = graph_pool::create(test_path);
-    auto graph = pool->create_graph("my_graph");
+    auto graph = pool->create_graph("my_qi_graph1");
     create_data(graph);
 
     qproc qp(graph);
@@ -488,7 +488,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 
 TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
     auto pool = graph_pool::create(test_path2);
-    auto graph = pool->create_graph("my_graph");
+    auto graph = pool->create_graph("my_qi_graph2");
     create_data(graph);
 
     qproc qp(graph);

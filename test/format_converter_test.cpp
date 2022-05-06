@@ -44,7 +44,7 @@ void create_known_data(graph_db_ptr graph) {
 
 TEST_CASE("Building CSR from full sequential table scan", "[format_converter]"){
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_fgraph0");
   create_known_data(graph);
 
   std::vector<uint64_t> row_offs = {};
@@ -71,7 +71,7 @@ TEST_CASE("Building CSR from full sequential table scan", "[format_converter]"){
 
 TEST_CASE("Building CSR from parallel table scan", "[format_converter]"){
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_fgraph1");
   create_known_data(graph);
 
   std::vector<uint64_t> row_offs = {};
@@ -98,7 +98,7 @@ TEST_CASE("Building CSR from parallel table scan", "[format_converter]"){
 
 TEST_CASE("Sequential and parallel table scan", "[format_converter]"){
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_fgraph2");
   create_known_data(graph);
 
   std::vector<uint64_t> row_offs1 = {};
@@ -132,7 +132,7 @@ TEST_CASE("Sequential and parallel table scan", "[format_converter]"){
 TEST_CASE("Removing an edge an updating CSR with delta", "[format_converter]"){
 #if defined CSR_DELTA_STORE && defined USE_TX
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_fgraph3");
   create_known_data(graph);
 
   uint64_t id = 6;
@@ -173,7 +173,7 @@ TEST_CASE("Removing an edge an updating CSR with delta", "[format_converter]"){
 TEST_CASE("Adding an edge and updating CSR with delta", "[format_converter]"){
 #if defined CSR_DELTA_STORE && defined USE_TX
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_fgraph4");
   create_known_data(graph);
 
   uint64_t id = 0;
@@ -213,7 +213,7 @@ TEST_CASE("Adding an edge and updating CSR with delta", "[format_converter]"){
 TEST_CASE("Adding a node and updating CSR with delta", "[format_converter]"){
 #if defined CSR_DELTA_STORE && defined USE_TX
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_fgraph5");
   create_known_data(graph);
 
   uint64_t id = 7;
@@ -261,7 +261,7 @@ TEST_CASE("Adding a node and updating CSR with delta", "[format_converter]"){
 TEST_CASE("Updating graph and updating CSR with delta", "[format_converter]"){
 #if defined CSR_DELTA_STORE && defined USE_TX
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_fgraph6");
   create_known_data(graph);
 
   std::vector<uint64_t> row_offs = {};

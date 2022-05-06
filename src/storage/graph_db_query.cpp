@@ -41,9 +41,11 @@ void scan_task::scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::
 	    xid = tx->xid();				    
     }
     auto iter = gdb->get_nodes()->range(first, last);
+      std::cout << "scan_task: iter" << std::endl;
     while (iter) {
 #ifdef USE_TX
 	    auto &n = *iter;
+      std::cout << "scan_task: " << n.id() << std::endl;
 	    if (n.is_valid()) {
 	      auto &nv = gdb->get_valid_node_version(n, xid);
 		    consumer(nv);
@@ -124,22 +126,22 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
   std::vector<std::future<void>> res;
   thread_pool pool;
 
-#ifdef USE_MMFILE
-  auto nelems = nodes_->as_vec().capacity();
+#ifdef BLABLA
+  auto nchunks = nodes_->as_vec().num_chunks();
   const int partitions = 20;
-  auto elems_per_task = nelems / partitions;
+  auto chunks_per_task = nchunks / partitions;
   res.reserve(partitions);
 
-  std::size_t start = 0, end = elems_per_task - 1;
-  while (start < nelems) {
+  std::size_t start = 0, end = chunks_per_task - 1;
+  while (start < nchunks) {
     res.push_back(pool.submit(
         scan_task(this, *nodes_, start, end, consumer, current_transaction_)));
     start = end + 1;
-    end += elems_per_task;
+    end += nchunks_per_task;
   } 
 #else
   const int nchunks = 1;
-  spdlog::debug("Start parallel query with {} threads",
+  spdlog::info("Start parallel query with {} threads",
                 nodes_->num_chunks() / nchunks + 1);
 
   res.reserve(nodes_->num_chunks() / nchunks + 1);
