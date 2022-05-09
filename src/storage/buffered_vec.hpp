@@ -349,7 +349,9 @@ class buffered_vec {
    * pointer(!) to the record as a pair.
    */
   std::pair<offset_t, T *> store(T &&o, std::function<void(offset_t)> callback = nullptr) {
-     if (is_full())
+    std::unique_lock lock(fl_mtx_);
+
+    if (is_full())
       resize(1);
     // TODO: find a chunk with empty slots
 

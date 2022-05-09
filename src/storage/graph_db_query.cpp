@@ -126,20 +126,6 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
   std::vector<std::future<void>> res;
   thread_pool pool;
 
-#ifdef BLABLA
-  auto nchunks = nodes_->as_vec().num_chunks();
-  const int partitions = 20;
-  auto chunks_per_task = nchunks / partitions;
-  res.reserve(partitions);
-
-  std::size_t start = 0, end = chunks_per_task - 1;
-  while (start < nchunks) {
-    res.push_back(pool.submit(
-        scan_task(this, *nodes_, start, end, consumer, current_transaction_)));
-    start = end + 1;
-    end += nchunks_per_task;
-  } 
-#else
   const int nchunks = 1;
   spdlog::info("Start parallel query with {} threads",
                 nodes_->num_chunks() / nchunks + 1);
@@ -152,7 +138,7 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
     start = end + 1;
     end += nchunks;
   }
-#endif  
+ 
   // std::cout << "waiting ..." << std::endl;
   for (auto &f : res) {
     f.get();
