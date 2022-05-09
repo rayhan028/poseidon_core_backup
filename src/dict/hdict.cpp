@@ -19,7 +19,7 @@
 #include <iostream>
 #include "hdict.hpp"
 
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
 
 dict::dict(bufferpool& bpool, const std::string& prefix, uint32_t init_pool_size) : bpool_(bpool) {
     dict_file_ = std::make_shared<paged_file>();
@@ -38,7 +38,7 @@ dict::dict(const std::string& prefix, uint32_t init_pool_size) {
 #endif
 
 dict::~dict() {
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
     bpool_.flush_all();
     dict_file_->close();
 #elif defined(USE_PMDK)

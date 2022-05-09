@@ -109,7 +109,7 @@ graph_pool_ptr graph_pool::open(const std::string& path, bool init) {
 }
 
 void graph_pool::destroy(graph_pool_ptr& p) {
-#if defined(USE_MMFILE) || defined(PAGED_FILE)
+#ifdef USE_PFILE
     for (auto& gp : p->graphs_) { 
         graph_db::destroy(gp.second);
     }

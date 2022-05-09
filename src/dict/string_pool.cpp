@@ -33,25 +33,8 @@ string_pool::string_pool(uint32_t init_size, uint32_t exp_size) : size_(init_siz
     pool_[0] = '#';
 }
 
-#ifdef USE_MMFILE
-string_pool::string_pool(uint8_t *base_addr, std::size_t sz) : expand_(10000), base_addr_(base_addr) {
-    // std::cout << "create string pool from mm_file...\n";
-    memcpy(&size_, base_addr, sizeof(uint32_t));
-    memcpy(&last_, base_addr + sizeof(uint32_t), sizeof(uint32_t));
-    pool_ = (char *)base_addr + 2 * sizeof(uint32_t);
-    if (pool_[0] != '#' && size_ == 0) {
-        size_ = sz;
-        last_ = 1;
-    }
-    pool_[0] = '#';
-}
-#endif
-
 string_pool::~string_pool() {
-#ifdef USE_MMFILE
-    memcpy(base_addr_, &size_, sizeof(uint32_t));
-    memcpy(base_addr_ + sizeof(uint32_t), &last_, sizeof(uint32_t));
-#elif !defined(USE_PMDK)
+#if !defined(USE_PMDK)
     free(pool_);
 #endif
 }
@@ -85,9 +68,6 @@ bool string_pool::equal(dcode_t pos, const std::string& s) const {
 dcode_t string_pool::add(const std::string& str) {
     auto pos = last_;
     if (last_ + str.length() + 1 >= size_) {
-#if USE_MMFILE
-        std::cerr << "FATAL: cannot grow memory mapped file for dictionary from " << size_ << " bytes - aborting." << std::endl;
-#else
         auto old_size = size_;
         size_ += expand_;
         // std::cout << "expand to " << size_ << std::endl;
@@ -102,7 +82,6 @@ dcode_t string_pool::add(const std::string& str) {
     pool_  = new_pool;
 #else
     pool_ = static_cast<char *>(realloc(pool_, size_));
-#endif
 #endif
     }
     memcpy(&pool_[last_], str.c_str(), str.length());

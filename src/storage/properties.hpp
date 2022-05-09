@@ -35,7 +35,7 @@
 
 #include "spdlog/spdlog.h"
 
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
 #include "buffered_vec.hpp"
 #endif
 
@@ -202,9 +202,7 @@ struct property_set {
   }
 };
 
-#ifdef USE_MMFILE
-using props_vec = file_vec<property_set>;
-#elif defined(PAGED_FILE)
+#ifdef USE_PFILE
 using props_vec = buffered_vec<property_set>;
 #else
 using props_vec = chunked_vec<property_set, PROP_CHUNK_SIZE>;
@@ -221,7 +219,7 @@ public:
   /**
    * Constructor
    */
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
   property_list(bufferpool& bpool, uint8_t file_id) : properties_(bpool, file_id) {} 
 #else
   property_list() : properties_() {}

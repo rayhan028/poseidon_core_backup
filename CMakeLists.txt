@@ -12,7 +12,7 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         ON)
-option(USE_MMFILE       "Use memory mapped file storage"         OFF)
+option(USE_PFILE        "Use paged file storage with bufferpool" ON)
 option(USE_HDICT        "Use hdict implementation"               ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
@@ -33,7 +33,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 # Don't try to contact github everytime.
-set (FETCHCONTENT_FULLY_DISCONNECTED "OFF")
+set (FETCHCONTENT_FULLY_DISCONNECTED "ON")
 
 # Set the searching location for cmake 'include' locations
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -57,9 +57,9 @@ cxx_20()
 if(USE_PMDK MATCHES ON)
   message(STATUS "looking for PMDK")
   include(pmdk)
-elseif(USE_MMFILE MATCHES ON)
-  message(STATUS "use memory-mapped files")
-  add_definitions( "-DUSE_MMFILE" )
+elseif(USE_PFILE MATCHES ON)
+  message(STATUS "use paged files")
+  add_definitions( "-DUSE_PFILE" )
 endif()
 
 if(USE_HDICT MATCHES ON)
@@ -456,7 +456,6 @@ set(src_files
   src/storage/graph_db_query.cpp
   src/storage/graph_db_gc.cpp
   src/storage/graph_db_recovery.cpp
-  src/storage/mm_file.cpp
   src/bp_file/paged_file.cpp
   src/bp_file/bufferpool.cpp
   src/btree/index_map.cpp

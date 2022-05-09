@@ -23,7 +23,7 @@
 #include <limits>
 #include "defs.hpp"
 
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
 class paged_string_pool;
 #else
 class string_pool;
@@ -34,7 +34,7 @@ constexpr uint32_t UNKNOWN_CODE = std::numeric_limits<uint32_t>::max();
 class htable {
     friend class dict;
 public:
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
     htable(p_ptr<paged_string_pool> pool, uint32_t nb = 1000);
 #else
     htable(p_ptr<string_pool> pool, uint32_t nb = 1000);
@@ -53,7 +53,7 @@ private:
     dcode_t insert_into_table(uint64_t *tbl, uint32_t tsize, uint64_t hkey, dcode_t id);
     void resize();
 
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
     p_ptr<paged_string_pool> pool_;
 #else    
     p_ptr<string_pool> pool_;

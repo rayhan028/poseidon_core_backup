@@ -35,7 +35,7 @@
 #include "transaction.hpp"
 #include "txn_data.hpp"
 
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
 #include "buffered_vec.hpp"
 #endif
 
@@ -154,9 +154,7 @@ std::ostream &operator<<(std::ostream &os, const node_description &ndescr);
  */
 std::ostream &operator<<(std::ostream &os, const boost::any &any_value);
 
-#ifdef USE_MMFILE
-using node_vec = file_vec<node>;
-#elif defined(PAGED_FILE)
+#ifdef USE_PFILE
 using node_vec = buffered_vec<node>;
 #else
 using node_vec = chunked_vec<node, NODE_CHUNK_SIZE>;
@@ -173,7 +171,7 @@ public:
   /**
    * Constructor
    */
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
   node_list(bufferpool& bpool, uint8_t file_id) : nodes_(bpool, file_id) {} 
 #else
   node_list() : nodes_() {}

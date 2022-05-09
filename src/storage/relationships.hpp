@@ -29,7 +29,7 @@
 #include "transaction.hpp"
 #include "txn_data.hpp"
 
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
 #include "buffered_vec.hpp"
 #endif
 
@@ -116,9 +116,7 @@ struct rship_description {
  */
 std::ostream &operator<<(std::ostream &os, const rship_description &rdescr);
 
-#ifdef USE_MMFILE
-using rship_vec = file_vec<relationship>;
-#elif defined(PAGED_FILE)
+#ifdef USE_PFILE
 using rship_vec = buffered_vec<relationship>;
 #else
 using rship_vec = chunked_vec<relationship, RSHIP_CHUNK_SIZE>;
@@ -136,7 +134,7 @@ public:
   /**
    * Constructors.
    */
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
   relationship_list(bufferpool& bpool, uint8_t file_id) : rships_(bpool, file_id) {} 
 #else
   relationship_list() : rships_() {}

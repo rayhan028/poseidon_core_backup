@@ -254,8 +254,8 @@ int main(int argc, char* argv[]) {
       std::cout << "Poseidon Graph Database Version " << POSEIDON_VERSION << " ("
 #ifdef USE_PMDK
                 << "persistent memory"
-#elif USE_MMFILE
-                << "memory-mapped files"
+#elif USE_PFILE
+                << "paged files"
 #else
                 << "in-memory"
 #endif

@@ -399,7 +399,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
   graph->commit_transaction();
 #endif
 
-	auto chunks = graph->get_nodes()->num_chunks();  
+	// auto chunks = graph->get_nodes()->num_chunks();  
     
     SECTION("Single Projection - string type") {
         qcompiler queryEngine(graph);

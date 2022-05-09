@@ -23,7 +23,7 @@
 #include <memory>
 #include "defs.hpp"
 
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
 #include "bufferpool.hpp"
 #include "paged_string_pool.hpp"
 #else
@@ -44,9 +44,9 @@ class dict {
 public:
     /**
      * Create a new dictionary with the initial string pool size. The prefix argument 
-     * is used only for the path of a memory-mapped file.
+     * is used only for the path of a paged file.
      */
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
     dict(bufferpool& bpool, const std::string& prefix = "", uint32_t init_pool_size = 100000);
 #else
     dict(const std::string& prefix = "", uint32_t init_pool_size = 100000);
@@ -97,7 +97,7 @@ public:
     std::size_t size() const;
 
 private:
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
     bufferpool& bpool_;
     std::shared_ptr<paged_file> dict_file_;
     p_ptr<paged_string_pool> pool_;  // the string pool for storing the actual strings

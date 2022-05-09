@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
   std::cout << "sizeof = " << sizeof(txn<dirty_node_ptr>) << std::endl;
   // add node
   {
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
     auto test_file = std::make_shared<paged_file>();
     test_file->open("nodes.db", 0);
 
@@ -121,13 +121,13 @@ int main(int argc, char **argv) {
     std::cout << "add: " << tm << " microseconds." << std::endl;
     drop_table(nlist);
   }
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
   remove("nodes.db");
 #endif
 
   // append node
   {
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
     auto test_file = std::make_shared<paged_file>();
     test_file->open("nodes.db", 0);
 
@@ -152,12 +152,12 @@ int main(int argc, char **argv) {
     std::cout << "append: " << tm << " microseconds." << std::endl;
     drop_table(nlist);
   }
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
   remove("nodes.db");
 #endif
   // store node
   {
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
     auto test_file = std::make_shared<paged_file>();
     test_file->open("nodes.db", 0);
 
@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
     std::cout << "store: " << tm << " microseconds." << std::endl;
     drop_table(nlist);
   }
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
   remove("nodes.db");
 #endif
 }

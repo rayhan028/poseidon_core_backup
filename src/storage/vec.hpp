@@ -19,8 +19,8 @@
 #ifndef vec_hpp_
 #define vec_hpp_
 
-#ifdef USE_MMFILE
-#include "file_vec.hpp"
+#ifdef USE_PFILE
+#include "buffered_vec.hpp"
 #else
 #include "chunked_vec.hpp"
 #endif

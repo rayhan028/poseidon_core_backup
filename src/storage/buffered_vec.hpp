@@ -256,6 +256,7 @@ class buffered_vec {
       : bpool_(pool), file_id_(file_id), file_mask_(file_id << 60),
         available_slots_(0), elems_per_chunk_(num_entries), capacity_(0) {
           // TODO: initialize available_slots_ for an existing file
+      capacity_ = bpool_.get_file(file_id_)->num_pages() * elems_per_chunk_;
   }
 
   /**

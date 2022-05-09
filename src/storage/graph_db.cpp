@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <set>
 
-#if defined(USE_MMFILE) || defined(PAGED_FILE)
+#ifdef USE_PFILE
 #include <boost/filesystem.hpp>
 #endif
 
@@ -36,13 +36,13 @@ namespace nvm = pmem::obj;
 #endif
 
 void graph_db::destroy(graph_db_ptr gp) {
-#if defined(USE_MMFILE) || defined(PAGED_FILE)
+#ifdef USE_PFILE
   boost::filesystem::path path_obj(gp->database_name_);
   boost::filesystem::remove_all(path_obj);
 #endif
 }
 
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
 void graph_db::prepare_files(const std::string &pfx) {
   boost::filesystem::path path_obj(database_name_);
   // check if path exists and is of a regular file
@@ -69,7 +69,7 @@ void graph_db::prepare_files(const std::string &pfx) {
 #endif
 
 graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
-#if defined(USE_MMFILE) || defined(PAGED_FILE)
+#ifdef USE_PFILE
   prepare_files(db_name);
   nodes_ = p_make_ptr<node_list>(bpool_, NODE_FILE_ID);
   rships_ = p_make_ptr<relationship_list>(bpool_, RSHIP_FILE_ID);
@@ -85,7 +85,7 @@ graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
 #endif
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
   dict_ = p_make_ptr<dict>(bpool_, db_name + "/");
 #else
   dict_ = p_make_ptr<dict>();

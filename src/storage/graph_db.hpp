@@ -44,7 +44,7 @@
 #include "csr_delta.hpp"
 #endif
 
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
 #include "bufferpool.hpp"
 #endif
 
@@ -639,7 +639,7 @@ private:
   void vacuum(xid_t tx);
 
   std::string database_name_;
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
   void prepare_files(const std::string &prefix);
 
   bufferpool bpool_;

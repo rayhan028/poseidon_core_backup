@@ -20,7 +20,7 @@
 #include <functional>
 #include <math.h>
 #include "htable.hpp"
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
 #include "paged_string_pool.hpp"
 #else
 #include "string_pool.hpp"
@@ -65,7 +65,7 @@ uint64_t step(const std::string& s, uint64_t prime) {
 }
 #endif
 
-#ifdef PAGED_FILE
+#ifdef USE_PFILE
 htable::htable(p_ptr<paged_string_pool> pool, uint32_t nb) : pool_(pool), nbuckets_(nb), nelems_(0) {
 #else
 htable::htable(p_ptr<string_pool> pool, uint32_t nb) : pool_(pool), nbuckets_(nb), nelems_(0) {
