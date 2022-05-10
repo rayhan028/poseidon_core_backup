@@ -283,7 +283,7 @@ int main(int argc, char* argv[]) {
 
     if (vm.count("qmode")) {
       std::cout << "qmode = " << qmode_str << std::endl;
-      if (qmode_str != "llvm" && qmode_str != "inter" && qmode_str != "adapt") {
+      if (qmode_str != "llvm" && qmode_str != "interp" && qmode_str != "adapt") {
         std::cout << "ERROR: unknown query mode value: 'llvm' or 'interp' or 'adapt' expected.\n";
         return -1;
       }

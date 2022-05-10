@@ -783,6 +783,7 @@ std::size_t graph_db::import_typed_n4j_relationships_from_csv(const std::string 
     } else if (num == 1) {
       mapping_t::const_iterator it = m.find(row[start_col]); 
       if (it == m.end()) {
+        std::cout << "Cannot find " << row[start_col] << " in num #1" << std::endl;
         continue;
       }
       node::id_t from_node = it->second;      

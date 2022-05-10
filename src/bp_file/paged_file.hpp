@@ -34,6 +34,7 @@ struct file_header {
     char fid_[4] = { 'P', 'S', 'D', 'N' }; // file identifier
     uint8_t ftype_;                        // items stored in the file (nodes, rships, properties)
     std::bitset<65536> slots_;             // slots representing which pages are not used (0) or in use (1)
+    uint8_t payload_[64];                  // space usable by the application
 };
 
 /**
@@ -50,7 +51,9 @@ struct page {
  */
 class paged_file {
 public:
-    using page_id = uint64_t;
+    using page_id = uint64_t;                                  /// page identifier
+    enum cb_mode { header_read, header_write };                /// mode for calling the callback
+    using header_cb = std::function<void(cb_mode, uint8_t *)>; /// function called after reading/before writing the header
 
     /**
      * Constructor: does not open or create the file.
@@ -61,6 +64,11 @@ public:
      * Destructor for closing the file.
      */
     ~paged_file();
+
+    /**
+     * Register the callback that is called after reading and before writing the header.
+     */
+    void set_callback(header_cb cb);
 
     /**
      * Open or create the file with the given name and file type. If the file doesn't exist
@@ -129,6 +137,7 @@ private:
     std::fstream file_;  /// the file stream of reading/writing the file
     uint64_t npages_;    /// the number of pages occupied by the file (used and unused)
     file_header header_; /// the file header
+    header_cb header_callback_; /// function called after reading before writing the header
 };
 
 using paged_file_ptr = std::shared_ptr<paged_file>;

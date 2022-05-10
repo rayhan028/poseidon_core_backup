@@ -22,6 +22,8 @@
 #include "exceptions.hpp"
 #include "paged_file.hpp"
 
+#include "spdlog/spdlog.h"
+
 bool paged_file::open(const std::string& path, int file_type) {
     boost::filesystem::path path_obj(path);
     // check if path exists and is of a regular file
@@ -29,12 +31,13 @@ bool paged_file::open(const std::string& path, int file_type) {
         file_.open(path, std::fstream::in | std::fstream::out | std::fstream::trunc | std::fstream::binary);
         header_.ftype_ = file_type;
         header_.slots_.reset();
+        memset(header_.payload_, 0, 64);
         file_.write((const char *)&header_, sizeof(header_));
-        std::cout << "create new paged_file: " << path << std::endl;
+        spdlog::debug("create new paged_file: {}", path);
     }
     else {
         file_.open(path, std::fstream::in | std::fstream::out | std::fstream::binary);
-        std::cout << "open existing paged_file: " << path << std::endl;
+        spdlog::debug("open existing paged_file: {}", path);
 
         // read & check header
         file_.read((char *) &header_, sizeof(header_));
@@ -43,6 +46,8 @@ bool paged_file::open(const std::string& path, int file_type) {
             return false;
         }
     }
+    if (header_callback_ != nullptr)
+        header_callback_(header_read, header_.payload_);
     file_.seekp(0, file_.end);
     npages_ = ((unsigned long)file_.tellp() - sizeof(file_header)) / PAGE_SIZE;
     return is_open();
@@ -52,9 +57,17 @@ paged_file::~paged_file() {
     close();
 }
 
+void paged_file::set_callback(header_cb cb) { 
+    header_callback_ = cb; 
+    if (cb != nullptr)
+        header_callback_(header_read, header_.payload_);
+}
+
 void paged_file::close() {
     if (!is_open()) return;
 
+    if (header_callback_ != nullptr)
+        header_callback_(header_write, header_.payload_);
     // sync header
     file_.seekp(0, file_.beg);
     file_.write((char *) &header_, sizeof(header_));

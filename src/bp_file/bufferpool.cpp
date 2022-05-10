@@ -18,8 +18,10 @@
  */
 #include <iostream>
 #include "bufferpool.hpp"
+#include "spdlog/spdlog.h"
 
 bufferpool::bufferpool(std::size_t bsize) : bsize_(bsize), slots_(bsize_) {
+    spdlog::debug("bufferpool()");
     buffer_ = new page[bsize_];
     slots_.set(); // set everything to 1 == unused
 }
@@ -89,19 +91,24 @@ std::pair<page*, paged_file::page_id> bufferpool::allocate_page(uint8_t file_id)
 void bufferpool::mark_dirty(paged_file::page_id pid) {
     std::unique_lock lock(mutex_);
     auto iter = ptable_.find(pid);
-    if (iter != ptable_.end())
+    if (iter != ptable_.end()) {
         iter->second.dirty_ = true;
+    }
 }
 
 void bufferpool::flush_all() {
+    uint64_t num = 0;
+
     std::unique_lock lock(mutex_);
     for (auto iter = ptable_.begin(); iter != ptable_.end(); iter++) {
         if (iter->second.dirty_) {
             auto pid = iter->first;
             write_page_to_file(pid, iter->second.p_);
+            num++;
             iter->second.dirty_ = false;
         }
     }
+    spdlog::debug("bufferpool: {} pages flushed", num);
 }
 
 void bufferpool::flush_page(paged_file::page_id pid, bool evict) {
@@ -174,4 +181,14 @@ void bufferpool::write_page_to_file(paged_file::page_id pid, page *pg) {
     assert(file_id < 10 && files_[file_id]);
     // std::cout << "write: " << pid << "," << raw_pid << " : " << (int)pg->payload[0] << std::endl;
     files_[file_id]->write_page(raw_pid, *pg);
+}
+
+void bufferpool::dump() {
+    std::cout << "----------- BUFFERPOOL -----------\n";
+    for (auto iter = ptable_.begin(); iter != ptable_.end(); iter++) {
+        auto pid = iter->first & 0xFFFFFFFFFFFFFFF;
+        auto file_id = (iter->first & 0xF000000000000000) >> 60;
+
+        std::cout << "page #" << pid << ", file=" << file_id << ", dirty=" << iter->second.dirty_ << std::endl;
+    }
 }

@@ -1,6 +1,7 @@
 /*
 TODO:
 - clear
+- available_slots_
 */
 
 /*
@@ -140,15 +141,13 @@ struct bchunk {
 };
 
 /**
- * chunked_vec is a class implementing a persistent vector as a sequence of
+ * buffered_vec is a class implementing a persistent vector as a sequence of
  * fixed-size elements. The vector consists of a linked list of chunks where
- * each chunk represents a contiguous memory region. In this way, the entire
- * sequence does not require to be physically contiguous stored in memory and
- * allows to extend the vector more easily without copying the entire data.
+ * each chunk represents a page in a file which is cached via a bufferpool.
  * Elements of the vector are of type T which can be addressed via their index
  * (starting at 0). There are two ways to add element to chunked_vec: either via
  * store_at() to store an element at a given position or via append() where the
- * element is added to the end of the vector. For iterating over chunked_vec
+ * element is added to the end of the vector. For iterating over buffered_vec
  * also two methods are available: begin()/end() are used for an element-wise
  * iteration while range allows to specifiy a start and end chunk for the
  * iteration.
@@ -255,8 +254,15 @@ class buffered_vec {
   buffered_vec(bufferpool& pool, uint64_t file_id)
       : bpool_(pool), file_id_(file_id), file_mask_(file_id << 60),
         available_slots_(0), elems_per_chunk_(num_entries), capacity_(0) {
-          // TODO: initialize available_slots_ for an existing file
-      capacity_ = bpool_.get_file(file_id_)->num_pages() * elems_per_chunk_;
+      auto fptr = bpool_.get_file(file_id_);
+      capacity_ = fptr->num_pages() * elems_per_chunk_;
+      // initialize available_slots_ for an existing file
+      fptr->set_callback([this](paged_file::cb_mode m, uint8_t *data) {
+        if (m == paged_file::header_read)
+          memcpy(&available_slots_, data, sizeof(offset_t)); 
+        else
+          memcpy(data, &available_slots_, sizeof(offset_t));
+      });
   }
 
   /**
@@ -477,7 +483,7 @@ class buffered_vec {
    * Resize the chunked_vec by the given number of additional chunks.
    */
   void resize(int nchunks) {
-    std::cout << "resize" << std::endl;
+    spdlog::debug("resize paged file #{}", file_id_);
     for (auto i = 0; i < nchunks; i++) {
       auto pg = bpool_.allocate_page(file_id_);
       // initialize pg with chunk
@@ -545,8 +551,10 @@ private:
     
     // std::cout << "find_chunk: " << page_id << ", addr=" << (uint64_t)pg->payload << std::endl;
 
-    if (modify)
+    if (modify) {
+      spdlog::debug("buffered_vec::find_chunk page #{} marked as dirty", page_id | file_mask_);
       bpool_.mark_dirty(page_id | file_mask_);
+    }
     return reinterpret_cast<bchunk_ptr>(pg->payload);
   }
 
@@ -560,8 +568,10 @@ private:
 
   bchunk_ptr get_last_chunk(bool modify = false) const {
     auto pg = bpool_.last_valid_page(file_id_);
-    if (modify && pg.first)
-      bpool_.mark_dirty(pg.second);
+    if (modify && pg.first) {
+      spdlog::debug("buffered_vec::get_last_chunk page #{} marked as dirty in file {}", pg.second | file_mask_, file_id_);
+      bpool_.mark_dirty(pg.second | file_mask_);
+    }
     return pg.first != nullptr ? reinterpret_cast<bchunk_ptr>(pg.first->payload) : nullptr;
   }
 
