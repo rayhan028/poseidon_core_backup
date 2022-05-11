@@ -1,7 +1,6 @@
 /*
 TODO:
 - clear
-- available_slots_
 */
 
 /*
@@ -56,6 +55,8 @@ struct bchunk {
   T data_[num_records];             // the array of data
   std::bitset<num_records> slots_;  // bitstring representing empty slots (0), used slots (1)
   uint32_t first_;                  // the index of the first available slot
+  // uint32_t fl_next_, fl_prev_;      // page id of the next/previous page with free slots
+
   /**
    * Create a new chunk, allocate and initialize the memory.
    */
@@ -490,6 +491,7 @@ class buffered_vec {
       auto chk = new(pg.first->payload) bchunk<T, num_entries>();
       chk->slots_.reset();
       chk->first_ = 0;
+      // chk->fl_next_ = chk->fl_prev_ = 0;
       capacity_ += elems_per_chunk_;
       available_slots_ += elems_per_chunk_;
     }
