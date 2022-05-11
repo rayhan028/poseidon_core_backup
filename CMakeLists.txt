@@ -11,7 +11,7 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK         "Use Intel PMDK"                         ON)
+option(USE_PMDK         "Use Intel PMDK"                         OFF)
 option(USE_PFILE        "Use paged file storage with bufferpool" ON)
 option(USE_HDICT        "Use hdict implementation"               ON)
 option(USE_TX           "Provide Transaction Support"            ON)
