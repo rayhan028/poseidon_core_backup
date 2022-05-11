@@ -87,6 +87,21 @@ struct delta {
 };
 #endif
 
+#ifdef USE_GUNROCK
+/**
+ * A struct on GPU for merged CSR delta record(s) associated with the same node.
+ */
+struct d_delta {
+  d_delta() = default;
+  d_delta(const d_delta &) = delete;
+
+  uint64_t node_id_;  // id of the node associated with the delta
+
+  uint64_t **ids_;   // ids of the neighbour nodes
+  double **weights_; // corresponding relationship weights
+};
+#endif
+
 #ifdef VOLATILE_DELTA
 /**
  * vchunk is a strictly volatile version of chunk in chunked_vec
@@ -452,10 +467,15 @@ private:
 
   vchunked_vec<delta_rec> delta_recs_;      // the underlying vchunked vector of volatile delta records
 
-  // TODO these arrays are not needed here when CSR update is done directly on GPU
+#ifdef USE_GUNROCK
+  thrust::device_vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR on GPU
+  thrust::device_vector<offset_t> col_indices_ = {};  // column indices array of the current CSR on GPU
+  thrust::device_vector<float> edge_values_ = {};     // edge values array of the current CSR on GPU
+#else
   std::vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR
   std::vector<offset_t> col_indices_ = {};  // column indices array of the current CSR
   std::vector<float> edge_values_ = {};     // edge values array of the current CSR
+#endif
 
 #elif defined PERSISTENT_DELTA
 
@@ -473,10 +493,15 @@ private:
 
   chunked_vec<delta_rec> delta_recs_;       // the underlying chunked vector of persistent delta records
 
-  // TODO these arrays are not needed here when CSR update is done directly on GPU
+#ifdef USE_GUNROCK
+  thrust::device_vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR on GPU
+  thrust::device_vector<offset_t> col_indices_ = {};  // column indices array of the current CSR on GPU
+  thrust::device_vector<float> edge_values_ = {};     // edge values array of the current CSR on GPU
+#else
   pmem::obj::vector<offset_t> row_offsets_; // row offsets array of the current CSR
   pmem::obj::vector<offset_t> col_indices_; // column indices array of the current CSR
   pmem::obj::vector<float> edge_values_;    // edge values array of the current CSR
+#endif
 
 #endif
 };

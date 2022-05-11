@@ -116,7 +116,6 @@ void update_data(graph_db_ptr graph) {
   graph->commit_transaction();
 }
 
-#if 1
 TEST_CASE("Removing an edge and updating CSR with delta", "[format_converter]"){
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
@@ -149,7 +148,6 @@ TEST_CASE("Removing an edge and updating CSR with delta", "[format_converter]"){
 
   graph_pool::destroy(pool);
 }
-#endif
 
 TEST_CASE("Adding an edge and updating CSR with delta", "[format_converter]"){
   auto pool = graph_pool::create(test_path);
@@ -913,7 +911,6 @@ TEST_CASE("Consistency Test 4b", "[format_converter]"){
   graph_pool::destroy(pool);
 }
 
-#if 1
 TEST_CASE("Consistency Test 5a", "[format_converter]"){
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
@@ -964,7 +961,6 @@ TEST_CASE("Consistency Test 5a", "[format_converter]"){
 
   graph_pool::destroy(pool);
 }
-#endif
 
 TEST_CASE("Consistency Test 5b", "[format_converter]"){
   auto pool = graph_pool::create(test_path);

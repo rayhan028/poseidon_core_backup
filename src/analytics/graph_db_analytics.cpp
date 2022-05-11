@@ -30,11 +30,17 @@ void graph_db::poseidon_to_csr(csr_arrays &csr, rship_weight weight_func, bool b
 #if defined CSR_DELTA && defined USE_TX
   if (delta_store_->delta_mode_) {
     // we use weight_func and bidirectional as per the delta store
+    #ifdef USE_GUNROCK
+    csr_update_with_delta_gpu();
+    #else
     csr_update_with_delta(csr);
+    #endif
   }
   else {
     #ifdef PARALLEL_CSR_BUILD
     parallel_csr_build(csr, weight_func, bidirectional);
+    #elif defined USE_GUNROCK
+    csr_build_gpu(csr, weight_func, bidirectional);
     #else
     csr_build(csr, weight_func, bidirectional);
     #endif
@@ -120,7 +126,6 @@ void graph_db::csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirec
     delta_store_->clear_deltas();
   }
 
-  // TODO this is not needed when CSR update is done directly on GPU
   delta_store_->row_offsets_ = row_offsets;
   delta_store_->col_indices_ = col_indices;
   delta_store_->edge_values_ = edge_values;
@@ -197,7 +202,6 @@ void graph_db::parallel_csr_build(csr_arrays &csr, rship_weight weight_func, boo
     delta_store_->clear_deltas();
   }
 
-  // TODO this is not needed when CSR update is done directly on GPU
   delta_store_->row_offsets_ = row_offsets;
   delta_store_->col_indices_ = col_indices;
   delta_store_->edge_values_ = edge_values;
@@ -237,7 +241,7 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
   auto &new_col_inds = csr.col_indices;
   auto &new_edge_vals = csr.edge_values;
 
-  // merge delta records into a delta map.
+  // merge delta records into a delta map
   delta_store::delta_map_t deltas;
   delta_store_->merge_deltas(deltas, txid);
 
