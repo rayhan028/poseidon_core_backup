@@ -237,8 +237,7 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
   auto &new_col_inds = csr.col_indices;
   auto &new_edge_vals = csr.edge_values;
 
-  // merge delta records into a delta map. Each entry in the delta map is of the form:
-  // {node id, <[ids of neighbours], [edge weights]>}
+  // merge delta records into a delta map.
   delta_store::delta_map_t deltas;
   delta_store_->merge_deltas(deltas, txid);
 
@@ -254,6 +253,7 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
   const auto lnid_iter = deltas.upper_bound(lnid);
   const auto end_iter = deltas.end();
 
+#ifdef DIFF_DELTA
   for (auto iter = beg_iter; iter != lnid_iter; ++iter) {
     auto nid = iter->first;
     auto &delta = iter->second;
@@ -434,12 +434,12 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
     next_nid++;
   }
 
-#if 0
+#elif defined ADJ_DELTA
   for (auto iter = beg_iter; iter != lnid_iter; ++iter) {
     auto nid = iter->first;
-    auto &ids = iter->second.first;
+    auto &delta = iter->second;
     int old_edges = old_row_offs[nid + 1] - old_row_offs[nid];
-    int new_edges = ids.size();
+    int new_edges = delta.ids_.size();
     auto diff = new_edges - old_edges;
     edge_diff += diff;
   }
@@ -448,9 +448,9 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
                           // in the current (i.e. old) CSR
   auto num_new_edges = 0; // sum of edges of newly appended nodes
   for (auto iter = lnid_iter; iter != end_iter; ++iter) {
-    auto &ids = iter->second.first;
+    auto &delta = iter->second;
     num_new_nodes++;
-    num_new_edges += ids.size();
+    num_new_edges += delta.ids_.size();
   }
 
   uint64_t new_row_offs_size = old_row_offs.size() + num_new_nodes;
@@ -465,8 +465,9 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
   new_row_offs.push_back(0);
   for (auto iter = beg_iter; iter != lnid_iter; ++iter) {
     auto nid = iter->first;
-    auto &ids = iter->second.first;
-    auto &weights = iter->second.second;
+    auto &delta = iter->second;
+    auto &ids = delta.ids_;
+    auto &weights = delta.weights_;
     while (next_nid < nid) {
       // possibly, some nodes between the first node and the last updated node are unchanged
       // we just copy the entries for such nodes from the current (i.e. old) CSR to the new CSR
@@ -529,8 +530,9 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
   // finally, using the remaining delta map items, insert entries for the newly appended nodes into the new CSR
   for (auto iter = lnid_iter; iter != end_iter; ++iter) {
     auto nid = iter->first;
-    auto &ids = iter->second.first;
-    auto &weights = iter->second.second;
+    auto &delta = iter->second;
+    auto &ids = delta.ids_;
+    auto &weights = delta.weights_;
     while (next_nid < nid) { // unused node record slots
       new_row_offs.push_back(new_row_offs.back());
       next_nid++;

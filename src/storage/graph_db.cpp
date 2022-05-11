@@ -345,6 +345,8 @@ bool graph_db::commit_transaction() {
   }
 
 #ifdef CSR_DELTA
+
+#ifdef DIFF_DELTA
   auto &txn_delta_ids = tx->csr_delta_ids();
   auto count = delta_store_->num_delta_recs_;
   count += txn_delta_ids.deleted_nodes_.size();
@@ -364,8 +366,7 @@ bool graph_db::commit_transaction() {
     // store deltas
     delta_store_->store_deltas(xid, txn_delta_ids);
   }
-
-#if 0
+#elif defined ADJ_DELTA
   auto &updated_nodes = tx->csr_delta_ids().updated_nodes_;
   auto &deleted_nodes = tx->csr_delta_ids().deleted_nodes_;
   auto &deleted_rships = tx->csr_delta_ids().deleted_rships_;
@@ -544,8 +545,9 @@ node::id_t graph_db::add_node(const std::string &label,
 #endif
 
 #if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
   current_transaction()->add_inserted_node(node_id);
-#if 0
+#elif defined ADJ_DELTA
   current_transaction()->add_updated_node(node_id);
 #endif
 #endif
@@ -620,19 +622,18 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
 #endif
 
 #if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
   auto weight = delta_store_->weight_func_(rv->elem_);
   current_transaction()->add_inserted_neighbour(from_id, to_id, weight);
   if (delta_store_->bidirectional_) {
     current_transaction()->add_inserted_neighbour(to_id, from_id, weight);
   }
-
-#if 0
+#elif defined ADJ_DELTA
   current_transaction()->add_updated_node(from_id);
   if (delta_store_->bidirectional_) {
     current_transaction()->add_updated_node(to_id);
   }
 #endif
-
 #endif
 
   return rid;
@@ -1107,8 +1108,9 @@ void graph_db::delete_node(node::id_t id) {
 #endif
 
 #if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
   current_transaction()->add_deleted_node(id);
-#if 0
+#elif defined ADJ_DELTA
   current_transaction()->add_updated_node(id);
   current_transaction()->add_deleted_node(id);
 #endif
@@ -1220,8 +1222,9 @@ void graph_db::detach_delete_node(node::id_t id) {
 #endif
 
 #if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
   current_transaction()->add_deleted_node(id);
-#if 0
+#elif defined ADJ_DELTA
   current_transaction()->add_updated_node(id);
   current_transaction()->add_deleted_node(id);
 #endif
@@ -1314,14 +1317,14 @@ void graph_db::delete_relationship(relationship::id_t id) {
 #endif
 
 #if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
   auto from_id = newv->elem_.from_node_id();
   auto to_id = newv->elem_.to_node_id();
   current_transaction()->add_deleted_neighbour(from_id, to_id);
   if (delta_store_->bidirectional_) {
     current_transaction()->add_deleted_neighbour(to_id, from_id);
   }
-
-#if 0
+#elif defined ADJ_DELTA
   auto from_id = newv->elem_.from_node_id();
   auto to_id = newv->elem_.to_node_id();
   current_transaction()->add_updated_node(from_id);

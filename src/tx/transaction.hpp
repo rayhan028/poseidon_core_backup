@@ -105,6 +105,7 @@ public:
   std::size_t logid() const { return logid_; }
 
 #if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
   /**
    * A struct for storing ids of nodes and relationships updated
    * by the current transaction, for updates that modify the current CSR.
@@ -150,7 +151,12 @@ public:
    */
   void add_inserted_neighbour(offset_t nid, offset_t id, double weight);
 
-#if 0
+#elif defined ADJ_DELTA
+  /**
+   * A struct for storing ids of nodes and relationships updated
+   * by the current transaction, for updates that modify the current CSR.
+   * These ids are used for storing delta records when the transaction commits.
+   */
   struct delta_ids {
     delta_ids() = default;
     delta_ids(const delta_ids &) = delete;

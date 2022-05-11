@@ -58,6 +58,7 @@ void check_tx_context() {
 transaction_ptr current_transaction() { return current_transaction_; }
 
 #if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
   void transaction::add_deleted_node(offset_t nid) {
     delta_ids_.deleted_nodes_.push_back(nid);
     // nodes in deleted_nodes_ have all their neighbours deleted
@@ -77,7 +78,7 @@ transaction_ptr current_transaction() { return current_transaction_; }
     delta_ids_.inserted_neighbours_[nid].second.push_back(weight);
   }
 
-#if 0
+#elif defined ADJ_DELTA
   void transaction::add_updated_node(offset_t nid) {
     delta_ids_.updated_nodes_.push_back(nid);
   }

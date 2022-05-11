@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -199,6 +199,8 @@ struct csr_arrays {
 
 #define VOLATILE_DELTA
 // #define PERSISTENT_DELTA
+// #define DIFF_DELTA
+#define ADJ_DELTA
 
 /*
  * Struct used to store edge-coordinates in COO format

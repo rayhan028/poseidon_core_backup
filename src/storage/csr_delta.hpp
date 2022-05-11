@@ -9,6 +9,7 @@
 #include <shared_mutex>
 #endif
 
+#ifdef DIFF_DELTA
 /**
  * A struct for a CSR delta record. A delta record is associated with 
  * a node updated by a transaction. It contains the id of the updated node. 
@@ -52,7 +53,7 @@ struct delta {
   std::vector<double> weights_;   // relationship weights (for the inserted neighbours)
 };
 
-#if 0
+#elif defined ADJ_DELTA
 /**
  * A struct for a CSR delta record. A delta record is associated with a node
  * updated by a transaction. It contains the id of the updated node, the ids of the nodes
@@ -70,6 +71,19 @@ struct delta_rec {
                         // and the corresponding relationship weights in the vector "weights_"
   int count_;           // number of the neighbour nodes (with corresponding relationship weights)
   bool merged_ = false; // a flag indicating whether the delta record has been merged in a CSR update
+};
+
+/**
+ * A struct for merged CSR delta record(s) associated with the same node.
+ */
+struct delta {
+  delta() = default;
+  delta(const delta &) = delete;
+
+  offset_t node_id_;            // id of the node associated with the delta
+
+  std::vector<uint64_t> ids_;   // ids of the neighbour nodes
+  std::vector<double> weights_; // corresponding relationship weights
 };
 #endif
 
@@ -341,15 +355,6 @@ class delta_store {
 public:
   using delta_map_t = std::map<uint64_t, delta>;
 
-#if 0
-  /**
-   * Each delta in the delta map is of the form:
-   * {node id, <[ids of neighbours], [relationship weights]>}
-   */
-  using delta_map_t =
-    std::map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<double>>>;
-#endif
-
   /**
    * Constructor
    */
@@ -363,12 +368,15 @@ public:
 
   void initialize();
 
+#ifdef DIFF_DELTA
   /**
-   * Stores updates of a transaction as a delta records in the vector of delta records.
+   * Stores all updates of a transaction as delta records in the vector of delta records.
    */
   void store_deltas(uint64_t txid, const transaction::delta_ids &txn_delta_ids);
-
-#if 0
+#elif defined ADJ_DELTA
+  /**
+   * Stores updates of a transaction on a node as a delta record in the vector of delta records.
+   */
   void store_delta(uint64_t txid, uint64_t nid,
     const std::vector<uint64_t> &ids, const std::vector<double> &weights);
 #endif
@@ -429,17 +437,18 @@ private:
   uint64_t max_delta_recs_ = 18174889;      // maximum number of delta records for adaptive CSR update
 
 #ifdef VOLATILE_DELTA
+
+  #ifdef DIFF_DELTA
   std::vector<uint64_t> deletes_;           // ids of the deleted neighbours for all deltas records
   std::vector<uint64_t> inserts_;           // ids of the inserted neighbours for all deltas records
   std::vector<double> weights_;             // relationship weights (for inserted neighbours) for all deltas delta records
   offset_t next_deletes_pos_ = 0;           // start of empty slots in the "deletes_" vector
   offset_t next_inserts_pos_ = 0;           // start of empty slots in the "inserts_" and "weights_" vectors
-
-#if 0
+  #elif defined ADJ_DELTA
   std::vector<uint64_t> ids_;               // ids of neighbours (column indices) for all deltas records
   std::vector<double> weights_;             // relationship weights (edge values) for all deltas delta records
   offset_t next_pos_ = 0;                   // start of empty slots in the "ids_" and "weights_" vectors
-#endif
+  #endif
 
   vchunked_vec<delta_rec> delta_recs_;      // the underlying vchunked vector of volatile delta records
 
@@ -447,18 +456,20 @@ private:
   std::vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR
   std::vector<offset_t> col_indices_ = {};  // column indices array of the current CSR
   std::vector<float> edge_values_ = {};     // edge values array of the current CSR
+
 #elif defined PERSISTENT_DELTA
+
+  #ifdef DIFF_DELTA
   pmem::obj::vector<uint64_t> deletes_;     // ids of the deleted neighbours for all deltas records
   pmem::obj::vector<uint64_t> inserts_;     // ids of the inserted neighbours for all deltas records
   pmem::obj::vector<double> weights_;       // relationship weights (for inserted neighbours) for all deltas delta records
   offset_t next_deletes_pos_ = 0;           // start of empty slots in the "deletes_" vector
   offset_t next_inserts_pos_ = 0;           // start of empty slots in the "inserts_" and "weights_" vectors
-
-#if 0
+  #elif defined ADJ_DELTA
   pmem::obj::vector<uint64_t> ids_;         // ids of neighbours (column indices) for all deltas records
   pmem::obj::vector<double> weights_;       // relationship weights (edge values) for all deltas delta records
   offset_t next_pos_ = 0;                   // start of empty slots in the "ids_" and "weights_" vectors
-#endif
+  #endif
 
   chunked_vec<delta_rec> delta_recs_;       // the underlying chunked vector of persistent delta records
 
@@ -466,6 +477,7 @@ private:
   pmem::obj::vector<offset_t> row_offsets_; // row offsets array of the current CSR
   pmem::obj::vector<offset_t> col_indices_; // column indices array of the current CSR
   pmem::obj::vector<float> edge_values_;    // edge values array of the current CSR
+
 #endif
 };
 
