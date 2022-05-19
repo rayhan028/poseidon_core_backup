@@ -40,7 +40,7 @@ struct d_delta {
   double **weights_; // corresponding relationship weights
 };
 
-extern "C" void csr_build_on_gpu(graph_db_ptr graph, csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
+extern "C" void device_csr_build(graph_db_ptr graph, csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
   auto txid = current_transaction()->xid();
 
   offset_t edges = 0;
@@ -122,12 +122,27 @@ extern "C" void csr_build_on_gpu(graph_db_ptr graph, csr_arrays &csr, rship_weig
     delta_store->clear_deltas();
   }
 
-  delta_store->row_offsets_ = row_offsets;
-  delta_store->col_indices_ = col_indices;
-  delta_store->edge_values_ = edge_values;
+  // TODO
+  // delta_store->row_offsets_ = row_offsets;
+  // delta_store->col_indices_ = col_indices;
+  // delta_store->edge_values_ = edge_values;
+
+  delta_store->row_offs_size_ = row_offsets.size();
+  delta_store->col_inds_size_ = col_indices.size();
+
+  offset_t ro_size = delta_store->row_offs_size_ * sizeof(offset_t);
+  offset_t ci_size = delta_store->col_inds_size_ * sizeof(offset_t);
+  offset_t ev_size = delta_store->col_inds_size_ * sizeof(float);
+
+  cudaMalloc((void **)&delta_store->row_offsets_, ro_size);
+  cudaMalloc((void **)&delta_store->col_indices_, ci_size);
+  cudaMalloc((void **)&delta_store->edge_values_, ev_size);
+  cudaMemcpy(delta_store->row_offsets_, row_offsets.data(), ro_size, cudaMemcpyHostToDevice);
+  cudaMemcpy(delta_store->row_offsets_, col_indices.data(), ci_size, cudaMemcpyHostToDevice);
+  cudaMemcpy(delta_store->row_offsets_, edge_values.data(), ev_size, cudaMemcpyHostToDevice);
 }
 
-extern "C" void csr_update_with_delta_on_gpu(graph_db_ptr graph, csr_arrays &csr) {
+extern "C" void device_csr_update_with_delta(graph_db_ptr graph, csr_arrays &csr) {
   auto tx = current_transaction();
   if (!tx)
     throw out_of_transaction_scope();
@@ -138,7 +153,7 @@ extern "C" void csr_update_with_delta_on_gpu(graph_db_ptr graph, csr_arrays &csr
 
   if (last_txid == UNKNOWN) {
     // no CSR exists yet, so we make the initial CSR build
-    csr_build_on_gpu(graph, csr, delta_store->weight_func_, delta_store->bidirectional_);
+    device_csr_build(graph, csr, delta_store->weight_func_, delta_store->bidirectional_);
     return;
   }
   else if (last_txid > txid) {
@@ -148,18 +163,34 @@ extern "C" void csr_update_with_delta_on_gpu(graph_db_ptr graph, csr_arrays &csr
     throw invalid_csr_update();
   }
 
-  thrust::device_vector<offset_t> old_row_offs;
-  thrust::device_vector<offset_t> old_col_inds;
-  thrust::device_vector<float> old_edge_vals;
-
   // TODO
   // thrust::device_vector<offset_t> old_row_offs = delta_store->row_offsets_;
   // thrust::device_vector<offset_t> old_col_inds = delta_store->col_indices_;
   // thrust::device_vector<float> old_edge_vals = delta_store->edge_values_;
 
-  delta_store->row_offsets_.clear();
-  delta_store->col_indices_.clear();
-  delta_store->edge_values_.clear();
+  offset_t *old_row_offs;
+  offset_t *old_col_inds;
+  float *old_edge_vals;
+
+  std::size_t ro_size = delta_store->row_offs_size_ * sizeof(offset_t);
+  std::size_t ci_size = delta_store->col_inds_size_ * sizeof(offset_t);
+  std::size_t ev_size = delta_store->col_inds_size_ * sizeof(float);
+
+  cudaMalloc((void **)&old_row_offs, ro_size);
+  cudaMalloc((void **)&old_col_inds, ci_size);
+  cudaMalloc((void **)&old_edge_vals, ev_size);
+  cudaMemcpy(old_row_offs, delta_store->row_offsets_, ro_size, cudaMemcpyDeviceToDevice);
+  cudaMemcpy(old_col_inds, delta_store->col_indices_, ci_size, cudaMemcpyDeviceToDevice);
+  cudaMemcpy(old_edge_vals, delta_store->edge_values_, ev_size, cudaMemcpyDeviceToDevice);
+
+  // TODO
+  // delta_store->row_offsets_.clear();
+  // delta_store->col_indices_.clear();
+  // delta_store->edge_values_.clear();
+
+  cudaFree(delta_store->row_offsets_);
+  cudaFree(delta_store->col_indices_);
+  cudaFree(delta_store->edge_values_);
 
   auto &new_row_offs = delta_store->row_offsets_;
   auto &new_col_inds = delta_store->col_indices_;
@@ -211,8 +242,7 @@ extern "C" void csr_update_with_delta_on_gpu(graph_db_ptr graph, csr_arrays &csr
     cudaMemcpy(&(d_deltas[i].weights_), h_delta.weights_.data(), size_edge_vals, cudaMemcpyHostToDevice);
 
     if (i < lnid_pos) { // TODO: too expensive
-      // int old_edges = old_row_offs[nid + 1] - old_row_offs[nid];
-      int old_edges;
+      int old_edges = old_row_offs[nid + 1] - old_row_offs[nid];
       int new_edges = h_delta.ids_.size();
       auto diff = new_edges - old_edges;
       edge_diff += diff;
@@ -225,16 +255,24 @@ extern "C" void csr_update_with_delta_on_gpu(graph_db_ptr graph, csr_arrays &csr
     i++;
   }
 
-  uint64_t new_row_offs_size = 0;
-  uint64_t new_col_inds_size = 0;
-
   // TODO
   // uint64_t new_row_offs_size = old_row_offs.size() + num_new_nodes;
   // uint64_t new_col_inds_size = old_col_inds.size() + edge_diff + num_new_edges;
 
-  new_row_offs.reserve(new_row_offs_size);
-  new_col_inds.reserve(new_col_inds_size);
-  new_edge_vals.reserve(new_col_inds_size);
+  // new_row_offs.reserve(new_row_offs_size);
+  // new_col_inds.reserve(new_col_inds_size);
+  // new_edge_vals.reserve(new_col_inds_size);
+
+  uint64_t new_row_offs_size = delta_store->row_offs_size_ + num_new_nodes;
+  uint64_t new_col_inds_size = delta_store->col_inds_size_ + edge_diff + num_new_edges;
+
+  std::size_t new_ro_size = new_row_offs_size * sizeof(offset_t);
+  std::size_t new_ci_size = new_col_inds_size * sizeof(offset_t);
+  std::size_t new_ev_size = new_col_inds_size * sizeof(float);
+
+  cudaMalloc((void **)&new_row_offs, new_ro_size);
+  cudaMalloc((void **)&new_col_inds, new_ci_size);
+  cudaMalloc((void **)&new_edge_vals, new_ev_size);
 #endif
 
   // TODO

@@ -568,23 +568,27 @@ public:
    */
   void poseidon_to_csr(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
 
+#ifndef USE_GUNROCK
   /**
    * Converts the graph data to a CSR representation by scanning the entire graph data.
    */
-  void csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
+  void host_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
 
   /**
    * Converts the graph data to a CSR representation from a parallel scan of the entire graph data.
    */
-  void parallel_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
+  void parallel_host_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
 
 #if defined CSR_DELTA && defined USE_TX
   /**
    * Updates the existing CSR using the appropriate deltas in the CSR delta store, such that it 
    * represents the latest snapshot of the graph data.
    */
-  void csr_update_with_delta(csr_arrays &csr);
+  void host_csr_update_with_delta(csr_arrays &csr);
+#endif
+#endif
 
+#if defined CSR_DELTA && defined USE_TX
   /**
    * Returns a reference to the CSR delta store.
    */

@@ -199,9 +199,13 @@ struct csr_arrays {
   csr_arrays(const csr_arrays &) = delete;
 
 #ifdef USE_GUNROCK
-  thrust::host_vector<offset_t> row_offsets = {};
-  thrust::host_vector<offset_t> col_indices = {};
-  thrust::host_vector<float> edge_values = {};
+  // TODO
+  // thrust::host_vector<offset_t> row_offsets = {};
+  // thrust::host_vector<offset_t> col_indices = {};
+  // thrust::host_vector<float> edge_values = {};
+  std::vector<offset_t> row_offsets = {};
+  std::vector<offset_t> col_indices = {};
+  std::vector<float> edge_values = {};
 #else
   std::vector<offset_t> row_offsets = {};
   std::vector<offset_t> col_indices = {};

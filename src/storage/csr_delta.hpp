@@ -87,21 +87,6 @@ struct delta {
 };
 #endif
 
-#ifdef USE_GUNROCK
-/**
- * A struct on GPU for merged CSR delta record(s) associated with the same node.
- */
-struct d_delta {
-  d_delta() = default;
-  d_delta(const d_delta &) = delete;
-
-  uint64_t node_id_;  // id of the node associated with the delta
-
-  uint64_t **ids_;   // ids of the neighbour nodes
-  double **weights_; // corresponding relationship weights
-};
-#endif
-
 #ifdef VOLATILE_DELTA
 /**
  * vchunk is a strictly volatile version of chunk in chunked_vec
@@ -437,7 +422,7 @@ public:
    */
   uint64_t last_txn_id() { return last_txn_id_; }
 
-private:
+// private: // TODO
   friend class graph_db;
 
   bool bidirectional_ = false;              // bi/uni-directional traversal of relationships
@@ -468,9 +453,15 @@ private:
   vchunked_vec<delta_rec> delta_recs_;      // the underlying vchunked vector of volatile delta records
 
 #ifdef USE_GUNROCK
-  thrust::device_vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR on GPU
-  thrust::device_vector<offset_t> col_indices_ = {};  // column indices array of the current CSR on GPU
-  thrust::device_vector<float> edge_values_ = {};     // edge values array of the current CSR on GPU
+  // TODO
+  // thrust::device_vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR on GPU
+  // thrust::device_vector<offset_t> col_indices_ = {};  // column indices array of the current CSR on GPU
+  // thrust::device_vector<float> edge_values_ = {};     // edge values array of the current CSR on GPU
+  offset_t *row_offsets_;     // row offsets array of the current CSR on GPU
+  offset_t *col_indices_;     // column indices array of the current CSR on GPU
+  float *edge_values_;        // edge values array of the current CSR on GPU
+  std::size_t row_offs_size_; // size of the row_offsets_ array
+  std::size_t col_inds_size_; // size of the col_indices_ (and edge_values_) array
 #else
   std::vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR
   std::vector<offset_t> col_indices_ = {};  // column indices array of the current CSR
@@ -494,9 +485,15 @@ private:
   chunked_vec<delta_rec> delta_recs_;       // the underlying chunked vector of persistent delta records
 
 #ifdef USE_GUNROCK
-  thrust::device_vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR on GPU
-  thrust::device_vector<offset_t> col_indices_ = {};  // column indices array of the current CSR on GPU
-  thrust::device_vector<float> edge_values_ = {};     // edge values array of the current CSR on GPU
+  // TODO
+  // thrust::device_vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR on GPU
+  // thrust::device_vector<offset_t> col_indices_ = {};  // column indices array of the current CSR on GPU
+  // thrust::device_vector<float> edge_values_ = {};     // edge values array of the current CSR on GPU
+  offset_t *row_offsets_;     // row offsets array of the current CSR on GPU
+  offset_t *col_indices_;     // column indices array of the current CSR on GPU
+  float *edge_values_;        // edge values array of the current CSR on GPU
+  std::size_t row_offs_size_; // size of the row_offsets_ array
+  std::size_t col_inds_size_; // size of the col_indices_ (and edge_values_) array
 #else
   pmem::obj::vector<offset_t> row_offsets_; // row offsets array of the current CSR
   pmem::obj::vector<offset_t> col_indices_; // column indices array of the current CSR

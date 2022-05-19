@@ -23,6 +23,9 @@
 #include "parser.hpp"
 #include "spdlog/spdlog.h"
 #include "query.hpp"
+#ifdef USE_GUNROCK
+#include "graph_db_analytics.cu"
+#endif
 #include <iostream>
 
 
@@ -31,28 +34,30 @@ void graph_db::poseidon_to_csr(csr_arrays &csr, rship_weight weight_func, bool b
   if (delta_store_->delta_mode_) {
     // we use weight_func and bidirectional as per the delta store
     #ifdef USE_GUNROCK
-    csr_update_with_delta_gpu();
+    device_csr_update_with_delta(std::make_shared<graph_db>(*this), csr);
     #else
-    csr_update_with_delta(csr);
+    host_csr_update_with_delta(csr);
     #endif
   }
   else {
     #ifdef PARALLEL_CSR_BUILD
-    parallel_csr_build(csr, weight_func, bidirectional);
+    parallel_host_csr_build(csr, weight_func, bidirectional);
     #elif defined USE_GUNROCK
-    csr_build_gpu(csr, weight_func, bidirectional);
+    device_csr_build(std::make_shared<graph_db>(*this), csr, weight_func, bidirectional);
     #else
-    csr_build(csr, weight_func, bidirectional);
+    host_csr_build(csr, weight_func, bidirectional);
     #endif
   }
 #elif defined PARALLEL_CSR_BUILD
-  parallel_csr_build(csr, weight_func, bidirectional);
+  parallel_host_csr_build(csr, weight_func, bidirectional);
 #else
-  csr_build(csr, weight_func, bidirectional);
+  host_csr_build(csr, weight_func, bidirectional);
 #endif
 }
 
-void graph_db::csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
+#ifndef USE_GUNROCK
+
+void graph_db::host_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
   auto txid = current_transaction()->xid();
 
   offset_t edges = 0;
@@ -132,7 +137,7 @@ void graph_db::csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirec
 #endif
 }
 
-void graph_db::parallel_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
+void graph_db::parallel_host_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
   offset_t max_num_nodes = nodes_->as_vec().last_used() + 1;
   offset_t max_num_edges = rships_->as_vec().last_used() + 1;
 
@@ -209,7 +214,7 @@ void graph_db::parallel_csr_build(csr_arrays &csr, rship_weight weight_func, boo
 }
 
 #if defined CSR_DELTA && defined USE_TX
-void graph_db::csr_update_with_delta(csr_arrays &csr) {
+void graph_db::host_csr_update_with_delta(csr_arrays &csr) {
   auto tx = current_transaction();
   if (!tx)
     throw out_of_transaction_scope();
@@ -220,9 +225,9 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
   if (last_txid == UNKNOWN) {
     // no CSR exists yet, so we make the initial CSR build
 #ifdef PARALLEL_CSR_BUILD
-    parallel_csr_build(csr, delta_store_->weight_func_, delta_store_->bidirectional_);
+    parallel_host_csr_build(csr, delta_store_->weight_func_, delta_store_->bidirectional_);
 #else
-    csr_build(csr, delta_store_->weight_func_, delta_store_->bidirectional_);
+    host_csr_build(csr, delta_store_->weight_func_, delta_store_->bidirectional_);
 #endif
     return;
   }
@@ -568,6 +573,8 @@ void graph_db::csr_update_with_delta(csr_arrays &csr) {
   delta_store_->col_indices_ = new_col_inds;
   delta_store_->edge_values_ = new_edge_vals;
 }
+#endif
+
 #endif
 
 void graph_db::poseidon_to_coo(edge_coords* edge_coordinates, float* edge_values, rship_weight weight_func, bool bidirectional) {

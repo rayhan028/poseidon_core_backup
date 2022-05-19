@@ -42,6 +42,7 @@ void create_known_data(graph_db_ptr graph) {
 }
 
 TEST_CASE("Building CSR from Sequential and parallel table scan", "[format_converter]"){
+#ifndef USE_GUNROCK
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_graph");
   create_known_data(graph);
@@ -49,13 +50,13 @@ TEST_CASE("Building CSR from Sequential and parallel table scan", "[format_conve
   csr_arrays csr1;
   auto weight_func = [](auto& r) { return 1.3; };
   graph->run_transaction([&]() {
-    graph->csr_build(csr1, weight_func);
+    graph->host_csr_build(csr1, weight_func);
     return true;
   });
 
   csr_arrays csr2;
   graph->run_transaction([&]() {
-    graph->parallel_csr_build(csr2, weight_func);
+    graph->parallel_host_csr_build(csr2, weight_func);
     return true;
   });
 
@@ -72,4 +73,5 @@ TEST_CASE("Building CSR from Sequential and parallel table scan", "[format_conve
   REQUIRE(csr2.edge_values == edge_vals);
 
   graph_pool::destroy(pool);
+#endif
 }
