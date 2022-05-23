@@ -114,7 +114,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         //REQUIRE(boost::get<std::string>(rs.data[43][0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\"}");
     }
 
-/*
+    /*
    SECTION("Using an index to retrieve a certain node") {
         query_engine queryEngine(graph, 1, chunks);
         auto expr = IndexScan(Collect());
@@ -128,8 +128,8 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         queryEngine.run(&rs, args);
 
         REQUIRE(rs.data.size() == 1);
-    }
-*/  
+    }*/
+  
     arg_builder args;
     result_set rs;
     SECTION("Find a outgoing relationship from each Person node") {
@@ -400,7 +400,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 #endif
 
 	// auto chunks = graph->get_nodes()->num_chunks();  
-    
+/*    
     SECTION("Single Projection - string type") {
         qcompiler queryEngine(graph);
 
@@ -584,7 +584,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
       REQUIRE(rs.data.size() != 0);
     }
-
+*/
 /*
     SECTION("Hash Join") {
         qcompiler queryEngine(graph);
