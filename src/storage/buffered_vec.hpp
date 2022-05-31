@@ -282,10 +282,10 @@ class buffered_vec {
    */
   void clear() {
     // TODO
-    for (auto p : chunk_list_)
-      delete p;
-    chunk_list_.clear();
-    free_list_.clear();
+    //for (auto p : chunk_list_)
+    //  delete p;
+    //chunk_list_.clear();
+    //free_list_.clear();
     capacity_ = 0;
     available_slots_ = 0;
   }
@@ -583,7 +583,7 @@ private:
    */
   bchunk_ptr find_chunk(offset_t idx, bool modify = false) const {
     auto page_id = idx / elems_per_chunk_ + 1;
-    spdlog::info("buffered_vec::find_chunk page #{}", page_id);
+    // spdlog::info("buffered_vec::find_chunk page #{}", page_id);
     auto pg = bpool_.fetch_page(page_id | file_mask_);
     
     // std::cout << "find_chunk: " << page_id << ", addr=" << (uint64_t)pg->payload << std::endl;
