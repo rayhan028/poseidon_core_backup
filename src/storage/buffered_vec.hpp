@@ -55,7 +55,7 @@ struct bchunk {
   T data_[num_records];             // the array of data
   std::bitset<num_records> slots_;  // bitstring representing empty slots (0), used slots (1)
   uint32_t first_;                  // the index of the first available slot
-  // uint32_t fl_next_, fl_prev_;      // page id of the next/previous page with free slots
+  uint32_t fl_next_, fl_prev_;      // page id of the next/previous page with free slots
 
   /**
    * Create a new chunk, allocate and initialize the memory.
@@ -155,7 +155,7 @@ struct bchunk {
  */
 template <typename T, int chunk_size = DEFAULT_BCHUNK_SIZE>
 class buffered_vec {
-  static constexpr auto num_entries = static_cast<int>((chunk_size - 5) / (sizeof(T) + 1/8.0));
+  static constexpr auto num_entries = static_cast<int>((chunk_size - 13) / (sizeof(T) + 1/8.0));
 
 /// The type for pointers to single chunks.
   using bchunk_ptr = bchunk<T, num_entries> *;
@@ -254,15 +254,19 @@ class buffered_vec {
    */
   buffered_vec(bufferpool& pool, uint64_t file_id)
       : bpool_(pool), file_id_(file_id), file_mask_(file_id << 60),
-        available_slots_(0), elems_per_chunk_(num_entries), capacity_(0) {
+        available_slots_(0), elems_per_chunk_(num_entries), capacity_(0), fl_first_(0) {
       auto fptr = bpool_.get_file(file_id_);
       capacity_ = fptr->num_pages() * elems_per_chunk_;
       // initialize available_slots_ for an existing file
       fptr->set_callback([this](paged_file::cb_mode m, uint8_t *data) {
-        if (m == paged_file::header_read)
+        if (m == paged_file::header_read) {
           memcpy(&available_slots_, data, sizeof(offset_t)); 
-        else
+          memcpy(&fl_first_, data + sizeof(offset_t), sizeof(uint32_t)); 
+        }
+        else {
           memcpy(data, &available_slots_, sizeof(offset_t));
+          memcpy(data + sizeof(offset_t), &fl_first_, sizeof(uint32_t));
+        }
       });
   }
 
@@ -313,12 +317,10 @@ class buffered_vec {
 
     if (!is_used)
       available_slots_--;
-    /*  
     if (ch->is_full()) {
       std::unique_lock lock(fl_mtx_);
-      remove_from_free_list(idx);
+      remove_from_free_list(ch, idx);
     }
-    */
   }
 
   /**
@@ -326,11 +328,11 @@ class buffered_vec {
    * pointer(!) to the record as a pair.
    */
   std::pair<offset_t, T *> append(T &&o, std::function<void(offset_t)> callback = nullptr) {
-    std::unique_lock lock(fl_mtx_);
+    std::unique_lock lock(fl_mtx_); // TODO: too coarse grained lock!
 
     if (is_full())
       resize(1);
-    auto tail = get_last_chunk(true); // TODO: not always necessary!
+    auto tail = get_last_chunk(true);
     assert(tail != nullptr);
 
     if (tail->is_full()) {
@@ -344,11 +346,9 @@ class buffered_vec {
     available_slots_--;
     tail->set(pos, true);
     tail->data_[pos] = o;
-    /*
     if (tail->is_full()) {
-      remove_from_free_list(offs);
+      remove_from_free_list(tail, offs);
     }
-    */
     return std::make_pair(offs + pos, &tail->data_[pos]);
   }
 
@@ -357,19 +357,27 @@ class buffered_vec {
    * pointer(!) to the record as a pair.
    */
   std::pair<offset_t, T *> store(T &&o, std::function<void(offset_t)> callback = nullptr) {
+    bchunk_ptr chk = nullptr;
     std::unique_lock lock(fl_mtx_);
-
-    if (is_full())
+    
+    if (is_full()) {
       resize(1);
-    // TODO: find a chunk with empty slots
-
-    auto chk = get_last_chunk(true); // TODO: not always necessary!
-    assert(chk != nullptr);
-
-    if (chk->is_full()) {
-      resize(1);
+    
       chk = get_last_chunk(true);
+      assert(chk != nullptr);
+
+      if (chk->is_full()) {
+        resize(1);
+        chk = get_last_chunk(true);
+      }
     }
+    else {
+      // find a chunk with empty slots
+      assert(fl_first_ != 0);
+      chk = load_chunk(fl_first_);
+      assert(chk != nullptr);
+    }
+
     auto pos = chk->first_available();
     assert(pos != SIZE_MAX);
     auto offs = (bpool_.get_file(file_id_)->num_pages() - 1) * elems_per_chunk_;
@@ -377,11 +385,9 @@ class buffered_vec {
     available_slots_--;
     chk->set(pos, true);
     chk->data_[pos] = o;
-    /*
-    if (tail->is_full()) {
-      remove_from_free_list(offs);
+    if (chk->is_full()) {
+      remove_from_free_list(chk, offs);
     }
-    */
     return std::make_pair(offs + pos, &chk->data_[pos]);
   }
 
@@ -397,13 +403,13 @@ class buffered_vec {
     // TODO: if (ch->empty()) delete ch;
     // if this was the first slot on this chunk which is now empty, 
     // add this chunk to the free list
-    /*
     bool was_full = ch->is_full();
     if (was_full) {
       std::unique_lock lock(fl_mtx_);
-      add_to_free_list(idx);
+      ch->fl_next_ = fl_first_;
+      fl_first_ = idx / elems_per_chunk_ + 1;
+      // TODO: update ch->fl_prev_
     }
-    */
   }
 
   /**
@@ -491,7 +497,13 @@ class buffered_vec {
       auto chk = new(pg.first->payload) bchunk<T, num_entries>();
       chk->slots_.reset();
       chk->first_ = 0;
-      // chk->fl_next_ = chk->fl_prev_ = 0;
+      chk->fl_prev_ = 0;
+      chk->fl_next_ = fl_first_;
+      if (fl_first_ != 0) {
+        auto chk2 = load_chunk(fl_first_, true);
+        chk2->fl_prev_ = pg.second;
+      }
+      fl_first_ = pg.second;
       capacity_ += elems_per_chunk_;
       available_slots_ += elems_per_chunk_;
     }
@@ -522,19 +534,32 @@ class buffered_vec {
   uint32_t real_chunk_size() const { return sizeof(bchunk<T, num_entries>); }
 
 private:
+
+  void remove_from_free_list(bchunk_ptr chk, offset_t idx) {
+    spdlog::info("remove_from_free_list: {}", idx);
+    paged_file::page_id pid = idx / elems_per_chunk_ + 1;
+    if (fl_first_ == pid) {
+        fl_first_ = chk->fl_next_;
+        chk->fl_prev_ = 0;
+        auto chk2 = load_chunk(chk->fl_next_, true);
+        if (chk2 != nullptr)
+          chk2->fl_prev_ = 0;
+    }
+    else {
+        auto chk2 = load_chunk(chk->fl_prev_, true);
+        auto chk3 = load_chunk(chk->fl_next_, true);
+        chk2->fl_next_ = chk->fl_next_;
+        if (chk3 != nullptr)
+          chk3->fl_prev_ = chk->fl_prev_;
+        chk->fl_next_ = chk->fl_prev_;
+    }
+  }
 #if 0
   void add_to_free_list(offset_t idx) {
     // spdlog::info("add_to_free_list: {}", idx);
     free_list_.push_back(idx);
   }
 
-  void remove_from_free_list(offset_t idx) {
-    // spdlog::info("remove_from_free_list: {}", idx);
-    free_list_.erase(std::remove_if(std::begin(free_list_), std::end(free_list_), 
-      [idx](auto i) { return i == idx; }), 
-      std::end(free_list_));
-
-  }
 
   offset_t find_in_free_list() {
     // spdlog::info("find_in_free_list: {} ({})", free_list_.front(), free_list_.size());
@@ -549,6 +574,7 @@ private:
    */
   bchunk_ptr find_chunk(offset_t idx, bool modify = false) const {
     auto page_id = idx / elems_per_chunk_ + 1;
+    spdlog::info("buffered_vec::find_chunk page #{}", page_id);
     auto pg = bpool_.fetch_page(page_id | file_mask_);
     
     // std::cout << "find_chunk: " << page_id << ", addr=" << (uint64_t)pg->payload << std::endl;
@@ -560,11 +586,15 @@ private:
     return reinterpret_cast<bchunk_ptr>(pg->payload);
   }
 
-  bchunk_ptr load_chunk(paged_file::page_id pid) const {
+  bchunk_ptr load_chunk(paged_file::page_id pid, bool modify = false) const {
     if (!bpool_.get_file(file_id_)->is_valid(pid))
       return nullptr;
 
     auto pg = bpool_.fetch_page(pid | file_mask_);
+    if (modify) {
+      spdlog::debug("buffered_vec::load_chunk page #{} marked as dirty in file {}", pid | file_mask_, file_id_);
+      bpool_.mark_dirty(pid | file_mask_);
+    }
     return reinterpret_cast<bchunk_ptr>(pg->payload);
   }
 
@@ -583,10 +613,8 @@ private:
   offset_t available_slots_; // total number of available slots for records
   uint32_t elems_per_chunk_; // number of elements per chunk
   offset_t capacity_; // total capacity of the chunked_vec in number of records
-
+  uint32_t fl_first_; // the first page containing available slots (head of the freelist) - will be written to the file header
   //--
-  std::vector<bchunk_ptr> chunk_list_; // the list of pointers to all chunks
-  std::vector<offset_t> free_list_;   // the list of chunks with empty slots (described by their indexes)
   mutable std::shared_mutex fl_mtx_;  // mutex for accessing the free list
 };
 
