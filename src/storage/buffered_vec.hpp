@@ -273,13 +273,21 @@ class buffered_vec {
   /**
    * Destructor.
    */
-  ~buffered_vec() = default;
+  ~buffered_vec() {
+    clear();
+  }
 
   /**
    * Delete all chunks of the vector and reset it to an empty vector.
    */
   void clear() {
     // TODO
+    for (auto p : chunk_list_)
+      delete p;
+    chunk_list_.clear();
+    free_list_.clear();
+    capacity_ = 0;
+    available_slots_ = 0;
   }
 
   /**
@@ -301,7 +309,7 @@ class buffered_vec {
   }
 
   range_iter* range_ptr(std::size_t first_chunk, std::size_t last_chunk, std::size_t start_pos = 0) {
-    return new range_iter(*this, first_chunk, last_chunk, start_pos);
+    return new range_iter(*this, first_chunk + 1, last_chunk + 1, start_pos);
   }
 
   /**
@@ -524,7 +532,8 @@ class buffered_vec {
   /**
    * Return the number of occupied chunks.
    */
-  std::size_t num_chunks() const { return bpool_.get_file(file_id_)->num_pages(); }
+  std::size_t num_chunks() const { 
+    return bpool_.get_file(file_id_)->num_pages(); }
 
   /**
    * Return the number of records stored per chunk.
