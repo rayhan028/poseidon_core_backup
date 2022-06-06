@@ -31,7 +31,7 @@ bool paged_file::open(const std::string& path, int file_type) {
         file_.open(path, std::fstream::in | std::fstream::out | std::fstream::trunc | std::fstream::binary);
         header_.ftype_ = file_type;
         header_.slots_.reset();
-        memset(header_.payload_, 0, 64);
+        memset(header_.payload_, 0, FHEADER_PAYLOAD_SIZE);
         file_.write((const char *)&header_, sizeof(header_));
         spdlog::debug("create new paged_file: {}", path);
     }

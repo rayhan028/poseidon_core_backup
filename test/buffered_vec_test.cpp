@@ -72,7 +72,7 @@ TEST_CASE("Adding some records", "[buffered_vec]") {
     CHECK_THROWS_AS(vec.at(1000000), index_out_of_range);
 
     // store 1000 records in the array
-    for (offset_t i = 0; i < 16384; i++) {
+    for (offset_t i = 0; i < 1000; i++) {
         record rec;
         rec.head = i + 1;
         rec.i = i * 100 + 1;
@@ -82,7 +82,7 @@ TEST_CASE("Adding some records", "[buffered_vec]") {
     }
 
     // check whether we can retrieve these records
-    for (offset_t o = 0; o < 16384; o++) {
+    for (offset_t o = 0; o < 1000; o++) {
         const auto &rec = vec.const_at(o);
         REQUIRE(rec.flag == 11);
         REQUIRE(rec.head == o + 1);
@@ -358,3 +358,53 @@ TEST_CASE("Append many records", "[buffered_vec]") {
 
     delete_dir("bv_test6");
 }
+
+#if 0
+
+TEST_CASE("Create a vector with many records and test the freespace management", "[buffered_vec]") {
+    create_dir("bv_test7");
+    const uint8_t file_id = 0;
+        
+    auto test_file = std::make_shared<paged_file>();
+    test_file->open("bv_test7/bv_records.db", file_id);
+
+    bufferpool bpool;
+    bpool.register_file(file_id, test_file);
+
+    buffered_vec<record> vec(bpool, file_id);
+
+    // store 1.000.000 records in the array
+    for (offset_t i = 0; i < 1000000; i++) {
+        record rec;
+        rec.head = i + 1;
+        rec.i = i * 100 + 1;
+        memcpy(rec.s, "##########", 10);
+        rec.flag = 11;
+        auto res = vec.append(std::move(rec));
+        REQUIRE(res.first == i);
+        REQUIRE(res.second != nullptr);
+    }
+    bpool.flush_all();
+    std::cout << "number of chunks: " << vec.num_chunks() << std::endl;
+    // delete a number of records from different chunks
+    std::vector<offset_t> victims = {16000, 45000, 45001, 45002, 161290, 161291};
+    for (auto &v : victims) {
+        vec.erase(v);
+    }
+    // check that chunks are reused if new records are inserted
+    REQUIRE(vec.first_available() == 16000);
+    {
+        record rec;
+        rec.head = 2000000;
+        rec.i = 2000000;
+        memcpy(rec.s, "##########", 10);
+        rec.flag = 12;
+        auto res = vec.store(std::move(rec));
+        REQUIRE(res.first == 16000);
+        REQUIRE(res.second != nullptr);
+
+    }
+    delete_dir("bv_test7");
+}
+
+#endif

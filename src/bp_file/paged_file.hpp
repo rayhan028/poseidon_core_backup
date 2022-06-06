@@ -25,16 +25,16 @@
 #include <bitset>
 #include <functional>
 
-#define PAGE_SIZE      1048576 // 1024 * 1024
-
+#define PAGE_SIZE           1048576 // 1024 * 1024
+#define FHEADER_PAYLOAD_SIZE 9216
 /**
  * The header of a file.
  */
 struct file_header {
-    char fid_[4] = { 'P', 'S', 'D', 'N' }; // file identifier
-    uint8_t ftype_;                        // items stored in the file (nodes, rships, properties)
-    std::bitset<65536> slots_;             // slots representing which pages are not used (0) or in use (1)
-    uint8_t payload_[64];                  // space usable by the application
+    char fid_[4] = { 'P', 'S', 'D', 'N' };  // file identifier
+    uint8_t ftype_;                         // items stored in the file (nodes, rships, properties)
+    std::bitset<65536> slots_;              // slots representing which pages are not used (0) or in use (1)
+    uint8_t payload_[FHEADER_PAYLOAD_SIZE]; // space usable by the application
 };
 
 /**

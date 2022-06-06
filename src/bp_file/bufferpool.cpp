@@ -86,6 +86,7 @@ page *bufferpool::fetch_page(paged_file::page_id pid) {
 std::pair<page*, paged_file::page_id> bufferpool::allocate_page(uint8_t file_id) {
     assert(file_id < 10 && files_[file_id]);
     paged_file::page_id pid = files_[file_id]->allocate_page();
+    spdlog::debug("bufferpool::allocate_page -> {}/{}", pid, files_[file_id]->num_pages());
     return std::make_pair(fetch_page(pid | (static_cast<uint64_t>(file_id) << 60)), pid);
 }
  
