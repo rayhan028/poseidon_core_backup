@@ -26,6 +26,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <mutex>
 
 #include <boost/variant.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
@@ -65,6 +66,8 @@ using ptr_t = uint8_t *;
  *
  */
 constexpr uint64_t UNKNOWN = std::numeric_limits<uint64_t>::max();
+
+constexpr uint32_t UNKNOWN_CODE = std::numeric_limits<uint32_t>::max();
 
 inline std::string uint64_to_string(uint64_t v) {
   return v == UNKNOWN ? std::string("<null>") : std::to_string(v);

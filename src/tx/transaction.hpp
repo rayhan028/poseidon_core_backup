@@ -27,6 +27,7 @@
 #include <list>
 #include <set>
 #include "ts_list.hpp"
+#include "analytics.hpp"
 
 /**
  * Typedef for transaction ids.

@@ -29,8 +29,6 @@ class paged_string_pool;
 class string_pool;
 #endif
 
-constexpr uint32_t UNKNOWN_CODE = std::numeric_limits<uint32_t>::max();
-
 class htable {
     friend class dict;
 public:

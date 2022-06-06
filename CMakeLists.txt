@@ -12,7 +12,7 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         OFF)
-option(USE_PFILE        "Use paged file storage with bufferpool" ON)
+option(USE_PFILE        "Use paged file storage with bufferpool" OFF)
 option(USE_HDICT        "Use hdict implementation"               ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
@@ -23,7 +23,7 @@ option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
 option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
 option(BUILD_GTPC       "Build code for GTPC benchmark"          OFF)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
-option(CSR_DELTA_STORE  "Use delta store for updating CSR"       OFF)
+option(CSR_DELTA        "Use delta store for updating CSR"       OFF)
 #-------------------------------------------------------------------------------
 endif()
 

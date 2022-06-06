@@ -3,7 +3,8 @@
 
 #include "defs.hpp"
 
-/* ---------------- Definitions for Analytics ---------------- */
+struct node;
+struct relationship;
 
 /**
  * Typedef for a function that computes the weight of a relationship.

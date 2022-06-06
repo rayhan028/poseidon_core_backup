@@ -73,7 +73,7 @@ void drop_table(p_ptr<node_list> nlist) {
   remove(bench_path.c_str());
   std::cout << "table dropped." << std::endl;
 }
-#else
+#elif defined USE_PFILE
 p_ptr<node_list> prepare_table(bufferpool& bp) {
   auto nlist = p_make_ptr<node_list>(bp, 0);
   create_data(nlist);
@@ -93,6 +93,7 @@ void drop_table(p_ptr<node_list> nlist) {
 
 
 int main(int argc, char **argv) {
+#if defined USE_PMDK || defined USE_PFILE
   std::cout << "sizeof = " << sizeof(txn<dirty_node_ptr>) << std::endl;
   // add node
   {
@@ -104,7 +105,7 @@ int main(int argc, char **argv) {
     bpool.register_file(0, test_file);
 
     auto nlist = prepare_table(bpool);
-#else
+#elif defined USE_PMDK
     auto nlist = prepare_table();
 #endif
     std::cout << "starting add..." << std::endl;
@@ -135,7 +136,7 @@ int main(int argc, char **argv) {
     bpool.register_file(0, test_file);
 
     auto nlist = prepare_table(bpool);
-#else
+#elif defined USE_PMDK
     auto nlist = prepare_table();
 #endif
     std::cout << "starting append..." << std::endl;
@@ -165,7 +166,7 @@ int main(int argc, char **argv) {
     bpool.register_file(0, test_file);
 
     auto nlist = prepare_table(bpool);
-#else
+#elif defined USE_PMDK
     auto nlist = prepare_table();
 #endif
     std::cout << "starting insert..." << std::endl;
@@ -184,5 +185,7 @@ int main(int argc, char **argv) {
   }
 #ifdef USE_PFILE
   remove("nodes.db");
+#endif
+
 #endif
 }

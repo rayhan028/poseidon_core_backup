@@ -54,12 +54,6 @@ TEST_CASE("Building CSR from Sequential and parallel table scan", "[format_conve
     return true;
   });
 
-  csr_arrays csr2;
-  graph->run_transaction([&]() {
-    graph->parallel_host_csr_build(csr2, weight_func);
-    return true;
-  });
-
   std::vector<uint64_t> row_offs = {0, 2, 3, 4, 5, 5, 6, 7};
   std::vector<uint64_t> col_inds = {6, 1, 2, 3, 4, 6, 2};
   std::vector<float> edge_vals = {1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3};
@@ -68,9 +62,17 @@ TEST_CASE("Building CSR from Sequential and parallel table scan", "[format_conve
   REQUIRE(csr1.col_indices == col_inds);
   REQUIRE(csr1.edge_values == edge_vals);
 
+#ifdef USE_PMDK
+  csr_arrays csr2;
+  graph->run_transaction([&]() {
+    graph->parallel_host_csr_build(csr2, weight_func);
+    return true;
+  });
+
   REQUIRE(csr2.row_offsets == row_offs);
   REQUIRE(csr2.col_indices == col_inds);
   REQUIRE(csr2.edge_values == edge_vals);
+#endif
 
   graph_pool::destroy(pool);
 #endif
