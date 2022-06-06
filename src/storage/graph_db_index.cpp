@@ -31,7 +31,7 @@ namespace nvm = pmem::obj;
 #endif
 
 index_id graph_db::create_index(const std::string& node_label, const std::string& prop_name) {
-  // spdlog::info("create_index...");
+  spdlog::info("create_index...");
   // (1) we create a new b+tree
   #if USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);

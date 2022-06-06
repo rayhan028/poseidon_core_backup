@@ -25,6 +25,7 @@
 #include <tao/pegtl/contrib/parse_tree_to_dot.hpp>
 
 #include "queryc.hpp"
+#include "func_call_expr.hpp"
 
 namespace pegtl = tao::pegtl;
 

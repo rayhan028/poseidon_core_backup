@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <set>
 
-#ifdef USE_MMFILE
+#ifdef USE_PFILE
 #include <boost/filesystem.hpp>
 #endif
 
@@ -36,40 +36,60 @@ namespace nvm = pmem::obj;
 #endif
 
 void graph_db::destroy(graph_db_ptr gp) {
-#ifdef USE_MMFILE
-  auto prefix = gp->database_name_ + "/";
-  boost::filesystem::remove(prefix + "nodes.db");
-  boost::filesystem::remove(prefix + "slots_nodes.db");
-  boost::filesystem::remove(prefix + "rships.db");
-  boost::filesystem::remove(prefix + "slots_rships.db");
-  boost::filesystem::remove(prefix + "nprops.db");
-  boost::filesystem::remove(prefix + "slots_nprops.db");
-  boost::filesystem::remove(prefix + "rprops.db");
-  boost::filesystem::remove(prefix + "slots_rprops.db");
-  boost::filesystem::remove(prefix + "dict.db");
-  boost::filesystem::remove(prefix);
+#ifdef USE_PFILE
+  boost::filesystem::path path_obj(gp->database_name_);
+  boost::filesystem::remove_all(path_obj);
 #endif
 }
 
-
-graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
-  std::string prefix = "";
-#ifdef USE_MMFILE
-  boost::filesystem::path path_obj(db_name);
+#ifdef USE_PFILE
+void graph_db::prepare_files(const std::string &pfx) {
+  boost::filesystem::path path_obj(database_name_);
   // check if path exists and is of a regular file
   if (! boost::filesystem::exists(path_obj))
     boost::filesystem::create_directory(path_obj);
-  prefix = db_name + "/";
+  std::string prefix = pfx + "/";
+
+  node_file_ = std::make_shared<paged_file>();
+  node_file_->open(prefix + "nodes.db", NODE_FILE_ID);
+  bpool_.register_file(NODE_FILE_ID, node_file_);
+
+  rship_file_ = std::make_shared<paged_file>();
+  rship_file_->open(prefix + "rships.db", RSHIP_FILE_ID);
+  bpool_.register_file(RSHIP_FILE_ID, rship_file_);
+
+  nprops_file_ = std::make_shared<paged_file>();
+  nprops_file_->open(prefix + "nprops.db", NPROPS_FILE_ID);
+  bpool_.register_file(NPROPS_FILE_ID, nprops_file_);
+
+  rprops_file_ = std::make_shared<paged_file>();
+  rprops_file_->open(prefix + "rprops.db", RPROPS_FILE_ID);
+  bpool_.register_file(RPROPS_FILE_ID, rprops_file_);
+}
 #endif
-  nodes_ = p_make_ptr<node_list>(prefix + "nodes.db");
-  rships_ = p_make_ptr<relationship_list>(prefix + "rships.db");
-  node_properties_ = p_make_ptr<property_list>(prefix + "nprops.db");
-  rship_properties_ = p_make_ptr<property_list>(prefix + "rprops.db");
+
+graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
+#ifdef USE_PFILE
+  prepare_files(db_name);
+  nodes_ = p_make_ptr<node_list>(bpool_, NODE_FILE_ID);
+  rships_ = p_make_ptr<relationship_list>(bpool_, RSHIP_FILE_ID);
+  node_properties_ = p_make_ptr<property_list>(bpool_, NPROPS_FILE_ID);
+  rship_properties_ = p_make_ptr<property_list>(bpool_, RPROPS_FILE_ID);
+#else
+  nodes_ = p_make_ptr<node_list>();
+  rships_ = p_make_ptr<relationship_list>();
+  node_properties_ = p_make_ptr<property_list>();
+  rship_properties_ = p_make_ptr<property_list>();
+#endif
 #ifdef QOP_RECOVERY
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
 #endif
-  dict_ = p_make_ptr<dict>(prefix);
+#ifdef USE_PFILE
+  dict_ = p_make_ptr<dict>(bpool_, db_name + "/");
+#else
+  dict_ = p_make_ptr<dict>();
+#endif
   index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
 #if defined CSR_DELTA && defined USE_TX
@@ -140,7 +160,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
  	auto &n = nodes_->get(node_id);
   // If the node was already deleted we can skip all other entries...
   if (n.cts() != INF) {
-    n.remove_dirty_version(xid);
+    n.remove_dirty_version(0);
     return;
   }
 	  /* A dirty object was just inserted, when add_node() or update_node() was executed.
@@ -240,7 +260,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 	auto& r = rships_->get(rel_id);
   // If the relationship was already deleted we can skip all other entries...
   if (r.cts() != INF) {
-    r.remove_dirty_version(xid);
+    r.remove_dirty_version(0);
     return;
   }
 

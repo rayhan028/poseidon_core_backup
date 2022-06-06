@@ -8,7 +8,7 @@ Limit(10,
                             ForeachRelationship(FROM, ":replyOf", 1, 100,
                                 Expand(IN, "Comment",
                                     ForeachRelationship(TO, ":hasCreator",
-                                        Filter($0.id == 42, 
+                                        Filter($0.id == 65, 
                                             NodeScan("Person")
                                         )
                                     )
@@ -21,7 +21,7 @@ Limit(10,
             Project([$2.id:uint64, udf::getPost($2:qresult), $2.creationDate:datetime, $2.id:uint64, $0.id:uint64, $0.firstName:string, $0.lastName:string],
                 Expand(IN, "Post",
                     ForeachRelationship(TO, ":hasCreator",
-                        Filter($0.id == 42, 
+                        Filter($0.id == 65, 
                             NodeScan("Person")
                         )
                     )

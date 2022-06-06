@@ -3,6 +3,8 @@
 
 #include "transaction.hpp"
 #include "chunked_vec.hpp"
+#include "relationships.hpp"
+#include "nodes.hpp"
 
 #ifdef VOLATILE_DELTA
 #include <mutex>  // For std::unique_lock

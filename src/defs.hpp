@@ -37,7 +37,13 @@
 #include <thrust/device_ptr.h>
 #endif
 
-#define POSEIDON_VERSION "0.0.4"
+#define POSEIDON_VERSION "0.0.5"
+
+#define DICT_FILE_ID   0
+#define NODE_FILE_ID   1
+#define RSHIP_FILE_ID  2
+#define NPROPS_FILE_ID 3
+#define RPROPS_FILE_ID 4
 
 /**
  * Typedef used for codes in string dictionaries and type tables.
@@ -64,36 +70,6 @@ inline std::string uint64_to_string(uint64_t v) {
   return v == UNKNOWN ? std::string("<null>") : std::to_string(v);
 }
 
-struct node;
-struct relationship;
-
-struct null_t {
-    explicit constexpr null_t(int) {}
-  inline bool operator()(const null_t& one, const null_t& two) { return true; }
- inline bool operator==(const null_t& other) const { return true; }
-};
-
-inline constexpr null_t null_val(-1);
-
-struct array_t {
-  array_t(std::vector<uint64_t> v) : elems(v) {}
-  inline bool operator==(const array_t& other) const { return elems == other.elems; }
-  std::vector<uint64_t> elems;
-};
-
-/**
- * Typedef for an element (node, relationship, value) that might be part of a
- * query result. null_t is used to represent NULL values.
- */
-using query_result =
-    boost::variant<node *, relationship *, int, double, std::string, 
-                    uint64_t, boost::posix_time::ptime, array_t, null_t>;
-
-/**
- * Typedef for a list of result elements which are passed to the next query
- * operator in an execution plan.
- */
-using qr_tuple = std::vector<query_result>;
 
 #ifdef USE_PMDK
 
@@ -167,63 +143,5 @@ inline p_ptr<T> p_make_ptr(Args &&... args) {
 
 #endif
 
-/* ---------------- Definitions for Analytics ---------------- */
-
-/**
- * Typedef for a function that computes the weight of a relationship.
- */
-using rship_weight = std::function<double(relationship&)>;
-
-/**
- * Typedef for a predicate to check that a relationship is followed via the search.
- */
-using rship_predicate = std::function<bool(relationship&)>;
-
-/**
- * Typedef for a node visitor callback.
- */
-using node_visitor = std::function<void(node&)>;
-
-/**
- * Typedef for a node visitor callback which receives the full path.
- */
-using path = std::vector<offset_t>;
-
-using path_visitor = std::function<void(node&, const path&)>;
-
-/**
- * A wrapper struct for CSR arrays 
- */
-struct csr_arrays {
-  csr_arrays() = default;
-  csr_arrays(const csr_arrays &) = delete;
-
-#ifdef USE_GUNROCK
-  // TODO
-  // thrust::host_vector<offset_t> row_offsets = {};
-  // thrust::host_vector<offset_t> col_indices = {};
-  // thrust::host_vector<float> edge_values = {};
-  std::vector<offset_t> row_offsets = {};
-  std::vector<offset_t> col_indices = {};
-  std::vector<float> edge_values = {};
-#else
-  std::vector<offset_t> row_offsets = {};
-  std::vector<offset_t> col_indices = {};
-  std::vector<float> edge_values = {};
-#endif
-};
-
-#define VOLATILE_DELTA
-// #define PERSISTENT_DELTA
-// #define DIFF_DELTA
-#define ADJ_DELTA
-
-/*
- * Struct used to store edge-coordinates in COO format
- * Needs to be allocated 16-bit alligned!
- */
-struct edge_coords {
-  offset_t x, y;
-};
 
 #endif

@@ -62,7 +62,7 @@ void create_data(graph_db_ptr graph) {
 
 TEST_CASE("Sequential BFS", "[ldbc]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_ga_graph1");
 
   create_data(graph);
 

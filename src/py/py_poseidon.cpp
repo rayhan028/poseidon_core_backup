@@ -53,11 +53,11 @@ PYBIND11_MODULE(poseidon, m) {
 
     m.def("create_pool", &graph_pool::create, py::arg("path"), py::arg("size") = 1024*1024*40000ull, 
       "Creates a new graph pool of the given size.");
-    // m.def("destroy_pool", &graph_pool::destroy, py::arg("pool"), "Destroys the given graph pool.");
-
+  
     py::class_<graph_pool>(m, "GraphPool")
       .def("open_graph", &graph_pool::open_graph, py::arg("name"), "Opens the graph with the given name.")
       .def("create_graph", &graph_pool::create_graph, py::arg("name"), "Creates a new graph with the given name.")
+      .def("drop_graph", &graph_pool::drop_graph, py::arg("name"), "Deletes the given graph.")
       .def("close", &graph_pool::close, "Closes the graph pool.");
 
 #ifdef USE_PMDK

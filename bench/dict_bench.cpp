@@ -40,11 +40,15 @@ public:
   p_ptr<dict> dict_p;
 #ifdef USE_PMDK
   pool_base pop;
+#elif defined(USE_PFILE)
+  bufferpool bpool;
 #endif
   void SetUp(const ::benchmark::State &state) {
 #ifdef USE_PMDK
     pop = pool_base::create(bench_path, "", PMEMOBJ_POOL_SIZE);
     transaction::run(pop, [&] { dict_p = p_make_ptr<dict>(); });
+#elif defined(USE_PFILE)
+    dict_p = p_make_ptr<dict>(bpool);
 #else
     dict_p = p_make_ptr<dict>("", 20000);
 #endif

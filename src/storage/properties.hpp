@@ -35,6 +35,10 @@
 
 #include "spdlog/spdlog.h"
 
+#ifdef USE_PFILE
+#include "buffered_vec.hpp"
+#endif
+
 bool is_quoted_string(const std::string &s);
 bool is_float(const std::string &s);
 bool is_int(const std::string &s);
@@ -198,8 +202,8 @@ struct property_set {
   }
 };
 
-#ifdef USE_MMFILE
-using props_vec = file_vec<property_set>;
+#ifdef USE_PFILE
+using props_vec = buffered_vec<property_set>;
 #else
 using props_vec = chunked_vec<property_set, PROP_CHUNK_SIZE>;
 #endif
@@ -215,7 +219,11 @@ public:
   /**
    * Constructor
    */
-  property_list(const std::string& vec_name = "") : properties_(vec_name) {}
+#ifdef USE_PFILE
+  property_list(bufferpool& bpool, uint8_t file_id) : properties_(bpool, file_id) {} 
+#else
+  property_list() : properties_() {}
+#endif
 
   property_list(const property_list &) = delete;
 

@@ -41,9 +41,11 @@ void scan_task::scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::
 	    xid = tx->xid();				    
     }
     auto iter = gdb->get_nodes()->range(first, last);
+      std::cout << "scan_task: iter" << std::endl;
     while (iter) {
 #ifdef USE_TX
 	    auto &n = *iter;
+      std::cout << "scan_task: " << n.id() << std::endl;
 	    if (n.is_valid()) {
 	      auto &nv = gdb->get_valid_node_version(n, xid);
 		    consumer(nv);
@@ -124,22 +126,8 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
   std::vector<std::future<void>> res;
   thread_pool pool;
 
-#ifdef USE_MMFILE
-  auto nelems = nodes_->as_vec().capacity();
-  const int partitions = 20;
-  auto elems_per_task = nelems / partitions;
-  res.reserve(partitions);
-
-  std::size_t start = 0, end = elems_per_task - 1;
-  while (start < nelems) {
-    res.push_back(pool.submit(
-        scan_task(this, *nodes_, start, end, consumer, current_transaction_)));
-    start = end + 1;
-    end += elems_per_task;
-  } 
-#else
   const int nchunks = 1;
-  spdlog::debug("Start parallel query with {} threads",
+  spdlog::info("Start parallel query with {} threads",
                 nodes_->num_chunks() / nchunks + 1);
 
   res.reserve(nodes_->num_chunks() / nchunks + 1);
@@ -150,7 +138,7 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
     start = end + 1;
     end += nchunks;
   }
-#endif  
+ 
   // std::cout << "waiting ..." << std::endl;
   for (auto &f : res) {
     f.get();
@@ -558,4 +546,22 @@ bool graph_db::is_relationship_property(const relationship &r, dcode_t pcode,
                                         p_item::predicate_func pred) {
   auto val = rship_properties_->property_value(r.id(), pcode);
   return val.empty() ? false : pred(val);
+}
+
+p_item graph_db::get_property_value(const node &n, const std::string& pkey) {
+  auto pc = dict_->lookup_string(pkey);
+  return get_property_value(n, pc);
+}
+
+p_item graph_db::get_property_value(const node &n, dcode_t pcode) {
+  return node_properties_->property_value(n.property_list, pcode);
+}
+
+p_item graph_db::get_property_value(const relationship &r, const std::string& pkey) {
+  auto pc = dict_->lookup_string(pkey);
+  return get_property_value(r, pc);
+}
+
+p_item graph_db::get_property_value(const relationship &r, dcode_t pcode) {
+  return rship_properties_->property_value(r.property_list, pcode);
 }

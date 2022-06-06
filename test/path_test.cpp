@@ -31,7 +31,7 @@ const std::string test_path = poseidon::gPmemPath + "query_test";
 
 TEST_CASE("Finding Unweighted Shortest Path", "[shortest_path]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_pgraph1");
 
   path_item ss_paths;
   path_visitor path_vis = [&](node &n, const path &p) { return; };
@@ -71,7 +71,7 @@ TEST_CASE("Finding Unweighted Shortest Path", "[shortest_path]") {
 
 TEST_CASE("Weighted Shortest Path", "[shortest_path]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_pgraph2");
 
   path_item ss_path;
   path_visitor path_vis = [&](node &n, const path &p) { return; };
@@ -119,7 +119,7 @@ TEST_CASE("Weighted Shortest Path", "[shortest_path]") {
 
 TEST_CASE("Top K Weighted Shortest Paths", "[shortest_path]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_pgraph3");
 
   std::size_t k = 2;
   std::vector<path_item> k_spath;

@@ -296,7 +296,7 @@ class chunked_vec {
   /**
    * Create a new empty vector.
    */
-  chunked_vec(const std::string& unused = "")
+  chunked_vec()
       : capacity_(0), available_slots_(0),
         elems_per_chunk_(num_entries) {}
 

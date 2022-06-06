@@ -35,6 +35,10 @@
 #include "transaction.hpp"
 #include "txn_data.hpp"
 
+#ifdef USE_PFILE
+#include "buffered_vec.hpp"
+#endif
+
 struct node;
 using dirty_node = dirty_object<node>;
 using dirty_node_ptr = std::unique_ptr<dirty_node>;
@@ -136,6 +140,8 @@ struct node_description {
    * Return true if a property with the given name exists.
    */
   bool has_property(const std::string& pname) const;
+
+  bool operator==(const node_description& other) const;
 };
 
 /**
@@ -148,8 +154,8 @@ std::ostream &operator<<(std::ostream &os, const node_description &ndescr);
  */
 std::ostream &operator<<(std::ostream &os, const boost::any &any_value);
 
-#ifdef USE_MMFILE
-using node_vec = file_vec<node>;
+#ifdef USE_PFILE
+using node_vec = buffered_vec<node>;
 #else
 using node_vec = chunked_vec<node, NODE_CHUNK_SIZE>;
 #endif
@@ -165,7 +171,11 @@ public:
   /**
    * Constructor
    */
-  node_list(const std::string& vec_name = "") : nodes_(vec_name) {}
+#ifdef USE_PFILE
+  node_list(bufferpool& bpool, uint8_t file_id) : nodes_(bpool, file_id) {} 
+#else
+  node_list() : nodes_() {}
+#endif
 
   node_list(const node_list &) = delete;
 

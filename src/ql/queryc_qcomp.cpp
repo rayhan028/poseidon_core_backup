@@ -27,16 +27,9 @@
 #include "queryc.hpp"
 
 #ifdef USE_LLVM
-algebra_optr queryc::compile_to_plan(const std::string &query) {
-    auto ast = parse(query);
-    if (!ast) 
-      throw query_execution_error();
-    auto collect = Collect(true);
-    return ast_to_algoptr(ast, collect);
-}
 
-void queryc::exec_plan(algebra_optr &plan, graph_db_ptr &gdb) {
-  query_engine queryEngine(gdb, 1, gdb->get_nodes()->num_chunks());
+void queryc::exec_plan(qop_ptr &plan, graph_db_ptr &gdb) {
+  /*qcompiler queryEngine(gdb);
 
   result_set rs;
 
@@ -46,7 +39,7 @@ void queryc::exec_plan(algebra_optr &plan, graph_db_ptr &gdb) {
   auto end_qc = std::chrono::steady_clock::now();
 
   spdlog::debug("execute query code");     
-	queryEngine.run(&rs);
+	queryEngine.run();
 
   auto end_qp = std::chrono::steady_clock::now();
   
@@ -60,7 +53,7 @@ void queryc::exec_plan(algebra_optr &plan, graph_db_ptr &gdb) {
                    .count()
             << " ms" << std::endl;
 
-  std::cout << rs << std::endl;
+  std::cout << rs << std::endl;*/
 }
 
 void queryc::exec_plan(const std::string &qname, graph_db_ptr &gdb) {
@@ -74,11 +67,12 @@ void queryc::exec_plan(const std::string &qname, graph_db_ptr &gdb) {
 }
 
 void queryc::parse_and_save_plan(const std::string &name, const std::string &query) {
-  auto plan = compile_to_plan(query);
-  query_plans_[name] = plan;
+  //auto plan = compile_to_plan(query);
+  //query_plans_[name] = plan;
 }
 
-algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
+qop_ptr queryc::ast_to_algoptr(ast_op_ptr &ast, qop_ptr parent) {
+/*
   algebra_optr op;
   switch(ast->op_) {
     case ast_op::node_scan:
@@ -132,8 +126,8 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
         std::vector<pr_expr> pr_exprs;
 
         for(auto& p : pr_list) {
-          if (std::holds_alternative<simple_proj_spec>(p)) {
-            auto& pp = std::get<simple_proj_spec>(p);
+          if (p.which() == 0) {
+            auto& pp = boost::get<simple_proj_spec>(p);
             FTYPE type = FTYPE::INT;
             if (boost::iequals(pp.ptype, "int")) {
               type = FTYPE::INT;
@@ -230,7 +224,7 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       auto pr_list = ast->get_param<proj_spec_list>(0);
       
       auto pr_front = pr_list.front();
-      auto& pr1 = std::get<simple_proj_spec>(pr_front);
+      auto& pr1 = boost::get<simple_proj_spec>(pr_front);
       auto pv_id = parse_tuple_id(pr1.pname);
 
       auto order = pr1.porder;
@@ -268,8 +262,8 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       // Project attributes
       std::vector<pr_expr> pr_exprs;
       for(auto & p : pr_list) {
-        if (std::holds_alternative<simple_proj_spec>(p)) {
-          auto& pp = std::get<simple_proj_spec>(p);
+        if (p.which() == 0) {
+          auto& pp = boost::get<simple_proj_spec>(p);
           FTYPE type = FTYPE::INT;
           if (boost::iequals(pp.ptype, "int")) {
             type = FTYPE::INT;
@@ -298,7 +292,7 @@ algebra_optr queryc::ast_to_algoptr(ast_op_ptr &ast, algebra_optr parent) {
       op = ast_to_algoptr(ast->children_[0], op);
     }
   }
-  return op;
+  return op;*/
 }
 
 #endif

@@ -33,171 +33,56 @@
 
 const std::string test_path = poseidon::gPmemPath + "transaction2_test";
 
-class barrier {
-private:
-  std::mutex m;
-  std::condition_variable cond_var;
-  std::atomic<bool> ready{false};
-
-public:
-  barrier() = default;
-
-	/**
-	 * Inform the other thread that it can proceed.
-	 */
-  void notify() {
-    std::lock_guard<std::mutex> lock(m);
-    ready = true;
-    cond_var.notify_one();
-  }
-
-	/**
-	 * Wait on the barrier until the other threads calls notify.
-	 */
-  void wait() {
-    std::unique_lock<std::mutex> lock(m);
-    cond_var.wait(lock, [&] { return ready.load(); });
-  }
-};
-
-TEST_CASE("Consistency 1", "[transaction]") {
-
-  /**
-   * t2 starts before t1
-   * t1 updates a node and commits, then t2 reads it 
-   * t2 sees the old version
-   */
+TEST_CASE("Test node update followed by delete"  "[transaction]") {  
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph");
+  auto gdb = pool->create_graph("my_tx_graph30");
 
-  node::id_t nid = 0;
-  barrier  b1{}, b2{};
+  node::id_t nid;
+  gdb->run_transaction([&]() {
+    nid = gdb->add_node("Actor",
+ 		                {{"name", boost::any(std::string("Mark Wahlberg"))},
+ 		                  {"age", boost::any(48)}});
+    return true;
+  });
 
-  // Just create a node
-  gdb->begin_transaction();
-  nid = gdb->add_node("Person",
-                      {{"name", boost::any(std::string("John Doe"))},
-                       {"age", boost::any(42)}});
-  gdb->commit_transaction();
-
-  auto t1 = std::thread([&]() {
-    b1.wait(); // wait for t2 to start first
-    gdb->begin_transaction();
+  gdb->run_transaction([&]() {
     auto &n = gdb->node_by_id(nid);
-    gdb->update_node(n, {{"age", boost::any(47)}}, "Updated Person");
-    gdb->commit_transaction();
-    b2.notify();  // inform t2 to read the updated node
-	});
-
-  auto t2 = std::thread([&]() {
-    gdb->begin_transaction();
-    b1.notify(); // inform t1 to start
-    b2.wait(); // wait for t1 to update the node and commit
-    auto nd = gdb->get_node_description(nid);
-    REQUIRE(nd.label == "Person");
-    REQUIRE(get_property<int>(nd.properties, "age") == 42);
-    gdb->commit_transaction();
+    gdb->update_node(n, {{"name", boost::any(std::string("Mark Wahlberg"))},
+ 		                  {"age", boost::any(49)}}, "Actor");
+    gdb->detach_delete_node(nid);
+    return true;
   });
 
-  t1.join();
-  t2.join();
-
-  // check the new version
-  gdb->begin_transaction();
-  auto nd = gdb->get_node_description(nid);
-  REQUIRE(nd.label == "Updated Person");
-  REQUIRE(get_property<int>(nd.properties, "age") == 47);
-  gdb->commit_transaction();
+  gdb->run_transaction([&]() {
+    REQUIRE_THROWS_AS(gdb->node_by_id(nid), unknown_id);
+    return true;
+  });
 
   graph_pool::destroy(pool);
 }
 
-TEST_CASE("Consistency 2", "[transaction]") {
-
-  /**
-   * t2 starts before t1
-   * t1 deletes a node and commits, then t2 reads it 
-   * t2 should see the old version
-   */
+TEST_CASE("Test relationship update followed by delete"  "[transaction]") {  
   auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph");
+  auto gdb = pool->create_graph("my_tx_graph31");
 
-  node::id_t nid = 0;
-  barrier  b1{}, b2{};
-
-  // Just create a node
-  gdb->begin_transaction();
-  nid = gdb->add_node("Person",
-                      {{"name", boost::any(std::string("John Doe"))},
-                       {"age", boost::any(42)}});
-  gdb->commit_transaction();
-
-  auto t1 = std::thread([&]() {
-    b1.wait(); // wait for t2 to start first
-    gdb->begin_transaction();
-    gdb->delete_node(nid);
-    gdb->commit_transaction();
-    b2.notify();  // inform t2 to read the deleted node
-	});
-
-  auto t2 = std::thread([&]() {
-    gdb->begin_transaction();
-    b1.notify(); // inform t1 to start
-    b2.wait(); // wait for t1 to delete the node and commit
-    auto nd = gdb->get_node_description(nid);
-    REQUIRE(nd.label == "Person");
-    REQUIRE(get_property<int>(nd.properties, "age") == 42);
-    gdb->commit_transaction();
+  relationship::id_t rid;
+  gdb->run_transaction([&]() {
+    node::id_t a = gdb->add_node("Actor",
+ 		                {{"name", boost::any(std::string("Mark"))},
+ 		                  {"age", boost::any(48)}});
+    node::id_t b = gdb->add_node("Actor",
+ 		                {{"name", boost::any(std::string("Wahlberg"))},
+ 		                  {"age", boost::any(70)}});
+    rid = gdb->add_relationship(a, b, ":costarred", {});
+    return true;
   });
 
-  t1.join();
-  t2.join();
-
-  graph_pool::destroy(pool);
-}
-
-TEST_CASE("Consistency 3", "[transaction]") {
-
-  /**
-   * t2 starts before t1
-   * t1 deletes a node and before it commits, t2 reads it 
-   * t2 sees the old version
-   */
-  auto pool = graph_pool::create(test_path);
-  auto gdb = pool->create_graph("my_graph");
-
-  node::id_t nid = 0;
-  barrier  b1{}, b2{}, b3{};
-
-  // Just create a node
-  gdb->begin_transaction();
-  nid = gdb->add_node("Person",
-                      {{"name", boost::any(std::string("John Doe"))},
-                       {"age", boost::any(42)}});
-  gdb->commit_transaction();
-
-  auto t1 = std::thread([&]() {
-    b1.wait(); // wait for t2 to start first
-    gdb->begin_transaction();
-    gdb->delete_node(nid);
-    b2.notify();  // inform t2 to read the deleted node
-    b3.wait(); // wait for t2 to read the deleted node
-    gdb->commit_transaction();
-	});
-
-  auto t2 = std::thread([&]() {
-    gdb->begin_transaction();
-    b1.notify(); // inform t1 to start
-    b2.wait(); // wait for t1 to delete the node and commit
-    auto nd = gdb->get_node_description(nid);
-    REQUIRE(nd.label == "Person");
-    REQUIRE(get_property<int>(nd.properties, "age") == 42);
-    gdb->commit_transaction();
-    b3.notify(); // notify t1 to commit
+  gdb->run_transaction([&]() {
+    auto &r = gdb->rship_by_id(rid);
+    gdb->update_relationship(r, {}, ":costarred");
+    gdb->delete_relationship(rid);
+    return true;
   });
 
-  t1.join();
-  t2.join();
-
-  graph_pool::destroy(pool);
+  graph_pool::destroy(pool); 
 }

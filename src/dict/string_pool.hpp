@@ -25,9 +25,6 @@
 class string_pool {
 public:
     string_pool(uint32_t init_size = 100000, uint32_t exp_size = 10000);
-#ifdef USE_MMFILE
-    string_pool(uint8_t *base_addr, std::size_t sz);
-#endif
     ~string_pool();
     
     const char* extract(dcode_t pos) const;
@@ -46,9 +43,6 @@ private:
 #endif
     p<uint32_t> size_, expand_;
     p<uint32_t> last_;
-#ifdef USE_MMFILE
-    uint8_t *base_addr_;
-#endif
 };
 
 #endif /* string_pool_hpp */

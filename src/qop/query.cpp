@@ -21,7 +21,7 @@
 #include "join.hpp"
 // #include "lua_poseidon.hpp"
 #include "update.hpp"
-
+#include "query_printer.hpp"
 #include <memory>
 
 namespace ph = std::placeholders;
@@ -55,7 +55,7 @@ query &query::append_op(qop_ptr op, qop::consume_func cf, qop::finish_func ff) {
   return *this;
 }
 
-query &query::all_nodes(const std::string &label) {
+query &query::all_nodes(const std::string &label) {  
   plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(label);
   return *this;
 }
@@ -147,6 +147,12 @@ query &query::property(const std::string &key,
                    std::bind(&is_property::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::filter(const expr &ex) {
+  auto op = std::make_shared<filter_tuple>(ex);
+  return append_op(op,
+                   std::bind(&filter_tuple::process, op.get(), ph::_1, ph::_2));
+}
+
 query &query::to_node(const std::string &label) {
   auto op = std::make_shared<get_to_node>();
   append_op(op, std::bind(&get_to_node::process, op.get(), ph::_1, ph::_2));
@@ -232,6 +238,12 @@ query &query::project(const projection::expr_list &exprs) {
                    std::bind(&projection::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::project(std::vector<projection_expr> prexpr) {
+  auto op = std::make_shared<projection>(prexpr);
+  return append_op(op,
+                   std::bind(&projection::process, op.get(), ph::_1, ph::_2));  
+}
+
 query &query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
   auto op = std::make_shared<order_by>(cmp);
   return append_op(op, std::bind(&order_by::process, op.get(), ph::_1, ph::_2),
@@ -308,7 +320,7 @@ query &query::count() {
 }
 
 query &query::crossjoin(query &other) {
-  auto op = std::make_shared<cross_join>();
+  auto op = std::make_shared<cross_join>(other.plan_head());
   other.append_op(
       op, std::bind(&cross_join::process_right, op.get(), ph::_1, ph::_2));
   return append_op(
@@ -317,7 +329,7 @@ query &query::crossjoin(query &other) {
 }
 
 query &query::join_on_node(std::pair<int, int> left_right, query &other) {
-  auto op = std::make_shared<nested_loop_join>(left_right);
+  auto op = std::make_shared<nested_loop_join>(left_right, other.plan_head());
   other.append_op(
       op, std::bind(&nested_loop_join::process_right, op.get(), ph::_1, ph::_2));
   return append_op(
@@ -326,7 +338,7 @@ query &query::join_on_node(std::pair<int, int> left_right, query &other) {
 }
 
 query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
-  auto op = std::make_shared<hash_join>(left_right);
+  auto op = std::make_shared<hash_join>(left_right, other.plan_head());
   other.append_op(
       op, std::bind(&hash_join::build_phase, op.get(), ph::_1, ph::_2));
   return append_op(
@@ -335,7 +347,7 @@ query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
 }
 
 query &query::outerjoin_on_node(const std::pair<int, int> &left_right, query &other) {
-  auto op = std::make_shared<left_outerjoin_on_node>(left_right);
+  auto op = std::make_shared<left_outerjoin_on_node>(left_right, other.plan_head());
   other.append_op(
       op, std::bind(&left_outerjoin_on_node::process_right, op.get(), ph::_1, ph::_2));
   return append_op(
@@ -474,7 +486,10 @@ query &query::delete_rship(const std::size_t pos) {
                    std::bind(&remove_rship::process, op.get(), ph::_1, ph::_2));
 }
 
-void query::start() { plan_head_->start(graph_db_); }
+void query::start() { 
+  query_ctx ctx(graph_db_);
+  plan_head_->start(ctx); 
+}
 
 void query::start(std::initializer_list<query *> queries) {
   for (auto &q : queries) {
@@ -482,18 +497,35 @@ void query::start(std::initializer_list<query *> queries) {
   }
 }
 
-void query_set::start() {
-  for (auto &q : queries_) {
-    q.start();
-  }
+void query::print_plan(std::ostream& os) {
+    os << ">>---------------------------------------------------------------------->>\n";
+    auto qop_tree = build_qop_tree(plan_head_);
+    qop_tree.first->print(os);
+    print_plan_helper(os, qop_tree.first, "");
+    os << "<<----------------------------------------------------------------------<<\n";
 }
 
-void query_set::append_printer() {
-  // TODO: find the last operator
-  auto qop = queries_.at(0).plan_tail_;
-  auto op = std::make_shared<printer>();
-  return qop->connect(op, std::bind(&printer::process, op.get(), ph::_1, ph::_2));
+void query::print_plans(std::initializer_list<query *> queries, std::ostream& os) {
+    std::vector<qop_node_ptr> trees;
+    for (auto &q : queries) {
+        auto qop_tree = build_qop_tree(q->plan_head_);
+        trees.push_back(qop_tree.first);
+    }
+
+    std::list<qop_node_ptr> bin_ops;
+    for (auto& t : trees) {
+      collect_binary_ops(t, bin_ops);
+    }
+    // merge trees
+    for (auto i = 1u; i < trees.size(); i++) {
+        merge_qop_trees(trees[0], trees[i], bin_ops);
+    }
+    os << ">>---------------------------------------------------------------------->>\n";
+    trees[0]->print(os);
+    print_plan_helper(os, trees[0], "");
+    os << "<<----------------------------------------------------------------------<<\n";
 }
+
 
 #ifdef QOP_RECOVERY
 query &

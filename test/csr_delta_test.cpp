@@ -1060,7 +1060,7 @@ TEST_CASE("Consistency Test 6a", "[format_converter]"){
 
 TEST_CASE("Consistency Test 6b", "[format_converter]"){
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_dgraph1");
   create_known_data(graph);
 
   barrier b1{}, b2{}, b3{};

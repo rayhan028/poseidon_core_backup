@@ -154,7 +154,8 @@ void graph_db::parallel_host_csr_build(csr_arrays &csr, rship_weight weight_func
   row_offsets.push_back(0); // First value is always 0
 
   result_set rs;
-  auto q = query(this)
+  graph_db_ptr gptr(this);
+  auto q = query(gptr)
                 .all_nodes()
                 .csr(weight_func, bidirectional)
                 .orderby([&](const qr_tuple q1, const qr_tuple q2) {
@@ -578,7 +579,7 @@ void graph_db::host_csr_update_with_delta(csr_arrays &csr) {
 #endif
 
 void graph_db::poseidon_to_coo(edge_coords* edge_coordinates, float* edge_values, rship_weight weight_func, bool bidirectional) {
-  chunked_vec<relationship, RSHIP_CHUNK_SIZE> &cv_rsips = rships_->as_vec();
+  rship_vec &cv_rsips = rships_->as_vec();
   auto iter = cv_rsips.begin();
   auto last = cv_rsips.end();
   unsigned long long edges = 0;

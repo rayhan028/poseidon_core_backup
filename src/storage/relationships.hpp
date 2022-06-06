@@ -29,6 +29,10 @@
 #include "transaction.hpp"
 #include "txn_data.hpp"
 
+#ifdef USE_PFILE
+#include "buffered_vec.hpp"
+#endif
+
 struct relationship;
 using dirty_rship = dirty_object<relationship>;
 using dirty_rship_ptr = std::unique_ptr<dirty_rship>;
@@ -103,6 +107,8 @@ struct rship_description {
    * Return true if a property with the given name exists.
    */
   bool has_property(const std::string& pname) const;
+
+  bool operator==(const rship_description& other) const;
 };
 
 /**
@@ -110,8 +116,8 @@ struct rship_description {
  */
 std::ostream &operator<<(std::ostream &os, const rship_description &rdescr);
 
-#ifdef USE_MMFILE
-using rship_vec = file_vec<relationship>;
+#ifdef USE_PFILE
+using rship_vec = buffered_vec<relationship>;
 #else
 using rship_vec = chunked_vec<relationship, RSHIP_CHUNK_SIZE>;
 #endif
@@ -128,7 +134,11 @@ public:
   /**
    * Constructors.
    */
-  relationship_list(const std::string& vec_name = "") : rships_(vec_name) {}
+#ifdef USE_PFILE
+  relationship_list(bufferpool& bpool, uint8_t file_id) : rships_(bpool, file_id) {} 
+#else
+  relationship_list() : rships_() {}
+#endif
 
   relationship_list(const relationship_list &) = delete;
 

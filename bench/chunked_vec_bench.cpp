@@ -74,8 +74,8 @@ void drop_table(p_ptr<node_list> nlist) {
   std::cout << "table dropped." << std::endl;
 }
 #else
-p_ptr<node_list> prepare_table() {
-  auto nlist = p_make_ptr<node_list>();
+p_ptr<node_list> prepare_table(bufferpool& bp) {
+  auto nlist = p_make_ptr<node_list>(bp, 0);
   create_data(nlist);
   return nlist;
 }
@@ -91,11 +91,22 @@ void drop_table(p_ptr<node_list> nlist) {
 }
 #endif
 
+
 int main(int argc, char **argv) {
   std::cout << "sizeof = " << sizeof(txn<dirty_node_ptr>) << std::endl;
   // add node
   {
+#ifdef USE_PFILE
+    auto test_file = std::make_shared<paged_file>();
+    test_file->open("nodes.db", 0);
+
+    bufferpool bpool;
+    bpool.register_file(0, test_file);
+
+    auto nlist = prepare_table(bpool);
+#else
     auto nlist = prepare_table();
+#endif
     std::cout << "starting add..." << std::endl;
     auto start_qp = std::chrono::steady_clock::now();
 
@@ -110,10 +121,23 @@ int main(int argc, char **argv) {
     std::cout << "add: " << tm << " microseconds." << std::endl;
     drop_table(nlist);
   }
+#ifdef USE_PFILE
+  remove("nodes.db");
+#endif
 
   // append node
   {
+#ifdef USE_PFILE
+    auto test_file = std::make_shared<paged_file>();
+    test_file->open("nodes.db", 0);
+
+    bufferpool bpool;
+    bpool.register_file(0, test_file);
+
+    auto nlist = prepare_table(bpool);
+#else
     auto nlist = prepare_table();
+#endif
     std::cout << "starting append..." << std::endl;
     auto start_qp = std::chrono::steady_clock::now();
 
@@ -128,9 +152,22 @@ int main(int argc, char **argv) {
     std::cout << "append: " << tm << " microseconds." << std::endl;
     drop_table(nlist);
   }
+#ifdef USE_PFILE
+  remove("nodes.db");
+#endif
   // store node
   {
+#ifdef USE_PFILE
+    auto test_file = std::make_shared<paged_file>();
+    test_file->open("nodes.db", 0);
+
+    bufferpool bpool;
+    bpool.register_file(0, test_file);
+
+    auto nlist = prepare_table(bpool);
+#else
     auto nlist = prepare_table();
+#endif
     std::cout << "starting insert..." << std::endl;
     auto start_qp = std::chrono::steady_clock::now();
 
@@ -145,4 +182,7 @@ int main(int argc, char **argv) {
     std::cout << "store: " << tm << " microseconds." << std::endl;
     drop_table(nlist);
   }
+#ifdef USE_PFILE
+  remove("nodes.db");
+#endif
 }

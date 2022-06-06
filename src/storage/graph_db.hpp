@@ -40,8 +40,15 @@
 #include "pmlog.hpp"
 #include "gc.hpp"
 #include "robin_hood.h"
+
+#include "analytics.hpp"
+
 #if defined CSR_DELTA && defined USE_TX
 #include "csr_delta.hpp"
+#endif
+
+#ifdef USE_PFILE
+#include "bufferpool.hpp"
 #endif
 
 /**
@@ -512,6 +519,12 @@ public:
   bool is_relationship_property(const relationship &r, dcode_t pcode,
                                 p_item::predicate_func pred);
 
+  p_item get_property_value(const node &n, const std::string& pkey);
+  p_item get_property_value(const node &n, dcode_t pcode);
+
+  p_item get_property_value(const relationship &r, const std::string& pkey);
+  p_item get_property_value(const relationship &r, dcode_t pcode);
+
   /**
    * Return the node version from the dirty list that is valid for the
    * transaction identified by xid.
@@ -663,6 +676,13 @@ private:
   void vacuum(xid_t tx);
 
   std::string database_name_;
+#ifdef USE_PFILE
+  void prepare_files(const std::string &prefix);
+
+  bufferpool bpool_;
+  std::shared_ptr<paged_file> node_file_, rship_file_, nprops_file_, rprops_file_;
+
+#endif
   p_ptr<node_list> nodes_; // the list of all nodes of the graph
   p_ptr<relationship_list>
       rships_; // the list of all relationships of the graph

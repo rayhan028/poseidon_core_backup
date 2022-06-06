@@ -32,7 +32,7 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
 
     node::id_t nid;
 
-    auto graph = pool->create_graph("my_graph");
+    auto graph = pool->create_graph("my_pool_graph1");
     // add a node
     {
         graph->begin_transaction();
@@ -52,7 +52,7 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
 
         graph->commit_transaction();
     }
-    auto graph2 = pool->open_graph("my_graph");
+    auto graph2 = pool->open_graph("my_pool_graph1");
     // check the node
     {
         graph2->begin_transaction();

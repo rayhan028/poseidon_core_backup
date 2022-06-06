@@ -18,6 +18,8 @@
  */
 #include "graph_pool.hpp"
 
+#include <boost/filesystem.hpp>
+
 #ifdef USE_PMDK
 
 namespace nvm = pmem::obj;
@@ -90,6 +92,10 @@ graph_db_ptr graph_pool::open_graph(const std::string& name) {
         throw unknown_db();
 }
 
+void graph_pool::drop_graph(const std::string& name) {
+    // TODO
+}
+
 #else
 
 graph_pool_ptr graph_pool::create(const std::string& path, unsigned long long pool_size) {
@@ -103,7 +109,7 @@ graph_pool_ptr graph_pool::open(const std::string& path, bool init) {
 }
 
 void graph_pool::destroy(graph_pool_ptr& p) {
-#ifdef USE_MMFILE
+#ifdef USE_PFILE
     for (auto& gp : p->graphs_) { 
         graph_db::destroy(gp.second);
     }
@@ -125,6 +131,17 @@ graph_db_ptr graph_pool::open_graph(const std::string& name) {
     if (iter == graphs_.end())
         throw unknown_db();
     return iter->second;
+}
+
+void graph_pool::drop_graph(const std::string& name) {
+    std::cout << "graph_pool::drop_graph: " << name << std::endl;
+    auto iter = graphs_.find(name);
+    if (iter == graphs_.end())
+        throw unknown_db();
+
+    boost::filesystem::path path_obj(name);
+    boost::filesystem::remove_all(path_obj);
+    graphs_.erase(iter);
 }
 
 void graph_pool::close() {}

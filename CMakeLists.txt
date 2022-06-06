@@ -11,8 +11,8 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK         "Use Intel PMDK"                         ON)
-option(USE_MMFILE       "Use memory mapped file storage"         OFF)
+option(USE_PMDK         "Use Intel PMDK"                         OFF)
+option(USE_PFILE        "Use paged file storage with bufferpool" ON)
 option(USE_HDICT        "Use hdict implementation"               ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
@@ -57,9 +57,9 @@ cxx_20()
 if(USE_PMDK MATCHES ON)
   message(STATUS "looking for PMDK")
   include(pmdk)
-elseif(USE_MMFILE MATCHES ON)
-  message(STATUS "use memory-mapped files")
-  add_definitions( "-DUSE_MMFILE" )
+elseif(USE_PFILE MATCHES ON)
+  message(STATUS "use paged files")
+  add_definitions( "-DUSE_PFILE" )
 endif()
 
 if(USE_HDICT MATCHES ON)
@@ -118,6 +118,14 @@ configure_file(
 
 include_directories(${PROJECT_BINARY_DIR}/generated)
 include_directories(${PROJECT_SOURCE_DIR}/src/storage)
+include_directories(${PROJECT_SOURCE_DIR}/src/bp_file)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/ast)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/codegen)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/utils)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/plan_op)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/interp)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/expr)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/qmain)
 include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
@@ -234,7 +242,7 @@ endif()
 FetchContent_Declare(
   benchmark
   GIT_REPOSITORY https://github.com/google/benchmark.git
-  GIT_TAG        v1.5.0
+  GIT_TAG        v1.6.1
   GIT_SHALLOW    TRUE
 )
 FetchContent_GetProperties(benchmark)
@@ -388,6 +396,7 @@ if(USE_HDICT MATCHES ON)
   add_definitions( "-DUSE_HDICT" )
   set(dict_src 
     src/dict/string_pool.cpp 
+    src/dict/paged_string_pool.cpp 
     src/dict/htable.cpp
     src/dict/hdict.cpp)
 elseif(USE_PMDK MATCHES ON)
@@ -409,39 +418,39 @@ endif()
 
 if(USE_LLVM MATCHES ON)
   set(codegen_operators_src
-    src/qcomp/operators/append.cpp
-    src/qcomp/operators/aggregation.cpp
-    src/qcomp/operators/collect.cpp
-    src/qcomp/operators/connected.cpp
-    src/qcomp/operators/create.cpp
-    src/qcomp/operators/expand.cpp
-    src/qcomp/operators/filter.cpp
-    src/qcomp/operators/foreach_rship.cpp
-    src/qcomp/operators/groupby.cpp
-    src/qcomp/operators/join.cpp
-    src/qcomp/operators/limit.cpp
-    src/qcomp/operators/project.cpp
-    src/qcomp/operators/scan.cpp
-    src/qcomp/operators/sort.cpp
+    src/query/codegen/operators/append.cpp
+    src/query/codegen/operators/aggregation.cpp
+    src/query/codegen/operators/collect.cpp
+    src/query/codegen/operators/connected.cpp
+    src/query/codegen/operators/create.cpp
+    src/query/codegen/operators/expand.cpp
+    src/query/codegen/operators/filter.cpp
+    src/query/codegen/operators/foreach_rship.cpp
+    src/query/codegen/operators/groupby.cpp
+    src/query/codegen/operators/has_label.cpp
+    src/query/codegen/operators/join.cpp
+    src/query/codegen/operators/limit.cpp
+    src/query/codegen/operators/project.cpp
+    src/query/codegen/operators/scan.cpp
+    src/query/codegen/operators/sort.cpp
+    src/query/codegen/operators/join/cross_join.cpp
+    src/query/codegen/operators/join/hash_join.cpp
+    src/query/codegen/operators/join/nested_loop_join.cpp
+    src/query/codegen/operators/join/outer_join.cpp
   )
 
   set(llvm_src
     ${codegen_operators_src}
-    src/qcomp/codegen_inline.cpp
-    src/qcomp/filter_expression.cpp
-    src/qcomp/filter_expression_inline.cpp
-    src/qcomp/global_definitions.cpp
-    src/qcomp/interpreter.cpp
-    src/qcomp/jit_cache.cpp
-    src/qcomp/p_jit.cpp
-    src/qcomp/optimizer.cpp
-    src/qcomp/main.cpp
-    src/qcomp/p_context.cpp
-    src/qcomp/query_engine.cpp
-    src/qcomp/qoperator.cpp
-    src/qcomp/joiner.cpp
-    src/qcomp/grouper.cpp
-    src/qcomp/interprete_filter_visitor.cpp
+    src/query/codegen/codegen.cpp
+    src/query/codegen/filter_expression.cpp
+    src/query/codegen/global_definitions.cpp
+    src/query/codegen/jit/jit_cache.cpp
+    src/query/codegen/jit/p_jit.cpp
+    src/query/codegen/jit/p_context.cpp
+    src/query/codegen/qcompiler.cpp
+    src/query/codegen/proc/joiner.cpp
+    src/query/codegen/proc/grouper.cpp
+    src/query/codegen/interprete_filter_visitor.cpp
   )
 else()
   set(llvm_src "")
@@ -471,15 +480,24 @@ set(src_files
   src/storage/graph_db_query.cpp
   src/storage/graph_db_gc.cpp
   src/storage/graph_db_recovery.cpp
-  src/storage/mm_file.cpp
+  src/bp_file/paged_file.cpp
+  src/bp_file/bufferpool.cpp
   src/btree/index_map.cpp
-  src/qop/profiling.cpp
-  src/qop/qop.cpp
-  src/qop/update.cpp
-  src/qop/join.cpp
+  src/query/plan_op/qop.cpp
+  src/query/expr/expression.cpp
+  src/query/interp/expr_interpreter.cpp
+  src/query/interp/qinterp.cpp
+  src/query/plan_op/update.cpp
+  src/query/plan_op/join.cpp
+  src/query/plan_op/query_set.cpp
+  src/query/qmain/qparser.cpp
+  src/query/qmain/qplanner.cpp
+  src/query/qmain/qproc.cpp
   src/qop/query.cpp
-  src/qop/query_printer.cpp
-  src/qop/thread_pool.cpp
+  src/query/utils/query_printer.cpp
+  src/query/utils/thread_pool.cpp
+  src/query/utils/profiling.cpp
+  src/query/utils/qresult_iterator.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
@@ -487,7 +505,7 @@ set(src_files
   src/ql/queryc_qcomp.cpp
   src/ql/queryc_qex.cpp
   src/ql/queryc.cpp
-  src/ql/ast.cpp
+  src/query/ast/ast.cpp
   ${csr_delta_src}
   ${gunrock_analysis}
   src/analytics/bfs.cpp
@@ -738,19 +756,6 @@ endif()
 
 
 #-----------------------------------------------------------------------------------------
-if(USE_LLVM MATCHES ON)
-# The program for executing the LLVM query compiler
-add_executable(qcomp
-	  src/qcomp/main.cpp
-	   )
-
-target_link_libraries(qcomp
-	     poseidon_core
-	     ${PMDK_LIBRARIES}
-	     Boost::program_options
-             )
-endif()
-#-----------------------------------------------------------------------------------------
 
 add_executable(qlc
   src/cmds/qlc.cpp
@@ -770,6 +775,21 @@ add_executable(csv_loader
  poseidon_core
  ${PMDK_LIBRARIES}
  Boost::program_options
+)
+
+#-----------------------------------------------------------------------------------------
+
+add_library(ldbc_udf SHARED
+  queries/ldbc/is/is_udf.cpp
+)
+
+target_link_libraries(ldbc_udf
+  ${LLVM_LIB}
+  Boost::filesystem
+  Boost::date_time
+  Boost::thread
+  poseidon_core
+  ${PMDK_LIBRARIES}
 )
 
 #-----------------------------------------------------------------------------------------

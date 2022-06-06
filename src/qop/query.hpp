@@ -129,6 +129,8 @@ public:
   query &property(const std::string &key,
                   std::function<bool(const p_item &)> pred);
 
+  query &filter(const expr &ex);
+
   /**
    * Add an operator the retrieves the node at the destination side of the
    * currently processed relationship with an optional filter for label(s).
@@ -176,6 +178,8 @@ public:
    * functions to the query result.
    */
   query &project(const projection::expr_list &exprs);
+
+  query &project(std::vector<projection_expr> prexpr);
 
   /**
    * Add an operator for sorting the results.
@@ -473,6 +477,8 @@ public:
    */
   graph_db_ptr &get_graph_db() { return graph_db_; }
 
+  qop_ptr &plan_head() { return plan_head_; }
+
 private:
   query &append_op(qop_ptr op, qop::consume_func cf, qop::finish_func ff);
   query &append_op(qop_ptr op, qop::consume_func cf);
@@ -481,35 +487,5 @@ private:
   graph_db_ptr graph_db_;
 };
 
-/**
- * A query set combines multiple queries producing a joint result. This is
- * necessary because we use a push-based approach where each scan is represented
- * by a separate query object.
- */
-class query_set {
-public:
-  query_set() = default;
-
-  void add(query &q) { queries_.push_back(q); }
-  std::size_t size() const { return queries_.size(); }
-  query& front() { return queries_.front(); }
-  query &at(std::size_t i) { return queries_[i];  }
-  bool empty() const { return queries_.empty(); }
-
-  void append_printer();
-
-  /**
-   * Start the execution of the query.
-   */
-  void start();
-
- /**
-   * Print the query plan.
-   */
-  void print_plan(std::ostream& os = std::cout);
-
-private:
-  std::vector<query> queries_;
-};
 
 #endif

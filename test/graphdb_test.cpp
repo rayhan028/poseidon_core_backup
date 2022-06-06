@@ -27,7 +27,7 @@
 #include "exceptions.hpp"
 #include "graph_pool.hpp"
 #include "graph_db.hpp"
-#include "../qop/qop.hpp"
+#include "qop.hpp"
 #include "../src/ldbc/ldbc.hpp"
 #include <boost/algorithm/string.hpp>
 
@@ -36,7 +36,7 @@ const std::string test_path = poseidon::gPmemPath + "graphdb_test";
 
 TEST_CASE("Creating nodes", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph1");
 
   graph->begin_transaction();
 
@@ -182,7 +182,7 @@ TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
   // spdlog::info("size = {}", sizeof(log_ins_record));
 
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph2");
 
   graph->begin_transaction();
 
@@ -246,7 +246,7 @@ TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
 
 TEST_CASE("Checking FROM relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph3");
 
   graph->begin_transaction();
 
@@ -293,7 +293,7 @@ TEST_CASE("Checking FROM relationships", "[graph_db]") {
 
 TEST_CASE("Checking TO relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph4");
 
   graph->begin_transaction();
 
@@ -333,7 +333,7 @@ TEST_CASE("Checking TO relationships", "[graph_db]") {
 
 TEST_CASE("Checking recursive FROM relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph5");
 
   graph->begin_transaction();
 
@@ -400,7 +400,7 @@ TEST_CASE("Checking recursive FROM relationships", "[graph_db]") {
 
 TEST_CASE("Checking adding a node with properties", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph6");
 
   graph->begin_transaction();
 
@@ -428,7 +428,7 @@ TEST_CASE("Checking adding a node with properties", "[graph_db]") {
 
 TEST_CASE("Checking node with properties", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph7");
 
   graph->begin_transaction();
 
@@ -457,7 +457,7 @@ TEST_CASE("Checking node with properties", "[graph_db]") {
 
 TEST_CASE("Checking a dirty node with properties", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph8");
 
   graph->begin_transaction();
 
@@ -485,7 +485,7 @@ TEST_CASE("Checking a dirty node with properties", "[graph_db]") {
 
 TEST_CASE("Checking a node update", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph9");
 
   node::id_t p1;
 
@@ -560,7 +560,7 @@ TEST_CASE("Checking a node update", "[graph_db]") {
 
 TEST_CASE("Checking multiple node updates", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph10");
 
   node::id_t p1;
 
@@ -657,7 +657,7 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
 
 TEST_CASE("Checking a relationship update", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph11");
 
   node::id_t p1;
   relationship::id_t r;
@@ -738,10 +738,11 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
 
 TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph12");
 
   graph->begin_transaction();
   for (int i = 0u; i < 10000; i++) {
+    std::cout << "add node #" << i << std::endl;
     graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
@@ -758,7 +759,7 @@ TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
 
 TEST_CASE("Deleting all inserted nodes and relationships in separate transactions", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph13");
 
   graph->begin_transaction();
   
@@ -849,7 +850,7 @@ TEST_CASE("Deleting all inserted nodes and relationships in separate transaction
 
 TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph14");
 
   graph->begin_transaction();
   
@@ -942,7 +943,7 @@ TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
 
 TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph15");
 
   graph->begin_transaction();  
   auto i = 1;
@@ -986,7 +987,7 @@ TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
 
 TEST_CASE("Checking that we cannot delete nodes which are still part of a relationship", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph16");
 
   graph->begin_transaction();
 
@@ -1011,7 +1012,7 @@ TEST_CASE("Checking that we cannot delete nodes which are still part of a relati
 
 TEST_CASE("Checking delete_detached_node", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph17");
 
   graph->begin_transaction();
 

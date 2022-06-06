@@ -26,17 +26,17 @@
 #include "config.h"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
-#include "../qop/qop.hpp"
+#include "qop.hpp"
 
 const std::string test_path = poseidon::gPmemPath + "index_test";
 
 TEST_CASE("Creating an index on nodes", "[index]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_idx_graph");
 
   graph->run_transaction([&]() {
     for (int i = 0; i < 100; i++) {
-      graph->add_node("Person",
+      auto id = graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
                                {"id", boost::any(i)},
