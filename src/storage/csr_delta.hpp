@@ -1,33 +1,93 @@
 #ifndef csr_delta_hpp_
 #define csr_delta_hpp_
 
-#define VOLATILE_DELTA
+#include "transaction.hpp"
+#include "chunked_vec.hpp"
 
 #ifdef VOLATILE_DELTA
 #include <mutex>  // For std::unique_lock
 #include <shared_mutex>
 #endif
 
-#include "defs.hpp"
-#include "chunked_vec.hpp"
-
-#ifdef VOLATILE_DELTA
+#ifdef DIFF_DELTA
 /**
- * A struct for a DRAM-based CSR delta element. A delta element is associated with a node 
- * updated by a transaction. It contains the id of the updated node, the ids of the nodes 
- * connected to it (neighbours) and the corresponding relationship weights. 
+ * A struct for a CSR delta record. A delta record is associated with 
+ * a node updated by a transaction. It contains the id of the updated node. 
+ * If the updated node is not deleted, the delta record contains either 
+ * the ids of the inserted nodes connected to it and the corresponding 
+ * relationship weights, or the ids of the deleted nodes, or both.
  */
-struct delta_element {
-  delta_element() = default;
-  delta_element(const delta_element &) = delete;
+struct delta_rec {
+  delta_rec() = default;
+  delta_rec(const delta_rec &) = delete;
+  delta_rec(uint64_t txid, offset_t nid, bool d)
+    : txid_(txid), node_id_(nid), deleted_(d) {}
 
-  uint64_t txid_; // id of the transaction that stored the delta element for its modification
-  uint64_t node_id_; // id of the node to which the delta element is associated
-  std::vector<uint64_t> ids_; // list of the neigbour node ids connected to the node with id "node_id_"
-  std::vector<double> weights_; // list of corresponding weights of relationships of the node with id "node_id_"
-  bool restored_; // a flag indicating whether the delta element has been used in a CSR restore
+  uint64_t txid_;         // id of the transaction that stored the delta record
+  offset_t node_id_;      // id of the node associated with the delta record
+
+  bool deleted_;          // whether the node with id "node_id_" is deleted 
+
+  offset_t deletes_pos_;  // offset of the deleted neigbour node ids in the vector "deletes_"
+  int deletes_count_ = 0; // number of the deleted neighbour nodes
+  offset_t inserts_pos_;  // offset of the inserted neigbour node ids in the vector "inserts_"
+                          // and the corresponding relationship weights in the vector "weights_"
+  int inserts_count_ = 0; // number of the inserted neighbour nodes (with corresponding relationship weights)
+
+  bool merged_ = false;   // a flag indicating whether the delta record has been merged in a CSR update
 };
 
+/**
+ * A struct for merged CSR delta record(s) associated with the same node.
+ */
+struct delta {
+  delta() = default;
+  delta(const delta &) = delete;
+  delta(offset_t nid, bool d) : node_id_(nid), deleted_(d) {}
+
+  offset_t node_id_;              // id of the node associated with the delta
+  bool deleted_;                  // whether the node with id "node_id_" is deleted  
+
+  std::vector<uint64_t> deletes_; // ids of the deleted neighbours
+  std::vector<uint64_t> inserts_; // ids of the inserted neighbours
+  std::vector<double> weights_;   // relationship weights (for the inserted neighbours)
+};
+
+#elif defined ADJ_DELTA
+/**
+ * A struct for a CSR delta record. A delta record is associated with a node
+ * updated by a transaction. It contains the id of the updated node, the ids of the nodes
+ * connected to it (column indices) and the corresponding relationship weights (edge values).
+ */
+struct delta_rec {
+  delta_rec() = default;
+  delta_rec(const delta_rec &) = delete;
+  delta_rec(uint64_t txid, uint64_t nid, offset_t pos, int count)
+    : txid_(txid), node_id_(nid), pos_(pos), count_(count) {}
+
+  uint64_t txid_;       // id of the transaction that stored the delta record
+  uint64_t node_id_;    // id of the node associated with the delta record
+  offset_t pos_;        // offset of the neigbour node ids in the vector "ids_"
+                        // and the corresponding relationship weights in the vector "weights_"
+  int count_;           // number of the neighbour nodes (with corresponding relationship weights)
+  bool merged_ = false; // a flag indicating whether the delta record has been merged in a CSR update
+};
+
+/**
+ * A struct for merged CSR delta record(s) associated with the same node.
+ */
+struct delta {
+  delta() = default;
+  delta(const delta &) = delete;
+
+  offset_t node_id_;            // id of the node associated with the delta
+
+  std::vector<uint64_t> ids_;   // ids of the neighbour nodes
+  std::vector<double> weights_; // corresponding relationship weights
+};
+#endif
+
+#ifdef VOLATILE_DELTA
 /**
  * vchunk is a strictly volatile version of chunk in chunked_vec
  */
@@ -50,7 +110,7 @@ struct alignas(64) vchunk {
     slots_.set(i, b);
     if (!b && i < first_) {
       // the record was deleted - update first_
-      first_ = i;   
+      first_ = i;
       return;
     }
     if (b && i == first_) {
@@ -75,6 +135,16 @@ struct alignas(64) vchunk {
     return SIZE_MAX;
   }
 
+  std::size_t last_used() const {
+    if (slots_.none())
+      return SIZE_MAX;
+
+    for (auto i = (num_records - 1); i >= 0; i--)
+      if (slots_.test(i))
+        return i;
+    return SIZE_MAX;
+  }
+
   inline bool is_full() const {
     return slots_.all();
   }
@@ -83,15 +153,15 @@ struct alignas(64) vchunk {
 /**
  * vchunked_vec is a strictly volatile version of chunked_vec.
  */
-template <typename T, int chunk_size = DEFAULT_CHUNK_SIZE>
+template <typename T, int vchunk_size = DEFAULT_CHUNK_SIZE>
 class vchunked_vec {
-  static constexpr auto num_entries = chunk_size / sizeof(T);
+  static constexpr auto num_entries = vchunk_size / sizeof(T);
 
   using vchunk_ptr = vchunk<T, num_entries> *;
 
  public:
   /**
-   * An implementation of an iterator for chunked_vec.
+   * An implementation of an iterator for vchunked_vec.
    */
   class iter {
    public:
@@ -106,7 +176,7 @@ class vchunked_vec {
         if (pos_ == num_entries) {
           cptr_ = nullptr;
           pos_ = 0;
-          // TODO: we assume that we don't have empty chunks
+          // TODO: we assume that we don't have empty vchunks
         }
       }
     }
@@ -132,13 +202,13 @@ class vchunked_vec {
     }
 
   private:
-    vchunk_ptr cptr_; // pointer to the current chunk
-    offset_t pos_;   // position within the current chunk
+    vchunk_ptr cptr_; // pointer to the current vchunk
+    offset_t pos_;   // position within the current vchunk
   };
 
   vchunked_vec(const std::string& unused = "")
       : capacity_(0), available_slots_(0),
-        elems_per_chunk_(num_entries) {}
+        elems_per_vchunk_(num_entries) {}
 
   ~vchunked_vec() {
     for (auto p : vchunk_list_)
@@ -176,7 +246,7 @@ class vchunked_vec {
     else {
       // otherwise we find the next available vchunk in the freelist
       idx = find_in_free_list();
-      ch = find_chunk(idx);
+      ch = find_vchunk(idx);
     }
     offset_t pos = ch->first_available();
     assert(pos != SIZE_MAX);
@@ -202,19 +272,27 @@ class vchunked_vec {
         return offs + first;
       }
       ptr = ptr->next_;
-      offs += elems_per_chunk_;
+      offs += elems_per_vchunk_;
     }
     return UNKNOWN;
   }
 
-  void resize(int nchunks) {
-    int num = nchunks;
+  offset_t last_used() const {
+    if (vchunk_list_.empty())
+      return UNKNOWN;
+    vchunk_ptr ch = vchunk_list_.back();
+    std::size_t idx = (vchunk_list_.size() - 1) * elems_per_vchunk_ + ch->last_used();
+    return idx;
+  }
+
+  void resize(int nvchunks) {
+    int num = nvchunks;
     vchunk_ptr ptr = nullptr;
 
     if (vchunk_list_.empty()) {
       ptr = new vchunk<T, num_entries>();
       vchunk_list_.push_back(ptr);
-      available_slots_ = capacity_ = elems_per_chunk_;
+      available_slots_ = capacity_ = elems_per_vchunk_;
       num--;
       add_to_free_list(0);
     } else {
@@ -226,9 +304,9 @@ class vchunked_vec {
       ptr->next_ = c;
       ptr = c;
       vchunk_list_.push_back(ptr);
-      capacity_ += elems_per_chunk_;
-      available_slots_ += elems_per_chunk_;
-      add_to_free_list((vchunk_list_.size() - 1) * elems_per_chunk_);
+      capacity_ += elems_per_vchunk_;
+      available_slots_ += elems_per_vchunk_;
+      add_to_free_list((vchunk_list_.size() - 1) * elems_per_vchunk_);
     }
   }
 
@@ -240,8 +318,8 @@ private:
 
   void remove_from_free_list(offset_t idx) {
     // spdlog::info("remove_from_free_list: {}", idx);
-    free_list_.erase(std::remove_if(std::begin(free_list_), std::end(free_list_), 
-      [idx](auto i) { return i == idx; }), 
+    free_list_.erase(std::remove_if(std::begin(free_list_), std::end(free_list_),
+      [idx](auto i) { return i == idx; }),
       std::end(free_list_));
 
   }
@@ -252,8 +330,8 @@ private:
     return free_list_.front();
   }
 
-  vchunk_ptr find_chunk(offset_t idx) const {
-    auto n = idx / elems_per_chunk_;
+  vchunk_ptr find_vchunk(offset_t idx) const {
+    auto n = idx / elems_per_vchunk_;
     if (n >= vchunk_list_.size())
       throw index_out_of_range();
     return vchunk_list_[n];
@@ -261,123 +339,167 @@ private:
 
   offset_t capacity_;
   offset_t available_slots_;
-  uint32_t elems_per_chunk_;
+  uint32_t elems_per_vchunk_;
   std::vector<vchunk_ptr> vchunk_list_;
   std::vector<offset_t> free_list_;
   mutable std::shared_mutex fl_mtx_;
 };
-#else
-/**
- * A struct for a PMem-based CSR delta element. A delta element is associated with a node.
- * The element can either be the id of a node to which updates of a transaction 
- * are associated, or the id of a neigbour to that node, or the weight of 
- * a relationship attached to that node. 
- */
-struct delta_element {
-  delta_element() = default;
-  delta_element(const delta_element &) = delete;
-
-  enum element_type { node_id, neighbour_id, rship_weight };
-
-  uint64_t txid_; // id of the transaction that stored the delta element for its modification
-  uint64_t node_id_; // id of the node to which the delta element is associated
-  element_type type_; // type of the delta element
-  uint64_t val_; // actual value of the delta element
-  bool restored_; // a flag indicating whether the delta element has been used in a CSR restore
-};
 #endif
 
 /**
- * CSR delta store for updating existing CSR representations to 
- * reflect the latest snapshot of the graph. It stores delta entries, 
- * each corresponding to an update in the graph made by a transaction. 
+ * The CSR delta store manages delta records. Delta records are merged to
+ * update the current CSR representation of the main PMem Graph so that
+ * analytics are executed on the latest snapshot of the graph.
  */
-class csr_delta {
+class delta_store {
 public:
-  using delta_map_t =
-    std::map<uint64_t, std::pair<std::vector<uint64_t>, std::vector<double>>>;
+  using delta_map_t = std::map<uint64_t, delta>;
 
   /**
    * Constructor
    */
-  csr_delta() = default;
-  csr_delta(const csr_delta &) = delete;
+  delta_store() = default;
+  delta_store(const delta_store &) = delete;
 
   /**
    * Destructor
    */
-  ~csr_delta() {}
+  ~delta_store() {}
 
   void initialize();
 
+#ifdef DIFF_DELTA
   /**
-   * Stores the elements of a delta to the vector of delta elements.
+   * Stores all updates of a transaction as delta records in the vector of delta records.
    */
-  void store_delta(uint64_t nid, const std::vector<uint64_t> &ids,
-                   const std::vector<double> &weights, uint64_t txid);
-
+  void store_deltas(uint64_t txid, const transaction::delta_ids &txn_delta_ids);
+#elif defined ADJ_DELTA
   /**
-   * Returns a reference to the underlying vector of delta elements.
+   * Stores updates of a transaction on a node as a delta record in the vector of delta records.
    */
-#ifdef VOLATILE_DELTA
-  const vchunked_vec<delta_element>& get_delta_elements() { return delta_elements_; }
-#else
-  const chunked_vec<delta_element>& get_delta_elements() { return delta_elements_; }
+  void store_delta(uint64_t txid, uint64_t nid,
+    const std::vector<uint64_t> &ids, const std::vector<double> &weights);
 #endif
 
   /**
-   * Restores deltas from their corresponding delta elements into a delta map.
-   * The deltas are used to update the existing CSR representations to reflect 
-   * the latest snapshot of the graph. A delta in the delta map is of the form: 
-   * {node id, <[ids of neighbours], [edge weights]>}
+   * Returns a reference to the underlying vector of delta records.
    */
-  void restore_deltas(delta_map_t &deltas, uint64_t txid);
+#ifdef VOLATILE_DELTA
+  const vchunked_vec<delta_rec>& csr_delta_recs() { return delta_recs_; }
+#elif defined PERSISTENT_DELTA
+  const chunked_vec<delta_rec>& csr_delta_recs() { return delta_recs_; }
+#endif
+
+  /**
+   * Merge valid delta records from different transactions into a delta map.
+   * The deltas in the delta map are used to update the current CSR.
+   */
+  void merge_deltas(delta_map_t &deltas, uint64_t txid);
+
+  /**
+   * Delete all chunks of the vector of delta records and reset it to an empty vector.
+   */
+  void clear_deltas();
 
   /**
    * Returns the weight function.
    */
-  const rship_weight& get_weight_func() { return weight_func_; }
+  const rship_weight& weight_func() { return weight_func_; }
 
   /**
-   * Returns whether only outgoing relationships are considered (false) 
+   * Returns whether only outgoing relationships are considered (false)
    * or both outgoing and incoming relationships are considered (true).
    */
-  bool get_bidirectional() { return bidirectional_; }
+  bool bidirectional() { return bidirectional_; }
 
   /**
    * Returns the last node id in the current CSR
    */
-  offset_t get_last_node_id() { return last_node_id_; }
+  offset_t last_node_id() { return last_node_id_; }
 
   /**
    * Returns the id of the last transaction that made a CSR update.
    */
-  uint64_t get_last_txn_id() { return last_txn_id_; }
+  uint64_t last_txn_id() { return last_txn_id_; }
 
-private:
+// private: // TODO
   friend class graph_db;
 
-  bool bidirectional_ = false;  // bi/uni-directional traversal of relationships
+  bool bidirectional_ = false;              // bi/uni-directional traversal of relationships
   rship_weight weight_func_ =
-    [](relationship &r) { return 1.3; };  // function to compute weights of relationships
+    [](relationship &r) { return 1.3; };    // function to compute weights of relationships
 
-  offset_t last_node_id_ = UNKNOWN; // id of the last node in the current CSR
-  uint64_t last_txn_id_ = UNKNOWN;  // id of the last transaction that made a CSR update
+  offset_t last_node_id_ = UNKNOWN;         // id of the last node in the current CSR
+  uint64_t last_txn_id_ = UNKNOWN;          // id of the last transaction that made a CSR update
+
+  bool delta_mode_ = true;                  // delta mode for adaptive CSR update
+  uint64_t num_delta_recs_ = 0;             // number of stored delta records
+  uint64_t max_delta_recs_ = 18174889;      // maximum number of delta records for adaptive CSR update
 
 #ifdef VOLATILE_DELTA
-  vchunked_vec<delta_element> delta_elements_; // the underlying chunked vector of delta elements
-  
-  // TODO these arrays are not needed here when CSR update is done directly on GPU
+
+  #ifdef DIFF_DELTA
+  std::vector<uint64_t> deletes_;           // ids of the deleted neighbours for all deltas records
+  std::vector<uint64_t> inserts_;           // ids of the inserted neighbours for all deltas records
+  std::vector<double> weights_;             // relationship weights (for inserted neighbours) for all deltas delta records
+  offset_t next_deletes_pos_ = 0;           // start of empty slots in the "deletes_" vector
+  offset_t next_inserts_pos_ = 0;           // start of empty slots in the "inserts_" and "weights_" vectors
+  #elif defined ADJ_DELTA
+  std::vector<uint64_t> ids_;               // ids of neighbours (column indices) for all deltas records
+  std::vector<double> weights_;             // relationship weights (edge values) for all deltas delta records
+  offset_t next_pos_ = 0;                   // start of empty slots in the "ids_" and "weights_" vectors
+  #endif
+
+  vchunked_vec<delta_rec> delta_recs_;      // the underlying vchunked vector of volatile delta records
+
+#ifdef USE_GUNROCK
+  // TODO
+  // thrust::device_vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR on GPU
+  // thrust::device_vector<offset_t> col_indices_ = {};  // column indices array of the current CSR on GPU
+  // thrust::device_vector<float> edge_values_ = {};     // edge values array of the current CSR on GPU
+  offset_t *row_offsets_;     // row offsets array of the current CSR on GPU
+  offset_t *col_indices_;     // column indices array of the current CSR on GPU
+  float *edge_values_;        // edge values array of the current CSR on GPU
+  std::size_t row_offs_size_; // size of the row_offsets_ array
+  std::size_t col_inds_size_; // size of the col_indices_ (and edge_values_) array
+#else
   std::vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR
   std::vector<offset_t> col_indices_ = {};  // column indices array of the current CSR
   std::vector<float> edge_values_ = {};     // edge values array of the current CSR
-#else
-  chunked_vec<delta_element> delta_elements_; // the underlying chunked vector of delta elements
+#endif
 
-  // TODO these arrays are not needed here when CSR update is done directly on GPU
+#elif defined PERSISTENT_DELTA
+
+  #ifdef DIFF_DELTA
+  pmem::obj::vector<uint64_t> deletes_;     // ids of the deleted neighbours for all deltas records
+  pmem::obj::vector<uint64_t> inserts_;     // ids of the inserted neighbours for all deltas records
+  pmem::obj::vector<double> weights_;       // relationship weights (for inserted neighbours) for all deltas delta records
+  offset_t next_deletes_pos_ = 0;           // start of empty slots in the "deletes_" vector
+  offset_t next_inserts_pos_ = 0;           // start of empty slots in the "inserts_" and "weights_" vectors
+  #elif defined ADJ_DELTA
+  pmem::obj::vector<uint64_t> ids_;         // ids of neighbours (column indices) for all deltas records
+  pmem::obj::vector<double> weights_;       // relationship weights (edge values) for all deltas delta records
+  offset_t next_pos_ = 0;                   // start of empty slots in the "ids_" and "weights_" vectors
+  #endif
+
+  chunked_vec<delta_rec> delta_recs_;       // the underlying chunked vector of persistent delta records
+
+#ifdef USE_GUNROCK
+  // TODO
+  // thrust::device_vector<offset_t> row_offsets_ = {};  // row offsets array of the current CSR on GPU
+  // thrust::device_vector<offset_t> col_indices_ = {};  // column indices array of the current CSR on GPU
+  // thrust::device_vector<float> edge_values_ = {};     // edge values array of the current CSR on GPU
+  offset_t *row_offsets_;     // row offsets array of the current CSR on GPU
+  offset_t *col_indices_;     // column indices array of the current CSR on GPU
+  float *edge_values_;        // edge values array of the current CSR on GPU
+  std::size_t row_offs_size_; // size of the row_offsets_ array
+  std::size_t col_inds_size_; // size of the col_indices_ (and edge_values_) array
+#else
   pmem::obj::vector<offset_t> row_offsets_; // row offsets array of the current CSR
   pmem::obj::vector<offset_t> col_indices_; // column indices array of the current CSR
-  pmem::obj::vector<float> edge_values_; // edge values array of the current CSR
+  pmem::obj::vector<float> edge_values_;    // edge values array of the current CSR
+#endif
+
 #endif
 };
 

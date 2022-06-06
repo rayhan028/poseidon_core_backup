@@ -25,7 +25,7 @@ uint64_t gunrock_bfs_csr(graph_db_ptr gdb, node::id_t start,
   csr_arrays csr;
   auto t1 = std::chrono::steady_clock::now();
   gdb->run_transaction([&]() {
-    gdb->poseidon_to_csr(csr, gdb->get_csr_delta()->get_weight_func(), bidirectional);
+    gdb->poseidon_to_csr(csr, gdb->csr_delta_store()->weight_func(), bidirectional);
     return true;
   });
   auto t2 = std::chrono::steady_clock::now();
@@ -51,7 +51,7 @@ uint64_t gunrock_bfs_csr(graph_db_ptr gdb, node::id_t start,
 
   if (!quiet) { // For performance analysis
     std::cout << "Executed SSSP using Gunrock with CSR graph representation. \n";
-#if defined CSR_DELTA_STORE && defined USE_TX
+#if defined CSR_DELTA && defined USE_TX
     std::cout << "Full CSR build:         " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << "[ms]" << "\n";
 #else
     std::cout << "CSR update with delta:         " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << "[ms]" << "\n";

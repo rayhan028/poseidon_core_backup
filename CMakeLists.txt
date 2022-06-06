@@ -87,8 +87,23 @@ if(QOP_RECOVERY MATCHES ON)
   add_definitions( "-DQOP_RECOVERY" )
 endif()
 
-if(CSR_DELTA_STORE MATCHES ON)
-  add_definitions( "-DCSR_DELTA_STORE" )
+if(CSR_DELTA MATCHES ON)
+  add_definitions( "-DCSR_DELTA" )
+endif()
+
+if (USE_GUNROCK MATCHES ON)
+  set(CUDA_MIN_VERSION 9.0)
+  FIND_PACKAGE(CUDA ${CUDA_MIN_VERSION} REQUIRED)
+  if(NOT DEFINED CMAKE_CUDA_STANDARD)
+    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+  endif()
+
+  SET(CMAKE_CUDA_ARCHITECTURES 70)
+  SET(CUDA_SEPARABLE_COMPILATION ON)
+  set(CUDA_PROPAGATE_HOST_FLAGS ON)
+
+  add_definitions( "-DUSE_GUNROCK" )
 endif()
 
 configure_file(
@@ -115,6 +130,10 @@ include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
 include_directories(${PROJECT_SOURCE_DIR}/src/ql)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics/gunrock)
+include_directories(${PROJECT_SOURCE_DIR}/src/analytics/util)
+if (USE_GUNROCK MATCHES ON)
+  include_directories(${CUDA_INCLUDE_DIRS})
+endif()
 
 #---------------------------------------------------------------------------
 
@@ -136,6 +155,10 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-unused -Wno-uninitialized")
 if(CMAKE_BUILD_TYPE MATCHES Release)
   # this disables asserts for release builds
   add_definitions("-DNDEBUG")
+endif()
+
+if (USE_GUNROCK MATCHES ON)
+  string(APPEND CMAKE_CUDA_FLAGS " -Xcompiler -Wall")
 endif()
 
 #---------------------------------------------------------------------------
@@ -430,7 +453,7 @@ else()
   set(qoprec_src "")
 endif()
 
-if(CSR_DELTA_STORE MATCHES ON)
+if(CSR_DELTA MATCHES ON)
   set(csr_delta_src src/storage/csr_delta.cpp)
 else()
   set(csr_delta_src "")
@@ -472,13 +495,21 @@ set(src_files
   src/analytics/graph_db_analytics.cpp
 )
 
+if(USE_GUNROCK MATCHES ON)
+  set(cu_files
+    src/analytics/graph_db_analytics.cu
+  )
+else()
+  set(cu_files "")
+endif()
+
 # Using OBJECT to avoid to build object files multiple times due to inclusion
 # in different libraries.
 # macOS doesn't like SHARED, Linux needs it
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-add_library(poseidon_obj OBJECT ${src_files})
+add_library(poseidon_obj OBJECT ${src_files} ${cu_files})
 else()
-add_library(poseidon_obj OBJECT SHARED ${src_files})
+add_library(poseidon_obj OBJECT SHARED ${src_files} ${cu_files})
 endif()
 
 # Poseidon core library for building C++ applications
@@ -487,8 +518,10 @@ add_library(poseidon_core SHARED
 )
 
 if(USE_GUNROCK MATCHES ON)
+  set(CUDA_LIB ${CUDA_LIBRARIES})
   set(gunrock_linkLib gunrock)
 else()
+  set(CUDA_LIB "")
   set(gunrock_linkLib "")
 endif()
 
@@ -505,6 +538,7 @@ target_link_libraries(poseidon_core
   Boost::thread
   spdlog::spdlog_header_only
   ${gunrock_linkLib}
+  ${CUDA_LIB}
 )
 
 target_include_directories( ${PROJECT_NAME}
