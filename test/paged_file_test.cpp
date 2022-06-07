@@ -152,3 +152,23 @@ TEST_CASE("Checking last valid page", "[paged_file]") {
     REQUIRE(pf.last_valid_page() == 6);
     remove("test5.dat");
 }
+
+TEST_CASE("Reusing free page slots", "[paged_file]") {
+    remove("test6.dat");
+    paged_file pf;
+    
+    pf.open("test6.dat");
+    REQUIRE(pf.is_open());
+    
+    for (auto i = 0u; i < 5; i++)
+        pf.allocate_page();
+    
+    for (auto i = 0u; i < 5; i++)
+        pf.free_page(i+1);
+    
+    for (auto i = 0u; i < 5; i++)
+        pf.allocate_page();
+
+    REQUIRE(pf.num_pages() == 10); // there should be only the five reused pages
+    remove("test6.dat");
+}
