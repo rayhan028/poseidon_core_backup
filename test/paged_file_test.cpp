@@ -169,6 +169,6 @@ TEST_CASE("Reusing free page slots", "[paged_file]") {
     for (auto i = 0u; i < 5; i++)
         pf.allocate_page();
 
-    REQUIRE(pf.num_pages() == 10); // there should be only the five reused pages
+    REQUIRE(pf.num_pages() == 5);
     remove("test6.dat");
 }

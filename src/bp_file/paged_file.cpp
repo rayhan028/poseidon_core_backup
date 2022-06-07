@@ -82,7 +82,7 @@ paged_file::page_id paged_file::allocate_page() {
     // find first 0 bit in slots_
     paged_file::page_id pid = find_first_slot();
 
-    if (pid != 0) {
+    if (pid != UNKNOWN) {
         // reuse a freed page
         // file_.seekp(0, file_.end);
         file_.seekp(pid * PAGE_SIZE + sizeof(file_header));
@@ -106,7 +106,7 @@ paged_file::page_id paged_file::allocate_page() {
 paged_file::page_id paged_file::last_valid_page() {
     if (npages_ == 0) return allocate_page();
     auto i = npages_ - 1;
-    while (i >= 0 && i < npages_) {
+    while (i >= 0) {
         if (header_.slots_.test(i)) {
             return i+1;
         }
@@ -155,7 +155,7 @@ paged_file::page_id paged_file::find_first_slot() {
         if (!header_.slots_.test(i))
             return i;
     }
-    return 0;
+    return UNKNOWN;
 }
 
 void paged_file::scan_pages(page& pg, std::function<void(page&, paged_file::page_id)> cb) {
