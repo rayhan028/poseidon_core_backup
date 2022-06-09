@@ -200,6 +200,8 @@ struct property_set {
   property_set(offset_t o, const p_item_list &pil, offset_t n)
       : next(n), owner(o), items(pil) {
   }
+
+  inline void runtime_initialize() { /* nothing */ }
 };
 
 #ifdef USE_PFILE

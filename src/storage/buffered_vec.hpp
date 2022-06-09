@@ -568,7 +568,7 @@ private:
    */
   bchunk_ptr find_chunk(offset_t idx, bool modify = false) const {
     auto page_id = idx / elems_per_chunk_ + 1;
-    // spdlog::info("buffered_vec::find_chunk page #{}", page_id);
+    spdlog::debug("buffered_vec::find_chunk page #{}", page_id);
     auto pg = bpool_.fetch_page(page_id | file_mask_);
     
     // std::cout << "find_chunk: " << page_id << ", addr=" << (uint64_t)pg->payload << std::endl;
@@ -583,6 +583,8 @@ private:
   bchunk_ptr load_chunk(paged_file::page_id pid, bool modify = false) const {
     if (!bpool_.get_file(file_id_)->is_valid(pid))
       return nullptr;
+
+    spdlog::debug("buffered_vec::load_chunk page #{}", pid);
 
     auto pg = bpool_.fetch_page(pid | file_mask_);
     if (modify) {

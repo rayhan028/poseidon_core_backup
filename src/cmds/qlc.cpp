@@ -122,18 +122,32 @@ static void trim(std::string &s) {
 }
 
 /**
+ * Print the query result to standard output.
+ */
+void print_result(qresult_iterator& qres) {
+  std::cout << "Result: \n" << qres.result() << "\n" << std::dec << qres.result_size() << " tuples" << std::endl;
+}
+
+/**
  * Execute the query given as string. If qex_cc is set to true then the
  * query is compiled using LLVM, otherwise the query interpreter is used.
  */
 void exec_query(const std::string &qstr, qproc::mode qmode) {
+  try {
   auto start_qp = std::chrono::steady_clock::now();
-  qproc_ptr->execute_query(qmode, qstr);
+  auto res = qproc_ptr->execute_query(qmode, qstr);
   auto end_qp = std::chrono::steady_clock::now();
+
+  print_result(res);
+
   std::cout << "Query executed in " 
             << std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
-                                                                     end_qp)
+                                                                     start_qp)
                    .count()
             << " ms" << std::endl;
+  } catch (std::exception& exc) {
+    std::cerr << "Error in query execution: " << exc.what() << std::endl;
+  }
 }
 
 
@@ -337,6 +351,8 @@ int main(int argc, char* argv[]) {
   if (!dot_file.empty())
     graph->dump_dot(dot_file);
 
+  graph->dump();
+  
   qproc_ptr = std::make_unique<qproc>(graph);
 
   if (start_shell) {

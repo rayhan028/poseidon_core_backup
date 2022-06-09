@@ -94,18 +94,19 @@ template <typename T> struct txn {
   using txn_data_t = txn_data<T>;
   using txn_data_ptr = txn_data_t *;
 
-  std::atomic<xid_t> txn_id_; // transaction id if locked, 0 otherwise
-  txn_data_ptr d_;            // pointer to volatile data!!
+  std::atomic<xid_t> txn_id_;       // transaction id if locked, 0 otherwise
+  timestamp_t bts_, cts_, rts_;  // begin timestamp, commit timestamp, read timestamp
+  txn_data_ptr d_;                  // pointer to volatile data!!
 
   /**
    * Default constructor.
    */
-  txn() : txn_id_(0) { d_ = new txn_data_t(); }
+  txn() : txn_id_(0), bts_(0), cts_(INF), rts_(0) { d_ = new txn_data_t(); }
 
   /**
    * Copy constructor.
    */
-  txn(const txn &t) : txn_id_(t.txn_id_.load()) { d_ = new txn_data_t(*t.d_); }
+  txn(const txn &t) : txn_id_(t.txn_id_.load()), bts_(0), cts_(INF), rts_(0) { d_ = new txn_data_t(*t.d_); }
 
   /**
    * Destructor
@@ -114,6 +115,7 @@ template <typename T> struct txn {
 
   void runtime_initialize() { 
     txn_id_ = 0;
+    bts_ = rts_ = 0; cts_ = INF;
     d_ = nullptr;
   }
 
@@ -131,6 +133,9 @@ template <typename T> struct txn {
   txn &operator=(const txn &t) {
     d_ = new txn_data_t(*t.d_);
     txn_id_ = t.txn_id_.load();
+    bts_ = t.bts_;
+    cts_ = t.cts_;
+    rts_ = t.rts_;
     return *this;
   }
 
@@ -141,6 +146,9 @@ template <typename T> struct txn {
     d_ = t.d_;
     t.d_ = nullptr;
     txn_id_ = t.txn_id_.load();
+    bts_ = t.bts_;
+    cts_ = t.cts_;
+    rts_ = t.rts_;
     return *this;
   }
 
@@ -150,38 +158,38 @@ template <typename T> struct txn {
   /**
    * Return the value of the begin timestamp.
    */
-  inline timestamp_t bts() const { return d_->bts_; }
+  inline timestamp_t bts() const { return bts_; }
 
   /**
    * Return the value of the commit timestamp.
    */
-  inline timestamp_t cts() const { return d_->cts_; }
+  inline timestamp_t cts() const { return cts_; }
 
   /**
    * Return the value of the read timestamp.
    */
-  inline timestamp_t rts() const { return d_->rts_; }
+  inline timestamp_t rts() const { return rts_; }
 
   /**
    * Set the begin and commit timestamps.
    */
   void set_timestamps(xid_t beg, xid_t end) {
-    d_->bts_ = beg;
-    d_->cts_ = end;
+    bts_ = beg;
+    cts_ = end;
   }
 
   /**
    * Set the commit timestamp.
    */
-  void set_cts(xid_t end) { d_->cts_ = end; }
+  void set_cts(xid_t end) { cts_ = end; }
 
   /**
    * Set the read timestamp.
    */
   void set_rts(xid_t end) { 
     // update only if rts < end
-    if (d_->rts_ < end) 
-      d_->rts_ = end; 
+    if (rts_ < end) 
+      rts_ = end; 
   }
 
   /**
@@ -235,13 +243,13 @@ template <typename T> struct txn {
    * Check if the node is valid for the transaction with the give xid.
    */
   bool is_valid_for(xid_t xid) const { 
-	  return d_ == nullptr || (d_->bts_ <= xid && xid < d_->cts_); 
+	  return d_ == nullptr || (bts_ <= xid && xid < cts_); 
   }
 
   /**
    * Check whether the object is valid, i.e. not modified by an active transaction.
    */
-  bool is_valid() const { return d_ == nullptr || d_->cts_ == INF; }
+  bool is_valid() const { return d_ == nullptr || cts_ == INF; }
 
   /**
    * Return the dirty list.

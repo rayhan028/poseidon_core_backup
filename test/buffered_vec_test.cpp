@@ -46,6 +46,8 @@ struct record {
 
     record &operator=(const record &other) = default;
 
+    void runtime_initialize() {}
+    
     uint8_t flag;
     uint32_t head;
     int64_t i;

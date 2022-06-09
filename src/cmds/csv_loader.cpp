@@ -197,6 +197,7 @@ int main(int argc, char* argv[]) {
   import_csv_files(graph, import_files, delim_character, format, strict);
   graph->print_stats();
 
+  graph->dump();
   if (!dot_file.empty())
     graph->dump_dot(dot_file);
 }

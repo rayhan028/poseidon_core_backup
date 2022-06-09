@@ -1167,6 +1167,7 @@ void collect_result::dump(std::ostream &os) const {
 
 void collect_result::process(query_ctx &ctx, const qr_tuple &v) {
   std::lock_guard<std::mutex> lock(collect_mtx);
+  std::cout << "collect_result::process" << std::endl;
   PROF_PRE;
   // we transform node and relationship into their string representations ...
   qr_tuple res(v.size());

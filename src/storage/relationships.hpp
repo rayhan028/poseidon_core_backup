@@ -222,4 +222,5 @@ public:
 private:
   rship_vec rships_; // the actual list of relationships
 };
+
 #endif
