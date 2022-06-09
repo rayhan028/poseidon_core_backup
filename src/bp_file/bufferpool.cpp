@@ -77,10 +77,10 @@ page *bufferpool::fetch_page(paged_file::page_id pid) {
     // load page from file
     auto p = load_page_from_file(pid);
     // ... add it to the hashtable
-    ptable_.emplace(pid, buf_slot{ p, false });
+    ptable_.emplace(pid, buf_slot{ p.first, false, p.second });
     // ... and to the LRU list
     lru_list_.push_back(pid);
-    return p;
+    return p.first;
 }
     
 std::pair<page*, paged_file::page_id> bufferpool::allocate_page(uint8_t file_id) {
@@ -125,8 +125,7 @@ void bufferpool::flush_page(paged_file::page_id pid, bool evict) {
         iter->second.dirty_ = false;
     }
     if (evict) {
-        auto raw_pid = pid & 0xE000000000000000;
-        slots_.set(raw_pid);
+        slots_.set(iter->second.pos_);
         memset(iter->second.p_, 0, sizeof(PAGE_SIZE));
         ptable_.erase(pid);
         auto iter2 = std::find(lru_list_.begin(), lru_list_.end(), pid);
@@ -150,8 +149,7 @@ bool bufferpool::evict_page() {
         auto it2 = ptable_.find(pid);
         if (it2 != ptable_.end()) {
             if (!it2->second.dirty_) {
-                auto raw_pid = pid & 0xE000000000000000;
-                slots_.set(raw_pid);
+                slots_.set(it2->second.pos_);
                 memset(it2->second.p_, 0, sizeof(PAGE_SIZE));
                 ptable_.erase(pid);
                 lru_list_.erase(it1);
@@ -162,7 +160,7 @@ bool bufferpool::evict_page() {
     return false;
 }
 
-page *bufferpool::load_page_from_file(paged_file::page_id pid) {
+std::pair<page *, std::size_t> bufferpool::load_page_from_file(paged_file::page_id pid) {
     // find empty slot
     auto pos = slots_.find_first();
     slots_.flip(pos);
@@ -174,7 +172,7 @@ page *bufferpool::load_page_from_file(paged_file::page_id pid) {
     assert(file_id < 10 && files_[file_id]);
     files_[file_id]->read_page(raw_pid, buffer_[pos]);
     // std::cout << "load: " << pid << "," << raw_pid << " : " << (int)(buffer_[pos].payload[0]) << std::endl;
-    return &(buffer_[pos]);
+    return std::make_pair(&(buffer_[pos]), pos);
 }
 
 void bufferpool::write_page_to_file(paged_file::page_id pid, page *pg) {

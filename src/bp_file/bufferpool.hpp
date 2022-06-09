@@ -105,15 +105,16 @@ private:
     void dump();
     
     bool evict_page();
-    page *load_page_from_file(paged_file::page_id pid);
+    std::pair<page *, std::size_t> load_page_from_file(paged_file::page_id pid);
     void write_page_to_file(paged_file::page_id pid, page *pg);
 
     std::size_t bsize_; // the size of the bufferpool in pages
     page *buffer_;      // the memory region for all cached pages
 
     struct buf_slot {
-        page *p_;      // a pointer to a page in buffer_
-        bool dirty_;   // a flag indicating that the page is marked as dirty
+        page *p_;           // a pointer to a page in buffer_
+        bool dirty_;        // a flag indicating that the page is marked as dirty
+        std::size_t pos_;   // position of the slot in buffer_
     };
 
     std::list<uint64_t> lru_list_; // the LRU list
