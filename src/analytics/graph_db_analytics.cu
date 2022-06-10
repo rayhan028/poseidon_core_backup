@@ -36,9 +36,19 @@ struct d_delta {
 
   uint64_t node_id_;  // id of the node associated with the delta
 
-  uint64_t **ids_;   // ids of the neighbour nodes
-  double **weights_; // corresponding relationship weights
+  uint64_t *ids_;   // ids of the neighbour nodes
+  double *weights_; // corresponding relationship weights
+  int size_;        // number of neighbours
 };
+
+template<typename T>
+__global__ void memcpy_kernel(T *dest, const T *src, uint64_t start, int size) {
+    int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    int blk_offs = gridDim.x * blockDim.x;
+    for (int i = tid; i < size; i += blk_offs) {
+        dest[i] = src[i + start];
+    }
+}
 
 extern "C" void device_csr_build(graph_db_ptr graph, csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
   auto txid = current_transaction()->xid();
@@ -241,8 +251,14 @@ extern "C" void device_csr_update_with_delta(graph_db_ptr graph, csr_arrays &csr
     cudaMemcpy(&(d_deltas[i].weights_), &(d_weights[i]), sizeof(double *), cudaMemcpyHostToDevice);
     cudaMemcpy(&(d_deltas[i].weights_), h_delta.weights_.data(), size_edge_vals, cudaMemcpyHostToDevice);
 
+    auto neighbours = h_delta.ids_.size();
+    cudaMemcpy(&(d_deltas[i].size_), &neighbours, sizeof(int), cudaMemcpyHostToDevice);
+
     if (i < lnid_pos) { // TODO: too expensive
-      int old_edges = old_row_offs[nid + 1] - old_row_offs[nid];
+      offset_t offs_a = 0, offs_b = 0;
+      cudaMemcpy(&offs_a, &(old_row_offs[nid + 1]), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+      cudaMemcpy(&offs_b, &(old_row_offs[nid]), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+      int old_edges = offs_a - offs_b;
       int new_edges = h_delta.ids_.size();
       auto diff = new_edges - old_edges;
       edge_diff += diff;
@@ -273,8 +289,96 @@ extern "C" void device_csr_update_with_delta(graph_db_ptr graph, csr_arrays &csr
   cudaMalloc((void **)&new_row_offs, new_ro_size);
   cudaMalloc((void **)&new_col_inds, new_ci_size);
   cudaMalloc((void **)&new_edge_vals, new_ev_size);
+
+  // process entries for the first node until the last updated node
+  uint64_t next_nid = 0;
+  offset_t val = 0;
+  cudaMemcpy(&(new_row_offs[0]), &val, sizeof(offset_t), cudaMemcpyHostToDevice);
+  int threads_per_block = 256;
+  for (uint64_t i = 0; i < lnid_pos; i++) { // TODO
+    uint64_t nid;
+    cudaMemcpy(&nid, &(d_deltas[i].node_id_), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    while (next_nid < nid) {
+      // possibly, some nodes between the first node and the last updated node are unchanged
+      // we just copy the entries for such nodes from the current (i.e. old) CSR to the new CSR
+      offset_t offs_a = 0, offs_b = 0;
+      cudaMemcpy(&offs_a, &(old_row_offs[next_nid + 1]), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+      cudaMemcpy(&offs_b, &(old_row_offs[next_nid]), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+      auto edges = offs_a - offs_b;
+      offset_t offs_c = 0;
+      cudaMemcpy(&offs_c, &(new_row_offs[next_nid]), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+      offset_t offs_d = offs_c + edges;
+      cudaMemcpy(&(new_row_offs[next_nid + 1]), &offs_d, sizeof(offset_t), cudaMemcpyHostToDevice);
+
+      int blocks_per_grid = (edges + threads_per_block - 1) / threads_per_block;
+      memcpy_kernel<offset_t> <<<blocks_per_grid, threads_per_block>>>(new_col_inds, old_col_inds, offs_b, edges);
+      memcpy_kernel<float> <<<blocks_per_grid, threads_per_block>>>(new_edge_vals, old_edge_vals, offs_b, edges);
+
+      next_nid++;
+    }
+    // assert(next_nid == nid);
+    // using the delta map item, insert entries for the updated node into the new CSR
+    offset_t offs_a = 0;
+    cudaMemcpy(&offs_a, &(new_row_offs[next_nid]), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    int neighbours = 0;
+    cudaMemcpy(&neighbours, &(d_deltas[i].size_), sizeof(int), cudaMemcpyDeviceToHost);
+    offset_t offs_b = offs_a + neighbours;
+    cudaMemcpy(&(new_row_offs[next_nid + 1]), &offs_b, sizeof(offset_t), cudaMemcpyHostToDevice);
+
+    int blocks_per_grid = (neighbours + threads_per_block - 1) / threads_per_block;
+    memcpy_kernel<offset_t> <<<blocks_per_grid, threads_per_block>>>(new_col_inds, d_deltas[i].ids_, 0, neighbours);
+    memcpy_kernel<float> <<<blocks_per_grid, threads_per_block>>>(new_edge_vals, d_deltas[i].weights_, 0, neighbours);
+
+    next_nid++;
+  }
+
+  // possibly, some nodes between the last updated node and the last node id in the current (i.e. old) CSR are unchanged
+  // similarly, we just copy the entries for such nodes from the current (i.e. old) CSR to the new CSR
+
+  while (next_nid < (delta_store->row_offs_size_ - 1)) {
+    offset_t offs_a = 0, offs_b = 0;
+    cudaMemcpy(&offs_a, &(old_row_offs[next_nid + 1]), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&offs_b, &(old_row_offs[next_nid]), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    auto edges = offs_a - offs_b;
+    offset_t offs_c = 0;
+    cudaMemcpy(&offs_c, &(new_row_offs[next_nid]), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    offset_t offs_d = offs_c + edges;
+    cudaMemcpy(&(new_row_offs[next_nid + 1]), &offs_d, sizeof(offset_t), cudaMemcpyHostToDevice);
+
+    int blocks_per_grid = (edges + threads_per_block - 1) / threads_per_block;
+    memcpy_kernel<offset_t> <<<blocks_per_grid, threads_per_block>>>(new_col_inds, old_col_inds, offs_b, edges);
+    memcpy_kernel<float> <<<blocks_per_grid, threads_per_block>>>(new_edge_vals, old_edge_vals, offs_b, edges);
+
+    next_nid++;
+  }
+
+  // finally, using the remaining delta map items, insert entries for the newly appended nodes into the new CSR
+  for (uint64_t i = lnid_pos; i < num_deltas; i++) {
+    uint64_t nid;
+    cudaMemcpy(&nid, &(d_deltas[i].node_id_), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    while (next_nid < nid) { // unused node record slots
+      offset_t offs_a = 0;
+      cudaMemcpy(&offs_a, &(new_row_offs[next_nid]), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+      cudaMemcpy(&(new_row_offs[next_nid + 1]), &offs_a, sizeof(offset_t), cudaMemcpyHostToDevice);
+
+      next_nid++;
+    }
+    // assert(next_nid == nid);
+    offset_t offs_a = 0;
+    cudaMemcpy(&offs_a, &(new_row_offs[next_nid]), sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    int neighbours = 0;
+    cudaMemcpy(&neighbours, &(d_deltas[i].size_), sizeof(int), cudaMemcpyDeviceToHost);
+    offset_t offs_b = offs_a + neighbours;
+    cudaMemcpy(&(new_row_offs[next_nid + 1]), &offs_b, sizeof(offset_t), cudaMemcpyHostToDevice);
+
+    int blocks_per_grid = (neighbours + threads_per_block - 1) / threads_per_block;
+    memcpy_kernel<offset_t> <<<blocks_per_grid, threads_per_block>>>(new_col_inds, d_deltas[i].ids_, 0, neighbours);
+    memcpy_kernel<float> <<<blocks_per_grid, threads_per_block>>>(new_edge_vals, d_deltas[i].weights_, 0, neighbours);
+
+    next_nid++;
+  }
 #endif
 
-  // TODO
-
+  delta_store_->last_txn_id_ = txid; // update id of the last transaction that made a CSR update
+  delta_store_->last_node_id_ = next_nid - 1; // update last node id in the CSR
 }
