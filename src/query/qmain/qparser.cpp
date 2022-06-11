@@ -339,6 +339,9 @@ expr qparser::parse_expression(parse_tree_ptr& tree) {
   else if (tree->is_type<qlang::udf_func_expr>()) {
     return parse_udf_func_expr(tree);
   }
+  else if (tree->is_type<qlang::literal_string>()) {
+    return Str(trim_string(tree->string()));
+  }
   else if (tree->is_type<qlang::decimal>()) {
     auto str = tree->string();
     if (is_int(str))

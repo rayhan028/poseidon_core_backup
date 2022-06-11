@@ -6,7 +6,6 @@
 #include <boost/program_options.hpp>
 
 #include "linenoise.hpp"
-#include "queryc.hpp"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
 

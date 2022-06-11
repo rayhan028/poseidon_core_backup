@@ -30,8 +30,8 @@
 #include <boost/variant.hpp>
 
 #ifdef USE_LLVM
-#include "queryc.hpp"
 #include "query.hpp"
+#include "qproc.hpp"
 #endif
 
 std::string test_path = poseidon::gPmemPath + "jit_test";

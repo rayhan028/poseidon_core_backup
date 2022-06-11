@@ -192,9 +192,10 @@ public:
                     // std::cout << "id = " << nptr->id() << std::endl;
                     stack_.push(query_result(nptr));
                 }
-                else
+                else {
                     // otherwise the property value ($i.prop:dtype) which is handled later
                     res = ctx_.gdb_->get_property_value(*nptr, op->key_);
+                }
                 break;
             }
             case 1: // relationship *
@@ -222,6 +223,12 @@ public:
             case p_item::p_uint64:
                 stack_.push(query_result(res.get<uint64_t>()));
                 break;
+            case p_item::p_dcode:
+                {
+                    auto str = ctx_.gdb_->get_dictionary()->lookup_code(res.get<dcode_t>());
+                    stack_.push(query_result(std::string(str)));
+                }
+                break;
             case p_item::p_unused:
                 // node* or relationship*
                 break;
@@ -233,7 +240,7 @@ public:
     }
 
     virtual void visit(int rank, std::shared_ptr<str_token> op) override {
-        std::cout << "visit str_token" << std::endl;
+        stack_.push(query_result(op->str_));
     }
 
     virtual void visit(int rank, std::shared_ptr<time_token> op) override {

@@ -7,7 +7,6 @@
 #include <boost/program_options.hpp>
 
 #include "linenoise.hpp"
-// #include "queryc.hpp"
 #include "qproc.hpp"
 #include "graph_db.hpp"
 
@@ -28,7 +27,6 @@ struct root {
 
 using namespace boost::program_options;
 
-// queryc qlc;
 std::unique_ptr<qproc> qproc_ptr;
 
 /**
@@ -125,7 +123,7 @@ static void trim(std::string &s) {
  * Print the query result to standard output.
  */
 void print_result(qresult_iterator& qres) {
-  std::cout << "Result: \n" << qres.result() << "\n" << std::dec << qres.result_size() << " tuples" << std::endl;
+  std::cout << "Result: \n" << qres.result() << std::dec << qres.result_size() << " tuple(s)" << std::endl;
 }
 
 /**
@@ -141,10 +139,10 @@ void exec_query(const std::string &qstr, qproc::mode qmode) {
   print_result(res);
 
   std::cout << "Query executed in " 
-            << std::chrono::duration_cast<std::chrono::milliseconds>(end_qp -
+            << std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
                                                                      start_qp)
                    .count()
-            << " ms" << std::endl;
+            << " µs" << std::endl;
   } catch (std::exception& exc) {
     std::cerr << "Error in query execution: " << exc.what() << std::endl;
   }
