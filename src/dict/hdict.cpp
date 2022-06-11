@@ -51,15 +51,18 @@ dict::~dict() {
 }
 
 void dict::initialize() {
+     std::unique_lock lock(m_);
     table_ = new htable(pool_, 50000);
     table_->rebuild();
 }
 
 std::size_t dict::size() const {
+    std::shared_lock lock(m_);
     return table_->size();    
 }
 
 dcode_t dict::insert(const std::string& s) {
+    std::unique_lock loc(m_);
     auto pos = table_->find(s);
     if (pos != UNKNOWN_CODE) {
         return table_->get(pos);
@@ -70,11 +73,13 @@ dcode_t dict::insert(const std::string& s) {
 }
 
 dcode_t dict::lookup_string(const std::string& s) const {
+    std::shared_lock lock(m_);
     auto k = table_->find(s);
     return k != UNKNOWN_CODE ? table_->get(k) : 0;
 }
 
 const char* dict::lookup_code(dcode_t code) const {
+    std::shared_lock lock(m_);
     return  pool_->extract(code);
 }
 
@@ -84,5 +89,6 @@ void dict::print_pool() const {
 }
 
 void dict::resize() {
+    std::unique_lock lock(m_);
     table_->resize();
 }

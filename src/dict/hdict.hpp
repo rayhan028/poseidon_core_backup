@@ -21,6 +21,8 @@
 
 #include <string>
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include "defs.hpp"
 
 #ifdef USE_PFILE
@@ -105,7 +107,7 @@ private:
     p_ptr<string_pool> pool_;        // the string pool for storing the actual strings
 #endif
     htable *table_;  		             // the hash table for mapping codes to strings
-    std::mutex m_;                   // a mutex for synchronizing access to the dictionary
+    mutable std::shared_mutex m_;        // a mutex for synchronizing access to the dictionary
 };
 
 #endif /* dict_hpp */

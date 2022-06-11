@@ -68,7 +68,9 @@ bool string_pool::equal(dcode_t pos, const std::string& s) const {
 dcode_t string_pool::add(const std::string& str) {
     auto pos = last_;
     if (last_ + str.length() + 1 >= size_) {
+#ifdef USE_PMDK
         auto old_size = size_;
+#endif
         size_ += expand_;
         // std::cout << "expand to " << size_ << std::endl;
 #ifdef USE_PMDK

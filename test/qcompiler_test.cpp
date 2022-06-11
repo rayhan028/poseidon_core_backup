@@ -313,7 +313,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
           qv_("Firefox"), qv_(uint64_t(std::stoull("1353"))), qv_("male"), qv_("2010-02-14T15:32:10.447000")
         });
 
-        for(int i = 0; i < expected.data.front().size(); i++) {
+        for(auto i = 0u; i < expected.data.front().size(); i++) {
           auto lhs = expected.data.front().at(i);
           auto rhs = res.result().data.front().at(i);
           if(lhs.which() == rhs.which()) {
@@ -416,7 +416,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
           qv_("2011-10-05T14:38:36.019000"), qv_("photo1374389534791.jpg")
       });
 
-      for(int i = 0; i < expected.data.front().size(); i++) {
+      for(auto i = 0u; i < expected.data.front().size(); i++) {
         auto lhs = expected.data.front().at(i);
         auto rhs = res.result().data.front().at(i);
         if(lhs.which() == rhs.which()) {
@@ -436,7 +436,7 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
           qv_("10995116"), qv_("Andrei"), qv_("Condariuc")
       });
 
-      for(int i = 0; i < expected.data.front().size(); i++) {
+      for(auto i = 0u; i < expected.data.front().size(); i++) {
         auto lhs = expected.data.front().at(i);
         auto rhs = res.result().data.front().at(i);
         if(lhs.which() == rhs.which()) {
