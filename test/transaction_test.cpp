@@ -305,6 +305,7 @@ TEST_CASE("Test two concurrent transactions trying to create nodes"  "[transacti
     // check the node
     gdb->begin_transaction();
     auto nd1 = gdb->get_node_description(nid1);
+    std::cout << nd1 << std::endl;
     REQUIRE(nd1.label == "New Actor");
     REQUIRE(get_property<int>(nd1.properties, "age") == 48);
     

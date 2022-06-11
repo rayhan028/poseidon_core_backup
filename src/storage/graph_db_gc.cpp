@@ -6,7 +6,7 @@ void graph_db::vacuum(xid_t tx) {
     auto iter = garbage_->begin();
     bool finished = iter == garbage_->end();
     if (!finished) 
-        spdlog::info("GC: starting vacuum ...");
+        spdlog::debug("GC: starting vacuum ...");
 
     while (!finished) {
         bool erased = false;
@@ -18,7 +18,7 @@ void graph_db::vacuum(xid_t tx) {
             if (!n.has_dirty_versions()) {
                 // wwe assume that we already have checked that n can be removed
                 // assert(n.from_rship_list == UNKNOWN && n.to_rship_list == UNKNOWN);
-                spdlog::info("GC: delete node #{}", gitem.oid);
+                spdlog::debug("GC: delete node #{}", gitem.oid);
                 // remove the node physically
                 nodes_->remove(gitem.oid);
                 iter = garbage_->erase(iter);
@@ -34,7 +34,7 @@ void graph_db::vacuum(xid_t tx) {
                 auto& n1 = nodes_->get(rship.src_node);
                 if (n1.from_rship_list == gitem.oid) {
                     n1.from_rship_list = rship.next_src_rship;
-                    spdlog::info("F      update node {} --> rel = {} -> {}", 
+                    spdlog::debug("F      update node {} --> rel = {} -> {}", 
                         rship.src_node, n1.from_rship_list, rship.next_src_rship);
                 }
                 else {
@@ -54,7 +54,7 @@ void graph_db::vacuum(xid_t tx) {
 
                 auto& n2 = nodes_->get(rship.dest_node);
                 if (n2.to_rship_list == gitem.oid) {
-                    spdlog::info("T      update node {} --> rel = {} -> {}", rship.dest_node, 
+                    spdlog::debug("T      update node {} --> rel = {} -> {}", rship.dest_node, 
                         n2.to_rship_list, rship.next_dest_rship);
                     n2.to_rship_list = rship.next_dest_rship;
                 }
@@ -64,7 +64,7 @@ void graph_db::vacuum(xid_t tx) {
                     while (prev_id != UNKNOWN) {
                         auto &p_relship = rships_->get(prev_id);
                         if (p_relship.next_dest_rship == gitem.oid) {
-                            spdlog::info("T      update previous relationship {} of node {} to {}", 
+                            spdlog::debug("T      update previous relationship {} of node {} to {}", 
                                 prev_id, rship.dest_node, rship.next_dest_rship);
                             p_relship.next_dest_rship = rship.next_dest_rship;
                             break;    
@@ -73,7 +73,7 @@ void graph_db::vacuum(xid_t tx) {
                     }
                 }
 
-                spdlog::info("GC: delete rship #{}", gitem.oid);
+                spdlog::debug("GC: delete rship #{}", gitem.oid);
                 // remove the relationship physically
                 rships_->remove(gitem.oid);
                 iter = garbage_->erase(iter);
@@ -87,5 +87,5 @@ void graph_db::vacuum(xid_t tx) {
     }
 
     if (items > 0) 
-        spdlog::info("GC: deleted {} items", items);
+        spdlog::debug("GC: deleted {} items", items);
 }
