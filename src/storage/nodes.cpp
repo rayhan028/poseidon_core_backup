@@ -204,7 +204,7 @@ void node_list::remove(node::id_t id) {
 void node_list::dump() {
   std::cout << "----------- NODES -----------\n";
   for (auto& n : nodes_) {
-    std::cout << "#" << n.id() << ", @" << (unsigned long)&n
+    std::cout << std::dec << "#" << n.id() << ", @" << (unsigned long)&n
               << " [ txn-id=" << short_ts(n.txn_id()) << ", bts=" << short_ts(n.bts())
               << ", cts=" << short_ts(n.cts()) << ", dirty=" << n.d_->is_dirty_ 
               << " ], label=" << n.node_label << ", from="

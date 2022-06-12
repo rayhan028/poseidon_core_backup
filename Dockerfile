@@ -1,4 +1,4 @@
-FROM dbisilm/llvm_pmdk:12
+FROM dbisilm/llvm_pmdk:clang
 LABEL Poseidon Graph Database Engine
 
 
@@ -13,5 +13,5 @@ RUN cd /home/$USER \
  && git clone https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core.git \
  && mkdir poseidon_core/build \
  && cd poseidon_core/build \
- && cmake -DUSE_PMDK=ON -DLLVM_DIR=/usr/lib64/cmake/llvm .. \
+ && cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_PMDK=ON -DLLVM_DIR=/usr/lib64/cmake/llvm .. \
  && make

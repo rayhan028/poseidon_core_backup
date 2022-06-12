@@ -349,7 +349,7 @@ int main(int argc, char* argv[]) {
   if (!dot_file.empty())
     graph->dump_dot(dot_file);
 
-  graph->dump();
+  // graph->dump();
   
   qproc_ptr = std::make_unique<qproc>(graph);
 
