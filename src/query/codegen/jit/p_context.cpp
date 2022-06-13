@@ -281,10 +281,10 @@ PContext::PContext(graph_db_ptr gdb) : gdb_(gdb) {
     
     nodeAtomicIdTy->setBody(int64Ty);
     rshipAtomicIdTy->setBody(int64Ty);
-    nodeTxnBaseTy->setBody({nodeAtomicIdTy, int8PtrTy});
+    nodeTxnBaseTy->setBody({nodeAtomicIdTy, int64Ty, int64Ty, int64Ty, int8PtrTy, });
     nodeTy->setBody({nodeTxnBaseTy, int64Ty, int64Ty, int64Ty, int64Ty, int32Ty}); // TODO: check type size
 
-    rshipTxnBaseTy->setBody({rshipAtomicIdTy, int8PtrTy});
+    rshipTxnBaseTy->setBody({rshipAtomicIdTy, int64Ty, int64Ty, int64Ty, int8PtrTy});
     rshipTy->setBody({rshipTxnBaseTy, int64Ty, int64Ty, int64Ty, int64Ty, int64Ty, int64Ty, int32Ty});
 
     pitemTy->setBody({pitemValueArrTy, int32Ty, int8Ty}); // value, key, flags
