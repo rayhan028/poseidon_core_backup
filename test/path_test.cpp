@@ -27,7 +27,7 @@
 #include "graph_pool.hpp"
 
 using namespace boost::posix_time;
-const std::string test_path = poseidon::gPmemPath + "query_test";
+const std::string test_path = PMDK_PATH("path_tst");
 
 TEST_CASE("Finding Unweighted Shortest Path", "[shortest_path]") {
   auto pool = graph_pool::create(test_path);

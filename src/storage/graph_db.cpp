@@ -43,12 +43,17 @@ void graph_db::destroy(graph_db_ptr gp) {
 }
 
 #ifdef USE_PFILE
-void graph_db::prepare_files(const std::string &pfx) {
-  boost::filesystem::path path_obj(database_name_);
+void graph_db::prepare_files(const std::string &pool_path, const std::string &pfx) {
+  spdlog::debug("graph_db: prepare files {} / {}", pool_path, pfx);
+  boost::filesystem::path path_obj {pool_path};
+  path_obj /= pfx;
   // check if path exists and is of a regular file
   if (! boost::filesystem::exists(path_obj))
     boost::filesystem::create_directory(path_obj);
-  std::string prefix = pfx + "/";
+
+  std::string prefix = path_obj.string() + "/";
+
+  spdlog::debug("graph_db: prepare files in '{}'", prefix);
 
   node_file_ = std::make_shared<paged_file>();
   node_file_->open(prefix + "nodes.db", NODE_FILE_ID);
@@ -65,12 +70,15 @@ void graph_db::prepare_files(const std::string &pfx) {
   rprops_file_ = std::make_shared<paged_file>();
   rprops_file_->open(prefix + "rprops.db", RPROPS_FILE_ID);
   bpool_.register_file(RPROPS_FILE_ID, rprops_file_);
+
+  dict_ = p_make_ptr<dict>(bpool_, prefix);
 }
 #endif
 
-graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
+graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : database_name_(db_name) {
 #ifdef USE_PFILE
-  prepare_files(db_name);
+  pool_path_ = pool_path;
+  prepare_files(pool_path, db_name);
   nodes_ = p_make_ptr<node_list>(bpool_, NODE_FILE_ID);
   rships_ = p_make_ptr<relationship_list>(bpool_, RSHIP_FILE_ID);
   node_properties_ = p_make_ptr<property_list>(bpool_, NPROPS_FILE_ID);
@@ -85,12 +93,13 @@ graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
 #endif
-#ifdef USE_PFILE
-  dict_ = p_make_ptr<dict>(bpool_, db_name + "/");
-#else
+#ifndef USE_PFILE
   dict_ = p_make_ptr<dict>();
 #endif
   index_map_ = p_make_ptr<index_map>();
+#ifdef USE_PFILE
+  restore_indexes(pool_path, db_name);
+#endif
   ulog_ = p_make_ptr<pmlog>();
 #if defined CSR_DELTA && defined USE_TX
   delta_store_ = p_make_ptr<delta_store>();
@@ -114,6 +123,25 @@ graph_db::~graph_db() {
   current_transaction_.reset();
 #endif
 }
+
+#ifdef USE_PFILE
+
+void graph_db::flush() {
+  bpool_.flush_all();
+}
+
+void graph_db::close_files() {
+  dict_->close_file();
+  node_file_->close();
+  rship_file_->close();
+  nprops_file_->close();
+  rprops_file_->close();
+  for (auto pf : index_files_) {
+    pf->close();
+  }
+}
+
+#endif
 
 void graph_db::runtime_initialize() {
   nodes_->runtime_initialize();

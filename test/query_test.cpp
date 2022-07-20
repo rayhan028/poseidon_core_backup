@@ -27,7 +27,7 @@
 #include "graph_pool.hpp"
 
 using namespace boost::posix_time;
-const std::string test_path = poseidon::gPmemPath + "query_test";
+const std::string test_path = PMDK_PATH("query_tst");
 
 void create_data(graph_db_ptr graph) {
   graph->begin_transaction();

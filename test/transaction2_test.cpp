@@ -31,7 +31,7 @@
 #include "transaction.hpp"
 #include "graph_pool.hpp"
 
-const std::string test_path = poseidon::gPmemPath + "transaction2_test";
+const std::string test_path = PMDK_PATH("transaction2_tst");
 
 TEST_CASE("Test node update followed by delete"  "[transaction]") {  
   auto pool = graph_pool::create(test_path);

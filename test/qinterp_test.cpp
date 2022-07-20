@@ -14,8 +14,8 @@
 using namespace boost::posix_time;
 namespace dll = boost::dll;
 
-const std::string test_path = poseidon::gPmemPath + "qinterp_is_test";
-const std::string test_path2 = poseidon::gPmemPath + "qinterp_iu_test";
+const std::string test_path = PMDK_PATH("qinterp_is_tst");
+const std::string test_path2 = PMDK_PATH("qinterp_iu_tst");
 
 void create_data(graph_db_ptr &graph) {
   graph->run_transaction([&]() {

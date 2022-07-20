@@ -134,6 +134,7 @@ private:
      */
     page_id find_first_slot();
 
+    std::string file_name_;
     std::fstream file_;  /// the file stream of reading/writing the file
     uint64_t npages_;    /// the number of pages occupied by the file (used and unused)
     file_header header_; /// the file header

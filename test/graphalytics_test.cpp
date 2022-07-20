@@ -26,7 +26,7 @@
 #include "graph_pool.hpp"
 #include "bfs.hpp"
 
-const std::string test_path = poseidon::gPmemPath + "graphalytics_test";
+const std::string test_path = PMDK_PATH("graphalytics_tst");
 
 void create_data(graph_db_ptr graph) {
   graph->begin_transaction();

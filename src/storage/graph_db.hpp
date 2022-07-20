@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -79,7 +79,7 @@ public:
   /**
    * Constructor for a new empty graph database.
    */
-  graph_db(const std::string &db_name = "");
+  graph_db(const std::string &db_name = "", const std::string &pool_path = "");
 
   /**
    * Destructor.
@@ -616,6 +616,12 @@ public:
    */
   void poseidon_to_coo(edge_coords* edge_coordinates, float* edge_values, rship_weight weight_func, bool bidirectional = false);
 
+#ifdef USE_PFILE
+  void flush();
+  void purge_bufferpool() { bpool_.purge(); }
+  void close_files();
+#endif
+
 private:
   friend struct scan_task;
   friend struct recover_scan;
@@ -677,10 +683,13 @@ private:
 
   std::string database_name_;
 #ifdef USE_PFILE
-  void prepare_files(const std::string &prefix);
+  void prepare_files(const std::string &pool_path, const std::string &prefix);
+  void restore_indexes(const std::string &pool_path, const std::string &prefix);
 
   bufferpool bpool_;
   std::shared_ptr<paged_file> node_file_, rship_file_, nprops_file_, rprops_file_;
+  std::list<std::shared_ptr<paged_file>> index_files_;
+  std::string pool_path_;
 
 #endif
   p_ptr<node_list> nodes_; // the list of all nodes of the graph

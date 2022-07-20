@@ -34,7 +34,7 @@
 #include "qproc.hpp"
 #endif
 
-std::string test_path = poseidon::gPmemPath + "jit_test";
+std::string test_path = PMDK_PATH("jit_tst");
 
 #ifdef USE_PMDK
 

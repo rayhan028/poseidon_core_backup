@@ -62,7 +62,7 @@ public:
   }
 };
 
-const std::string test_path = poseidon::gPmemPath + "transaction_test";
+const std::string test_path = PMDK_PATH("transaction_tst");
 
 TEST_CASE("Test transaction execution"  "[transaction]") {  
   auto pool = graph_pool::create(test_path);

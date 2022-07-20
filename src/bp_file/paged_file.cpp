@@ -25,6 +25,7 @@
 #include "spdlog/spdlog.h"
 
 bool paged_file::open(const std::string& path, int file_type) {
+    file_name_ = path;
     boost::filesystem::path path_obj(path);
     // check if path exists and is of a regular file
     if (! boost::filesystem::exists(path_obj)) {
@@ -50,6 +51,7 @@ bool paged_file::open(const std::string& path, int file_type) {
         header_callback_(header_read, header_.payload_);
     file_.seekp(0, file_.end);
     npages_ = ((unsigned long)file_.tellp() - sizeof(file_header)) / PAGE_SIZE;
+    spdlog::debug("file opened with {} pages", npages_);
     return is_open();
 }
 
@@ -72,6 +74,7 @@ void paged_file::close() {
     file_.seekp(0, file_.beg);
     file_.write((char *) &header_, sizeof(header_));
     file_.flush(); 
+    spdlog::debug("file {} closed with {} pages", file_name_, npages_);
     file_.close();
 }
 
@@ -127,11 +130,12 @@ bool paged_file::free_page(paged_file::page_id pid) {
 bool paged_file::read_page(paged_file::page_id pid, page& pg) {
     // check slot & npages_
     if (pid == 0 || (pid-1) > npages_ || !header_.slots_.test(pid-1)) {
-        std::cout << "ERROR in read_page: " << (pid-1) << ", " << npages_ << std::endl;
+        spdlog::info("ERROR in read_page in {}: {}, {} -> {}", file_name_, pid, npages_, header_.slots_.test(pid-1));
         throw index_out_of_range();
     }
     // std::cout << "read from pos " << (pid-1) * PAGE_SIZE + sizeof(file_header) << std::endl;
 
+    spdlog::debug("read page in {}: {}", file_name_, pid);
     file_.seekg((pid-1) * PAGE_SIZE + sizeof(file_header));
     file_.read((char *) pg.payload, PAGE_SIZE);     
 
@@ -141,9 +145,10 @@ bool paged_file::read_page(paged_file::page_id pid, page& pg) {
 bool paged_file::write_page(paged_file::page_id pid, page& pg) {
     // check slot & npages_
     if (pid == 0 || (pid-1) > npages_ || !header_.slots_.test(pid-1)) {
-        std::cout << "ERROR in write_page: " << pid << ", " << npages_ << std::endl;
+        spdlog::info("ERROR in write_page: {}, {}", pid, npages_);
         throw index_out_of_range();
     }
+    spdlog::debug("write page in {}: {}", file_name_, pid);
     file_.seekp((pid-1) * PAGE_SIZE + sizeof(file_header));
     file_.write((char *) pg.payload, PAGE_SIZE); 
 

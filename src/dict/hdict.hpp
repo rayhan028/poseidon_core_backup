@@ -98,6 +98,10 @@ public:
      */
     std::size_t size() const;
 
+#ifdef USE_PFILE
+    void close_file() { dict_file_->close(); }
+#endif
+
 private:
 #ifdef USE_PFILE
     bufferpool& bpool_;

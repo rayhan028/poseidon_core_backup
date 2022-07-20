@@ -28,8 +28,9 @@
 #include "graph_pool.hpp"
 #include "qop.hpp"
 
-const std::string test_path = poseidon::gPmemPath + "index_test";
+const std::string test_path = PMDK_PATH("index_tst");
 
+#if 0
 TEST_CASE("Creating an index on nodes", "[index]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_idx_graph");
@@ -67,4 +68,51 @@ TEST_CASE("Creating an index on nodes", "[index]") {
   graph->commit_transaction();
 
   graph_pool::destroy(pool);
+}
+#endif
+
+TEST_CASE("Creating and restoring an index on nodes", "[index]") {
+  {
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_idx_graph2");
+
+  graph->run_transaction([&]() {
+    for (int i = 0; i < 100; i++) {
+      auto id = graph->add_node("Person",
+                              {{"name", boost::any(std::string("John Doe"))},
+                               {"age", boost::any(42)},
+                               {"id", boost::any(i)},
+                               {"dummy1", boost::any(std::string("Dummy"))},
+                               {"dummy2", boost::any(1.2345)}},
+                              true);
+    }
+    return true;
+  });
+
+  index_id idx; 
+  graph->run_transaction([&]() {
+    idx = graph->create_index("Person", "id");
+    return true;
+  });
+  pool->close();
+  }
+  {
+  auto pool = graph_pool::open(test_path);
+  auto graph = pool->open_graph("my_idx_graph2");
+
+  graph->begin_transaction();
+
+  auto idx = graph->get_index("Person", "id");
+  REQUIRE(idx);
+  CHECK_THROWS_AS(graph->get_index("Actor", "id"), unknown_index);
+
+  bool found = false;
+  graph->index_lookup(idx, 55u, [&found](auto& n) {
+    found = true;
+  });
+  REQUIRE(found);
+
+  graph->commit_transaction();
+  graph_pool::destroy(pool);
+  }
 }

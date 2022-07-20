@@ -32,7 +32,7 @@
 #include <boost/algorithm/string.hpp>
 
 
-const std::string test_path = poseidon::gPmemPath + "graphdb_test";
+const std::string test_path = PMDK_PATH("graphdb_tst");
 
 TEST_CASE("Creating nodes", "[graph_db]") {
   auto pool = graph_pool::create(test_path);

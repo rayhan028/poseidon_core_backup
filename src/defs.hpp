@@ -117,6 +117,8 @@ private:
   }
 };
 
+#define PMDK_PATH(p) poseidon::gPmemPath ## p
+
 #else
 
 template <typename T> using p_ptr = std::shared_ptr<T>;
@@ -127,6 +129,8 @@ template <typename T, typename... Args>
 inline p_ptr<T> p_make_ptr(Args &&... args) {
   return std::make_shared<T>(std::forward<Args>(args)...);
 }
+
+#define PMDK_PATH(p) p
 
 #endif
 

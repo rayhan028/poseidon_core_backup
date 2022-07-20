@@ -18,7 +18,9 @@
  */
 
 #include <boost/algorithm/string.hpp>
-
+#ifdef USE_PFILE
+#include <boost/filesystem.hpp>
+#endif
 #include "graph_db.hpp"
 #include "chunked_vec.hpp"
 #include "parser.hpp"
@@ -31,7 +33,6 @@ namespace nvm = pmem::obj;
 #endif
 
 index_id graph_db::create_index(const std::string& node_label, const std::string& prop_name) {
-  spdlog::info("create_index...");
   // (1) we create a new b+tree
   #if USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
@@ -39,13 +40,23 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
       pmem::obj::transaction::run(pop, [&] {
         new_idx = p_make_btree();
       });
+#elif defined(USE_PFILE)
+  auto file_id = index_map_->size() + RPROPS_FILE_ID + 1;
+  auto idx_file = std::make_shared<paged_file>();
+  std::string prefix = pool_path_;
+  if (prefix.length() > 0) prefix += "/";
+  prefix += database_name_;
+  idx_file->open(prefix + "/" + "idx_" + node_label + "$" + prop_name + ".db", file_id);
+  bpool_.register_file(file_id, idx_file);
+  index_files_.push_back(idx_file);
+  auto new_idx = p_make_btree(bpool_, file_id);
+  spdlog::debug("create_index #{}: fill index: {}", file_id, prop_name);
 #else
   auto new_idx = p_make_btree();
 #endif
   auto pc = dict_->lookup_string(prop_name);
 
   // (2) we fill the index with (property value, node-id) pairs
-  // spdlog::info("create_index: fill index: {} => {}", prop_name, pc);
   nodes_by_label(node_label, [this, &new_idx, &pc](auto& n) {
     // spdlog::info("get property value for node #{}...", n.id());
     auto val = node_properties_->property_value(n.property_list, pc);
@@ -92,3 +103,36 @@ void graph_db::index_lookup(std::list<index_id> &idx_ptrs, uint64_t key, node_co
     }
   }
 }
+
+#ifdef USE_PFILE
+void graph_db::restore_indexes(const std::string &pool_path, const std::string &prefix) {
+  // forall files in prefix with idx_
+  boost::filesystem::path path_obj {pool_path};
+  path_obj /= prefix;
+  path_obj /= "/";
+  for (auto const& dir_entry : boost::filesystem::directory_iterator{path_obj}) {
+    auto pname = dir_entry;
+    auto file_name = pname.path().filename().string();
+    if (! file_name.starts_with("idx_")) {
+      continue;
+    }
+    auto pos = file_name.find("$");
+    if (pos == std::string::npos)
+      continue;
+    std::string node_label = file_name.substr(4, pos - 4);
+    auto pos2 = file_name.find(".");
+    if (pos2 == std::string::npos)
+      continue;
+    std::string prop_name = file_name.substr(pos + 1, pos2 - pos - 1);
+
+    auto file_id = index_map_->size() + RPROPS_FILE_ID + 1;
+    auto idx_file = std::make_shared<paged_file>();
+    idx_file->open(path_obj.string() + file_name, file_id);
+    bpool_.register_file(file_id, idx_file);
+    index_files_.push_back(idx_file);
+    spdlog::debug("restore index {} : {} from {} @{}", node_label, prop_name, file_name, file_id);
+    auto new_idx = p_make_btree(bpool_, file_id);
+    index_map_->register_index(node_label + ":" + prop_name, new_idx);
+  }
+}
+#endif

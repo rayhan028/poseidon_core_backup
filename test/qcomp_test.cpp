@@ -16,7 +16,7 @@
 #ifdef USE_LLVM
 #include "qproc.hpp"
 
-const std::string test_path = poseidon::gPmemPath + "qcomp_test";
+const std::string test_path = PMDK_PATH("qcomp_tst");
 
 #ifdef USE_PMDK
 
@@ -224,6 +224,8 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
 	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
 	pop.close();
 	remove(test_path.c_str());
+#else
+  graph_pool::destroy(pool);    
 #endif
 }
 

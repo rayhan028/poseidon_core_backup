@@ -61,7 +61,7 @@ std::pair<page*, paged_file::page_id> bufferpool::last_valid_page(uint8_t file_i
 page *bufferpool::fetch_page(paged_file::page_id pid) {
     std::unique_lock lock(mutex_);
     auto iter = ptable_.find(pid);
-    // spdlog::info("bufferpool::fetch_page {}", pid);
+    spdlog::debug("bufferpool::fetch_page {}", pid & 0xFFFFFFFFFFFFFFF);
     if (iter != ptable_.end()) {
         // move pid in lru_list_
         auto iter2 = std::find(lru_list_.begin(), lru_list_.end(), pid);

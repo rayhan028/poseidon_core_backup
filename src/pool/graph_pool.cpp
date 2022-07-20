@@ -101,11 +101,26 @@ void graph_pool::drop_graph(const std::string& name) {
 graph_pool_ptr graph_pool::create(const std::string& path, unsigned long long pool_size) {
     auto self = std::make_unique<graph_pool>();
     self->path_ = path;
+    boost::filesystem::path path_obj(path);
+    // check if path exists and is of a regular file
+    if (! boost::filesystem::exists(path_obj)) {
+        boost::filesystem::create_directory(path_obj);
+    }
     return self;
 }
 
 graph_pool_ptr graph_pool::open(const std::string& path, bool init) {
-    return std::make_unique<graph_pool>();
+    auto self = std::make_unique<graph_pool>();
+    self->path_ = path;
+#ifdef USE_PFILE
+    boost::filesystem::path path_obj(path);
+    // check if path exists and is of a regular file
+    if (! boost::filesystem::exists(path_obj)) {
+        spdlog::info("FATAL: graph_pool '{}' doesn't exist.", path);
+        abort();
+    }
+#endif 
+    return self;
 }
 
 void graph_pool::destroy(graph_pool_ptr& p) {
@@ -113,28 +128,47 @@ void graph_pool::destroy(graph_pool_ptr& p) {
     for (auto& gp : p->graphs_) { 
         graph_db::destroy(gp.second);
     }
+    boost::filesystem::path path_obj(p->path_);
+    boost::filesystem::remove_all(path_obj);
 #endif    
 }
 
-graph_pool::graph_pool() {}
+graph_pool::graph_pool() {   
+}
 
 graph_pool::~graph_pool() {}
 
 graph_db_ptr graph_pool::create_graph(const std::string& name) {
-    auto gptr = p_make_ptr<graph_db>(name);
+    auto gptr = p_make_ptr<graph_db>(name, path_);
     graphs_.insert({ name, gptr});
     return gptr;
 }
 
 graph_db_ptr graph_pool::open_graph(const std::string& name) {
-    auto iter = graphs_.find(name);
-    if (iter == graphs_.end())
+#ifdef USE_PFILE
+    // TODO: check whether graph directory exists
+    boost::filesystem::path path_obj(path_);
+    path_obj /= name;
+    // check if path exists and is of a regular file
+    if (! boost::filesystem::exists(path_obj)) {
+        spdlog::info("FATAL: graph '{}' doesn't exist in pool '{}'.", name, path_);
         throw unknown_db();
+    }
+   
+    auto gptr = p_make_ptr<graph_db>(name, path_);
+    graphs_.insert({ name, gptr});
+    return gptr;
+#else
+    auto iter = graphs_.find(name);
+    if (iter == graphs_.end()) {
+        spdlog::info("FATAL: graph database {} does not exist in pool '{}'.", name, path_);
+        throw unknown_db();
+    }
     return iter->second;
+#endif
 }
 
 void graph_pool::drop_graph(const std::string& name) {
-    std::cout << "graph_pool::drop_graph: " << name << std::endl;
     auto iter = graphs_.find(name);
     if (iter == graphs_.end())
         throw unknown_db();
@@ -144,7 +178,15 @@ void graph_pool::drop_graph(const std::string& name) {
     graphs_.erase(iter);
 }
 
-void graph_pool::close() {}
+void graph_pool::close() {
+#ifdef USE_PFILE    
+    for (auto& gp : graphs_) { 
+        gp.second->flush();
+        gp.second->purge_bufferpool();
+        gp.second->close_files();
+    }
+#endif
+}
 
 #endif
 

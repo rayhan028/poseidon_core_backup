@@ -18,6 +18,7 @@
  */
 #include "exceptions.hpp"
 #include "index_map.hpp"
+#include "spdlog/spdlog.h"
 
 index_map::index_map() {
 #ifdef USE_PMDK

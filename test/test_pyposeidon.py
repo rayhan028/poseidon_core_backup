@@ -6,14 +6,14 @@ sys.path.append('../build')
 # import after sys.path is set!
 import poseidon
 
-path = "/mnt/pmem0/poseidon/py_test"
+path = "/mnt/pmem0/poseidon/py_tst"
 
 # TODO: should contain more tests of the Python API
 
 def setup_function():
     global path
     if os.path.isdir('/mnt/pmem0/poseidon'):
-        path = "/mnt/pmem0/poseidon/py_test"
+        path = "/mnt/pmem0/poseidon/py_tst"
     else:
         path = "py_test_pool"
 

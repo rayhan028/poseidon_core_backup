@@ -7,7 +7,7 @@
 #include <chrono>
 #include <boost/dynamic_bitset.hpp>
 
-const std::string test_path = poseidon::gPmemPath + "format_converter_test";
+const std::string test_path = PMDK_PATH("format_converter_tst");
 
 void create_known_data(graph_db_ptr graph) {
   graph->begin_transaction();

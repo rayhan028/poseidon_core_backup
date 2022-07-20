@@ -41,7 +41,15 @@ using btree_ptr = p_ptr<btree_impl>;
 
 inline btree_ptr p_make_btree() { return pmem::obj::make_persistent<btree_impl>(); }
 
-#else
+#elif defined(USE_PFILE)
+#include "pfbtree.hpp"
+
+using btree_impl = pfbtree::BPTree<uint64_t, offset_t, 50, 50>; // 50, 50
+using btree_ptr = p_ptr<btree_impl>;
+
+inline btree_ptr p_make_btree(bufferpool& pool, uint64_t file_id) { return std::make_shared<btree_impl>(pool, file_id); }
+
+#else 
 
 #include "imbtree.hpp"
 
