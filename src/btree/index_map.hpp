@@ -39,8 +39,12 @@ public:
     void unregister_index(const std::string& idx_name);
     index_id get_index(const std::string& idx_name);
 
+#ifdef USE_PMDK
+    std::size_t size() const { return indexes_->size(); }
+#else
     std::size_t size() const { return indexes_.size(); }
-    
+#endif
+
 private:
 #ifdef USE_PMDK
     using hashmap = pmem::obj::concurrent_hash_map<string_t, index_id, string_hasher>;
