@@ -53,14 +53,10 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
 
         graph->commit_transaction();
     }
-    graph->dump();
-    graph->flush();
     pool->close();
     spdlog::info("try to reopen graph_pool ...");
     pool = graph_pool::open(test_path);
     auto graph2 = pool->open_graph("my_pool_graph1");
-    spdlog::info("dump graph ...");
-    graph2->dump();
 
     // check the node
     {
