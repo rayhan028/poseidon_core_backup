@@ -117,7 +117,7 @@ private:
   }
 };
 
-#define PMDK_PATH(p) poseidon::gPmemPath ## p
+#define PMDK_PATH(p) poseidon::gPmemPath + p
 
 #else
 
