@@ -30,6 +30,10 @@
 
 #include <boost/filesystem.hpp>
 
+const std::string test_path = PMDK_PATH("btree_tst");
+
+#define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
+
 void create_dir(const std::string& path) {
     boost::filesystem::path path_obj(path);
     // check if path exists and is of a regular file
@@ -55,7 +59,11 @@ TEST_CASE("Creating an btree index", "[btree]") {
 
     auto mybtree = p_make_btree(bpool, file_id);
 #else
-    auto mybtree = p_make_btree();
+    auto pop =  pmem::obj::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
+    btree_ptr mybtree;
+    pmem::obj::transaction::run(pop, [&] {
+    	mybtree = p_make_btree();
+    });
 #endif
 
     mybtree->insert(42u, 12);
@@ -69,6 +77,9 @@ TEST_CASE("Creating an btree index", "[btree]") {
 #ifdef USE_PFILE
     bpool.flush_all();
     delete_dir("btree_test1");
+#elif USE_PMDK
+  pop.close();
+  remove(test_path.c_str());
 #endif
 }
 
@@ -131,7 +142,11 @@ TEST_CASE("Creating a btree index with multiple levels", "[btree]") {
 
     auto mybtree = p_make_btree(bpool, file_id);
 #else
-    auto mybtree = p_make_btree();
+    auto pop =  pmem::obj::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
+    btree_ptr mybtree;
+    pmem::obj::transaction::run(pop, [&] {
+    	mybtree = p_make_btree();
+    });
 #endif
 
     for (auto i = 1u; i < 300; i++)
@@ -148,6 +163,9 @@ TEST_CASE("Creating a btree index with multiple levels", "[btree]") {
 #ifdef USE_PFILE
     bpool.flush_all();
     delete_dir("btree_test3");
+#elif USE_PMDK
+  pop.close();
+  remove(test_path.c_str());
 #endif
 }
 
