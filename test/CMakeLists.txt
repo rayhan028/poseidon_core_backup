@@ -32,6 +32,8 @@ target_link_libraries(abort_insert
   ${PMDK_LIBRARIES}
 )
 
+set_tests_properties(dict_test PROPERTIES TIMEOUT 30) 
+
 #=============================================
 
 add_test (NAME python-tests

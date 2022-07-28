@@ -302,7 +302,8 @@ TEST_CASE("Inserting many items", "[dict]") {
 #endif
 
   // max: 4294967295
-  for (uint64_t i = 0u; i < 10000000; i++) {
+  //for (uint64_t i = 0u; i < 10000000; i++) {
+  for (uint64_t i = 0u; i < 100000; i++) {
     d.insert(fmt::format("DictEntry#{}", i));
   }
 
