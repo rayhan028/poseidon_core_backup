@@ -21,6 +21,7 @@
                           // this in one cpp file
 
 #include <boost/filesystem.hpp>
+#include "spdlog/fmt/fmt.h"
 #include "catch.hpp"
 #include "config.h"
 #include "defs.hpp"
@@ -282,3 +283,33 @@ TEST_CASE("Test persistency of dict", "[dict]") {
 
 // TODO
 // * test with a large set of strings
+TEST_CASE("Inserting many items", "[dict]") {
+#ifdef USE_PMDK
+  auto pop = nvm::pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
+  auto root_obj = pop.root();
+
+  nvm::transaction::run(
+      pop, [&] { root_obj->dict_p = nvm::make_persistent<dict>(); });
+
+  dict &d = *(root_obj->dict_p);
+  d.initialize();
+#elif defined(USE_PFILE)
+  create_dir("dict7");
+  bufferpool bpool;
+  dict d(bpool, "dict7");
+#else
+  dict d;
+#endif
+
+  // max: 4294967295
+  for (uint64_t i = 0u; i < 10000000; i++) {
+    d.insert(fmt::format("DictEntry#{}", i));
+  }
+
+#ifdef USE_PMDK
+  pop.close();
+  remove(test_path.c_str());
+#elif defined(USE_PFILE)
+  delete_dir("dict7"); 
+#endif
+}

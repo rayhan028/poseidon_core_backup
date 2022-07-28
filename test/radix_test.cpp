@@ -19,7 +19,7 @@
 #include "queryc.hpp"
 
 
-const std::string test_path = poseidon::gPmemPath + "radix_test";
+const std::string test_path = PMDK_PATH("radix_tst");
 
 
 #ifdef USE_PMDK

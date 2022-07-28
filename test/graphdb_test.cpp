@@ -742,7 +742,6 @@ TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
 
   graph->begin_transaction();
   for (int i = 0u; i < 10000; i++) {
-    std::cout << "add node #" << i << std::endl;
     graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},

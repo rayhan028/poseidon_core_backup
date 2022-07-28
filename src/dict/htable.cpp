@@ -133,11 +133,11 @@ dcode_t htable::insert_into_table(uint64_t *tbl, uint32_t tsize, uint64_t hkey, 
     uint16_t probe_dist = 0;
 
     while (true) {
-        if (tbl[bucket_id] == 0)
+        if (hash_value(tbl[bucket_id]) == 0)
             break;
         // handle collision
         bucket_id += 1;
-        overflow = overflow ? overflow : bucket_id > tsize;
+        overflow = overflow ? overflow : bucket_id >= tsize;
         bucket_id %= tsize;
         if (overflow && bucket_id >= start) {
             std::cerr << "hash table overflow - aborting!" << std::endl;
