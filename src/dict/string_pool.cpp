@@ -18,6 +18,7 @@
  */
 #include <iostream>
 #include <cstdlib>
+#include "spdlog/spdlog.h"
 #include "string_pool.hpp"
 #include "spdlog/spdlog.h"
 
@@ -79,6 +80,7 @@ dcode_t string_pool::add(const std::string& str) {
     p_ptr<char []> new_pool;
     pmem::obj::transaction::run(pop, [&] {
         new_pool = pmem::obj::make_persistent<char[]>(size_);
+	assert(new_pool != nullptr);
         pmemobj_memcpy_persist(pop.handle(), new_pool.get(), pool_.get(), old_size);
         pmem::obj::delete_persistent<char[]>(pool_, old_size);
     });

@@ -40,7 +40,7 @@ void delete_dir(const std::string& path) {
 }
 
 #ifdef USE_PMDK
-#define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
+#define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 1000))
 
 namespace nvm = pmem::obj;
 const std::string test_path = poseidon::gPmemPath + "dict_test";
@@ -304,6 +304,7 @@ TEST_CASE("Inserting many items", "[dict]") {
   // max: 4294967295
   //for (uint64_t i = 0u; i < 10000000; i++) {
   for (uint64_t i = 0u; i < 100000; i++) {
+//	std::cout << i << std::endl;
     d.insert(fmt::format("DictEntry#{}", i));
   }
 
