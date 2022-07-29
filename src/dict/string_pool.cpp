@@ -18,6 +18,7 @@
  */
 #include <iostream>
 #include <cstdlib>
+#include "spdlog/spdlog.h"
 #include "string_pool.hpp"
 
 string_pool::string_pool(uint32_t init_size, uint32_t exp_size) : size_(init_size), expand_(exp_size), last_(1ul) {
@@ -72,12 +73,13 @@ dcode_t string_pool::add(const std::string& str) {
         auto old_size = size_;
 #endif
         size_ += expand_;
-        // std::cout << "expand to " << size_ << std::endl;
+        spdlog::debug("expand string_pool to {}", size_);
 #ifdef USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
     p_ptr<char []> new_pool;
     pmem::obj::transaction::run(pop, [&] {
         new_pool = pmem::obj::make_persistent<char[]>(size_);
+	assert(new_pool != nullptr);
         pmemobj_memcpy_persist(pop.handle(), new_pool.get(), pool_.get(), old_size);
         pmem::obj::delete_persistent<char[]>(pool_, old_size);
     });
