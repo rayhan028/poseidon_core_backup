@@ -89,7 +89,26 @@ std::pair<page*, paged_file::page_id> bufferpool::allocate_page(uint8_t file_id)
     spdlog::debug("bufferpool::allocate_page -> {}/{}", pid, files_[file_id]->num_pages());
     return std::make_pair(fetch_page(pid | (static_cast<uint64_t>(file_id) << 60)), pid);
 }
- 
+
+void bufferpool::free_page(paged_file::page_id pid) {
+    std::unique_lock lock(mutex_);
+
+    auto iter = ptable_.find(pid);
+    if (iter != ptable_.end()) {
+        ptable_.erase(pid);
+        memset(iter->second.p_, 0, sizeof(PAGE_SIZE));
+
+        auto raw_pid = pid & 0xFFFFFFFFFFFFFFF;
+        auto file_id = (pid & 0xF000000000000000) >> 60;
+        assert(file_id < 10 && files_[file_id]);
+        files_[file_id]->free_page(raw_pid);
+
+        auto iter2 = std::find(lru_list_.begin(), lru_list_.end(), pid);
+        if (iter2 != lru_list_.end())
+            lru_list_.erase(iter2);
+    }
+}
+
 void bufferpool::mark_dirty(paged_file::page_id pid) {
     std::unique_lock lock(mutex_);
     auto iter = ptable_.find(pid);
@@ -120,8 +139,8 @@ void bufferpool::flush_page(paged_file::page_id pid, bool evict) {
         return;
     
     if (iter->second.dirty_) {
-        auto pid = iter->first;
-        write_page_to_file(pid, iter->second.p_);
+        auto pid2 = iter->first;
+        write_page_to_file(pid2, iter->second.p_);
         iter->second.dirty_ = false;
     }
     if (evict) {

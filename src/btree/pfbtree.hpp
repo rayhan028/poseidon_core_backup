@@ -302,6 +302,7 @@ class BPTree {
         node->values[i] = node->values[i + 1];
       }
       node->numKeys--;
+      bpool_.mark_dirty(node->pid | file_mask_);
       deleted = true;
     }
     return deleted;
@@ -324,27 +325,29 @@ class BPTree {
     unsigned int middle = (M + 1) / 2;
     // 1. we check whether we can rebalance with one of the siblings
     // but only if both nodes have the same direct parent
-    if (pos > 0 && leaf->prevLeaf->numKeys > middle) {
+    auto prevLeaf = reinterpret_cast<LeafNode *>(load_node(leaf->prevLeaf));
+    auto nextLeaf = reinterpret_cast<LeafNode *>(load_node(leaf->nextLeaf));
+    if (pos > 0 && prevLeaf->numKeys > middle) {
       // we have a sibling at the left for rebalancing the keys
-      balanceLeafNodes(leaf->prevLeaf, leaf);
+      balanceLeafNodes(prevLeaf, leaf);
       node->keys[pos] = leaf->keys[0];
-    } else if (pos < node->numKeys && leaf->nextLeaf->numKeys > middle) {
+    } else if (pos < node->numKeys && nextLeaf->numKeys > middle) {
       // we have a sibling at the right for rebalancing the keys
-      balanceLeafNodes(leaf->nextLeaf, leaf);
-      node->keys[pos] = leaf->nextLeaf->keys[0];
+      balanceLeafNodes(nextLeaf, leaf);
+      node->keys[pos] = nextLeaf->keys[0];
     } else {
       // 2. if this fails we have to merge two leaf nodes
       // but only if both nodes have the same direct parent
       LeafNode *survivor = nullptr;
-      if (pos > 0 && leaf->prevLeaf->numKeys <= middle) {
-        survivor = mergeLeafNodes(leaf->prevLeaf, leaf);
+      if (pos > 0 && prevLeaf->numKeys <= middle) {
+        survivor = mergeLeafNodes(prevLeaf, leaf);
         deleteLeafNode(leaf);
-      } else if (pos < node->numKeys && leaf->nextLeaf->numKeys <= middle) {
+      } else if (pos < node->numKeys && nextLeaf->numKeys <= middle) {
         // because we update the pointers in mergeLeafNodes
         // we keep it here
-        auto l = leaf->nextLeaf;
-        survivor = mergeLeafNodes(leaf, leaf->nextLeaf);
-        deleteLeafNode(l);
+        // auto l = leaf->nextLeaf;
+        survivor = mergeLeafNodes(leaf, nextLeaf);
+        deleteLeafNode(nextLeaf);
       } else {
         // this shouldn't happen?!
         assert(false);
@@ -356,7 +359,7 @@ class BPTree {
           node->keys[i] = node->keys[i + 1];
           node->children[i + 1] = node->children[i + 2];
         }
-        node->children[pos] = survivor;
+        node->children[pos] = survivor->pid;
         node->numKeys--;
       } else {
         // This is a special case that happens only if
@@ -390,7 +393,11 @@ class BPTree {
     node1->numKeys += node2->numKeys;
     node1->nextLeaf = node2->nextLeaf;
     node2->numKeys = 0;
-    if (node2->nextLeaf != nullptr) node2->nextLeaf->prevLeaf = node1;
+    if (node2->nextLeaf != 0) {
+      auto leaf = reinterpret_cast<LeafNode *>(load_node(node2->nextLeaf));
+      leaf->prevLeaf = node1->pid;
+    }
+    bpool_.mark_dirty(node1->pid | file_mask_);
     return node1;
   }
 
@@ -440,6 +447,8 @@ class BPTree {
       }
     }
     donor->numKeys -= toMove;
+    bpool_.mark_dirty(donor->pid | file_mask_);
+    bpool_.mark_dirty(receiver->pid | file_mask_);
   }
 
   /* ------------------------------------------------------------------- */
@@ -459,7 +468,7 @@ class BPTree {
     bool deleted = false;
     // try to find the branch
     auto pos = lookupPositionInBranchNode(node, key);
-    void *n = node->children[pos];
+    void *n = load_node(node->children[pos]);
     if (d == 1) {
       // the next level is the leaf level
       LeafNode *leaf = reinterpret_cast<LeafNode *>(n);
@@ -513,6 +522,7 @@ class BPTree {
       sibling->children[sibling->numKeys + i + 2] = node->children[i + 1];
     }
     sibling->numKeys += node->numKeys + 1;
+    bpool_.mark_dirty(sibling->pid | file_mask_);
   }
 
   /**
@@ -593,6 +603,7 @@ class BPTree {
           node->children[i] = node->children[i + 1];
       }
       node->numKeys--;
+      bpool_.mark_dirty(node->pid | file_mask_);
 
       deleteBranchNode(witnessNode);
       return newChild;
@@ -670,6 +681,8 @@ class BPTree {
       parent->keys[pos] = key;
     }
     donor->numKeys -= toMove;
+    bpool_.mark_dirty(donor->pid | file_mask_);
+    bpool_.mark_dirty(receiver->pid | file_mask_);
   }
 
   /* ---------------------------------------------------------------------- */
@@ -1004,7 +1017,9 @@ class BPTree {
   }
 
   void deleteLeafNode(LeafNode *node) {
-    delete node;
+    // TODO
+    // delete node;
+     bpool_.free_page(node->pid | file_mask_);
   }
 
   /**
@@ -1018,7 +1033,9 @@ class BPTree {
   }
 
   void deleteBranchNode(BranchNode *node) {
-    delete node;
+    // TODO
+    // delete node;
+    bpool_.free_page(node->pid | file_mask_);
   }
   /* -----------------------------------------------------------------------
    */

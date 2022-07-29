@@ -69,6 +69,12 @@ public:
      */
     std::pair<page*, paged_file::page_id> allocate_page(uint8_t file_id);
 
+    /**
+     * Deallocate the page with the given page_id. The space can 
+     * be reused by a subsequent allocate_page() call.
+     */
+    void free_page(paged_file::page_id pid);
+
     void scan_file(uint8_t file_id, std::function<void(page *)> cb);
 
     /**

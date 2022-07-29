@@ -213,3 +213,47 @@ TEST_CASE("Creating a persistent btree index with multiple levels", "[btree]") {
     delete_dir("btree_test4");
 }
 #endif
+
+TEST_CASE("Creating an btree index, insert items and delete some of them", "[btree]") {
+#ifdef USE_PFILE
+    create_dir("btree_test5");
+    const uint8_t file_id = 6;
+
+    auto test_file = std::make_shared<paged_file>();
+    test_file->open("btree_test5/btree.db", file_id);
+
+    bufferpool bpool;
+    bpool.register_file(file_id, test_file);
+
+    auto mybtree = p_make_btree(bpool, file_id);
+#else
+    auto pop =  pmem::obj::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
+    btree_ptr mybtree;
+    pmem::obj::transaction::run(pop, [&] {
+    	mybtree = p_make_btree();
+    });
+#endif
+
+    for (auto i = 1u; i < 1000; i++)
+        mybtree->insert(i, i + 1000);
+
+    for (auto i = 20u; i < 1000; i += 50)
+        mybtree->erase(i);
+
+    auto k = 1u;
+    mybtree->scan([&](const auto &key, const auto &val) {
+        REQUIRE(k == key);
+        REQUIRE(val == k + 1000);
+        k++;
+        if (k % 50 == 20)
+            k++;
+    });
+
+#ifdef USE_PFILE
+    bpool.flush_all();
+    delete_dir("btree_test5");
+#elif USE_PMDK
+  pop.close();
+  remove(test_path.c_str());
+#endif
+}

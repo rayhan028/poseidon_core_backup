@@ -19,6 +19,7 @@
 #include <iostream>
 #include <cstdlib>
 #include "string_pool.hpp"
+#include "spdlog/spdlog.h"
 
 string_pool::string_pool(uint32_t init_size, uint32_t exp_size) : size_(init_size), expand_(exp_size), last_(1ul) {
 #ifdef USE_PMDK
@@ -72,7 +73,7 @@ dcode_t string_pool::add(const std::string& str) {
         auto old_size = size_;
 #endif
         size_ += expand_;
-        // std::cout << "expand to " << size_ << std::endl;
+        spdlog::debug("expand string_pool to {}", size_);
 #ifdef USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
     p_ptr<char []> new_pool;
