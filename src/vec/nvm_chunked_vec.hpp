@@ -18,7 +18,7 @@
  */
 
 #ifndef nvm_chunked_vec_hpp_
-#define mvm_chunked_vec_hpp_
+#define nvm_chunked_vec_hpp_
 
 #include <array>
 #include <bitset>
@@ -66,9 +66,9 @@ class nvm_chunked_vec {
  * @tparam T type to records
  * @tparam num_records number of records to store per chunk
  */
-template <typename T, int num_records>
+template <typename T2, int num_records>
 struct alignas(64) chunk {
-  pmem::obj::array<T, num_records> data_;
+  pmem::obj::array<T2, num_records> data_;
   pmem::obj::persistent_ptr<chunk<T, num_records>> next_;
   p<std::bitset<num_records>>
       slots_; // bitstring representing empty slots (0), used slots (1)
