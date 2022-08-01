@@ -23,6 +23,7 @@
 #include <atomic>
 #include <map>
 #include <vector>
+#include <utility>
 
 #include <boost/any.hpp>
 
@@ -169,11 +170,8 @@ public:
   /**
    * Constructor
    */
-#ifdef USE_PFILE
-  node_list(bufferpool& bpool, uint8_t file_id) : nodes_(bpool, file_id) {} 
-#else
-  node_list() : nodes_() {}
-#endif
+  template <typename ... Args>
+  node_list(Args&& ... args) : nodes_(std::forward<Args>(args)...) {} 
 
   node_list(const node_list &) = delete;
 

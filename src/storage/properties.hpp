@@ -219,11 +219,8 @@ public:
   /**
    * Constructor
    */
-#ifdef USE_PFILE
-  property_list(bufferpool& bpool, uint8_t file_id) : properties_(bpool, file_id) {} 
-#else
-  property_list() : properties_() {}
-#endif
+  template <typename ... Args>
+  property_list(Args&& ... args) : properties_(std::forward<Args>(args)...) {} 
 
   property_list(const property_list &) = delete;
 

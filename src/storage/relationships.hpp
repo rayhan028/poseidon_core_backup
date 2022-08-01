@@ -132,11 +132,8 @@ public:
   /**
    * Constructors.
    */
-#ifdef USE_PFILE
-  relationship_list(bufferpool& bpool, uint8_t file_id) : rships_(bpool, file_id) {} 
-#else
-  relationship_list() : rships_() {}
-#endif
+  template <typename ... Args>
+  relationship_list(Args&& ... args) : rships_(std::forward<Args>(args)...) {} 
 
   relationship_list(const relationship_list &) = delete;
 
