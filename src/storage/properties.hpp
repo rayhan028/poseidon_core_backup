@@ -35,10 +35,6 @@
 
 #include "spdlog/spdlog.h"
 
-#ifdef USE_PFILE
-#include "buffered_vec.hpp"
-#endif
-
 bool is_quoted_string(const std::string &s);
 bool is_float(const std::string &s);
 bool is_int(const std::string &s);
@@ -206,8 +202,10 @@ struct property_set {
 
 #ifdef USE_PFILE
 using props_vec = buffered_vec<property_set>;
+#elif defined(USE_PMDK)
+using props_vec = nvm_chunked_vec<property_set, PROP_CHUNK_SIZE>;
 #else
-using props_vec = chunked_vec<property_set, PROP_CHUNK_SIZE>;
+using props_vec = mem_chunked_vec<property_set, PROP_CHUNK_SIZE>;
 #endif
 
 /**

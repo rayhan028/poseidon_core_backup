@@ -20,7 +20,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "graph_db.hpp"
-#include "chunked_vec.hpp"
+#include "vec.hpp"
 #include "parser.hpp"
 #include "spdlog/spdlog.h"
 #include <iostream>

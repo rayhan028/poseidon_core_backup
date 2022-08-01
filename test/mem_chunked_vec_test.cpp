@@ -24,16 +24,8 @@
 #include <vector>
 
 #include "catch.hpp"
-#include "chunked_vec.hpp"
+#include "mem_chunked_vec.hpp"
 #include "config.h"
-
-#ifdef USE_PMDK
-#define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
-
-using namespace pmem::obj;
-const std::string test_path = poseidon::gPmemPath + "chunked_vec_test";
-
-#endif
 
 struct record {
   record() = default;
@@ -48,26 +40,8 @@ struct record {
   char s[44];
 };
 
-TEST_CASE("Testing chunked_vec", "[chunked_vec]") {
-#ifdef USE_PMDK
-  using vector_type = chunked_vec<record, DEFAULT_CHUNK_SIZE>;
-
-  struct root {
-    pmem::obj::persistent_ptr<vector_type> vec_p;
-  };
-
-  auto pop = pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
-  auto root_obj = pop.root();
-
-  transaction::run(pop, [&] {
-    root_obj->vec_p =
-        make_persistent<vector_type>(/* optional constructor arguments */);
-  });
-
-  vector_type &vec = *(root_obj->vec_p);
-#else
-  chunked_vec<record, DEFAULT_CHUNK_SIZE> vec;
-#endif
+TEST_CASE("Testing chunked_vec", "[mem_chunked_vec]") {
+  mem_chunked_vec<record, DEFAULT_CHUNK_SIZE> vec;
 
   SECTION("Adding some records") {
     std::cout << "Adding some records\n";
@@ -100,11 +74,6 @@ TEST_CASE("Testing chunked_vec", "[chunked_vec]") {
     vec.clear();
     REQUIRE(vec.capacity() == 0);
     REQUIRE(vec.num_chunks() == 0);
-
-#ifdef USE_PMDK
-    pop.close();
-    remove(test_path.c_str());
-#endif
   }
 
   SECTION("Adding and deleting some records") {
@@ -146,11 +115,6 @@ TEST_CASE("Testing chunked_vec", "[chunked_vec]") {
       }
     }
     REQUIRE(v == victims.size());
-
-#ifdef USE_PMDK
-    pop.close();
-    remove(test_path.c_str());
-#endif
   }
 
   SECTION("Adding some records at scattered positions") {
@@ -210,11 +174,6 @@ TEST_CASE("Testing chunked_vec", "[chunked_vec]") {
       vec.store_at(i, std::move(rec));
     }
     REQUIRE(vec.first_available() == 150);
-
-#ifdef USE_PMDK
-    pop.close();
-    remove(test_path.c_str());
-#endif
   }
 
   SECTION("Adding many records and iterate over them") {
@@ -261,11 +220,6 @@ TEST_CASE("Testing chunked_vec", "[chunked_vec]") {
       REQUIRE(strncmp(rec.s, "##########", 10) == 0);
       o++;
     }
-
-#ifdef USE_PMDK
-    pop.close();
-    remove(test_path.c_str());
-#endif
   }
 
   SECTION("Adding and deleting some records followed by an iteration") {
@@ -291,11 +245,6 @@ TEST_CASE("Testing chunked_vec", "[chunked_vec]") {
       REQUIRE(r.head == next);
       next++;
     }
-
-#ifdef USE_PMDK
-    pop.close();
-    remove(test_path.c_str());
-#endif
   }
 
   SECTION("Adding many records and iterate over the chunks") {
@@ -330,56 +279,5 @@ TEST_CASE("Testing chunked_vec", "[chunked_vec]") {
       ++iter;
     }
     REQUIRE(num == 6 * 64);
-
-#ifdef USE_PMDK
-    pop.close();
-    remove(test_path.c_str());
-#endif
   }
-
-#ifdef USE_PMDK
-  SECTION("Restoring persistent data") {
-    // resize it to 16 chunks
-    vec.resize(16);
-
-    // make sure we have enough space for 1000 records
-    REQUIRE(vec.capacity() > 1000);
-    std::cout << "#chunks = " << vec.num_chunks()
-              << ", elems = " << vec.elements_per_chunk() << std::endl;
-    // store 1000 records in the array
-    for (offset_t i = 0; i < 1000; i++) {
-      record rec;
-      rec.head = i + 1;
-      rec.i = i * 100 + 1;
-      memcpy(rec.s, "##########", 10);
-      rec.flag = 1;
-      vec.store_at(i, std::move(rec));
-    }
-    pop.close();
-    // now, we reopen the pool and check whether the data is still there
-    pop = pool<root>::open(test_path, "");
-    root_obj = pop.root();
-    vector_type &vec = *(root_obj->vec_p);
-
-    REQUIRE(vec.capacity() > 1000);
-
-    auto iter = vec.range(5, 10);
-    offset_t first = 0, last = 320, num = 0;
-    while (iter) {
-      auto &rec = *iter;
-      if (first == 0) {
-        first = rec.head;
-        REQUIRE(first == 321);
-      }
-      REQUIRE(last + 1 == rec.head);
-      last = rec.head;
-      num++;
-      ++iter;
-    }
-    REQUIRE(num == 6 * 64);
-
-    pop.close();
-    remove(test_path.c_str());
-  }
-#endif
 }

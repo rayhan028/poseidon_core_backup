@@ -22,7 +22,7 @@
 #include <boost/filesystem.hpp>
 #endif
 #include "graph_db.hpp"
-#include "chunked_vec.hpp"
+#include "vec.hpp"
 #include "parser.hpp"
 #include "spdlog/spdlog.h"
 #include "thread_pool.hpp"

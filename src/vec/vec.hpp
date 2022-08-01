@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -19,10 +19,14 @@
 #ifndef vec_hpp_
 #define vec_hpp_
 
+#include "mem_chunked_vec.hpp"
+
 #ifdef USE_PFILE
 #include "buffered_vec.hpp"
-#else
-#include "chunked_vec.hpp"
+#endif
+
+#ifdef USE_PMDK
+#include "nvm_chunked_vec.hpp"
 #endif
 
 #endif

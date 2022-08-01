@@ -287,12 +287,12 @@ class buffered_vec {
   }
 
   /**
-   * Return an iterator pointing to the begin of the chunked_vec.
+   * Return an iterator pointing to the begin of the buffered_vec.
    */
   iter begin() { return iter(*this, 1, num_chunks()); }
 
   /**
-   * Return an iterator pointing to the end of the chunked_vec.
+   * Return an iterator pointing to the end of the buffered_vec.
    */
   iter end() { return iter(*this, 0, 0); }
 
@@ -421,7 +421,7 @@ class buffered_vec {
 
   /**
    * Return the index of the first available slot in any of the
-   * chunks. The index is a global offset in the chunked_vec.
+   * chunks. The index is a global offset in the buffered_vec.
    */
   offset_t first_available() const {
     if (available_slots_ == 0)
@@ -440,7 +440,7 @@ class buffered_vec {
 
   /**
    * Return the index of the last used slot in the last
-   * chunk. The index is a global offset in the chunked_vec.
+   * chunk. The index is a global offset in the buffered_vec.
    */
   offset_t last_used() const {
     auto pg = bpool_.last_valid_page(file_id_);
@@ -452,7 +452,7 @@ class buffered_vec {
 
   /**
    * Returns true if the slot at position i is used by a record.
-   * The position is a global offset in the chunked_vec.
+   * The position is a global offset in the buffered_vec.
    */
   inline bool is_used(std::size_t i) const {
     auto ch = find_chunk(i);
@@ -463,8 +463,8 @@ class buffered_vec {
   /**
    * Return a const ref to the element stored at the given position (index) or
    * raises an exception if the index is invalid (or the slot is not used). The
-   * offset is relative to the begining of the chunked_vec. The first element of
-   * the chunked_vec has always an offset=0.
+   * offset is relative to the begining of the buffered_vec. The first element of
+   * the buffered_vec has always an offset=0.
    */
   const T &const_at(offset_t idx) const {
     auto ch = find_chunk(idx);
@@ -477,7 +477,7 @@ class buffered_vec {
   /**
    * Return a reference to the element stored at the given position (index) or
    * raises an exception if the index is invalid. The offset is relative to the
-   * begining of the chunked_vec. The first element of the chunked_vec has
+   * begining of the chunked_vec. The first element of the buffered_vec has
    * always an offset=0.
    * Note, that the corresponding slot is not marked as used.
    */
@@ -490,7 +490,7 @@ class buffered_vec {
   }
 
   /**
-   * Resize the chunked_vec by the given number of additional chunks.
+   * Resize the buffered_vec by the given number of additional chunks.
    */
   void resize(int nchunks) {
     spdlog::debug("resize paged file #{}", file_id_);
@@ -510,14 +510,14 @@ class buffered_vec {
   }
 
   /**
-   * Return the capacity of the chunked_vec, which is the total number of
+   * Return the capacity of the buffered_vec, which is the total number of
    * elements to be stored. Note, that this includes the number of already
    * existing elements.
    */
   offset_t capacity() const { return capacity_; }
 
   /**
-   * Return true if the chunked_vec does not contain any empty slot anymore.
+   * Return true if the buffered_vec does not contain any empty slot anymore.
    */
   bool is_full() const {
     std::lock_guard<std::mutex> lk(hd_mtx_);

@@ -35,10 +35,6 @@
 #include "transaction.hpp"
 #include "txn_data.hpp"
 
-#ifdef USE_PFILE
-#include "buffered_vec.hpp"
-#endif
-
 struct node;
 using dirty_node = dirty_object<node>;
 using dirty_node_ptr = std::unique_ptr<dirty_node>;
@@ -156,8 +152,10 @@ std::ostream &operator<<(std::ostream &os, const boost::any &any_value);
 
 #ifdef USE_PFILE
 using node_vec = buffered_vec<node>;
+#elif defined(USE_PMDK)
+using node_vec = nvm_chunked_vec<node, NODE_CHUNK_SIZE>;
 #else
-using node_vec = chunked_vec<node, NODE_CHUNK_SIZE>;
+using node_vec = mem_chunked_vec<node, NODE_CHUNK_SIZE>;
 #endif
 
 /**

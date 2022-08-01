@@ -29,10 +29,6 @@
 #include "transaction.hpp"
 #include "txn_data.hpp"
 
-#ifdef USE_PFILE
-#include "buffered_vec.hpp"
-#endif
-
 struct relationship;
 using dirty_rship = dirty_object<relationship>;
 using dirty_rship_ptr = std::unique_ptr<dirty_rship>;
@@ -118,8 +114,10 @@ std::ostream &operator<<(std::ostream &os, const rship_description &rdescr);
 
 #ifdef USE_PFILE
 using rship_vec = buffered_vec<relationship>;
+#elif defined(USE_PMDK)
+using rship_vec = nvm_chunked_vec<relationship, RSHIP_CHUNK_SIZE>;
 #else
-using rship_vec = chunked_vec<relationship, RSHIP_CHUNK_SIZE>;
+using rship_vec = mem_chunked_vec<relationship, RSHIP_CHUNK_SIZE>;
 #endif
 
 /**

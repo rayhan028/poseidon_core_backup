@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -17,8 +17,8 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef chunked_vec_hpp_
-#define chunked_vec_hpp_
+#ifndef nvm_chunked_vec_hpp_
+#define mvm_chunked_vec_hpp_
 
 #include <array>
 #include <bitset>
@@ -27,15 +27,10 @@
 
 #include <iostream>
 
-#ifdef USE_PMDK
 #include <libpmemobj++/container/array.hpp>
 #include <libpmemobj++/container/vector.hpp>
 #include <libpmemobj++/utils.hpp>
 #include <libpmemobj++/shared_mutex.hpp>
-#else
-#include <mutex>  // For std::unique_lock
-#include <shared_mutex>
-#endif
 
 #include "defs.hpp"
 #include "exceptions.hpp"
@@ -43,6 +38,26 @@
 #include "spdlog/spdlog.h"
 
 #define DEFAULT_CHUNK_SIZE 4096 // 65536
+
+
+/**
+ * nvm_chunked_vec is a class implementing a persistent vector as a sequence of
+ * fixed-size elements. The vector consists of a linked list of chunks where
+ * each chunk represents a contiguous memory region. In this way, the entire
+ * sequence does not require to be physically contiguous stored in memory and
+ * allows to extend the vector more easily without copying the entire data.
+ * Elements of the vector are of type T which can be addressed via their index
+ * (starting at 0). There are two ways to add element to chunked_vec: either via
+ * store_at() to store an element at a given position or via append() where the
+ * element is added to the end of the vector. For iterating over chunked_vec
+ * also two methods are available: begin()/end() are used for an element-wise
+ * iteration while range allows to specifiy a start and end chunk for the
+ * iteration.
+ */
+template <typename T, int chunk_size = DEFAULT_CHUNK_SIZE>
+class nvm_chunked_vec {
+  static constexpr auto num_entries = chunk_size / sizeof(T);
+
 
 /**
  * chunk is a contiguous buffer of a fixed size which stores records (byte
@@ -53,13 +68,8 @@
  */
 template <typename T, int num_records>
 struct alignas(64) chunk {
-#ifdef USE_PMDK
   pmem::obj::array<T, num_records> data_;
   pmem::obj::persistent_ptr<chunk<T, num_records>> next_;
-#else
-  std::array<T, num_records> data_; // the array of data
-  chunk<T, num_records> *next_;     // pointer to the successor chunk
-#endif
   p<std::bitset<num_records>>
       slots_; // bitstring representing empty slots (0), used slots (1)
   p<uint32_t> first_;              // the index of the first available slot
@@ -77,23 +87,13 @@ struct alignas(64) chunk {
   /**
    * Returns true if the slot at position i is used by a record.
    */
-  inline bool is_used(std::size_t i) const {
-#ifdef USE_PMDK
-    return slots_.get_ro().test(i);
-#else
-    return slots_.test(i);
-#endif
-  }
+  inline bool is_used(std::size_t i) const { return slots_.get_ro().test(i); }
 
   /**
    * Sets the slot at position i to used (b = true) or available (b = false);
    */
   inline void set(std::size_t i, bool b) {
-#ifdef USE_PMDK
     slots_.get_rw().set(i, b);
-#else
-    slots_.set(i, b);
-#endif
     if (!b && i < first_) {
       // the record was deleted - update first_
       first_ = i;   
@@ -102,11 +102,7 @@ struct alignas(64) chunk {
     if (b && i == first_) {
       // we have to find the next available slot starting from first_
       for (auto j = first_; j < num_records; j++) {
-#ifdef USE_PMDK
         if (!slots_.get_ro().test(j)) {
-#else
-        if (!slots_.test(j)) {
-#endif
           first_ = j;
           return;
         }
@@ -120,19 +116,11 @@ struct alignas(64) chunk {
    * anymore.
    */
   std::size_t first_available() const {
-#ifdef USE_PMDK
     if (slots_.get_ro().all())
-#else
-    if (slots_.all())
-#endif
       return SIZE_MAX;
 
     for (auto i = first_; i < num_records; i++)
-#ifdef USE_PMDK
       if (!slots_.get_ro().test(i))
-#else
-      if (!slots_.test(i))
-#endif
         return i;
     return SIZE_MAX;
   }
@@ -142,19 +130,11 @@ struct alignas(64) chunk {
    * used.
    */
   std::size_t last_used() const {
-#ifdef USE_PMDK
     if (slots_.get_ro().none())
-#else
-    if (slots_.none())
-#endif
       return SIZE_MAX;
 
     for (auto i = (num_records - 1); i >= 0; i--)
-#ifdef USE_PMDK
       if (slots_.get_ro().test(i))
-#else
-      if (slots_.test(i))
-#endif
         return i;
     return SIZE_MAX;
   }
@@ -163,51 +143,16 @@ struct alignas(64) chunk {
    * Returns true if all slots of the chunk are used, i.e. no slots are
    * available.
    */
-  inline bool is_full() const {
-#ifdef USE_PMDK
-    return slots_.get_ro().all();
-#else
-    return slots_.all();
-#endif
-  }
+  inline bool is_full() const { return slots_.get_ro().all(); }
 
   /**
    * Returns true if none of the slots of the chunk are used, i.e. the chunk is
    * empty.
    */
-  inline bool is_empty() const {
-#ifdef USE_PMDK
-    return slots_.get_ro().none();
-#else
-    return slots_.none();
-#endif
-  }
+  inline bool is_empty() const { return slots_.get_ro().none(); }
 };
-
-/**
- * chunked_vec is a class implementing a persistent vector as a sequence of
- * fixed-size elements. The vector consists of a linked list of chunks where
- * each chunk represents a contiguous memory region. In this way, the entire
- * sequence does not require to be physically contiguous stored in memory and
- * allows to extend the vector more easily without copying the entire data.
- * Elements of the vector are of type T which can be addressed via their index
- * (starting at 0). There are two ways to add element to chunked_vec: either via
- * store_at() to store an element at a given position or via append() where the
- * element is added to the end of the vector. For iterating over chunked_vec
- * also two methods are available: begin()/end() are used for an element-wise
- * iteration while range allows to specifiy a start and end chunk for the
- * iteration.
- */
-template <typename T, int chunk_size = DEFAULT_CHUNK_SIZE>
-class chunked_vec {
-  static constexpr auto num_entries = chunk_size / sizeof(T);
-
 /// The type for pointers to single chunks.
-#ifdef USE_PMDK
   using chunk_ptr = pmem::obj::persistent_ptr<chunk<T, num_entries>>;
-#else
-  using chunk_ptr = chunk<T, num_entries> *;
-#endif
 
  public:
   /**
@@ -257,7 +202,7 @@ class chunked_vec {
   };
 
   struct range_iter {
-    range_iter(chunked_vec &v, std::size_t first, std::size_t last, std::size_t pos = 0)
+    range_iter(nvm_chunked_vec &v, std::size_t first, std::size_t last, std::size_t pos = 0)
         : vec_(v), range_(first, last), current_chunk_(first),
           cptr_(nullptr), pos_(pos) {
             if (vec_.chunk_list_.size() > 0)
@@ -285,7 +230,7 @@ class chunked_vec {
     std::size_t get_cur_pos() { return pos_; }
 
   private:
-    chunked_vec &vec_; // reference to the actual chunked_vec
+    nvm_chunked_vec &vec_; // reference to the actual chunked_vec
     std::pair<std::size_t, std::size_t> range_; // range of chunks to visit
     std::size_t current_chunk_; // position of the current chunk (initially
                                 // range_.first)
@@ -296,41 +241,31 @@ class chunked_vec {
   /**
    * Create a new empty vector.
    */
-  chunked_vec()
+  nvm_chunked_vec()
       : capacity_(0), available_slots_(0),
         elems_per_chunk_(num_entries) {}
 
   /**
    * Destructor.
    */
-  ~chunked_vec() {
+  ~nvm_chunked_vec() {
     // delete the chunks
-#ifdef USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
     pmem::obj::transaction::run(pop, [&] {
       for (auto p : chunk_list_)
         pmem::obj::delete_persistent<chunk<T, num_entries>>(p);
     });
-#else
-    for (auto p : chunk_list_)
-      delete p;
-#endif
   }
 
   /**
    * Delete all chunks of the vector and reset it to an empty vector.
    */
   void clear() {
-#ifdef USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
     pmem::obj::transaction::run(pop, [&] {
       for (auto p : chunk_list_)
         pmem::obj::delete_persistent<chunk<T, num_entries>>(p);
     });
-#else
-    for (auto p : chunk_list_)
-      delete p;
-#endif
     chunk_list_.clear();
     free_list_.clear();
     capacity_ = 0;
@@ -494,11 +429,7 @@ class chunked_vec {
   inline bool is_used(std::size_t i) const {
     auto ch = find_chunk(i);
     offset_t pos = i % elems_per_chunk_;
-#ifdef USE_PMDK
     return ch->slots_.get_ro().test(pos);
-#else
-    return ch->slots_.test(pos);
-#endif
   }
 
   /**
@@ -537,17 +468,11 @@ class chunked_vec {
     int num = nchunks;
     chunk_ptr ptr = nullptr;
 
-#if USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
-#endif
     if (chunk_list_.empty()) {
-#if USE_PMDK
       pmem::obj::transaction::run(pop, [&] {
         ptr = pmem::obj::make_persistent<chunk<T, num_entries>>();
       });
-#else
-      ptr = new chunk<T, num_entries>();
-#endif
       chunk_list_.push_back(ptr);
       available_slots_ = capacity_ = elems_per_chunk_;
       num--;
@@ -557,14 +482,10 @@ class chunked_vec {
       ptr = chunk_list_.back();
     }
     for (auto i = 0; i < num; i++) {
-#if USE_PMDK
       chunk_ptr c;
       pmem::obj::transaction::run(pop, [&] {
         c = pmem::obj::make_persistent<chunk<T, num_entries>>();
       });
-#else
-      auto c = new chunk<T, num_entries>();
-#endif
       ptr->next_ = c;
       ptr = c;
       chunk_list_.push_back(ptr);
@@ -633,16 +554,10 @@ private:
       capacity_; // total capacity of the chunked_vec in number of records
   p<offset_t> available_slots_; // total number of available slots for records
   p<uint32_t> elems_per_chunk_; // number of elements per chunk
-#ifdef USE_PMDK
   pmem::obj::vector<chunk_ptr>
       chunk_list_; // the persistent list of pointers to all chunks
   pmem::obj::vector<offset_t> free_list_;   // the list of chunks with empty slots (described by their indexes)
   pmem::obj::shared_mutex fl_mtx_;          // mutex for accessing the free list
-#else
-  std::vector<chunk_ptr> chunk_list_; // the list of pointers to all chunks
-  std::vector<offset_t> free_list_;   // the list of chunks with empty slots (described by their indexes)
-  mutable std::shared_mutex fl_mtx_;  // mutex for accessing the free list
-#endif
 };
 
 #endif

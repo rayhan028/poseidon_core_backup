@@ -117,6 +117,7 @@ configure_file(
 #---------------------------------------------------------------------------
 
 include_directories(${PROJECT_BINARY_DIR}/generated)
+include_directories(${PROJECT_SOURCE_DIR}/src/vec)
 include_directories(${PROJECT_SOURCE_DIR}/src/storage)
 include_directories(${PROJECT_SOURCE_DIR}/src/bp_file)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/ast)

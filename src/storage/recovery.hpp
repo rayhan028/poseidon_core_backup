@@ -8,7 +8,7 @@
 #include <boost/any.hpp>
 #include "spdlog/spdlog.h"
 
-#include "chunked_vec.hpp"
+#include "vec.hpp"
 #include "defs.hpp"
 #include "exceptions.hpp"
 #include "properties.hpp"
