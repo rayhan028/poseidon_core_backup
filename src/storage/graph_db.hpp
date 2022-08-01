@@ -727,7 +727,7 @@ using graph_db_ptr = p_ptr<graph_db>;
 
 struct scan_task {
   using range = std::pair<std::size_t, std::size_t>;
-  scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last,
+  scan_task(graph_db *gdb, std::size_t first, std::size_t last,
 	    graph_db::node_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0);
 
   void operator()();
@@ -737,7 +737,6 @@ struct scan_task {
   static std::function<void(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer)> callee_;
 
   graph_db *graph_db_;
-  node_list &nodes_;
   range range_;
   graph_db::node_consumer_func consumer_;
   transaction_ptr tx_;

@@ -31,8 +31,8 @@
 namespace nvm = pmem::obj;
 #endif
 
-scan_task::scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last, graph_db::node_consumer_func c, transaction_ptr tp, std::size_t start_pos)
-	: graph_db_(gdb), nodes_(n), range_(first, last), consumer_(c), tx_(tp), start_pos_(start_pos) {}
+scan_task::scan_task(graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func c, transaction_ptr tp, std::size_t start_pos)
+	: graph_db_(gdb), range_(first, last), consumer_(c), tx_(tp), start_pos_(start_pos) {}
 
 void scan_task::scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer) {
     xid_t xid = 0;
@@ -134,7 +134,7 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
   std::size_t start = 0, end = nchunks - 1;
   while (start < nodes_->num_chunks()) {
     res.push_back(pool.submit(
-        scan_task(this, *nodes_, start, end, consumer, current_transaction_)));
+        scan_task(this, start, end, consumer, current_transaction_)));
     start = end + 1;
     end += nchunks;
   }
