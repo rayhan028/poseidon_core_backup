@@ -18,6 +18,7 @@
  */
 
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 
 #include "graph_db.hpp"
 #include "vec.hpp"
@@ -27,22 +28,16 @@
 #include <stdio.h>
 #include <set>
 
-#ifdef USE_PFILE
-#include <boost/filesystem.hpp>
-#endif
-
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
 #endif
 
 void graph_db::destroy(graph_db_ptr gp) {
-#ifdef USE_PFILE
   boost::filesystem::path path_obj(gp->database_name_);
-  boost::filesystem::remove_all(path_obj);
-#endif
+  if (boost::filesystem::exists(path_obj))
+    boost::filesystem::remove_all(path_obj);
 }
 
-#ifdef USE_PFILE
 void graph_db::prepare_files(const std::string &pool_path, const std::string &pfx) {
   spdlog::debug("graph_db: prepare files {} / {}", pool_path, pfx);
   boost::filesystem::path path_obj {pool_path};
@@ -73,32 +68,32 @@ void graph_db::prepare_files(const std::string &pool_path, const std::string &pf
 
   dict_ = p_make_ptr<dict>(bpool_, prefix);
 }
-#endif
 
-graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : database_name_(db_name) {
-#ifdef USE_PFILE
-  pool_path_ = pool_path;
-  prepare_files(pool_path, db_name);
-  nodes_ = p_make_ptr<node_list>(bpool_, NODE_FILE_ID);
-  rships_ = p_make_ptr<relationship_list>(bpool_, RSHIP_FILE_ID);
-  node_properties_ = p_make_ptr<property_list>(bpool_, NPROPS_FILE_ID);
-  rship_properties_ = p_make_ptr<property_list>(bpool_, RPROPS_FILE_ID);
-#else
+graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : database_name_(db_name)
+#ifdef USE_PMDK
+, bpool_(0)
+#endif
+ {
+#ifdef USE_PMDK
   nodes_ = p_make_ptr<node_list>();
   rships_ = p_make_ptr<relationship_list>();
   node_properties_ = p_make_ptr<property_list>();
   rship_properties_ = p_make_ptr<property_list>();
+  dict_ = p_make_ptr<dict>();
+  index_map_ = p_make_ptr<index_map>();
+#else
+  pool_path_ = pool_path;
+  prepare_files(pool_path, db_name);
+  nodes_ = p_make_ptr<node_list<buffered_vec> >(bpool_, NODE_FILE_ID);
+  rships_ = p_make_ptr<relationship_list<buffered_vec> >(bpool_, RSHIP_FILE_ID);
+  node_properties_ = p_make_ptr<property_list<buffered_vec> >(bpool_, NPROPS_FILE_ID);
+  rship_properties_ = p_make_ptr<property_list<buffered_vec> >(bpool_, RPROPS_FILE_ID);
+  index_map_ = p_make_ptr<index_map>();
+  restore_indexes(pool_path, db_name);
 #endif
 #ifdef QOP_RECOVERY
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
-#endif
-#ifndef USE_PFILE
-  dict_ = p_make_ptr<dict>();
-#endif
-  index_map_ = p_make_ptr<index_map>();
-#ifdef USE_PFILE
-  restore_indexes(pool_path, db_name);
 #endif
   ulog_ = p_make_ptr<pmlog>();
 #if defined CSR_DELTA && defined USE_TX
@@ -122,26 +117,24 @@ graph_db::~graph_db() {
 #ifdef USE_TX
   current_transaction_.reset();
 #endif
+  close_files();
 }
-
-#ifdef USE_PFILE
 
 void graph_db::flush() {
   bpool_.flush_all();
 }
 
 void graph_db::close_files() {
-  dict_->close_file();
-  node_file_->close();
-  rship_file_->close();
-  nprops_file_->close();
-  rprops_file_->close();
+  if (dict_) dict_->close_file();
+  if (node_file_) node_file_->close();
+  if (rship_file_) rship_file_->close();
+  if (nprops_file_) nprops_file_->close();
+  if (rprops_file_) rprops_file_->close();
   for (auto pf : index_files_) {
     pf->close();
   }
 }
 
-#endif
 
 void graph_db::runtime_initialize() {
   nodes_->runtime_initialize();

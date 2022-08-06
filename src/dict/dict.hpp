@@ -16,20 +16,105 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef dict_hpp
+#define dict_hpp
 
-#ifndef dict_hpp_
-#define dict_hpp_
-
+#include <string>
+#include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include "defs.hpp"
 
-#ifdef USE_HDICT
-#include "hdict.hpp"
-#elif defined(USE_PMDK)
-#include "dict_kv.hpp"
+#ifdef USE_PMDK
+#include "string_pool.hpp"
 #else
-#include "dict_bimap.hpp"
+#include "bufferpool.hpp"
+#include "paged_string_pool.hpp"
 #endif
+
+#include "htable.hpp"
+
+/**
+ * This class implements an (updatable) string dictionary. Strings are stored in
+ * a contiguous memory region (string_pool). The position of each string is this
+ * memory region is used as the code which replaces the string value. To get the
+ * mapping between the code and the actual string a hash table (htable) is used.
+ * 
+ * The string_pool is stored persistently (either in PMem or in a paged file),
+ * the hash table is maintained in memory.
+ */ 
+class dict {
+public:
+    /**
+     * Create a new dictionary with the initial string pool size. The prefix argument 
+     * is used only for the path of a paged file.
+     */
+#ifdef USE_PMDK
+    dict(const std::string& prefix = "", uint32_t init_pool_size = 100000);
+#else
+    dict(bufferpool& bpool, const std::string& prefix = "", uint32_t init_pool_size = 100000);
+#endif
+
+    /**
+     * Destructor.
+     */
+    ~dict();
+    
+  /**
+   * The underlying persistent hash tables need a runtime initialization if
+   * stored in persistent memory.
+   */
+    void initialize();
+
+  /**
+   * Insert a new string and return a newly assigned code. Duplicate strings
+   * are ignored and the already assigned code is returned.
+   */
+    dcode_t insert(const std::string& s);
+
+  /**
+   * Return the code associated with the string s. If this string does not
+   * exist then 0 is returned.
+   */
+    dcode_t lookup_string(const std::string& s) const;
+
+  /**
+   * Return the string associated with the given code. If the code does not
+   * exist an empty string is returned.
+   */
+    const char* lookup_code(dcode_t code) const;
+    
+    /**
+     * Printing the content of the string pool for debugging purposes.
+     */
+    void print_pool() const;
+
+    /**
+     * Resize the dictionary (string pool and hash table.)
+     */
+    void resize();
+    
+    /**
+     * Return the size of the dictionary, i.e. the number of unique stored strings.
+     */
+    std::size_t size() const;
+
+#ifndef USE_PMDK
+    void close_file() { dict_file_->close(); }
+#endif
+
+private:
+#ifdef USE_PMDK
+    p_ptr<string_pool> pool_;        // the string pool for storing the actual strings
+#else
+    bufferpool& bpool_;
+    std::shared_ptr<paged_file> dict_file_;
+    std::shared_ptr<paged_string_pool> pool_;  // the string pool for storing the actual strings
+#endif
+    htable *table_;  		             // the hash table for mapping codes to strings
+    mutable std::shared_mutex m_;        // a mutex for synchronizing access to the dictionary
+};
 
 using dict_ptr = p_ptr<dict>;
 
-#endif
+#endif /* dict_hpp */

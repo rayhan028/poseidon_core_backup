@@ -47,7 +47,8 @@ using dirty_node_ptr = std::unique_ptr<dirty_node>;
  * dictionary, only the code value is stored as part of the node.
  */
 struct node : public txn<dirty_node_ptr> {
-  friend class node_list;
+  template <template <typename I> typename V> friend class node_list;
+
   using id_t =
       offset_t; // typedef for node identifier (used as offset in node list)
 private:
@@ -151,21 +152,37 @@ std::ostream &operator<<(std::ostream &os, const node_description &ndescr);
  */
 std::ostream &operator<<(std::ostream &os, const boost::any &any_value);
 
-#ifdef USE_PFILE
-using node_vec = buffered_vec<node>;
-#elif defined(USE_PMDK)
-using node_vec = nvm_chunked_vec<node, NODE_CHUNK_SIZE>;
-#else
-using node_vec = mem_chunked_vec<node, NODE_CHUNK_SIZE>;
-#endif
-
 /**
  * A class for storing all nodes of a graph. It supports adding and removing
  * nodes as well as getting a node via its node_id.
  */
+template <template <typename I> typename T>
 class node_list {
+
+  /**
+   * A helper class for parallel inititialization of all nodes.
+   */
+  struct init_node_task {
+    using range = std::pair<std::size_t, std::size_t>;
+
+    init_node_task(auto &n, std::size_t first, std::size_t last) : nodes_(n), range_(first, last) {}
+
+    void operator()() {
+      auto iter = nodes_.range(range_.first, range_.second);
+      while (iter) {
+        auto &n = *iter;
+        n.runtime_initialize();
+        ++iter;
+      }
+    }
+
+    T<node> &nodes_;
+    range range_;
+  };
+
 public:
-  using range_iterator = node_vec::range_iter;
+  using vec = T<node>;
+  using range_iterator = typename T<node>::range_iter;
 
   /**
    * Constructor
@@ -178,13 +195,37 @@ public:
   /**
    * Destructor
    */
-  ~node_list();
+  ~node_list() = default;
 
   /**
    * Performs initialization steps after starting the database, i.e. setting the
    * dirty_list to nullptr.
    */
-  void runtime_initialize();
+  void runtime_initialize() {
+  // make sure that all locks are released and no dirty objects exist
+#ifdef PARALLEL_INIT
+  const int nchunks = 100;
+  std::vector<std::future<void>> res;
+  res.reserve(num_chunks() / nchunks + 1);
+  // spdlog::info("starting {} init node tasks...", num_chunks() / nchunks + 1);
+  thread_pool pool;
+  std::size_t start = 0, end = nchunks - 1;
+  while (start < num_chunks()) {
+    res.push_back(pool.submit(
+        init_node_task(*this, start, end)));
+    // spdlog::info("starting: {}, {}", start, end);
+    start = end + 1;
+    end += nchunks;
+  }
+ // std::cout << "waiting ..." << std::endl;
+  for (auto &f : res)
+    f.get();
+#else
+  for (auto &n : nodes_) {
+    n.runtime_initialize();
+  }
+#endif   
+  }
 
   /**
    * Add a new node to the list and return its identifier. The node is inserted
@@ -192,7 +233,20 @@ public:
    * If owner != 0 then the newly created node is locked by this owner
    * transaction.
    */
-  node::id_t add(node &&n, xid_t owner = 0);
+  node::id_t add(node &&n, xid_t owner = 0) {
+    if (nodes_.is_full())
+    nodes_.resize(1);
+
+  auto id = nodes_.first_available();
+  assert(id != UNKNOWN);
+  n.id_ = id;
+  if (owner != 0) {
+    /// spdlog::info("lock node #{} by {}", id, owner);
+    n.lock(owner);
+  }
+  nodes_.store_at(id, std::move(n));
+  return id;  
+  }
 
   /**
    * Add a new node to the list and return its identifier. The node is inserted
@@ -201,7 +255,16 @@ public:
    * transaction. If a callback is given this function is called before the slot 
    * is reserved (used for undo logging).
    */
-  node::id_t insert(node &&n, xid_t owner = 0, std::function<void(offset_t)> callback = nullptr);
+  node::id_t insert(node &&n, xid_t owner = 0, std::function<void(offset_t)> callback = nullptr) {
+    auto p = nodes_.store(std::move(n), callback);
+  p.second->id_ = p.first;
+  if (owner != 0) {
+    // spdlog::info("lock node #{} by {}", p.first, owner);
+    p.second->lock(owner);
+  }
+
+  return p.first;  
+  }
 
   /**
    * Append a new node to the list and return its identifier. In contrast to add
@@ -210,22 +273,40 @@ public:
    * transaction. If a callback is given this function is called before the slot 
    * is reserved (used for undo logging).
    */
-  node::id_t append(node &&n, xid_t owner = 0, std::function<void(offset_t)> callback = nullptr);
+  node::id_t append(node &&n, xid_t owner = 0, std::function<void(offset_t)> callback = nullptr) {
+    auto p = nodes_.append(std::move(n), callback);
+  p.second->id_ = p.first;
+  if (owner != 0) {
+    /// spdlog::info("lock node #{} by {}", p.first, owner);
+    p.second->lock(owner);
+  }
+
+  return p.first;  
+  }
 
   /**
    * Get a node via its identifier.
    */
-  node &get(node::id_t id);
+  node &get(node::id_t id) {
+   if (nodes_.capacity() <= id)
+    throw unknown_id();
+  auto &n = nodes_.at(id);
+  return n;   
+  }
 
   /**
    * Remove a certain node specified by its identifier.
    */
-  void remove(node::id_t id);
+  void remove(node::id_t id) {
+    if (nodes_.capacity() <= id)
+    throw unknown_id();
+  nodes_.erase(id);  
+  }
 
   /**
    * Returns the underlying vector of the node list.
    */
-  node_vec &as_vec() { return nodes_; }
+  auto &as_vec() { return nodes_; }
 
   /**
    * Return a range iterator to traverse the node_list from first_chunk to
@@ -241,7 +322,38 @@ public:
   /**
    * Output the content of the node vector.
    */
-  void dump();
+  void dump() {
+  std::cout << "----------- NODES -----------\n";
+  for (auto& n : nodes_) {
+    std::cout << std::dec << "#" << n.id() << ", @" << (unsigned long)&n
+              << " [ txn-id=" << short_ts(n.txn_id()) << ", bts=" << short_ts(n.bts())
+              << ", cts=" << short_ts(n.cts()) << ", dirty=" << n.d_->is_dirty_ 
+              << " ], label=" << n.node_label << ", from="
+              << uint64_to_string(n.from_rship_list) << ", to=" << uint64_to_string(n.to_rship_list) << ", props="
+              << uint64_to_string(n.property_list);
+    if (n.has_dirty_versions()) {
+      // print dirty list
+      std::cout << " {\n";
+      for (const auto& dn : *(n.dirty_list())) {
+        std::cout << "\t( @" << (unsigned long)&(dn->elem_)
+                  << ", txn-id=" << short_ts(dn->elem_.txn_id())
+                  << ", bts=" << short_ts(dn->elem_.bts()) << ", cts=" << short_ts(dn->elem_.cts())
+                  << ", label=" << dn->elem_.node_label
+                  << ", dirty=" << dn->elem_.is_dirty()
+                  << ", from=" << uint64_to_string(dn->elem_.from_rship_list)
+                  << ", to=" << uint64_to_string(dn->elem_.to_rship_list)
+                  << ", [";
+        for (const auto& pi : dn->properties_) {
+          std::cout << " " << pi;
+        }
+        std::cout << " ])\n";
+      }
+      std::cout << "}";
+    }
+    std::cout << "\n";
+  }
+  std::cout << "-----------------------------\n";    
+  }
 
   /**
    * Returns the number of occupied chunks of the underlying chunked_vec.
@@ -249,7 +361,7 @@ public:
   std::size_t num_chunks() const { return nodes_.num_chunks(); }
 
 private:
-  node_vec nodes_; // the actual list of nodes
+  T<node> nodes_; // the actual list of nodes
 };
 
 #endif

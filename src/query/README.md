@@ -2,7 +2,7 @@
 
 This directory contains the code for the query processor of the Poseidon graph database. We support both 
 * an interpreter (ahead of time) that connects and executes pre-compiled operators plus an interpreter for expressions
-* a LLVM-based JIT compiler.
+* as well as an LLVM-based JIT compiler.
 
 ## Directory structure
 

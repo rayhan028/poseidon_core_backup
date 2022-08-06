@@ -60,12 +60,10 @@ TEST_CASE("Inserting some strings", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
-#elif defined(USE_PFILE)
+#else
   create_dir("dict1");
   bufferpool bpool;
   dict d(bpool, "dict1");
-#else
-  dict d;
 #endif
 
   REQUIRE(d.size() == 0);
@@ -81,7 +79,7 @@ TEST_CASE("Inserting some strings", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif defined(USE_PFILE)
+#else
   delete_dir("dict1");
 #endif
 }
@@ -96,12 +94,10 @@ TEST_CASE("Inserting duplicate strings", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
-#elif defined(USE_PFILE)
+#else
   create_dir("dict2");
   bufferpool bpool;
   dict d(bpool, "dict2");
-#else
-  dict d;
 #endif
 
   REQUIRE(d.size() == 0);
@@ -115,7 +111,7 @@ TEST_CASE("Inserting duplicate strings", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif defined(USE_PFILE)
+#else
   delete_dir("dict2");  
 #endif
 }
@@ -130,12 +126,10 @@ TEST_CASE("Looking up some strings", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
-#elif defined(USE_PFILE)
+#else
   create_dir("dict3");
   bufferpool bpool;
   dict d(bpool, "dict3");
-#else
-  dict d;
 #endif
 
   REQUIRE(d.size() == 0);
@@ -151,7 +145,7 @@ TEST_CASE("Looking up some strings", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif defined(USE_PFILE)
+#else
   delete_dir("dict3"); 
 #endif
 }
@@ -166,12 +160,10 @@ TEST_CASE("Looking up some codes", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
-#elif defined(USE_PFILE)
+#else
 create_dir("dict4");
   bufferpool bpool;
   dict d(bpool, "dict4");
-#else
-  dict d;
 #endif
 
   REQUIRE(d.size() == 0);
@@ -187,7 +179,7 @@ create_dir("dict4");
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif defined(USE_PFILE)
+#else
   delete_dir("dict4"); 
 #endif
 }
@@ -202,12 +194,10 @@ TEST_CASE("Looking up some non-existing strings", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
-#elif defined(USE_PFILE)
+#else
   create_dir("dict5");
   bufferpool bpool;
   dict d(bpool, "dict5");
-#else
-  dict d;
 #endif
 
   d.insert("String #1");
@@ -220,7 +210,7 @@ TEST_CASE("Looking up some non-existing strings", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif defined(USE_PFILE)
+#else
   delete_dir("dict5"); 
 #endif
 }
@@ -255,7 +245,8 @@ TEST_CASE("Test persistency of dict", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 }
-#elif defined(USE_PFILE)
+#endif
+
 TEST_CASE("Test persistency of dict", "[dict]") {
   dcode_t c;
   create_dir("dict6");
@@ -279,9 +270,7 @@ TEST_CASE("Test persistency of dict", "[dict]") {
   }
   delete_dir("dict6");
 }
-#endif
 
-// TODO
 // * test with a large set of strings
 TEST_CASE("Inserting many items", "[dict]") {
 #ifdef USE_PMDK
@@ -293,12 +282,10 @@ TEST_CASE("Inserting many items", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
-#elif defined(USE_PFILE)
+#else
   create_dir("dict7");
   bufferpool bpool;
   dict d(bpool, "dict7");
-#else
-  dict d;
 #endif
 
   // max: 4294967295
@@ -311,7 +298,7 @@ TEST_CASE("Inserting many items", "[dict]") {
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#elif defined(USE_PFILE)
+#else
   delete_dir("dict7"); 
 #endif
 }

@@ -151,9 +151,9 @@ struct bchunk {
  * iteration while range allows to specifiy a start and end chunk for the
  * iteration.
  */
-template <typename T, int chunk_size = DEFAULT_BCHUNK_SIZE>
+template <typename T>
 class buffered_vec {
-  static constexpr auto num_entries = static_cast<int>((chunk_size - 13) / (sizeof(T) + 1/8.0));
+  static constexpr auto num_entries = static_cast<int>((DEFAULT_BCHUNK_SIZE - 13) / (sizeof(T) + 1/8.0));
 
 /// The type for pointers to single chunks.
   using bchunk_ptr = bchunk<T, num_entries> *;

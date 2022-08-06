@@ -17,35 +17,32 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 #include <iostream>
-#include "hdict.hpp"
+#include "dict.hpp"
 
-#ifdef USE_PFILE
-
+#ifdef USE_PMDK
+dict::dict(const std::string& prefix, uint32_t init_pool_size) {
+    pool_ = p_make_ptr<string_pool>(init_pool_size);
+    initialize();
+}
+#else
 dict::dict(bufferpool& bpool, const std::string& prefix, uint32_t init_pool_size) : bpool_(bpool) {
     dict_file_ = std::make_shared<paged_file>();
     dict_file_->open(prefix == "" ? "dict.db" : prefix + "/dict.db", DICT_FILE_ID);
     bpool_.register_file(DICT_FILE_ID, dict_file_);
-    pool_ = p_make_ptr<paged_string_pool>(bpool_, DICT_FILE_ID);
-    initialize();
-}
-
-#else
-
-dict::dict(const std::string& prefix, uint32_t init_pool_size) {
-    pool_ = p_make_ptr<string_pool>(init_pool_size);
+    pool_ = std::make_shared<paged_string_pool>(bpool_, DICT_FILE_ID);
     initialize();
 }
 #endif
 
 dict::~dict() {
-#ifdef USE_PFILE
-    bpool_.flush_all();
-    dict_file_->close();
-#elif defined(USE_PMDK)
+#ifdef USE_PMDK
  auto pop = pmem::obj::pool_by_vptr(this);
   pmem::obj::transaction::run(pop, [&] {
     pmem::obj::delete_persistent<string_pool>(pool_);
   });
+#else
+    bpool_.flush_all();
+    dict_file_->close();
 #endif
   delete table_;
 }

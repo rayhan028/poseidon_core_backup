@@ -54,7 +54,7 @@ bool rship_description::operator==(const rship_description& other) const {
 }
 
 /* ------------------------------------------------------------------------ */
-
+#if 0
 
 struct init_rship_task {
   using range = std::pair<std::size_t, std::size_t>;
@@ -196,3 +196,5 @@ void relationship_list::dump() {
   }
   std::cout << "-----------------------------\n";
 }
+
+#endif

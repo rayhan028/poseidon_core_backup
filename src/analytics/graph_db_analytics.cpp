@@ -579,7 +579,7 @@ void graph_db::host_csr_update_with_delta(csr_arrays &csr) {
 #endif
 
 void graph_db::poseidon_to_coo(edge_coords* edge_coordinates, float* edge_values, rship_weight weight_func, bool bidirectional) {
-  rship_vec &cv_rsips = rships_->as_vec();
+  auto &cv_rsips = rships_->as_vec();
   auto iter = cv_rsips.begin();
   auto last = cv_rsips.end();
   unsigned long long edges = 0;

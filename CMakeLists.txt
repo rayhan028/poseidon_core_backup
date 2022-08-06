@@ -12,8 +12,6 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         ON)
-option(USE_PFILE        "Use paged file storage with bufferpool" ON)
-option(USE_HDICT        "Use hdict implementation"               ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
 option(USE_LLVM         "Use LLVM for query compilation"         ON)
@@ -57,13 +55,6 @@ cxx_20()
 if(USE_PMDK MATCHES ON)
   message(STATUS "looking for PMDK")
   include(pmdk)
-elseif(USE_PFILE MATCHES ON)
-  message(STATUS "use paged files")
-  add_definitions( "-DUSE_PFILE" )
-endif()
-
-if(USE_HDICT MATCHES ON)
-  add_definitions( "-DUSE_HDICT" )
 endif()
 
 # Transaction support
@@ -393,20 +384,6 @@ include_directories("${LINENOISE_INCLUDE_DIR}")
 
 #-----------------------------------------------------------------------------------------
 
-if(USE_HDICT MATCHES ON)
-  add_definitions( "-DUSE_HDICT" )
-  set(dict_src 
-    src/dict/string_pool.cpp 
-    src/dict/paged_string_pool.cpp 
-    src/dict/htable.cpp
-    src/dict/hdict.cpp)
-elseif(USE_PMDK MATCHES ON)
-  set(dict_src src/dict/dict_kv.cpp)
-else()
-  set(dict_src src/dict/dict_bimap.cpp)
-endif()
-
-
 if(USE_GUNROCK MATCHES ON)
   set(gunrock_analysis 
     src/analytics/gunrock/gunrock_sssp.cpp
@@ -470,7 +447,10 @@ else()
 endif()
 
 set(src_files 
-  ${dict_src} 
+  src/dict/string_pool.cpp 
+  src/dict/paged_string_pool.cpp 
+  src/dict/htable.cpp
+  src/dict/dict.cpp
   src/storage/nodes.cpp
   src/storage/relationships.cpp
   src/storage/properties.cpp

@@ -258,6 +258,7 @@ std::ostream& operator<< (std::ostream& os, const p_item& pi) {
 
 /* --------------------------------------------------------------------- */
 
+#if 0
 property_set::id_t property_list::add_properties(offset_t nid,
                                                       const properties_t &props,
                                                       dict_ptr &dct) {
@@ -691,3 +692,5 @@ void property_list::dump() {
     std::cout << "]" << std::endl;
   }
 }
+
+#endif

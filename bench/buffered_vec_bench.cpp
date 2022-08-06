@@ -5,22 +5,7 @@
 
 #include "spdlog/spdlog.h"
 
-#ifdef USE_PMDK
-
-#define PMEMOBJ_POOL_SIZE                                                      \
-  ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
-
-namespace nvm = pmem::obj;
-const std::string bench_path = poseidon::gPmemPath + "bench";
-
-struct root {
-  pmem::obj::persistent_ptr<node_list> nlist_p;
-};
-
-nvm::pool<root> pop;
-#endif
-
-void create_data(p_ptr<node_list> nlist) {
+void create_data(p_ptr<node_list<buffered_vec> > nlist) {
   // 45 nodes per chunk
   for (auto i = 0lu; i < 100'000; i++) {
     nlist->append(node(i));
@@ -45,42 +30,13 @@ void create_data(p_ptr<node_list> nlist) {
   assert(num == 99'000);
 }
 
-#ifdef USE_PMDK
-
-p_ptr<node_list> prepare_table() {
-  pop = nvm::pool<root>::create(bench_path, "", PMEMOBJ_POOL_SIZE);
-  auto root_obj = pop.root();
-
-  nvm::transaction::run(
-      pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list>(); });
-
-  auto nlist = root_obj->nlist_p;
+p_ptr<node_list<buffered_vec> > prepare_table(bufferpool& bp) {
+  auto nlist = p_make_ptr<node_list<buffered_vec> >(bp, 0);
   create_data(nlist);
   return nlist;
 }
 
-void drop_table(p_ptr<node_list> nlist) {
-  unsigned long num = 0;
-  for (auto &n : nlist->as_vec()) {
-    num++;
-  }
-  std::cout << num << " records found (expected: 109'000)" << std::endl;
-
-  //nvm::transaction::run(
-  //    pop, [&] { nvm::delete_persistent<node_list>(pop.root()->nlist_p); });
-
-  pop.close();
-  remove(bench_path.c_str());
-  std::cout << "table dropped." << std::endl;
-}
-#elif defined USE_PFILE
-p_ptr<node_list> prepare_table(bufferpool& bp) {
-  auto nlist = p_make_ptr<node_list>(bp, 0);
-  create_data(nlist);
-  return nlist;
-}
-
-void drop_table(p_ptr<node_list> nlist) {
+void drop_table(p_ptr<node_list<buffered_vec> > nlist) {
   unsigned long num = 0;
   for (__attribute__((unused)) auto &n : nlist->as_vec()) {
     num++;
@@ -89,15 +45,11 @@ void drop_table(p_ptr<node_list> nlist) {
 
   // delete nlist;
 }
-#endif
-
 
 int main(int argc, char **argv) {
-#if defined USE_PMDK || defined USE_PFILE
   std::cout << "sizeof = " << sizeof(txn<dirty_node_ptr>) << std::endl;
   // add node
   {
-#ifdef USE_PFILE
     auto test_file = std::make_shared<paged_file>();
     test_file->open("nodes.db", 0);
 
@@ -105,9 +57,6 @@ int main(int argc, char **argv) {
     bpool.register_file(0, test_file);
 
     auto nlist = prepare_table(bpool);
-#elif defined USE_PMDK
-    auto nlist = prepare_table();
-#endif
     std::cout << "starting add..." << std::endl;
     auto start_qp = std::chrono::steady_clock::now();
 
@@ -122,13 +71,10 @@ int main(int argc, char **argv) {
     std::cout << "add: " << tm << " microseconds." << std::endl;
     drop_table(nlist);
   }
-#ifdef USE_PFILE
   remove("nodes.db");
-#endif
 
   // append node
   {
-#ifdef USE_PFILE
     auto test_file = std::make_shared<paged_file>();
     test_file->open("nodes.db", 0);
 
@@ -136,9 +82,6 @@ int main(int argc, char **argv) {
     bpool.register_file(0, test_file);
 
     auto nlist = prepare_table(bpool);
-#elif defined USE_PMDK
-    auto nlist = prepare_table();
-#endif
     std::cout << "starting append..." << std::endl;
     auto start_qp = std::chrono::steady_clock::now();
 
@@ -153,12 +96,9 @@ int main(int argc, char **argv) {
     std::cout << "append: " << tm << " microseconds." << std::endl;
     drop_table(nlist);
   }
-#ifdef USE_PFILE
   remove("nodes.db");
-#endif
   // store node
   {
-#ifdef USE_PFILE
     auto test_file = std::make_shared<paged_file>();
     test_file->open("nodes.db", 0);
 
@@ -166,9 +106,6 @@ int main(int argc, char **argv) {
     bpool.register_file(0, test_file);
 
     auto nlist = prepare_table(bpool);
-#elif defined USE_PMDK
-    auto nlist = prepare_table();
-#endif
     std::cout << "starting insert..." << std::endl;
     auto start_qp = std::chrono::steady_clock::now();
 
@@ -183,9 +120,5 @@ int main(int argc, char **argv) {
     std::cout << "store: " << tm << " microseconds." << std::endl;
     drop_table(nlist);
   }
-#ifdef USE_PFILE
   remove("nodes.db");
-#endif
-
-#endif
 }

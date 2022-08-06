@@ -23,19 +23,19 @@
 #include <limits>
 #include "defs.hpp"
 
-#ifdef USE_PFILE
-class paged_string_pool;
-#else
+#ifdef USE_PMDK
 class string_pool;
+#else
+class paged_string_pool;
 #endif
 
 class htable {
     friend class dict;
 public:
-#ifdef USE_PFILE
-    htable(p_ptr<paged_string_pool> pool, uint32_t nb = 1000);
-#else
+#ifdef USE_PMDK
     htable(p_ptr<string_pool> pool, uint32_t nb = 1000);
+#else
+    htable(std::shared_ptr<paged_string_pool> pool, uint32_t nb = 1000);
 #endif
     ~htable();
     
@@ -51,10 +51,10 @@ private:
     dcode_t insert_into_table(uint64_t *tbl, uint32_t tsize, uint64_t hkey, dcode_t id);
     void resize();
 
-#ifdef USE_PFILE
-    p_ptr<paged_string_pool> pool_;
-#else    
+#ifdef USE_PMDK
     p_ptr<string_pool> pool_;
+#else    
+    std::shared_ptr<paged_string_pool> pool_;
 #endif
     uint32_t nbuckets_;
     uint64_t *table_;

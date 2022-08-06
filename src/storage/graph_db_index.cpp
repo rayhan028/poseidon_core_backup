@@ -18,9 +18,8 @@
  */
 
 #include <boost/algorithm/string.hpp>
-#ifdef USE_PFILE
 #include <boost/filesystem.hpp>
-#endif
+#include <boost/hana.hpp>
 #include "graph_db.hpp"
 #include "vec.hpp"
 #include "parser.hpp"
@@ -34,13 +33,13 @@ namespace nvm = pmem::obj;
 
 index_id graph_db::create_index(const std::string& node_label, const std::string& prop_name) {
   // (1) we create a new b+tree
-  #if USE_PMDK
+#if USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
     btree_ptr new_idx;
       pmem::obj::transaction::run(pop, [&] {
-        new_idx = p_make_btree();
+        new_idx = make_nvm_btree();
       });
-#elif defined(USE_PFILE)
+#else
   auto file_id = index_map_->size() + RPROPS_FILE_ID + 1;
   auto idx_file = std::make_shared<paged_file>();
   std::string prefix = pool_path_;
@@ -49,10 +48,8 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
   idx_file->open(prefix + "/" + "idx_" + node_label + "$" + prop_name + ".db", file_id);
   bpool_.register_file(file_id, idx_file);
   index_files_.push_back(idx_file);
-  auto new_idx = p_make_btree(bpool_, file_id);
+  auto new_idx = make_pf_btree(bpool_, file_id);
   spdlog::debug("create_index #{}: fill index: {}", file_id, prop_name);
-#else
-  auto new_idx = p_make_btree();
 #endif
   auto pc = dict_->lookup_string(prop_name);
 
@@ -87,16 +84,37 @@ void graph_db::drop_index(const std::string& node_label, const std::string& prop
 
 void graph_db::index_lookup(index_id idx_ptr, uint64_t key, node_consumer_func consumer) {
   offset_t val = 0;
+  /*
   if (idx_ptr->lookup(key, &val)) {
     auto& n = node_by_id(val);
     consumer(n);
   }
+  */
+  auto my_visitor = boost::hana::overload(
+    [&](pf_btree_ptr idx) { return idx->lookup(key, &val); },
+    [&](im_btree_ptr idx) { return idx->lookup(key, &val); }
+#ifdef USE_PMDK
+    ,[&](nvm_btree_ptr idx) { return idx->lookup(key, &val); }
+#endif
+  );
+  if (boost::apply_visitor(my_visitor, idx_ptr)) {
+    auto& n = node_by_id(val);
+    consumer(n);   
+  }
 }
 
 void graph_db::index_lookup(std::list<index_id> &idx_ptrs, uint64_t key, node_consumer_func consumer) {
+  offset_t val = 0;
+  auto my_visitor = boost::hana::overload(
+    [&](pf_btree_ptr idx) { return idx->lookup(key, &val); },
+    [&](im_btree_ptr idx) { return idx->lookup(key, &val); }
+#ifdef USE_PMDK
+    ,[&](nvm_btree_ptr idx) { return idx->lookup(key, &val); }
+#endif
+  );
   for (auto &idx_ptr : idx_ptrs) {
-    offset_t val = 0;
-    if (idx_ptr->lookup(key, &val)) {
+    val = 0;
+    if (boost::apply_visitor(my_visitor, idx_ptr)) {
       auto& n = node_by_id(val);
       consumer(n);
       break;
@@ -104,7 +122,6 @@ void graph_db::index_lookup(std::list<index_id> &idx_ptrs, uint64_t key, node_co
   }
 }
 
-#ifdef USE_PFILE
 void graph_db::restore_indexes(const std::string &pool_path, const std::string &prefix) {
   // forall files in prefix with idx_
   boost::filesystem::path path_obj {pool_path};
@@ -131,8 +148,7 @@ void graph_db::restore_indexes(const std::string &pool_path, const std::string &
     bpool_.register_file(file_id, idx_file);
     index_files_.push_back(idx_file);
     spdlog::debug("restore index {} : {} from {} @{}", node_label, prop_name, file_name, file_id);
-    auto new_idx = p_make_btree(bpool_, file_id);
+    auto new_idx = make_pf_btree(bpool_, file_id);
     index_map_->register_index(node_label + ":" + prop_name, new_idx);
   }
 }
-#endif

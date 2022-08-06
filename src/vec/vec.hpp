@@ -20,10 +20,7 @@
 #define vec_hpp_
 
 #include "mem_chunked_vec.hpp"
-
-#ifdef USE_PFILE
 #include "buffered_vec.hpp"
-#endif
 
 #ifdef USE_PMDK
 #include "nvm_chunked_vec.hpp"

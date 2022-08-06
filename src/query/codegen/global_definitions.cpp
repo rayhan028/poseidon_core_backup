@@ -22,33 +22,28 @@ void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_tim
     qtx->add_time(op_id, t1, t2);
 }
 
-node_vec::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last) {
-#ifdef USE_MMFILE
-    auto & nodes = vec->as_vec();
-    return vec->range_ptr(first, nodes.capacity());
-#else
+node_list<item_vec>::range_iterator *get_vec_begin(node_list<item_vec> *vec, size_t first, size_t last) {
     return vec->range_ptr(first, last);
-#endif
 }
 
-node_vec::range_iter *get_vec_next(node_vec::range_iter *it) {
+node_list<item_vec>::range_iterator *get_vec_next(node_list<item_vec>::range_iterator *it) {
     return &it->operator++();
 }
 
 int ixc = 0;
- bool vec_end_reached(node_list &vec, node_vec::range_iter *it) {
+ bool vec_end_reached(node_list<item_vec> &vec, node_list<item_vec>::range_iterator *it) {
     return !it->operator bool();
 }
 
-rship_vec::iter get_vec_begin_r(relationship_list &vec) {
+relationship_list<item_vec>::iterator get_vec_begin_r(relationship_list<item_vec> &vec) {
     return vec.as_vec().begin();
 }
 
-rship_vec::iter *get_vec_next_r(rship_vec::iter *it) {
+relationship_list<item_vec>::iterator *get_vec_next_r(relationship_list<item_vec>::iterator *it) {
     return &it->operator++();
 }
 
-bool vec_end_reached_r(relationship_list &vec, rship_vec::iter it) {
+bool vec_end_reached_r(relationship_list<item_vec> &vec, relationship_list<item_vec>::iterator it) {
     return !(it != vec.as_vec().end());
 }
 
@@ -56,19 +51,19 @@ bool vec_end_reached_r(relationship_list &vec, rship_vec::iter it) {
     return ctx->gdb_->get_code(label);
 }
 
-node *get_node_from_it(node_vec::range_iter *it) { 
+node *get_node_from_it(node_list<item_vec>::range_iterator *it) {
     return &it->operator*();
 }
 
- relationship *get_rship_from_it(rship_vec::iter *it) {
+relationship *get_rship_from_it(relationship_list<item_vec>::iterator *it) {
     return &it->operator*();
 }
 
-node_vec *gdb_get_nodes(query_ctx *ctx) {
+node_list<item_vec>::vec *gdb_get_nodes(query_ctx *ctx) {
     return &ctx->gdb_->get_nodes()->as_vec();
 }
 
-rship_vec *gdb_get_rships(query_ctx *ctx) {
+relationship_list<item_vec>::vec *gdb_get_rships(query_ctx *ctx) {
     return &ctx->gdb_->get_relationships()->as_vec();
 }
 

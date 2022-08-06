@@ -20,10 +20,10 @@
 #include <functional>
 #include <math.h>
 #include "htable.hpp"
-#ifdef USE_PFILE
-#include "paged_string_pool.hpp"
-#else
+#ifdef USE_PMDK
 #include "string_pool.hpp"
+#else
+#include "paged_string_pool.hpp"
 #endif
 
 inline uint16_t probe_distance(uint64_t val) { return (val & 0xFFFF000000000000) >> 48; }
@@ -65,10 +65,10 @@ uint64_t step(const std::string& s, uint64_t prime) {
 }
 #endif
 
-#ifdef USE_PFILE
-htable::htable(p_ptr<paged_string_pool> pool, uint32_t nb) : pool_(pool), nbuckets_(nb), nelems_(0) {
-#else
+#ifdef USE_PMDK
 htable::htable(p_ptr<string_pool> pool, uint32_t nb) : pool_(pool), nbuckets_(nb), nelems_(0) {
+#else
+htable::htable(std::shared_ptr<paged_string_pool> pool, uint32_t nb) : pool_(pool), nbuckets_(nb), nelems_(0) {
 #endif
     table_ = new uint64_t[nbuckets_];
     memset(table_, 0, nbuckets_ * sizeof(uint64_t));

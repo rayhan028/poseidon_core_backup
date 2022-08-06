@@ -102,8 +102,8 @@ TEST_CASE("Creating and restoring an index on nodes", "[index]") {
 
   graph->begin_transaction();
 
-  auto idx = graph->get_index("Person", "id");
-  REQUIRE(idx);
+  index_id idx;
+  REQUIRE_NOTHROW(idx = graph->get_index("Person", "id")); 
   CHECK_THROWS_AS(graph->get_index("Actor", "id"), unknown_index);
 
   bool found = false;

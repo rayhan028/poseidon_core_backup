@@ -41,7 +41,7 @@ struct record {
 };
 
 TEST_CASE("Testing chunked_vec", "[mem_chunked_vec]") {
-  mem_chunked_vec<record, DEFAULT_CHUNK_SIZE> vec;
+  mem_chunked_vec<record> vec;
 
   SECTION("Adding some records") {
     std::cout << "Adding some records\n";

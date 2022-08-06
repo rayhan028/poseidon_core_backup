@@ -69,35 +69,43 @@ void add_time_diff(query_context* qtx, int op_id, query_time_point t1, query_tim
 using start_ty = void(*)(query_context*, uint64_t**);
 using finish_fct_type = void(*)(query_context*, uint64_t**);
 
+#ifdef USE_PMDK
+template <typename T>
+using item_vec = nvm_chunked_vec<T>;
+#else
+template <typename T>
+using item_vec = buffered_vec<T>;
+#endif
+
 /**
  * Function to obtain the iterator of a node vector
  */
-node_vec::range_iter *get_vec_begin(node_list *vec, size_t first, size_t last);
+node_list<item_vec>::range_iterator *get_vec_begin(node_list<item_vec> *vec, size_t first, size_t last);
 
 /**
  * Function to obtain the next iterator of a node vector
  */
-node_vec::range_iter *get_vec_next(node_vec::range_iter *it);
+node_list<item_vec>::range_iterator *get_vec_next(node_list<item_vec>::range_iterator *it);
 
 /**
  * Boolean function to check if the end of the node vector is reached
  */
- bool vec_end_reached(node_list &vec, node_vec::range_iter *it);
+ bool vec_end_reached(node_list<item_vec> &vec, node_list<item_vec>::range_iterator *it);
 
 /**
  * Function to obtain the iterator of a relationship vector
  */
-rship_vec::iter get_vec_begin_r(relationship_list &vec);
+relationship_list<item_vec>::iterator get_vec_begin_r(relationship_list<item_vec> &vec);
 
 /**
  * Function to obtain the next iterator of a relationship vector
  */
-rship_vec::iter *get_vec_next_r(rship_vec::iter *it);
+relationship_list<item_vec>::iterator *get_vec_next_r(relationship_list<item_vec>::iterator *it);
 
 /**
  * Boolean function to check if the end of the relationship vector is reached
  */
-bool vec_end_reached_r(relationship_list &vec, rship_vec::iter it);
+bool vec_end_reached_r(relationship_list<item_vec> &vec, relationship_list<item_vec>::iterator it);
 
 /**
  * Function to lookup a label
@@ -107,22 +115,22 @@ bool vec_end_reached_r(relationship_list &vec, rship_vec::iter it);
 /**
  * Obtains the pointer to a node from a node vector iterator
  */
- node *get_node_from_it(node_vec::range_iter *it);
+ node *get_node_from_it(node_list<item_vec>::range_iterator *it);
 
 /**
  * Obtains the pointer to a relationship from a relationship vector iterator
  */
- relationship *get_rship_from_it(rship_vec::iter *it);
+ relationship *get_rship_from_it(relationship_list<item_vec>::iterator *it);
 
 /**
  * Returns a pointer to the node chunked vector of a given graph
  */
-node_vec *gdb_get_nodes(query_ctx *ctx);
+node_list<item_vec>::vec *gdb_get_nodes(query_ctx *ctx);
 
 /**
  * Returns a pointer to the relationship chunked vector of a given graph
  */
-rship_vec *gdb_get_rships(query_ctx *ctx);
+relationship_list<item_vec>::vec *gdb_get_rships(query_ctx *ctx);
 
  void test_ints(uint64_t a, uint64_t b);
 

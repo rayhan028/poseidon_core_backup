@@ -40,15 +40,12 @@
 #include "pmlog.hpp"
 #include "gc.hpp"
 #include "robin_hood.h"
+#include "bufferpool.hpp"
 
 #include "analytics.hpp"
 
 #if defined CSR_DELTA && defined USE_TX
 #include "csr_delta.hpp"
-#endif
-
-#ifdef USE_PFILE
-#include "bufferpool.hpp"
 #endif
 
 /**
@@ -62,7 +59,6 @@ public:
    * mapping_t is used during importing data from CSV files to map node names to
    * internal ids which are required for creating relationships.
    */
-  // using mapping_t = std::unordered_map<std::string, node::id_t>;
   using mapping_t = robin_hood::unordered_map<std::string, node::id_t>;
 
   using node_consumer_func = std::function<void(node &)>;
@@ -282,23 +278,23 @@ public:
   /**
    * Returns a reference to the node property list of this graph.
    */
-  const p_ptr<property_list>& get_node_properties() { return node_properties_; }
+  const auto& get_node_properties() { return node_properties_; }
 
   /**
    * Returns a reference to the relationship property list of this graph.
    */
-  const p_ptr<property_list>& get_rship_properties() { return rship_properties_; }
+  const auto& get_rship_properties() { return rship_properties_; }
 
   /**
    * Returns a reference to the node list of this graph.
    */  
 
-  const p_ptr<node_list>& get_nodes() { return nodes_; }
+  const auto& get_nodes() { return nodes_; }
 
   /**
    * Returns a reference to the relationship list of this graph.
    */
-  const p_ptr<relationship_list>& get_relationships() { return rships_; }
+  const auto& get_relationships() { return rships_; }
 
   /**
    * Returns the string value encoded with the given dictionary code.
@@ -616,11 +612,20 @@ public:
    */
   void poseidon_to_coo(edge_coords* edge_coordinates, float* edge_values, rship_weight weight_func, bool bidirectional = false);
 
-#ifdef USE_PFILE
+  /**
+   * 
+   */
   void flush();
+
+  /**
+   * 
+   */
   void purge_bufferpool() { bpool_.purge(); }
+
+  /**
+   * 
+   */
   void close_files();
-#endif
 
 private:
   friend struct scan_task;
@@ -681,23 +686,27 @@ private:
     */
   void vacuum(xid_t tx);
 
-  std::string database_name_;
-#ifdef USE_PFILE
+  /**
+   * 
+   */
   void prepare_files(const std::string &pool_path, const std::string &prefix);
+
+  /**
+   * 
+   */
   void restore_indexes(const std::string &pool_path, const std::string &prefix);
 
-  bufferpool bpool_;
-  std::shared_ptr<paged_file> node_file_, rship_file_, nprops_file_, rprops_file_;
-  std::list<std::shared_ptr<paged_file>> index_files_;
-  std::string pool_path_;
+  std::string database_name_; //
+  bufferpool bpool_; //
+  std::shared_ptr<paged_file> node_file_, rship_file_, nprops_file_, rprops_file_; //
+  std::list<std::shared_ptr<paged_file>> index_files_; //
+  std::string pool_path_; //
 
-#endif
-  p_ptr<node_list> nodes_; // the list of all nodes of the graph
-  p_ptr<relationship_list>
-      rships_; // the list of all relationships of the graph
-  p_ptr<property_list>
+  p_ptr<node_list<buffered_vec> > nodes_; // the list of all nodes of the graph
+  p_ptr<relationship_list<buffered_vec> > rships_; // the list of all relationships of the graph
+  p_ptr<property_list<buffered_vec> >
       node_properties_;   // the list of all properties of nodes 
-  p_ptr<property_list>
+  p_ptr<property_list<buffered_vec> >
       rship_properties_;   // the list of all properties of relationships
   p_ptr<dict> dict_; // the dictionary used for string compression
 

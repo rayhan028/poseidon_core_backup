@@ -52,9 +52,9 @@
  * iteration while range allows to specifiy a start and end chunk for the
  * iteration.
  */
-template <typename T, int chunk_size = DEFAULT_CHUNK_SIZE>
+template <typename T>
 class mem_chunked_vec {
-  static constexpr auto num_entries = chunk_size / sizeof(T);
+  static constexpr auto num_entries = DEFAULT_CHUNK_SIZE / sizeof(T);
 
 /**
  * chunk is a contiguous buffer of a fixed size which stores records (byte

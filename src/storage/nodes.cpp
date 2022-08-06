@@ -103,28 +103,7 @@ bool node_description::operator==(const node_description& other) const {
 
 /* ------------------------------------------------------------------------ */
 
-
-struct init_node_task {
-  using range = std::pair<std::size_t, std::size_t>;
-  init_node_task(node_list &n, std::size_t first, std::size_t last)
-      : nodes_(n), range_(first, last) {}
-
-  void operator()() {
-    auto iter = nodes_.range(range_.first, range_.second);
-    while (iter) {
-      auto &n = *iter;
-      n.runtime_initialize();
-     ++iter;
-    }
-  }
-
-  node_list &nodes_;
-  range range_;
-};
-
-node_list::~node_list() {
-}
-
+#if 0
 void node_list::runtime_initialize() {
   // make sure that all locks are released and no dirty objects exist
 #ifdef PARALLEL_INIT
@@ -233,3 +212,5 @@ void node_list::dump() {
   }
   std::cout << "-----------------------------\n";
 }
+
+#endif

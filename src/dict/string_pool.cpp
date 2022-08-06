@@ -36,7 +36,7 @@ string_pool::string_pool(uint32_t init_size, uint32_t exp_size) : size_(init_siz
 }
 
 string_pool::~string_pool() {
-#if !defined(USE_PMDK)
+#ifndef USE_PMDK
     free(pool_);
 #endif
 }
@@ -96,8 +96,7 @@ dcode_t string_pool::add(const std::string& str) {
 }
 
 void string_pool::print() const {
-#ifdef USE_PMDK
-#else
+#ifndef USE_PMDK
     std::cout << std::string(pool_, last_) << std::endl;
 #endif
 }

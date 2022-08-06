@@ -47,7 +47,13 @@ void delete_dir(const std::string& path) {
 }
 
 TEST_CASE("Creating an btree index", "[btree]") {
-#ifdef USE_PFILE
+#ifdef USE_PMDK
+    auto pop =  pmem::obj::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
+    btree_ptr mybtree;
+    pmem::obj::transaction::run(pop, [&] {
+    	mybtree = make_nvm_btree();
+    });
+#else
     create_dir("btree_test1");
     const uint8_t file_id = 6;
 
@@ -57,13 +63,7 @@ TEST_CASE("Creating an btree index", "[btree]") {
     bufferpool bpool;
     bpool.register_file(file_id, test_file);
 
-    auto mybtree = p_make_btree(bpool, file_id);
-#else
-    auto pop =  pmem::obj::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
-    btree_ptr mybtree;
-    pmem::obj::transaction::run(pop, [&] {
-    	mybtree = p_make_btree();
-    });
+    auto mybtree = make_pf_btree(bpool, file_id);
 #endif
 
     mybtree->insert(42u, 12);
@@ -74,16 +74,14 @@ TEST_CASE("Creating an btree index", "[btree]") {
 
     REQUIRE(!mybtree->lookup(43u, &val));
 
-#ifdef USE_PFILE
-    bpool.flush_all();
-    delete_dir("btree_test1");
-#elif USE_PMDK
+#ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
+#else
+    delete_dir("btree_test1");
 #endif
 }
 
-#ifdef USE_PFILE
 TEST_CASE("Creating a persistent btree index", "[btree]") {
 
     create_dir("btree_test2");
@@ -95,7 +93,7 @@ TEST_CASE("Creating a persistent btree index", "[btree]") {
         bufferpool bpool;
         bpool.register_file(file_id, test_file);
 
-        auto mybtree = p_make_btree(bpool, file_id);
+        auto mybtree = make_pf_btree(bpool, file_id);
     
         mybtree->insert(42u, 12);
         mybtree->insert(45u, 14);
@@ -115,7 +113,7 @@ TEST_CASE("Creating a persistent btree index", "[btree]") {
         bufferpool bpool;
         bpool.register_file(file_id, test_file);
 
-        auto mybtree = p_make_btree(bpool, file_id);
+        auto mybtree = make_pf_btree(bpool, file_id);
         // mybtree->print();
 
         offset_t val;
@@ -127,10 +125,15 @@ TEST_CASE("Creating a persistent btree index", "[btree]") {
     }
     delete_dir("btree_test2");
 }
-#endif
 
 TEST_CASE("Creating a btree index with multiple levels", "[btree]") {
-#ifdef USE_PFILE
+#ifdef USE_PMDK
+    auto pop =  pmem::obj::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
+    btree_ptr mybtree;
+    pmem::obj::transaction::run(pop, [&] {
+    	mybtree = make_nvm_btree();
+    });
+#else
     create_dir("btree_test3");
     const uint8_t file_id = 6;
 
@@ -140,13 +143,7 @@ TEST_CASE("Creating a btree index with multiple levels", "[btree]") {
     bufferpool bpool;
     bpool.register_file(file_id, test_file);
 
-    auto mybtree = p_make_btree(bpool, file_id);
-#else
-    auto pop =  pmem::obj::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
-    btree_ptr mybtree;
-    pmem::obj::transaction::run(pop, [&] {
-    	mybtree = p_make_btree();
-    });
+    auto mybtree = make_pf_btree(bpool, file_id);
 #endif
 
     for (auto i = 1u; i < 300; i++)
@@ -159,17 +156,15 @@ TEST_CASE("Creating a btree index with multiple levels", "[btree]") {
         REQUIRE(mybtree->lookup(i, &val));
         REQUIRE(val == i + 1000);
     }
-
-#ifdef USE_PFILE
-    bpool.flush_all();
-    delete_dir("btree_test3");
-#elif USE_PMDK
+#ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
+#else
+    bpool.flush_all();
+    delete_dir("btree_test3");
 #endif
 }
 
-#ifdef USE_PFILE
 TEST_CASE("Creating a persistent btree index with multiple levels", "[btree]") {
     create_dir("btree_test4");
     const uint8_t file_id = 6;
@@ -180,7 +175,7 @@ TEST_CASE("Creating a persistent btree index with multiple levels", "[btree]") {
         bufferpool bpool;
         bpool.register_file(file_id, test_file);
 
-        auto mybtree = p_make_btree(bpool, file_id);
+        auto mybtree = make_pf_btree(bpool, file_id);
 
         for (auto i = 1u; i < 300; i++)
             mybtree->insert(i, i + 1000);
@@ -195,7 +190,7 @@ TEST_CASE("Creating a persistent btree index with multiple levels", "[btree]") {
         bufferpool bpool;
         bpool.register_file(file_id, test_file);
 
-        auto mybtree = p_make_btree(bpool, file_id);
+        auto mybtree = make_pf_btree(bpool, file_id);
         // mybtree->print();
 
         offset_t val;
@@ -212,10 +207,15 @@ TEST_CASE("Creating a persistent btree index with multiple levels", "[btree]") {
     }
     delete_dir("btree_test4");
 }
-#endif
 
 TEST_CASE("Creating an btree index, insert items and delete some of them", "[btree]") {
-#ifdef USE_PFILE
+#ifdef USE_PMDK
+    auto pop =  pmem::obj::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
+    btree_ptr mybtree;
+    pmem::obj::transaction::run(pop, [&] {
+    	mybtree = make_nvm_btree();
+    });
+#else
     create_dir("btree_test5");
     const uint8_t file_id = 6;
 
@@ -225,13 +225,7 @@ TEST_CASE("Creating an btree index, insert items and delete some of them", "[btr
     bufferpool bpool;
     bpool.register_file(file_id, test_file);
 
-    auto mybtree = p_make_btree(bpool, file_id);
-#else
-    auto pop =  pmem::obj::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
-    btree_ptr mybtree;
-    pmem::obj::transaction::run(pop, [&] {
-    	mybtree = p_make_btree();
-    });
+    auto mybtree = make_pf_btree(bpool, file_id);
 #endif
 
     for (auto i = 1u; i < 1000; i++)
@@ -249,11 +243,11 @@ TEST_CASE("Creating an btree index, insert items and delete some of them", "[btr
             k++;
     });
 
-#ifdef USE_PFILE
-    bpool.flush_all();
-    delete_dir("btree_test5");
-#elif USE_PMDK
+#ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
+#else
+    bpool.flush_all();
+    delete_dir("btree_test5");
 #endif
 }
