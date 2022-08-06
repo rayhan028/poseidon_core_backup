@@ -63,7 +63,7 @@ inline im_btree_ptr make_im_btree() { return std::make_shared<im_btree_impl>(); 
 using index_id = boost::variant<pf_btree_ptr, 
                                 im_btree_ptr
 #ifdef USE_PMDK
-                                , nvm_tree_ptr
+                                , nvm_btree_ptr
 #endif
 >;
 
