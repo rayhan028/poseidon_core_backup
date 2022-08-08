@@ -27,6 +27,7 @@
 
 #ifdef USE_PMDK
 #include <libpmemobj++/persistent_ptr.hpp>
+
 PYBIND11_DECLARE_HOLDER_TYPE(T, pmem::obj::persistent_ptr<T>);
 #endif
 
@@ -68,7 +69,8 @@ PYBIND11_MODULE(poseidon, m) {
       .def("begin", &graph_db::begin_transaction, "Begins the transaction.")
       .def("commit", &graph_db::commit_transaction, "Commits the transaction.")
       .def("abort", &graph_db::abort_transaction, "Aborts the transaction.")
-      .def("create_node", [](graph_db_ptr gdb, const std::string &label, const py::dict &props) {
+      .def("get_node", &graph_db::get_node_description)
+      .def("create_node", [](graph_db_ptr& gdb, const std::string &label, const py::dict &props) {
           properties_t node_props = dict_to_props(props);
           return gdb->add_node(label, node_props);
         })
@@ -76,7 +78,6 @@ PYBIND11_MODULE(poseidon, m) {
         properties_t rel_props = dict_to_props(props);
         return gdb->add_relationship(from_node, to_node, label, rel_props);
       })
-      .def("get_node", &graph_db::get_node_description)
       .def("get_to_relationships", [](graph_db_ptr gdb, node::id_t to_node) {
         auto& n = gdb->node_by_id(to_node);
         std::vector<rship_description> rships;

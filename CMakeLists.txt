@@ -15,7 +15,7 @@ option(USE_PMDK         "Use Intel PMDK"                         ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
 option(USE_LLVM         "Use LLVM for query compilation"         ON)
-option(BUILD_PYTHON     "Build python interface for poseidon"    OFF)
+option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
 option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
 option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
@@ -297,7 +297,7 @@ include(FetchContent REQUIRED)
  FetchContent_Declare(
   pybind11
   GIT_REPOSITORY https://github.com/pybind/pybind11.git
- #  GIT_TAG        1.2.1
+#   GIT_TAG        2.6.1
   )
 FetchContent_GetProperties(pybind11)
 
