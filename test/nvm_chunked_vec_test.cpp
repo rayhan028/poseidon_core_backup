@@ -49,7 +49,7 @@ struct record {
 };
 
 TEST_CASE("Testing nvm_chunked_vec", "[nvm_chunked_vec]") {
-  using vector_type = nvm_chunked_vec<record, DEFAULT_CHUNK_SIZE>;
+  using vector_type = nvm_chunked_vec<record>;
 
   struct root {
     pmem::obj::persistent_ptr<vector_type> vec_p;
