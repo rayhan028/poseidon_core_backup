@@ -35,7 +35,7 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
   // (1) we create a new b+tree
 #if USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
-    btree_ptr new_idx;
+    nvm_btree_ptr new_idx;
       pmem::obj::transaction::run(pop, [&] {
         new_idx = make_nvm_btree();
       });

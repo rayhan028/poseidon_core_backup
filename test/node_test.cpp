@@ -98,7 +98,7 @@ namespace nvm = pmem::obj;
 const std::string test_path = poseidon::gPmemPath + "node_list_test";
 
 struct root {
-  pmem::obj::persistent_ptr<node_list> nlist_p;
+  pmem::obj::persistent_ptr<node_list<nvm_chunked_vec> > nlist_p;
 };
 
 TEST_CASE("Creating a few nodes in the nvm_node_list", "[nvm_node_list]") {
@@ -106,10 +106,10 @@ TEST_CASE("Creating a few nodes in the nvm_node_list", "[nvm_node_list]") {
   auto root_obj = pop.root();
 
   nvm::transaction::run(
-      pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list>(); });
+      pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list<nvm_chunked_vec> >(); });
 
   SECTION("Creating nodes") {
-  node_list &nlist = *(root_obj->nlist_p);
+  auto &nlist = *(root_obj->nlist_p);
 
   auto n1 = nlist.add(node(62));
   auto n2 = nlist.add(node(63));
@@ -145,8 +145,8 @@ TEST_CASE("Creating and restoring a persistent nvm_node_list", "[nvm_node_list]"
   auto root_obj = pop.root();
   {
   nvm::transaction::run(
-      pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list>(); });
-  node_list &nlist = *(root_obj->nlist_p);
+      pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list<nvm_chunked_vec> >(); });
+  auto &nlist = *(root_obj->nlist_p);
 
   n1 = nlist.add(node(62));
   n2 = nlist.add(node(63));
@@ -169,7 +169,7 @@ TEST_CASE("Creating and restoring a persistent nvm_node_list", "[nvm_node_list]"
   pop = nvm::pool<root>::open(test_path, "");
   root_obj = pop.root();
 
-  node_list &nlist2 = *(root_obj->nlist_p);
+  auto &nlist2 = *(root_obj->nlist_p);
   nlist2.dump();
 
   REQUIRE(nlist2.get(n1).id() == n1);
@@ -192,9 +192,9 @@ TEST_CASE("Deleting a node in the nvm_node_list", "[nvm_node_list]") {
   auto root_obj = pop.root();
 
   nvm::transaction::run(
-      pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list>(); });
+      pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list<nvm_chunked_vec> >(); });
 
-  node_list &nlist = *(root_obj->nlist_p);
+  auto &nlist = *(root_obj->nlist_p);
 
   auto n1 = nlist.add(node(62));
   auto n2 = nlist.add(node(63));
@@ -220,8 +220,8 @@ TEST_CASE("Appending a node to a nvm_node_list", "[nvm_node_list]") {
   auto root_obj = pop.root();
 
   nvm::transaction::run(
-      pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list>(); });
-  node_list &nlist = *(root_obj->nlist_p);
+      pop, [&] { root_obj->nlist_p = nvm::make_persistent<node_list<nvm_chunked_vec> >(); });
+  auto &nlist = *(root_obj->nlist_p);
 
   auto n1 = nlist.append(node(62));
   REQUIRE(n1 == 0);

@@ -99,9 +99,11 @@ public:
      */
     std::size_t size() const;
 
+    void close_file() { 
 #ifndef USE_PMDK
-    void close_file() { dict_file_->close(); }
+	dict_file_->close();
 #endif
+    }
 
 private:
 #ifdef USE_PMDK

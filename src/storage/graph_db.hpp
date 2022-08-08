@@ -702,12 +702,21 @@ private:
   std::list<std::shared_ptr<paged_file>> index_files_; //
   std::string pool_path_; //
 
+#ifdef USE_PMDK
+  p_ptr<node_list<nvm_chunked_vec> > nodes_; // the list of all nodes of the graph
+  p_ptr<relationship_list<nvm_chunked_vec> > rships_; // the list of all relationships of the graph
+  p_ptr<property_list<nvm_chunked_vec> >
+      node_properties_;   // the list of all properties of nodes 
+  p_ptr<property_list<nvm_chunked_vec> >
+      rship_properties_;   // the list of all properties of relationships
+#else
   p_ptr<node_list<buffered_vec> > nodes_; // the list of all nodes of the graph
   p_ptr<relationship_list<buffered_vec> > rships_; // the list of all relationships of the graph
   p_ptr<property_list<buffered_vec> >
       node_properties_;   // the list of all properties of nodes 
   p_ptr<property_list<buffered_vec> >
       rship_properties_;   // the list of all properties of relationships
+#endif
   p_ptr<dict> dict_; // the dictionary used for string compression
 
   p_ptr<index_map> index_map_; // the list of all exisiting indexes

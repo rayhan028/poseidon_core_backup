@@ -45,7 +45,7 @@ inline nvm_btree_ptr make_nvm_btree() { return pmem::obj::make_persistent<fp_btr
  * Paged-file B+-tree implementation.
  */
 using pf_btree_impl = pfbtree::BPTree<uint64_t, offset_t, 50, 50>; // 50, 50
-using pf_btree_ptr = p_ptr<pf_btree_impl>;
+using pf_btree_ptr = std::shared_ptr<pf_btree_impl>;
 
 inline pf_btree_ptr make_pf_btree(bufferpool& pool, uint64_t file_id) { return std::make_shared<pf_btree_impl>(pool, file_id); }
 
@@ -53,7 +53,7 @@ inline pf_btree_ptr make_pf_btree(bufferpool& pool, uint64_t file_id) { return s
  * In-memory B+-tree implementation.
  */
 using im_btree_impl = imbtree::BPTree<uint64_t, offset_t, 126, 10>; // 50, 50
-using im_btree_ptr = p_ptr<im_btree_impl>;
+using im_btree_ptr = std::shared_ptr<im_btree_impl>;
 
 inline im_btree_ptr make_im_btree() { return std::make_shared<im_btree_impl>(); }
 

@@ -49,7 +49,7 @@ void delete_dir(const std::string& path) {
 TEST_CASE("Creating an btree index", "[btree]") {
 #ifdef USE_PMDK
     auto pop =  pmem::obj::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
-    btree_ptr mybtree;
+    nvm_btree_ptr mybtree;
     pmem::obj::transaction::run(pop, [&] {
     	mybtree = make_nvm_btree();
     });
@@ -129,7 +129,7 @@ TEST_CASE("Creating a persistent btree index", "[btree]") {
 TEST_CASE("Creating a btree index with multiple levels", "[btree]") {
 #ifdef USE_PMDK
     auto pop =  pmem::obj::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
-    btree_ptr mybtree;
+    nvm_btree_ptr mybtree;
     pmem::obj::transaction::run(pop, [&] {
     	mybtree = make_nvm_btree();
     });
@@ -211,7 +211,7 @@ TEST_CASE("Creating a persistent btree index with multiple levels", "[btree]") {
 TEST_CASE("Creating an btree index, insert items and delete some of them", "[btree]") {
 #ifdef USE_PMDK
     auto pop =  pmem::obj::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
-    btree_ptr mybtree;
+    nvm_btree_ptr mybtree;
     pmem::obj::transaction::run(pop, [&] {
     	mybtree = make_nvm_btree();
     });

@@ -66,7 +66,9 @@ void graph_db::prepare_files(const std::string &pool_path, const std::string &pf
   rprops_file_->open(prefix + "rprops.db", RPROPS_FILE_ID);
   bpool_.register_file(RPROPS_FILE_ID, rprops_file_);
 
+#ifndef USE_PMDK
   dict_ = p_make_ptr<dict>(bpool_, prefix);
+#endif
 }
 
 graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : database_name_(db_name)
@@ -75,10 +77,10 @@ graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : d
 #endif
  {
 #ifdef USE_PMDK
-  nodes_ = p_make_ptr<node_list>();
-  rships_ = p_make_ptr<relationship_list>();
-  node_properties_ = p_make_ptr<property_list>();
-  rship_properties_ = p_make_ptr<property_list>();
+  nodes_ = p_make_ptr<node_list<nvm_chunked_vec> >();
+  rships_ = p_make_ptr<relationship_list<nvm_chunked_vec> >();
+  node_properties_ = p_make_ptr<property_list<nvm_chunked_vec> >();
+  rship_properties_ = p_make_ptr<property_list<nvm_chunked_vec> >();
   dict_ = p_make_ptr<dict>();
   index_map_ = p_make_ptr<index_map>();
 #else

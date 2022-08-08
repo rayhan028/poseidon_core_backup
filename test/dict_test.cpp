@@ -245,7 +245,7 @@ TEST_CASE("Test persistency of dict", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 }
-#endif
+#else
 
 TEST_CASE("Test persistency of dict", "[dict]") {
   dcode_t c;
@@ -270,6 +270,7 @@ TEST_CASE("Test persistency of dict", "[dict]") {
   }
   delete_dir("dict6");
 }
+#endif
 
 // * test with a large set of strings
 TEST_CASE("Inserting many items", "[dict]") {

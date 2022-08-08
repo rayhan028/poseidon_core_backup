@@ -56,7 +56,7 @@ p_ptr<node_list<nvm_chunked_vec> > prepare_table() {
   return nlist;
 }
 
-void drop_table(p_ptr<node_list> nlist) {
+void drop_table(p_ptr<node_list<nvm_chunked_vec> > nlist) {
   unsigned long num = 0;
   for (auto &n : nlist->as_vec()) {
     num++;
