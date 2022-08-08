@@ -122,7 +122,7 @@ class relationship_list {
 
 struct init_rship_task {
   using range = std::pair<std::size_t, std::size_t>;
-  init_rship_task(auto &r, std::size_t first, std::size_t last)
+  init_rship_task(T<relationship> &r, std::size_t first, std::size_t last)
       : rships_(r), range_(first, last) {}
 
   void operator()() {

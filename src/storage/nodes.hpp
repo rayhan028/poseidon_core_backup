@@ -165,7 +165,7 @@ class node_list {
   struct init_node_task {
     using range = std::pair<std::size_t, std::size_t>;
 
-    init_node_task(auto &n, std::size_t first, std::size_t last) : nodes_(n), range_(first, last) {}
+    init_node_task(T<node> &n, std::size_t first, std::size_t last) : nodes_(n), range_(first, last) {}
 
     void operator()() {
       auto iter = nodes_.range(range_.first, range_.second);
