@@ -28,7 +28,7 @@
 #ifdef USE_PMDK
 #include <libpmemobj++/persistent_ptr.hpp>
 
-PYBIND11_DECLARE_HOLDER_TYPE(T, pmem::obj::persistent_ptr<T>);
+PYBIND11_DECLARE_HOLDER_TYPE(T, pmem::obj::persistent_ptr<T>, true);
 #endif
 
 properties_t dict_to_props(const py::dict& props) {
@@ -70,19 +70,19 @@ PYBIND11_MODULE(poseidon, m) {
       .def("commit", &graph_db::commit_transaction, "Commits the transaction.")
       .def("abort", &graph_db::abort_transaction, "Aborts the transaction.")
       .def("get_node", &graph_db::get_node_description)
-      .def("create_node", [](graph_db_ptr& gdb, const std::string &label, const py::dict &props) {
+      .def("create_node", [](graph_db& gdb, const std::string &label, const py::dict &props) {
           properties_t node_props = dict_to_props(props);
-          return gdb->add_node(label, node_props);
+          return gdb.add_node(label, node_props);
         })
-      .def("create_relationship", [](graph_db_ptr gdb, node::id_t from_node, node::id_t to_node, const std::string &label, const py::dict &props) {
+      .def("create_relationship", [](graph_db& gdb, node::id_t from_node, node::id_t to_node, const std::string &label, const py::dict &props) {
         properties_t rel_props = dict_to_props(props);
-        return gdb->add_relationship(from_node, to_node, label, rel_props);
+        return gdb.add_relationship(from_node, to_node, label, rel_props);
       })
-      .def("get_to_relationships", [](graph_db_ptr gdb, node::id_t to_node) {
-        auto& n = gdb->node_by_id(to_node);
+      .def("get_to_relationships", [](graph_db& gdb, node::id_t to_node) {
+        auto& n = gdb.node_by_id(to_node);
         std::vector<rship_description> rships;
-        gdb->foreach_to_relationship_of_node(n, [&](relationship& r) {
-          auto rel = gdb->get_rship_description(r.id());
+        gdb.foreach_to_relationship_of_node(n, [&](relationship& r) {
+          auto rel = gdb.get_rship_description(r.id());
           rships.push_back(rel);
         });
         return rships;
