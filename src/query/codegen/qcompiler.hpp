@@ -119,7 +119,7 @@ private:
     static std::map<int, finish_fct_type> finish_;
     std::map<int, std::vector<finish_fct_type>> qpipelines_;
 
-    std::function<void(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer)> task_callee_;
+    std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func consumer)> task_callee_;
 
 };
 

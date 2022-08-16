@@ -21,13 +21,14 @@
 
 #include "query_set.hpp"
 #include "graph_db.hpp"
+#include "query_ctx.hpp"
 
 class qinterp {
 public:
     qinterp() = default;
     ~qinterp() = default;
 
-    void execute(graph_db_ptr &gdb, query_set& qset);
+    void execute(query_ctx& ctx, query_set& qset);
 };
 
 #endif

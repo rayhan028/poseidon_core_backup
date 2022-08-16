@@ -310,9 +310,10 @@ std::string load_string(const std::string& fname) {
 TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
     auto pool = graph_pool::create(test_path);
     auto graph = pool->create_graph("my_qi_graph1");
+    query_ctx ctx(graph);
     create_data(graph);
 
-    qproc qp(graph);
+    qproc qp(ctx);
 #ifdef __APPLE__
     REQUIRE(qp.load_library("../libldbc_udf.dylib"));
 #else
@@ -489,9 +490,10 @@ TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
 TEST_CASE("Testing LDBC IU queries in interpreted mode", "[qinterp]") {
     auto pool = graph_pool::create(test_path2);
     auto graph = pool->create_graph("my_qi_graph2");
+    query_ctx ctx(graph);
     create_data(graph);
 
-    qproc qp(graph);
+    qproc qp(ctx);
 
     char buf[1024];
     getcwd(buf, 1024);

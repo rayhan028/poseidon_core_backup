@@ -167,9 +167,9 @@ void detach_node::process(query_ctx &ctx, const qr_tuple &v) {
   }
 
   std::list<relationship::id_t> rships;
-  ctx.gdb_->foreach_from_relationship_of_node(*n, [&](relationship &r) {
+  ctx.foreach_from_relationship_of_node(*n, [&](relationship &r) {
     rships.push_back(r.id()); });
-  ctx.gdb_->foreach_to_relationship_of_node(*n, [&](relationship &r) {
+  ctx.foreach_to_relationship_of_node(*n, [&](relationship &r) {
     rships.push_back(r.id()); });
 
   for (auto rid : rships)

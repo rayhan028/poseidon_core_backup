@@ -23,6 +23,7 @@
 #include <initializer_list>
 
 #include "graph_db.hpp"
+#include "query_ctx.hpp"
 #include "qop.hpp"
 
 /**
@@ -42,16 +43,16 @@ public:
   /**
    * Constructor for a query on the given graph database.
    */
-  query(graph_db_ptr gdb) : graph_db_(gdb) {}
+  query(query_ctx& ctx) : ctx_(ctx) {}
 
-  query(graph_db_ptr gdb, qop_ptr qop);
+  query(query_ctx& ctx, qop_ptr qop);
 
   /**
    * Default destructor.
    */
   ~query() = default;
 
-  query &operator=(const query &) = default;
+  query &operator=(const query &);
 
   /**
    * Add a scan over all nodes (optionally with the given label = type).
@@ -475,7 +476,7 @@ public:
   /**
    * Return the pointer to the graph database.
    */
-  graph_db_ptr &get_graph_db() { return graph_db_; }
+  graph_db_ptr &get_graph_db() { return ctx_.gdb_; }
 
   qop_ptr &plan_head() { return plan_head_; }
 
@@ -484,7 +485,8 @@ private:
   query &append_op(qop_ptr op, qop::consume_func cf);
 
   qop_ptr plan_head_, plan_tail_;
-  graph_db_ptr graph_db_;
+  // graph_db_ptr graph_db_;
+  query_ctx& ctx_;
 };
 
 

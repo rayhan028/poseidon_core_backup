@@ -155,7 +155,8 @@ void graph_db::parallel_host_csr_build(csr_arrays &csr, rship_weight weight_func
 
   result_set rs;
   graph_db_ptr gptr(this);
-  auto q = query(gptr)
+  query_ctx ctx(gptr);
+  auto q = query(ctx)
                 .all_nodes()
                 .csr(weight_func, bidirectional)
                 .orderby([&](const qr_tuple q1, const qr_tuple q2) {

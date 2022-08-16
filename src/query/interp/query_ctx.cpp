@@ -1,51 +1,19 @@
-/*
- * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
- *
- * This file is part of the Poseidon package.
- *
- * Poseidon is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Poseidon is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
- */
-
-#include <boost/algorithm/string.hpp>
-
-#include "graph_db.hpp"
-#include "vec.hpp"
-#include "parser.hpp"
-#include "spdlog/spdlog.h"
+#include "query_ctx.hpp"
 #include "thread_pool.hpp"
-#include <iostream>
-#include <set>
 
-#ifdef USE_PMDK
-namespace nvm = pmem::obj;
-#endif
-
-scan_task::scan_task(graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func c, transaction_ptr tp, std::size_t start_pos)
+scan_task::scan_task(graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func c, transaction_ptr tp, std::size_t start_pos)
 	: graph_db_(gdb), range_(first, last), consumer_(c), tx_(tp), start_pos_(start_pos) {}
 
-void scan_task::scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer) {
+void scan_task::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func consumer) {
     xid_t xid = 0;
     if (tx) { // we need the transaction pointer in thread-local storage
 	    current_transaction_ = tx;
 	    xid = tx->xid();				    
     }
     auto iter = gdb->get_nodes()->range(first, last);
-      std::cout << "scan_task: iter" << std::endl;
     while (iter) {
 #ifdef USE_TX
 	    auto &n = *iter;
-      std::cout << "scan_task: " << n.id() << std::endl;
 	    if (n.is_valid()) {
 	      auto &nv = gdb->get_valid_node_version(n, xid);
 		    consumer(nv);
@@ -60,23 +28,23 @@ void scan_task::scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::
   }
 }
 
-std::function<void(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer)> scan_task::callee_ = &scan_task::scan;
+std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func consumer)> scan_task::callee_ = &scan_task::scan;
 
 void scan_task::operator()() {
    callee_(tx_, graph_db_, range_.first, range_.second, consumer_);
 }
 
-void graph_db::nodes_by_label(const std::string &label,
+void query_ctx::_nodes_by_label(graph_db *gdb, const std::string &label,
                               node_consumer_func consumer) {
 #ifdef USE_TX
   check_tx_context();
   xid_t txid = current_transaction()->xid();
 #endif
-  auto lc = dict_->lookup_string(label);
-  for (auto &n : nodes_->as_vec()) {
+  auto lc = gdb->dict_->lookup_string(label);
+  for (auto &n : gdb->nodes_->as_vec()) {
 #ifdef USE_TX
     if (n.is_valid()) {
-      auto &nv = get_valid_node_version(n, txid);
+      auto &nv = gdb->get_valid_node_version(n, txid);
       if (nv.node_label == lc) {
         consumer(nv);
       }
@@ -88,7 +56,32 @@ void graph_db::nodes_by_label(const std::string &label,
   }
 }
 
-void graph_db::nodes_by_label(const std::vector<std::string> &labels,
+void query_ctx::nodes_by_label(const std::string &label,
+                              node_consumer_func consumer) {
+    _nodes_by_label(gdb_.get(), label, consumer);
+/*
+#ifdef USE_TX
+  check_tx_context();
+  xid_t txid = current_transaction()->xid();
+#endif
+  auto lc = gdb_->dict_->lookup_string(label);
+  for (auto &n : gdb_->nodes_->as_vec()) {
+#ifdef USE_TX
+    if (n.is_valid()) {
+      auto &nv = gdb_->get_valid_node_version(n, txid);
+      if (nv.node_label == lc) {
+        consumer(nv);
+      }
+    }
+#else
+    if (n.node_label == lc)
+      consumer(n);
+#endif
+  }
+  */
+}
+
+void query_ctx::nodes_by_label(const std::vector<std::string> &labels,
                               node_consumer_func consumer) {
 #ifdef USE_TX
   check_tx_context();
@@ -96,11 +89,11 @@ void graph_db::nodes_by_label(const std::vector<std::string> &labels,
 #endif
   std::vector<dcode_t> codes(labels.size());
   for (auto i = 0u; i < labels.size(); i++) 
-    codes[i] = dict_->lookup_string(labels[i]);
-  for (auto &n : nodes_->as_vec()) {
+    codes[i] = gdb_->dict_->lookup_string(labels[i]);
+  for (auto &n : gdb_->nodes_->as_vec()) {
 #ifdef USE_TX
     if (n.is_valid()) {
-      auto &nv = get_valid_node_version(n, txid);
+      auto &nv = gdb_->get_valid_node_version(n, txid);
       for (auto &lc : codes) {
         if (nv.node_label == lc) {
           consumer(nv);
@@ -119,7 +112,7 @@ void graph_db::nodes_by_label(const std::vector<std::string> &labels,
   }
 }
 
-void graph_db::parallel_nodes(node_consumer_func consumer) {
+void query_ctx::parallel_nodes(node_consumer_func consumer) {
 #ifdef USE_TX
   check_tx_context();
 #endif
@@ -128,13 +121,13 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
 
   const int nchunks = 1;
   spdlog::info("Start parallel query with {} threads",
-                nodes_->num_chunks() / nchunks + 1);
+                gdb_->nodes_->num_chunks() / nchunks + 1);
 
-  res.reserve(nodes_->num_chunks() / nchunks + 1);
+  res.reserve(gdb_->nodes_->num_chunks() / nchunks + 1);
   std::size_t start = 0, end = nchunks - 1;
-  while (start < nodes_->num_chunks()) {
+  while (start < gdb_->nodes_->num_chunks()) {
     res.push_back(pool.submit(
-        scan_task(this, start, end, consumer, current_transaction_)));
+        scan_task(gdb_, start, end, consumer, current_transaction_)));
     start = end + 1;
     end += nchunks;
   }
@@ -145,7 +138,7 @@ void graph_db::parallel_nodes(node_consumer_func consumer) {
   }
 }
 #ifdef QOP_RECOVERY
-void graph_db::parallel_nodes(node_consumer_func consumer, std::map<std::size_t, std::vector<std::size_t>> &range_map) {
+void query_ctx::parallel_nodes(node_consumer_func consumer, std::map<std::size_t, std::vector<std::size_t>> &range_map) {
 #ifdef USE_TX
   check_tx_context();
 #endif
@@ -171,18 +164,18 @@ void graph_db::parallel_nodes(node_consumer_func consumer, std::map<std::size_t,
 }
 #endif 
 
-void graph_db::nodes(node_consumer_func consumer) {
+void query_ctx::nodes(node_consumer_func consumer) {
 #ifdef USE_TX
   check_tx_context();
   xid_t txid = current_transaction()->xid();
 #endif
 
-  for (auto &n : nodes_->as_vec()) {
+  for (auto &n : gdb_->nodes_->as_vec()) {
 #ifdef USE_TX
     // spdlog::info("#{} ===> {},{} | {}", n.id(), short_ts(n.bts), short_ts(n.cts), short_ts(txid));
     if (n.is_valid()) {
       try {
-        auto &nv = get_valid_node_version(n, txid);
+        auto &nv = gdb_->get_valid_node_version(n, txid);
         consumer(nv);
       } catch (unknown_id& exc) { /* ignore */ }
     }
@@ -192,26 +185,26 @@ void graph_db::nodes(node_consumer_func consumer) {
   }
 }
 
-void graph_db::nodes_where(const std::string &pkey, p_item::predicate_func pred,
+void query_ctx::nodes_where(const std::string &pkey, p_item::predicate_func pred,
                            node_consumer_func consumer) {
-  auto pc = dict_->lookup_string(pkey);
-  node_properties_->foreach(pc, pred, [&](offset_t nid) {
-    auto &n = this->node_by_id(nid);
+  auto pc = gdb_->dict_->lookup_string(pkey);
+  gdb_->node_properties_->foreach(pc, pred, [&](offset_t nid) {
+    auto &n = gdb_->node_by_id(nid);
     consumer(n);
   });
 }
 
-void graph_db::relationships_by_label(const std::string &label,
+void query_ctx::relationships_by_label(const std::string &label,
                                       rship_consumer_func consumer) {
 #ifdef USE_TX
   check_tx_context();
   xid_t txid = current_transaction()->xid();
 #endif
 
-  auto lc = dict_->lookup_string(label);
-  for (auto &r : rships_->as_vec()) {
+  auto lc = gdb_->dict_->lookup_string(label);
+  for (auto &r : gdb_->rships_->as_vec()) {
 #ifdef USE_TX
-    auto &rv = get_valid_rship_version(r, txid);
+    auto &rv = gdb_->get_valid_rship_version(r, txid);
     if (rv.rship_label == lc)
       consumer(rv);
 #else
@@ -221,18 +214,18 @@ void graph_db::relationships_by_label(const std::string &label,
   }
 }
 
-void graph_db::foreach_from_relationship_of_node(const node &n,
+void query_ctx::foreach_from_relationship_of_node(const node &n,
                                                  rship_consumer_func consumer) {
   auto relship_id = n.from_rship_list;
   while (relship_id != UNKNOWN) {
-    auto &relship = rship_by_id(relship_id);
+    auto &relship = gdb_->rship_by_id(relship_id);
     if (relship.is_valid())
       consumer(relship);
     relship_id = relship.next_src_rship;
   }
 }
 
-void graph_db::foreach_variable_from_relationship_of_node(
+void query_ctx::foreach_variable_from_relationship_of_node(
     const node &n, std::size_t min, std::size_t max,
     rship_consumer_func consumer) {
   std::list<std::pair<relationship::id_t, std::size_t>> rship_queue;
@@ -246,7 +239,7 @@ void graph_db::foreach_variable_from_relationship_of_node(
     if (relship_id == UNKNOWN || hops > max)
       continue;
 
-    auto &relship = rship_by_id(relship_id);
+    auto &relship = gdb_->rship_by_id(relship_id);
 
     if (hops >= min)
       consumer(relship);
@@ -254,12 +247,12 @@ void graph_db::foreach_variable_from_relationship_of_node(
     // scan recursively!!
     rship_queue.push_back(std::make_pair(relship.next_src_rship, hops));
 
-    auto &dest = node_by_id(relship.dest_node);
+    auto &dest = gdb_->node_by_id(relship.dest_node);
     rship_queue.push_back(std::make_pair(dest.from_rship_list, hops + 1));
   }
 }
 
-void graph_db::foreach_variable_from_relationship_of_node(
+void query_ctx::foreach_variable_from_relationship_of_node(
     const node &n, dcode_t lcode, std::size_t min, std::size_t max,
     rship_consumer_func consumer) {
   std::set<relationship::id_t> rship_set;
@@ -274,7 +267,7 @@ void graph_db::foreach_variable_from_relationship_of_node(
   auto n_hop_rship_id = n.from_rship_list; 
   while (n_hop_rship_id != UNKNOWN){
     n_hop_rship_cnt++;
-    n_hop_rship_id = rship_by_id(n_hop_rship_id).next_src_rship;
+    n_hop_rship_id = gdb_->rship_by_id(n_hop_rship_id).next_src_rship;
   }
   std::size_t mr_n_hop = 1;
   auto mr_n_hop_rship_id = n.from_rship_list;
@@ -294,13 +287,13 @@ void graph_db::foreach_variable_from_relationship_of_node(
     if (relship_id == UNKNOWN || hops > max)
       continue;
 
-    auto &relship = rship_by_id(relship_id);
+    auto &relship = gdb_->rship_by_id(relship_id);
 
     // just about to exit the while loop
     if (rship_queue.empty() && (relship.rship_label != lcode)){
       // check if any potential n-hop rship match still exists 
       if (n_hop_rship_cnt > 0) {
-        mr_n_hop_rship_id = rship_by_id(mr_n_hop_rship_id).next_src_rship;
+        mr_n_hop_rship_id = gdb_->rship_by_id(mr_n_hop_rship_id).next_src_rship;
         rship_queue.push_back(std::make_pair(mr_n_hop_rship_id, mr_n_hop));
         continue;
       } 
@@ -315,7 +308,7 @@ void graph_db::foreach_variable_from_relationship_of_node(
         n_hop_rship_id = relship.next_src_rship;
         while (n_hop_rship_id != UNKNOWN){
           n_hop_rship_cnt++;
-          n_hop_rship_id = rship_by_id(n_hop_rship_id).next_src_rship;
+          n_hop_rship_id = gdb_->rship_by_id(n_hop_rship_id).next_src_rship;
         }
         mr_n_hop = hops;
         mr_n_hop_rship_id = relship.next_src_rship;
@@ -339,18 +332,18 @@ void graph_db::foreach_variable_from_relationship_of_node(
     // scan recursively!!
     rship_queue.push_back(std::make_pair(relship.next_src_rship, hops));
 
-    auto &dest = node_by_id(relship.dest_node);
+    auto &dest = gdb_->node_by_id(relship.dest_node);
     auto path_rship_id = dest.from_rship_list;
     rship_queue.push_back(std::make_pair(path_rship_id, hops + 1));
     // rship_queue might not be empty after path_rship_id is processed
     while (path_rship_id != UNKNOWN){
-      path_rship_id = rship_by_id(path_rship_id).next_src_rship;
+      path_rship_id = gdb_->rship_by_id(path_rship_id).next_src_rship;
       rship_queue.push_back(std::make_pair(path_rship_id, hops + 1));
     }
   }
 }
 
-void graph_db::foreach_variable_to_relationship_of_node(
+void query_ctx::foreach_variable_to_relationship_of_node(
     const node &n, std::size_t min, std::size_t max,
     rship_consumer_func consumer) {
   // the queue of relationships to be considered plus the number of hops to
@@ -370,7 +363,7 @@ void graph_db::foreach_variable_to_relationship_of_node(
     if (relship_id == UNKNOWN || hops > max)
       continue;
 
-    auto &relship = rship_by_id(relship_id);
+    auto &relship = gdb_->rship_by_id(relship_id);
 
     if (hops >= min)
       consumer(relship);
@@ -380,12 +373,12 @@ void graph_db::foreach_variable_to_relationship_of_node(
 
     // scan recursively: get the node and the first outgoing relationship of
     // this node and add it to the queue
-    auto &src = node_by_id(relship.src_node);
+    auto &src = gdb_->node_by_id(relship.src_node);
     rship_queue.push_back(std::make_pair(src.to_rship_list, hops + 1));
   }
 }
 
-void graph_db::foreach_variable_to_relationship_of_node(
+void query_ctx::foreach_variable_to_relationship_of_node(
     const node &n, dcode_t lcode, std::size_t min, std::size_t max,
     rship_consumer_func consumer) {
   std::set<relationship::id_t> rship_set;
@@ -400,7 +393,7 @@ void graph_db::foreach_variable_to_relationship_of_node(
   auto n_hop_rship_id = n.to_rship_list; 
   while (n_hop_rship_id != UNKNOWN){
     n_hop_rship_cnt++;
-    n_hop_rship_id = rship_by_id(n_hop_rship_id).next_dest_rship;
+    n_hop_rship_id = gdb_->rship_by_id(n_hop_rship_id).next_dest_rship;
   }
   std::size_t mr_n_hop = 1;
   auto mr_n_hop_rship_id = n.to_rship_list;
@@ -420,13 +413,13 @@ void graph_db::foreach_variable_to_relationship_of_node(
     if (relship_id == UNKNOWN || hops > max)
       continue;
 
-    auto &relship = rship_by_id(relship_id);
+    auto &relship = gdb_->rship_by_id(relship_id);
 
     // just about to exit the while loop
     if (rship_queue.empty() && (relship.rship_label != lcode)){
       // check if any potential n-hop rship match still exists 
       if (n_hop_rship_cnt > 0) {
-        mr_n_hop_rship_id = rship_by_id(mr_n_hop_rship_id).next_dest_rship;
+        mr_n_hop_rship_id = gdb_->rship_by_id(mr_n_hop_rship_id).next_dest_rship;
         rship_queue.push_back(std::make_pair(mr_n_hop_rship_id, mr_n_hop));
         continue;
       } 
@@ -441,7 +434,7 @@ void graph_db::foreach_variable_to_relationship_of_node(
         n_hop_rship_id = relship.next_dest_rship;
         while (n_hop_rship_id != UNKNOWN){
           n_hop_rship_cnt++;
-          n_hop_rship_id = rship_by_id(n_hop_rship_id).next_dest_rship;
+          n_hop_rship_id = gdb_->rship_by_id(n_hop_rship_id).next_dest_rship;
         }
         mr_n_hop = hops;
         mr_n_hop_rship_id = relship.next_dest_rship;
@@ -465,103 +458,85 @@ void graph_db::foreach_variable_to_relationship_of_node(
     // scan recursively!!
     rship_queue.push_back(std::make_pair(relship.next_dest_rship, hops));
 
-    auto &src = node_by_id(relship.src_node);
+    auto &src = gdb_->node_by_id(relship.src_node);
     auto path_rship_id = src.to_rship_list;
     rship_queue.push_back(std::make_pair(path_rship_id, hops + 1));
     // rship_queue might not be empty after path_rship_id is processed
     while (path_rship_id != UNKNOWN){
-      path_rship_id = rship_by_id(path_rship_id).next_dest_rship;
+      path_rship_id = gdb_->rship_by_id(path_rship_id).next_dest_rship;
       rship_queue.push_back(std::make_pair(path_rship_id, hops + 1));
     }
   }
 }
 
-void graph_db::foreach_from_relationship_of_node(const node &n,
+void query_ctx::foreach_from_relationship_of_node(const node &n,
                                                  const std::string &label,
                                                  rship_consumer_func consumer) {
-  auto lc = dict_->lookup_string(label);
+  auto lc = gdb_->dict_->lookup_string(label);
   foreach_from_relationship_of_node(n, lc, consumer);
 }
 
-void graph_db::foreach_from_relationship_of_node(const node &n, dcode_t lcode,
+void query_ctx::foreach_from_relationship_of_node(const node &n, dcode_t lcode,
                                                  rship_consumer_func consumer) {
   auto relship_id = n.from_rship_list;
   while (relship_id != UNKNOWN) {
-    auto &relship = rship_by_id(relship_id);
+    auto &relship = gdb_->rship_by_id(relship_id);
     if (relship.rship_label == lcode)
       consumer(relship);
     relship_id = relship.next_src_rship;
   }
 }
 
-void graph_db::foreach_to_relationship_of_node(const node &n,
+void query_ctx::foreach_to_relationship_of_node(const node &n,
                                                rship_consumer_func consumer) {
   auto relship_id = n.to_rship_list;
   while (relship_id != UNKNOWN) {
-    auto &relship = rship_by_id(relship_id);
+    auto &relship = gdb_->rship_by_id(relship_id);
     if (relship.is_valid())
       consumer(relship);
     relship_id = relship.next_dest_rship;
   }
 }
 
-void graph_db::foreach_to_relationship_of_node(const node &n,
+void query_ctx::foreach_to_relationship_of_node(const node &n,
                                                const std::string &label,
                                                rship_consumer_func consumer) {
-  auto lc = dict_->lookup_string(label);
+  auto lc = gdb_->dict_->lookup_string(label);
   foreach_to_relationship_of_node(n, lc, consumer);
 }
 
-void graph_db::foreach_to_relationship_of_node(const node &n, dcode_t lcode,
+void query_ctx::foreach_to_relationship_of_node(const node &n, dcode_t lcode,
                                                rship_consumer_func consumer) {
   auto relship_id = n.to_rship_list;
   while (relship_id != UNKNOWN) {
-    auto &relship = rship_by_id(relship_id);
+    auto &relship = gdb_->rship_by_id(relship_id);
     if (relship.rship_label == lcode)
       consumer(relship);
     relship_id = relship.next_dest_rship;
   }
 }
 
-bool graph_db::is_node_property(const node &n, const std::string &pkey,
+bool query_ctx::is_node_property(const node &n, const std::string &pkey,
                                 p_item::predicate_func pred) {
-  auto pc = dict_->lookup_string(pkey);
+  auto pc = gdb_->dict_->lookup_string(pkey);
   return is_node_property(n, pc, pred);
 }
 
-bool graph_db::is_node_property(const node &n, dcode_t pcode,
+bool query_ctx::is_node_property(const node &n, dcode_t pcode,
                                 p_item::predicate_func pred) {
-  auto val = node_properties_->property_value(n.property_list, pcode);
+  auto val = gdb_->node_properties_->property_value(n.property_list, pcode);
   return val.empty() ? false : pred(val);
 }
 
-bool graph_db::is_relationship_property(const relationship &r,
+bool query_ctx::is_relationship_property(const relationship &r,
                                         const std::string &pkey,
                                         p_item::predicate_func pred) {
-  auto pc = dict_->lookup_string(pkey);
+  auto pc = gdb_->dict_->lookup_string(pkey);
   return is_relationship_property(r, pc, pred);
 }
 
-bool graph_db::is_relationship_property(const relationship &r, dcode_t pcode,
+bool query_ctx::is_relationship_property(const relationship &r, dcode_t pcode,
                                         p_item::predicate_func pred) {
-  auto val = rship_properties_->property_value(r.id(), pcode);
+  auto val = gdb_->rship_properties_->property_value(r.id(), pcode);
   return val.empty() ? false : pred(val);
-}
-
-p_item graph_db::get_property_value(const node &n, const std::string& pkey) {
-  auto pc = dict_->lookup_string(pkey);
-  return get_property_value(n, pc);
-}
-
-p_item graph_db::get_property_value(const node &n, dcode_t pcode) {
-  return node_properties_->property_value(n.property_list, pcode);
-}
-
-p_item graph_db::get_property_value(const relationship &r, const std::string& pkey) {
-  auto pc = dict_->lookup_string(pkey);
-  return get_property_value(r, pc);
-}
-
-p_item graph_db::get_property_value(const relationship &r, dcode_t pcode) {
-  return rship_properties_->property_value(r.property_list, pcode);
 }

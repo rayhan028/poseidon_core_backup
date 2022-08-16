@@ -458,7 +458,6 @@ set(src_files
   src/storage/graph_db.cpp
   src/storage/graph_db_import.cpp
   src/storage/graph_db_index.cpp
-  src/storage/graph_db_query.cpp
   src/storage/graph_db_gc.cpp
   src/storage/graph_db_recovery.cpp
   src/bp_file/paged_file.cpp
@@ -468,6 +467,7 @@ set(src_files
   src/query/expr/expression.cpp
   src/query/interp/expr_interpreter.cpp
   src/query/interp/qinterp.cpp
+  src/query/interp/query_ctx.cpp
   src/query/plan_op/update.cpp
   src/query/plan_op/join.cpp
   src/query/plan_op/query_set.cpp
@@ -483,9 +483,9 @@ set(src_files
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
   ${llvm_src}
-  src/ql/queryc_qcomp.cpp
-  src/ql/queryc_qex.cpp
-  src/ql/queryc.cpp
+#  src/ql/queryc_qcomp.cpp
+#  src/ql/queryc_qex.cpp
+#  src/ql/queryc.cpp
   src/query/ast/ast.cpp
   ${csr_delta_src}
   ${gunrock_analysis}

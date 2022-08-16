@@ -25,6 +25,7 @@
 #include "catch.hpp"
 #include "config.h"
 #include "graph_db.hpp"
+#include "query_ctx.hpp"
 #include "qop.hpp"
 
 #ifdef USE_PMDK
@@ -198,7 +199,8 @@ TEST_CASE("Importing nodes with many properties from CSV", "[graph_db]") {
   REQUIRE(num == 19);
 
   graph->begin_transaction();
-  graph->nodes([&graph](auto &n) {
+  query_ctx ctx(graph);
+  ctx.nodes([&graph](auto &n) {
     auto nd = graph->get_node_description(n.id());
     std::cout << nd << " ===> " << nd.properties.size() << std::endl;
     // REQUIRE(nd.properties.size() == 8);

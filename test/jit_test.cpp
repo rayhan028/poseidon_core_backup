@@ -64,9 +64,10 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_jit_graph");
 #endif
+  query_ctx ctx(graph);
 
 #ifdef USE_TX
-  graph->begin_transaction();
+  ctx.begin_transaction();
 #endif
 
   int num_persons = 100;
@@ -94,14 +95,14 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
   }
 
 #ifdef USE_TX
-  graph->commit_transaction();
+  ctx.commit_transaction();
 #endif
   
     SECTION("Scan all nodes for given label") {
         qcompiler queryEngine(graph);
 
         result_set rss;
-        auto q = query(graph).all_nodes("Person").collect(rss);
+        auto q = query(ctx).all_nodes("Person").collect(rss);
 
         arg_builder args;
 	      args.arg(1, "Person");
@@ -134,7 +135,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     result_set rs;
     SECTION("Find a outgoing relationship from each Person node") {
         qcompiler queryEngine(graph);
-        auto expr = query(graph).all_nodes("Person").from_relationships(":HAS_READ").collect(rs).plan_head();
+        auto expr = query(ctx).all_nodes("Person").from_relationships(":HAS_READ").collect(rs).plan_head();
         
         args.arg(1, "Person");
         args.arg(2, ":HAS_READ");
@@ -150,7 +151,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         queryEngine.cleanup();
         rs.data.clear();
 
-        auto expr2 = query(graph).all_nodes("Book").to_relationships(":HAS_READ").collect(rs).plan_head();
+        auto expr2 = query(ctx).all_nodes("Book").to_relationships(":HAS_READ").collect(rs).plan_head();
   
         args.arg(1, "Book");
         args.arg(2, ":HAS_READ");
@@ -166,7 +167,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         queryEngine.cleanup();
         rs.data.clear();
 
-        auto expr3 = query(graph).all_nodes("Person").from_relationships(":HAS_READ").to_node("Book").collect(rs).plan_head();
+        auto expr3 = query(ctx).all_nodes("Person").from_relationships(":HAS_READ").to_node("Book").collect(rs).plan_head();
         args.arg(1, "Person");
         args.arg(2, ":HAS_READ");
         args.arg(4, "Book");
@@ -183,7 +184,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         qcompiler queryEngine(graph);
         result_set rs;
 
-        auto expr = query(graph).all_nodes("Book").to_relationships(":HAS_READ").collect(rs).plan_head();
+        auto expr = query(ctx).all_nodes("Book").to_relationships(":HAS_READ").collect(rs).plan_head();
         arg_builder args;
         args.arg(1, "Book");
         args.arg(2, ":HAS_READ");
@@ -202,7 +203,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     SECTION("Find the destination node for each relationship with the given label") {
         qcompiler queryEngine(graph);
         result_set rs;
-        auto expr = query(graph).all_nodes("Person").from_relationships(":HAS_READ").to_node("Book").collect(rs).plan_head();
+        auto expr = query(ctx).all_nodes("Person").from_relationships(":HAS_READ").to_node("Book").collect(rs).plan_head();
         
         arg_builder args;
         args.arg(1, "Person");
@@ -220,7 +221,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     SECTION("Find the source node for each relationship with the given label") {
         qcompiler queryEngine(graph);
         result_set rs;
-        auto expr = query(graph).all_nodes("Book").to_relationships(":HAS_READ").from_node("Person").collect(rs).plan_head();
+        auto expr = query(ctx).all_nodes("Book").to_relationships(":HAS_READ").from_node("Person").collect(rs).plan_head();
 
         arg_builder args;
         args.arg(1, "Book");
@@ -237,7 +238,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     SECTION("Filter a node for a given property condition") {
         qcompiler queryEngine(graph);
         result_set rs;
-        auto expr = query(graph).all_nodes("Person").filter(EQ(Key(0, "id"), Int(42))).collect(rs).plan_head();
+        auto expr = query(ctx).all_nodes("Person").filter(EQ(Key(0, "id"), Int(42))).collect(rs).plan_head();
 
         arg_builder args;
         args.arg(1, "Person");
@@ -254,7 +255,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     SECTION("Apply a Projection to a tuple result") {
         qcompiler queryEngine(graph);
         result_set rs;
-        auto expr = query(graph).all_nodes("Person")
+        auto expr = query(ctx).all_nodes("Person")
                       .filter(EQ(Key(0, "id"), Int(42)))
                         .project({{0, "name", result_type::string}})
                           .collect(rs).plan_head();
@@ -275,7 +276,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     SECTION("Apply a Projection on all tuple results") {
         qcompiler queryEngine(graph);
         result_set rs;
-        auto expr = query(graph).all_nodes("Person")
+        auto expr = query(ctx).all_nodes("Person")
                         .project({{0, "name", result_type::string}})
                           .collect(rs).plan_head();
         arg_builder args;
@@ -294,9 +295,9 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         qcompiler queryEngine(graph);
 
         result_set rss;        
-        auto rhs = query(graph).all_nodes("Book").finish();
+        auto rhs = query(ctx).all_nodes("Book").finish();
         auto rhsp = rhs.plan_head();
-        auto lhs = query(graph).all_nodes("Person").crossjoin(rhs).collect(rs).plan_head();
+        auto lhs = query(ctx).all_nodes("Person").crossjoin(rhs).collect(rs).plan_head();
 
         arg_builder args;
         cross_joiner j;
@@ -323,9 +324,9 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         //auto lhs = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0,0}, Collect(), rhs));
 
         result_set rss;        
-        auto rhs = query(graph).all_nodes("Book").finish();
+        auto rhs = query(ctx).all_nodes("Book").finish();
         auto rhsp = rhs.plan_head();
-        auto lhs = query(graph).all_nodes("Person").outerjoin_on_node({0,0}, rhs).collect(rss).plan_head();
+        auto lhs = query(ctx).all_nodes("Person").outerjoin_on_node({0,0}, rhs).collect(rss).plan_head();
 
         arg_builder args;
         cross_joiner j;
@@ -367,9 +368,10 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_jit_graph2");
 #endif
+  query_ctx ctx(graph);
 
 #ifdef USE_TX
-  graph->begin_transaction();
+  ctx.begin_transaction();
 #endif
 
   int num_persons = 100;
@@ -396,7 +398,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
   }
 #ifdef USE_TX
-  graph->commit_transaction();
+  ctx.commit_transaction();
 #endif
 
 	// auto chunks = graph->get_nodes()->num_chunks(); 
@@ -405,7 +407,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         qcompiler queryEngine(graph);
 
         result_set rs;
-        auto q = query(graph).all_nodes("Person").project({{0, "name", result_type::string}}).collect(rs);
+        auto q = query(ctx).all_nodes("Person").project({{0, "name", result_type::string}}).collect(rs);
 
         arg_builder args;
 	      args.arg(1, "Person");
@@ -423,7 +425,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         qcompiler queryEngine(graph);
         
         result_set rs;
-        auto q = query(graph).all_nodes("Person").project({{0, "age", result_type::integer}}).collect(rs);
+        auto q = query(ctx).all_nodes("Person").project({{0, "age", result_type::integer}}).collect(rs);
         arg_builder args;
         args.arg(1, "Person");
         args.arg(2, &rs);
@@ -440,7 +442,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         qcompiler queryEngine(graph);
 
         result_set rs;
-        auto q = query(graph).all_nodes("Person").project({{0, "num", result_type::uint64}}).collect(rs);
+        auto q = query(ctx).all_nodes("Person").project({{0, "num", result_type::uint64}}).collect(rs);
 
         arg_builder args;
         args.arg(1, "Person");
@@ -457,7 +459,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         qcompiler queryEngine(graph);
         
         result_set rs;
-        auto q = query(graph).all_nodes("Person").project({{0, "name", result_type::string}, 
+        auto q = query(ctx).all_nodes("Person").project({{0, "name", result_type::string}, 
                                             {0, "age", result_type::integer}, 
                                             {0, "num", result_type::uint64}}).collect(rs);
 
@@ -477,7 +479,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     SECTION("Project over several query results") {
         qcompiler queryEngine(graph);
         result_set rss;
-        auto r = query(graph).all_nodes("Book").finish();
+        auto r = query(ctx).all_nodes("Book").finish();
         auto r_expr = r.plan_head();
 
         arg_builder args;
@@ -489,7 +491,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         queryEngine.generate(r.plan_head(), false);
         queryEngine.run(args);
 
-        auto l_expr = query(graph).all_nodes("Person")
+        auto l_expr = query(ctx).all_nodes("Person")
                         .from_relationships(":HAS_READ")
                         .to_node("Book")
                         .crossjoin(r)
@@ -512,7 +514,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     SECTION("Limit results") {
         qcompiler queryEngine(graph);
         result_set rss;
-        auto r = query(graph).all_nodes("Book").limit(3).collect(rss);
+        auto r = query(ctx).all_nodes("Book").limit(3).collect(rss);
         auto r_expr = r.plan_head();
 
         arg_builder args;
@@ -532,7 +534,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
         qcompiler queryEngine(graph);
         result_set rss;
-        auto r = query(graph).all_nodes("Book")
+        auto r = query(ctx).all_nodes("Book")
                             .project({{0, "id", result_type::integer}})
                             .orderby(srtfct)
                             .collect(rss);
@@ -556,13 +558,13 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
         nested_loop_joiner j(0);
 
-        auto r_expr = query(graph).all_nodes("Book").finish();
+        auto r_expr = query(ctx).all_nodes("Book").finish();
         args.arg(1, "Book");
         args.arg(2, &j);
         queryEngine.generate(r_expr.plan_head(), false);
         queryEngine.run(args);
 
-        auto l_expr = query(graph).all_nodes("Person").join_on_node({0,0}, r_expr).collect(rs);
+        auto l_expr = query(ctx).all_nodes("Person").join_on_node({0,0}, r_expr).collect(rs);
         args.arg(1, "Book");
         args.arg(2, &j);
         args.arg(3, &rs);
@@ -577,7 +579,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     SECTION("Argument generation") {
       qcompiler queryEngine(graph);
       result_set rs;
-      auto l_expr = query(graph).all_nodes("Person").from_relationships(":HAS_READ").to_node("Book").collect(rs);
+      auto l_expr = query(ctx).all_nodes("Person").from_relationships(":HAS_READ").to_node("Book").collect(rs);
 
       queryEngine.generate(l_expr.plan_head(), false);
       queryEngine.run();

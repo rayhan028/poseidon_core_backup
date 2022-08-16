@@ -28,6 +28,7 @@
 #include "config.h"
 #include "defs.hpp"
 #include "graph_db.hpp"
+#include "query_ctx.hpp"
 #include "transaction.hpp"
 #include "graph_pool.hpp"
 
@@ -467,26 +468,23 @@ TEST_CASE("Checking that a node insert is undone after abort", "[transaction]") 
 TEST_CASE("Checking that a relationship insert is undone after abort", "[transaction]") {
   auto pool = graph_pool::create(test_path);
   auto gdb = pool->create_graph("my_tx_graph11");
-
+  query_ctx ctx(gdb);
   node::id_t m, a;
   relationship::id_t rid;
 
-  {
-    gdb->begin_transaction();
+  ctx.run_transaction([&]() {
     m = gdb->add_node("Movie", {});
     a = gdb->add_node("Actor", {});
-    gdb->commit_transaction();
-  }
+    return true;
+  });
 
-  { 
-    gdb->begin_transaction();
+  ctx.run_transaction([&]() {
     rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
-    gdb->abort_transaction();
-  }
+    return false;
+  });
 
-  {
+  ctx.run_transaction([&]() {
     // try to access via rid
-    gdb->begin_transaction();
 
     REQUIRE_THROWS_AS(gdb->rship_by_id(rid), unknown_id);
 
@@ -494,17 +492,17 @@ TEST_CASE("Checking that a relationship insert is undone after abort", "[transac
     auto& n = gdb->node_by_id(a);
     
     bool found = false;
-    gdb->foreach_from_relationship_of_node(n, [&found](auto& rship) {
+    ctx.foreach_from_relationship_of_node(n, [&found](auto& rship) {
       found = true;
     });
     
     REQUIRE(!found);
-    gdb->foreach_to_relationship_of_node(n, [&found](auto& rship) {
+    ctx.foreach_to_relationship_of_node(n, [&found](auto& rship) {
       found = true;
     });
     REQUIRE(!found);
-    gdb->abort_transaction();
-  }
+    return false;
+  });
 
   graph_pool::destroy(pool);
 }

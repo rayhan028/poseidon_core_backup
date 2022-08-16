@@ -26,13 +26,19 @@
 
 namespace ph = std::placeholders;
 
-query::query(graph_db_ptr gdb, qop_ptr qop) {
-  graph_db_ = gdb;
+query::query(query_ctx& ctx, qop_ptr qop) : ctx_(ctx) {
   plan_head_ = qop;
   // initialize plan_tail_
   plan_tail_ = qop;
   while (plan_tail_->has_subscriber())
     plan_tail_ = plan_tail_->subscriber();
+}
+
+query &query::operator=(const query &q) {
+  ctx_ = q.ctx_;
+  plan_head_ = q.plan_head_;
+  plan_tail_ = q.plan_tail_;
+  return *this;
 }
 
 query &query::append_op(qop_ptr op, qop::consume_func cf) {
@@ -82,7 +88,7 @@ query &query::nodes_where(const std::vector<std::string> &labels, const std::str
 }
 
 query &query::nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val) {
-  auto idx = graph_db_->get_index(label, prop);
+  auto idx = ctx_.gdb_->get_index(label, prop);
   plan_head_ = plan_tail_ = std::make_shared<index_scan>(idx, val);
   return *this;
 }
@@ -91,7 +97,7 @@ query &query::nodes_where_indexed(const std::vector<std::string> &labels,
                                   const std::string &prop, uint64_t val) {
   std::list<index_id> idxs;
   for (auto &label : labels) {
-    auto idx = graph_db_->get_index(label, prop);
+    auto idx = ctx_.gdb_->get_index(label, prop);
     idxs.push_back(idx);
   }
   plan_head_ = plan_tail_ = std::make_shared<index_scan>(idxs, val);
@@ -487,8 +493,7 @@ query &query::delete_rship(const std::size_t pos) {
 }
 
 void query::start() { 
-  query_ctx ctx(graph_db_);
-  plan_head_->start(ctx); 
+  plan_head_->start(ctx_); 
 }
 
 void query::start(std::initializer_list<query *> queries) {
@@ -567,23 +572,23 @@ void query::extract_args() {
   offset_t opid = 0;
   if(auto ns = std::dynamic_pointer_cast<scan_nodes>(plan_head_)) {
     if(ns->labels.empty()) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(ns->label);
+        offset_t lc = ctx_.gdb_->get_dictionary()->lookup_string(ns->label);
         args_map[opid++] = lc;
     } else {
       for(auto & l : ns->labels) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(l);
+        offset_t lc = ctx_.gdb_->get_dictionary()->lookup_string(l);
         args_map[opid++] = lc;
       }
     }
   } else if(auto fr = std::dynamic_pointer_cast<foreach_from_relationship>(plan_head_)) {
     if(!fr->label.empty()) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(fr->label);
+        offset_t lc = ctx_.gdb_->get_dictionary()->lookup_string(fr->label);
         args_map[opid] = lc;
     }
     opid++;
   } else if(auto tr = std::dynamic_pointer_cast<foreach_to_relationship>(plan_head_)) {
     if(!tr->label.empty()) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(fr->label);
+        offset_t lc = ctx_.gdb_->get_dictionary()->lookup_string(fr->label);
         args_map[opid] = lc;
     }
     opid++;

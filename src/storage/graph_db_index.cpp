@@ -26,6 +26,7 @@
 #include "spdlog/spdlog.h"
 #include "thread_pool.hpp"
 #include <iostream>
+#include "query_ctx.hpp"
 
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
@@ -54,7 +55,7 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
   auto pc = dict_->lookup_string(prop_name);
 
   // (2) we fill the index with (property value, node-id) pairs
-  nodes_by_label(node_label, [this, &new_idx, &pc](auto& n) {
+  query_ctx::_nodes_by_label(this, node_label, [this, &new_idx, &pc](auto& n) {
     // spdlog::info("get property value for node #{}...", n.id());
     auto val = node_properties_->property_value(n.property_list, pc);
     if (!val.empty()) {
@@ -73,6 +74,10 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
 
 index_id graph_db::get_index(const std::string& node_label, const std::string& prop_name) {
   return index_map_->get_index(node_label + ":" + prop_name);
+}
+
+bool graph_db::has_index(const std::string& node_label, const std::string& prop_name) {
+  return index_map_->has_index(node_label + ":" + prop_name);
 }
 
 void graph_db::drop_index(const std::string& node_label, const std::string& prop_name) {

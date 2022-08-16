@@ -79,9 +79,11 @@ PYBIND11_MODULE(poseidon, m) {
         return gdb.add_relationship(from_node, to_node, label, rel_props);
       })
       .def("get_to_relationships", [](graph_db& gdb, node::id_t to_node) {
+        graph_db_ptr gptr(&gdb);
+        query_ctx ctx(gptr);
         auto& n = gdb.node_by_id(to_node);
         std::vector<rship_description> rships;
-        gdb.foreach_to_relationship_of_node(n, [&](relationship& r) {
+        ctx.foreach_to_relationship_of_node(n, [&](relationship& r) {
           auto rel = gdb.get_rship_description(r.id());
           rships.push_back(rel);
         });

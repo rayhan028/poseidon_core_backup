@@ -253,7 +253,7 @@ void qcompiler::run_parallel(arg_builder & args, unsigned thread_num) {
             if(compile_th.joinable())
                     compile_th.join();
            
-            task_callee_ = [&](transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer) {
+            task_callee_ = [&](transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func consumer) {
                 current_transaction_ = tx;
                 query_context qtx = {&query_ctx_, first, last, tx, args.args.data()};
                 start_[pipeline](&qtx, args.args.data());

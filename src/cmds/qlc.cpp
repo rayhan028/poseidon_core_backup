@@ -9,6 +9,7 @@
 #include "linenoise.hpp"
 #include "qproc.hpp"
 #include "graph_db.hpp"
+#include "graph_pool.hpp"
 
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
@@ -234,7 +235,7 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
 }
 
 int main(int argc, char* argv[]) {
-  std::string db_name, query_file, dot_file, qmode_str;
+  std::string db_name, pool_path, query_file, dot_file, qmode_str;
   std::vector<std::string> import_files;
   bool start_shell = false;
   bool n4j_mode = false;
@@ -250,6 +251,7 @@ int main(int argc, char* argv[]) {
       ("help,h", "Help")
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
         ("db,d", value<std::string>(&db_name)->required(), "Database name (required)")
+        ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem/file pool")
         ("output,o", value<std::string>(&dot_file), "Dump the graph to the given file (in DOT format)")
         ("import", value<std::vector<std::string>>()->composing(),
         "Import files in CSV format (either nodes:<node type>:<filename> or "
@@ -277,6 +279,9 @@ int main(int argc, char* argv[]) {
 
     if (vm.count("import"))
       import_files = vm["import"].as<std::vector<std::string>>();
+
+   if (vm.count("pool"))
+      pool_path = vm["pool"].as<std::string>();
 
     if (vm.count("delimiter"))
       delim_character = vm["delimiter"].as<char>();
@@ -315,28 +320,18 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-#ifdef USE_PMDK
-  namespace nvm = pmem::obj;
+  graph_pool_ptr pool;
+  graph_db_ptr graph;
 
-  nvm::pool<root> pop;
-  const auto path = PMEM_PATH + db_name;
-
-  if (access(path.c_str(), F_OK) != 0) {
-    pop = nvm::pool<root>::create(path, db_name, POOL_SIZE);
+  if (access(pool_path.c_str(), F_OK) != 0) {
+    spdlog::info("create poolset {}", pool_path);
+    pool = graph_pool::create(pool_path);
+    graph = pool->create_graph(db_name);
   } else {
-    pop = nvm::pool<root>::open(path, db_name);
+    spdlog::info("open poolset {}", pool_path);
+    pool = graph_pool::open(pool_path, true);
+    graph = pool->open_graph(db_name);
   }
-
-  auto q = pop.root();
-  if (!q->graph) {
-    // create a new persistent graph_db object
-    nvm::transaction::run(pop, [&] { q->graph = p_make_ptr<graph_db>(); });
-  }
-  auto &graph = q->graph;
-  graph->runtime_initialize();
-#else
-  auto graph = p_make_ptr<graph_db>(db_name);
-#endif
 
   if (!import_files.empty()) {
     std::cout << "import files..." << std::endl;
@@ -349,7 +344,8 @@ int main(int argc, char* argv[]) {
 
   // graph->dump();
   
-  qproc_ptr = std::make_unique<qproc>(graph);
+  query_ctx ctx(graph);
+  qproc_ptr = std::make_unique<qproc>(ctx);
 
   if (start_shell) {
     run_shell(graph, qmode);

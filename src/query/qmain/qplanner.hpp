@@ -34,7 +34,7 @@ public:
      * Transforms the given AST into a query_set which can be either
      * interpreted or compiled to LLVM code.
      */
-    query_set transform(graph_db_ptr& gdb, ast_op_ptr op_tree);
+    query_set transform(query_ctx& ctx, ast_op_ptr op_tree);
 
     void add_udf_library(std::shared_ptr<boost::dll::shared_library> udf_lib);
 

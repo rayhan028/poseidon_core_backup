@@ -39,8 +39,8 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qc_graph");
 #endif
-
-    qproc qlc(graph);
+    query_ctx ctx(graph);
+    qproc qlc(ctx);
 
     SECTION("Transform a scan query into a valid graph algebra expression") {
         std::string scan_query = "NodeScan('Person')";

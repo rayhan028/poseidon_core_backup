@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
         ("strict,s", bool_switch()->default_value(true), "Strict mode - assumes that all columns contain values of the same type")
         ("delimiter", value<char>(&delim_character)->default_value('|'), "Character delimiter")
         ("db,d", value<std::string>(&db_name)->required(), "Database name (required)")
-        ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem pool")
+        ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem/file pool")
         ("log,l", value<std::string>(&log_file), "Write log messages to the given file")
         ("output,o", value<std::string>(&dot_file), "Dump the graph to the given file (in DOT format)")
         ("import,i", value<std::vector<std::string>>()->composing()->required(),
@@ -199,4 +199,6 @@ int main(int argc, char* argv[]) {
   graph->dump();
   if (!dot_file.empty())
     graph->dump_dot(dot_file);
+
+  pool->close();
 }

@@ -18,8 +18,8 @@
  */
 #include "qinterp.hpp"
 
-void qinterp::execute(graph_db_ptr &gdb, query_set& qset) {
-  gdb->run_transaction([&]() {
+void qinterp::execute(query_ctx& ctx, query_set& qset) {
+  ctx.run_transaction([&]() {
     qset.start(); 
     return true;
   });    

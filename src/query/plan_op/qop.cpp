@@ -48,17 +48,17 @@ void scan_nodes::start(query_ctx &ctx) {
 #ifdef QOP_RECOVERY
     if(!ranged) {
 #endif
-      ctx.gdb_->parallel_nodes([&](node &n) { consume_(ctx, {&n}); });
+      ctx.parallel_nodes([&](node &n) { consume_(ctx, {&n}); });
 #ifdef QOP_RECOVERY
     } else {
-      ctx.gdb_->parallel_nodes([&](node &n) { consume_(ctx, {&n}); }, ranges);
+      ctx.parallel_nodes([&](node &n) { consume_(ctx, {&n}); }, ranges);
     }
 #endif
   else if (!label.empty())
-    ctx.gdb_->nodes_by_label(label, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
+    ctx.nodes_by_label(label, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
   // TODO: in case of calling parallel_nodes we should handle this differently
   else
-    ctx.gdb_->nodes_by_label(labels, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
+    ctx.nodes_by_label(labels, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
   qop::default_finish(ctx);
 }
 
@@ -71,7 +71,7 @@ void scan_nodes::dump(std::ostream &os) const {
 
 void continue_scan_nodes::start(query_ctx &ctx) {
 #ifdef USE_PMDK
-  ctx.gdb_->continue_parallel_nodes(check_points, [&](node &n) { consume_(ctx, {&n}); });
+  ctx.continue_parallel_nodes(check_points, [&](node &n) { consume_(ctx, {&n}); });
 #endif
   qop::default_finish(ctx);
 }
@@ -112,7 +112,7 @@ void foreach_from_relationship::process(query_ctx &ctx, const qr_tuple &v) {
     lcode = ctx.gdb_->get_code(label);
 
   uint64_t num = 0;
-  ctx.gdb_->foreach_from_relationship_of_node(*n, lcode, [&](relationship &r) {
+  ctx.foreach_from_relationship_of_node(*n, lcode, [&](relationship &r) {
     auto v2 = append(v, query_result(&r));
     consume_(ctx, v2);
     num++;
@@ -139,7 +139,7 @@ void foreach_variable_from_relationship::process(query_ctx &ctx,
     lcode = ctx.gdb_->get_code(label);
 
   uint64_t num = 0;
-  ctx.gdb_->foreach_variable_from_relationship_of_node(
+  ctx.foreach_variable_from_relationship_of_node(
       *n, lcode, min_range, max_range, [&](relationship &r) {
         auto v2 = append(v, query_result(&r));
         consume_(ctx, v2);
@@ -164,13 +164,13 @@ void foreach_all_relationship::process(query_ctx &ctx, const qr_tuple &v) {
     lcode = ctx.gdb_->get_code(label);
 
   uint64_t num = 0;
-  ctx.gdb_->foreach_from_relationship_of_node(*n, lcode, [&](relationship &r) {
+  ctx.foreach_from_relationship_of_node(*n, lcode, [&](relationship &r) {
     auto v2 = append(v, query_result(&r));
     v2 = append(v2, query_result(&(ctx.gdb_->node_by_id(r.dest_node))));
     consume_(ctx, v2);
     num++;
   });
-  ctx.gdb_->foreach_to_relationship_of_node(*n, lcode, [&](relationship &r) {
+  ctx.foreach_to_relationship_of_node(*n, lcode, [&](relationship &r) {
     auto v2 = append(v, query_result(&r));
     v2 = append(v2, query_result(&(ctx.gdb_->node_by_id(r.src_node))));
     consume_(ctx, v2);
@@ -195,14 +195,14 @@ void foreach_variable_all_relationship::process(query_ctx &ctx,
     lcode = ctx.gdb_->get_code(label);
 
   uint64_t num = 0;
-  ctx.gdb_->foreach_variable_from_relationship_of_node(
+  ctx.foreach_variable_from_relationship_of_node(
       *n, lcode, min_range, max_range, [&](relationship &r) {
         auto v2 = append(v, query_result(&r));
         v2 = append(v2, query_result(&(ctx.gdb_->node_by_id(r.dest_node))));
         consume_(ctx, v2);
         num++;
       });
-  ctx.gdb_->foreach_variable_to_relationship_of_node(
+  ctx.foreach_variable_to_relationship_of_node(
       *n, lcode, min_range, max_range, [&](relationship &r) {
         auto v2 = append(v, query_result(&r));
         v2 = append(v2, query_result(&(ctx.gdb_->node_by_id(r.src_node))));
@@ -231,7 +231,7 @@ void foreach_to_relationship::process(query_ctx &ctx, const qr_tuple &v) {
     lcode = ctx.gdb_->get_code(label);
 
   uint64_t num = 0;
-  ctx.gdb_->foreach_to_relationship_of_node(*n, lcode, [&](relationship &r) {
+  ctx.foreach_to_relationship_of_node(*n, lcode, [&](relationship &r) {
     auto v2 = append(v, query_result(&r));
     consume_(ctx, v2);
     num++;
@@ -257,7 +257,7 @@ void foreach_variable_to_relationship::process(query_ctx &ctx,
     lcode = ctx.gdb_->get_code(label);
 
   uint64_t num = 0;
-  ctx.gdb_->foreach_variable_to_relationship_of_node(
+  ctx.foreach_variable_to_relationship_of_node(
       *n, lcode, min_range, max_range, [&](relationship &r) {
         auto v2 = append(v, query_result(&r));
         consume_(ctx, v2);
@@ -285,12 +285,12 @@ void is_property::process(query_ctx &ctx, const qr_tuple &v) {
     pcode = ctx.gdb_->get_code(property);
 
   if (n.type() == typeid(node *)) {
-    if (ctx.gdb_->is_node_property(*(boost::get<node *>(n)), pcode, predicate)) {
+    if (ctx.is_node_property(*(boost::get<node *>(n)), pcode, predicate)) {
       consume_(ctx, v);
       success = true;
     }
   } else if (n.type() == typeid(relationship *)) {
-    if (ctx.gdb_->is_relationship_property(*(boost::get<relationship *>(n)), pcode,
+    if (ctx.is_relationship_property(*(boost::get<relationship *>(n)), pcode,
                                       predicate)) {
       consume_(ctx, v);
       success = true;
@@ -429,7 +429,7 @@ void nodes_connected::process(query_ctx &ctx, const qr_tuple &v) {
   auto des = boost::get<node *>(v[src_des_nodes_.second]);
   bool found = false;
 
-  ctx.gdb_->foreach_from_relationship_of_node((*src), [&](auto &r) {
+  ctx.foreach_from_relationship_of_node((*src), [&](auto &r) {
       if (r.to_node_id() == des->id()){
         found = true;
         auto res = append(v, query_result(&r));
@@ -961,7 +961,7 @@ void shortest_path_opr::process(query_ctx &ctx, const qr_tuple &v) {
 
   if (all_spaths_) {
     std::list<path_item> spaths;
-    all_unweighted_shortest_paths(ctx.gdb_, start, stop, bidirectional_, rpred_, pv, spaths);
+    all_unweighted_shortest_paths(ctx, start, stop, bidirectional_, rpred_, pv, spaths);
     for (auto &path : spaths) {
       auto res = v;
       array_t nids(path.get_path());
@@ -972,7 +972,7 @@ void shortest_path_opr::process(query_ctx &ctx, const qr_tuple &v) {
   }
   else {
     path_item spath;
-    bool found = unweighted_shortest_path(ctx.gdb_, start, stop, bidirectional_,
+    bool found = unweighted_shortest_path(ctx, start, stop, bidirectional_,
                                           rpred_, pv, spath);
     if (found) {
       auto res = v;
@@ -1000,7 +1000,7 @@ void weighted_shortest_path_opr::process(query_ctx &ctx, const qr_tuple &v) {
 
   if (all_spaths_) {
     std::list<path_item> spaths;
-    all_weighted_shortest_paths(ctx.gdb_, start, stop, bidirectional_,
+    all_weighted_shortest_paths(ctx, start, stop, bidirectional_,
                             rpred_, rweight_, pv, spaths);
     for (auto &path : spaths) {
       auto res = v;
@@ -1012,7 +1012,7 @@ void weighted_shortest_path_opr::process(query_ctx &ctx, const qr_tuple &v) {
   }
   else {
     path_item spath;
-    bool found = weighted_shortest_path(ctx.gdb_, start, stop, bidirectional_,
+    bool found = weighted_shortest_path(ctx, start, stop, bidirectional_,
                             rpred_, rweight_, pv, spath);
     if (found) {
       auto res = v;
@@ -1038,7 +1038,7 @@ void k_weighted_shortest_path_opr::process(query_ctx &ctx, const qr_tuple &v) {
 
   std::vector<path_item> spaths;
   path_visitor pv = [&](node &n, const path &p) { return; }; // TODO
-  k_weighted_shortest_path(ctx.gdb_, start, stop, k_, bidirectional_,
+  k_weighted_shortest_path(ctx, start, stop, k_, bidirectional_,
                           rpred_, rweight_, pv, spaths);
   for (auto &path : spaths) {
     auto res = v;
@@ -1128,14 +1128,14 @@ void csr_data::process(query_ctx &ctx, const qr_tuple &v) {
   std::vector<uint64_t> neighbour_ids;
   std::vector<double> rship_weights;
 
-  ctx.gdb_->foreach_from_relationship_of_node(*n, [&](auto &r) {
+  ctx.foreach_from_relationship_of_node(*n, [&](auto &r) {
     neighbour_ids.push_back(r.to_node_id());
     rship_weights.push_back(weight_func_(r));
     offset++;
   });
 
   if (bidirectional_) {
-    ctx.gdb_->foreach_to_relationship_of_node(*n, [&](auto &r) {
+    ctx.foreach_to_relationship_of_node(*n, [&](auto &r) {
       neighbour_ids.push_back(r.from_node_id());
       rship_weights.push_back(weight_func_(r));
       offset++;

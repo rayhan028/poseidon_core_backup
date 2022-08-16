@@ -383,7 +383,7 @@ void * node_to_description(query_ctx *ctx) {
 
 
  void foreach_from_variable_rship(query_ctx *ctx, dcode_t lcode, node *n, std::size_t min, std::size_t max) {
-    ctx->gdb_->foreach_variable_from_relationship_of_node(*n, lcode, min, max, [&](relationship &r) {
+    ctx->foreach_variable_from_relationship_of_node(*n, lcode, min, max, [&](relationship &r) {
         fev_rship_list.push_back(&r);
     });
     fev_list_iter = fev_rship_list.begin();

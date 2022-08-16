@@ -21,6 +21,7 @@
 #define shortest_path_hpp_
 
 #include "graph_db.hpp"
+#include "query_ctx.hpp"
 
 /**
  * A struct containing shortest path information.
@@ -65,9 +66,9 @@ private:
  * all_weighted_shortest_paths searches for all the shortest paths between start and stop nodes, 
  * having with equal distance
  */
-bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
+bool unweighted_shortest_path(query_ctx& ctx, node::id_t start, node::id_t stop,
             bool bidirectional, rship_predicate rpred, path_visitor visit, path_item &spath);
-bool all_unweighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_t stop,
+bool all_unweighted_shortest_paths(query_ctx& ctx, node::id_t start, node::id_t stop,
             bool bidirectional, rship_predicate rpred, path_visitor visit, std::list<path_item> &spaths);
 
 /**
@@ -81,16 +82,16 @@ bool all_unweighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_
  * all_weighted_shortest_paths searches for all the shortest paths between start and stop nodes, 
  * having with equal weight
  */
-bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool bidirectional,
+bool weighted_shortest_path(query_ctx& ctx, node::id_t start, node::id_t stop, bool bidirectional,
                         rship_predicate rpred, rship_weight weight_func, path_visitor visit, path_item &spath);
 
-bool all_weighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool bidirectional,
+bool all_weighted_shortest_paths(query_ctx& ctx, node::id_t start, node::id_t stop, bool bidirectional,
                 rship_predicate rpred, rship_weight weight_func, path_visitor visit, std::list<path_item> &spaths);
 
 /**
  * A sequential implementation of first k shortest path search on the given graph.
  */
-bool k_weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, std::size_t k, bool bidirectional,
+bool k_weighted_shortest_path(query_ctx& ctx, node::id_t start, node::id_t stop, std::size_t k, bool bidirectional,
                 rship_predicate rpred, rship_weight weight_func, path_visitor visit, std::vector<path_item> &spaths);
 
 #endif

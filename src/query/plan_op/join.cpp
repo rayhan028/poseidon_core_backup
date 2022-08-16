@@ -215,7 +215,7 @@ void left_outerjoin_on_rship::process_left(query_ctx &ctx, const qr_tuple &v) {
   for (auto &inp : input_) {
     bool found = false;
     auto des = boost::get<node *>(inp[src_des_nodes_.second]);
-    ctx.gdb_->foreach_from_relationship_of_node((*src), [&](auto &r) {
+    ctx.foreach_from_relationship_of_node((*src), [&](auto &r) {
       if (r.to_node_id() == des->id()){
         dangling_tuple = false;
         found = true;
@@ -250,7 +250,7 @@ void rship_join::process_left(query_ctx &ctx, const qr_tuple &v) {
 
   for (auto &inp : input_) {
     auto des = boost::get<node *>(inp[src_des_nodes_.second]);
-    ctx.gdb_->foreach_from_relationship_of_node((*src), [&](auto &r) {
+    ctx.foreach_from_relationship_of_node((*src), [&](auto &r) {
       if (r.to_node_id() == des->id()){
         auto res = append(concat(v, inp), query_result(&r));
         consume_(ctx, res);

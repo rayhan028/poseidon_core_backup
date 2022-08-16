@@ -285,9 +285,11 @@ std::string load_string(const std::string& fname) {
 TEST_CASE("Testing LDBC IS queries in interpreted mode", "[qinterp]") {
     auto pool = graph_pool::create(test_path);
     auto graph = pool->create_graph("my_qc_graph1");
+    query_ctx ctx(graph);
+
     create_data(graph);
 
-    qproc qp(graph);
+    qproc qp(ctx);
 #ifdef __APPLE__
     REQUIRE(qp.load_library("../libldbc_udf.dylib"));
 #else

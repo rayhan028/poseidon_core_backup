@@ -63,16 +63,16 @@ void create_data(graph_db_ptr graph) {
 TEST_CASE("Sequential BFS", "[ldbc]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_ga_graph1");
-
   create_data(graph);
 
   graph->dump_dot("bfs-graph.dot");
+  query_ctx ctx(graph);
 
   SECTION("bidirectional test") {
     std::vector<int> rs, expected;
 
     graph->begin_transaction(); 
-    bfs(graph, 0, false, 
+    bfs(ctx, 0, false, 
         [](auto& r) { return true; }, 
         [&](auto& n) { rs.push_back(n.id()); }
     );
@@ -86,7 +86,7 @@ TEST_CASE("Sequential BFS", "[ldbc]") {
     std::vector<int> rs, expected;
 
     graph->begin_transaction(); 
-    bfs(graph, 0, true, 
+    bfs(ctx, 0, true, 
         [](auto& r) { return true; }, 
         [&](auto& n) { rs.push_back(n.id()); }
     );
@@ -101,7 +101,7 @@ TEST_CASE("Sequential BFS", "[ldbc]") {
 
     auto label = graph->get_code(":knows");
     graph->begin_transaction(); 
-    bfs(graph, 0, false, 
+    bfs(ctx, 0, false, 
         [&](auto& r) { return r.rship_label == label; }, 
         [&](auto& n) { rs.push_back(n.id()); }
     );
@@ -115,7 +115,7 @@ TEST_CASE("Sequential BFS", "[ldbc]") {
     std::vector<path> rs, expected;
 
     graph->begin_transaction(); 
-    path_bfs(graph, 0, false, 
+    path_bfs(ctx, 0, false, 
         [&](auto& r) { return true; }, 
         [&](auto& n, const path& p) { 
           rs.push_back(p);

@@ -75,3 +75,13 @@ index_id index_map::get_index(const std::string& idx_name) {
     return it->second;
 #endif
 }
+
+bool index_map::has_index(const std::string& idx_name) {
+#ifdef USE_PMDK
+    hashmap::const_accessor ac;
+    return indexes_->find(ac, string_t(idx_name));
+#else
+    auto it = indexes_.find(idx_name);
+    return it != indexes_.end();
+#endif
+}

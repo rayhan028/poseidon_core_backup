@@ -23,6 +23,7 @@
 #include "config.h"
 #include "defs.hpp"
 #include "graph_db.hpp"
+#include "query_ctx.hpp"
 
 #ifdef USE_PMDK
 
@@ -206,8 +207,10 @@ BENCHMARK_REGISTER_F(MyFixture, BM_GetNodeDescription)->Range(8, 8 << 6);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_ScanNodes)(benchmark::State &state) {
+  query_ctx ctx(graph);
+
 #ifdef USE_TX
-  graph->begin_transaction();
+  ctx.begin_transaction();
 #endif
   for (int i = 0u; i < 10000; i++) {
     graph->add_node("Person",
@@ -219,16 +222,16 @@ BENCHMARK_DEFINE_F(MyFixture, BM_ScanNodes)(benchmark::State &state) {
                               true);
   }
 #ifdef USE_TX
-  graph->commit_transaction();
+  ctx.commit_transaction();
 #endif
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-      graph->begin_transaction();
+      ctx.begin_transaction();
 #endif
-      graph->nodes([](node &n) { __attribute__((unused)) auto id_ = n.id(); });
+      ctx.nodes([](node &n) { __attribute__((unused)) auto id_ = n.id(); });
 #ifdef USE_TX
-      graph->commit_transaction();
+      ctx.commit_transaction();
 #endif
     }
   }
@@ -239,8 +242,9 @@ BENCHMARK_REGISTER_F(MyFixture, BM_ScanNodes)->Range(8, 8 << 4);
 /* ------------------------------------------------------------- */
 
 BENCHMARK_DEFINE_F(MyFixture, BM_ScanNodesByLabel)(benchmark::State &state) {
+  query_ctx ctx(graph);
 #ifdef USE_TX
-  graph->begin_transaction();
+  ctx.begin_transaction();
 #endif
   for (int i = 0u; i < 10000; i++) {
     graph->add_node("Person",
@@ -252,16 +256,16 @@ BENCHMARK_DEFINE_F(MyFixture, BM_ScanNodesByLabel)(benchmark::State &state) {
                               true);
   }
 #ifdef USE_TX
-  graph->commit_transaction();
+  ctx.commit_transaction();
 #endif
   for (auto _ : state) {
     for (int i = 0u, i_end = state.range(0); i < i_end; i++) {
 #ifdef USE_TX
-      graph->begin_transaction();
+      ctx.begin_transaction();
 #endif
-      graph->nodes_by_label("Person", [](node &n) { __attribute__((unused)) auto id_ = n.id(); });
+      ctx.nodes_by_label("Person", [](node &n) { __attribute__((unused)) auto id_ = n.id(); });
 #ifdef USE_TX
-      graph->commit_transaction();
+      ctx.commit_transaction();
 #endif
     }
   }

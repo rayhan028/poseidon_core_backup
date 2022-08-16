@@ -27,14 +27,14 @@
 #include "qparser.hpp"
 #include "query_ctx.hpp"
 
-query_set qplanner::transform(graph_db_ptr& gdb, ast_op_ptr op_tree) {
+query_set qplanner::transform(query_ctx& ctx, ast_op_ptr op_tree) {
     std::vector<qop_ptr> sources;
   
     // auto qop_p = ast_to_qset(op_tree, gdb, sources);
-    auto qop_p = ast_to_qplan(gdb, op_tree, sources);
+    auto qop_p = ast_to_qplan(ctx.gdb_, op_tree, sources);
     query_set qset;
     for (auto& src : sources) {
-        query q(gdb, src);
+        query q(ctx, src);
         qset.add(q);
     }
     return qset;

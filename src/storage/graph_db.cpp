@@ -126,6 +126,12 @@ void graph_db::flush() {
   bpool_.flush_all();
 }
 
+void graph_db::flush(const std::set<offset_t>& dirty_chunks) {
+  for (const auto& dc : dirty_chunks) {
+    bpool_.flush_page(dc, false);
+  }
+}
+
 void graph_db::close_files() {
   if (dict_) dict_->close_file();
   if (node_file_) node_file_->close();
@@ -199,6 +205,9 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 	  // Note: Dirty version are always put in front of the list.
 	  // If that order is changed, then same order must be used during access.
 	  if (const auto& dn {n.dirty_list()->front()}; !dn->updated()) {
+      /* ------------------------------------------
+       *                  INSERT
+       * -----------------------------------------*/
       // std::cout << "COMMIT INSERT" << std::endl;
 		  // CASE #1 = INSERT: we have added a new node to node_list, but its properties
 		  // are stored in a dirty_node object in this case, we simply copy the
@@ -212,6 +221,8 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		  n.set_timestamps(xid, INF);
 		  // we can already delete the object from the dirty version list
 		  n.dirty_list()->pop_front();
+
+      // TODO: if we have a corresponding index: update the index
 	  } else {
 		  // case #2: we have updated a node, thus copy both properties
 		  // and node version to the main tables
@@ -220,7 +231,9 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
       auto log_id = current_transaction_->logid();
 
       if (dn->elem_.bts() == dn->elem_.cts()) {
-        // CASE #2 = DELETE
+        /* ------------------------------------------
+         *                  DELETE
+         * -----------------------------------------*/
         // std::cout << "COMMIT DELETE" << std::endl;
         // spdlog::info("COMMIT DELETE: [{},{}]", short_ts(dn->elem_.bts), short_ts(dn->elem_.cts));
         log_node_record rec (pmem_log::log_delete, pmem_log::log_node, node_id,
@@ -248,9 +261,13 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         // we can delete properties because the old values are still in the dirty list
         node_properties_->remove_properties(n.property_list);
         n.property_list = UNKNOWN;
+
+        // TODO: if we have a corresponding index: update the index
       }
       else {
-        // CASE #3 = UPDATE
+        /* ------------------------------------------
+         *                  UPDATE
+         * -----------------------------------------*/
         // std::cout << "COMMIT UPDATE" << std::endl;
         // create and append a log_node_record BEFORE we copy the properties and override the label
         log_node_record rec(pmem_log::log_update, pmem_log::log_node, node_id,
@@ -269,6 +286,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		    n.dirty_list()->pop_front();
 		    // release the lock of the old version.
 		    n.dirty_list()->front()->elem_.unlock();
+        // TODO: if we have a corresponding index: update the index
 	    }
     }
 	  // finally, release the lock of the persistent object and initiate the
@@ -1515,4 +1533,23 @@ bool graph_db::has_valid_to_rships(node &n, xid_t xid) {
     relship_id = relship.next_dest_rship;
   }
   return false;
+}
+
+
+p_item graph_db::get_property_value(const node &n, const std::string& pkey) {
+  auto pc = dict_->lookup_string(pkey);
+  return get_property_value(n, pc);
+}
+
+p_item graph_db::get_property_value(const node &n, dcode_t pcode) {
+  return node_properties_->property_value(n.property_list, pcode);
+}
+
+p_item graph_db::get_property_value(const relationship &r, const std::string& pkey) {
+  auto pc = dict_->lookup_string(pkey);
+  return get_property_value(r, pc);
+}
+
+p_item graph_db::get_property_value(const relationship &r, dcode_t pcode) {
+  return rship_properties_->property_value(r.property_list, pcode);
 }

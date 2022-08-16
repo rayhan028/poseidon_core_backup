@@ -24,7 +24,7 @@ extern "C" query_result nodesConnected(query_ctx& ctx, query_result &p1, query_r
     auto src = boost::get<node *>(p1);
     auto des = boost::get<node *>(p2);
     auto connected = false;
-    ctx.gdb_->foreach_from_relationship_of_node((*src), [&](auto &r) {
+    ctx.foreach_from_relationship_of_node((*src), [&](auto &r) {
         if (r.to_node_id() == des->id())
             connected = true;
     });

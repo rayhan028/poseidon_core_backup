@@ -77,16 +77,17 @@ void create_join_data(graph_db_ptr graph) {
 TEST_CASE("Testing query operators", "[qop]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph1");
+  query_ctx ctx(graph);
 
   create_data(graph);
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   namespace pj = builtin;
 
   SECTION("limit") {
     result_set rs, expected;
-    auto q = query(graph).all_nodes("Node").limit(3).collect(rs);
+    auto q = query(ctx).all_nodes("Node").limit(3).collect(rs);
     q.start();
 
     rs.wait();
@@ -97,7 +98,7 @@ TEST_CASE("Testing query operators", "[qop]") {
 
   SECTION("count") {
     result_set rs, expected;
-    auto q = query(graph).all_nodes("Node").count().collect(rs);
+    auto q = query(ctx).all_nodes("Node").count().collect(rs);
     q.start();
 
     rs.wait();
@@ -109,7 +110,7 @@ TEST_CASE("Testing query operators", "[qop]") {
 
   SECTION("order by") {
     result_set rs, expected;
-    auto q = query(graph)
+    auto q = query(ctx)
                  .all_nodes("Node")
                  .project({PExpr_(0, pj::int_property(res, "id"))})
                  .orderby([&](const qr_tuple &qr1, const qr_tuple &qr2) {
@@ -130,7 +131,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     result_set rs, expected;
     auto dc = graph->get_code("aaa4");
     REQUIRE(dc != 0);
-    auto q = query(graph)
+    auto q = query(ctx)
                  .all_nodes("Node")
                  .property("name", [dc](auto &p) { return p.equal(dc); })
                  .project({PExpr_(0, pj::int_property(res, "id")),
@@ -153,7 +154,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     // std::cout << "code for Movie: " << graph->get_code("Movie") << std::endl;
 
     result_set rs, expected;
-    auto q = query(graph)
+    auto q = query(ctx)
                  .all_nodes()
                  .has_label("Movie")
                  .project({PExpr_(0, pj::string_property(res, "title"))})
@@ -171,7 +172,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     result_set rs, expected;
     auto dc = graph->get_code("aaa4");
     REQUIRE(dc != 0);
-    auto q = query(graph)
+    auto q = query(ctx)
                  .nodes_where("Node", "name", [dc](auto &p) { return p.equal(dc); })
                  .project({PExpr_(0, pj::int_property(res, "id")),
                            PExpr_(0, pj::string_property(res, "name"))})
@@ -185,14 +186,14 @@ TEST_CASE("Testing query operators", "[qop]") {
   }
 
   SECTION("use index") {
-    graph->commit_transaction();
-    graph->begin_transaction();
+    ctx.commit_transaction();
+    ctx.begin_transaction();
 
     // create index
     auto idx = graph->create_index("Node", "id");
  
     result_set rs, expected;
-    auto q = query(graph)
+    auto q = query(ctx)
               .nodes_where_indexed("Node", "id", 3)
               .project({PExpr_(0, pj::int_property(res, "id")),
                         PExpr_(0, pj::string_property(res, "name"))})
@@ -207,7 +208,7 @@ TEST_CASE("Testing query operators", "[qop]") {
 
   SECTION("where_qr_tuple") {
     result_set rs, expected;
-    auto q = query(graph)
+    auto q = query(ctx)
                  .all_nodes("Node")
                  .project({PExpr_(0, pj::int_property(res, "id"))})
                  .where_qr_tuple([&](const auto &v) {
@@ -225,7 +226,7 @@ TEST_CASE("Testing query operators", "[qop]") {
 
   SECTION("append_to_qr_tuple") {
     result_set rs, expected;
-    auto q = query(graph)
+    auto q = query(ctx)
                  .all_nodes("Node")
                  .project({PExpr_(0, pj::int_property(res, "id"))})
                  .append_to_qr_tuple([&](const auto &v) {
@@ -245,7 +246,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     REQUIRE(rs == expected);
     q.print_plan();
   }
-  graph->abort_transaction();
+  ctx.abort_transaction();
 
   graph_pool::destroy(pool);
 }
@@ -253,19 +254,20 @@ TEST_CASE("Testing query operators", "[qop]") {
 TEST_CASE("Testing join operators", "[qop]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph2");
+  query_ctx ctx(graph);
 
   // prepare some data
   create_join_data(graph);
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   namespace pj = builtin;
 
   SECTION("cross join") {
     result_set rs, expected;
-    auto q1 = query(graph).all_nodes("Node2");
+    auto q1 = query(ctx).all_nodes("Node2");
 
-    auto q2 = query(graph)
+    auto q2 = query(ctx)
                   .all_nodes("Node1")
                   .crossjoin(q1)
                   .project({PExpr_(0, pj::int_property(res, "id")),
@@ -282,7 +284,7 @@ TEST_CASE("Testing join operators", "[qop]") {
     query::print_plans({&q1, &q2});
   }
 
-  graph->abort_transaction();
+  ctx.abort_transaction();
 
   graph_pool::destroy(pool);
 }
@@ -290,8 +292,9 @@ TEST_CASE("Testing join operators", "[qop]") {
 TEST_CASE("Projecting node and relationship datetime properties", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph3");
+  query_ctx ctx(graph);
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   auto a = graph->add_node("Person",
       {{"id", boost::any(1)},
@@ -303,12 +306,12 @@ TEST_CASE("Projecting node and relationship datetime properties", "[graph_db]") 
   graph->add_relationship(a, b, ":isLocatedIn",
       {{"creationDate", boost::any(time_from_string(std::string("2011-11-02 13:00:00.000")))}});
 
-  graph->commit_transaction();
-  graph->begin_transaction();
+  ctx.commit_transaction();
+  ctx.begin_transaction();
 
   namespace pj = builtin;
   result_set rs, expected;
-  auto q = query(graph)
+  auto q = query(ctx)
                   .all_nodes("Person")
                   .from_relationships(":isLocatedIn")
                   .to_node("Place")
@@ -325,7 +328,7 @@ TEST_CASE("Projecting node and relationship datetime properties", "[graph_db]") 
     query_result("2011-11-02T13:00:00")});
   REQUIRE(rs == expected);
 
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
   graph_pool::destroy(pool);
 }
@@ -333,12 +336,13 @@ TEST_CASE("Projecting node and relationship datetime properties", "[graph_db]") 
 TEST_CASE("Testing query profiling", "[qop]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph4");
+  query_ctx ctx(graph);
 
   create_data(graph);
   auto dc = graph->get_code("aaa3");
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
     result_set rs;
-    auto q = query(graph)
+    auto q = query(ctx)
               .all_nodes("Node")
               .property("name", [&](auto &p) { return p.equal(dc); })
               .collect(rs);
@@ -353,23 +357,24 @@ TEST_CASE("Testing query profiling", "[qop]") {
 TEST_CASE("Testing union_all operator", "[qop]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph5");
+  query_ctx ctx(graph);
 
   namespace pj = builtin;
 
   create_data(graph);
   auto ab = graph->get_code("aaa3");
   auto cd = graph->get_code("aaa7");
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
     result_set rs, expected;
     expected.append({query_result("aaa3")});
     expected.append({query_result("aaa7")});
 
-    auto q1 = query(graph)
+    auto q1 = query(ctx)
               .all_nodes("Node")
               .property("name", [&](auto &p) { return p.equal(ab); })
               .project({PExpr_(0, pj::string_property(res, "name"))});
     
-    auto q2 = query(graph)
+    auto q2 = query(ctx)
               .all_nodes("Node")
               .property("name", [&](auto &p) { return p.equal(cd); })
               .project({PExpr_(0, pj::string_property(res, "name"))})
@@ -389,6 +394,7 @@ TEST_CASE("Testing union_all operator", "[qop]") {
 TEST_CASE("Testing union_all operator 2", "[qop]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph6");
+  query_ctx ctx(graph);
 
   namespace pj = builtin;
 
@@ -397,29 +403,29 @@ TEST_CASE("Testing union_all operator 2", "[qop]") {
   auto b = graph->get_code("aaa2");
   auto c = graph->get_code("aaa3");
   auto d = graph->get_code("aaa4");
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
     result_set rs, expected;
     expected.append({query_result("aaa1")});
     expected.append({query_result("aaa2")});
     expected.append({query_result("aaa3")});
     expected.append({query_result("aaa4")});
 
-    auto q1 = query(graph)
+    auto q1 = query(ctx)
               .all_nodes("Node")
               .property("name", [&](auto &p) { return p.equal(a); })
               .project({PExpr_(0, pj::string_property(res, "name"))});
 
-    auto q2 = query(graph)
+    auto q2 = query(ctx)
               .all_nodes("Node")
               .property("name", [&](auto &p) { return p.equal(b); })
               .project({PExpr_(0, pj::string_property(res, "name"))});
 
-    auto q3 = query(graph)
+    auto q3 = query(ctx)
               .all_nodes("Node")
               .property("name", [&](auto &p) { return p.equal(c); })
               .project({PExpr_(0, pj::string_property(res, "name"))});
     
-    auto q4 = query(graph)
+    auto q4 = query(ctx)
               .all_nodes("Node")
               .property("name", [&](auto &p) { return p.equal(d); })
               .project({PExpr_(0, pj::string_property(res, "name"))})
@@ -439,10 +445,11 @@ TEST_CASE("Testing union_all operator 2", "[qop]") {
 TEST_CASE("Testing outgoing traversal operators", "[qop]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph7");
+  query_ctx ctx(graph);
 
   namespace pj = builtin;
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     auto a = graph->add_node("Person", {{"id", boost::any(1)},
                                         {"firstName", boost::any(std::string("A"))}});
@@ -465,11 +472,11 @@ TEST_CASE("Testing outgoing traversal operators", "[qop]") {
     return true;
   });
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     SECTION("foreach_from_relationship") {
       result_set rs, expected;
-      auto q = query(graph)
+      auto q = query(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .from_relationships(":knows")
@@ -490,7 +497,7 @@ TEST_CASE("Testing outgoing traversal operators", "[qop]") {
 
     SECTION("foreach_variable_from_relationship") {
       result_set rs, expected;
-      auto q = query(graph)
+      auto q = query(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .from_relationships({1, 3}, ":knows")
@@ -519,10 +526,11 @@ TEST_CASE("Testing outgoing traversal operators", "[qop]") {
 TEST_CASE("Testing incoming traversal operators", "[qop]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph8");
+  query_ctx ctx(graph);
 
   namespace pj = builtin;
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     auto a = graph->add_node("Person", {{"id", boost::any(1)},
                                         {"firstName", boost::any(std::string("A"))}});
@@ -545,11 +553,11 @@ TEST_CASE("Testing incoming traversal operators", "[qop]") {
     return true;
   });
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     SECTION("foreach_from_relationship") {
       result_set rs, expected;
-      auto q = query(graph)
+      auto q = query(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("F")); })
                 .to_relationships(":knows")
@@ -568,7 +576,7 @@ TEST_CASE("Testing incoming traversal operators", "[qop]") {
 
     SECTION("foreach_variable_from_relationship") {
       result_set rs, expected;
-      auto q = query(graph)
+      auto q = query(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("F")); })
                 .to_relationships({1, 3}, ":knows")
@@ -595,10 +603,11 @@ TEST_CASE("Testing incoming traversal operators", "[qop]") {
 TEST_CASE("Testing other Join operators", "[qop]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph9");
+  query_ctx ctx(graph);
 
   namespace pj = builtin;
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     auto a = graph->add_node("Person", {{"id", boost::any(1)},
                                         {"firstName", boost::any(std::string("A"))}});
@@ -621,17 +630,17 @@ TEST_CASE("Testing other Join operators", "[qop]") {
     return true;
   });
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     SECTION("hashjoin_on_node") {
       result_set rs, expected;
-      auto q1 = query(graph)
+      auto q1 = query(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .from_relationships(":knows")
                 .to_node("Person");
 
-      auto q2 = query(graph)
+      auto q2 = query(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .from_relationships({1, 3}, ":knows")
@@ -659,13 +668,13 @@ TEST_CASE("Testing other Join operators", "[qop]") {
 
     SECTION("join_on_node") {
       result_set rs, expected;
-      auto q1 = query(graph)
+      auto q1 = query(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .from_relationships(":knows")
                 .to_node("Person");
 
-      auto q2 = query(graph)
+      auto q2 = query(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .from_relationships({1, 3}, ":knows")
@@ -694,13 +703,13 @@ TEST_CASE("Testing other Join operators", "[qop]") {
     SECTION("outerjoin on node") {
       std::cout << "outerjoin on node\n";
       result_set rs, expected;
-      auto q1 = query(graph)
+      auto q1 = query(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .from_relationships(":knows")
                 .to_node("Person");
 
-      auto q2 = query(graph)
+      auto q2 = query(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .from_relationships({1, 3}, ":knows")
@@ -734,10 +743,10 @@ TEST_CASE("Testing other Join operators", "[qop]") {
     SECTION("join on rship") {
       std::cout << "join on rship\n";
       result_set rs, expected;
-      auto q1 = query(graph)
+      auto q1 = query(ctx)
                 .all_nodes("Person");
 
-      auto q2 = query(graph)
+      auto q2 = query(ctx)
                 .all_nodes("Person")
                 .crossjoin(q1)
                 .rship_exists({0, 1}, false)
@@ -762,16 +771,16 @@ TEST_CASE("Testing other Join operators", "[qop]") {
     SECTION("outerjoin on rship") {
       std::cout << "outerjoin on rship\n";
       result_set rs, expected;
-      auto q1 = query(graph)
+      auto q1 = query(ctx)
                 .all_nodes("Person");
 
-      auto q2 = query(graph)
+      auto q2 = query(ctx)
                 .all_nodes("Person")
                 .outerjoin(q1, [&](const qr_tuple &lv, const qr_tuple &rv) {
                   auto connected = false;
                   auto src = boost::get<node *>(lv[0]);
                   auto des = boost::get<node *>(rv[0]);
-                  graph->foreach_from_relationship_of_node((*src), [&](auto &r) {
+                  ctx.foreach_from_relationship_of_node((*src), [&](auto &r) {
                     if (r.to_node_id() == des->id())
                       connected = true;
                   });
@@ -804,10 +813,11 @@ TEST_CASE("Testing other Join operators", "[qop]") {
 TEST_CASE("Testing the existence of relationship", "[qop]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph10");
+  query_ctx ctx(graph);
 
   namespace pj = builtin;
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     auto a = graph->add_node("Person", {{"id", boost::any(1)},
                                         {"firstName", boost::any(std::string("A"))}});
@@ -830,16 +840,16 @@ TEST_CASE("Testing the existence of relationship", "[qop]") {
     return true;
   });
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     SECTION("rship_exists without NULL append") {
       std::cout << "rship_exists without NULL append\n";
       result_set rs, expected;
-      auto q1 = query(graph)
+      auto q1 = query(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); });
 
-      auto q2 = query(graph)
+      auto q2 = query(ctx)
                 .all_nodes("Person")
                 .crossjoin(q1)
                 .rship_exists({0,1}, false)
@@ -861,11 +871,11 @@ TEST_CASE("Testing the existence of relationship", "[qop]") {
 
     SECTION("rship_exists with NULL append") {
       result_set rs, expected;
-      auto q1 = query(graph)
+      auto q1 = query(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); });
 
-      auto q2 = query(graph)
+      auto q2 = query(ctx)
                 .all_nodes("Person")
                 .crossjoin(q1)
                 .rship_exists({0,1}, true)
@@ -896,10 +906,11 @@ TEST_CASE("Testing the existence of relationship", "[qop]") {
 TEST_CASE("Testing Groupby operator", "[qop]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph11");
+  query_ctx ctx(graph);
 
   namespace pj = builtin;
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     graph->add_node("Person", {{"age", boost::any(42)},
                               {"firstName", boost::any(std::string("John"))},
@@ -926,7 +937,7 @@ TEST_CASE("Testing Groupby operator", "[qop]") {
                               {"lastName", boost::any(std::string("G."))}});
 
     result_set rs, expected;
-    auto q = query(graph)
+    auto q = query(ctx)
               .all_nodes("Person")
               .project({PExpr_(0, pj::int_property(res, "age")),
                         PExpr_(0, pj::string_property(res, "firstName")),
@@ -961,10 +972,11 @@ TEST_CASE("Testing Groupby operator", "[qop]") {
 TEST_CASE("Testing Bi-directional traversal operator", "[qop]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph11");
+  query_ctx ctx(graph);
 
   namespace pj = builtin;
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     auto A = graph->add_node("Person", {{"age", boost::any(42)},
                               {"firstName", boost::any(std::string("AAA"))},
@@ -994,10 +1006,10 @@ TEST_CASE("Testing Bi-directional traversal operator", "[qop]") {
     return true;
   });
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     result_set rs, expected;
-    auto q = query(graph)
+    auto q = query(ctx)
               .nodes_where("Person", "age",
                           [&](auto &p) { return p.equal(48); })
               .all_relationships(":knows")
@@ -1022,10 +1034,11 @@ TEST_CASE("Testing Bi-directional traversal operator", "[qop]") {
 TEST_CASE("Testing distinct operator", "[qop]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_qgraph12");
+  query_ctx ctx(graph);
 
   namespace pj = builtin;
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     auto a = graph->add_node("Person", {{"id", boost::any(3)}});
     auto b = graph->add_node("Person", {{"id", boost::any(4)}});
@@ -1041,10 +1054,10 @@ TEST_CASE("Testing distinct operator", "[qop]") {
     return true;
   });
 
-  graph->run_transaction([&]() {
+  ctx.run_transaction([&]() {
 
     result_set rs, expected;
-    auto q = query(graph)
+    auto q = query(ctx)
               .all_nodes("Person")
               .from_relationships(":authored")
               .to_node("Paper")

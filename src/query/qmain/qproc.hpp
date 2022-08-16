@@ -39,7 +39,7 @@ public:
         Adaptive
     };
 
-    qproc(graph_db_ptr gdb) : gdb_(gdb), compiler_(query_ctx(gdb)) {}
+    qproc(query_ctx& ctx) : ctx_(ctx), compiler_(ctx) {}
     ~qproc() = default;
 
     qresult_iterator execute_query(mode m, const std::string& qstr, bool print_plan = false);
@@ -54,7 +54,8 @@ public:
 private:
     void prepare_plan(query_set& qplan);
     
-    graph_db_ptr gdb_;
+    // graph_db_ptr gdb_;
+    query_ctx ctx_;
     qparser parser_;
     qplanner planner_;   
     qinterp interp_; 

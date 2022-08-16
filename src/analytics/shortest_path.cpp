@@ -25,12 +25,12 @@
 
 constexpr double UNKNOWN_WEIGHT = std::numeric_limits<double>::max();
 
-bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
+bool unweighted_shortest_path(query_ctx& ctx, node::id_t start, node::id_t stop,
         bool bidirectional, rship_predicate rpred, path_visitor visit, path_item &spath) {
     bool found = false;
     std::queue<path> frontier;
-    boost::dynamic_bitset<> visited(gdb->get_nodes()->as_vec().capacity());
-    std::vector<std::size_t> distance(gdb->get_nodes()->as_vec().capacity(), UNKNOWN);
+    boost::dynamic_bitset<> visited(ctx.gdb_->get_nodes()->as_vec().capacity());
+    std::vector<std::size_t> distance(ctx.gdb_->get_nodes()->as_vec().capacity(), UNKNOWN);
 
     distance[start] = 0;
     visited.set(start);
@@ -41,10 +41,10 @@ bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
         auto uid = u.back();    
         frontier.pop();
 
-        auto& n = gdb->node_by_id(uid);
+        auto& n = ctx.gdb_->node_by_id(uid);
         visit(n, u);
        
-        gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
+        ctx.foreach_from_relationship_of_node(n, [&](auto &r) {
             auto vid = r.to_node_id();
             if (rpred(r) && !visited[vid]) {
                 visited.set(vid);
@@ -62,7 +62,7 @@ bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
         });
 
         if (bidirectional) {
-            gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
+            ctx.foreach_to_relationship_of_node(n, [&](auto &r) {
                 auto vid = r.from_node_id();
                 if (rpred(r) && !visited[vid]) {
                     visited.set(vid);
@@ -85,12 +85,12 @@ bool unweighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
     return false;
 }
 
-bool all_unweighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_t stop,
+bool all_unweighted_shortest_paths(query_ctx& ctx, node::id_t start, node::id_t stop,
         bool bidirectional, rship_predicate rpred, path_visitor visit, std::list<path_item> &spaths) {
     bool found = false;
     std::queue<path> frontier;
-    boost::dynamic_bitset<> visited(gdb->get_nodes()->as_vec().capacity());
-    std::vector<std::size_t> distance(gdb->get_nodes()->as_vec().capacity(), UNKNOWN);
+    boost::dynamic_bitset<> visited(ctx.gdb_->get_nodes()->as_vec().capacity());
+    std::vector<std::size_t> distance(ctx.gdb_->get_nodes()->as_vec().capacity(), UNKNOWN);
 
     distance[start] = 0;
     visited.set(start);
@@ -101,10 +101,10 @@ bool all_unweighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_
         auto uid = u.back();    
         frontier.pop();
 
-        auto& n = gdb->node_by_id(uid);
+        auto& n = ctx.gdb_->node_by_id(uid);
         visit(n, u);
        
-        gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
+        ctx.foreach_from_relationship_of_node(n, [&](auto &r) {
             auto vid = r.to_node_id();
             if (rpred(r) && (!visited[vid] || (vid == stop && distance[uid] < distance[stop]))) {
                 visited.set(vid);
@@ -124,7 +124,7 @@ bool all_unweighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_
         });
 
         if (bidirectional) {
-            gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
+            ctx.foreach_to_relationship_of_node(n, [&](auto &r) {
                 auto vid = r.from_node_id();
                 if (rpred(r) && (!visited[vid] || (vid == stop && distance[uid] < distance[stop]))) {
                     visited.set(vid);
@@ -147,10 +147,10 @@ bool all_unweighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_
     return found ? true : false;
 }
 
-bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool bidirectional,
+bool weighted_shortest_path(query_ctx& ctx, node::id_t start, node::id_t stop, bool bidirectional,
                 rship_predicate rpred, rship_weight weight_func, path_visitor visit, path_item &spath) {
     bool found = false;
-    uint64_t num_nodes = gdb->get_nodes()->as_vec().capacity();
+    uint64_t num_nodes = ctx.gdb_->get_nodes()->as_vec().capacity();
     boost::dynamic_bitset<> visited(num_nodes);
     std::vector<uint64_t> parent(num_nodes, UNKNOWN - 1);
     std::vector<double> weight(num_nodes, UNKNOWN_WEIGHT);
@@ -180,8 +180,8 @@ bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
 
         visited.set(min_nid);
 
-        auto& n = gdb->node_by_id(min_nid);
-        gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
+        auto& n = ctx.gdb_->node_by_id(min_nid);
+        ctx.foreach_from_relationship_of_node(n, [&](auto &r) {
             auto vid = r.to_node_id();
             if (rpred(r)) {
                 auto v_weight = weight_func(r);
@@ -193,7 +193,7 @@ bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
         });
 
         if (bidirectional) {
-            gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
+            ctx.foreach_to_relationship_of_node(n, [&](auto &r) {
                 auto vid = r.from_node_id();
                 if (rpred(r)) {
                     auto v_weight = weight_func(r);
@@ -208,10 +208,10 @@ bool weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop,
     return false;
 }
 
-bool all_weighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool bidirectional,
+bool all_weighted_shortest_paths(query_ctx& ctx, node::id_t start, node::id_t stop, bool bidirectional,
                 rship_predicate rpred, rship_weight weight_func, path_visitor visit, std::list<path_item> &spaths) {
     bool found = false;
-    uint64_t num_nodes = gdb->get_nodes()->as_vec().capacity();
+    uint64_t num_nodes = ctx.gdb_->get_nodes()->as_vec().capacity();
     boost::dynamic_bitset<> visited(num_nodes);
     std::vector<uint64_t> parent(num_nodes, UNKNOWN - 1);
     std::vector<double> weight(num_nodes, UNKNOWN_WEIGHT);
@@ -242,8 +242,8 @@ bool all_weighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_t 
 
         visited.set(min_nid);
 
-        auto& n = gdb->node_by_id(min_nid);
-        gdb->foreach_from_relationship_of_node(n, [&](auto &r) {
+        auto& n = ctx.gdb_->node_by_id(min_nid);
+        ctx.foreach_from_relationship_of_node(n, [&](auto &r) {
             auto vid = r.to_node_id();
             if (rpred(r)) {
                 auto v_weight = weight_func(r);
@@ -261,7 +261,7 @@ bool all_weighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_t 
         });
 
         if (bidirectional) {
-            gdb->foreach_to_relationship_of_node(n, [&](auto &r) {
+            ctx.foreach_to_relationship_of_node(n, [&](auto &r) {
                 auto vid = r.from_node_id();
                 if (rpred(r)) {
                     auto v_weight = weight_func(r);
@@ -282,9 +282,9 @@ bool all_weighted_shortest_paths(graph_db_ptr gdb, node::id_t start, node::id_t 
     return found;
 }
 
-bool w_spath_with_del_rship(graph_db_ptr gdb, node::id_t start, node::id_t stop, bool bidirectional,
+bool w_spath_with_del_rship(query_ctx& ctx, node::id_t start, node::id_t stop, bool bidirectional,
                 rship_predicate rpred, rship_weight weight_func, path_visitor visit, path_item &spath) {
-    uint64_t num_nodes = gdb->get_nodes()->as_vec().capacity();
+    uint64_t num_nodes = ctx.gdb_->get_nodes()->as_vec().capacity();
     boost::dynamic_bitset<> visited(num_nodes);
     std::vector<uint64_t> parent(num_nodes, UNKNOWN - 1);
     std::vector<double> weight(num_nodes, std::numeric_limits<double>::max());
@@ -315,10 +315,10 @@ bool w_spath_with_del_rship(graph_db_ptr gdb, node::id_t start, node::id_t stop,
         }
 
         xid_t txid = current_transaction()->xid();
-        auto& n = gdb->node_by_id(min_nid);
+        auto& n = ctx.gdb_->node_by_id(min_nid);
         auto rid = n.from_rship_list;
         while (rid != UNKNOWN) {
-            auto& r = gdb->get_relationships()->get(rid);
+            auto& r = ctx.gdb_->get_relationships()->get(rid);
             if (r.is_locked_by(txid)) {
                 assert(r.has_dirty_versions());
                 if (r.has_valid_version(txid)) {
@@ -344,7 +344,7 @@ bool w_spath_with_del_rship(graph_db_ptr gdb, node::id_t start, node::id_t stop,
         if (bidirectional) {
             rid = n.to_rship_list;
             while (rid != UNKNOWN) {
-                auto& r = gdb->get_relationships()->get(rid);
+                auto& r = ctx.gdb_->get_relationships()->get(rid);
                 if (r.is_locked_by(txid)) {
                     assert(r.has_dirty_versions());
                     if (r.has_valid_version(txid)) {
@@ -371,11 +371,11 @@ bool w_spath_with_del_rship(graph_db_ptr gdb, node::id_t start, node::id_t stop,
     return false;
 }
 
-bool k_weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t stop, std::size_t k, bool bidirectional,
+bool k_weighted_shortest_path(query_ctx& ctx, node::id_t start, node::id_t stop, std::size_t k, bool bidirectional,
             rship_predicate rpred, rship_weight weight_func, path_visitor visit, std::vector<path_item> &spaths) {
     // find first shortest path
     path_item first_spitem;
-    if (!weighted_shortest_path(gdb, start, stop, bidirectional, rpred, weight_func, visit, first_spitem))
+    if (!weighted_shortest_path(ctx, start, stop, bidirectional, rpred, weight_func, visit, first_spitem))
         return false;
     spaths.push_back(first_spitem);
     std::vector<path_item> candidate_spitems;
@@ -397,19 +397,19 @@ bool k_weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
                         bool d = true;
                         auto src_nid = p.get_path().at(j);
                         auto des_nid = p.get_path().at(j + 1);
-                        auto &src_node = gdb->node_by_id(src_nid);
+                        auto &src_node = ctx.gdb_->node_by_id(src_nid);
 
                         auto rid = src_node.from_rship_list;
                         xid_t txid = current_transaction()->xid();
                         while (rid != UNKNOWN) {
-                            auto& r = gdb->get_relationships()->get(rid);
+                            auto& r = ctx.gdb_->get_relationships()->get(rid);
                             if (r.is_locked_by(txid)) {
                                 assert(r.has_dirty_versions());
                                 if (r.has_valid_version(txid)) {
                                     auto nid = r.to_node_id();
                                     if (nid == des_nid) {
-                                        del_rships.push_back(gdb->get_rship_description(r.id()));
-                                        gdb->delete_relationship(r.id());
+                                        del_rships.push_back(ctx.gdb_->get_rship_description(r.id()));
+                                        ctx.gdb_->delete_relationship(r.id());
                                         d = false;
                                     }
                                 }
@@ -417,8 +417,8 @@ bool k_weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
                             else if (r.is_valid_for(txid)) {
                                 auto nid = r.to_node_id();
                                 if (nid == des_nid) {
-                                    del_rships.push_back(gdb->get_rship_description(r.id()));
-                                    gdb->delete_relationship(r.id());
+                                    del_rships.push_back(ctx.gdb_->get_rship_description(r.id()));
+                                    ctx.gdb_->delete_relationship(r.id());
                                     d = false;
                                 }
                             }
@@ -428,22 +428,22 @@ bool k_weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
                         if (bidirectional /*&& d*/) {
                             rid = src_node.to_rship_list;
                             while (rid != UNKNOWN) {
-                                auto& r = gdb->get_relationships()->get(rid);
+                                auto& r = ctx.gdb_->get_relationships()->get(rid);
                                 if (r.is_locked_by(txid)) {
                                     assert(r.has_dirty_versions());
                                     if (r.has_valid_version(txid)) {
                                         auto nid = r.from_node_id();
                                         if (nid == des_nid) {
-                                            del_rships.push_back(gdb->get_rship_description(r.id()));
-                                            gdb->delete_relationship(r.id());
+                                            del_rships.push_back(ctx.gdb_->get_rship_description(r.id()));
+                                            ctx.gdb_->delete_relationship(r.id());
                                         }
                                     }
                                 }
                                 else if (r.is_valid_for(txid)) {
                                     auto nid = r.from_node_id();
                                     if (nid == des_nid) {
-                                        del_rships.push_back(gdb->get_rship_description(r.id()));
-                                        gdb->delete_relationship(r.id());
+                                        del_rships.push_back(ctx.gdb_->get_rship_description(r.id()));
+                                        ctx.gdb_->delete_relationship(r.id());
                                     }
                                 }
                                 rid = r.next_dest_rship;
@@ -453,7 +453,7 @@ bool k_weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
                 }
                 // find Spur path (from Spur to Stop)
                 path_item spur_spitem;
-                if (!w_spath_with_del_rship(gdb, spur_nid, stop, bidirectional, rpred, weight_func, visit, spur_spitem))
+                if (!w_spath_with_del_rship(ctx, spur_nid, stop, bidirectional, rpred, weight_func, visit, spur_spitem))
                     return false;
                 // concatenate Root and Spur paths to get Candidate Shortest Path
                 path candidate_path(root_path);
@@ -478,7 +478,7 @@ bool k_weighted_shortest_path(graph_db_ptr gdb, node::id_t start, node::id_t sto
                         auto des = rdescr.to_id;
                         auto &rlabel = rdescr.label;
                         auto &rprops = rdescr.properties;
-                        gdb->add_relationship(src, des, rlabel, rprops, true);
+                        ctx.gdb_->add_relationship(src, des, rlabel, rprops, true);
                     }
                 }
             }

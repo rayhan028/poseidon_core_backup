@@ -48,11 +48,11 @@ query_set qproc::prepare_query(const std::string& qstr, bool print_plan) {
     auto op_tree = parser_.parse(qstr);
     if (print_plan)
         print_ast(op_tree);
-    return planner_.transform(gdb_, op_tree);
+    return planner_.transform(ctx_, op_tree);
 }
     
 void qproc::interp_query(query_set& plan) {
-    interp_.execute(gdb_, plan);
+    interp_.execute(ctx_, plan);
 }
 
 void qproc::compile_query(query_set& plan) {
@@ -70,7 +70,8 @@ bool qproc::load_library(const std::string& lib_path) {
  
 class prepare_expr_visitor : public expression_visitor {
 public:
-    prepare_expr_visitor(graph_db_ptr& gdb, std::shared_ptr<boost::dll::shared_library> udf_lib) : gdb_(gdb), udf_lib_(udf_lib) {}
+    prepare_expr_visitor(query_ctx& ctx, std::shared_ptr<boost::dll::shared_library> udf_lib) : 
+        ctx_(ctx), udf_lib_(udf_lib) {}
     ~prepare_expr_visitor() = default;
 
     void visit(int rank, std::shared_ptr<func_call> op) override {
@@ -84,13 +85,14 @@ public:
         }
     }
 private:
-    graph_db_ptr gdb_;
+    query_ctx& ctx_;
     std::shared_ptr<boost::dll::shared_library> udf_lib_;
 };
 
 class prepare_plan_visitor : public qop_visitor {
 public:
-    prepare_plan_visitor(graph_db_ptr& gdb, std::shared_ptr<boost::dll::shared_library> udf_lib) : expr_visitor_(gdb, udf_lib) {}
+    prepare_plan_visitor(query_ctx& ctx, std::shared_ptr<boost::dll::shared_library> udf_lib) : 
+        expr_visitor_(ctx, udf_lib) {}
 
     ~prepare_plan_visitor() = default;
 
@@ -113,6 +115,6 @@ public:
 };
 
 void qproc::prepare_plan(query_set& qplan) {
-    prepare_plan_visitor visitor(gdb_, udf_lib_);
+    prepare_plan_visitor visitor(ctx_, udf_lib_);
     qplan.accept(visitor);
 }
