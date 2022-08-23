@@ -633,7 +633,7 @@ public:
 
   /**
    * Build a list of p_items from the currently stored properties of the
-   * node/relationship identified by nid where the list starts at offset id +
+   * node/relationship identified by the id (n.property_list) where the list starts at offset id +
    * the list of updated/added properties represented by props. This method is
    * used to handle transactional updates.
    */
@@ -643,9 +643,9 @@ public:
   while (pset_id != UNKNOWN) {
     auto &p = properties_.at(pset_id);
     for (auto &item : p.items) {
-        // Optimization: Insert only valid keys to avoid holes in Prpperty list and avoid resource leak.
+        // Optimization: Insert only valid keys to avoid holes in Property list and avoid resource leak.
         if(item.key_ != 0)  
-      p_item_list.push_back(item);
+          p_item_list.push_back(item);
     }
     pset_id = p.next;
   }

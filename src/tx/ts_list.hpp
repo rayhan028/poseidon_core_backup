@@ -46,6 +46,8 @@ template <typename T> struct ts_list {
 
     inline decltype(auto) front() { return the_list_.front(); }
 
+    inline decltype(auto) size() const { return the_list_.size(); }
+
     template <class Predicate>
     void remove_if (Predicate pred) { the_list_.remove_if(pred); }
 

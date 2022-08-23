@@ -480,6 +480,11 @@ private:
   friend struct scan_task;
   friend struct recover_scan;
 
+  std::pair<index_id, int> get_index(dcode_t label, std::list<p_item>& props);
+  void index_update(std::pair<index_id, int>& idx, offset_t id, std::list<p_item>& old_props, std::list<p_item>& new_props);
+  void index_insert(std::pair<index_id, int>& idx, offset_t id, std::list<p_item>& props);
+  void index_delete(std::pair<index_id, int>& idx, offset_t id, std::list<p_item>& props);
+
   /**
    * 
    */

@@ -80,6 +80,58 @@ bool graph_db::has_index(const std::string& node_label, const std::string& prop_
   return index_map_->has_index(node_label + ":" + prop_name);
 }
 
+std::pair<index_id, int> graph_db::get_index(dcode_t label, std::list<p_item>& props) {
+  std::string node_label(dict_->lookup_code(label));
+  int pos = 0;
+  for (auto &item : props) {
+    auto pname = item.key(dict_);
+    // spdlog::info("get_index: look for {}:{}", node_label, pname);
+    auto idx = index_map_->get_index_id(node_label + ":" + pname);
+    if (idx.which() > 0) {
+      return std::make_pair(idx, pos);
+    }
+    pos++;
+  }
+  return std::make_pair(boost::blank{}, -1);
+}
+
+void graph_db::index_insert(std::pair<index_id, int>& idx, offset_t id, std::list<p_item>& props) {
+  auto it = props.begin();
+  advance(it, idx.second);
+  auto& p = *it;
+
+  auto insert_visitor = boost::hana::overload(
+    [&](boost::blank& b) {},
+    [&](pf_btree_ptr idx) { idx->insert(p.get_raw(), id); },
+    [&](im_btree_ptr idx) { idx->insert(p.get_raw(), id); }
+#ifdef USE_PMDK
+    ,[&](nvm_btree_ptr idx) { idx->insert(p.get_raw(), id); }
+#endif
+  );
+  boost::apply_visitor(insert_visitor, idx.first);
+}
+
+void graph_db::index_delete(std::pair<index_id, int>& idx, offset_t id, std::list<p_item>& props) {
+  auto it = props.begin();
+  advance(it, idx.second);
+  auto& p = *it;
+
+  auto erase_visitor = boost::hana::overload(
+    [&](boost::blank& b) { return false; },
+    [&](pf_btree_ptr idx) { return idx->erase(p.get_raw()); },
+    [&](im_btree_ptr idx) { return idx->erase(p.get_raw()); }
+#ifdef USE_PMDK
+    ,[&](nvm_btree_ptr idx) { return idx->erase(p.get_raw()); }
+#endif
+  );
+  auto res = boost::apply_visitor(erase_visitor, idx.first);
+}
+
+void graph_db::index_update(std::pair<index_id, int>& idx, offset_t id, std::list<p_item>& old_props, std::list<p_item>& new_props) {
+  index_delete(idx, id, old_props);
+  index_insert(idx, id, new_props);
+}
+
 void graph_db::drop_index(const std::string& node_label, const std::string& prop_name) {
   auto idx_name = node_label + ":" + prop_name;
   auto idx = index_map_->get_index(idx_name);
@@ -89,14 +141,10 @@ void graph_db::drop_index(const std::string& node_label, const std::string& prop
 
 void graph_db::index_lookup(index_id idx_ptr, uint64_t key, node_consumer_func consumer) {
   offset_t val = 0;
-  /*
-  if (idx_ptr->lookup(key, &val)) {
-    auto& n = node_by_id(val);
-    consumer(n);
-  }
-  */
+
   auto my_visitor = boost::hana::overload(
-    [&](pf_btree_ptr idx) { return idx->lookup(key, &val); },
+    [&](boost::blank& b) { return false; },
+   [&](pf_btree_ptr idx) { return idx->lookup(key, &val); },
     [&](im_btree_ptr idx) { return idx->lookup(key, &val); }
 #ifdef USE_PMDK
     ,[&](nvm_btree_ptr idx) { return idx->lookup(key, &val); }
@@ -111,6 +159,7 @@ void graph_db::index_lookup(index_id idx_ptr, uint64_t key, node_consumer_func c
 void graph_db::index_lookup(std::list<index_id> &idx_ptrs, uint64_t key, node_consumer_func consumer) {
   offset_t val = 0;
   auto my_visitor = boost::hana::overload(
+    [&](boost::blank& b) { return false; },
     [&](pf_btree_ptr idx) { return idx->lookup(key, &val); },
     [&](im_btree_ptr idx) { return idx->lookup(key, &val); }
 #ifdef USE_PMDK

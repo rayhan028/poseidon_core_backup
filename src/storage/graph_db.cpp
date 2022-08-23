@@ -27,6 +27,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <set>
+#include <variant>
 
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
@@ -219,10 +220,16 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
       n.to_rship_list = dn->elem_.to_rship_list;
 		  // set bts/cts
 		  n.set_timestamps(xid, INF);
-		  // we can already delete the object from the dirty version list
+	
+      // TODO: handle the case of multiple indexes
+      auto idx = get_index(dn->elem_.node_label, dn->properties_);
+      if (idx.first.which() > 0) {
+        spdlog::info("NODE INDEX UPDATE: insert");
+        index_insert(idx, dn->elem_.id(), dn->properties_);
+      }
+	    // we can already delete the object from the dirty version list
 		  n.dirty_list()->pop_front();
 
-      // TODO: if we have a corresponding index: update the index
 	  } else {
 		  // case #2: we have updated a node, thus copy both properties
 		  // and node version to the main tables
@@ -254,6 +261,15 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         }
 		    n.set_cts(xid);
         // spdlog::info("===> COMMIT DELETE: #{}: [{},{}]", n.id(), short_ts(n.bts),short_ts(n.cts));
+
+        // TODO: handle the case of multiple indexes
+        auto props = node_properties_->build_dirty_property_list(n.property_list);
+        auto idx = get_index(dn->elem_.node_label, props);
+        if (idx.first.which() > 0) {
+          spdlog::info("NODE INDEX UPDATE: delete");
+          index_delete(idx, n.id(), props);
+        }
+
 		    // we can already delete the object from the dirty version list
 		    n.dirty_list()->pop_front();
 		    // release the lock of the old version.
@@ -262,7 +278,6 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         node_properties_->remove_properties(n.property_list);
         n.property_list = UNKNOWN;
 
-        // TODO: if we have a corresponding index: update the index
       }
       else {
         /* ------------------------------------------
@@ -282,11 +297,19 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		    // spdlog::info("COMMIT UPDATE: set new={},{} @{}", xid, INF, n.id());
 		    /// spdlog::info("COMMIT UPDATE: set old.cts={} @{}", xid,
 		    ///             (unsigned long)&(dn->node_));
+        // TODO: handle the case of multiple indexes
+        assert(n.dirty_list()->size() > 1);
+        auto it = n.dirty_list()->begin();
+        it++;
+        auto idx = get_index(dn->elem_.node_label, dn->properties_);
+        if (idx.first.which() > 0) {
+          spdlog::info("NODE INDEX UPDATE: update: {}", n.dirty_list()->size());
+          index_update(idx, dn->elem_.id(), (*it)->properties_, dn->properties_);
+        }
 		    // we can already delete the object from the dirty version list
 		    n.dirty_list()->pop_front();
 		    // release the lock of the old version.
 		    n.dirty_list()->front()->elem_.unlock();
-        // TODO: if we have a corresponding index: update the index
 	    }
     }
 	  // finally, release the lock of the persistent object and initiate the
@@ -322,6 +345,13 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		  // set bts/cts
 		  r.set_timestamps(xid, INF);
 		  copy_properties(r, dr);
+
+            // TODO: handle the case of multiple indexes
+      auto idx = get_index(dr->elem_.rship_label, dr->properties_);
+      if (idx.first.which() > 0) {
+        spdlog::info("RSHIP INDEX UPDATE: insert");
+        index_insert(idx, dr->elem_.id(), dr->properties_);
+      }
 		  // we can already delete the object from the dirty version list
 		  r.dirty_list()->pop_front();
 	  } else {
@@ -351,6 +381,14 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
           garbage_->push_back(gc_item { xid, rel_id, gc_item::gc_rship });
         }
 		    r.set_cts(xid);
+        
+        // TODO: handle the case of multiple indexes
+        auto props = rship_properties_->build_dirty_property_list(r.property_list);
+        auto idx = get_index(dr->elem_.rship_label, props);
+        if (idx.first.which() > 0) {
+          spdlog::info("RSHIP INDEX UPDATE: insert");
+          index_delete(idx, r.id(), props);
+        }
 
 		    // we can already delete the object from the dirty version list
 		    r.dirty_list()->pop_front();
@@ -370,6 +408,16 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		  r.set_timestamps(xid, INF);
 		  r.rship_label = dr->elem_.rship_label;
 		  copy_properties(r, dr);
+
+      // TODO: handle the case of multiple indexes
+      assert(r.dirty_list()->size() > 1);
+      auto it = r.dirty_list()->begin();
+      it++;
+      auto idx = get_index(dr->elem_.rship_label, dr->properties_);
+      if (idx.first.which() > 0) {
+        spdlog::info("RSHIP INDEX UPDATE: update: {}", r.dirty_list()->size());
+        index_update(idx, dr->elem_.id(), (*it)->properties_, dr->properties_);
+      }
 		  // we can already delete the dirty object from the dirty version list
 		  r.dirty_list()->pop_front();
 		  // release the lock of the older version.

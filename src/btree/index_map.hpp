@@ -38,6 +38,7 @@ public:
     void register_index(const std::string& idx_name, index_id idx);
     void unregister_index(const std::string& idx_name);
     index_id get_index(const std::string& idx_name);
+    index_id get_index_id(const std::string& idx_name);
     bool has_index(const std::string& idx_name);
 
 #ifdef USE_PMDK
