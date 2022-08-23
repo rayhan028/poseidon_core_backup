@@ -422,7 +422,7 @@ TEST_CASE("Checking adding a node with properties", "[graph_db]") {
   REQUIRE(std::string("John") ==
           get_property<const std::string>(ndescr.properties, "name").value());
   REQUIRE(get_property<int>(ndescr.properties, "age").value() == 42);
-
+  graph->commit_transaction();
 
   graph_pool::destroy(pool);
 }
