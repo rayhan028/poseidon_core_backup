@@ -19,7 +19,10 @@ def setup_function():
 
 def teardown_function():
     if os.path.isdir('/mnt/pmem0/poseidon'):
-        os.remove(path)
+        try:
+            os.remove(path)
+        except:
+            pass
 
 def test_create_pool():
     p = poseidon.create_pool(path, 1024 * 1024 * 80)
