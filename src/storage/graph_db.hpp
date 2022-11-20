@@ -568,6 +568,13 @@ private:
       node_properties_;   // the list of all properties of nodes 
   p_ptr<property_list<nvm_chunked_vec> >
       rship_properties_;   // the list of all properties of relationships
+#elif defined(USE_IN_MEMORY)
+  p_ptr<node_list<mem_chunked_vec> > nodes_; // the list of all nodes of the graph
+  p_ptr<relationship_list<mem_chunked_vec> > rships_; // the list of all relationships of the graph
+  p_ptr<property_list<mem_chunked_vec> >
+      node_properties_;   // the list of all properties of nodes 
+  p_ptr<property_list<mem_chunked_vec> >
+      rship_properties_;   // the list of all properties of relationships
 #else
   p_ptr<node_list<buffered_vec> > nodes_; // the list of all nodes of the graph
   p_ptr<relationship_list<buffered_vec> > rships_; // the list of all relationships of the graph

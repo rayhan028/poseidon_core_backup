@@ -69,6 +69,7 @@ TEST_CASE("Creating an index on nodes", "[index]") {
   graph_pool::destroy(pool);
 }
 
+#if !defined(USE_IN_MEMORY)
 TEST_CASE("Creating and restoring an index on nodes", "[index]") {
   {
   auto pool = graph_pool::create(test_path);
@@ -114,6 +115,7 @@ TEST_CASE("Creating and restoring an index on nodes", "[index]") {
   graph_pool::destroy(pool);
   }
 }
+#endif
 
 TEST_CASE("Creating and updating an index on nodes", "[index]") {
  auto pool = graph_pool::create(test_path);

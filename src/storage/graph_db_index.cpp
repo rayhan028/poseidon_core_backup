@@ -40,6 +40,8 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
       pmem::obj::transaction::run(pop, [&] {
         new_idx = make_nvm_btree();
       });
+#elif defined(USE_IN_MEMORY)
+  auto new_idx = make_im_btree();
 #else
   auto file_id = index_map_->size() + RPROPS_FILE_ID + 1;
   auto idx_file = std::make_shared<paged_file>();

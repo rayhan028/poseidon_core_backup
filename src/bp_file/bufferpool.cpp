@@ -70,10 +70,10 @@ page *bufferpool::fetch_page(paged_file::page_id pid) {
         lru_list_.push_back(pid);
         return iter->second.p_;
     }
-    if (lru_list_.size() == bsize_)
+    if (lru_list_.size() == bsize_) {
         // evict page from lru_list_.front();
-        evict_page();
-
+        assert(evict_page());
+    }
     // load page from file
     auto p = load_page_from_file(pid);
     // ... add it to the hashtable
@@ -86,7 +86,7 @@ page *bufferpool::fetch_page(paged_file::page_id pid) {
 std::pair<page*, paged_file::page_id> bufferpool::allocate_page(uint8_t file_id) {
     assert(file_id < 10 && files_[file_id]);
     paged_file::page_id pid = files_[file_id]->allocate_page();
-    spdlog::debug("bufferpool::allocate_page -> {}/{}", pid, files_[file_id]->num_pages());
+    spdlog::debug("bufferpool::allocate_page -> {} in file {} -> {}", pid, file_id, (pid | (static_cast<uint64_t>(file_id) << 60)));
     return std::make_pair(fetch_page(pid | (static_cast<uint64_t>(file_id) << 60)), pid);
 }
 
@@ -129,7 +129,8 @@ void bufferpool::flush_all() {
             iter->second.dirty_ = false;
         }
     }
-    spdlog::debug("bufferpool: {} pages flushed", num);
+    if (num > 0)
+        spdlog::info("bufferpool: {} pages flushed", num);
 }
 
 void bufferpool::flush_page(paged_file::page_id pid, bool evict) {
@@ -162,18 +163,21 @@ void bufferpool::purge() {
 }
 
 bool bufferpool::evict_page() {
+    spdlog::debug("\t---- evict_page...");
     std::unique_lock lock(mutex_);
     for (auto it1 = lru_list_.begin(); it1 != lru_list_.end(); it1++) {
         auto pid = *it1;
         auto it2 = ptable_.find(pid);
         if (it2 != ptable_.end()) {
-            if (!it2->second.dirty_) {
-                slots_.set(it2->second.pos_);
-                memset(it2->second.p_, 0, sizeof(PAGE_SIZE));
-                ptable_.erase(pid);
-                lru_list_.erase(it1);
-                return true;
+            if (it2->second.dirty_) {
+                // TODO: write UNDO log!
+                write_page_to_file(pid, it2->second.p_);
             }
+            slots_.set(it2->second.pos_);
+            memset(it2->second.p_, 0, sizeof(PAGE_SIZE));
+            ptable_.erase(pid);
+            lru_list_.erase(it1);
+            return true;
         }
     }
     return false;
@@ -182,6 +186,7 @@ bool bufferpool::evict_page() {
 std::pair<page *, std::size_t> bufferpool::load_page_from_file(paged_file::page_id pid) {
     // find empty slot
     auto pos = slots_.find_first();
+    assert (pos != boost::dynamic_bitset<>::npos);
     slots_.flip(pos);
     // remove file_id from pid
     auto raw_pid = pid & 0xFFFFFFFFFFFFFFF;
@@ -190,7 +195,7 @@ std::pair<page *, std::size_t> bufferpool::load_page_from_file(paged_file::page_
     auto file_id = (pid & 0xF000000000000000) >> 60;
     assert(file_id < 10 && files_[file_id]);
     files_[file_id]->read_page(raw_pid, buffer_[pos]);
-    // std::cout << "load: " << pid << "," << raw_pid << " : " << (int)(buffer_[pos].payload[0]) << std::endl;
+    spdlog::debug("read page {}|{} from file {}", pid, raw_pid, file_id);
     return std::make_pair(&(buffer_[pos]), pos);
 }
 
@@ -198,7 +203,7 @@ void bufferpool::write_page_to_file(paged_file::page_id pid, page *pg) {
     auto raw_pid = pid & 0xFFFFFFFFFFFFFFF;
     auto file_id = (pid & 0xF000000000000000) >> 60;
     assert(file_id < 10 && files_[file_id]);
-    // std::cout << "write: " << pid << "," << raw_pid << " : " << (int)pg->payload[0] << std::endl;
+    spdlog::debug("write page {}|{} to file {}", pid, raw_pid, file_id);
     files_[file_id]->write_page(raw_pid, *pg);
 }
 

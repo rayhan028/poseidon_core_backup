@@ -22,6 +22,7 @@
 #include <list>
 #include <array>
 #include <unordered_map>
+#include <mutex>
 #include <shared_mutex>
 #include <functional>
 #include <boost/dynamic_bitset.hpp>
@@ -129,7 +130,7 @@ private:
 
     std::array<paged_file_ptr, 10> files_; // the registered paged_files
 
-    mutable std::shared_mutex mutex_;
+    mutable std::recursive_mutex mutex_;
 };
 
 #endif

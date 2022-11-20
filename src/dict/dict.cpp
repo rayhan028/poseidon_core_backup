@@ -17,9 +17,10 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 #include <iostream>
+#include "spdlog/spdlog.h"
 #include "dict.hpp"
 
-#ifdef USE_PMDK
+#if defined(USE_PMDK) || defined(USE_IN_MEMORY)
 dict::dict(const std::string& prefix, uint32_t init_pool_size) {
     pool_ = p_make_ptr<string_pool>(init_pool_size);
     initialize();
@@ -31,6 +32,7 @@ dict::dict(bufferpool& bpool, const std::string& prefix, uint32_t init_pool_size
     bpool_.register_file(DICT_FILE_ID, dict_file_);
     pool_ = std::make_shared<paged_string_pool>(bpool_, DICT_FILE_ID);
     initialize();
+    spdlog::info("dictionary initialized.");
 }
 #endif
 
@@ -40,7 +42,7 @@ dict::~dict() {
   pmem::obj::transaction::run(pop, [&] {
     pmem::obj::delete_persistent<string_pool>(pool_);
   });
-#else
+#elif !defined(USE_IN_MEMORY)
     bpool_.flush_all();
     dict_file_->close();
 #endif
@@ -48,8 +50,8 @@ dict::~dict() {
 }
 
 void dict::initialize() {
-     std::unique_lock lock(m_);
-    table_ = new htable(pool_, 50000);
+    std::unique_lock lock(m_);
+    table_ = new h2table(pool_/*, 2920000*/);
     table_->rebuild();
 }
 
@@ -82,7 +84,10 @@ const char* dict::lookup_code(dcode_t code) const {
 
 void dict::print_pool() const {
     pool_->print();
-    // table_->print();
+}
+
+void dict::print_table() const {
+    table_->print();
 }
 
 void dict::resize() {

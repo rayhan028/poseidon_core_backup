@@ -60,6 +60,8 @@ TEST_CASE("Inserting some strings", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
+#elif defined(USE_IN_MEMORY)
+  dict d;
 #else
   create_dir("dict1");
   bufferpool bpool;
@@ -94,6 +96,8 @@ TEST_CASE("Inserting duplicate strings", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
+#elif defined(USE_IN_MEMORY)
+  dict d;
 #else
   create_dir("dict2");
   bufferpool bpool;
@@ -126,6 +130,8 @@ TEST_CASE("Looking up some strings", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
+#elif defined(USE_IN_MEMORY)
+  dict d;
 #else
   create_dir("dict3");
   bufferpool bpool;
@@ -160,6 +166,8 @@ TEST_CASE("Looking up some codes", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
+#elif defined(USE_IN_MEMORY)
+  dict d;
 #else
 create_dir("dict4");
   bufferpool bpool;
@@ -194,6 +202,8 @@ TEST_CASE("Looking up some non-existing strings", "[dict]") {
 
   dict &d = *(root_obj->dict_p);
   d.initialize();
+#elif defined(USE_IN_MEMORY)
+  dict d;
 #else
   create_dir("dict5");
   bufferpool bpool;
@@ -245,7 +255,8 @@ TEST_CASE("Test persistency of dict", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 }
-#else
+
+#elif !defined(USE_IN_MEMORY)
 
 TEST_CASE("Test persistency of dict", "[dict]") {
   dcode_t c;
@@ -274,28 +285,56 @@ TEST_CASE("Test persistency of dict", "[dict]") {
 
 // * test with a large set of strings
 TEST_CASE("Inserting many items", "[dict]") {
+#ifdef USE_IN_MEMORY
+  dict d;
+#endif
+  {
 #ifdef USE_PMDK
-  auto pop = nvm::pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
-  auto root_obj = pop.root();
+    auto pop = nvm::pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
+    auto root_obj = pop.root();
 
-  nvm::transaction::run(
+    nvm::transaction::run(
       pop, [&] { root_obj->dict_p = nvm::make_persistent<dict>(); });
 
-  dict &d = *(root_obj->dict_p);
-  d.initialize();
-#else
-  create_dir("dict7");
-  bufferpool bpool;
-  dict d(bpool, "dict7");
+    dict &d = *(root_obj->dict_p);
+    d.initialize();
+#elif !defined(USE_IN_MEMORY)
+    create_dir("dict7");
+    bufferpool bpool;
+    dict d(bpool, "dict7");
 #endif
 
+    std::cout << "dict7...insert" << std::endl;
   // max: 4294967295
-  //for (uint64_t i = 0u; i < 10000000; i++) {
-  for (uint64_t i = 0u; i < 100000; i++) {
+  // for (uint64_t i = 0u; i < 10000000; i++) {
+    for (uint64_t i = 0u; i < 100000; i++) {
 //	std::cout << i << std::endl;
-    d.insert(fmt::format("DictEntry#{}", i));
-  }
+      d.insert(fmt::format("DictEntry#{}", i));
+    }
 
+    std::cout << "...lookup" << std::endl;
+    for (auto i = 1000u; i < 100000; i++) {
+      auto str = fmt::format("DictEntry#{}", i);
+      auto c = d.lookup_string(str);
+      REQUIRE(c != 0);
+    }
+    std::cout << "finished." << std::endl;
+    d.print_table();
+  }
+  {
+    std::cout << "restart...." << std::endl;
+#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY)
+    bufferpool bpool;
+    dict d(bpool, "dict7");
+#endif
+    d.print_table();
+    for (auto i = 1000u; i < 100000; i++) {
+      auto str = fmt::format("DictEntry#{}", i);
+      // std::cout << str << std::endl;
+      auto c = d.lookup_string(str);
+      REQUIRE(c != 0);
+    }
+  }
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());

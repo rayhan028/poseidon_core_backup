@@ -72,6 +72,9 @@ using finish_fct_type = void(*)(query_context*, uint64_t**);
 #ifdef USE_PMDK
 template <typename T>
 using item_vec = nvm_chunked_vec<T>;
+#elif defined(USE_IN_MEMORY)
+template <typename T>
+using item_vec = mem_chunked_vec<T>;
 #else
 template <typename T>
 using item_vec = buffered_vec<T>;

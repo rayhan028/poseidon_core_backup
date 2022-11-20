@@ -15,6 +15,7 @@ option(USE_PMDK         "Use Intel PMDK"                         ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
 option(USE_LLVM         "Use LLVM for query compilation"         ON)
+option(USE_IN_MEMORY    "Use only in-memory storage"             ON)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
 option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
@@ -27,7 +28,7 @@ endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(USE_PMDK OFF)
-  set(LLVM_DIR "/usr/local/opt/llvm/lib/cmake/llvm")
+  set(LLVM_DIR "/opt/homebrew/opt/llvm@12/lib/cmake/llvm")
 endif()
 
 # Don't try to contact github everytime.
@@ -52,7 +53,7 @@ include(c++-standards)
 cxx_20()
 
 # Include the PMDK module
-if(USE_PMDK MATCHES ON)
+if(USE_PMDK MATCHES ON AND USE_IN_MEMORY MATCHES OFF)
   message(STATUS "looking for PMDK")
   include(pmdk)
 endif()
@@ -72,6 +73,10 @@ endif()
 
 if(USE_LLVM MATCHES ON)
   add_definitions( "-DUSE_LLVM" )
+endif()
+
+if(USE_IN_MEMORY MATCHES ON)
+  add_definitions( "-DUSE_IN_MEMORY" )
 endif()
 
 if(QOP_RECOVERY MATCHES ON)
@@ -329,14 +334,15 @@ find_package(Python3 COMPONENTS Interpreter)
 
 if (BUILD_PYTHON)
 message(STATUS "PYTHON")
-  find_package(PythonLibs)
-  find_package(PythonInterp)
-  if (PYTHONLIBS_FOUND)
+find_package (Python3 COMPONENTS Interpreter Development)
+#  find_package(PythonInterp)
+#  find_package(PythonLibs)
+  if (Python3_Development_FOUND)
     message(STATUS "Python Version ${PYTHON_VERSION_MAJOR} found - building the Python API.")
-    message("PythonInclude ${PYTHON_INCLUDE_DIRS}")
-    message("PythonLibs ${PYTHON_LIBDIR}")
+    message("PythonInclude ${Python3_INCLUDE_DIRS}")
+    message("PythonLibs ${Python3_LIBRARY_DIRS}")
 
-    include_directories(${PYTHON_INCLUDE_DIRS})
+    include_directories(${Python3_INCLUDE_DIRS})
     include_directories(${pybind11_INCLUDE_DIR})
     link_directories(${PYTHON_LIBDIR})
 
@@ -345,7 +351,7 @@ message(STATUS "PYTHON")
     )
   else()
     set (PYTHON_SOURCES "")
-  endif(PYTHONLIBS_FOUND)
+  endif(Python3_Development_FOUND)
 else ()
         message(STATUS "Don't build python interface")
         set (PYTHON_SOURCES "")
@@ -449,7 +455,7 @@ endif()
 set(src_files 
   src/dict/string_pool.cpp 
   src/dict/paged_string_pool.cpp 
-  src/dict/htable.cpp
+  src/dict/h2table.cpp
   src/dict/dict.cpp
   src/storage/nodes.cpp
   src/storage/relationships.cpp
@@ -621,6 +627,7 @@ endif()
 
 
 if (BUILD_PYTHON)
+message("Build python ${PYTHON_SOURCES}")
 # Python Poseidon library for loading a module into the python3 interpreter
 add_library(poseidon SHARED
   $<TARGET_OBJECTS:poseidon_obj>
@@ -632,7 +639,7 @@ target_link_libraries(poseidon
   Boost::filesystem
   Boost::date_time
   Boost::thread
-  ${PYTHON_LIBRARIES}
+  ${Python3_LIBRARIES}
   ${PMDK_LIBRARIES}
   spdlog::spdlog_header_only
 )

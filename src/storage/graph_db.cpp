@@ -34,12 +34,15 @@ namespace nvm = pmem::obj;
 #endif
 
 void graph_db::destroy(graph_db_ptr gp) {
+#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY) 
   boost::filesystem::path path_obj(gp->database_name_);
   if (boost::filesystem::exists(path_obj))
     boost::filesystem::remove_all(path_obj);
+#endif
 }
 
 void graph_db::prepare_files(const std::string &pool_path, const std::string &pfx) {
+#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY) 
   spdlog::debug("graph_db: prepare files {} / {}", pool_path, pfx);
   boost::filesystem::path path_obj {pool_path};
   path_obj /= pfx;
@@ -67,13 +70,12 @@ void graph_db::prepare_files(const std::string &pool_path, const std::string &pf
   rprops_file_->open(prefix + "rprops.db", RPROPS_FILE_ID);
   bpool_.register_file(RPROPS_FILE_ID, rprops_file_);
 
-#ifndef USE_PMDK
   dict_ = p_make_ptr<dict>(bpool_, prefix);
 #endif
 }
 
 graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : database_name_(db_name)
-#ifdef USE_PMDK
+#if defined(USE_PMDK) || defined(USE_IN_MEMORY)
 , bpool_(0)
 #endif
  {
@@ -82,6 +84,13 @@ graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : d
   rships_ = p_make_ptr<relationship_list<nvm_chunked_vec> >();
   node_properties_ = p_make_ptr<property_list<nvm_chunked_vec> >();
   rship_properties_ = p_make_ptr<property_list<nvm_chunked_vec> >();
+  dict_ = p_make_ptr<dict>();
+  index_map_ = p_make_ptr<index_map>();
+#elif defined(USE_IN_MEMORY)
+  nodes_ = p_make_ptr<node_list<mem_chunked_vec> >();
+  rships_ = p_make_ptr<relationship_list<mem_chunked_vec> >();
+  node_properties_ = p_make_ptr<property_list<mem_chunked_vec> >();
+  rship_properties_ = p_make_ptr<property_list<mem_chunked_vec> >();
   dict_ = p_make_ptr<dict>();
   index_map_ = p_make_ptr<index_map>();
 #else
@@ -146,6 +155,7 @@ void graph_db::close_files() {
 
 
 void graph_db::runtime_initialize() {
+  spdlog::info("graph_db::runtime_initialize()");
   nodes_->runtime_initialize();
   rships_->runtime_initialize();
 #ifdef QOP_RECOVERY
@@ -153,7 +163,7 @@ void graph_db::runtime_initialize() {
   recovery_res_->runtime_initialize();
 #endif
   // make sure the dictionary is initialized
-  dict_->initialize();
+  // dict_->initialize();
   // perform recovery using the undo log
   apply_undo_log();
 #if defined CSR_DELTA && defined USE_TX

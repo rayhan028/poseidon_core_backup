@@ -54,6 +54,7 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
         graph->commit_transaction();
     }
     pool->close();
+#if !defined(USE_IN_MEMORY)
     spdlog::info("try to reopen graph_pool ...");
     pool = graph_pool::open(test_path);
     auto graph2 = pool->open_graph("my_pool_graph1");
@@ -73,4 +74,5 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
 
     graph_pool::destroy(pool);
     REQUIRE(access(test_path.c_str(), F_OK) == -1);
+#endif
 }

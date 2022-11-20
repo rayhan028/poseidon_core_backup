@@ -14,6 +14,8 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
+graph_pool_ptr pool;
+
 #ifdef USE_PMDK
 
 #define POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
@@ -24,19 +26,20 @@ struct root {
   graph_db_ptr graph;
 };
 
+#else
+  graph_db_ptr graph;
 #endif
 
 using namespace boost::program_options;
 
 std::unique_ptr<qproc> qproc_ptr;
-
 /**
  * Import data from the given list of CSV files. The list contains
  * not only the files names but also nodes/relationships as well as
  * the labels.
  */
 bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
-                      char delimiter, bool n4j_mode = false) {
+                      char delimiter, std::string format, bool strict) {
   graph_db::mapping_t id_mapping;
 
   for (auto s : files) {
@@ -49,31 +52,34 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
         return false;
       }
 
+      std::size_t num = 0;
       auto start = std::chrono::steady_clock::now();
-      auto num = n4j_mode 
-                  ? gdb->import_typed_n4j_nodes_from_csv(result[1], result[2], delimiter,
-                                            id_mapping)
-                  : gdb->import_nodes_from_csv(result[1], result[2], delimiter,
-                                            id_mapping);
+      if (format == "n4j") {
+        num = gdb->import_typed_n4j_nodes_from_csv(result[1], result[2],
+                                                   delimiter, id_mapping);
+      }
+      else {
+        num = strict
+          ? gdb->import_typed_nodes_from_csv(result[1], result[2], delimiter, id_mapping)
+          : gdb->import_nodes_from_csv(result[1], result[2], delimiter, id_mapping);
+      }
       auto end = std::chrono::steady_clock::now();
 
-      std::cout << num << " nodes of type '" << result[1] << "' imported in "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                         start)
-                       .count()
-                << " msecs." << std::endl;
-    } else if (s.find("relationships:") != std::string::npos) {
+      auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+      spdlog::info("{} '{}' nodes imported in {} msecs ({} items/s)", num, result[1], time, (int)((double)num/time * 1000.0));
+    }
+    else if (s.find("relationships:") != std::string::npos) {
       std::vector<std::string> result;
       boost::split(result, s, boost::is_any_of(":"));
 
-      if (n4j_mode) {
+      if (format == "n4j") {
         if (result.size() < 2 || result.size() > 3) {
           std::cerr << "ERROR: unknown import option for relationships."
                     << std::endl;
           return false;
         }
       }
-      else if (result.size() != 2 ) {
+      else if (result.size() != 3) {
           std::cerr << "ERROR: unknown import option for relationships."
                     << std::endl;
           return false;
@@ -81,24 +87,24 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
 
       std::size_t num = 0;
       auto start = std::chrono::steady_clock::now();
-      if (n4j_mode) {
+      if (format == "n4j") {
         auto rship_type = result.size() == 3 ? result[1] : "";
         num = gdb->import_typed_n4j_relationships_from_csv(result.back(), delimiter, id_mapping, rship_type);
       }
       else {
-        num = gdb->import_relationships_from_csv(result[1], delimiter, id_mapping);
+        num = strict
+         ? gdb->import_typed_relationships_from_csv(result[2], delimiter, id_mapping)
+         : gdb->import_relationships_from_csv(result[2], delimiter, id_mapping);
       }
       auto end = std::chrono::steady_clock::now();
 
-      std::cout << num << " relationships";
+      auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       if (result.size() == 3) 
-        std::cout << " of type '" << result[1] << "'";
-      std::cout << " imported in "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                         start)
-                       .count()
-                << " msecs." << std::endl;
-    } else {
+        spdlog::info("{} '{}' relationships imported in {} msecs ({} items/s)", num, result[1], time, (int)((double)num/time * 1000.0));
+      else
+        spdlog::info("{} relationships imported in {} msecs ({} items/s)", num, time, (int)((double)num/time * 1000.0));
+    }
+    else {
       std::cerr << "ERROR: unknown import (nodes or relationships expected)."
                 << std::endl;
       return false;
@@ -134,16 +140,15 @@ void print_result(qresult_iterator& qres) {
 void exec_query(const std::string &qstr, qproc::mode qmode) {
   try {
   auto start_qp = std::chrono::steady_clock::now();
-  auto res = qproc_ptr->execute_query(qmode, qstr);
+  auto res = qproc_ptr->execute_query(qmode, qstr, true);
   auto end_qp = std::chrono::steady_clock::now();
 
   print_result(res);
 
+  std::chrono::duration<double> diff = end_qp - start_qp;
   std::cout << "Query executed in " 
-            << std::chrono::duration_cast<std::chrono::microseconds>(end_qp -
-                                                                     start_qp)
-                   .count()
-            << " µs" << std::endl;
+            << diff.count()
+            << " secs" << std::endl;
   } catch (std::exception& exc) {
     std::cerr << "Error in query execution: " << exc.what() << std::endl;
   }
@@ -179,6 +184,14 @@ void query_completion(const char* buf, std::vector<std::string>& completions) {
     }
 }
 
+void show_help() {
+  std::cout << "Available commands:\n"
+            << "\thelp          " << "show this help" << "\n"
+            << "\tstring s      " << "display the dictionary code of the string s" << "\n"
+            << "\tcode c        " << "display the string of the dictionary code c" << "\n"
+            << "\t@file         " << "execute the query stored in the given file" << "\n"
+            << "\t<query-expr>  " << "execute the given query" << std::endl;
+}
 
 /**
  * Run an interactive shell for entering and executing queries.
@@ -222,6 +235,25 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
       exec_query(line.substr(line.find(":") + 1), qmode);
     }
 #endif
+    else if (line.rfind("help", 0) == 0) {
+      show_help();
+    }
+    else if (line.rfind("string", 0) == 0) {
+      // lookup_string
+      if (line.length() > 6) {
+        auto s = line.substr(6);
+        trim(s);
+        std::cout << "dict code for '" << s << "': " << graph->get_dictionary()->lookup_string(s) << std::endl;
+      }
+    }
+    else if (line.rfind("code", 0) == 0) {
+      // lookup_code
+      if (line.length() > 4) {
+        auto s = line.substr(4);
+        trim(s);
+        std::cout << "dict string for '" << s << "': " << graph->get_dictionary()->lookup_code(std::stoi(s)) << std::endl;
+      }
+    }
     else
       exec_query(line, qmode);
 
@@ -235,13 +267,13 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
 }
 
 int main(int argc, char* argv[]) {
-  std::string db_name, pool_path, query_file, dot_file, qmode_str;
+  std::string db_name, pool_path, query_file, dot_file, qmode_str, format = "ldbc";
   std::vector<std::string> import_files;
   bool start_shell = false;
   bool n4j_mode = false;
   qproc::mode qmode = qproc::Compile; 
   char delim_character = ',';
-
+  bool strict = false;
 
   spdlog::info("Starting poseidon_cli, Version {}", POSEIDON_VERSION);
 
@@ -253,10 +285,12 @@ int main(int argc, char* argv[]) {
         ("db,d", value<std::string>(&db_name)->required(), "Database name (required)")
         ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem/file pool")
         ("output,o", value<std::string>(&dot_file), "Dump the graph to the given file (in DOT format)")
+        ("strict", bool_switch()->default_value(true), "Strict mode - assumes that all columns contain values of the same type")
+        ("delimiter", value<char>(&delim_character)->default_value('|'), "Character delimiter")
+        ("format,f", value<std::string>(&format), "CSV format: n4j | gtpc | ldbc")
         ("import", value<std::vector<std::string>>()->composing(),
         "Import files in CSV format (either nodes:<node type>:<filename> or "
         "relationships:<rship type>:<filename>")
-        ("n4j", bool_switch()->default_value(false), "Import CSV data in Neo4j format")
         ("query,q", value<std::string>(&query_file), "Execute the query from the given file")
         ("shell,s", bool_switch()->default_value(false), "Start the interactive shell")
         ("qmode", value<std::string>(&qmode_str), "Query compile mode: llvm (default) | interp | adapt");
@@ -268,6 +302,8 @@ int main(int argc, char* argv[]) {
       std::cout << "Poseidon Graph Database Version " << POSEIDON_VERSION << " ("
 #ifdef USE_PMDK
                 << "persistent memory"
+#elif defined(USE_IN_MEMORY)
+                << "in-memory"
 #else
                 << "paged files"
 #endif
@@ -286,8 +322,17 @@ int main(int argc, char* argv[]) {
     if (vm.count("delimiter"))
       delim_character = vm["delimiter"].as<char>();
 
-    if (vm.count("n4j"))
-      n4j_mode = vm["n4j"].as<bool>();
+   if (vm.count("strict"))
+      strict = vm["strict"].as<bool>();
+
+    if (vm.count("format"))
+      format = vm["format"].as<std::string>();
+
+    if (format != "n4j" && format != "gtpc" && format != "ldbc") {
+      std::cout
+          << "ERROR: choose format --n4j or --gtpc or --ldbc.\n";
+      return -1;
+    }
 
     if (vm.count("verbose"))
       if (vm["verbose"].as<bool>())
@@ -320,9 +365,6 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  graph_pool_ptr pool;
-  graph_db_ptr graph;
-
   if (access(pool_path.c_str(), F_OK) != 0) {
     spdlog::info("create poolset {}", pool_path);
     pool = graph_pool::create(pool_path);
@@ -334,8 +376,8 @@ int main(int argc, char* argv[]) {
   }
 
   if (!import_files.empty()) {
-    std::cout << "import files..." << std::endl;
-    import_csv_files(graph, import_files, delim_character, n4j_mode);
+    spdlog::info("--------- Importing files ...");
+    import_csv_files(graph, import_files, delim_character, format, strict);
     graph->print_stats();
   }
 

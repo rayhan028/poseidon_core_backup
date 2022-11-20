@@ -25,6 +25,7 @@
 #else
 #include "paged_string_pool.hpp"
 #endif
+#include "spdlog/spdlog.h"
 
 inline uint16_t probe_distance(uint64_t val) { return (val & 0xFFFF000000000000) >> 48; }
 
@@ -80,7 +81,8 @@ htable::~htable() {
 
 void htable::rebuild() {
     pool_->scan([this](const char *s, dcode_t c) {
-        insert(std::string(s), c);
+        // std::cout << s << " -> " << c << std::endl;
+        auto d = insert(std::string(s), c);
     });
 }
 
@@ -158,7 +160,7 @@ dcode_t htable::insert_into_table(uint64_t *tbl, uint32_t tsize, uint64_t hkey, 
 }
 
 void htable::resize() {
-    std::cout << "htable::resize..." << std::endl;
+    spdlog::info("htable::resize...");
     auto nbuckets = nbuckets_ + nbuckets_/2;
     auto new_table_ = new uint64_t[nbuckets];
     memset(new_table_, 0, nbuckets * sizeof(uint64_t));
@@ -167,7 +169,7 @@ void htable::resize() {
             // get the string
             auto s = pool_->extract(hash_value(table_[i]));
             // rehash
-            auto key = std::hash<const char *>{}(s);
+            auto key = std::hash<std::string>{}(s);
             // insert into new_table_
             insert_into_table(new_table_, nbuckets, key, table_[i]);
         }

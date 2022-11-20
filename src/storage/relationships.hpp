@@ -241,8 +241,10 @@ public:
    * Get a relationship via its identifier.
    */
   relationship &get(relationship::id_t id) {
-  if (rships_.capacity() <= id)
+  if (rships_.capacity() <= id) {
+    spdlog::warn("unknown relationship_id {}", id);
     throw unknown_id();
+  }
   auto &r = rships_.at(id);
   return r;    
   }

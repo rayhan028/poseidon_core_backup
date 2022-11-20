@@ -30,12 +30,12 @@ def test_create_pool():
     p.close()
 
 
-def test_open_graph():
-    p = poseidon.create_pool(path, 1024 * 1024 * 80)
-    assert p != None
-    with pytest.raises(RuntimeError):
-        g = p.open_graph("my_py_graph2")
-    p.close()
+# def test_open_graph():
+#    p = poseidon.create_pool(path, 1024 * 1024 * 80)
+#    assert p != None
+#    with pytest.raises(RuntimeError):
+#        g = p.open_graph("my_py_graph2")
+#    p.close()
 
 def test_create_node():
     p = poseidon.create_pool(path, 1024 * 1024 * 80)

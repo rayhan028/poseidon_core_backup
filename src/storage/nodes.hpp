@@ -288,8 +288,10 @@ public:
    * Get a node via its identifier.
    */
   node &get(node::id_t id) {
-   if (nodes_.capacity() <= id)
+   if (nodes_.capacity() <= id) {
+    spdlog::warn("unknown node_id {}", id);
     throw unknown_id();
+   }
   auto &n = nodes_.at(id);
   return n;   
   }
