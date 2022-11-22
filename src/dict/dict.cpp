@@ -24,6 +24,7 @@
 dict::dict(const std::string& prefix, uint32_t init_pool_size) {
     pool_ = p_make_ptr<string_pool>(init_pool_size);
     initialize();
+    spdlog::info("dictionary initialized: {} strings", count_string_pool_size());
 }
 #else
 dict::dict(bufferpool& bpool, const std::string& prefix, uint32_t init_pool_size) : bpool_(bpool) {
@@ -32,7 +33,7 @@ dict::dict(bufferpool& bpool, const std::string& prefix, uint32_t init_pool_size
     bpool_.register_file(DICT_FILE_ID, dict_file_);
     pool_ = std::make_shared<paged_string_pool>(bpool_, DICT_FILE_ID);
     initialize();
-    spdlog::info("dictionary initialized.");
+    spdlog::info("dictionary initialized: {} strings", count_string_pool_size());
 }
 #endif
 
@@ -94,3 +95,12 @@ void dict::resize() {
     std::unique_lock lock(m_);
     table_->resize();
 }
+
+std::size_t dict::count_string_pool_size() {
+    std::size_t num = 0;
+    pool_->scan([&num](const char *s, dcode_t c) {
+        num++;
+    }); 
+    return num;   
+}
+ 

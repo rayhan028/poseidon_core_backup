@@ -103,10 +103,11 @@ TEST_CASE("Creating a persistent btree index", "[btree]") {
         offset_t val;
         REQUIRE(mybtree->lookup(42u, &val));
         REQUIRE(val == 12);
-        // mybtree->print();
+        mybtree->print();
         bpool.flush_all();
     }
     {
+        std::cout << "reopen btree.." << std::endl;
         auto test_file = std::make_shared<paged_file>();
         test_file->open("btree_test2/btree.db", file_id);
 
@@ -114,7 +115,7 @@ TEST_CASE("Creating a persistent btree index", "[btree]") {
         bpool.register_file(file_id, test_file);
 
         auto mybtree = make_pf_btree(bpool, file_id);
-        // mybtree->print();
+        mybtree->print();
 
         offset_t val;
         REQUIRE(mybtree->lookup(42u, &val));
@@ -232,7 +233,7 @@ TEST_CASE("Creating an btree index, insert items and delete some of them", "[btr
         mybtree->insert(i, i + 1000);
 
     for (auto i = 20u; i < 1000; i += 50)
-        mybtree->erase(i);
+       mybtree->erase(i);
 
     auto k = 1u;
     mybtree->scan([&](const auto &key, const auto &val) {

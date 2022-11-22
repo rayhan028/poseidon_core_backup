@@ -16,6 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
+
+#include <boost/hana.hpp>
 #include "exceptions.hpp"
 #include "index_map.hpp"
 #include "spdlog/spdlog.h"
@@ -99,4 +101,22 @@ bool index_map::has_index(const std::string& idx_name) {
     auto it = indexes_.find(idx_name);
     return it != indexes_.end();
 #endif
+}
+
+void index_map::clear() {
+#ifndef USE_PMDK
+    auto visitor = boost::hana::overload(
+        [&](boost::blank& b) { },
+        [&](pf_btree_ptr idx) { idx->close(); },
+        [&](im_btree_ptr idx) { }
+#ifdef USE_PMDK
+        ,[&](nvm_btree_ptr idx) { }
+#endif
+    );
+    for (auto it = indexes_.begin(); it != indexes_.end(); it++) {
+        auto idx_id = it->second;    
+        boost::apply_visitor(visitor, idx_id);
+    }
+    indexes_.clear();
+#endif        
 }

@@ -19,6 +19,7 @@
 #include <iostream>
 #include <functional>
 #include <math.h>
+#include <set>
 #include "h2table.hpp"
 #if defined(USE_PMDK) || defined(USE_IN_MEMORY)
 #include "string_pool.hpp"
@@ -30,6 +31,8 @@
 void h2table::rebuild() {
     pool_->scan([this](const char *s, dcode_t c) {
         // std::cout << s << " -> " << c << std::endl;
+        if (strcmp(s, "Person") == 0)
+            std::cout << s << " -> " << c << std::endl;
         auto d = insert(std::string(s), c);
     });
 }

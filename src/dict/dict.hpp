@@ -105,6 +105,8 @@ public:
      */
     std::size_t size() const;
 
+    std::size_t count_string_pool_size();
+    
     void close_file() { 
 #if !defined(USE_PMDK) && !defined(USE_IN_MEMORY)
 	dict_file_->close();

@@ -44,6 +44,10 @@ paged_file_ptr bufferpool::get_file(uint8_t file_id) {
 void bufferpool::scan_file(uint8_t file_id, std::function<void(page *p)> cb) {
     assert(file_id < 10 && files_[file_id]);
     auto pos = slots_.find_first();
+    if (pos == boost::dynamic_bitset<>::npos) {
+        evict_page();
+        pos = slots_.find_first();
+    }
     slots_.flip(pos);
 
     files_[file_id]->scan_pages(buffer_[pos], [&](page& pg, paged_file::page_id pid) {
@@ -95,12 +99,13 @@ void bufferpool::free_page(paged_file::page_id pid) {
 
     auto iter = ptable_.find(pid);
     if (iter != ptable_.end()) {
-        ptable_.erase(pid);
-        memset(iter->second.p_, 0, sizeof(PAGE_SIZE));
-
         auto raw_pid = pid & 0xFFFFFFFFFFFFFFF;
         auto file_id = (pid & 0xF000000000000000) >> 60;
         assert(file_id < 10 && files_[file_id]);
+        spdlog::debug("free_page: #{}(raw:{}|file_id:{})", pid, raw_pid, file_id);
+        memset(iter->second.p_, 0, sizeof(PAGE_SIZE));
+        ptable_.erase(pid);
+
         files_[file_id]->free_page(raw_pid);
 
         auto iter2 = std::find(lru_list_.begin(), lru_list_.end(), pid);

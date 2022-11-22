@@ -47,6 +47,8 @@ public:
     std::size_t size() const { return indexes_.size(); }
 #endif
 
+    void clear();
+
 private:
 #ifdef USE_PMDK
     using hashmap = pmem::obj::concurrent_hash_map<string_t, index_id, string_hasher>;

@@ -29,7 +29,7 @@
 #include "qop.hpp"
 
 const std::string test_path = PMDK_PATH("index_tst");
-
+#if 0
 TEST_CASE("Creating an index on nodes", "[index]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_idx_graph");
@@ -68,6 +68,7 @@ TEST_CASE("Creating an index on nodes", "[index]") {
 
   graph_pool::destroy(pool);
 }
+#endif
 
 #if !defined(USE_IN_MEMORY)
 TEST_CASE("Creating and restoring an index on nodes", "[index]") {

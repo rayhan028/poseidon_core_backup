@@ -70,14 +70,15 @@ class BPTree {
   paged_file::page_id rootPid;
 
   void *load_node(paged_file::page_id pid, bool modify = false) const {
-    if (!bpool_.get_file(file_id_)->is_valid(pid))
+    if (!bpool_.get_file(file_id_)->is_valid(pid)) {
+      spdlog::debug("pfbtree: invalid page {}", pid);
       return nullptr;
-
+    }
     spdlog::debug("pfbtree::load_node page #{}", pid);
 
     auto pg = bpool_.fetch_page(pid | file_mask_);
     if (modify) {
-      spdlog::debug("pfbree::load_node page #{} marked as dirty in file {}", pid | file_mask_, file_id_);
+      spdlog::debug("pfbtree::load_node page #{} marked as dirty in file {}", pid | file_mask_, file_id_);
       bpool_.mark_dirty(pid | file_mask_);
     }
     return reinterpret_cast<void *>(pg->payload);
@@ -98,24 +99,17 @@ class BPTree {
     // std::cout << "sizeof(BranchNode) = " << sizeof(BranchNode)
     //  << ", sizeof(LeafNode) = " << sizeof(LeafNode) << std::endl;
     auto fptr = bpool_.get_file(file_id_);
-    fptr->set_callback([this](paged_file::cb_mode m, uint8_t *data) {
-      if (m == paged_file::header_read) {
-        memcpy(&depth, data, sizeof(unsigned int)); 
-        memcpy(&rootPid, data + sizeof(unsigned int), sizeof(paged_file::page_id)); 
-        spdlog::debug("read btree depth: {} and root: {}", depth, rootPid);
-      }
-      else {
-        // paged_file::header_write
-        spdlog::debug("write btree depth: {} and root: {}", depth, rootPid);
-        memcpy(data, &depth, sizeof(unsigned int));
-        memcpy(data + sizeof(unsigned int), &rootPid, sizeof(paged_file::page_id));
-      }
-    });
+
+    auto data = fptr->get_header_payload();
+    memcpy(&depth, data, sizeof(unsigned int)); 
+    memcpy(&rootPid, data + sizeof(unsigned int), sizeof(paged_file::page_id)); 
+    spdlog::debug("read btree depth: {} and root: {}", depth, rootPid);
+
     if (fptr->num_pages() == 0) {
       // we create a new empty B+ tree
-      spdlog::debug("create a new btree");
       auto pg = bpool_.allocate_page(file_id_);
       rootPid = 1;
+      spdlog::debug("create a new btree: root={}", rootPid);
       rootNode = new(pg.first->payload) LeafNode(rootPid);
     }
     else {
@@ -129,10 +123,19 @@ class BPTree {
    * Destructor for the B+ tree. Should delete all allocated nodes.
    */
   ~BPTree() {
+    close();
+  }
+
+  void close() {
+    auto fptr = bpool_.get_file(file_id_);
+    auto data = fptr->get_header_payload();
+    spdlog::debug("write btree depth: {} and root: {}", depth, rootPid);
+    memcpy(data, &depth, sizeof(unsigned int));
+    memcpy(data + sizeof(unsigned int), &rootPid, sizeof(paged_file::page_id));
+
     // Nodes are deleted automatically by releasing leafPool and branchPool.
     bpool_.flush_all();
   }
-
   /**
    * Insert an element (a key-value pair) into the B+ tree. If the key @c key
    * already exists, the corresponding value is replaced by @c val.
@@ -740,7 +743,7 @@ class BPTree {
    */
   void printLeafNode(unsigned int d, LeafNode *node) const {
     for (auto i = 0u; i < d; i++) std::cout << "  ";
-    std::cout << "[" << node->pid << " : ";
+    std::cout << "[" << node->pid << "|" << node->prevLeaf << "|" << node->nextLeaf << " : ";
     for (auto i = 0u; i < node->numKeys; i++) {
       if (i > 0) std::cout << ", ";
       std::cout << "{" << node->keys[i] << " -> " << node->values[i] << "}";

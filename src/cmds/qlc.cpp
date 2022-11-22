@@ -184,6 +184,10 @@ void query_completion(const char* buf, std::vector<std::string>& completions) {
     }
 }
 
+void print_stats() {
+  graph->print_stats();
+}
+
 void show_help() {
   std::cout << "Available commands:\n"
             << "\thelp          " << "show this help" << "\n"
@@ -237,6 +241,9 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
 #endif
     else if (line.rfind("help", 0) == 0) {
       show_help();
+    }
+    else if (line.rfind("stats", 0) == 0) {
+      print_stats();
     }
     else if (line.rfind("string", 0) == 0) {
       // lookup_string

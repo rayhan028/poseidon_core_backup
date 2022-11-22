@@ -49,6 +49,7 @@ void paged_string_pool::scan(std::function<void(const char *s, dcode_t c)> cb) {
         }
         npage++;
     });  
+    assert(npage == npages_);
 }
 
 const char *paged_string_pool::extract(dcode_t pos) const {
@@ -76,16 +77,19 @@ dcode_t paged_string_pool::add(const std::string& str) {
     memcpy(&last_pos, &(pg.first->payload[0]), sizeof(uint32_t));
     if (last_pos == 0) last_pos += sizeof(uint32_t);
 
-    if (last_pos + str.length() + 1 >= PAGE_SIZE) {
+    auto page_pos = last_pos - (npages_ - 1) * PAGE_SIZE;
+    if (page_pos + str.length() + 1 >= PAGE_SIZE) {
         // we need a new page
         pg = bpool_.allocate_page(file_id_);
         npages_++;
-        last_pos = sizeof(uint32_t);
+        last_pos = (npages_ - 1) * PAGE_SIZE + sizeof(uint32_t);
+        page_pos = sizeof(uint32_t);
     }
-    dcode_t pos = last_pos + (npages_ - 1) * PAGE_SIZE;
-    memcpy(&(pg.first->payload[last_pos]), str.c_str(), str.length());
+    dcode_t pos = last_pos/* + (npages_ - 1) * PAGE_SIZE*/;
+    memcpy(&(pg.first->payload[page_pos]), str.c_str(), str.length());
     last_pos += str.length() + 1;
-    pg.first->payload[last_pos - 1] = '\0';
+    page_pos += str.length() + 1; 
+    pg.first->payload[page_pos - 1] = '\0';
     memcpy(&(pg.first->payload[0]), &last_pos, sizeof(uint32_t));
     // mark dirty
     bpool_.mark_dirty(pg.second | file_mask_);

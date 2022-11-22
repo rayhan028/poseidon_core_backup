@@ -70,6 +70,8 @@ public:
      */
     void set_callback(header_cb cb);
 
+    uint8_t *get_header_payload() { return header_.payload_; }
+
     /**
      * Open or create the file with the given name and file type. If the file doesn't exist
      * a new file is created.

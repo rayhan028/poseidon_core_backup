@@ -46,12 +46,13 @@ bool paged_file::open(const std::string& path, int file_type) {
             file_.close();
             return false;
         }
+
     }
     if (header_callback_ != nullptr)
         header_callback_(header_read, header_.payload_);
     file_.seekp(0, file_.end);
     npages_ = ((unsigned long)file_.tellp() - sizeof(file_header)) / PAGE_SIZE;
-    spdlog::debug("file opened with {} pages", npages_);
+    spdlog::debug("file '{}' opened with {} pages", path, npages_);
     return is_open();
 }
 
