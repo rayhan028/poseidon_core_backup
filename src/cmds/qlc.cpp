@@ -188,11 +188,17 @@ void print_stats() {
   graph->print_stats();
 }
 
+void sync_db() {
+  graph->flush();
+}
+
 void show_help() {
   std::cout << "Available commands:\n"
             << "\thelp          " << "show this help" << "\n"
             << "\tstring s      " << "display the dictionary code of the string s" << "\n"
             << "\tcode c        " << "display the string of the dictionary code c" << "\n"
+            << "\tstats         " << "print database statistics" << "\n"
+            << "\tsync          " << "ensure that all pages are written to disk" << "\n"
             << "\t@file         " << "execute the query stored in the given file" << "\n"
             << "\t<query-expr>  " << "execute the given query" << std::endl;
 }
@@ -245,6 +251,9 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
     else if (line.rfind("stats", 0) == 0) {
       print_stats();
     }
+    else if (line.rfind("sync", 0) == 0) {
+      sync_db();
+    }    
     else if (line.rfind("string", 0) == 0) {
       // lookup_string
       if (line.length() > 6) {

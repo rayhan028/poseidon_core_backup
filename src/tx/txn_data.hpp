@@ -101,7 +101,7 @@ template <typename T> struct txn {
   /**
    * Default constructor.
    */
-  txn() : txn_id_(0), bts_(0), cts_(INF), rts_(0) { d_ = new txn_data_t(); }
+  txn() : txn_id_(0), bts_(0), cts_(INF), rts_(0), d_(nullptr) { /*d_ = new txn_data_t();*/ }
 
   /**
    * Copy constructor.
@@ -131,7 +131,8 @@ template <typename T> struct txn {
    * Copy assignment operator.
    */
   txn &operator=(const txn &t) {
-    d_ = new txn_data_t(*t.d_);
+    d_ = (t.d_ != nullptr) ? new txn_data_t(*t.d_) : nullptr;
+    // d_ = new txn_data_t(*t.d_);
     txn_id_ = t.txn_id_.load();
     bts_ = t.bts_;
     cts_ = t.cts_;
@@ -237,7 +238,7 @@ template <typename T> struct txn {
   /**
    * Check of the dirty flag is set. In this case the object is stored in volatile memory.
    */
-  bool is_dirty() const { return d_->is_dirty_; }
+  bool is_dirty() const { return d_ == nullptr ? false : d_->is_dirty_; }
 
   /**
    * Check if the node is valid for the transaction with the give xid.
@@ -249,7 +250,7 @@ template <typename T> struct txn {
   /**
    * Check whether the object is valid, i.e. not modified by an active transaction.
    */
-  bool is_valid() const { return d_ == nullptr || cts_ == INF; }
+  bool is_valid() const { return /*d_ == nullptr ||*/ cts_ == INF; }
 
   /**
    * Return the dirty list.
@@ -376,11 +377,13 @@ template <typename T> struct txn {
    * of the newly inserted object.
    */
   T& add_dirty_version(T&& tptr) {
+    prepare();
     if (!dirty_list()) {
       d_->dirty_list_ = new typename txn_data<T>::dirty_list_t;
     }
  
     std::lock_guard<std::mutex> guard(dirty_list_mutex());
+    tptr->elem_.prepare();
     tptr->elem_.d_->dirty_list_ = this->dirty_list();
     d_->dirty_list_->push_front(std::move(tptr));
 

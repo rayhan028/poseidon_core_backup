@@ -19,6 +19,7 @@
 #include <iostream>
 #include <cstdlib>
 #include "paged_string_pool.hpp"
+#include "spdlog/spdlog.h"
 
 paged_string_pool::paged_string_pool(bufferpool& bp, uint64_t fid) : 
     bpool_(bp), file_id_(fid), file_mask_(fid << 60) {
@@ -31,20 +32,19 @@ paged_string_pool::paged_string_pool(bufferpool& bp, uint64_t fid) :
 }
 
 void paged_string_pool::scan(std::function<void(const char *s, dcode_t c)> cb) {
-    auto npage = 0u;
-    uint32_t last = 0;
+    uint32_t npage = 0u; // number of page processed
 
     bpool_.scan_file(file_id_, [&](auto pg) {
         auto data = &(pg->payload[0]);
-        auto ppos = sizeof(uint32_t);
-        memcpy(&last, data, sizeof(uint32_t));
-        auto pos = npage * PAGE_SIZE + sizeof(uint32_t);
+        auto lastp = sizeof(uint32_t);
+        auto spos = npage * PAGE_SIZE + sizeof(uint32_t);
+        auto ppos = spos;
 
-        for (auto p = sizeof(uint32_t); p < last; p++) {
-            if (data[p] == '\0') {
-                cb((const char *)&data[ppos], pos);
-                pos = p + 1;
-                ppos = p + 1;
+        for (auto p = sizeof(uint32_t); p < PAGE_SIZE; p++, spos++) {
+            if (data[p] == '\0' && data[lastp] != '\0') {
+                cb((const char *)&data[lastp], ppos);
+                lastp = p + 1;
+                ppos = spos + 1;
             }
         }
         npage++;
@@ -72,12 +72,12 @@ bool paged_string_pool::equal(dcode_t pos, const std::string& s) const {
 
 dcode_t paged_string_pool::add(const std::string& str) {
     auto pg = bpool_.last_valid_page(file_id_);
-    uint32_t last_pos = 0;
+    uint32_t last_pos = 0; // the total position over all pages = dict code of str
     
     memcpy(&last_pos, &(pg.first->payload[0]), sizeof(uint32_t));
     if (last_pos == 0) last_pos += sizeof(uint32_t);
 
-    auto page_pos = last_pos - (npages_ - 1) * PAGE_SIZE;
+    auto page_pos = last_pos - (npages_ - 1) * PAGE_SIZE; // the position on the page
     if (page_pos + str.length() + 1 >= PAGE_SIZE) {
         // we need a new page
         pg = bpool_.allocate_page(file_id_);
@@ -87,11 +87,13 @@ dcode_t paged_string_pool::add(const std::string& str) {
     }
     dcode_t pos = last_pos/* + (npages_ - 1) * PAGE_SIZE*/;
     memcpy(&(pg.first->payload[page_pos]), str.c_str(), str.length());
+    // spdlog::info("add string '{}'/{} at page_pos={}(last_pos={}) - {}", str, pos, page_pos, last_pos, page_pos + str.length());
     last_pos += str.length() + 1;
     page_pos += str.length() + 1; 
     pg.first->payload[page_pos - 1] = '\0';
+    // we store last_pos always in the first few bytes of the last page
     memcpy(&(pg.first->payload[0]), &last_pos, sizeof(uint32_t));
-    // mark dirty
+    // mark the current page as dirty
     bpool_.mark_dirty(pg.second | file_mask_);
     return pos;
 }

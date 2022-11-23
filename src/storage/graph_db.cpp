@@ -143,7 +143,7 @@ void graph_db::flush(const std::set<offset_t>& dirty_chunks) {
 }
 
 void graph_db::close_files() {
-  spdlog::info("graph_db::close_files()");
+  // spdlog::info("graph_db::close_files()");
   if (dict_) dict_->close_file();
   if (node_file_) node_file_->close();
   if (rship_file_) rship_file_->close();
@@ -626,7 +626,7 @@ void graph_db::print_stats() {
   rship_properties_->foreach_property([&rprops](auto pi) { rprops++; });
   std::cout << rprops << " relationship properties total." << std::endl;
 
-  std::cout << dict_->count_string_pool_size() << " strings in dictionary." << std::endl;
+  std::cout << dict_->size() << " strings in dictionary." << std::endl;
 }
 
 node::id_t graph_db::add_node(const std::string &label,

@@ -581,9 +581,10 @@ private:
   }
 
   bchunk_ptr load_chunk(paged_file::page_id pid, bool modify = false) const {
-    if (!bpool_.get_file(file_id_)->is_valid(pid))
+    if (!bpool_.get_file(file_id_)->is_valid(pid)) {
+      spdlog::debug("buffered_vec::load_chunk invalid page request #{}", pid);
       return nullptr;
-
+    }
     spdlog::debug("buffered_vec::load_chunk page #{}", pid);
 
     auto pg = bpool_.fetch_page(pid | file_mask_);

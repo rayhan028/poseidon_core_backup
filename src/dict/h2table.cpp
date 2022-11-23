@@ -29,12 +29,11 @@
 #include "spdlog/spdlog.h"
 
 void h2table::rebuild() {
+    spdlog::info("rebuild dictionary...");
     pool_->scan([this](const char *s, dcode_t c) {
-        // std::cout << s << " -> " << c << std::endl;
-        if (strcmp(s, "Person") == 0)
-            std::cout << s << " -> " << c << std::endl;
         auto d = insert(std::string(s), c);
     });
+    spdlog::info("finished.");
 }
 
 void h2table::print() const {

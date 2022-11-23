@@ -310,6 +310,7 @@ TEST_CASE("Adding many records and iterate over them", "[buffered_vec]") {
       REQUIRE(strncmp(rec.s, "##########", 10) == 0);
       o++;
     }
+    REQUIRE(o == 1000);
 
     std::vector<offset_t> elems(1000);
     for (auto i = 0u; i < 1000; i++) elems[i] = i;

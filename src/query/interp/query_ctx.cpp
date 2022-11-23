@@ -40,21 +40,16 @@ void query_ctx::_nodes_by_label(graph_db *gdb, const std::string &label,
   check_tx_context();
   xid_t txid = current_transaction()->xid();
 #endif
-  std::cout << "_nodes_by_label: '" << label << "' -> " << gdb->nodes_->as_vec().num_chunks() << std::endl;
   auto lc = gdb->dict_->lookup_string(label);
+  // spdlog::info("_nodes_by_label: '{}' -> {}", label, lc);
   for (auto &n : gdb->nodes_->as_vec()) {
-      std::cout << "_nodes_by_label: #" << n.id() << std::endl;
 
 #ifdef USE_TX
     if (n.is_valid()) {
       auto &nv = gdb->get_valid_node_version(n, txid);
-      std::cout << "_nodes_by_label: #" << n.id() << " " << lc << " - " << nv.node_label << std::endl;
       if (nv.node_label == lc) {
         consumer(nv);
       }
-    }
-    else {
-      std::cout << "_nodes_by_label: invalid #" << n.id() << std::endl;
     }
 #else
     if (n.node_label == lc)

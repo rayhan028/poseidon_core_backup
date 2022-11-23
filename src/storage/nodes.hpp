@@ -329,7 +329,7 @@ public:
   for (auto& n : nodes_) {
     std::cout << std::dec << "#" << n.id() << ", @" << (unsigned long)&n
               << " [ txn-id=" << short_ts(n.txn_id()) << ", bts=" << short_ts(n.bts())
-              << ", cts=" << short_ts(n.cts()) << ", dirty=" << n.d_->is_dirty_ 
+              << ", cts=" << short_ts(n.cts()) << ", dirty=" << (n.d_ != nullptr ? n.d_->is_dirty_ : false)
               << " ], label=" << n.node_label << ", from="
               << uint64_to_string(n.from_rship_list) << ", to=" << uint64_to_string(n.to_rship_list) << ", props="
               << uint64_to_string(n.property_list);
