@@ -184,12 +184,12 @@ void query_completion(const char* buf, std::vector<std::string>& completions) {
     }
 }
 
-void print_stats() {
-  graph->print_stats();
+void print_stats(graph_db_ptr &gdb) {
+  gdb->print_stats();
 }
 
-void sync_db() {
-  graph->flush();
+void sync_db(graph_db_ptr &gdb) {
+  gdb->flush();
 }
 
 void show_help() {
@@ -249,17 +249,17 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
       show_help();
     }
     else if (line.rfind("stats", 0) == 0) {
-      print_stats();
+      print_stats(gdb);
     }
     else if (line.rfind("sync", 0) == 0) {
-      sync_db();
+      sync_db(gdb);
     }    
     else if (line.rfind("string", 0) == 0) {
       // lookup_string
       if (line.length() > 6) {
         auto s = line.substr(6);
         trim(s);
-        std::cout << "dict code for '" << s << "': " << graph->get_dictionary()->lookup_string(s) << std::endl;
+        std::cout << "dict code for '" << s << "': " << gdb->get_dictionary()->lookup_string(s) << std::endl;
       }
     }
     else if (line.rfind("code", 0) == 0) {
@@ -267,7 +267,7 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
       if (line.length() > 4) {
         auto s = line.substr(4);
         trim(s);
-        std::cout << "dict string for '" << s << "': " << graph->get_dictionary()->lookup_code(std::stoi(s)) << std::endl;
+        std::cout << "dict string for '" << s << "': " << gdb->get_dictionary()->lookup_code(std::stoi(s)) << std::endl;
       }
     }
     else
