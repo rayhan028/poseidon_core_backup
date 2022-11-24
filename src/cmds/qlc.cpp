@@ -22,13 +22,8 @@ graph_pool_ptr pool;
 
 #define PMEM_PATH "/mnt/pmem0/poseidon/"
 
-struct root {
-  graph_db_ptr graph;
-};
-
-#else
-  graph_db_ptr graph;
 #endif
+graph_db_ptr graph;
 
 using namespace boost::program_options;
 

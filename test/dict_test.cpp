@@ -323,22 +323,29 @@ TEST_CASE("Inserting many items", "[dict]") {
   }
   {
     std::cout << "restart...." << std::endl;
-#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY)
+#ifdef USE_PMDK
+    auto pop = nvm::pool<root>::open(test_path, "");
+    auto root_obj = pop.root();
+
+    dict &d = *(root_obj->dict_p);
+    d.initialize();
+
+#elif !defined(USE_IN_MEMORY)
     bufferpool bpool;
     dict d(bpool, "dict7");
 #endif
-    d.print_table();
     for (auto i = 1000u; i < 100000; i++) {
       auto str = fmt::format("DictEntry#{}", i);
       // std::cout << str << std::endl;
       auto c = d.lookup_string(str);
       REQUIRE(c != 0);
     }
-  }
 #ifdef USE_PMDK
   pop.close();
   remove(test_path.c_str());
-#else
+#endif
+  }
+#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY)
   delete_dir("dict7"); 
 #endif
 }
