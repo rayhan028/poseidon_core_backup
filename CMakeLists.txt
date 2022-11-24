@@ -23,6 +23,7 @@ option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
 option(BUILD_GTPC       "Build code for GTPC benchmark"          OFF)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
 option(CSR_DELTA        "Use delta store for updating CSR"       OFF)
+option(USE_UPMEM        "Use UPMEM SDK for PIM"                  OFF)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -51,6 +52,12 @@ set(CMAKE_MACOSX_RPATH 1)
 # Require C++20
 include(c++-standards)
 cxx_20()
+
+if(USE_UPMEM MATCHES ON)
+  add_definitions( "-DUSE_UPMEM" )
+  set(USE_IN_MEMORY ON)
+  set(USE_PMDK OFF)
+endif()
 
 # Include the PMDK module
 if(USE_PMDK MATCHES ON AND USE_IN_MEMORY MATCHES OFF)
@@ -765,6 +772,18 @@ add_executable(csv_loader
  Boost::program_options
 )
 
+if(USE_UPMEM MATCHES ON)
+add_executable(dpu
+  src/cmds/dpu.cpp
+  src/cmds/dpu_scan.cpp
+ )
+
+ target_link_libraries(dpu
+ poseidon_core
+ ${PMDK_LIBRARIES}
+ Boost::program_options
+)
+endif()
 #-----------------------------------------------------------------------------------------
 
 add_library(ldbc_udf SHARED
