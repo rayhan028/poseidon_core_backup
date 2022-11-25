@@ -1,6 +1,8 @@
 #include <dpu>
 #include "graph_db.hpp"
 
+using namespace dpu;
+
 void dpu_scan(graph_db_ptr &gdb) {
     try {
         // TODO: 1. upload chunks to MRAM

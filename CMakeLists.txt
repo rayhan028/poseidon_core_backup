@@ -15,7 +15,7 @@ option(USE_PMDK         "Use Intel PMDK"                         ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
 option(USE_LLVM         "Use LLVM for query compilation"         ON)
-option(USE_IN_MEMORY    "Use only in-memory storage"             OFF)
+option(USE_IN_MEMORY    "Use only in-memory storage"             ON)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
 option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
@@ -57,6 +57,9 @@ if(USE_UPMEM MATCHES ON)
   add_definitions( "-DUSE_UPMEM" )
   set(USE_IN_MEMORY ON)
   set(USE_PMDK OFF)
+  include_directories(/usr/include/dpu)
+  add_library(dpu SHARED IMPORTED)
+  set(DPU_LIB "-ldpu")
 endif()
 
 # Include the PMDK module
@@ -773,15 +776,16 @@ add_executable(csv_loader
 )
 
 if(USE_UPMEM MATCHES ON)
-add_executable(dpu
+add_executable(dpu_test
   src/cmds/dpu.cpp
   src/cmds/dpu_scan.cpp
  )
 
- target_link_libraries(dpu
+ target_link_libraries(dpu_test
  poseidon_core
  ${PMDK_LIBRARIES}
  Boost::program_options
+ ${DPU_LIB}
 )
 endif()
 #-----------------------------------------------------------------------------------------
