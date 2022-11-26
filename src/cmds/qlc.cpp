@@ -396,7 +396,16 @@ int main(int argc, char* argv[]) {
     graph->dump_dot(dot_file);
 
   // graph->dump();
-  
+
+    {
+        auto& nodes = graph->get_nodes();
+        node n;
+        std::cout << "chunk_size for nodes: " << nodes->as_vec().real_chunk_size() << " bytes\n"
+                  << "size of a node      : " << sizeof(node) << " bytes\n"
+                  << "offset of id_       : " << n._offset() << " bytes\n"
+                  << "offset of node_label: " << ((uint64_t)((uint8_t *)&n.node_label) - (uint64_t)((uint8_t *)&n)) << " bytes"<< std::endl; 
+    }
+
   query_ctx ctx(graph);
   qproc_ptr = std::make_unique<qproc>(ctx);
 

@@ -35,7 +35,7 @@
 
 #include "spdlog/spdlog.h"
 
-#define DEFAULT_CHUNK_SIZE 4096 // 65536
+#define DEFAULT_CHUNK_SIZE 65536 // 4096 // 65536
 
 
 /**
@@ -54,7 +54,7 @@
  */
 template <typename T>
 class mem_chunked_vec {
-  static constexpr auto num_entries = DEFAULT_CHUNK_SIZE / sizeof(T);
+  static constexpr auto num_entries = (DEFAULT_CHUNK_SIZE - 128) / sizeof(T);
 
 /**
  * chunk is a contiguous buffer of a fixed size which stores records (byte
@@ -503,6 +503,9 @@ struct alignas(64) chunk {
   uint32_t elements_per_chunk() const { return elems_per_chunk_; }
 
   uint32_t real_chunk_size() const { return sizeof(chunk<T, num_entries>); }
+
+  auto chunk_list_begin() { return chunk_list_.begin(); }
+  auto chunk_list_end() { return chunk_list_.end(); }
 
 private:
   void add_to_free_list(offset_t idx) {

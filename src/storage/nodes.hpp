@@ -118,6 +118,10 @@ public:
    * Returns the node identifier.
    */
   id_t id() const { return id_; }
+
+  std::size_t _offset() const {
+    return (uint64_t)((uint8_t *)&id_) - (uint64_t)((uint8_t *)this);
+  }
 };
 
 /**
