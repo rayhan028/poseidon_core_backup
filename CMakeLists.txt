@@ -21,7 +21,7 @@ option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
 option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
 option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
-option(BUILD_GTPC       "Build code for GTPC benchmark"          OFF)
+option(BUILD_GTPC       "Build code for GTPC benchmark"          ON)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
 option(CSR_DELTA_STORE  "Use delta store for updating CSR"       OFF)
 #-------------------------------------------------------------------------------
@@ -107,7 +107,8 @@ include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
 include_directories(${PROJECT_SOURCE_DIR}/src/ldbc)
-include_directories(${PROJECT_SOURCE_DIR}/src/gtpc)
+include_directories(${PROJECT_SOURCE_DIR}/src/gtpc)  
+include_directories(${PROJECT_SOURCE_DIR}/src/gtpc/graphgen)
 include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 include_directories(${PROJECT_SOURCE_DIR}/src/pool)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
@@ -562,6 +563,9 @@ set(gtpc_files
   src/gtpc/gtpc_loader.cpp
   src/gtpc/gtpc_olap.cpp
   src/gtpc/gtpc_oltp.cpp
+  src/gtpc/graphgen/csv_writer.cpp
+  src/gtpc/graphgen/data_source.cpp
+  src/gtpc/graphgen/generator.cpp
 )
 
 # Using OBJECT to avoid to build object files multiple times due to inclusion
