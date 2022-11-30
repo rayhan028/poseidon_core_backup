@@ -3,6 +3,11 @@
 #include <stdio.h>
 #include <defs.h>
 
+#define CHUNK_SIZE 817
+#define NUM_TASKS 1
+#define WORK_SIZE (CHUNK_SIZE / NUM_TASKS)
+#define CHUNKS_PER_DPU
+
 struct mr_node {
     uint8_t dummy_[40];       // transaction mgmt data
     uint64_t id_;
@@ -14,17 +19,22 @@ struct mr_node {
     uint32_t node_label;  
 };
 
-#define CHUNK_SIZE 817
-#define NUM_TASKS 24
-#define WORK_SIZE (CHUNK_SIZE / NUM_TASKS)
-#define CHUNKS_PER_DPU
+struct mrchunk {
+    struct mr_node data[817];
+    struct mrchunk* next;
+    char bitset[104];
+    uint32_t first;
+    char pad[56];
+};
 
-__mram uint32_t node_label;
-__mram uint8_t assigned_chunks;
-__mram struct mr_node mr_chunk[CHUNK_SIZE][10]; 
+__mram struct mrchunk mr_chunk[10]; 
 __mram_noinit uint32_t result[CHUNK_SIZE*10]; 
 __mram_noinit uint32_t found_results[NUM_TASKS];
 __mram_noinit uint8_t init = 0;
+
+__mram uint32_t node_label;
+__mram uint8_t assigned_chunks;
+
 int main() {
     int tasklet_id = me();
     if(!init) {
@@ -37,7 +47,7 @@ int main() {
     //printf("Task %d: from %d to %d\n", tasklet_id, start, end);
     
     for(int i = start; i < end; i++) {
-        if(mr_chunk[i][0].node_label == 52) {
+        if(mr_chunk[0].data[i].node_label == 52) {
             //result[found_result] = mr_chunk[i][0].id_;
             found_results[tasklet_id] = 0;
         }
