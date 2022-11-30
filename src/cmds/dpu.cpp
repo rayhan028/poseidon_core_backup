@@ -179,7 +179,7 @@ int main(int argc, char* argv[]) {
 
   if (!import_files.empty()) {
     spdlog::info("--------- Importing files ...");
-    for(int i = 0; i < 100000; i++)
+    for(int i = 0; i < 1000; i++)
       import_csv_files(graph, import_files, delim_character, format, strict);
     graph->print_stats();
   }

@@ -20,6 +20,8 @@ struct mr_node {
     mr_node(id_t id) : id_(id) {}
 };
 
+std::vector<dpu_set_t*> assigned_dpus;
+
 void assign_chunks_to_dpus(dpu_set_t &set, graph_db_ptr &gdb, uint32_t ndpus) {
     auto & nodes = gdb->get_nodes();
     int nr_chunks = nodes->as_vec().num_chunks();
@@ -32,22 +34,24 @@ void assign_chunks_to_dpus(dpu_set_t &set, graph_db_ptr &gdb, uint32_t ndpus) {
     int dpu_id = 0;
     int assigned_chunks = 0;
     std::map<int,int> dpu_offsets;
+    
+    struct dpu_set_t dpu;
 
-    // iterate over all chunks and assigned to dpus round robin whise
-    while(iter != nodes->as_vec().chunk_list_end()) {
+    while(iter != nodes->as_vec().chunk_list_end()) { 
         dpu_id = 0;
-        for(dpu_set_dpu_iterator_t __dpu_it = dpu_set_dpu_iterator_from(&set); _dpu = __dpu_it.next, __dpu_it.has_next;
-            dpu_set_dpu_iterator_next(&__dpu_it)) {
+        DPU_FOREACH(set, dpu) {
             if(dpu_offsets.find(dpu_id) == dpu_offsets.end()) {
                 dpu_offsets[dpu_id] = 0;
             }
             mr_node* chk_ptr = (mr_node*)*iter;
-            dpu_copy_to(set, "mr_chunk", dpu_offsets[dpu_id], chk_ptr, nodes->as_vec().real_chunk_size());
-            std::cout << "Chunk: " << assigned_chunks << " assigned to: " << dpu_id << std::endl;
+            DPU_ASSERT(dpu_copy_to(dpu, "mr_chunk", dpu_offsets[dpu_id], chk_ptr, nodes->as_vec().real_chunk_size()));
+            DPU_ASSERT(dpu_launch(dpu, DPU_ASYNCHRONOUS));
+            assigned_dpus.push_back(&dpu);
+            std::cout << "Chunk: " << assigned_chunks << " assigned to: " << dpu_id  << " at offset " << dpu_offsets[dpu_id] << std::endl;
             dpu_offsets[dpu_id] += nodes->as_vec().real_chunk_size() * sizeof(mr_node);
             assigned_chunks++;
-            dpu_id++;
             iter++;    
+            dpu_id++;
             if(iter == nodes->as_vec().chunk_list_end()) break;
         }
     }
@@ -70,7 +74,7 @@ void dpu_scan(graph_db_ptr &gdb) {
     }
     try {
         // TODO: 1. allocate DPUs 
-        DPU_ASSERT(dpu_alloc(DPU_ALLOCATE_ALL, NULL, &set));
+        DPU_ASSERT(dpu_alloc(DPU_ALLOCATE_ALL, "regionMode=perf", &set));
         DPU_ASSERT(dpu_get_nr_dpus(set, &nr_dpus));
         DPU_ASSERT(dpu_get_nr_ranks(set, &nr_ranks));
         std::cout << "#dpus = " << nr_dpus << std::endl;
@@ -83,9 +87,13 @@ void dpu_scan(graph_db_ptr &gdb) {
         
         std::cout << "Start dpu" << std::endl;
         auto start = std::chrono::steady_clock::now();
-
+        for(auto & d : assigned_dpus) {
+            dpu_sync(*d);
+        }
         // 3. execute the scan
-        DPU_ASSERT(dpu_launch(set, DPU_SYNCHRONOUS));
+        //DPU_FOREACH(set, dpu) {
+            //DPU_ASSERT(dpu_launch(dpu, DPU_SYNCHRONOUS));
+        //}
         auto end = std::chrono::steady_clock::now();
         
         std::chrono::duration<double> diff = end - start;
@@ -93,7 +101,7 @@ void dpu_scan(graph_db_ptr &gdb) {
         printf("printing log for dpu:\n");
         
         DPU_FOREACH(set, dpu) {
-            DPU_ASSERT(dpu_log_read(dpu, stdout));
+            //DPU_ASSERT(dpu_log_read(dpu, stdout));
         }
 
         uint64_t result[65536];
@@ -101,7 +109,7 @@ void dpu_scan(graph_db_ptr &gdb) {
         //dpu_copy_from(set, "result", 0, &result, sizeof(uint64_t) * 65536);
         
         DPU_FOREACH(set, dpu) {
-            DPU_ASSERT(dpu_copy_from(dpu, "result", 0, (uint64_t *)&result, sizeof(result)));
+            //DPU_ASSERT(dpu_copy_from(dpu, "result", 0, (uint64_t *)&result, sizeof(result)));
         }
 
         std::cout << "Scan executed in " << std::chrono::duration_cast<std::chrono::microseconds>(diff).count() << " µsecs" << std::endl;
@@ -110,12 +118,10 @@ void dpu_scan(graph_db_ptr &gdb) {
         auto start_scan = std::chrono::steady_clock::now();
         uint64_t resx[65536];
         int resp = 0;
-        int i = 0;
         for(auto & n : nodes->as_vec()) {
             if(n.node_label == 52) {
-                resx[resp++] = i;
+                resx[resp++] = n.id();
             }
-            i++;
         }
         auto end_scan = std::chrono::steady_clock::now();
         std::chrono::duration<double> diff_scan = end_scan - start_scan;
