@@ -38,23 +38,24 @@ void assign_chunks_to_dpus(dpu_set_t &set, graph_db_ptr &gdb, uint32_t ndpus) {
     struct dpu_set_t dpu;
 
     while(iter != nodes->as_vec().chunk_list_end()) { 
-        dpu_id = 0;
-        DPU_FOREACH(set, dpu) {
+        DPU_FOREACH(set, dpu, dpu_id) {
             if(dpu_offsets.find(dpu_id) == dpu_offsets.end()) {
                 dpu_offsets[dpu_id] = 0;
             }
             mr_node* chk_ptr = (mr_node*)*iter;
-            DPU_ASSERT(dpu_copy_to(dpu, "mr_chunk", dpu_offsets[dpu_id], chk_ptr, nodes->as_vec().real_chunk_size()));
-            DPU_ASSERT(dpu_launch(dpu, DPU_ASYNCHRONOUS));
+            //DPU_ASSERT(dpu_copy_to(dpu, "mr_chunk", dpu_offsets[dpu_id], chk_ptr, nodes->as_vec().real_chunk_size()));
+            DPU_ASSERT(dpu_prepare_xfer(dpu, chk_ptr));
+            //DPU_ASSERT(dpu_launch(dpu, DPU_ASYNCHRONOUS));
             assigned_dpus.push_back(&dpu);
             std::cout << "Chunk: " << assigned_chunks << " assigned to: " << dpu_id  << " at offset " << dpu_offsets[dpu_id] << std::endl;
-            dpu_offsets[dpu_id] += nodes->as_vec().real_chunk_size() * sizeof(mr_node);
+            dpu_offsets[dpu_id] += nodes->as_vec().real_chunk_size();
             assigned_chunks++;
             iter++;    
-            dpu_id++;
             if(iter == nodes->as_vec().chunk_list_end()) break;
         }
     }
+    DPU_ASSERT(dpu_push_xfer(set, DPU_XFER_TO_DPU, "mr_chunk", 0, nodes->as_vec().real_chunk_size(), DPU_XFER_ASYNC));
+    dpu_sync(set);
 }
 
 void dpu_scan(graph_db_ptr &gdb) {
@@ -68,6 +69,7 @@ void dpu_scan(graph_db_ptr &gdb) {
     {
         node n;
         std::cout << "chunk_size for nodes: " << nodes->as_vec().real_chunk_size() << "\n"
+                  << "elements per chunk: " << nodes->as_vec().elements_per_chunk() << "\n"
                   << "number of chunks    : " << nodes->as_vec().num_chunks() << "\n"
                   << "size of a node      : " << sizeof(node) << "\n"
                   << "offset of id_       : " << n._offset() << std::endl; 
@@ -87,13 +89,8 @@ void dpu_scan(graph_db_ptr &gdb) {
         
         std::cout << "Start dpu" << std::endl;
         auto start = std::chrono::steady_clock::now();
-        for(auto & d : assigned_dpus) {
-            dpu_sync(*d);
-        }
         // 3. execute the scan
-        //DPU_FOREACH(set, dpu) {
-            //DPU_ASSERT(dpu_launch(dpu, DPU_SYNCHRONOUS));
-        //}
+        DPU_ASSERT(dpu_launch(set, DPU_SYNCHRONOUS));
         auto end = std::chrono::steady_clock::now();
         
         std::chrono::duration<double> diff = end - start;
@@ -104,26 +101,34 @@ void dpu_scan(graph_db_ptr &gdb) {
             //DPU_ASSERT(dpu_log_read(dpu, stdout));
         }
 
-        uint64_t result[65536];
-        mr_node test[65536];
-        //dpu_copy_from(set, "result", 0, &result, sizeof(uint64_t) * 65536);
         
+        uint32_t found_results = 0;
+        uint32_t tmp[24];
         DPU_FOREACH(set, dpu) {
-            //DPU_ASSERT(dpu_copy_from(dpu, "result", 0, (uint64_t *)&result, sizeof(result)));
+            dpu_copy_from(dpu, "found_results", 0, &tmp, sizeof(uint32_t)*24);
+            for(int i = 0; i < 24; i++) {
+                found_results += tmp[i];
+                tmp[i] = 0;
+            }
         }
-
+        std::cout << "MRAMScan results: " << found_results << std::endl;
         std::cout << "Scan executed in " << std::chrono::duration_cast<std::chrono::microseconds>(diff).count() << " µsecs" << std::endl;
         DPU_ASSERT(dpu_free(set));
 
         auto start_scan = std::chrono::steady_clock::now();
-        uint64_t resx[65536];
+        uint64_t resx[817];
         int resp = 0;
+        int results = 0;
         for(auto & n : nodes->as_vec()) {
             if(n.node_label == 52) {
                 resx[resp++] = n.id();
+                results++;
             }
         }
+
         auto end_scan = std::chrono::steady_clock::now();
+
+        std::cout << "NodeScan results: " << results << std::endl;
         std::chrono::duration<double> diff_scan = end_scan - start_scan;
         std::cout << "NodeScan executed in " << std::chrono::duration_cast<std::chrono::microseconds>(diff_scan).count() << " µsecs" << std::endl;
     }
