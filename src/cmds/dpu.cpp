@@ -101,12 +101,13 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
 }
 
 int main(int argc, char* argv[]) {
+  spdlog::set_level(spdlog::level::warn);
   std::string db_name, pool_path, format = "ldbc";
   std::vector<std::string> import_files;
   bool n4j_mode = false;
   char delim_character = ',';
   bool strict = false;
-
+  
   spdlog::info("Starting dpu_test, Poseidon Version {}", POSEIDON_VERSION);
 
   try {
@@ -178,8 +179,11 @@ int main(int argc, char* argv[]) {
 
   if (!import_files.empty()) {
     spdlog::info("--------- Importing files ...");
-    import_csv_files(graph, import_files, delim_character, format, strict);
+    for(int i = 0; i < 100000; i++)
+      import_csv_files(graph, import_files, delim_character, format, strict);
     graph->print_stats();
   }
+
+  dpu_scan(graph);
 }
  
