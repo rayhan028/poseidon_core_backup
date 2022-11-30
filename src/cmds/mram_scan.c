@@ -4,7 +4,7 @@
 #include <defs.h>
 
 #define CHUNK_SIZE 817
-#define NUM_TASKS 1
+#define NUM_TASKS 8
 #define WORK_SIZE (CHUNK_SIZE / NUM_TASKS)
 #define CHUNKS_PER_DPU
 
@@ -27,32 +27,32 @@ struct mrchunk {
     char pad[56];
 };
 
-__mram struct mrchunk mr_chunk[10]; 
+__mram struct mrchunk mr_chunk[30]; 
+__mram uint64_t assigned_chunks;
 __mram_noinit uint32_t result[CHUNK_SIZE*10]; 
-__mram_noinit uint32_t found_results[NUM_TASKS];
-__mram_noinit uint8_t init = 0;
+__mram uint64_t found_results = 0;
 
 __mram uint32_t node_label;
-__mram uint8_t assigned_chunks;
 
 int main() {
     int tasklet_id = me();
-    if(!init) {
-        found_results[tasklet_id] = 0;
-        init = 1;
-    }
 
     int start = tasklet_id * WORK_SIZE;
     int end = tasklet_id == (NUM_TASKS-1) ? (CHUNK_SIZE-1) : start + WORK_SIZE; 
-    //printf("Task %d: from %d to %d\n", tasklet_id, start, end);
+    printf("Task %d: from %d to %d\n", tasklet_id, start, end);
     
-    for(int i = start; i < end; i++) {
-        if(mr_chunk[0].data[i].node_label == 52) {
-            //result[found_result] = mr_chunk[i][0].id_;
-            found_results[tasklet_id] = 0;
+    printf("Chunks: %lu\n", assigned_chunks);    
+    for(int i = 0; i < assigned_chunks; i++) {
+        for(int j = start; j < end; j++) {
+            //printf("Node Label: %d\n", mr_chunk[0].data[i].node_label);
+            if(mr_chunk[i].data[j].node_label == 52) {
+                //result[found_result] = mr_chunk[i][0].id_;
+                found_results++;
+            }
         }
     }
     
+    //printf("Chunks: %lu\n", found_results);
     //my_var[0][0] = 24;
 
     return 0;

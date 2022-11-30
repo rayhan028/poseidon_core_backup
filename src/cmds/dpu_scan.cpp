@@ -22,6 +22,15 @@ struct mr_node {
 
 std::vector<dpu_set_t*> assigned_dpus;
 
+struct mrchunk {
+    struct mr_node data[817];
+    struct mrchunk* next;
+    char bitset[104];
+    uint32_t first;
+    char pad[56];
+};
+
+
 void assign_chunks_to_dpus(dpu_set_t &set, graph_db_ptr &gdb, uint32_t ndpus) {
     auto & nodes = gdb->get_nodes();
     int nr_chunks = nodes->as_vec().num_chunks();
@@ -33,29 +42,38 @@ void assign_chunks_to_dpus(dpu_set_t &set, graph_db_ptr &gdb, uint32_t ndpus) {
 
     int dpu_id = 0;
     int assigned_chunks = 0;
-    std::map<int,int> dpu_offsets;
-    
+    std::map<int,uint64_t> assigned_chunks_dpu;
+
     struct dpu_set_t dpu;
 
+    int o = 0;
     while(iter != nodes->as_vec().chunk_list_end()) { 
         DPU_FOREACH(set, dpu, dpu_id) {
-            if(dpu_offsets.find(dpu_id) == dpu_offsets.end()) {
-                dpu_offsets[dpu_id] = 0;
+            if(assigned_chunks_dpu.find(dpu_id) == assigned_chunks_dpu.end()) {
+                assigned_chunks_dpu[dpu_id] = 0;
             }
-            mr_node* chk_ptr = (mr_node*)*iter;
+            
             //DPU_ASSERT(dpu_copy_to(dpu, "mr_chunk", dpu_offsets[dpu_id], chk_ptr, nodes->as_vec().real_chunk_size()));
-            DPU_ASSERT(dpu_prepare_xfer(dpu, chk_ptr));
+            DPU_ASSERT(dpu_prepare_xfer(dpu, *iter));
             //DPU_ASSERT(dpu_launch(dpu, DPU_ASYNCHRONOUS));
             assigned_dpus.push_back(&dpu);
-            std::cout << "Chunk: " << assigned_chunks << " assigned to: " << dpu_id  << " at offset " << dpu_offsets[dpu_id] << std::endl;
-            dpu_offsets[dpu_id] += nodes->as_vec().real_chunk_size();
+            assigned_chunks_dpu[dpu_id]++;
+            //std::cout << "Chunk: " << assigned_chunks << " assigned to: " << dpu_id << std::endl;
             assigned_chunks++;
             iter++;    
             if(iter == nodes->as_vec().chunk_list_end()) break;
         }
+        DPU_ASSERT(dpu_push_xfer(set, DPU_XFER_TO_DPU, "mr_chunk", o * nodes->as_vec().real_chunk_size(), nodes->as_vec().real_chunk_size(), DPU_XFER_DEFAULT));
+        //DPU_ASSERT(dpu_sync(set));
+        o++;
     }
-    DPU_ASSERT(dpu_push_xfer(set, DPU_XFER_TO_DPU, "mr_chunk", 0, nodes->as_vec().real_chunk_size(), DPU_XFER_ASYNC));
-    dpu_sync(set);
+
+    DPU_FOREACH(set, dpu, dpu_id) { 
+        DPU_ASSERT(dpu_prepare_xfer(dpu, &assigned_chunks_dpu[dpu_id]));
+    }
+    DPU_ASSERT(dpu_push_xfer(set, DPU_XFER_TO_DPU, "assigned_chunks", 0, sizeof(uint64_t), DPU_XFER_ASYNC));
+    DPU_ASSERT(dpu_sync(set));
+
 }
 
 void dpu_scan(graph_db_ptr &gdb) {
@@ -76,7 +94,7 @@ void dpu_scan(graph_db_ptr &gdb) {
     }
     try {
         // TODO: 1. allocate DPUs 
-        DPU_ASSERT(dpu_alloc(DPU_ALLOCATE_ALL, "regionMode=perf", &set));
+        DPU_ASSERT(dpu_alloc(63, NULL, &set));
         DPU_ASSERT(dpu_get_nr_dpus(set, &nr_dpus));
         DPU_ASSERT(dpu_get_nr_ranks(set, &nr_ranks));
         std::cout << "#dpus = " << nr_dpus << std::endl;
@@ -91,6 +109,7 @@ void dpu_scan(graph_db_ptr &gdb) {
         auto start = std::chrono::steady_clock::now();
         // 3. execute the scan
         DPU_ASSERT(dpu_launch(set, DPU_SYNCHRONOUS));
+        //DPU_ASSERT(dpu_sync(set));
         auto end = std::chrono::steady_clock::now();
         
         std::chrono::duration<double> diff = end - start;
@@ -98,19 +117,18 @@ void dpu_scan(graph_db_ptr &gdb) {
         printf("printing log for dpu:\n");
         
         DPU_FOREACH(set, dpu) {
-            //DPU_ASSERT(dpu_log_read(dpu, stdout));
+            dpu_log_read(dpu, stdout);
         }
 
         
         uint32_t found_results = 0;
-        uint32_t tmp[24];
+        uint64_t tmp;
         DPU_FOREACH(set, dpu) {
-            dpu_copy_from(dpu, "found_results", 0, &tmp, sizeof(uint32_t)*24);
-            for(int i = 0; i < 24; i++) {
-                found_results += tmp[i];
-                tmp[i] = 0;
-            }
+            dpu_copy_from(dpu, "found_results", 0, &tmp, sizeof(uint64_t));
+            found_results += tmp;
+            tmp = 0;
         }
+        
         std::cout << "MRAMScan results: " << found_results << std::endl;
         std::cout << "Scan executed in " << std::chrono::duration_cast<std::chrono::microseconds>(diff).count() << " µsecs" << std::endl;
         DPU_ASSERT(dpu_free(set));
