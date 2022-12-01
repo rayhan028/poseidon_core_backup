@@ -46,7 +46,8 @@ void assign_chunks_to_dpus(dpu_set_t &set, graph_db_ptr &gdb, uint32_t ndpus) {
                 assigned_chunks_dpu[dpu_id] = 0;
             }
             
-            //DPU_ASSERT(dpu_copy_to(dpu, "mr_chunk", dpu_offsets[dpu_id], chk_ptr, nodes->as_vec().real_chunk_size()));
+            //DPU_ASSERT(dpu_copy_to(dpu, "mr_chunk", o*nodes->as_vec().real_chunk_size(), *iter, nodes->as_vec().real_chunk_size()));
+
             DPU_ASSERT(dpu_prepare_xfer(dpu, *iter));
             //DPU_ASSERT(dpu_launch(dpu, DPU_ASYNCHRONOUS));
             assigned_dpus.push_back(&dpu);
@@ -56,7 +57,7 @@ void assign_chunks_to_dpus(dpu_set_t &set, graph_db_ptr &gdb, uint32_t ndpus) {
             iter++;    
             if(iter == nodes->as_vec().chunk_list_end()) break;
         }
-        dpu_push_xfer(set, DPU_XFER_TO_DPU, "mr_chunk", o*nodes->as_vec().real_chunk_size(), nodes->as_vec().real_chunk_size(), DPU_XFER_ASYNC);
+        dpu_push_xfer(set, DPU_XFER_TO_DPU, "mr_chunk", o*nodes->as_vec().real_chunk_size(), nodes->as_vec().real_chunk_size(), DPU_XFER_DEFAULT);       
         o++;
     }
     
@@ -64,7 +65,7 @@ void assign_chunks_to_dpus(dpu_set_t &set, graph_db_ptr &gdb, uint32_t ndpus) {
     DPU_FOREACH(set, dpu, dpu_id) { 
         DPU_ASSERT(dpu_prepare_xfer(dpu, &assigned_chunks_dpu[dpu_id]));
     }
-    DPU_ASSERT(dpu_push_xfer(set, DPU_XFER_TO_DPU, "assigned_chunks", 0, sizeof(uint64_t), DPU_XFER_ASYNC));
+    DPU_ASSERT(dpu_push_xfer(set, DPU_XFER_TO_DPU, "assigned_chunks", 0, sizeof(uint64_t), DPU_XFER_DEFAULT));
     DPU_ASSERT(dpu_sync(set));
 
 }
@@ -87,7 +88,7 @@ void dpu_scan(graph_db_ptr &gdb) {
     }
     try {
         // TODO: 1. allocate DPUs 
-        DPU_ASSERT(dpu_alloc(DPU_ALLOCATE_ALL, "disableMuxSwitch=1", &set));
+        DPU_ASSERT(dpu_alloc(63, "disableMuxSwitch=0", &set));
         DPU_ASSERT(dpu_get_nr_dpus(set, &nr_dpus));
         DPU_ASSERT(dpu_get_nr_ranks(set, &nr_ranks));
         std::cout << "#dpus = " << nr_dpus << std::endl;
@@ -104,28 +105,31 @@ void dpu_scan(graph_db_ptr &gdb) {
         
         auto start = std::chrono::steady_clock::now();
         // 3. execute the scan
-        dpu_launch(set, DPU_ASYNCHRONOUS);
-        dpu_sync(set);
         //DPU_ASSERT(dpu_sync(set));
+        dpu_launch(set, DPU_SYNCHRONOUS); 
         auto end = std::chrono::steady_clock::now();
         
         std::chrono::duration<double> diff = end - start;
 
         printf("printing log for dpu:\n");
         
-        DPU_FOREACH(set, dpu) {
-            //dpu_log_read(dpu, stdout);
+        uint64_t dpu_id;
+        DPU_FOREACH(set, dpu, dpu_id) {
+                //dpu_log_read(dpu, stdout);
         }
 
         
         uint64_t found_results = 0;
-        uint64_t tmp;
-        DPU_FOREACH(set, dpu) {
+        uint64_t tmp[24];
+        DPU_FOREACH(set, dpu, dpu_id) {
             DPU_ASSERT(dpu_prepare_xfer(dpu, &tmp));
-            dpu_push_xfer(set, DPU_XFER_FROM_DPU, "found_results", 0, sizeof(uint64_t), DPU_XFER_DEFAULT);
+            dpu_push_xfer(dpu, DPU_XFER_FROM_DPU, "found_results", 0, sizeof(uint64_t)*24, DPU_XFER_DEFAULT);
             //dpu_copy_from(dpu, "found_results", 0, &tmp, sizeof(uint64_t));
-            found_results += tmp;
-            tmp = 0;
+            for(int i = 0; i < 24; i++) {
+                found_results += tmp[i];
+                tmp[i] = 0;
+            }
+
         }
         
         std::cout << "MRAMScan results: " << found_results << std::endl;
