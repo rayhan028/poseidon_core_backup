@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <defs.h>
 
-#define CHUNK_SIZE 817
-#define NUM_TASKS 8
-#define WORK_SIZE (CHUNK_SIZE / NUM_TASKS)
+#define ELEMENTS_PER_CHUNK 817
+#define NUM_TASKS 1
+#define WORK_SIZE (ELEMENTS_PER_CHUNK / NUM_TASKS)
 #define CHUNKS_PER_DPU
 
 struct mr_node {
@@ -20,16 +20,15 @@ struct mr_node {
 };
 
 struct mrchunk {
-    struct mr_node data[817];
+    struct mr_node data[ELEMENTS_PER_CHUNK];
     struct mrchunk* next;
     char bitset[104];
     uint32_t first;
-    char pad[56];
-};
+} __attribute__((aligned(64)));
 
-__mram struct mrchunk mr_chunk[30]; 
+__mram struct mrchunk mr_chunk[100]; 
 __mram uint64_t assigned_chunks;
-__mram_noinit uint32_t result[CHUNK_SIZE*10]; 
+__mram_noinit uint32_t result[ELEMENTS_PER_CHUNK*10]; 
 __mram uint64_t found_results = 0;
 
 __mram uint32_t node_label;
@@ -38,7 +37,7 @@ int main() {
     int tasklet_id = me();
 
     int start = tasklet_id * WORK_SIZE;
-    int end = tasklet_id == (NUM_TASKS-1) ? (CHUNK_SIZE-1) : start + WORK_SIZE; 
+    int end = tasklet_id == (NUM_TASKS-1) ? (ELEMENTS_PER_CHUNK-1) : start + WORK_SIZE; 
     printf("Task %d: from %d to %d\n", tasklet_id, start, end);
     
     printf("Chunks: %lu\n", assigned_chunks);    

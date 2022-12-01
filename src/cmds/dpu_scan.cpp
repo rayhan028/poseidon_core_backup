@@ -27,8 +27,7 @@ struct mrchunk {
     struct mrchunk* next;
     char bitset[104];
     uint32_t first;
-    char pad[56];
-};
+} __attribute__((aligned(64)));
 
 
 void assign_chunks_to_dpus(dpu_set_t &set, graph_db_ptr &gdb, uint32_t ndpus) {
@@ -47,7 +46,8 @@ void assign_chunks_to_dpus(dpu_set_t &set, graph_db_ptr &gdb, uint32_t ndpus) {
     struct dpu_set_t dpu;
 
     int o = 0;
-    while(iter != nodes->as_vec().chunk_list_end()) { 
+    while(iter != nodes->as_vec().chunk_list_end()) {
+        dpu_set_t rank;
         DPU_FOREACH(set, dpu, dpu_id) {
             if(assigned_chunks_dpu.find(dpu_id) == assigned_chunks_dpu.end()) {
                 assigned_chunks_dpu[dpu_id] = 0;
