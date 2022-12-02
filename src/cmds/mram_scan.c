@@ -32,10 +32,9 @@ struct mrchunk {
 
 __mram struct mrchunk mr_chunk[100]; 
 __mram uint64_t assigned_chunks;
-__mram_noinit uint64_t found_results[NUM_TASKS];
+__host uint64_t found_results[NUM_TASKS];
 
-
-__mram uint32_t node_label;
+__mram uint64_t node_label;
 
 MUTEX_INIT(my_mutex);
 
@@ -60,6 +59,6 @@ int main() {
     }
     
     //printf("Results: %lu\n", found_results);
-    //my_var[0][0] = 24;
+
     return 0;
 }
