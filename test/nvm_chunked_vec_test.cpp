@@ -303,19 +303,19 @@ TEST_CASE("Testing nvm_chunked_vec", "[nvm_chunked_vec]") {
     }
 
     auto iter = vec.range(5, 10);
-    offset_t first = 0, last = 5110, num = 0;
+    offset_t first = 0, last = 5120, num = 0;
     while (iter) {
       auto &rec = *iter;
       if (first == 0) {
         first = rec.head;
-        REQUIRE(first == 5111);
+        REQUIRE(first == 5121);
       }
       REQUIRE(last + 1 == rec.head);
       last = rec.head;
       num++;
       ++iter;
     }
-    REQUIRE(num == 6 * 1022);
+    REQUIRE(num == 6 * 1024);
 
     pop.close();
     remove(test_path.c_str());
