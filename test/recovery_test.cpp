@@ -25,6 +25,7 @@
 #include "defs.hpp"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
+#include "query_ctx.hpp"
 
 #include <boost/process.hpp>
 
@@ -48,17 +49,19 @@ TEST_CASE("Recovery of aborted inserts", "[graph_db]") {
 
     auto pool = graph_pool::open(test_path);
     auto graph = pool->open_graph("my_graph");
+    query_ctx ctx(graph);
 
     // check that inserts don't exist anymore
-    graph->begin_transaction();
-    int num_nodes = 0;
-    graph->nodes([&](auto& n) { num_nodes++; });
-    REQUIRE(num_nodes == 1);
+    ctx.run_transaction([&]() {
+    	int num_nodes = 0;
+    	ctx.nodes([&](auto& n) { num_nodes++; });
+    	REQUIRE(num_nodes == 1);
 
-    // but also that the slots are not occupied
-    auto nid = graph->add_node(":Person", {{"number", boost::any(56)}});
-    REQUIRE(nid == 1);
-    graph->abort_transaction();
+    	// but also that the slots are not occupied
+    	auto nid = graph->add_node(":Person", {{"number", boost::any(56)}});
+    	REQUIRE(nid == 1);
+	return false;
+    });
 
     graph_pool::destroy(pool);
 }

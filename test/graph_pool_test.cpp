@@ -24,7 +24,8 @@
 #include "config.h"
 #include "graph_pool.hpp"
 
-const std::string test_path = poseidon::gPmemPath + "gpool_test";
+
+const std::string test_path = PMDK_PATH("gpool_tst");
 
 TEST_CASE("Creating a pool", "[graph_pool]") {
     auto pool = graph_pool::create(test_path);
@@ -32,7 +33,7 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
 
     node::id_t nid;
 
-    auto graph = pool->create_graph("my_graph");
+    auto graph = pool->create_graph("my_pool_graph1");
     // add a node
     {
         graph->begin_transaction();
@@ -52,7 +53,12 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
 
         graph->commit_transaction();
     }
-    auto graph2 = pool->open_graph("my_graph");
+    pool->close();
+#if !defined(USE_IN_MEMORY)
+    spdlog::info("try to reopen graph_pool ...");
+    pool = graph_pool::open(test_path);
+    auto graph2 = pool->open_graph("my_pool_graph1");
+
     // check the node
     {
         graph2->begin_transaction();
@@ -68,4 +74,5 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
 
     graph_pool::destroy(pool);
     REQUIRE(access(test_path.c_str(), F_OK) == -1);
+#endif
 }

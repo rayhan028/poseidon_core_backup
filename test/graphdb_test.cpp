@@ -27,16 +27,16 @@
 #include "exceptions.hpp"
 #include "graph_pool.hpp"
 #include "graph_db.hpp"
-#include "../qop/qop.hpp"
+#include "qop.hpp"
 #include "../src/ldbc/ldbc.hpp"
 #include <boost/algorithm/string.hpp>
 
 
-const std::string test_path = poseidon::gPmemPath + "graphdb_test";
+const std::string test_path = PMDK_PATH("graphdb_tst");
 
 TEST_CASE("Creating nodes", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph1");
 
   graph->begin_transaction();
 
@@ -182,9 +182,10 @@ TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
   // spdlog::info("size = {}", sizeof(log_ins_record));
 
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph2");
+  query_ctx ctx(graph);
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   auto p1 = graph->add_node(":Person", {});
   auto p2 = graph->add_node(":Person", {});
@@ -227,28 +228,29 @@ TEST_CASE("Creating some nodes and relationships", "[graph_db]") {
   // check nodes_by_label
   {
     auto num = 0u;
-    graph->nodes_by_label(":Book", [&](node& dest_node) { num++; });
+    ctx.nodes_by_label(":Book", [&](node& dest_node) { num++; });
 		REQUIRE(num == 3);
 
     num = 0u;
-    graph->nodes_by_label(":Person", [&](node& dest_node) { num++; });
+    ctx.nodes_by_label(":Person", [&](node& dest_node) { num++; });
 		REQUIRE(num == 2);
 
     num = 0u;
     std::vector<std::string> labels = { ":Person", ":Book" };
-    graph->nodes_by_label(labels, [&](node& dest_node) { num++; });
+    ctx.nodes_by_label(labels, [&](node& dest_node) { num++; });
 		REQUIRE(num == 5);
   }
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
   graph_pool::destroy(pool);
 }
 
 TEST_CASE("Checking FROM relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph3");
+  query_ctx ctx(graph);
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   auto p1 = graph->add_node(":Person", {});
   auto p2 = graph->add_node(":Person", {});
@@ -262,18 +264,18 @@ TEST_CASE("Checking FROM relationships", "[graph_db]") {
   graph->add_relationship(p2, b3, ":HAS_READ", {});
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {});
 
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
   // graph->dump_dot("from_rships.dot");
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   // check if we have all relationships for each node
   {
     int hasReadCnt = 0;
     int isFriendsCnt = 0;
     auto &n1 = graph->node_by_id(p1);
-    graph->foreach_from_relationship_of_node(n1, [&](auto &r) {
+    ctx.foreach_from_relationship_of_node(n1, [&](auto &r) {
       auto s = std::string(graph->get_string(r.rship_label));
       if (s == ":HAS_READ")
         hasReadCnt++;
@@ -286,16 +288,17 @@ TEST_CASE("Checking FROM relationships", "[graph_db]") {
     REQUIRE(isFriendsCnt == 1);
   }
 
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
   graph_pool::destroy(pool);
 }
 
 TEST_CASE("Checking TO relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph4");
+  query_ctx ctx(graph);
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   auto p1 = graph->add_node(":Person", {});
   auto p2 = graph->add_node(":Person", {});
@@ -309,33 +312,32 @@ TEST_CASE("Checking TO relationships", "[graph_db]") {
   graph->add_relationship(p2, b3, ":HAS_READ", {});
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {});
 
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
   // graph->dump_dot("to_rships.dot");
   
-  graph->begin_transaction();
-
-  {
+  ctx.run_transaction([&]() {
     int hasReadCnt = 0;
     auto &n1 = graph->node_by_id(b3);
-    graph->foreach_to_relationship_of_node(n1, [&](auto &r) {
+    ctx.foreach_to_relationship_of_node(n1, [&](auto &r) {
       auto s = std::string(graph->get_string(r.rship_label));
       if (s == ":HAS_READ")
         hasReadCnt++;
       // auto& n2 = graph->node_by_id(r.from_node_id());
     });
     REQUIRE(hasReadCnt == 2);
-  }
-  graph->commit_transaction();
+    return true;
+  });
 
   graph_pool::destroy(pool);
 }
 
 TEST_CASE("Checking recursive FROM relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph5");
+  query_ctx ctx(graph);
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   /*
     p1[0]-->p2[1]-->p3[2]-->p4[3]-->p5[4]
@@ -371,12 +373,12 @@ TEST_CASE("Checking recursive FROM relationships", "[graph_db]") {
   graph->add_relationship(p1, p6, ":KNOWS", {});
   graph->add_relationship(p6, p11, ":KNOWS", {});
 
-  graph->commit_transaction();
-  graph->begin_transaction();
+  ctx.commit_transaction();
+  ctx.begin_transaction();
 
   std::set<node::id_t> reachable_nodes;
   auto &n1 = graph->node_by_id(p1);
-  graph->foreach_variable_from_relationship_of_node(n1, 1, 3, [&](auto &r) {
+  ctx.foreach_variable_from_relationship_of_node(n1, 1, 3, [&](auto &r) {
     auto &n2 = graph->node_by_id(r.to_node_id());
     reachable_nodes.insert(n2.id());
   });
@@ -386,21 +388,21 @@ TEST_CASE("Checking recursive FROM relationships", "[graph_db]") {
 
   reachable_nodes.clear();
   auto &n2 = graph->node_by_id(p2);
-  graph->foreach_variable_from_relationship_of_node(n2, 1, 3, [&](auto &r) {
+  ctx.foreach_variable_from_relationship_of_node(n2, 1, 3, [&](auto &r) {
     auto &n3 = graph->node_by_id(r.to_node_id());
     reachable_nodes.insert(n3.id());
   });
 
   REQUIRE(reachable_nodes == std::set<node::id_t>({2, 3, 4, 6, 7, 8, 9}));
 
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
   graph_pool::destroy(pool);
 }
 
 TEST_CASE("Checking adding a node with properties", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph6");
 
   graph->begin_transaction();
 
@@ -420,7 +422,6 @@ TEST_CASE("Checking adding a node with properties", "[graph_db]") {
   REQUIRE(std::string("John") ==
           get_property<const std::string>(ndescr.properties, "name").value());
   REQUIRE(get_property<int>(ndescr.properties, "age").value() == 42);
-
   graph->commit_transaction();
 
   graph_pool::destroy(pool);
@@ -428,7 +429,7 @@ TEST_CASE("Checking adding a node with properties", "[graph_db]") {
 
 TEST_CASE("Checking node with properties", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph7");
 
   graph->begin_transaction();
 
@@ -457,7 +458,7 @@ TEST_CASE("Checking node with properties", "[graph_db]") {
 
 TEST_CASE("Checking a dirty node with properties", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph8");
 
   graph->begin_transaction();
 
@@ -485,7 +486,7 @@ TEST_CASE("Checking a dirty node with properties", "[graph_db]") {
 
 TEST_CASE("Checking a node update", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph9");
 
   node::id_t p1;
 
@@ -560,7 +561,7 @@ TEST_CASE("Checking a node update", "[graph_db]") {
 
 TEST_CASE("Checking multiple node updates", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph10");
 
   node::id_t p1;
 
@@ -657,13 +658,14 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
 
 TEST_CASE("Checking a relationship update", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph11");
+  query_ctx ctx(graph);
 
   node::id_t p1;
   relationship::id_t r;
 #ifdef USE_TX
   {
-    graph->begin_transaction();
+    ctx.begin_transaction();
 #endif
 
     // add two nodes and one relationship
@@ -674,16 +676,16 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
         {{"p1", boost::any(std::string("val"))}, {"p2", boost::any(10)}});
 
 #ifdef USE_TX
-    graph->commit_transaction();
+    ctx.commit_transaction();
   }
   {
     REQUIRE_THROWS(check_tx_context());
     // perform an update
-    graph->begin_transaction();
+    ctx.begin_transaction();
 #endif
 
     auto &n1 = graph->node_by_id(p1);
-    graph->foreach_from_relationship_of_node(n1, [&](relationship &rel) {
+    ctx.foreach_from_relationship_of_node(n1, [&](relationship &rel) {
       // std::cout << "update relationship: " << graph->get_relationship_label(rel)
       //          << std::endl;
       graph->update_relationship(rel, {{"p1", boost::any(std::string("val2"))},
@@ -693,7 +695,7 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
 
     // and check whether the updates are available within the transaction
     auto &n2 = graph->node_by_id(p1);
-    graph->foreach_from_relationship_of_node(n2, [&](relationship &rel) {
+    ctx.foreach_from_relationship_of_node(n2, [&](relationship &rel) {
       auto reldesc = graph->get_rship_description(rel.id());
       // std::cout << reldesc << std::endl;
 
@@ -707,16 +709,16 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
     });
 
 #ifdef USE_TX
-    graph->commit_transaction();
+    ctx.commit_transaction();
   }
   {
     // now we check whether the updates are available also outside the
     // transaction
     REQUIRE_THROWS(check_tx_context());
-    graph->begin_transaction();
+    ctx.begin_transaction();
 
     auto &n2 = graph->node_by_id(p1);
-    graph->foreach_from_relationship_of_node(n2, [&](relationship &rel) {
+    ctx.foreach_from_relationship_of_node(n2, [&](relationship &rel) {
       auto reldesc = graph->get_rship_description(rel.id());
       // std::cout << reldesc << std::endl;
 
@@ -729,7 +731,7 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
       REQUIRE(get_property<int>(reldesc.properties, "p3").value() == 30);
     });
 
-    graph->commit_transaction();
+    ctx.commit_transaction();
   }
 #endif
 
@@ -738,7 +740,7 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
 
 TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph12");
 
   graph->begin_transaction();
   for (int i = 0u; i < 10000; i++) {
@@ -758,10 +760,10 @@ TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
 
 TEST_CASE("Deleting all inserted nodes and relationships in separate transactions", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph13");
+  query_ctx ctx(graph);
 
-  graph->begin_transaction();
-  
+  ctx.begin_transaction();
   auto i = 1;
   
   auto p1 = graph->add_node(":Person", 
@@ -803,8 +805,8 @@ TEST_CASE("Deleting all inserted nodes and relationships in separate transaction
   graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
   
-  graph->commit_transaction();
-  graph->begin_transaction();
+  ctx.commit_transaction();
+  ctx.begin_transaction();
   
   node::id_t next_node = graph->get_nodes()->as_vec().first_available();
   relationship::id_t next_rship = graph->get_relationships()->as_vec().first_available();
@@ -816,19 +818,19 @@ TEST_CASE("Deleting all inserted nodes and relationships in separate transaction
   for (relationship::id_t i = 0; i < next_rship; i++)
     graph->delete_relationship(i);
 
-  graph->commit_transaction();
+  ctx.commit_transaction();
   graph->dump();
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   for (node::id_t i = 0; i < next_node; i++) {
     graph->delete_node(i);
   }
   
-  graph->commit_transaction();
-  graph->begin_transaction();
+  ctx.commit_transaction();
+  ctx.begin_transaction();
 
   int num = 0;
-  graph->nodes([&num](node& n) {
+  ctx.nodes([&num](node& n) {
     num++;
   });
   REQUIRE(num == 0);
@@ -842,16 +844,17 @@ TEST_CASE("Deleting all inserted nodes and relationships in separate transaction
   REQUIRE(num == 0);
   */
 
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
   graph_pool::destroy(pool);
 } 
 
 TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph14");
+  query_ctx ctx(graph);
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
   
   auto i = 1;
   
@@ -894,8 +897,8 @@ TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
   graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
   
-  graph->commit_transaction();
-  graph->begin_transaction();
+  ctx.commit_transaction();
+  ctx.begin_transaction();
   
   node::id_t next_node = graph->get_nodes()->as_vec().first_available();
   relationship::id_t next_rship = graph->get_relationships()->as_vec().first_available();
@@ -916,12 +919,12 @@ TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
     graph->delete_node(i);
   }
   
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   int num = 0;
-  graph->nodes([&num](node& n) {
+  ctx.nodes([&num](node& n) {
     num++;
   });
   REQUIRE(num == 0);
@@ -935,16 +938,17 @@ TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
   REQUIRE(num == 0);
   */
 
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
   graph_pool::destroy(pool);
 } 
 
 TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph15");
+  query_ctx ctx(graph);
 
-  graph->begin_transaction();  
+  ctx.begin_transaction();  
   auto i = 1;
   
   auto p1 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
@@ -959,9 +963,9 @@ TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
   graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
   graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
   
-  graph->commit_transaction();
+  ctx.commit_transaction();
   
-  graph->begin_transaction();
+  ctx.begin_transaction();
   
   relationship::id_t next_rship = graph->get_relationships()->as_vec().first_available();
   for (node::id_t i = 1; i < next_rship; i++)
@@ -974,19 +978,19 @@ TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
   }
 
   int num = 0;
-  graph->nodes([&num](node& n) {
+  ctx.nodes([&num](node& n) {
     num++;
   });
   REQUIRE(num == 2);
 
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
   graph_pool::destroy(pool);
 }
 
 TEST_CASE("Checking that we cannot delete nodes which are still part of a relationship", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph16");
 
   graph->begin_transaction();
 
@@ -1011,7 +1015,7 @@ TEST_CASE("Checking that we cannot delete nodes which are still part of a relati
 
 TEST_CASE("Checking delete_detached_node", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_graph17");
 
   graph->begin_transaction();
 

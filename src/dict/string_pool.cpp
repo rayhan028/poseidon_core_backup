@@ -18,7 +18,9 @@
  */
 #include <iostream>
 #include <cstdlib>
+#include "spdlog/spdlog.h"
 #include "string_pool.hpp"
+#include "spdlog/spdlog.h"
 
 string_pool::string_pool(uint32_t init_size, uint32_t exp_size) : size_(init_size), expand_(exp_size), last_(1ul) {
 #ifdef USE_PMDK
@@ -33,25 +35,8 @@ string_pool::string_pool(uint32_t init_size, uint32_t exp_size) : size_(init_siz
     pool_[0] = '#';
 }
 
-#ifdef USE_MMFILE
-string_pool::string_pool(uint8_t *base_addr, std::size_t sz) : expand_(10000), base_addr_(base_addr) {
-    // std::cout << "create string pool from mm_file...\n";
-    memcpy(&size_, base_addr, sizeof(uint32_t));
-    memcpy(&last_, base_addr + sizeof(uint32_t), sizeof(uint32_t));
-    pool_ = (char *)base_addr + 2 * sizeof(uint32_t);
-    if (pool_[0] != '#' && size_ == 0) {
-        size_ = sz;
-        last_ = 1;
-    }
-    pool_[0] = '#';
-}
-#endif
-
 string_pool::~string_pool() {
-#ifdef USE_MMFILE
-    memcpy(base_addr_, &size_, sizeof(uint32_t));
-    memcpy(base_addr_ + sizeof(uint32_t), &last_, sizeof(uint32_t));
-#elif !defined(USE_PMDK)
+#ifndef USE_PMDK
     free(pool_);
 #endif
 }
@@ -68,8 +53,8 @@ void string_pool::scan(std::function<void(const char *s, dcode_t c)> cb) {
 
 const char *string_pool::extract(dcode_t pos) const {
     assert(pos < last_);
-    auto p = pos;
-    while (p < last_ && pool_[p++] != '\0') ;
+    // auto p = pos;
+    // while (p < last_ && pool_[p++] != '\0') ;
     // return std::string(&pool_[pos], p - pos - 1);
     return &pool_[pos];
 }
@@ -85,24 +70,23 @@ bool string_pool::equal(dcode_t pos, const std::string& s) const {
 dcode_t string_pool::add(const std::string& str) {
     auto pos = last_;
     if (last_ + str.length() + 1 >= size_) {
-#if USE_MMFILE
-        std::cerr << "FATAL: cannot grow memory mapped file for dictionary - aborting." << std::endl;
-#else
+#ifdef USE_PMDK
         auto old_size = size_;
+#endif
         size_ += expand_;
-        // std::cout << "expand to " << size_ << std::endl;
+        spdlog::debug("expand string_pool to {}", size_);
 #ifdef USE_PMDK
     auto pop = pmem::obj::pool_by_vptr(this);
     p_ptr<char []> new_pool;
     pmem::obj::transaction::run(pop, [&] {
         new_pool = pmem::obj::make_persistent<char[]>(size_);
+	assert(new_pool != nullptr);
         pmemobj_memcpy_persist(pop.handle(), new_pool.get(), pool_.get(), old_size);
         pmem::obj::delete_persistent<char[]>(pool_, old_size);
     });
     pool_  = new_pool;
 #else
     pool_ = static_cast<char *>(realloc(pool_, size_));
-#endif
 #endif
     }
     memcpy(&pool_[last_], str.c_str(), str.length());
@@ -112,8 +96,7 @@ dcode_t string_pool::add(const std::string& str) {
 }
 
 void string_pool::print() const {
-#ifdef USE_PMDK
-#else
+#ifndef USE_PMDK
     std::cout << std::string(pool_, last_) << std::endl;
 #endif
 }

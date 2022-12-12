@@ -56,3 +56,40 @@ void check_tx_context() {
 }
 
 transaction_ptr current_transaction() { return current_transaction_; }
+
+#if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
+  void transaction::add_deleted_node(offset_t nid) {
+    delta_ids_.deleted_nodes_.push_back(nid);
+    // nodes in deleted_nodes_ have all their neighbours deleted
+    delta_ids_.deleted_neighbours_.erase(nid);
+  }
+
+  void transaction::add_deleted_neighbour(offset_t nid, offset_t id) {
+    delta_ids_.deleted_neighbours_[nid].push_back(id);
+  }
+
+  void transaction::add_inserted_node(offset_t nid) {
+    delta_ids_.inserted_neighbours_[nid];
+  }
+
+  void transaction::add_inserted_neighbour(offset_t nid, offset_t id, double weight) {
+    delta_ids_.inserted_neighbours_[nid].first.push_back(id);
+    delta_ids_.inserted_neighbours_[nid].second.push_back(weight);
+  }
+
+#elif defined ADJ_DELTA
+  void transaction::add_updated_node(offset_t nid) {
+    delta_ids_.updated_nodes_.push_back(nid);
+  }
+
+  void transaction::add_deleted_node(offset_t nid) {
+    delta_ids_.deleted_nodes_.insert(nid);
+  }
+
+  void transaction::add_deleted_rship(offset_t rid) {
+    delta_ids_.deleted_rships_.insert(rid);
+  }
+#endif
+
+#endif

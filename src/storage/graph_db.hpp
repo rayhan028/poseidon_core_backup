@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -40,7 +40,11 @@
 #include "pmlog.hpp"
 #include "gc.hpp"
 #include "robin_hood.h"
-#if defined CSR_DELTA_STORE && defined USE_TX
+#include "bufferpool.hpp"
+
+#include "analytics.hpp"
+
+#if defined CSR_DELTA && defined USE_TX
 #include "csr_delta.hpp"
 #endif
 
@@ -50,12 +54,12 @@
  * and querying the graph.
  */
 class graph_db {
+  friend struct query_ctx;
 public:
   /**
    * mapping_t is used during importing data from CSV files to map node names to
    * internal ids which are required for creating relationships.
    */
-  // using mapping_t = std::unordered_map<std::string, node::id_t>;
   using mapping_t = robin_hood::unordered_map<std::string, node::id_t>;
 
   using node_consumer_func = std::function<void(node &)>;
@@ -72,7 +76,7 @@ public:
   /**
    * Constructor for a new empty graph database.
    */
-  graph_db(const std::string &db_name = "");
+  graph_db(const std::string &db_name = "", const std::string &pool_path = "");
 
   /**
    * Destructor.
@@ -275,23 +279,39 @@ public:
   /**
    * Returns a reference to the node property list of this graph.
    */
-  const p_ptr<property_list>& get_node_properties() { return node_properties_; }
+  const auto& get_node_properties() { return node_properties_; }
 
   /**
    * Returns a reference to the relationship property list of this graph.
    */
-  const p_ptr<property_list>& get_rship_properties() { return rship_properties_; }
+  const auto& get_rship_properties() { return rship_properties_; }
 
   /**
    * Returns a reference to the node list of this graph.
    */  
 
-  const p_ptr<node_list>& get_nodes() { return nodes_; }
+  const auto& get_nodes() { return nodes_; }
 
   /**
    * Returns a reference to the relationship list of this graph.
    */
-  const p_ptr<relationship_list>& get_relationships() { return rships_; }
+  const auto& get_relationships() { return rships_; }
+
+  /**
+   * Access to node and relationship properties.
+   */
+  p_item get_property_value(const node &n, const std::string& pkey);
+  p_item get_property_value(const node &n, dcode_t pcode);
+
+  p_item get_property_value(const relationship &r, const std::string& pkey);
+  p_item get_property_value(const relationship &r, dcode_t pcode);
+
+  /**
+   * Return the node version from the dirty list that is valid for the
+   * transaction identified by xid.
+   */
+  node &get_valid_node_version(node &n, xid_t xid);
+
 
   /**
    * Returns the string value encoded with the given dictionary code.
@@ -333,6 +353,11 @@ public:
   index_id create_index(const std::string& node_label, const std::string& prop_name);
 
   /**
+   * Returns true if an index exists for node_label + prop_name.
+   */
+  bool has_index(const std::string& node_label, const std::string& prop_name);
+
+  /**
    * Return the id of the index for the given label/property combination. Raises an
    * exception of no corresponding index exists.
    */
@@ -350,173 +375,6 @@ public:
   void index_lookup(index_id idx, uint64_t key, node_consumer_func consumer);
 
   void index_lookup(std::list<index_id> &idxs, uint64_t key, node_consumer_func consumer);
-
-  /* ---------------- query support ---------------- */
-
-  /**
-   * Scans all nodes of the graph with the given label and invokes for each of
-   * these nodes the consumer function.
-   */
-  void nodes_by_label(const std::string &label, node_consumer_func consumer);
-
-  /**
-   * Scans all nodes of the graph with any of the given labels and invokes for each of
-   * these nodes the consumer function. This is for entity objects belonging to the same
-   * abstract entity (e.g. Post and Comment are sub-classes of Message)
-   */
-  void nodes_by_label(const std::vector<std::string> &labels, node_consumer_func consumer);
-
-  /**
-   * Scans all nodes of the graph and invokes for each nodes the given consumer
-   * function.
-   */
-  void nodes(node_consumer_func consumer);
-
-  /**
-   * Scans all nodes of the graph and invokes for each nodes the given consumer
-   * function. The scan is performed in parallel by multiple threads via a
-   * thread pool.
-   */
-  void parallel_nodes(node_consumer_func consumer);
-
-#ifdef QOP_RECOVERY
-  /**
-   * Continues the scan from the given positions (checkpoints) and invokes the given consumer function for each node.
-   */
-  void parallel_nodes(node_consumer_func consumer, std::map<std::size_t, std::vector<std::size_t>> &range_map);
-  void continue_parallel_nodes(std::map<std::size_t, std::size_t> &check_points, node_consumer_func consumer);
-#endif
-  /**
-   * Scans all nodes which satisfy the given predicate on the property with
-   * label pkey and invokes for each of these nodes the consumer function.
-   */
-  void nodes_where(const std::string &pkey, p_item::predicate_func pred,
-                   node_consumer_func consumer);
-
-  /**
-   * Scans all relationships of the graph with the given label and invokes for
-   * each of these relationship the consumer function.
-   */
-  void relationships_by_label(const std::string &label,
-                              rship_consumer_func consumer);
-
-  /**
-   * Scans all FROM relationships recursivley starting from the the given node
-   * and invokes for each of these relationships the consumer function. The
-   * parameters min and max determine the minimum and maximum number of hops.
-   */
-  void foreach_variable_from_relationship_of_node(const node &n,
-                                                  std::size_t min,
-                                                  std::size_t max,
-                                                  rship_consumer_func consumer);
-
-  /**
-   * Scans all FROM relationships with the given label code recursivley starting
-   * from the the given node and invokes for each of these relationships the
-   * consumer function. The parameters min and max determine the minimum and
-   * maximum number of hops.
-   */
-  void foreach_variable_from_relationship_of_node(const node &n, dcode_t lcode,
-                                                  std::size_t min,
-                                                  std::size_t max,
-                                                  rship_consumer_func consumer);
-
-  /**
-   * Scans all FROM relationships of the the given node and invokes for each of
-   * these relationships the consumer function.
-   */
-  void foreach_from_relationship_of_node(const node &n,
-                                         rship_consumer_func consumer);
-
-  /**
-   * Scans all TO relationships of the the given node and invokes for each of
-   * these relationships the consumer function.
-   */
-  void foreach_to_relationship_of_node(const node &n,
-                                       rship_consumer_func consumer);
-
-  /**
-   * Iterates over all FROM relationships of node n with the given label
-   * and invokes for each of these relationships the consumer function.
-   */
-  void foreach_from_relationship_of_node(const node &n,
-                                         const std::string &label,
-                                         rship_consumer_func consumer);
-
-  /**
-   * Iterates over all FROM relationships of node n with the given label code
-   * and invokes for each of these relationships the consumer function.
-   */
-  void foreach_from_relationship_of_node(const node &n, dcode_t lcode,
-                                         rship_consumer_func consumer);
-
-  /**
-   * Iterates over all TO relationships of node n with the given label
-   * and invokes for each of these relationships the consumer function.
-   */
-  void foreach_to_relationship_of_node(const node &n, const std::string &label,
-                                       rship_consumer_func consumer);
-
-  /**
-   * Scans all TO relationships recursivley ending at the the given node
-   * and invokes for each of these relationships the consumer function. The
-   * parameters min and max determine the minimum and maximum number of hops.
-   */
-  void foreach_variable_to_relationship_of_node(const node &n, std::size_t min,
-                                                std::size_t max,
-                                                rship_consumer_func consumer);
-
-  /**
-   * Scans all TO relationships with the given label code recursivley ending at
-   * the the given node and invokes for each of these relationships the consumer
-   * function. The parameters min and max determine the minimum and maximum
-   * number of hops.
-   */
-  void foreach_variable_to_relationship_of_node(const node &n, dcode_t lcode,
-                                                std::size_t min,
-                                                std::size_t max,
-                                                rship_consumer_func consumer);
-
-  /**
-   * Iterates over all TO relationships of node n with the given label code
-   * and invokes for each of these relationships the consumer function.
-   */
-  void foreach_to_relationship_of_node(const node &n, dcode_t lcode,
-                                       rship_consumer_func consumer);
-
-  /**
-   * Checks whether the property with name pkey of the given node satisfies the
-   * predicate.
-   */
-  bool is_node_property(const node &n, const std::string &pkey,
-                        p_item::predicate_func pred);
-
-  /**
-   * Checks whether the property with encoded name pcode of the given node
-   * satisfies the predicate.
-   */
-  bool is_node_property(const node &n, dcode_t pcode,
-                        p_item::predicate_func pred);
-
-  /**
-   * Checks whether the property with name pkey of the given relationship
-   * satisfies the predicate.
-   */
-  bool is_relationship_property(const relationship &r, const std::string &pkey,
-                                p_item::predicate_func pred);
-
-  /**
-   * Checks whether the property with the encoded name of the given relationship
-   * satisfies the predicate.
-   */
-  bool is_relationship_property(const relationship &r, dcode_t pcode,
-                                p_item::predicate_func pred);
-
-  /**
-   * Return the node version from the dirty list that is valid for the
-   * transaction identified by xid.
-   */
-  node &get_valid_node_version(node &n, xid_t xid);
 
 #ifdef QOP_RECOVERY
   /**
@@ -568,27 +426,31 @@ public:
    */
   void poseidon_to_csr(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
 
+#ifndef USE_GUNROCK
   /**
    * Converts the graph data to a CSR representation by scanning the entire graph data.
    */
-  void csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
+  void host_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
 
   /**
    * Converts the graph data to a CSR representation from a parallel scan of the entire graph data.
    */
-  void parallel_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
+  void parallel_host_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
 
-#if defined CSR_DELTA_STORE && defined USE_TX
+#if defined CSR_DELTA && defined USE_TX
   /**
    * Updates the existing CSR using the appropriate deltas in the CSR delta store, such that it 
    * represents the latest snapshot of the graph data.
    */
-  void csr_update_with_delta(csr_arrays &csr);
+  void host_csr_update_with_delta(csr_arrays &csr);
+#endif
+#endif
 
+#if defined CSR_DELTA && defined USE_TX
   /**
-   * Returns a reference to the CSR delta store. TODO
+   * Returns a reference to the CSR delta store.
    */
-  const p_ptr<csr_delta>& get_csr_delta() { return csr_delta_; }
+  const p_ptr<delta_store>& csr_delta_store() { return delta_store_; }
 #endif
 
   /**
@@ -599,9 +461,34 @@ public:
    */
   void poseidon_to_coo(edge_coords* edge_coordinates, float* edge_values, rship_weight weight_func, bool bidirectional = false);
 
+  /**
+   * 
+   */
+  void flush();
+
+  /**
+   * 
+   */
+  void purge_bufferpool() { bpool_.purge(); }
+
+  /**
+   * 
+   */
+  void close_files();
+
 private:
   friend struct scan_task;
   friend struct recover_scan;
+
+  std::pair<index_id, int> get_index(dcode_t label, std::list<p_item>& props);
+  void index_update(std::pair<index_id, int>& idx, offset_t id, std::list<p_item>& old_props, std::list<p_item>& new_props);
+  void index_insert(std::pair<index_id, int>& idx, offset_t id, std::list<p_item>& props);
+  void index_delete(std::pair<index_id, int>& idx, offset_t id, std::list<p_item>& props);
+
+  /**
+   * 
+   */
+  void flush(const std::set<offset_t>& dirty_chunks);
 
   /**
    * Update the given node as the FROM node of the relationship. The relationship was already
@@ -658,14 +545,44 @@ private:
     */
   void vacuum(xid_t tx);
 
-  std::string database_name_;
-  p_ptr<node_list> nodes_; // the list of all nodes of the graph
-  p_ptr<relationship_list>
-      rships_; // the list of all relationships of the graph
-  p_ptr<property_list>
+  /**
+   * 
+   */
+  void prepare_files(const std::string &pool_path, const std::string &prefix);
+
+  /**
+   * 
+   */
+  void restore_indexes(const std::string &pool_path, const std::string &prefix);
+
+  std::string database_name_; //
+  bufferpool bpool_; //
+  std::shared_ptr<paged_file> node_file_, rship_file_, nprops_file_, rprops_file_; //
+  std::list<std::shared_ptr<paged_file>> index_files_; //
+  std::string pool_path_; //
+
+#ifdef USE_PMDK
+  p_ptr<node_list<nvm_chunked_vec> > nodes_; // the list of all nodes of the graph
+  p_ptr<relationship_list<nvm_chunked_vec> > rships_; // the list of all relationships of the graph
+  p_ptr<property_list<nvm_chunked_vec> >
       node_properties_;   // the list of all properties of nodes 
-  p_ptr<property_list>
+  p_ptr<property_list<nvm_chunked_vec> >
       rship_properties_;   // the list of all properties of relationships
+#elif defined(USE_IN_MEMORY)
+  p_ptr<node_list<mem_chunked_vec> > nodes_; // the list of all nodes of the graph
+  p_ptr<relationship_list<mem_chunked_vec> > rships_; // the list of all relationships of the graph
+  p_ptr<property_list<mem_chunked_vec> >
+      node_properties_;   // the list of all properties of nodes 
+  p_ptr<property_list<mem_chunked_vec> >
+      rship_properties_;   // the list of all properties of relationships
+#else
+  p_ptr<node_list<buffered_vec> > nodes_; // the list of all nodes of the graph
+  p_ptr<relationship_list<buffered_vec> > rships_; // the list of all relationships of the graph
+  p_ptr<property_list<buffered_vec> >
+      node_properties_;   // the list of all properties of nodes 
+  p_ptr<property_list<buffered_vec> >
+      rship_properties_;   // the list of all properties of relationships
+#endif
   p_ptr<dict> dict_; // the dictionary used for string compression
 
   p_ptr<index_map> index_map_; // the list of all exisiting indexes
@@ -675,8 +592,8 @@ private:
   p_ptr<recovery_list> recovery_results_; // stored intermediate tuples of a query
   p_ptr<rec_map_t> recovery_res_; // stored checkpoints of the chunks 
 #endif
-#if defined CSR_DELTA_STORE && defined USE_TX
-  p_ptr<csr_delta> csr_delta_; // update and append CSR delta stores
+#if defined CSR_DELTA && defined USE_TX
+  p_ptr<delta_store> delta_store_; // the CSR delta store
 #endif
   /**
    * These member variables are volatile and have to be reinitialized
@@ -691,25 +608,6 @@ private:
 };
 
 using graph_db_ptr = p_ptr<graph_db>;
-
-struct scan_task {
-  using range = std::pair<std::size_t, std::size_t>;
-  scan_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last,
-	    graph_db::node_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0);
-
-  void operator()();
-
-  static void scan(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer);
-
-  static std::function<void(transaction_ptr tx, graph_db *gdb, std::size_t first, std::size_t last, graph_db::node_consumer_func consumer)> callee_;
-
-  graph_db *graph_db_;
-  node_list &nodes_;
-  range range_;
-  graph_db::node_consumer_func consumer_;
-  transaction_ptr tx_;
-  std::size_t start_pos_;
-};
 
 
 #endif

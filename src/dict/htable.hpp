@@ -23,14 +23,20 @@
 #include <limits>
 #include "defs.hpp"
 
+#ifdef USE_PMDK
 class string_pool;
-
-constexpr uint32_t UNKNOWN_CODE = std::numeric_limits<uint32_t>::max();
+#else
+class paged_string_pool;
+#endif
 
 class htable {
     friend class dict;
 public:
+#ifdef USE_PMDK
     htable(p_ptr<string_pool> pool, uint32_t nb = 1000);
+#else
+    htable(std::shared_ptr<paged_string_pool> pool, uint32_t nb = 1000);
+#endif
     ~htable();
     
     dcode_t find(const std::string& s);
@@ -44,8 +50,12 @@ public:
 private:
     dcode_t insert_into_table(uint64_t *tbl, uint32_t tsize, uint64_t hkey, dcode_t id);
     void resize();
-    
+
+#ifdef USE_PMDK
     p_ptr<string_pool> pool_;
+#else    
+    std::shared_ptr<paged_string_pool> pool_;
+#endif
     uint32_t nbuckets_;
     uint64_t *table_;
     uint32_t prime_;

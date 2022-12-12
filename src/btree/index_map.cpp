@@ -16,8 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
+
+#include <boost/hana.hpp>
 #include "exceptions.hpp"
 #include "index_map.hpp"
+#include "spdlog/spdlog.h"
 
 index_map::index_map() {
 #ifdef USE_PMDK
@@ -73,4 +76,47 @@ index_id index_map::get_index(const std::string& idx_name) {
         throw unknown_index();
     return it->second;
 #endif
+}
+
+index_id index_map::get_index_id(const std::string& idx_name) {
+#ifdef USE_PMDK
+    hashmap::const_accessor ac;
+    if (indexes_->find(ac, string_t(idx_name)))
+        return ac->second;
+    else
+        return boost::blank{};
+#else
+    auto it = indexes_.find(idx_name);
+    if (it == indexes_.end())
+        return boost::blank{};
+    return it->second;
+#endif    
+}
+
+bool index_map::has_index(const std::string& idx_name) {
+#ifdef USE_PMDK
+    hashmap::const_accessor ac;
+    return indexes_->find(ac, string_t(idx_name));
+#else
+    auto it = indexes_.find(idx_name);
+    return it != indexes_.end();
+#endif
+}
+
+void index_map::clear() {
+#ifndef USE_PMDK
+    auto visitor = boost::hana::overload(
+        [&](boost::blank& b) { },
+        [&](pf_btree_ptr idx) { idx->close(); },
+        [&](im_btree_ptr idx) { }
+#ifdef USE_PMDK
+        ,[&](nvm_btree_ptr idx) { }
+#endif
+    );
+    for (auto it = indexes_.begin(); it != indexes_.end(); it++) {
+        auto idx_id = it->second;    
+        boost::apply_visitor(visitor, idx_id);
+    }
+    indexes_.clear();
+#endif        
 }

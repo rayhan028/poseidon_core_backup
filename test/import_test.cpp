@@ -25,7 +25,8 @@
 #include "catch.hpp"
 #include "config.h"
 #include "graph_db.hpp"
-#include "../qop/qop.hpp"
+#include "query_ctx.hpp"
+#include "qop.hpp"
 
 #ifdef USE_PMDK
 #define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
@@ -48,7 +49,7 @@ TEST_CASE("Importing a node", "[graph_db]") {
   graph_db_ptr graph;
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
-  auto graph = p_make_ptr<graph_db>("my_db");
+  auto graph = p_make_ptr<graph_db>("my_import_db1");
 #endif
 
 {
@@ -85,7 +86,7 @@ TEST_CASE("Importing a typed node", "[graph_db]") {
   graph_db_ptr graph;
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
-  auto graph = p_make_ptr<graph_db>("my_db");
+  auto graph = p_make_ptr<graph_db>("my_import_db2");
 #endif
 
 {
@@ -130,7 +131,7 @@ TEST_CASE("Importing nodes from CSV (old version)", "[graph_db]") {
   graph_db_ptr graph;
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
-  auto graph = p_make_ptr<graph_db>("my_db");
+  auto graph = p_make_ptr<graph_db>("my_import_db3");
 #endif
 
   std::string home(".");
@@ -185,7 +186,7 @@ TEST_CASE("Importing nodes with many properties from CSV", "[graph_db]") {
   graph_db_ptr graph;
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
-  auto graph = p_make_ptr<graph_db>("my_db");
+  auto graph = p_make_ptr<graph_db>("my_import_db4");
 #endif
 
   std::string home(".");
@@ -198,7 +199,8 @@ TEST_CASE("Importing nodes with many properties from CSV", "[graph_db]") {
   REQUIRE(num == 19);
 
   graph->begin_transaction();
-  graph->nodes([&graph](auto &n) {
+  query_ctx ctx(graph);
+  ctx.nodes([&graph](auto &n) {
     auto nd = graph->get_node_description(n.id());
     std::cout << nd << " ===> " << nd.properties.size() << std::endl;
     // REQUIRE(nd.properties.size() == 8);
@@ -220,7 +222,7 @@ TEST_CASE("Importing nodes with many properties from Neo4j style CSV", "[graph_d
   graph_db_ptr graph;
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
-  auto graph = p_make_ptr<graph_db>("my_db");
+  auto graph = p_make_ptr<graph_db>("my_import_db5");
 #endif
 
   std::string home(".");

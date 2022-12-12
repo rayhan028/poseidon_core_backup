@@ -41,13 +41,17 @@ public:
   p_ptr<dict> dict_p;
 #ifdef USE_PMDK
   pool_base pop;
+#elif !defined(USE_IN_MEMORY)
+  bufferpool bpool;
 #endif
   void SetUp(const ::benchmark::State &state) {
 #ifdef USE_PMDK
     pop = pool_base::create(bench_path, "", PMEMOBJ_POOL_SIZE);
     transaction::run(pop, [&] { dict_p = p_make_ptr<dict>(); });
-#else
+#elif defined(USE_IN_MEMORY)
     dict_p = p_make_ptr<dict>();
+#else
+    dict_p = p_make_ptr<dict>(bpool);
 #endif
   }
 
@@ -111,7 +115,7 @@ static void BM_ComparePItem(benchmark::State &state) {
   p_item pi2(42, 66);
   bool res;
   for (auto _ : state) {
-    res = pi1.equal(66.67);
+    bool res = pi1.equal(66.67);
     res = pi1.equal(66);
     res = pi2.equal(66.67);
     res = pi2.equal(66);

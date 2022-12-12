@@ -20,7 +20,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "graph_db.hpp"
-#include "chunked_vec.hpp"
+#include "vec.hpp"
 #include "parser.hpp"
 #include "spdlog/spdlog.h"
 #include "thread_pool.hpp"
@@ -218,14 +218,17 @@ relationship::id_t graph_db::import_typed_relationship(node::id_t from_id,
                                          const std::vector<dcode_t> &keys,
                                          const std::vector<p_item::p_typecode>& typelist,
 					  const std::vector<std::string>& values,dict_ptr &dict) {
+  // std::cout << "<" << std::flush;
   auto &from_node = nodes_->get(from_id);
   auto &to_node = nodes_->get(to_id);
+  // std::cout << "x" << std::flush;
   auto rid = rships_->append(relationship(label, from_id, to_id), 0);
 
   auto &r = rships_->get(rid);
 
   // save properties
   if (!keys.empty()) {
+    // std::cout << "o" << std::flush;
     property_set::id_t pid =
         rship_properties_->append_typed_properties(rid, keys, typelist, values, dict);
     r.property_list = pid;
@@ -245,6 +248,8 @@ relationship::id_t graph_db::import_typed_relationship(node::id_t from_id,
     r.next_dest_rship = to_node.to_rship_list;
     to_node.to_rship_list = rid;
   }
+  // std::cout << ">" << std::flush;
+
   return rid;
 
 }
@@ -283,6 +288,7 @@ std::size_t graph_db::import_nodes_from_csv(const std::string &label,
         i++;
       }
       assert(id_column >= 0);
+      num++;
     } else {
       properties_t props;
       auto i = 0;
@@ -300,14 +306,19 @@ std::size_t graph_db::import_nodes_from_csv(const std::string &label,
             props.insert({col, field});
         }
       }
-      auto id = import_node(label, props);
-      auto id_label_s = id_label + "_" + label;
-      m.insert({id_label_s, id});
+      try {
+        auto id = import_node(label, props);
+        auto id_label_s = id_label + "_" + label;
+        m.insert({id_label_s, id});
+        num++;
+      } catch (...) {
+        spdlog::warn("importing node '{}' failed.", label);
+      }
       // std::cout << "mapping: " << id_label << " -> " << id << std::endl;
     }
-    num++;
+
   }
-  return num-1;
+  return num > 0 ? num-1 : 0;
 }
 
 std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
@@ -423,6 +434,8 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
       m.insert({id_label_s, id});
       if (mtx != nullptr) 
         mtx->unlock();
+
+      // spdlog::info("node_id = {} ({})", id, id_label_s);
     }
   num++;
   }
@@ -562,7 +575,6 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
                                                     char delim,
                                                     const mapping_t &m, std::mutex *mtx) {
   using namespace aria::csv;
-
   std::ifstream f(filename);
   if (!f.is_open())
     return 0;
@@ -649,11 +661,12 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
   CsvParser parser = CsvParser(f).delimiter(delim);
   std::size_t num = 0;
 
-  std::vector<std::string> fp;
-  boost::split(fp, filename, boost::is_any_of("/"));
-  assert(fp.back().find(".csv", fp.size()-4) != std::string::npos);
+  // std::vector<std::string> fp;
+  // boost::split(fp, filename, boost::is_any_of(":"));
+  // spdlog::info("fp = {} : {}", fp.back(), fp.size());
+  // assert(fp.back().find(".csv", fp.size()-4) != std::string::npos);
   std::vector<std::string> fn;
-  boost::split(fn, fp.back(), boost::is_any_of("_"));
+  boost::split(fn, filename, boost::is_any_of("_"));
   auto label = ":" + fn[1];
   auto label_code = dict_->insert(label);
   auto src_node = fn[0];
@@ -678,11 +691,13 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
       }
       prop_names.resize(columns.size());
       prop_types.resize(columns.size());
-     prop_values.resize(columns.size());
+      prop_values.resize(columns.size());
       for (auto j = 0u; j < columns.size(); j++) {
         prop_names[j] = dict_->insert(columns[j]);
       }
-    } else if (num == 1) {
+      num++;
+    } 
+    else if (num == 1) {
       mapping_t::const_iterator it = node_id_from_field(m, src_node, row[start_col]);
       if (it == m.end())
         continue;
@@ -706,32 +721,48 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
       }
       if (mtx != nullptr)
         mtx->lock();
-      import_typed_relationship(from_node, to_node, label_code, prop_names, 
-    		  prop_types, prop_values, dict_);
+      try {
+        import_typed_relationship(from_node, to_node, label_code, prop_names, 
+    		    prop_types, prop_values, dict_);
+        num++;
+      } catch (...) {
+        spdlog::warn("importing relationship '{}' {} -> {} failed", label, from_node, to_node);
+      }
       if (mtx != nullptr)
         mtx->unlock();
-    } else {
+    } 
+    else {
+     //std::cout << num << " " << std::flush;
       mapping_t::const_iterator it = node_id_from_field(m, src_node, row[start_col]);
       if (it == m.end())
         continue;
       node::id_t from_node = it->second;      
+
+     //std::cout << "#" << std::flush;
 
       it = node_id_from_field(m, des_node, row[end_col]);
       if (it == m.end())
         continue;
       node::id_t to_node = it->second;      
 
+     //std::cout << "@" << from_node << "|" << to_node << std::flush;
+
       if (mtx != nullptr)
         mtx->lock();
-      import_typed_relationship(from_node, to_node, label_code, prop_names, 
+      try {
+        import_typed_relationship(from_node, to_node, label_code, prop_names, 
                                 prop_types, prop_values, dict_);
+        num++;
+      } catch (std::exception& exc) {
+        spdlog::warn("importing relationship '{}' {} -> {} failed", label, from_node, to_node);
+      }
       if (mtx != nullptr)
         mtx->unlock();
     }
-    num++;
+    // std::cout << num << " " << std::flush;
+    // std::cout << "$" << std::flush;
   }
-
-  return num-1;
+  return num > 0 ? num-1 : 0;
 }
 
 std::size_t graph_db::import_typed_n4j_relationships_from_csv(const std::string &filename,
@@ -783,6 +814,7 @@ std::size_t graph_db::import_typed_n4j_relationships_from_csv(const std::string 
     } else if (num == 1) {
       mapping_t::const_iterator it = m.find(row[start_col]); 
       if (it == m.end()) {
+        std::cout << "Cannot find " << row[start_col] << " in num #1" << std::endl;
         continue;
       }
       node::id_t from_node = it->second;      

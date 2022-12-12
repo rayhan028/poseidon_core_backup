@@ -97,30 +97,13 @@ bool node_description::has_property(const std::string& pname) const {
   return properties.find(pname) != properties.end();
 }
 
-/* ------------------------------------------------------------------------ */
-
-
-struct init_node_task {
-  using range = std::pair<std::size_t, std::size_t>;
-  init_node_task(node_list &n, std::size_t first, std::size_t last)
-      : nodes_(n), range_(first, last) {}
-
-  void operator()() {
-    auto iter = nodes_.range(range_.first, range_.second);
-    while (iter) {
-      auto &n = *iter;
-      n.runtime_initialize();
-     ++iter;
-    }
-  }
-
-  node_list &nodes_;
-  range range_;
-};
-
-node_list::~node_list() {
+bool node_description::operator==(const node_description& other) const {
+  return id == other.id && label == other.label/* && properties == other.properties*/;
 }
 
+/* ------------------------------------------------------------------------ */
+
+#if 0
 void node_list::runtime_initialize() {
   // make sure that all locks are released and no dirty objects exist
 #ifdef PARALLEL_INIT
@@ -200,7 +183,7 @@ void node_list::remove(node::id_t id) {
 void node_list::dump() {
   std::cout << "----------- NODES -----------\n";
   for (auto& n : nodes_) {
-    std::cout << "#" << n.id() << ", @" << (unsigned long)&n
+    std::cout << std::dec << "#" << n.id() << ", @" << (unsigned long)&n
               << " [ txn-id=" << short_ts(n.txn_id()) << ", bts=" << short_ts(n.bts())
               << ", cts=" << short_ts(n.cts()) << ", dirty=" << n.d_->is_dirty_ 
               << " ], label=" << n.node_label << ", from="
@@ -229,3 +212,5 @@ void node_list::dump() {
   }
   std::cout << "-----------------------------\n";
 }
+
+#endif

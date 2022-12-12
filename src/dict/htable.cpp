@@ -20,8 +20,12 @@
 #include <functional>
 #include <math.h>
 #include "htable.hpp"
+#ifdef USE_PMDK
 #include "string_pool.hpp"
-
+#else
+#include "paged_string_pool.hpp"
+#endif
+#include "spdlog/spdlog.h"
 
 inline uint16_t probe_distance(uint64_t val) { return (val & 0xFFFF000000000000) >> 48; }
 
@@ -62,7 +66,11 @@ uint64_t step(const std::string& s, uint64_t prime) {
 }
 #endif
 
+#ifdef USE_PMDK
 htable::htable(p_ptr<string_pool> pool, uint32_t nb) : pool_(pool), nbuckets_(nb), nelems_(0) {
+#else
+htable::htable(std::shared_ptr<paged_string_pool> pool, uint32_t nb) : pool_(pool), nbuckets_(nb), nelems_(0) {
+#endif
     table_ = new uint64_t[nbuckets_];
     memset(table_, 0, nbuckets_ * sizeof(uint64_t));
 }
@@ -73,7 +81,8 @@ htable::~htable() {
 
 void htable::rebuild() {
     pool_->scan([this](const char *s, dcode_t c) {
-        insert(std::string(s), c);
+        // std::cout << s << " -> " << c << std::endl;
+        auto d = insert(std::string(s), c);
     });
 }
 
@@ -126,11 +135,11 @@ dcode_t htable::insert_into_table(uint64_t *tbl, uint32_t tsize, uint64_t hkey, 
     uint16_t probe_dist = 0;
 
     while (true) {
-        if (tbl[bucket_id] == 0)
+        if (hash_value(tbl[bucket_id]) == 0)
             break;
         // handle collision
         bucket_id += 1;
-        overflow = overflow ? overflow : bucket_id > tsize;
+        overflow = overflow ? overflow : bucket_id >= tsize;
         bucket_id %= tsize;
         if (overflow && bucket_id >= start) {
             std::cerr << "hash table overflow - aborting!" << std::endl;
@@ -151,7 +160,7 @@ dcode_t htable::insert_into_table(uint64_t *tbl, uint32_t tsize, uint64_t hkey, 
 }
 
 void htable::resize() {
-    std::cout << "htable::resize..." << std::endl;
+    spdlog::info("htable::resize...");
     auto nbuckets = nbuckets_ + nbuckets_/2;
     auto new_table_ = new uint64_t[nbuckets];
     memset(new_table_, 0, nbuckets * sizeof(uint64_t));
@@ -160,7 +169,7 @@ void htable::resize() {
             // get the string
             auto s = pool_->extract(hash_value(table_[i]));
             // rehash
-            auto key = std::hash<const char *>{}(s);
+            auto key = std::hash<std::string>{}(s);
             // insert into new_table_
             insert_into_table(new_table_, nbuckets, key, table_[i]);
         }

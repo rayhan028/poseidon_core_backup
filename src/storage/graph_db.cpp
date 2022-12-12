@@ -18,62 +18,98 @@
  */
 
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 
 #include "graph_db.hpp"
-#include "chunked_vec.hpp"
+#include "vec.hpp"
 #include "parser.hpp"
 #include "spdlog/spdlog.h"
 #include <iostream>
 #include <stdio.h>
 #include <set>
-
-#ifdef USE_MMFILE
-#include <boost/filesystem.hpp>
-#endif
+#include <variant>
 
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
 #endif
 
 void graph_db::destroy(graph_db_ptr gp) {
-#ifdef USE_MMFILE
-  auto prefix = gp->database_name_ + "/";
-  boost::filesystem::remove(prefix + "nodes.db");
-  boost::filesystem::remove(prefix + "slots_nodes.db");
-  boost::filesystem::remove(prefix + "rships.db");
-  boost::filesystem::remove(prefix + "slots_rships.db");
-  boost::filesystem::remove(prefix + "nprops.db");
-  boost::filesystem::remove(prefix + "slots_nprops.db");
-  boost::filesystem::remove(prefix + "rprops.db");
-  boost::filesystem::remove(prefix + "slots_rprops.db");
-  boost::filesystem::remove(prefix + "dict.db");
-  boost::filesystem::remove(prefix);
+#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY) 
+  boost::filesystem::path path_obj(gp->database_name_);
+  if (boost::filesystem::exists(path_obj))
+    boost::filesystem::remove_all(path_obj);
 #endif
 }
 
-
-graph_db::graph_db(const std::string &db_name) : database_name_(db_name) {
-  std::string prefix = "";
-#ifdef USE_MMFILE
-  boost::filesystem::path path_obj(db_name);
+void graph_db::prepare_files(const std::string &pool_path, const std::string &pfx) {
+#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY) 
+  spdlog::debug("graph_db: prepare files {} / {}", pool_path, pfx);
+  boost::filesystem::path path_obj {pool_path};
+  path_obj /= pfx;
   // check if path exists and is of a regular file
   if (! boost::filesystem::exists(path_obj))
     boost::filesystem::create_directory(path_obj);
-  prefix = db_name + "/";
+
+  std::string prefix = path_obj.string() + "/";
+
+  spdlog::debug("graph_db: prepare files in '{}'", prefix);
+
+  node_file_ = std::make_shared<paged_file>();
+  node_file_->open(prefix + "nodes.db", NODE_FILE_ID);
+  bpool_.register_file(NODE_FILE_ID, node_file_);
+
+  rship_file_ = std::make_shared<paged_file>();
+  rship_file_->open(prefix + "rships.db", RSHIP_FILE_ID);
+  bpool_.register_file(RSHIP_FILE_ID, rship_file_);
+
+  nprops_file_ = std::make_shared<paged_file>();
+  nprops_file_->open(prefix + "nprops.db", NPROPS_FILE_ID);
+  bpool_.register_file(NPROPS_FILE_ID, nprops_file_);
+
+  rprops_file_ = std::make_shared<paged_file>();
+  rprops_file_->open(prefix + "rprops.db", RPROPS_FILE_ID);
+  bpool_.register_file(RPROPS_FILE_ID, rprops_file_);
+
+  dict_ = p_make_ptr<dict>(bpool_, prefix);
 #endif
-  nodes_ = p_make_ptr<node_list>(prefix + "nodes.db");
-  rships_ = p_make_ptr<relationship_list>(prefix + "rships.db");
-  node_properties_ = p_make_ptr<property_list>(prefix + "nprops.db");
-  rship_properties_ = p_make_ptr<property_list>(prefix + "rprops.db");
+}
+
+graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : database_name_(db_name)
+#if defined(USE_PMDK) || defined(USE_IN_MEMORY)
+, bpool_(0)
+#endif
+ {
+#ifdef USE_PMDK
+  nodes_ = p_make_ptr<node_list<nvm_chunked_vec> >();
+  rships_ = p_make_ptr<relationship_list<nvm_chunked_vec> >();
+  node_properties_ = p_make_ptr<property_list<nvm_chunked_vec> >();
+  rship_properties_ = p_make_ptr<property_list<nvm_chunked_vec> >();
+  dict_ = p_make_ptr<dict>();
+  index_map_ = p_make_ptr<index_map>();
+#elif defined(USE_IN_MEMORY)
+  nodes_ = p_make_ptr<node_list<mem_chunked_vec> >();
+  rships_ = p_make_ptr<relationship_list<mem_chunked_vec> >();
+  node_properties_ = p_make_ptr<property_list<mem_chunked_vec> >();
+  rship_properties_ = p_make_ptr<property_list<mem_chunked_vec> >();
+  dict_ = p_make_ptr<dict>();
+  index_map_ = p_make_ptr<index_map>();
+#else
+  pool_path_ = pool_path;
+  prepare_files(pool_path, db_name);
+  nodes_ = p_make_ptr<node_list<buffered_vec> >(bpool_, NODE_FILE_ID);
+  rships_ = p_make_ptr<relationship_list<buffered_vec> >(bpool_, RSHIP_FILE_ID);
+  node_properties_ = p_make_ptr<property_list<buffered_vec> >(bpool_, NPROPS_FILE_ID);
+  rship_properties_ = p_make_ptr<property_list<buffered_vec> >(bpool_, RPROPS_FILE_ID);
+  index_map_ = p_make_ptr<index_map>();
+  restore_indexes(pool_path, db_name);
+#endif
 #ifdef QOP_RECOVERY
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
 #endif
-  dict_ = p_make_ptr<dict>(prefix);
-  index_map_ = p_make_ptr<index_map>();
   ulog_ = p_make_ptr<pmlog>();
-#if defined CSR_DELTA_STORE && defined USE_TX
-  csr_delta_ = p_make_ptr<csr_delta>();
+#if defined CSR_DELTA && defined USE_TX
+  delta_store_ = p_make_ptr<delta_store>();
 #endif
   active_tx_ = new std::map<xid_t, transaction_ptr>();
   m_ = new std::mutex();
@@ -93,9 +129,35 @@ graph_db::~graph_db() {
 #ifdef USE_TX
   current_transaction_.reset();
 #endif
+  close_files();
 }
 
+void graph_db::flush() {
+  bpool_.flush_all();
+}
+
+void graph_db::flush(const std::set<offset_t>& dirty_chunks) {
+  for (const auto& dc : dirty_chunks) {
+    bpool_.flush_page(dc, false);
+  }
+}
+
+void graph_db::close_files() {
+  // spdlog::info("graph_db::close_files()");
+  if (dict_) dict_->close_file();
+  if (node_file_) node_file_->close();
+  if (rship_file_) rship_file_->close();
+  if (nprops_file_) nprops_file_->close();
+  if (rprops_file_) rprops_file_->close();
+  index_map_->clear();
+  for (auto pf : index_files_) {
+    pf->close();
+  }
+}
+
+
 void graph_db::runtime_initialize() {
+  spdlog::info("graph_db::runtime_initialize()");
   nodes_->runtime_initialize();
   rships_->runtime_initialize();
 #ifdef QOP_RECOVERY
@@ -103,11 +165,11 @@ void graph_db::runtime_initialize() {
   recovery_res_->runtime_initialize();
 #endif
   // make sure the dictionary is initialized
-  dict_->initialize();
+  // dict_->initialize();
   // perform recovery using the undo log
   apply_undo_log();
-#if defined CSR_DELTA_STORE && defined USE_TX
-  csr_delta_->initialize();
+#if defined CSR_DELTA && defined USE_TX
+  delta_store_->initialize();
 #endif
   // recreate volatile objects: active_tx_ table and mutex
   active_tx_ = new std::map<xid_t, transaction_ptr>();
@@ -140,7 +202,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
  	auto &n = nodes_->get(node_id);
   // If the node was already deleted we can skip all other entries...
   if (n.cts() != INF) {
-    n.remove_dirty_version(xid);
+    n.remove_dirty_version(0);
     return;
   }
 	  /* A dirty object was just inserted, when add_node() or update_node() was executed.
@@ -151,11 +213,14 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
       // TODO: in case of inserts perform undo using the log
 		  throw transaction_abort();
 	  }
-    
+
 	  // get the version of dirty object.
 	  // Note: Dirty version are always put in front of the list.
 	  // If that order is changed, then same order must be used during access.
 	  if (const auto& dn {n.dirty_list()->front()}; !dn->updated()) {
+      /* ------------------------------------------
+       *                  INSERT
+       * -----------------------------------------*/
       // std::cout << "COMMIT INSERT" << std::endl;
 		  // CASE #1 = INSERT: we have added a new node to node_list, but its properties
 		  // are stored in a dirty_node object in this case, we simply copy the
@@ -167,22 +232,32 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
       n.to_rship_list = dn->elem_.to_rship_list;
 		  // set bts/cts
 		  n.set_timestamps(xid, INF);
-		  // we can already delete the object from the dirty version list
+	
+      // TODO: handle the case of multiple indexes
+      auto idx = get_index(dn->elem_.node_label, dn->properties_);
+      if (idx.first.which() > 0) {
+        spdlog::info("NODE INDEX UPDATE: insert");
+        index_insert(idx, dn->elem_.id(), dn->properties_);
+      }
+	    // we can already delete the object from the dirty version list
 		  n.dirty_list()->pop_front();
+
 	  } else {
 		  // case #2: we have updated a node, thus copy both properties
 		  // and node version to the main tables
 		  // spdlog::info("commit UPDATE transaction {}: copy properties", xid);
 		  // update node (label)
-      auto log_id = current_transaction_->logid(); 
+      auto log_id = current_transaction_->logid();
 
       if (dn->elem_.bts() == dn->elem_.cts()) {
-        // CASE #2 = DELETE
+        /* ------------------------------------------
+         *                  DELETE
+         * -----------------------------------------*/
         // std::cout << "COMMIT DELETE" << std::endl;
         // spdlog::info("COMMIT DELETE: [{},{}]", short_ts(dn->elem_.bts), short_ts(dn->elem_.cts));
-        log_node_record rec (pmem_log::log_delete, pmem_log::log_node, node_id, 
+        log_node_record rec (pmem_log::log_delete, pmem_log::log_node, node_id,
               n.node_label, n.from_rship_list, n.to_rship_list, n.property_list);
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));       
+        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));
         // log property delete
         auto cb = [log_id, node_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
           log_property_record rec(pmem_log::log_delete, pmem_log::log_property,
@@ -198,6 +273,15 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         }
 		    n.set_cts(xid);
         // spdlog::info("===> COMMIT DELETE: #{}: [{},{}]", n.id(), short_ts(n.bts),short_ts(n.cts));
+
+        // TODO: handle the case of multiple indexes
+        auto props = node_properties_->build_dirty_property_list(n.property_list);
+        auto idx = get_index(dn->elem_.node_label, props);
+        if (idx.first.which() > 0) {
+          spdlog::info("NODE INDEX UPDATE: delete");
+          index_delete(idx, n.id(), props);
+        }
+
 		    // we can already delete the object from the dirty version list
 		    n.dirty_list()->pop_front();
 		    // release the lock of the old version.
@@ -205,12 +289,15 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         // we can delete properties because the old values are still in the dirty list
         node_properties_->remove_properties(n.property_list);
         n.property_list = UNKNOWN;
+
       }
       else {
-        // CASE #3 = UPDATE
+        /* ------------------------------------------
+         *                  UPDATE
+         * -----------------------------------------*/
         // std::cout << "COMMIT UPDATE" << std::endl;
         // create and append a log_node_record BEFORE we copy the properties and override the label
-        log_node_record rec(pmem_log::log_update, pmem_log::log_node, node_id, 
+        log_node_record rec(pmem_log::log_update, pmem_log::log_node, node_id,
           n.node_label, n.from_rship_list, n.to_rship_list, n.property_list);
         ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));
 		    n.node_label = dn->elem_.node_label;
@@ -222,6 +309,15 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		    // spdlog::info("COMMIT UPDATE: set new={},{} @{}", xid, INF, n.id());
 		    /// spdlog::info("COMMIT UPDATE: set old.cts={} @{}", xid,
 		    ///             (unsigned long)&(dn->node_));
+        // TODO: handle the case of multiple indexes
+        assert(n.dirty_list()->size() > 1);
+        auto it = n.dirty_list()->begin();
+        it++;
+        auto idx = get_index(dn->elem_.node_label, dn->properties_);
+        if (idx.first.which() > 0) {
+          spdlog::info("NODE INDEX UPDATE: update: {}", n.dirty_list()->size());
+          index_update(idx, dn->elem_.id(), (*it)->properties_, dn->properties_);
+        }
 		    // we can already delete the object from the dirty version list
 		    n.dirty_list()->pop_front();
 		    // release the lock of the old version.
@@ -240,7 +336,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 	auto& r = rships_->get(rel_id);
   // If the relationship was already deleted we can skip all other entries...
   if (r.cts() != INF) {
-    r.remove_dirty_version(xid);
+    r.remove_dirty_version(0);
     return;
   }
 
@@ -261,19 +357,26 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		  // set bts/cts
 		  r.set_timestamps(xid, INF);
 		  copy_properties(r, dr);
+
+            // TODO: handle the case of multiple indexes
+      auto idx = get_index(dr->elem_.rship_label, dr->properties_);
+      if (idx.first.which() > 0) {
+        spdlog::info("RSHIP INDEX UPDATE: insert");
+        index_insert(idx, dr->elem_.id(), dr->properties_);
+      }
 		  // we can already delete the object from the dirty version list
 		  r.dirty_list()->pop_front();
 	  } else {
 		  // case #2: we have updated a relationship, thus copy both properties
 		  // and relationship version to the main tables
 		  // update relationship (label)
-      auto log_id = current_transaction_->logid(); 
+      auto log_id = current_transaction_->logid();
       if (dr->elem_.bts() == dr->elem_.cts()) {
         // CASE #2 = DELETE
         // spdlog::info("COMMIT DELETE: {}, {}", dr->elem_.bts(), dr->elem_.cts());
         log_rship_record rec { pmem_log::log_delete, pmem_log::log_rship, rel_id,
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));       
+        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));
         // log property delete
         auto cb = [log_id, rel_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
           log_property_record rec{ pmem_log::log_update, pmem_log::log_property,
@@ -290,6 +393,14 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
           garbage_->push_back(gc_item { xid, rel_id, gc_item::gc_rship });
         }
 		    r.set_cts(xid);
+        
+        // TODO: handle the case of multiple indexes
+        auto props = rship_properties_->build_dirty_property_list(r.property_list);
+        auto idx = get_index(dr->elem_.rship_label, props);
+        if (idx.first.which() > 0) {
+          spdlog::info("RSHIP INDEX UPDATE: insert");
+          index_delete(idx, r.id(), props);
+        }
 
 		    // we can already delete the object from the dirty version list
 		    r.dirty_list()->pop_front();
@@ -300,15 +411,25 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
       else {
         // CASE #3 = UPDATE
       // create and append a log_rship_record BEFORE we copy the properties and override the label
-      auto log_id = current_transaction_->logid(); 
- 
-      log_rship_record rec(pmem_log::log_update, pmem_log::log_rship, rel_id, 
+      auto log_id = current_transaction_->logid();
+
+      log_rship_record rec(pmem_log::log_update, pmem_log::log_rship, rel_id,
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship);
 
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));
 		  r.set_timestamps(xid, INF);
 		  r.rship_label = dr->elem_.rship_label;
 		  copy_properties(r, dr);
+
+      // TODO: handle the case of multiple indexes
+      assert(r.dirty_list()->size() > 1);
+      auto it = r.dirty_list()->begin();
+      it++;
+      auto idx = get_index(dr->elem_.rship_label, dr->properties_);
+      if (idx.first.which() > 0) {
+        spdlog::info("RSHIP INDEX UPDATE: update: {}", r.dirty_list()->size());
+        index_update(idx, dr->elem_.id(), (*it)->properties_, dr->properties_);
+      }
 		  // we can already delete the dirty object from the dirty version list
 		  r.dirty_list()->pop_front();
 		  // release the lock of the older version.
@@ -334,78 +455,93 @@ bool graph_db::commit_transaction() {
     oldest_xid_ = !active_tx_->empty() ? active_tx_->begin()->first : xid;
   }
 
-#ifdef CSR_DELTA_STORE
-  std::set<node::id_t> updated_nodes, deleted_nodes, deleted_rships;
-#endif
-
   // process dirty_rships list
   for (auto rel_id : tx->dirty_relationships())  {
-#ifdef CSR_DELTA_STORE
-    auto& r = rships_->get(rel_id);
-    if (!r.has_valid_version(xid)) {
-      // neighbour nodes that will be removed from current CSR
-      deleted_rships.insert(rel_id);
-      updated_nodes.insert(r.from_node_id());
-      updated_nodes.insert(r.to_node_id());
-    }
-#endif
     commit_dirty_relationship(tx, rel_id);
   }
 
   // process dirty_nodes list
   for (auto node_id : tx->dirty_nodes()) {
-#ifdef CSR_DELTA_STORE
-    auto& n = nodes_->get(node_id);
-    if (!n.has_valid_version(xid)) {
-      // nodes whose entire neighbour nodes will be removed from current CSR
-      deleted_nodes.insert(node_id);
-    }
-    updated_nodes.insert(node_id);
-#endif
     commit_dirty_node(tx, node_id);
   }
 
-  // log end of transaction
-  ulog_->transaction_end(current_transaction_->logid());
+#ifdef CSR_DELTA
 
-#ifdef CSR_DELTA_STORE
-  std::vector<uint64_t> neigbour_node_ids;
-  std::vector<double> rship_weights;
+#ifdef DIFF_DELTA
+  auto &txn_delta_ids = tx->csr_delta_ids();
+  auto count = delta_store_->num_delta_recs_;
+  count += txn_delta_ids.deleted_nodes_.size();
+  count += txn_delta_ids.deleted_neighbours_.size();
+  for (auto &[nid, inserts] : txn_delta_ids.inserted_neighbours_)
+    if (!txn_delta_ids.deleted_neighbours_.contains(nid))
+      count++;
 
-  for (auto node_id : updated_nodes) {
-    auto &n = nodes_->get(node_id);
-    if (deleted_nodes.find(node_id) == deleted_nodes.end()) {
-      auto rid = n.from_rship_list;
-      while (rid != UNKNOWN) {
-        auto &r = rships_->get(rid);
-        if (deleted_rships.find(rid) == deleted_rships.end()) {
-          // destination neighbour of node with id "node_id"
-          neigbour_node_ids.push_back(r.to_node_id());
-          rship_weights.push_back(csr_delta_->weight_func_(r));
-        }
-        rid = r.next_src_rship;
-      }
+  if (!delta_store_->delta_mode_) {
+    // do nothing
+    ;
+  }
+  else if (count > delta_store_->max_delta_recs_) {
+    delta_store_->delta_mode_ = false;
+  }
+  else {
+    // store deltas
+    delta_store_->store_deltas(xid, txn_delta_ids);
+  }
+#elif defined ADJ_DELTA
+  auto &updated_nodes = tx->csr_delta_ids().updated_nodes_;
+  auto &deleted_nodes = tx->csr_delta_ids().deleted_nodes_;
+  auto &deleted_rships = tx->csr_delta_ids().deleted_rships_;
+  auto count = delta_store_->num_delta_recs_ + updated_nodes.size();
 
-      if (csr_delta_->get_bidirectional()) {
-        rid = n.to_rship_list;
+  if (!delta_store_->delta_mode_) {
+    // do nothing
+    ;
+  }
+  else if (count > delta_store_->max_delta_recs_) {
+    delta_store_->delta_mode_ = false;
+  }
+  else {
+    // store deltas
+    std::vector<uint64_t> neigbour_node_ids;
+    std::vector<double> rship_weights;
+
+    for (auto node_id : updated_nodes) {
+      auto &n = nodes_->get(node_id);
+      if (deleted_nodes.find(node_id) == deleted_nodes.end()) {
+        auto rid = n.from_rship_list;
         while (rid != UNKNOWN) {
           auto &r = rships_->get(rid);
           if (deleted_rships.find(rid) == deleted_rships.end()) {
-            // source neighbour of node with id "node_id"
-            neigbour_node_ids.push_back(r.from_node_id());
-            auto &func = csr_delta_->get_weight_func();
-            rship_weights.push_back(csr_delta_->weight_func_(r));
+            // destination neighbour of node with id "node_id"
+            neigbour_node_ids.push_back(r.to_node_id());
+            rship_weights.push_back(delta_store_->weight_func_(r));
           }
-          rid = r.next_dest_rship;
+          rid = r.next_src_rship;
+        }
+
+        if (delta_store_->bidirectional_) {
+          rid = n.to_rship_list;
+          while (rid != UNKNOWN) {
+            auto &r = rships_->get(rid);
+            if (deleted_rships.find(rid) == deleted_rships.end()) {
+              // source neighbour of node with id "node_id"
+              neigbour_node_ids.push_back(r.from_node_id());
+              rship_weights.push_back(delta_store_->weight_func_(r));
+            }
+            rid = r.next_dest_rship;
+          }
         }
       }
+      delta_store_->store_delta(xid, node_id, neigbour_node_ids, rship_weights);
+      neigbour_node_ids.clear();
+      rship_weights.clear();
     }
-    csr_delta_->store_delta(node_id, neigbour_node_ids, rship_weights, xid);
-    neigbour_node_ids.clear();
-    rship_weights.clear();
   }
 #endif
 
+#endif
+
+  ulog_->transaction_end(current_transaction_->logid());
   current_transaction_.reset();
   vacuum(xid);
 #endif
@@ -481,7 +617,7 @@ void graph_db::print_stats() {
   std::cout << mem / 1024;
   mem += node_properties_->num_chunks() * node_properties_->as_vec().real_chunk_size();
   mem += rship_properties_->num_chunks() * rship_properties_->as_vec().real_chunk_size();
-  std::cout << " (" << mem / 1024 << ") KiB total" << std::endl; 
+  std::cout << " (" << mem / 1024 << ") KiB total" << std::endl;
 
   uint64_t nprops = 0;
   node_properties_->foreach_property([&nprops](auto pi) { nprops++; });
@@ -489,6 +625,8 @@ void graph_db::print_stats() {
   uint64_t rprops = 0;
   rship_properties_->foreach_property([&rprops](auto pi) { rprops++; });
   std::cout << rprops << " relationship properties total." << std::endl;
+
+  std::cout << dict_->size() << " strings in dictionary." << std::endl;
 }
 
 node::id_t graph_db::add_node(const std::string &label,
@@ -501,7 +639,7 @@ node::id_t graph_db::add_node(const std::string &label,
 #endif
   auto type_code = dict_->insert(label);
   // create and append a log_ins_record BEFORE the node table is modified
-  auto log_id = current_transaction_->logid(); 
+  auto log_id = current_transaction_->logid();
   auto cb = [log_id, this](offset_t n_id) {
     log_ins_record rec(pmem_log::log_insert, pmem_log::log_node, n_id);
     ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
@@ -529,6 +667,14 @@ node::id_t graph_db::add_node(const std::string &label,
   }
 #endif
 
+#if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
+  current_transaction()->add_inserted_node(node_id);
+#elif defined ADJ_DELTA
+  current_transaction()->add_updated_node(node_id);
+#endif
+#endif
+
   return node_id;
 }
 
@@ -549,7 +695,7 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
 #endif
   auto type_code = dict_->insert(label);
   // create and append a log_ins_record BEFORE the rship table is modified
-  auto log_id = current_transaction()->logid(); 
+  auto log_id = current_transaction()->logid();
   auto cb = [log_id, this](offset_t r_id) {
     log_ins_record rec(pmem_log::log_insert, pmem_log::log_rship, r_id);
     ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
@@ -597,12 +743,28 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
     to_node.to_rship_list = rid;
   }
 #endif
+
+#if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
+  auto weight = delta_store_->weight_func_(rv->elem_);
+  current_transaction()->add_inserted_neighbour(from_id, to_id, weight);
+  if (delta_store_->bidirectional_) {
+    current_transaction()->add_inserted_neighbour(to_id, from_id, weight);
+  }
+#elif defined ADJ_DELTA
+  current_transaction()->add_updated_node(from_id);
+  if (delta_store_->bidirectional_) {
+    current_transaction()->add_updated_node(to_id);
+  }
+#endif
+#endif
+
   return rid;
 }
 
 node &graph_db::get_valid_node_version(node &n, xid_t xid) {
   if (n.is_locked_by(xid)) {
-    // spdlog::info("[tx {}] node #{} is locked by {}", short_ts(xid), n.id(), short_ts(n.txn_id));
+    spdlog::debug("[tx {}] node #{} is locked by {}", short_ts(xid), n.id(), short_ts(n.txn_id()));
     // because the node is locked we know that it was already updated by us
     // and we should look for the dirty object containing the new values
     assert(n.has_dirty_versions());
@@ -610,14 +772,14 @@ node &graph_db::get_valid_node_version(node &n, xid_t xid) {
   }
   // or (2) is not locked and xid is in [bts,cts]
   if (!n.is_locked()) {
-    // spdlog::info("node_by_id: node #{} is unlocked: [{}, {}] <=> {}", n.id(),
-    //             n.bts, n.cts, xid);
+    spdlog::debug("node_by_id: node #{} is unlocked: [{}, {}] <=> {}", n.id(),
+                 n.bts(), n.cts(), xid);
     return n.is_valid_for(xid) ? n : n.find_valid_version(xid)->elem_;
   }
 
   // or (3) node is locked by another transaction
   else {
-    // spdlog::info("node #{} is locked by another tx in {}", n.id(), xid);
+    spdlog::debug("node #{} is locked by another tx in {}", n.id(), xid);
     // dump();
     // try to find a valid version which is not locked
     auto &nv = n.find_valid_version(xid)->elem_;
@@ -682,7 +844,7 @@ relationship &graph_db::rship_by_id(relationship::id_t id) {
 }
 
 node_description graph_db::get_node_description(node::id_t nid) {
-  std::string label; 
+  std::string label;
   properties_t props;
   auto& n = node_by_id(nid);
 #ifdef USE_TX
@@ -696,7 +858,7 @@ node_description graph_db::get_node_description(node::id_t nid) {
     label = dict_->lookup_code(n.node_label);
   }
   else {
-    //spdlog::info("tx #{}: get_node_description - is_dirty={} - is_valid={}", 
+    //spdlog::info("tx #{}: get_node_description - is_dirty={} - is_valid={}",
     //  xid, n.is_dirty(), n.is_valid(xid));
     // dump();
     // otherwise there are two options:
@@ -707,7 +869,7 @@ node_description graph_db::get_node_description(node::id_t nid) {
         label = dict_->lookup_code(n.node_label);
       }
       else {
-        // the node is deleted and its property values are no more in the properties_ table 
+        // the node is deleted and its property values are no more in the properties_ table
         // (2) we get the property values directly from the valid version
         const auto& dn = n.find_valid_version(xid);
         props = node_properties_->build_properties_from_pitems(dn->properties_, dict_);
@@ -779,7 +941,7 @@ void graph_db::update_node(node &n, const properties_t &props,
   check_tx_context();
   xid_t txid = current_transaction()->xid();
 
-  // make sure we don't overwrite an object that was read by 
+  // make sure we don't overwrite an object that was read by
   // a more recent transaction
   if (n.rts() > txid)
    throw transaction_abort();
@@ -838,7 +1000,7 @@ void graph_db::update_node(node &n, const properties_t &props,
 void graph_db::update_from_node(transaction_ptr tx, node &n, relationship& r) {
   xid_t txid = tx->xid();
 
-  // make sure we don't overwrite an object that was read by 
+  // make sure we don't overwrite an object that was read by
   // a more recent transaction
   if (n.rts() > txid)
    throw transaction_abort();
@@ -879,7 +1041,7 @@ void graph_db::update_from_node(transaction_ptr tx, node &n, relationship& r) {
     const auto &newv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
     newv->elem_.set_timestamps(txid, INF);
     newv->elem_.set_dirty();
-    
+
     if (newv->elem_.from_rship_list == UNKNOWN)
         newv->elem_.from_rship_list = r.id();
     else {
@@ -893,7 +1055,7 @@ void graph_db::update_from_node(transaction_ptr tx, node &n, relationship& r) {
 void graph_db::update_to_node(transaction_ptr tx, node &n, relationship& r) {
  xid_t txid = tx->xid();
 
-  // make sure we don't overwrite an object that was read by 
+  // make sure we don't overwrite an object that was read by
   // a more recent transaction
   if (n.rts() > txid)
    throw transaction_abort();
@@ -934,7 +1096,7 @@ void graph_db::update_to_node(transaction_ptr tx, node &n, relationship& r) {
     const auto &newv = n.add_dirty_version(std::make_unique<dirty_node>(n, pitems));
     newv->elem_.set_timestamps(txid, INF);
     newv->elem_.set_dirty();
-    
+
     if (newv->elem_.to_rship_list == UNKNOWN)
         newv->elem_.to_rship_list = r.id();
     else {
@@ -953,7 +1115,7 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
   check_tx_context();
   xid_t txid = current_transaction()->xid();
 
-  // make sure we don't overwrite an object that was read by 
+  // make sure we don't overwrite an object that was read by
   // a more recent transaction
   if (r.rts() > txid)
    throw transaction_abort();
@@ -1017,7 +1179,7 @@ void graph_db::delete_node(node::id_t id) {
 
   auto &n = this->node_by_id(id);
 
-  // make sure we don't overwrite an object that was read by 
+  // make sure we don't overwrite an object that was read by
   // a more recent transaction
   if (n.rts() > txid)
    throw transaction_abort();
@@ -1054,7 +1216,7 @@ void graph_db::delete_node(node::id_t id) {
 
   current_transaction()->add_dirty_node(n.id());
   // spdlog::info("delete_node: {}", n.id());
-#else 
+#else
   auto &n = this->node_by_id(id);
   if (n.from_rship_list != UNKNOWN || n.to_rship_list != UNKNOWN) {
     // in this case we have to abort
@@ -1067,6 +1229,15 @@ void graph_db::delete_node(node::id_t id) {
   // delete the node object
   nodes_->remove(id);
 #endif
+
+#if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
+  current_transaction()->add_deleted_node(id);
+#elif defined ADJ_DELTA
+  current_transaction()->add_updated_node(id);
+  current_transaction()->add_deleted_node(id);
+#endif
+#endif
 }
 
 void graph_db::detach_delete_node(node::id_t id) {
@@ -1078,7 +1249,7 @@ void graph_db::detach_delete_node(node::id_t id) {
 
   auto &n = this->node_by_id(id);
 
-  // make sure we don't overwrite an object that was read by 
+  // make sure we don't overwrite an object that was read by
   // a more recent transaction
   if (n.rts() > txid)
    throw transaction_abort();
@@ -1099,7 +1270,7 @@ void graph_db::detach_delete_node(node::id_t id) {
       if (relship.has_valid_version(txid))
         rships.push_back(relship_id);
     }
-    else if (relship.is_valid_for(txid)) 
+    else if (relship.is_valid_for(txid))
       rships.push_back(relship_id);
 
     relship_id = relship.next_src_rship;
@@ -1114,7 +1285,7 @@ void graph_db::detach_delete_node(node::id_t id) {
       if (relship.has_valid_version(txid))
         rships.push_back(relship_id);
     }
-    else if (relship.is_valid_for(txid)) 
+    else if (relship.is_valid_for(txid))
       rships.push_back(relship_id);
 
     relship_id = relship.next_dest_rship;
@@ -1172,6 +1343,15 @@ void graph_db::detach_delete_node(node::id_t id) {
   node_properties_->remove_properties(n.property_list);
   nodes_->remove(id);
 #endif
+
+#if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
+  current_transaction()->add_deleted_node(id);
+#elif defined ADJ_DELTA
+  current_transaction()->add_updated_node(id);
+  current_transaction()->add_deleted_node(id);
+#endif
+#endif
 }
 
 void graph_db::delete_relationship(node::id_t src, node::id_t dest) {
@@ -1219,7 +1399,7 @@ void graph_db::delete_relationship(relationship::id_t id) {
 
   auto &r = this->rship_by_id(id);
 
-  // make sure we don't overwrite an object that was read by 
+  // make sure we don't overwrite an object that was read by
   // a more recent transaction
   if (r.rts() > txid)
    throw transaction_abort();
@@ -1249,7 +1429,7 @@ void graph_db::delete_relationship(relationship::id_t id) {
   newv->elem_.set_dirty();
 
   current_transaction()->add_dirty_relationship(r.id());
-#else 
+#else
   auto &r = this->rship_by_id(id);
 
   // delete the relationship properties
@@ -1257,6 +1437,26 @@ void graph_db::delete_relationship(relationship::id_t id) {
 
   // delete the relationship object
   rships_->remove(id);
+#endif
+
+#if defined CSR_DELTA && defined USE_TX
+#ifdef DIFF_DELTA
+  auto from_id = newv->elem_.from_node_id();
+  auto to_id = newv->elem_.to_node_id();
+  current_transaction()->add_deleted_neighbour(from_id, to_id);
+  if (delta_store_->bidirectional_) {
+    current_transaction()->add_deleted_neighbour(to_id, from_id);
+  }
+#elif defined ADJ_DELTA
+  auto from_id = newv->elem_.from_node_id();
+  auto to_id = newv->elem_.to_node_id();
+  current_transaction()->add_updated_node(from_id);
+  if (delta_store_->bidirectional_) {
+    current_transaction()->add_updated_node(to_id);
+  }
+  current_transaction()->add_deleted_rship(id);
+#endif
+
 #endif
 }
 
@@ -1278,12 +1478,12 @@ void graph_db::dump_dot(const std::string& fname) {
   out.open(fname, std::ofstream::out | std::ofstream::trunc);
   out << "digraph poseidon_db {\n";
   for (auto& n : nodes_->as_vec()) {
-    out << '\t' << "n" << n.id() 
-        << " [label = \"" << n.id() << ":" 
+    out << '\t' << "n" << n.id()
+        << " [label = \"" << n.id() << ":"
         << get_string(n.node_label) << "\"];" << std::endl;
   }
   for (auto& r : rships_->as_vec()) {
-    out << '\t' << "n" << r.src_node << " -> n" << r.dest_node 
+    out << '\t' << "n" << r.src_node << " -> n" << r.dest_node
         << " [label = \"" << get_string(r.rship_label) << "\"];" << std::endl;
   }
   out << "}";
@@ -1298,7 +1498,7 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
   if (dn->updated()) {
     // create and append a log_property_record
     auto log_id = current_transaction_->logid();
-    auto node_id = n.id(); 
+    auto node_id = n.id();
     auto cb = [log_id, node_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
       log_property_record rec(pmem_log::log_update, pmem_log::log_property,
             oid, 0, items, next, node_id);
@@ -1313,7 +1513,7 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
     // to the properties_ table
     // But we should log this. Otherwise, the slot might get be lost in
     // case of system failure.
-    auto log_id = current_transaction_->logid(); 
+    auto log_id = current_transaction_->logid();
     auto cb = [log_id, this](offset_t p_id) {
       log_ins_record rec(pmem_log::log_insert, pmem_log::log_property, p_id);
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
@@ -1331,7 +1531,7 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
   if (dr->updated()) {
     // create and append a log_property_record
     auto log_id = current_transaction_->logid();
-    auto rship_id = r.id(); 
+    auto rship_id = r.id();
     auto cb = [log_id, rship_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
       log_property_record rec(pmem_log::log_update, pmem_log::log_property,
             oid, 0, items, next, rship_id);
@@ -1347,7 +1547,7 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
     // to the properties_ table
     // But we should log this. Otherwise, the slot might get be lost in
     // case of system failure.
-    auto log_id = current_transaction_->logid(); 
+    auto log_id = current_transaction_->logid();
     auto cb = [log_id, this](offset_t p_id) {
       log_ins_record rec(pmem_log::log_insert, pmem_log::log_property, p_id);
       ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
@@ -1395,4 +1595,23 @@ bool graph_db::has_valid_to_rships(node &n, xid_t xid) {
     relship_id = relship.next_dest_rship;
   }
   return false;
+}
+
+
+p_item graph_db::get_property_value(const node &n, const std::string& pkey) {
+  auto pc = dict_->lookup_string(pkey);
+  return get_property_value(n, pc);
+}
+
+p_item graph_db::get_property_value(const node &n, dcode_t pcode) {
+  return node_properties_->property_value(n.property_list, pcode);
+}
+
+p_item graph_db::get_property_value(const relationship &r, const std::string& pkey) {
+  auto pc = dict_->lookup_string(pkey);
+  return get_property_value(r, pc);
+}
+
+p_item graph_db::get_property_value(const relationship &r, dcode_t pcode) {
+  return rship_properties_->property_value(r.property_list, pcode);
 }

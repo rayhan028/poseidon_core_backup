@@ -21,6 +21,7 @@
 #define bfs_hpp_
 
 #include "graph_db.hpp"
+#include "query_ctx.hpp"
 
 /**
  * A sequential implementation of the breadth-first search on the given graph. The search starts at the
@@ -29,8 +30,8 @@
  * relationships are considered (unidirectional = false) or both outgoing and incoming relationships 
  * (unidirectional = true).
  */
-void bfs(graph_db_ptr gdb, node::id_t start, bool unidirectional, rship_predicate rpred, node_visitor visit);
+void bfs(query_ctx& ctx, node::id_t start, bool unidirectional, rship_predicate rpred, node_visitor visit);
 
-void path_bfs(graph_db_ptr gdb, node::id_t start, bool unidirectional, rship_predicate rpred, path_visitor visit);
+void path_bfs(query_ctx& ctx, node::id_t start, bool unidirectional, rship_predicate rpred, path_visitor visit);
  
 #endif

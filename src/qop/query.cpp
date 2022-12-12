@@ -21,18 +21,24 @@
 #include "join.hpp"
 // #include "lua_poseidon.hpp"
 #include "update.hpp"
-
+#include "query_printer.hpp"
 #include <memory>
 
 namespace ph = std::placeholders;
 
-query::query(graph_db_ptr gdb, qop_ptr qop) {
-  graph_db_ = gdb;
+query::query(query_ctx& ctx, qop_ptr qop) : ctx_(ctx) {
   plan_head_ = qop;
   // initialize plan_tail_
   plan_tail_ = qop;
   while (plan_tail_->has_subscriber())
     plan_tail_ = plan_tail_->subscriber();
+}
+
+query &query::operator=(const query &q) {
+  ctx_ = q.ctx_;
+  plan_head_ = q.plan_head_;
+  plan_tail_ = q.plan_tail_;
+  return *this;
 }
 
 query &query::append_op(qop_ptr op, qop::consume_func cf) {
@@ -55,7 +61,7 @@ query &query::append_op(qop_ptr op, qop::consume_func cf, qop::finish_func ff) {
   return *this;
 }
 
-query &query::all_nodes(const std::string &label) {
+query &query::all_nodes(const std::string &label) {  
   plan_head_ = plan_tail_ = std::make_shared<scan_nodes>(label);
   return *this;
 }
@@ -82,7 +88,7 @@ query &query::nodes_where(const std::vector<std::string> &labels, const std::str
 }
 
 query &query::nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val) {
-  auto idx = graph_db_->get_index(label, prop);
+  auto idx = ctx_.gdb_->get_index(label, prop);
   plan_head_ = plan_tail_ = std::make_shared<index_scan>(idx, val);
   return *this;
 }
@@ -91,7 +97,7 @@ query &query::nodes_where_indexed(const std::vector<std::string> &labels,
                                   const std::string &prop, uint64_t val) {
   std::list<index_id> idxs;
   for (auto &label : labels) {
-    auto idx = graph_db_->get_index(label, prop);
+    auto idx = ctx_.gdb_->get_index(label, prop);
     idxs.push_back(idx);
   }
   plan_head_ = plan_tail_ = std::make_shared<index_scan>(idxs, val);
@@ -145,6 +151,12 @@ query &query::property(const std::string &key,
   auto op = std::make_shared<is_property>(key, pred);
   return append_op(op,
                    std::bind(&is_property::process, op.get(), ph::_1, ph::_2));
+}
+
+query &query::filter(const expr &ex) {
+  auto op = std::make_shared<filter_tuple>(ex);
+  return append_op(op,
+                   std::bind(&filter_tuple::process, op.get(), ph::_1, ph::_2));
 }
 
 query &query::to_node(const std::string &label) {
@@ -232,6 +244,12 @@ query &query::project(const projection::expr_list &exprs) {
                    std::bind(&projection::process, op.get(), ph::_1, ph::_2));
 }
 
+query &query::project(std::vector<projection_expr> prexpr) {
+  auto op = std::make_shared<projection>(prexpr);
+  return append_op(op,
+                   std::bind(&projection::process, op.get(), ph::_1, ph::_2));  
+}
+
 query &query::orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp) {
   auto op = std::make_shared<order_by>(cmp);
   return append_op(op, std::bind(&order_by::process, op.get(), ph::_1, ph::_2),
@@ -308,7 +326,7 @@ query &query::count() {
 }
 
 query &query::crossjoin(query &other) {
-  auto op = std::make_shared<cross_join>();
+  auto op = std::make_shared<cross_join>(other.plan_head());
   other.append_op(
       op, std::bind(&cross_join::process_right, op.get(), ph::_1, ph::_2));
   return append_op(
@@ -317,7 +335,7 @@ query &query::crossjoin(query &other) {
 }
 
 query &query::join_on_node(std::pair<int, int> left_right, query &other) {
-  auto op = std::make_shared<nested_loop_join>(left_right);
+  auto op = std::make_shared<nested_loop_join>(left_right, other.plan_head());
   other.append_op(
       op, std::bind(&nested_loop_join::process_right, op.get(), ph::_1, ph::_2));
   return append_op(
@@ -326,7 +344,7 @@ query &query::join_on_node(std::pair<int, int> left_right, query &other) {
 }
 
 query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
-  auto op = std::make_shared<hash_join>(left_right);
+  auto op = std::make_shared<hash_join>(left_right, other.plan_head());
   other.append_op(
       op, std::bind(&hash_join::build_phase, op.get(), ph::_1, ph::_2));
   return append_op(
@@ -335,7 +353,7 @@ query &query::hashjoin_on_node(std::pair<int, int> left_right, query &other) {
 }
 
 query &query::outerjoin_on_node(const std::pair<int, int> &left_right, query &other) {
-  auto op = std::make_shared<left_outerjoin_on_node>(left_right);
+  auto op = std::make_shared<left_outerjoin_on_node>(left_right, other.plan_head());
   other.append_op(
       op, std::bind(&left_outerjoin_on_node::process_right, op.get(), ph::_1, ph::_2));
   return append_op(
@@ -474,7 +492,9 @@ query &query::delete_rship(const std::size_t pos) {
                    std::bind(&remove_rship::process, op.get(), ph::_1, ph::_2));
 }
 
-void query::start() { plan_head_->start(graph_db_); }
+void query::start() { 
+  plan_head_->start(ctx_); 
+}
 
 void query::start(std::initializer_list<query *> queries) {
   for (auto &q : queries) {
@@ -482,18 +502,35 @@ void query::start(std::initializer_list<query *> queries) {
   }
 }
 
-void query_set::start() {
-  for (auto &q : queries_) {
-    q.start();
-  }
+void query::print_plan(std::ostream& os) {
+    os << ">>---------------------------------------------------------------------->>\n";
+    auto qop_tree = build_qop_tree(plan_head_);
+    qop_tree.first->print(os);
+    print_plan_helper(os, qop_tree.first, "");
+    os << "<<----------------------------------------------------------------------<<\n";
 }
 
-void query_set::append_printer() {
-  // TODO: find the last operator
-  auto qop = queries_.at(0).plan_tail_;
-  auto op = std::make_shared<printer>();
-  return qop->connect(op, std::bind(&printer::process, op.get(), ph::_1, ph::_2));
+void query::print_plans(std::initializer_list<query *> queries, std::ostream& os) {
+    std::vector<qop_node_ptr> trees;
+    for (auto &q : queries) {
+        auto qop_tree = build_qop_tree(q->plan_head_);
+        trees.push_back(qop_tree.first);
+    }
+
+    std::list<qop_node_ptr> bin_ops;
+    for (auto& t : trees) {
+      collect_binary_ops(t, bin_ops);
+    }
+    // merge trees
+    for (auto i = 1u; i < trees.size(); i++) {
+        merge_qop_trees(trees[0], trees[i], bin_ops);
+    }
+    os << ">>---------------------------------------------------------------------->>\n";
+    trees[0]->print(os);
+    print_plan_helper(os, trees[0], "");
+    os << "<<----------------------------------------------------------------------<<\n";
 }
+
 
 #ifdef QOP_RECOVERY
 query &
@@ -535,23 +572,23 @@ void query::extract_args() {
   offset_t opid = 0;
   if(auto ns = std::dynamic_pointer_cast<scan_nodes>(plan_head_)) {
     if(ns->labels.empty()) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(ns->label);
+        offset_t lc = ctx_.gdb_->get_dictionary()->lookup_string(ns->label);
         args_map[opid++] = lc;
     } else {
       for(auto & l : ns->labels) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(l);
+        offset_t lc = ctx_.gdb_->get_dictionary()->lookup_string(l);
         args_map[opid++] = lc;
       }
     }
   } else if(auto fr = std::dynamic_pointer_cast<foreach_from_relationship>(plan_head_)) {
     if(!fr->label.empty()) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(fr->label);
+        offset_t lc = ctx_.gdb_->get_dictionary()->lookup_string(fr->label);
         args_map[opid] = lc;
     }
     opid++;
   } else if(auto tr = std::dynamic_pointer_cast<foreach_to_relationship>(plan_head_)) {
     if(!tr->label.empty()) {
-        offset_t lc = graph_db_->get_dictionary()->lookup_string(fr->label);
+        offset_t lc = ctx_.gdb_->get_dictionary()->lookup_string(fr->label);
         args_map[opid] = lc;
     }
     opid++;

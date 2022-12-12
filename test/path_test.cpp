@@ -27,18 +27,19 @@
 #include "graph_pool.hpp"
 
 using namespace boost::posix_time;
-const std::string test_path = poseidon::gPmemPath + "query_test";
+const std::string test_path = PMDK_PATH("path_tst");
 
 TEST_CASE("Finding Unweighted Shortest Path", "[shortest_path]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_pgraph1");
+  query_ctx ctx(graph);
 
   path_item ss_paths;
   path_visitor path_vis = [&](node &n, const path &p) { return; };
   auto rpred = [&](relationship &r) {
                 return std::string(graph->get_string(r.rship_label)) == ":knows"; };
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   auto a = graph->add_node(":Person", {{"name",
             boost::any(std::string("John"))}, {"age", boost::any(42)}});
@@ -58,20 +59,21 @@ TEST_CASE("Finding Unweighted Shortest Path", "[shortest_path]") {
   graph->add_relationship(d, e, ":knows", {});
 
   std::vector<uint64_t> exp_path = {0, 4, 3};
-  bool found = unweighted_shortest_path(graph, a, d, true, rpred, path_vis, ss_paths);
+  bool found = unweighted_shortest_path(ctx, a, d, true, rpred, path_vis, ss_paths);
 
   REQUIRE(found);
   REQUIRE(ss_paths.get_hops() == 2);
   REQUIRE(ss_paths.get_path() == exp_path);
 
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
   graph_pool::destroy(pool);
 }
 
 TEST_CASE("Weighted Shortest Path", "[shortest_path]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_pgraph2");
+  query_ctx ctx(graph);
 
   path_item ss_path;
   path_visitor path_vis = [&](node &n, const path &p) { return; };
@@ -89,7 +91,7 @@ TEST_CASE("Weighted Shortest Path", "[shortest_path]") {
                                       std::string("age")).value();
         return (double)(src_age + des_age); };
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   auto a = graph->add_node(":Person", {{"name",
             boost::any(std::string("John"))}, {"age", boost::any(42)}});
@@ -108,18 +110,19 @@ TEST_CASE("Weighted Shortest Path", "[shortest_path]") {
   graph->add_relationship(a, e, ":knows", {});
   graph->add_relationship(d, e, ":knows", {});
 
-  weighted_shortest_path(graph, a, d, true, rpred, rweight, path_vis, ss_path);
+  weighted_shortest_path(ctx, a, d, true, rpred, rweight, path_vis, ss_path);
 
   REQUIRE(ss_path.get_weight() == 149.0);
 
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
   graph_pool::destroy(pool);
 }
 
 TEST_CASE("Top K Weighted Shortest Paths", "[shortest_path]") {
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_pgraph3");
+  query_ctx ctx(graph);
 
   std::size_t k = 2;
   std::vector<path_item> k_spath;
@@ -138,7 +141,7 @@ TEST_CASE("Top K Weighted Shortest Paths", "[shortest_path]") {
                                       std::string("age")).value();
         return (double)(src_age + des_age); };
 
-  graph->begin_transaction();
+  ctx.begin_transaction();
 
   auto a = graph->add_node(":Person", {{"name",
             boost::any(std::string("John"))}, {"age", boost::any(42)}});
@@ -163,11 +166,11 @@ TEST_CASE("Top K Weighted Shortest Paths", "[shortest_path]") {
   graph->add_relationship(a, g, ":knows", {});
   graph->add_relationship(g, f, ":knows", {});
 
-  k_weighted_shortest_path(graph, a, d, k, true, rpred, rweight, path_vis, k_spath);
+  k_weighted_shortest_path(ctx, a, d, k, true, rpred, rweight, path_vis, k_spath);
 
   REQUIRE(k_spath.size() == 2);
 
-  graph->commit_transaction();
+  ctx.commit_transaction();
 
   graph_pool::destroy(pool);
 }

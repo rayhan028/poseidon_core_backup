@@ -30,12 +30,11 @@
 #include <boost/variant.hpp>
 
 #ifdef USE_LLVM
-#include "qoperator.hpp"
-#include "queryc.hpp"
 #include "query.hpp"
+#include "qproc.hpp"
+#endif
 
-
-std::string test_path = poseidon::gPmemPath + "jit_test";
+std::string test_path = PMDK_PATH("jit_tst");
 
 #ifdef USE_PMDK
 
@@ -63,17 +62,18 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
+  auto graph = pool->create_graph("my_jit_graph");
 #endif
+  query_ctx ctx(graph);
 
 #ifdef USE_TX
-  graph->begin_transaction();
+  ctx.begin_transaction();
 #endif
 
   int num_persons = 100;
   int num_books = 42;
 
-  for (auto i = 0; i < num_persons; i++) {
+  for (int i = 0; i < num_persons; i++) {
     graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
@@ -95,26 +95,28 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
   }
 
 #ifdef USE_TX
-  graph->commit_transaction();
+  ctx.commit_transaction();
 #endif
-
-	auto chunks = graph->get_nodes()->num_chunks();
-
+  
     SECTION("Scan all nodes for given label") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto expr = Scan("Person", Collect());
+        qcompiler queryEngine(graph);
+
+        result_set rss;
+        auto q = query(ctx).all_nodes("Person").collect(rss);
+
         arg_builder args;
 	      args.arg(1, "Person");
+        args.arg(2, &rss);
 
-        result_set rs;
-        queryEngine.generate(expr, false);
-	      queryEngine.run(&rs, args);
+        queryEngine.generate(q.plan_head(), false);
+	      queryEngine.run(args);
 
-        REQUIRE(rs.data.size() == (unsigned int)num_persons);
+        REQUIRE(rss.data.size() == (unsigned int)num_persons);
         //REQUIRE(boost::get<std::string>(rs.data[43][0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\"}");
     }
 
-   /*SECTION("Using an index to retrieve a certain node") {
+    /*
+   SECTION("Using an index to retrieve a certain node") {
         query_engine queryEngine(graph, 1, chunks);
         auto expr = IndexScan(Collect());
         arg_builder args;
@@ -128,18 +130,19 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
         REQUIRE(rs.data.size() == 1);
     }*/
-
+  
     arg_builder args;
     result_set rs;
     SECTION("Find a outgoing relationship from each Person node") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto expr = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", Collect()));
+        qcompiler queryEngine(graph);
+        auto expr = query(ctx).all_nodes("Person").from_relationships(":HAS_READ").collect(rs).plan_head();
         
         args.arg(1, "Person");
         args.arg(2, ":HAS_READ");
+        args.arg(3, &rs);
         
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_books);
         //REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "Person[0]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 0, name: \"John Doe\", num: 1234567890123412}");
@@ -148,13 +151,14 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         queryEngine.cleanup();
         rs.data.clear();
 
-        auto expr2 = Scan("Book", ForeachRship(RSHIP_DIR::TO, {}, ":HAS_READ", Collect()));
+        auto expr2 = query(ctx).all_nodes("Book").to_relationships(":HAS_READ").collect(rs).plan_head();
   
         args.arg(1, "Book");
         args.arg(2, ":HAS_READ");
+        args.arg(3, &rs);
 
         queryEngine.generate(expr2, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_books);
         //REQUIRE(boost::get<std::string>(rs.data.front()[1]) == "::HAS_READ[0]{}");
@@ -163,148 +167,186 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         queryEngine.cleanup();
         rs.data.clear();
 
-        auto expr3 = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", Expand(EXPAND::OUT, "Book", Collect())));
+        auto expr3 = query(ctx).all_nodes("Person").from_relationships(":HAS_READ").to_node("Book").collect(rs).plan_head();
         args.arg(1, "Person");
         args.arg(2, ":HAS_READ");
-        args.arg(3, "Book");
+        args.arg(4, "Book");
+        args.arg(5, &rs);
 
         queryEngine.generate(expr3, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_books);
     }
    
 
     SECTION("Find a ingoing relationship from each Book node") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto expr = Scan("Book", ForeachRship(RSHIP_DIR::TO, {}, ":HAS_READ", Collect()));
+        qcompiler queryEngine(graph);
+        result_set rs;
+
+        auto expr = query(ctx).all_nodes("Book").to_relationships(":HAS_READ").collect(rs).plan_head();
         arg_builder args;
         args.arg(1, "Book");
         args.arg(2, ":HAS_READ");
+        args.arg(3, &rs);
 
-        result_set rs;
+        
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(true);
         //REQUIRE(rs.data.size() == num_books);
         //REQUIRE(boost::get<std::string>(rs.data[0][1]) == "Person[0]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 0, name: \"John Doe\"}");
         //REQUIRE(boost::get<std::string>(rs.data[0][0]) == "Book[100]{title: \"Book Title\", year: 1942, id: 0}");
     }
- 
+
     SECTION("Find the destination node for each relationship with the given label") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto expr = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", Expand(EXPAND::OUT, "Book", Collect())));
+        qcompiler queryEngine(graph);
+        result_set rs;
+        auto expr = query(ctx).all_nodes("Person").from_relationships(":HAS_READ").to_node("Book").collect(rs).plan_head();
+        
         arg_builder args;
         args.arg(1, "Person");
         args.arg(2, ":HAS_READ");
-        args.arg(3, "Book");
+        args.arg(4, "Book");
+        args.arg(5, &rs);
 
-        result_set rs;
+        
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_books);
     }
-
+ 
     SECTION("Find the source node for each relationship with the given label") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto expr = Scan("Book", ForeachRship(RSHIP_DIR::TO, {}, ":HAS_READ", Expand(EXPAND::IN, "Person", Collect())));
+        qcompiler queryEngine(graph);
+        result_set rs;
+        auto expr = query(ctx).all_nodes("Book").to_relationships(":HAS_READ").from_node("Person").collect(rs).plan_head();
+
         arg_builder args;
         args.arg(1, "Book");
         args.arg(2, ":HAS_READ");
-        args.arg(3, "Person");
+        args.arg(4, "Person");
+        args.arg(5, &rs);
 
-        result_set rs;
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_books);
     }
 
     SECTION("Filter a node for a given property condition") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto expr = Scan("Person", Filter(EQ(Key(0, "id"), Int(42)), Collect()));
+        qcompiler queryEngine(graph);
+        result_set rs;
+        auto expr = query(ctx).all_nodes("Person").filter(EQ(Key(0, "id"), Int(42))).collect(rs).plan_head();
+
         arg_builder args;
         args.arg(1, "Person");
         args.arg(2, 42);
+        args.arg(3, &rs);
 
-        result_set rs;
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == 1);
         //REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "Person[42]{age: 42, dummy1: \"Dummy\", dummy2: 1.2345, id: 42, name: \"John Doe\", num: 1234567890123412}");
     }
 
     SECTION("Apply a Projection to a tuple result") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto expr = Scan("Person", Filter(EQ(Key(0, "id"), Int(42)), Project({{0, "name", FTYPE::STRING}}, Collect())));
+        qcompiler queryEngine(graph);
+        result_set rs;
+        auto expr = query(ctx).all_nodes("Person")
+                      .filter(EQ(Key(0, "id"), Int(42)))
+                        .project({{0, "name", result_type::string}})
+                          .collect(rs).plan_head();
+        
         arg_builder args;
         args.arg(1, "Person");
         args.arg(2, 42);
+        args.arg(3, &rs);
 
-        result_set rs;
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == 1);
         //REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "John Doe");
     }
 
+
     SECTION("Apply a Projection on all tuple results") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto expr = Scan("Person", Project({{0, "name", FTYPE::STRING}}, Collect()));
+        qcompiler queryEngine(graph);
+        result_set rs;
+        auto expr = query(ctx).all_nodes("Person")
+                        .project({{0, "name", result_type::string}})
+                          .collect(rs).plan_head();
         arg_builder args;
         args.arg(1, "Person");
+        args.arg(2, &rs);
 
-        result_set rs;
+        
         queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_persons);
         //REQUIRE(boost::get<std::string>(rs.data.back()[0]) == "John Doe");     
     }
 
     SECTION("CrossJoin two tuple results") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto rhs = Scan("Book", End());
-        auto lhs = Scan("Person", Join(JOIN_OP::CROSS, {}, Collect(), rhs));
-        
+        qcompiler queryEngine(graph);
+
+        result_set rss;        
+        auto rhs = query(ctx).all_nodes("Book").finish();
+        auto rhsp = rhs.plan_head();
+        auto lhs = query(ctx).all_nodes("Person").crossjoin(rhs).collect(rs).plan_head();
+
         arg_builder args;
-        joiner j;
-        args.arg(4, &j);
+        cross_joiner j;
+        args.arg(1, "Person");
+        args.arg(2, &j);
+        
+        queryEngine.generate(rhsp, false);
+        queryEngine.run(args);
+        
         args.arg(1, "Book");
         args.arg(2, &j);
-        args.arg(3, "Person");
+        args.arg(3, &rss);
 
-        result_set rs;
         queryEngine.generate(lhs, false);
-        queryEngine.run(&rs, args);
-
-        REQUIRE(rs.data.size() == (unsigned int)num_persons * (unsigned int)num_books);
+        queryEngine.run(args);
+        
+        REQUIRE(rss.data.size() == (unsigned int)num_persons * (unsigned int)num_books);
     }
 
-/* TODO: merge joiner branch
     SECTION("Find connected nodes between two results with a LeftJoin") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto rhs = Scan("Book", End());
-        auto lhs = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0,0}, Collect(), rhs));
+        qcompiler queryEngine(graph);
+
+        //auto rhs = Scan("Book", End());
+        //auto lhs = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0,0}, Collect(), rhs));
+
+        result_set rss;        
+        auto rhs = query(ctx).all_nodes("Book").finish();
+        auto rhsp = rhs.plan_head();
+        auto lhs = query(ctx).all_nodes("Person").outerjoin_on_node({0,0}, rhs).collect(rss).plan_head();
 
         arg_builder args;
-        joiner j;
-        args.arg(4, &j);
+        cross_joiner j;
+
         args.arg(1, "Book");
         args.arg(2, &j);
-        args.arg(3, "Person");
 
-        result_set rs;
+        queryEngine.generate(rhsp, false);
+        queryEngine.run(args);
+
+        args.arg(1, "Person");
+        args.arg(2, &j);
+        args.arg(3, &rss);
+
         queryEngine.generate(lhs, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);
 
-        REQUIRE(rs.data.size() == num_persons * num_books);
+        REQUIRE(rss.data.size() == num_books);
     }   
-*/
+
     REQUIRE(true);
 
 #ifdef USE_PMDK
@@ -324,11 +366,12 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
   nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
   auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph2");
+  auto graph = pool->create_graph("my_jit_graph2");
 #endif
+  query_ctx ctx(graph);
 
 #ifdef USE_TX
-  graph->begin_transaction();
+  ctx.begin_transaction();
 #endif
 
   int num_persons = 100;
@@ -355,64 +398,77 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
   }
 #ifdef USE_TX
-  graph->commit_transaction();
+  ctx.commit_transaction();
 #endif
 
-	auto chunks = graph->get_nodes()->num_chunks();  
-    
+	// auto chunks = graph->get_nodes()->num_chunks(); 
+  
     SECTION("Single Projection - string type") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto expr4 = Scan("Person", Project({{0, "name", FTYPE::STRING}}, Collect()));
-        arg_builder args;
-	      args.arg(1, "Person");
+        qcompiler queryEngine(graph);
 
         result_set rs;
-        queryEngine.generate(expr4, false);
-	      queryEngine.run(&rs, args);
+        auto q = query(ctx).all_nodes("Person").project({{0, "name", result_type::string}}).collect(rs);
+
+        arg_builder args;
+	      args.arg(1, "Person");
+        args.arg(2, &rs);
+
+        
+        queryEngine.generate(q.plan_head(), false);
+	      queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_persons);
         REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "John Doe");
     }
 
     SECTION("Single Projection - int type") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto expr = Scan("Person", Project({{0, "age", FTYPE::INT}}, Collect()));
+        qcompiler queryEngine(graph);
+        
+        result_set rs;
+        auto q = query(ctx).all_nodes("Person").project({{0, "age", result_type::integer}}).collect(rs);
         arg_builder args;
         args.arg(1, "Person");
+        args.arg(2, &rs);
 
-        result_set rs;
-        queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        
+        queryEngine.generate(q.plan_head(), false);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_persons);
         REQUIRE(boost::get<int>(rs.data.front()[0]) == 42);
     }
 
     SECTION("Single Projection - uint64_t type ") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto expr = Scan("Person", Project({{0, "num", FTYPE::UINT64}}, Collect()));
-        arg_builder args;
-        args.arg(1, "Person");
+        qcompiler queryEngine(graph);
 
         result_set rs;
-        queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        auto q = query(ctx).all_nodes("Person").project({{0, "num", result_type::uint64}}).collect(rs);
+
+        arg_builder args;
+        args.arg(1, "Person");
+        args.arg(2, &rs);
+
+        queryEngine.generate(q.plan_head(), false);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_persons);
         REQUIRE(boost::get<uint64_t>(rs.data.front()[0]) == 1234567890123412);
     }
 
     SECTION("Multi Projection - string, int, uint64_t ") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto expr = Scan("Person", Project({{0, "name", FTYPE::STRING}, 
-                                            {0, "age", FTYPE::INT}, 
-                                            {0, "num", FTYPE::UINT64}}, Collect()));
+        qcompiler queryEngine(graph);
+        
+        result_set rs;
+        auto q = query(ctx).all_nodes("Person").project({{0, "name", result_type::string}, 
+                                            {0, "age", result_type::integer}, 
+                                            {0, "num", result_type::uint64}}).collect(rs);
+
         arg_builder args;
         args.arg(1, "Person");
+        args.arg(2, &rs);
 
-        result_set rs;
-        queryEngine.generate(expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.generate(q.plan_head(), false);
+        queryEngine.run(args);
 
         REQUIRE(rs.data.size() == (unsigned int)num_persons);
         REQUIRE(boost::get<std::string>(rs.data.front()[0]) == "John Doe");
@@ -421,52 +477,119 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Project over several query results") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto r_expr = Scan("Book",  End());
+        qcompiler queryEngine(graph);
+        result_set rss;
+        auto r = query(ctx).all_nodes("Book").finish();
+        auto r_expr = r.plan_head();
 
-        auto l_expr = Scan("Person", ForeachRship(RSHIP_DIR::FROM, {}, ":HAS_READ", 
-                       Expand(EXPAND::OUT, "Book", Join(JOIN_OP::CROSS, {}, 
-                        Project({{0, "age", FTYPE::INT}, {0, "num", FTYPE::UINT64}, 
-                        {3, "name", FTYPE::STRING}}, Collect()), r_expr))));
         arg_builder args;
-        joiner j;
-        args.arg(6, &j);
+        cross_joiner j;
+
+        args.arg(1, "Person");
+        args.arg(2, &j);
+
+        queryEngine.generate(r.plan_head(), false);
+        queryEngine.run(args);
+
+        auto l_expr = query(ctx).all_nodes("Person")
+                        .from_relationships(":HAS_READ")
+                        .to_node("Book")
+                        .crossjoin(r)
+                        .project({{0, "age", result_type::integer}, {0, "num", result_type::uint64}, 
+                        {3, "name", result_type::string}})
+                        .collect(rss).plan_head();
+
         args.arg(1, "Person");
         args.arg(2, ":HAS_READ");
-        args.arg(3, "Book");
-        args.arg(4, &j);
-        args.arg(5, "Book");
-        args.arg(7, ":HAS_READ");
-        args.arg(8, "Person");
+        args.arg(4, "Book");
+        args.arg(5, &j);
+        args.arg(6, &rss);
 
-        result_set rs;
         queryEngine.generate(l_expr, false);
-        queryEngine.run(&rs, args);
+        queryEngine.run(args);        
 
-        REQUIRE(rs.data.front().size() == 3);
+        REQUIRE(rss.data.front().size() == 3);
+    }
+
+    SECTION("Limit results") {
+        qcompiler queryEngine(graph);
+        result_set rss;
+        auto r = query(ctx).all_nodes("Book").limit(3).collect(rss);
+        auto r_expr = r.plan_head();
+
+        arg_builder args;
+        args.arg(1, "Book");
+        args.arg(2, &rss);
+
+        queryEngine.generate(r.plan_head(), false);
+        queryEngine.run(args);
+
+        REQUIRE(rss.data.size() == 3);
+    }
+
+    SECTION("Sort results") {
+        auto srtfct = [&](const qr_tuple &qr1, const qr_tuple &qr2) {
+          return boost::get<int>(qr1[0]) > boost::get<int>(qr2[0]); 
+        };
+
+        qcompiler queryEngine(graph);
+        result_set rss;
+        auto r = query(ctx).all_nodes("Book")
+                            .project({{0, "id", result_type::integer}})
+                            .orderby(srtfct)
+                            .collect(rss);
+
+        auto r_expr = r.plan_head();
+
+        arg_builder args;
+        args.arg(1, "Book");
+        args.arg(2, &rss);
+
+        queryEngine.generate(r.plan_head(), false);
+        queryEngine.run(args);
+
+        REQUIRE(boost::get<int>(rss.data.front()[0]) == 83);
     }
 
     SECTION("Nested Loop Join") {
-        query_engine queryEngine(graph, 1, chunks);
-        auto r_expr = Scan("Book",  End(JOIN_OP::NESTED_LOOP, 0));
-
-        auto l_expr = Scan("Person", Join(JOIN_OP::NESTED_LOOP, {0,0}, Collect(), r_expr));
+        qcompiler queryEngine(graph);
+        result_set rs;
         arg_builder args;
-        joiner j;
-        args.arg(4, &j);
+
+        nested_loop_joiner j(0);
+
+        auto r_expr = query(ctx).all_nodes("Book").finish();
         args.arg(1, "Book");
         args.arg(2, &j);
-        args.arg(3, "Book");
+        queryEngine.generate(r_expr.plan_head(), false);
+        queryEngine.run(args);
 
-        result_set rs;
-        queryEngine.generate(l_expr, false);
-        queryEngine.run(&rs, args);
+        auto l_expr = query(ctx).all_nodes("Person").join_on_node({0,0}, r_expr).collect(rs);
+        args.arg(1, "Book");
+        args.arg(2, &j);
+        args.arg(3, &rs);
 
+        queryEngine.generate(l_expr.plan_head(), false);
+        queryEngine.run(args);
+
+        REQUIRE(rs.data.size() == 42);
         REQUIRE(rs.data.front().size() == 2);
     }
 
+    SECTION("Argument generation") {
+      qcompiler queryEngine(graph);
+      result_set rs;
+      auto l_expr = query(ctx).all_nodes("Person").from_relationships(":HAS_READ").to_node("Book").collect(rs);
+
+      queryEngine.generate(l_expr.plan_head(), false);
+      queryEngine.run();
+
+      REQUIRE(rs.data.size() != 0);
+    }
+
+/*
     SECTION("Hash Join") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph);
         auto r_expr = Scan("Person",  End(JOIN_OP::HASH_JOIN, 0));
 
         auto l_expr = Scan("Person", Join(JOIN_OP::HASH_JOIN, {0,0}, Collect(), r_expr));
@@ -485,7 +608,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
   SECTION("Test the compiled variable foreach relationship operator") {
-        query_engine queryEngine(graph, 1, chunks);
+        qcompiler queryEngine(graph);
         auto fev = Scan("Town", ForeachRship(RSHIP_DIR::FROM, {1, 2}, ":CONNECTED", 
                        Collect()));
         arg_builder args;
@@ -500,7 +623,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }   
 
     SECTION("Test Aggregation count") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph);
           auto fev = Scan("Person", Project({{0, "group", FTYPE::INT}}, GroupBy({0}, Aggr({{"count", 0}, {"avg", 0}}, Collect()))));
           arg_builder args;
           grouper g1;
@@ -519,7 +642,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Test Aggregation sum") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph);
           auto fev = Scan("Person", Project({{0, "group", FTYPE::INT}}, GroupBy({0}, Aggr({{"sum", 0}}, Collect()))));
           arg_builder args;
           grouper g1;
@@ -544,7 +667,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Test Aggregation avg") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph);
           auto fev = Scan("Person", Project({{0, "group", FTYPE::INT}}, GroupBy({0}, Aggr({{"avg", 0}}, Collect()))));
           arg_builder args;
           grouper g1;
@@ -568,7 +691,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Test Aggregation pcount") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph);
           auto fev = Scan("Person", Project({{0, "group", FTYPE::INT}}, GroupBy({0}, Aggr({{"pcount", 0}}, Collect()))));
           arg_builder args;
           grouper g1;
@@ -585,7 +708,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Test multiple aggregations") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph);
           auto fev = Scan("Person", 
             Project({{0, "group", FTYPE::INT}}, 
               GroupBy({0}, Aggr({{"count", 0}}, 
@@ -610,7 +733,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Test multiple aggregations, continue pipeline") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph);
           auto gs = Scan("Person",
               GroupBy({0}, Aggr({{"count", 0}}, ForeachRship(RSHIP_DIR::FROM, ":CONNECTED", 0, 
                     Collect()))));
@@ -632,7 +755,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     } 
 
     SECTION("Aggregation count with multiple tuple element keys") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph);
           auto gs = Scan("Person",
                       ForeachRship(RSHIP_DIR::FROM, ":HAS_READ", 0, 
                         Expand(EXPAND::OUT, "Book", 
@@ -659,7 +782,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
     }
 
     SECTION("Aggregation sum, avg with multiple tuple element keys") {
-          query_engine queryEngine(graph, 1, chunks);
+          qcompiler queryEngine(graph);
           auto gs = Scan("Person",
                       ForeachRship(RSHIP_DIR::FROM, ":HAS_READ", 0, 
                         Expand(EXPAND::OUT, "Book", 
@@ -685,7 +808,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
           REQUIRE(rs2.data.front().size() == 3);
           //REQUIRE(rs2.data.size() == 2);
     }
-
+*/
 #ifdef USE_PMDK
 	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
 	pop.close();
@@ -695,6 +818,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 #endif
 }
 
+/*
 TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVariable]") {
 #ifdef USE_PMDK
   auto pop = prepare_pool();
@@ -740,7 +864,7 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
 
 	auto chunks = graph->get_nodes()->num_chunks();
 
-	query_engine queryEngine(graph, 1, chunks);
+	qcompiler queryEngine(graph);
 
   SECTION("Test the compiled variable foreach relationship operator") {
         auto fev = Scan("Town", ForeachRship(RSHIP_DIR::FROM, {1, 2}, ":CONNECTED", 
@@ -772,4 +896,4 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
 TEST_CASE("dummy test") {
   REQUIRE(true);
 }
-#endif
+#endif*/

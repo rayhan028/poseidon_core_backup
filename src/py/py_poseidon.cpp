@@ -27,7 +27,8 @@
 
 #ifdef USE_PMDK
 #include <libpmemobj++/persistent_ptr.hpp>
-PYBIND11_DECLARE_HOLDER_TYPE(T, pmem::obj::persistent_ptr<T>);
+
+PYBIND11_DECLARE_HOLDER_TYPE(T, pmem::obj::persistent_ptr<T>, true);
 #endif
 
 properties_t dict_to_props(const py::dict& props) {
@@ -53,11 +54,11 @@ PYBIND11_MODULE(poseidon, m) {
 
     m.def("create_pool", &graph_pool::create, py::arg("path"), py::arg("size") = 1024*1024*40000ull, 
       "Creates a new graph pool of the given size.");
-    // m.def("destroy_pool", &graph_pool::destroy, py::arg("pool"), "Destroys the given graph pool.");
-
+  
     py::class_<graph_pool>(m, "GraphPool")
       .def("open_graph", &graph_pool::open_graph, py::arg("name"), "Opens the graph with the given name.")
       .def("create_graph", &graph_pool::create_graph, py::arg("name"), "Creates a new graph with the given name.")
+      .def("drop_graph", &graph_pool::drop_graph, py::arg("name"), "Deletes the given graph.")
       .def("close", &graph_pool::close, "Closes the graph pool.");
 
 #ifdef USE_PMDK
@@ -68,20 +69,22 @@ PYBIND11_MODULE(poseidon, m) {
       .def("begin", &graph_db::begin_transaction, "Begins the transaction.")
       .def("commit", &graph_db::commit_transaction, "Commits the transaction.")
       .def("abort", &graph_db::abort_transaction, "Aborts the transaction.")
-      .def("create_node", [](graph_db_ptr gdb, const std::string &label, const py::dict &props) {
-          properties_t node_props = dict_to_props(props);
-          return gdb->add_node(label, node_props);
-        })
-      .def("create_relationship", [](graph_db_ptr gdb, node::id_t from_node, node::id_t to_node, const std::string &label, const py::dict &props) {
-        properties_t rel_props = dict_to_props(props);
-        return gdb->add_relationship(from_node, to_node, label, rel_props);
-      })
       .def("get_node", &graph_db::get_node_description)
-      .def("get_to_relationships", [](graph_db_ptr gdb, node::id_t to_node) {
-        auto& n = gdb->node_by_id(to_node);
+      .def("create_node", [](graph_db& gdb, const std::string &label, const py::dict &props) {
+          properties_t node_props = dict_to_props(props);
+          return gdb.add_node(label, node_props);
+        })
+      .def("create_relationship", [](graph_db& gdb, node::id_t from_node, node::id_t to_node, const std::string &label, const py::dict &props) {
+        properties_t rel_props = dict_to_props(props);
+        return gdb.add_relationship(from_node, to_node, label, rel_props);
+      })
+      .def("get_to_relationships", [](graph_db& gdb, node::id_t to_node) {
+        graph_db_ptr gptr(&gdb);
+        query_ctx ctx(gptr);
+        auto& n = gdb.node_by_id(to_node);
         std::vector<rship_description> rships;
-        gdb->foreach_to_relationship_of_node(n, [&](relationship& r) {
-          auto rel = gdb->get_rship_description(r.id());
+        ctx.foreach_to_relationship_of_node(n, [&](relationship& r) {
+          auto rel = gdb.get_rship_description(r.id());
           rships.push_back(rel);
         });
         return rships;

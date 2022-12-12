@@ -199,7 +199,11 @@ p_item::p_item(const boost::any &v, dict_ptr &dct) : key_(0), flags_(0) {
   } catch (boost::bad_any_cast &e) {
     // do nothing, just continue
   }
-  set<int>(boost::any_cast<int>(v));
+  try {
+    set<int>(boost::any_cast<int>(v));
+  } catch (boost::bad_any_cast &e) {
+    spdlog::info("ERROR: Cannot get or set int value.");
+  }
 }
 
 p_item &p_item::operator=(const p_item &p) {
@@ -254,6 +258,7 @@ std::ostream& operator<< (std::ostream& os, const p_item& pi) {
 
 /* --------------------------------------------------------------------- */
 
+#if 0
 property_set::id_t property_list::add_properties(offset_t nid,
                                                       const properties_t &props,
                                                       dict_ptr &dct) {
@@ -687,3 +692,5 @@ void property_list::dump() {
     std::cout << "]" << std::endl;
   }
 }
+
+#endif

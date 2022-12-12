@@ -30,7 +30,9 @@ void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
   /**
    *  retrieve warehouse
    */
-  auto q1 = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q1 = query(ctx)
   #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Warehouse")
@@ -47,7 +49,7 @@ void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
    */
   uint64_t d_id = (W_ID - 1) * DISTRICT_PER_WAREHOUSE + (uint64_t)gen_random_uniform_int(1, 10);
 
-  auto q2 = query(gdb)
+  auto q2 = query(ctx)
   #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("District")
@@ -68,7 +70,7 @@ void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
   d_next_o_id++;
   properties_t props_q3 = {{"next_o_id", d_next_o_id}};
 
-  auto q3 = query(gdb)
+  auto q3 = query(ctx)
   #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("District")
@@ -88,7 +90,7 @@ void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
   auto c_max = d_id * CUSTOMER_PER_DISTRICT;
   uint64_t c_id = (uint64_t)gen_random_nonuniform_int(1023, c_min, c_max, gen_random_uniform_int(0, 1023));
 
-  auto q4 = query(gdb)
+  auto q4 = query(ctx)
   #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Customer")
@@ -122,8 +124,8 @@ void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
                             {"new_order", o_new_order}});
 
   node* c_node = nullptr;
-  gdb->nodes_by_label("Customer", [&](node & n) {
-    if (gdb->is_node_property(n, "id", [&](auto &p) { return p.equal(c_id); }))
+  ctx.nodes_by_label("Customer", [&](node & n) {
+    if (ctx.is_node_property(n, "id", [&](auto &p) { return p.equal(c_id); }))
       c_node = &n;
   });
   uint64_t customer = c_node->id();
@@ -137,7 +139,7 @@ void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
      */
     uint64_t i_id = gen_random_nonuniform_int(8191, 1, ITEM_COUNT, gen_random_uniform_int(0, 8191));
 
-    auto q5 = query(gdb)
+    auto q5 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Item")
@@ -167,7 +169,7 @@ void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
     // uint64_t s_id = (wid - 1) * ITEM_COUNT + i_id;
     std::string s_dist_xx = "dist_" + ((d_id % 10) != 0 ? ("0" + std::to_string(d_id)) : "10");
 
-    auto q6 = query(gdb)
+    auto q6 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Stock")
@@ -207,7 +209,7 @@ void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
     properties_t props_q7 = {{"ytd", s_ytd}, {"order_cnt", s_order_cnt},
                              {"quantity", s_quantity}, {"remote_cnt", s_remote_cnt}};
 
-    auto q7 = query(gdb)
+    auto q7 = query(ctx)
     #ifdef RUN_PARALLEL
           .all_nodes()
           .has_label("Stock")
@@ -239,8 +241,8 @@ void gtpc_oltp_1(graph_db_ptr &gdb, result_set &rs) {
     gdb->add_relationship(order, orderLine, ":contains", {});
 
     node* s_node = nullptr;
-    gdb->nodes_by_label("Stock", [&](node & n) {
-      if (gdb->is_node_property(n, "id", [&](auto &p) { return p.equal(s_id); }))
+    ctx.nodes_by_label("Stock", [&](node & n) {
+      if (ctx.is_node_property(n, "id", [&](auto &p) { return p.equal(s_id); }))
         s_node = &n;
     });
     uint64_t stock = s_node->id();
@@ -255,7 +257,8 @@ void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs) {
   /**
    *  retrieve warehouse
    */
-  auto q1 = query(gdb)
+  query_ctx ctx(gdb);
+  auto q1 = query(ctx)
   #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Warehouse")
@@ -282,7 +285,7 @@ void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs) {
   w_ytd += h_amount;
   properties_t props_q2 = {{"ytd", str_w_ytd}};
 
-  auto q2 = query(gdb)
+  auto q2 = query(ctx)
   #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Warehouse")
@@ -300,7 +303,7 @@ void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs) {
    */
   uint64_t d_id = (W_ID - 1) * DISTRICT_PER_WAREHOUSE + (uint64_t)gen_random_uniform_int(1, 10);
 
-  auto q3 = query(gdb)
+  auto q3 = query(ctx)
   #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("District")
@@ -326,7 +329,7 @@ void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs) {
   d_ytd += h_amount;
   properties_t props_q3 = {{"ytd", d_ytd}};
 
-  auto q4 = query(gdb)
+  auto q4 = query(ctx)
   #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("District")
@@ -358,7 +361,7 @@ void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs) {
   std::string c_data = "";
 
   if (y > 60) {
-    auto q5 = query(gdb)
+    auto q5 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Customer")
@@ -401,7 +404,7 @@ void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs) {
                               {"ytd_payment", c_ytd_payment},
                               {"payment_cnt", c_payment_cnt}};
 
-    auto q6 = query(gdb)
+    auto q6 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Customer")
@@ -416,7 +419,7 @@ void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs) {
   }
   else {
     auto c_last = gen_last_name(gen_random_uniform_int(0, 999));
-    auto q7 = query(gdb)
+    auto q7 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("District")
@@ -468,7 +471,7 @@ void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs) {
                               {"ytd_payment", c_ytd_payment},
                               {"payment_cnt", c_payment_cnt}};
 
-    auto q8 = query(gdb)
+    auto q8 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Customer")
@@ -487,7 +490,7 @@ void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs) {
     c_data = c_data + std::to_string(c_id) + std::to_string(h_amount);
     properties_t props_q9 = {{"data", c_data}};
 
-    auto q9 = query(gdb)
+    auto q9 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Customer")
@@ -505,6 +508,8 @@ void gtpc_oltp_2(graph_db_ptr &gdb, result_set &rs) {
 /* ------------------------------------------------------------------------ */
 
 void gtpc_oltp_3(graph_db_ptr &gdb, result_set &rs) {
+
+  query_ctx ctx(gdb);
 
   /**
    *  retrieve customer
@@ -525,7 +530,7 @@ void gtpc_oltp_3(graph_db_ptr &gdb, result_set &rs) {
   std::string c_data = "";
 
   if (y > 60) {
-    auto q1 = query(gdb)
+    auto q1 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Customer")
@@ -542,7 +547,7 @@ void gtpc_oltp_3(graph_db_ptr &gdb, result_set &rs) {
   }
   else {
     auto c_last = gen_last_name(gen_random_uniform_int(0, 999));
-    auto q2 = query(gdb)
+    auto q2 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("District")
@@ -574,7 +579,7 @@ void gtpc_oltp_3(graph_db_ptr &gdb, result_set &rs) {
   /**
    *  retrieve order
    */
-  auto q3 = query(gdb)
+  auto q3 = query(ctx)
   #ifdef RUN_PARALLEL
           .all_nodes()
           .has_label("Customer")
@@ -596,7 +601,7 @@ void gtpc_oltp_3(graph_db_ptr &gdb, result_set &rs) {
   /**
    *  retrieve orderline
    */
-  auto q4 = query(gdb)
+  auto q4 = query(ctx)
   #ifdef RUN_PARALLEL
           .all_nodes()
           .has_label("Order")
@@ -618,6 +623,8 @@ void gtpc_oltp_3(graph_db_ptr &gdb, result_set &rs) {
 
 void gtpc_oltp_4(graph_db_ptr &gdb, result_set &rs) {
 
+  query_ctx ctx(gdb);
+
   uint64_t d_min = (W_ID - 1) * 10 + 1;
   uint64_t d_max = (W_ID - 1) * 10 + 10;
 
@@ -625,7 +632,7 @@ void gtpc_oltp_4(graph_db_ptr &gdb, result_set &rs) {
     /**
      *  retrieve order
      */
-    auto q1 = query(gdb)
+    auto q1 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("District")
@@ -660,7 +667,7 @@ void gtpc_oltp_4(graph_db_ptr &gdb, result_set &rs) {
     auto o_carrier_id = gen_random_uniform_int(1, 10);
     properties_t props_q2 = {{"new_order", o_new_order}, {"carrier_id", o_carrier_id}};
 
-    auto q2 = query(gdb)
+    auto q2 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Order")
@@ -679,7 +686,7 @@ void gtpc_oltp_4(graph_db_ptr &gdb, result_set &rs) {
     ptime ol_delivery_d = time_from_string(std::string("2012-10-30 00:00:00.000"));
     properties_t props_q3 = {{"delivery_d", ol_delivery_d}};
 
-    auto q3 = query(gdb)
+    auto q3 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Order")
@@ -697,7 +704,7 @@ void gtpc_oltp_4(graph_db_ptr &gdb, result_set &rs) {
     /**
      *  retrieve orderline
      */
-    auto q4 = query(gdb)
+    auto q4 = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Order")
@@ -717,7 +724,7 @@ void gtpc_oltp_4(graph_db_ptr &gdb, result_set &rs) {
      */
     auto str_sum_ol_amount = boost::get<std::string>(rs.data.back()[0]);
     double sum_ol_amount = std::stod(str_sum_ol_amount);
-    auto q5a = query(gdb)
+    auto q5a = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Customer")
@@ -738,7 +745,7 @@ void gtpc_oltp_4(graph_db_ptr &gdb, result_set &rs) {
     c_delivery_cnt++;
     properties_t props_q5b = {{"balance", c_balance}, {"delivery_cnt", c_delivery_cnt}};
 
-    auto q5b = query(gdb)
+    auto q5b = query(ctx)
     #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("Customer")
@@ -756,13 +763,14 @@ void gtpc_oltp_4(graph_db_ptr &gdb, result_set &rs) {
 /* ------------------------------------------------------------------------ */
 
 void gtpc_oltp_5(graph_db_ptr &gdb, result_set &rs) {
+  query_ctx ctx(gdb);
 
   /**
    *  retrieve district
    */
   auto threshold = gen_random_uniform_int(10, 20);
   uint64_t d_id = (W_ID - 1) * DISTRICT_PER_WAREHOUSE + (uint64_t)gen_random_uniform_int(1, 10);
-  auto q1 = query(gdb)
+  auto q1 = query(ctx)
   #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("District")
@@ -779,7 +787,7 @@ void gtpc_oltp_5(graph_db_ptr &gdb, result_set &rs) {
    */
   auto str_d_next_o_id = boost::get<std::string>(rs.data.back()[0]);
   uint64_t d_next_o_id = (uint64_t)std::stoi(str_d_next_o_id);
-  auto q2 = query(gdb)
+  auto q2 = query(ctx)
   #ifdef RUN_PARALLEL
             .all_nodes()
             .has_label("District")

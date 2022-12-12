@@ -22,39 +22,50 @@
 
 #include "defs.hpp"
 
-
-#ifdef USE_PMDK
-#define FPTree
-
-#ifdef FPTree
-#include "fptree.hpp"
-
-using btree_impl = fptree::FPBPTree<uint64_t, offset_t, 126, 10>;
-
-#else
-#include "pbtree.hpp"
-
-using btree_impl = pbtree::PBPTree<uint64_t, offset_t, 50, 50>;
-
-#endif
-using btree_ptr = p_ptr<btree_impl>;
-
-inline btree_ptr p_make_btree() { return pmem::obj::make_persistent<btree_impl>(); }
-
-#else
-
+#include "pfbtree.hpp"
 #include "imbtree.hpp"
 
-using btree_impl = imbtree::BPTree<uint64_t, offset_t, 126, 10>; // 50, 50
-using btree_ptr = p_ptr<btree_impl>;
+#ifdef USE_PMDK
+#include "fptree.hpp"
+#include "pbtree.hpp"
 
-inline btree_ptr p_make_btree() { return std::make_shared<btree_impl>(); }
+/**
+ * PMem-based B+-tree implementation.
+ */
+using fp_btree_impl = fptree::FPBPTree<uint64_t, offset_t, 126, 10>;
+
+using p_btree_impl = pbtree::PBPTree<uint64_t, offset_t, 50, 50>;
+using nvm_btree_ptr = p_ptr<fp_btree_impl>;
+
+inline nvm_btree_ptr make_nvm_btree() { return pmem::obj::make_persistent<fp_btree_impl>(); }
 
 #endif
 
 /**
+ * Paged-file B+-tree implementation.
+ */
+using pf_btree_impl = pfbtree::BPTree<uint64_t, offset_t, 50, 50>; // 50, 50
+using pf_btree_ptr = std::shared_ptr<pf_btree_impl>;
+
+inline pf_btree_ptr make_pf_btree(bufferpool& pool, uint64_t file_id) { return std::make_shared<pf_btree_impl>(pool, file_id); }
+
+/**
+ * In-memory B+-tree implementation.
+ */
+using im_btree_impl = imbtree::BPTree<uint64_t, offset_t, 126, 10>; // 50, 50
+using im_btree_ptr = std::shared_ptr<im_btree_impl>;
+
+inline im_btree_ptr make_im_btree() { return std::make_shared<im_btree_impl>(); }
+
+/**
  * Typedef used for index identifiers.
  */
-using index_id = btree_ptr;
+using index_id = boost::variant<boost::blank, 
+                                pf_btree_ptr, 
+                                im_btree_ptr
+#ifdef USE_PMDK
+                                , nvm_btree_ptr
+#endif
+>;
 
 #endif

@@ -27,6 +27,7 @@
 #include "qop.hpp"
 #include "update.hpp"
 #include "join.hpp"
+#include "query_set.hpp"
 // #include "expr_interpreter.hpp"
 
 namespace ph = std::placeholders;
@@ -35,7 +36,7 @@ query_set queryc::generate_qex_plan(graph_db_ptr &gdb, const std::string &qstr) 
   spdlog::debug("generate_qop_plan");
   auto ast = parse(qstr);
   if (!ast) 
-    throw query_execution_error();
+    throw query_processing_error();
   
   print_ast(ast);
 
@@ -80,7 +81,7 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
       break;
     case ast_op::limit:
     {
-      auto qp = std::make_shared<limit_result>(ast->get_param<int>(0));
+      auto qp = std::make_shared<limit_result>(ast->get_param<int64_t>(0));
       qop = qop_append(res2.first ? res2.second : res.second, qp);
     }
       break;
@@ -88,7 +89,7 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
     {
       auto ex = ast->get_param<expr>(0);
       // auto qp = std::make_shared<filter_tuple>(ex, [&](auto &p, expr &ex) { return interpret_expression(gdb, ex, p); });
-      auto qp = std::make_shared<filter_tuple>(nullptr);
+      auto qp = std::make_shared<filter_tuple>(ex);
       qop = qop_append(res2.first ? res2.second : res.second, qp);
     }
       break;
@@ -107,11 +108,11 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
       break;
     case ast_op::expand:
     {
-      if (ast->get_param<std::string>(0) == "IN") {
+      if (ast->get_param<std::string>(0) == "OUT" || ast->get_param<std::string>(0) == "TO") {
         auto qp = std::make_shared<get_to_node>();
         qop = qop_append(res2.first ? res2.second : res.second, qp);
       }
-      else if (ast->get_param<std::string>(0) == "OUT") {
+      else if (ast->get_param<std::string>(0) == "IN" || ast->get_param<std::string>(0) == "FROM") {
         auto qp = std::make_shared<get_from_node>();
         qop = qop_append(res2.first ? res2.second : res.second, qp);
       }
@@ -122,11 +123,32 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
     }
       break;
     case ast_op::project:
-      {
-      // TODO: projection expression
-      auto qp = std::make_shared<projection>(projection::expr_list());
-      qop = qop_append(res2.first ? res2.second : res.second, qp);
+    {
+      auto pr_list = ast->get_param<proj_spec_list>(0);
+      std::vector<projection_expr> pr_exprs;
+      
+      for(auto& p : pr_list) {
+        if (p.which() == 0) {
+          auto& pp = boost::get<simple_proj_spec>(p);
+          result_type type = result_type::integer;
+          if (boost::iequals(pp.ptype, "int")) {
+            type = result_type::integer;
+          } else if (boost::iequals(pp.ptype, "string")) {
+            type = result_type::string;
+          } else if (boost::iequals(pp.ptype, "uint64")) {
+            type = result_type::uint64;
+          } /// TODO: improve type handling
+
+          auto pv_id = parse_tuple_id(pp.pname);
+          auto pv_name = parse_variable_name(pp.pname);
+          pr_exprs.push_back({pv_id, pv_name, type});
+        }
       }
+
+      // TODO: projection expression
+      auto qp = std::make_shared<projection>(pr_exprs);
+      qop = qop_append(res2.first ? res2.second : res.second, qp);
+    }
       break;
     case ast_op::sort:
       break;
@@ -168,7 +190,7 @@ std::pair<qop_ptr, qop_ptr> queryc::ast_to_qex(ast_op_ptr &ast, graph_db_ptr& gd
       if (ast->params_.size() > 4) 
         props = jprops_to_props(ast->get_param<jproperty_list>(4));
       auto qp = std::make_shared<create_relationship>(ast->get_param<std::string>(3), props, 
-        std::make_pair(ast->get_param<int>(1), ast->get_param<int>(2)));
+        std::make_pair<int, int>(ast->get_param<int64_t>(1), ast->get_param<int64_t>(2)));
       qop = qop_append(res2.first ? res2.second : res.second, qp);
     }
       break;

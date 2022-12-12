@@ -6,7 +6,6 @@
 #include <boost/program_options.hpp>
 
 #include "linenoise.hpp"
-#include "queryc.hpp"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
 
@@ -49,7 +48,7 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
       auto end = std::chrono::steady_clock::now();
 
       auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      spdlog::info("{} '{}' nodes imported in {} msecs", num, result[1], time);
+      spdlog::info("{} '{}' nodes imported in {} msecs ({} items/s)", num, result[1], time, (int)((double)num/time * 1000.0));
     }
     else if (s.find("relationships:") != std::string::npos) {
       std::vector<std::string> result;
@@ -83,9 +82,9 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
 
       auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       if (result.size() == 3) 
-        spdlog::info("{} '{}' relationships imported in {} msecs", num, result[1], time);
+        spdlog::info("{} '{}' relationships imported in {} msecs ({} items/s)", num, result[1], time, (int)((double)num/time * 1000.0));
       else
-        spdlog::info("{} relationships imported in {} msecs", num, time);
+        spdlog::info("{} relationships imported in {} msecs ({} items/s)", num, time, (int)((double)num/time * 1000.0));
     }
     else {
       std::cerr << "ERROR: unknown import (nodes or relationships expected)."
@@ -113,7 +112,7 @@ int main(int argc, char* argv[]) {
         ("strict,s", bool_switch()->default_value(true), "Strict mode - assumes that all columns contain values of the same type")
         ("delimiter", value<char>(&delim_character)->default_value('|'), "Character delimiter")
         ("db,d", value<std::string>(&db_name)->required(), "Database name (required)")
-        ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem pool")
+        ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem/file pool")
         ("log,l", value<std::string>(&log_file), "Write log messages to the given file")
         ("output,o", value<std::string>(&dot_file), "Dump the graph to the given file (in DOT format)")
         ("import,i", value<std::vector<std::string>>()->composing()->required(),
@@ -197,6 +196,9 @@ int main(int argc, char* argv[]) {
   import_csv_files(graph, import_files, delim_character, format, strict);
   graph->print_stats();
 
+  // graph->dump();
   if (!dot_file.empty())
     graph->dump_dot(dot_file);
+
+  pool->close();
 }

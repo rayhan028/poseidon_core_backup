@@ -12,24 +12,24 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         ON)
-option(USE_MMFILE       "Use memory mapped file storage"         OFF)
-option(USE_HDICT        "Use hdict implementation"               ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
 option(USE_LLVM         "Use LLVM for query compilation"         ON)
+option(USE_IN_MEMORY    "Use only in-memory storage"             ON)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
 option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
 option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
 option(BUILD_GTPC       "Build code for GTPC benchmark"          ON)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
-option(CSR_DELTA_STORE  "Use delta store for updating CSR"       OFF)
+option(CSR_DELTA        "Use delta store for updating CSR"       OFF)
+option(USE_UPMEM        "Use UPMEM SDK for PIM"                  OFF)
 #-------------------------------------------------------------------------------
 endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(USE_PMDK OFF)
-  set(LLVM_DIR "/usr/local/opt/llvm/lib/cmake/llvm")
+  set(LLVM_DIR "/opt/homebrew/opt/llvm@12/lib/cmake/llvm")
 endif()
 
 # Don't try to contact github everytime.
@@ -53,17 +53,19 @@ set(CMAKE_MACOSX_RPATH 1)
 include(c++-standards)
 cxx_20()
 
-# Include the PMDK module
-if(USE_PMDK MATCHES ON)
-  message(STATUS "looking for PMDK")
-  include(pmdk)
-elseif(USE_MMFILE MATCHES ON)
-  message(STATUS "use memory-mapped files")
-  add_definitions( "-DUSE_MMFILE" )
+if(USE_UPMEM MATCHES ON)
+  add_definitions( "-DUSE_UPMEM" )
+  set(USE_IN_MEMORY ON)
+  set(USE_PMDK OFF)
+  include_directories(/usr/include/dpu)
+  add_library(dpu SHARED IMPORTED)
+  set(DPU_LIB "-ldpu")
 endif()
 
-if(USE_HDICT MATCHES ON)
-  add_definitions( "-DUSE_HDICT" )
+# Include the PMDK module
+if(USE_PMDK MATCHES ON AND USE_IN_MEMORY MATCHES OFF)
+  message(STATUS "looking for PMDK")
+  include(pmdk)
 endif()
 
 # Transaction support
@@ -83,12 +85,31 @@ if(USE_LLVM MATCHES ON)
   add_definitions( "-DUSE_LLVM" )
 endif()
 
+if(USE_IN_MEMORY MATCHES ON)
+  add_definitions( "-DUSE_IN_MEMORY" )
+endif()
+
 if(QOP_RECOVERY MATCHES ON)
   add_definitions( "-DQOP_RECOVERY" )
 endif()
 
-if(CSR_DELTA_STORE MATCHES ON)
-  add_definitions( "-DCSR_DELTA_STORE" )
+if(CSR_DELTA MATCHES ON)
+  add_definitions( "-DCSR_DELTA" )
+endif()
+
+if (USE_GUNROCK MATCHES ON)
+  set(CUDA_MIN_VERSION 9.0)
+  FIND_PACKAGE(CUDA ${CUDA_MIN_VERSION} REQUIRED)
+  if(NOT DEFINED CMAKE_CUDA_STANDARD)
+    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+  endif()
+
+  SET(CMAKE_CUDA_ARCHITECTURES 70)
+  SET(CUDA_SEPARABLE_COMPILATION ON)
+  set(CUDA_PROPAGATE_HOST_FLAGS ON)
+
+  add_definitions( "-DUSE_GUNROCK" )
 endif()
 
 configure_file(
@@ -102,7 +123,16 @@ configure_file(
 #---------------------------------------------------------------------------
 
 include_directories(${PROJECT_BINARY_DIR}/generated)
+include_directories(${PROJECT_SOURCE_DIR}/src/vec)
 include_directories(${PROJECT_SOURCE_DIR}/src/storage)
+include_directories(${PROJECT_SOURCE_DIR}/src/bp_file)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/ast)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/codegen)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/utils)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/plan_op)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/interp)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/expr)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/qmain)
 include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
@@ -116,6 +146,10 @@ include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
 include_directories(${PROJECT_SOURCE_DIR}/src/ql)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics/gunrock)
+include_directories(${PROJECT_SOURCE_DIR}/src/analytics/util)
+if (USE_GUNROCK MATCHES ON)
+  include_directories(${CUDA_INCLUDE_DIRS})
+endif()
 
 #---------------------------------------------------------------------------
 
@@ -137,6 +171,10 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-unused -Wno-uninitialized")
 if(CMAKE_BUILD_TYPE MATCHES Release)
   # this disables asserts for release builds
   add_definitions("-DNDEBUG")
+endif()
+
+if (USE_GUNROCK MATCHES ON)
+  string(APPEND CMAKE_CUDA_FLAGS " -Xcompiler -Wall")
 endif()
 
 #---------------------------------------------------------------------------
@@ -194,7 +232,7 @@ include(FetchContent REQUIRED)
  FetchContent_Declare(
   spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog.git
-   GIT_TAG        v1.8.2
+   GIT_TAG        v1.11.0
   )
 FetchContent_GetProperties(spdlog)
 
@@ -212,7 +250,7 @@ endif()
 FetchContent_Declare(
   benchmark
   GIT_REPOSITORY https://github.com/google/benchmark.git
-  GIT_TAG        v1.5.0
+  GIT_TAG        v1.6.1
   GIT_SHALLOW    TRUE
 )
 FetchContent_GetProperties(benchmark)
@@ -275,7 +313,7 @@ include(FetchContent REQUIRED)
  FetchContent_Declare(
   pybind11
   GIT_REPOSITORY https://github.com/pybind/pybind11.git
- #  GIT_TAG        1.2.1
+#   GIT_TAG        2.6.1
   )
 FetchContent_GetProperties(pybind11)
 
@@ -307,14 +345,15 @@ find_package(Python3 COMPONENTS Interpreter)
 
 if (BUILD_PYTHON)
 message(STATUS "PYTHON")
-  find_package(PythonLibs)
-  find_package(PythonInterp)
-  if (PYTHONLIBS_FOUND)
+find_package (Python3 COMPONENTS Interpreter Development)
+#  find_package(PythonInterp)
+#  find_package(PythonLibs)
+  if (Python3_Development_FOUND)
     message(STATUS "Python Version ${PYTHON_VERSION_MAJOR} found - building the Python API.")
-    message("PythonInclude ${PYTHON_INCLUDE_DIRS}")
-    message("PythonLibs ${PYTHON_LIBDIR}")
+    message("PythonInclude ${Python3_INCLUDE_DIRS}")
+    message("PythonLibs ${Python3_LIBRARY_DIRS}")
 
-    include_directories(${PYTHON_INCLUDE_DIRS})
+    include_directories(${Python3_INCLUDE_DIRS})
     include_directories(${pybind11_INCLUDE_DIR})
     link_directories(${PYTHON_LIBDIR})
 
@@ -323,7 +362,7 @@ message(STATUS "PYTHON")
     )
   else()
     set (PYTHON_SOURCES "")
-  endif(PYTHONLIBS_FOUND)
+  endif(Python3_Development_FOUND)
 else ()
         message(STATUS "Don't build python interface")
         set (PYTHON_SOURCES "")
@@ -362,19 +401,6 @@ include_directories("${LINENOISE_INCLUDE_DIR}")
 
 #-----------------------------------------------------------------------------------------
 
-if(USE_HDICT MATCHES ON)
-  add_definitions( "-DUSE_HDICT" )
-  set(dict_src 
-    src/dict/string_pool.cpp 
-    src/dict/htable.cpp
-    src/dict/hdict.cpp)
-elseif(USE_PMDK MATCHES ON)
-  set(dict_src src/dict/dict_kv.cpp)
-else()
-  set(dict_src src/dict/dict_bimap.cpp)
-endif()
-
-
 if(USE_GUNROCK MATCHES ON)
   set(gunrock_analysis 
     src/analytics/gunrock/gunrock_sssp.cpp
@@ -387,39 +413,39 @@ endif()
 
 if(USE_LLVM MATCHES ON)
   set(codegen_operators_src
-    src/qcomp/operators/append.cpp
-    src/qcomp/operators/aggregation.cpp
-    src/qcomp/operators/collect.cpp
-    src/qcomp/operators/connected.cpp
-    src/qcomp/operators/create.cpp
-    src/qcomp/operators/expand.cpp
-    src/qcomp/operators/filter.cpp
-    src/qcomp/operators/foreach_rship.cpp
-    src/qcomp/operators/groupby.cpp
-    src/qcomp/operators/join.cpp
-    src/qcomp/operators/limit.cpp
-    src/qcomp/operators/project.cpp
-    src/qcomp/operators/scan.cpp
-    src/qcomp/operators/sort.cpp
+    src/query/codegen/operators/append.cpp
+    src/query/codegen/operators/aggregation.cpp
+    src/query/codegen/operators/collect.cpp
+    src/query/codegen/operators/connected.cpp
+    src/query/codegen/operators/create.cpp
+    src/query/codegen/operators/expand.cpp
+    src/query/codegen/operators/filter.cpp
+    src/query/codegen/operators/foreach_rship.cpp
+    src/query/codegen/operators/groupby.cpp
+    src/query/codegen/operators/has_label.cpp
+    src/query/codegen/operators/join.cpp
+    src/query/codegen/operators/limit.cpp
+    src/query/codegen/operators/project.cpp
+    src/query/codegen/operators/scan.cpp
+    src/query/codegen/operators/sort.cpp
+    src/query/codegen/operators/join/cross_join.cpp
+    src/query/codegen/operators/join/hash_join.cpp
+    src/query/codegen/operators/join/nested_loop_join.cpp
+    src/query/codegen/operators/join/outer_join.cpp
   )
 
   set(llvm_src
     ${codegen_operators_src}
-    src/qcomp/codegen_inline.cpp
-    src/qcomp/filter_expression.cpp
-    src/qcomp/filter_expression_inline.cpp
-    src/qcomp/global_definitions.cpp
-    src/qcomp/interpreter.cpp
-    src/qcomp/jit_cache.cpp
-    src/qcomp/p_jit.cpp
-    src/qcomp/optimizer.cpp
-    src/qcomp/main.cpp
-    src/qcomp/p_context.cpp
-    src/qcomp/query_engine.cpp
-    src/qcomp/qoperator.cpp
-    src/qcomp/joiner.cpp
-    src/qcomp/grouper.cpp
-    src/qcomp/interprete_filter_visitor.cpp
+    src/query/codegen/codegen.cpp
+    src/query/codegen/filter_expression.cpp
+    src/query/codegen/global_definitions.cpp
+    src/query/codegen/jit/jit_cache.cpp
+    src/query/codegen/jit/p_jit.cpp
+    src/query/codegen/jit/p_context.cpp
+    src/query/codegen/qcompiler.cpp
+    src/query/codegen/proc/joiner.cpp
+    src/query/codegen/proc/grouper.cpp
+    src/query/codegen/interprete_filter_visitor.cpp
   )
 else()
   set(llvm_src "")
@@ -431,14 +457,17 @@ else()
   set(qoprec_src "")
 endif()
 
-if(CSR_DELTA_STORE MATCHES ON)
+if(CSR_DELTA MATCHES ON)
   set(csr_delta_src src/storage/csr_delta.cpp)
 else()
   set(csr_delta_src "")
 endif()
 
 set(src_files 
-  ${dict_src} 
+  src/dict/string_pool.cpp 
+  src/dict/paged_string_pool.cpp 
+  src/dict/h2table.cpp
+  src/dict/dict.cpp
   src/storage/nodes.cpp
   src/storage/relationships.cpp
   src/storage/properties.cpp
@@ -446,26 +475,35 @@ set(src_files
   src/storage/graph_db.cpp
   src/storage/graph_db_import.cpp
   src/storage/graph_db_index.cpp
-  src/storage/graph_db_query.cpp
   src/storage/graph_db_gc.cpp
   src/storage/graph_db_recovery.cpp
-  src/storage/mm_file.cpp
+  src/bp_file/paged_file.cpp
+  src/bp_file/bufferpool.cpp
   src/btree/index_map.cpp
-  src/qop/profiling.cpp
-  src/qop/qop.cpp
-  src/qop/update.cpp
-  src/qop/join.cpp
+  src/query/plan_op/qop.cpp
+  src/query/expr/expression.cpp
+  src/query/interp/expr_interpreter.cpp
+  src/query/interp/qinterp.cpp
+  src/query/interp/query_ctx.cpp
+  src/query/plan_op/update.cpp
+  src/query/plan_op/join.cpp
+  src/query/plan_op/query_set.cpp
+  src/query/qmain/qparser.cpp
+  src/query/qmain/qplanner.cpp
+  src/query/qmain/qproc.cpp
   src/qop/query.cpp
-  src/qop/query_printer.cpp
-  src/qop/thread_pool.cpp
+  src/query/utils/query_printer.cpp
+  src/query/utils/thread_pool.cpp
+  src/query/utils/profiling.cpp
+  src/query/utils/qresult_iterator.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
   ${llvm_src}
-  src/ql/queryc_qcomp.cpp
-  src/ql/queryc_qex.cpp
-  src/ql/queryc.cpp
-  src/ql/ast.cpp
+#  src/ql/queryc_qcomp.cpp
+#  src/ql/queryc_qex.cpp
+#  src/ql/queryc.cpp
+  src/query/ast/ast.cpp
   ${csr_delta_src}
   ${gunrock_analysis}
   src/analytics/bfs.cpp
@@ -473,13 +511,21 @@ set(src_files
   src/analytics/graph_db_analytics.cpp
 )
 
+if(USE_GUNROCK MATCHES ON)
+  set(cu_files
+    src/analytics/graph_db_analytics.cu
+  )
+else()
+  set(cu_files "")
+endif()
+
 # Using OBJECT to avoid to build object files multiple times due to inclusion
 # in different libraries.
 # macOS doesn't like SHARED, Linux needs it
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-add_library(poseidon_obj OBJECT ${src_files})
+add_library(poseidon_obj OBJECT ${src_files} ${cu_files})
 else()
-add_library(poseidon_obj OBJECT SHARED ${src_files})
+add_library(poseidon_obj OBJECT SHARED ${src_files} ${cu_files})
 endif()
 
 # Poseidon core library for building C++ applications
@@ -488,8 +534,10 @@ add_library(poseidon_core SHARED
 )
 
 if(USE_GUNROCK MATCHES ON)
+  set(CUDA_LIB ${CUDA_LIBRARIES})
   set(gunrock_linkLib gunrock)
 else()
+  set(CUDA_LIB "")
   set(gunrock_linkLib "")
 endif()
 
@@ -506,6 +554,7 @@ target_link_libraries(poseidon_core
   Boost::thread
   spdlog::spdlog_header_only
   ${gunrock_linkLib}
+  ${CUDA_LIB}
 )
 
 target_include_directories( ${PROJECT_NAME}
@@ -592,6 +641,7 @@ endif()
 
 
 if (BUILD_PYTHON)
+message("Build python ${PYTHON_SOURCES}")
 # Python Poseidon library for loading a module into the python3 interpreter
 add_library(poseidon SHARED
   $<TARGET_OBJECTS:poseidon_obj>
@@ -603,7 +653,7 @@ target_link_libraries(poseidon
   Boost::filesystem
   Boost::date_time
   Boost::thread
-  ${PYTHON_LIBRARIES}
+  ${Python3_LIBRARIES}
   ${PMDK_LIBRARIES}
   spdlog::spdlog_header_only
 )
@@ -708,19 +758,6 @@ endif()
 
 
 #-----------------------------------------------------------------------------------------
-if(USE_LLVM MATCHES ON)
-# The program for executing the LLVM query compiler
-add_executable(qcomp
-	  src/qcomp/main.cpp
-	   )
-
-target_link_libraries(qcomp
-	     poseidon_core
-	     ${PMDK_LIBRARIES}
-	     Boost::program_options
-             )
-endif()
-#-----------------------------------------------------------------------------------------
 
 add_executable(qlc
   src/cmds/qlc.cpp
@@ -740,6 +777,34 @@ add_executable(csv_loader
  poseidon_core
  ${PMDK_LIBRARIES}
  Boost::program_options
+)
+
+if(USE_UPMEM MATCHES ON)
+add_executable(dpu_test
+  src/cmds/dpu.cpp
+  src/cmds/dpu_scan.cpp
+ )
+
+ target_link_libraries(dpu_test
+ poseidon_core
+ ${PMDK_LIBRARIES}
+ Boost::program_options
+ ${DPU_LIB}
+)
+endif()
+#-----------------------------------------------------------------------------------------
+
+add_library(ldbc_udf SHARED
+  queries/ldbc/is/is_udf.cpp
+)
+
+target_link_libraries(ldbc_udf
+  ${LLVM_LIB}
+  Boost::filesystem
+  Boost::date_time
+  Boost::thread
+  poseidon_core
+  ${PMDK_LIBRARIES}
 )
 
 #-----------------------------------------------------------------------------------------

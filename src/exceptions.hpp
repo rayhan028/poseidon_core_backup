@@ -93,10 +93,16 @@ private:
   std::string msg_;
 };
 
-class query_execution_error : public std::exception {
+class query_processing_error : public std::exception {
+public:
+  query_processing_error() : msg_("Unknown query processing error.") {}
+  query_processing_error(const std::string& msg) : msg_(msg) {}
   const char *what() const noexcept override {
-    return "Query execution failed.";
+    return msg_.c_str();
   }
+
+private:
+  std::string msg_;
 };
 
 class invalid_csr_update : public std::exception {

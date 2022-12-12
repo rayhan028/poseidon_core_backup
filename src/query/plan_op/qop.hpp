@@ -1,0 +1,1564 @@
+/*
+ * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
+ *
+ * This file is part of the Poseidon package.
+ *
+ * Poseidon is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Poseidon is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef qop_hpp_
+#define qop_hpp_
+
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
+#include <memory>
+#include <vector>
+#include <set>
+#include <iterator>
+#include <condition_variable>
+#include <unordered_map>
+
+#include "defs.hpp"
+#include "graph_db.hpp"
+#include "nodes.hpp"
+#include "relationships.hpp"
+#include "shortest_path.hpp"
+#include "profiling.hpp"
+#include "expression.hpp"
+#include "qresult_iterator.hpp"
+#include "qop_visitor.hpp"
+#include "query_arg.hpp"
+#include "query_ctx.hpp"
+
+template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
+  std::vector<T> v2;
+  v2.reserve(v.size() + 1);
+  v2.insert(v2.end(), v.begin(), v.end());
+  v2.push_back(t);
+  return v2;
+}
+
+template <typename T>
+std::vector<T> concat(const std::vector<T> &v1, const std::vector<T> &v2) {
+  std::vector<T> v;
+  v.reserve(v1.size() + v2.size());
+  std::copy(v1.begin(), v1.end(), std::back_inserter(v));
+  std::copy(v2.begin(), v2.end(), std::back_inserter(v));
+  return v;
+}
+
+enum class qop_type {
+    none,
+    any,
+    scan,
+    project,
+    filter,
+    foreach_rship,
+    expand,
+    node_has_label,
+    cross_join,
+    left_join,
+    hash_join,
+    nest_loop_join,
+    sort,
+    limit,
+    collect,
+    create,
+    order_by,
+    group,
+    aggr,
+    store,
+    end
+};
+
+/**
+ * Tuple result types
+ */
+enum class result_type {
+    node = 0,
+    relationship = 1,
+    integer = 2,
+    double_t = 3,
+    string = 4,
+    date = 5,
+    time = 6,
+    boolean = 7,
+    uint64 = 8,
+    none = 9,
+    qres = 10
+};
+
+struct qop;
+using qop_ptr = std::shared_ptr<qop>;
+
+/**
+ * qop represents the abstract base class for all query operators. It implements
+ * a push-style query engine where the execution is initiated by calling the
+ * start method and results of an operator are forwarded to the subsequent
+ * operator by invoking its consume method. This consume method as well as the
+ * finish method are invoked via a signal/slot mechanism implemented via the
+ * connect method.
+ */
+struct qop {
+  /**
+   * function pointer for a function called as subscriber consume function, i.e.
+   * a function which  processes the list of graph elements (nodes,
+   * relationships) given in vector v and forwards the results to the next
+   * operator. These elements are contained in the graph gdb.
+   */
+  using consume_func = std::function<void(query_ctx &, const qr_tuple &)>;
+
+  /**
+   * function pointer for a function called as subscriber finish function, i.e.
+   * a function which is called when all results have been processed.
+   */
+  using finish_func = std::function<void(query_ctx &)>;
+
+  /**
+   * Constructor.
+   */
+  qop() : subscriber_(nullptr), consume_(nullptr), finish_(nullptr) {}
+
+  /**
+   * Destructor.
+   */
+  virtual ~qop() = default;
+
+  /**
+   * Starts the processing of the whole query. This method is implemented only
+   * in producer operators such as scan_nodes.
+   */
+  virtual void start(query_ctx &ctx) {}
+
+  /**
+   * Prints a description of the operator and recursively calls
+   * dump of the subscribers.
+   */
+  virtual void dump(std::ostream &os) const {}
+
+  void connect(qop_ptr op) {
+    subscriber_ = op;
+  }
+
+  /**
+   * Registers the subscriber by initializing the subscriber_ pointer and
+   * registering its consume function. The finish function is set to the default
+   * function.
+   */
+  void connect(qop_ptr op, consume_func cf) {
+    subscriber_ = op;
+    consume_ = cf;
+    finish_ = std::bind(&qop::default_finish, subscriber_.get(),
+                        std::placeholders::_1);
+  }
+
+  /**
+   * Registers the subscriber by initializing the subscriber_ pointer and
+   * registering its consume and finish functions.
+   */
+  void connect(qop_ptr op, consume_func cf, finish_func ff) {
+    subscriber_ = op;
+    consume_ = cf;
+    finish_ = ff;
+  }
+
+  /**
+   * This method is called after all results have been processed by the producer
+   * operator. The default behavior is to propagate this event to all
+   * subscribers, but operators such as ORDER_BY can use it to implement their
+   * own behavior.
+   */
+  void default_finish(query_ctx &ctx) {
+    if (finish_)
+      finish_(ctx);
+  }
+
+  /**
+   * Returns true if the operator has already a subscriber.
+   */
+  inline bool has_subscriber() const { return subscriber_.get() != nullptr; }
+
+  /**
+   * Return the current subscriber.
+   */
+  inline qop_ptr subscriber() { return subscriber_; }
+
+  /**
+   * Return true if this operator is a binary operator (join, union etc.)
+   */
+  virtual bool is_binary() const { return false; }
+
+  PROF_ACCESSOR;
+
+  /**
+   * Accept method for generic visitor
+   */
+  virtual void accept(qop_visitor& vis) = 0;
+
+  /**
+   * Accept method for code generation
+   */
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) = 0;
+
+  unsigned operator_id_;
+
+  qop_type type_;
+protected:
+  qop_ptr subscriber_; // pointer to the subsequent operator which receives and
+                       // processes the results
+
+  consume_func consume_; // pointer to the subscriber's consume function
+  finish_func finish_;   // pointer to the subscriber's finish function
+
+  PROF_DATA;
+};
+
+/**
+ * scan_nodes represents a query operator for scanning all nodes of a graph
+ * (optionally with a given label). All these nodes are then forwarded to the
+ * subscriber.
+ */
+struct scan_nodes : public qop, public std::enable_shared_from_this<scan_nodes> {
+  scan_nodes(const std::string &l) : label(l), ranged(false) { type_ = qop_type::scan;  }
+  scan_nodes(const std::string &l, std::map<std::size_t, std::vector<std::size_t>> &range_map) : label(l), 
+        ranges(range_map), ranged(true) { type_ = qop_type::scan;  }
+  scan_nodes(const std::vector<std::string> &l) : labels(l), ranged(false) { type_ = qop_type::scan;  }
+  scan_nodes() = default;
+  ~scan_nodes() = default;
+
+  void dump(std::ostream &os) const override;
+
+  virtual void start(query_ctx &ctx) override;
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = labels.empty() ? 1 : labels.size();
+
+    vis.visit(shared_from_this());
+    if(has_subscriber())
+      subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  std::string label;
+  std::vector<std::string> labels;
+  std::map<std::size_t, std::vector<std::size_t>> ranges;
+  bool ranged;
+};
+
+#ifdef QOP_RECOVERY
+struct continue_scan_nodes : public qop {
+  continue_scan_nodes(std::map<std::size_t, std::size_t> &cp, const std::string &l) : label(l), check_points(cp) {}
+  continue_scan_nodes() = default;
+  ~continue_scan_nodes() = default;
+
+  void dump(std::ostream &os) const override;
+
+  virtual void start(query_ctx &ctx) override;
+
+  std::string label;
+  std::map<std::size_t, std::size_t> check_points;
+};
+
+struct recover_scan : public qop {
+  recover_scan() = default;
+  ~recover_scan() = default;
+
+  void dump(std::ostream &os) const override;
+
+  virtual void start(query_ctx &ctx) override;
+
+  void finish(query_ctx &ctx);
+
+  std::map<int, qr_tuple> tuple_map_;
+};
+#endif
+
+/**
+ * index_scan represents a query operator for scanning an index on nodes for
+ * a given property key/value. All the matching nodes are then forwarded to the
+ * subscriber.
+ */
+struct index_scan : public qop, public std::enable_shared_from_this<index_scan> {
+  index_scan(index_id ix, uint64_t k) : idx(ix), key(k) { type_ = qop_type::scan;  }
+  index_scan(std::list<index_id> &ixs, uint64_t k) : key(k), idxs(ixs) { type_ = qop_type::scan;  }
+  ~index_scan() = default;
+
+  void dump(std::ostream &os) const override;
+
+  virtual void start(query_ctx &ctx) override;
+  
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 3;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  index_id idx;
+  uint64_t key;
+  std::list<index_id> idxs;
+};
+
+struct foreach_relationship : public qop, public std::enable_shared_from_this<foreach_relationship> {
+  foreach_relationship() = default;
+  
+  foreach_relationship(RSHIP_DIR dir, const std::string &l, int pos = std::numeric_limits<int>::max()) 
+      : dir_(dir), label(l), lcode(0), npos(pos) { type_ = qop_type::foreach_rship;  }
+
+  foreach_relationship(RSHIP_DIR dir, const std::string &l, std::size_t min,
+                                     std::size_t max, int pos = std::numeric_limits<int>::max())
+      : dir_(dir), label(l), lcode(0), min_range(min), max_range(max), npos(pos) { type_ = qop_type::foreach_rship;  }
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 1;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
+  }
+
+  RSHIP_DIR dir_;
+  std::string label;
+  dcode_t lcode;
+  std::size_t min_range, max_range;
+  int npos;
+};
+
+/**
+ * foreach_from_relationship is a query operator that scans all outgoing
+ * relationships of a given node. This node is the last elment in the vector v
+ * of the consume method.
+ */
+struct foreach_from_relationship : public foreach_relationship {
+  foreach_from_relationship(const std::string &l, int pos = std::numeric_limits<int>::max()) : foreach_relationship(RSHIP_DIR::FROM, l, pos) {}
+  ~foreach_from_relationship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+};
+
+/**
+ * foreach_variable_from_relationship is a query operator that scans all
+ * outgoing relationships of a given node recursively within the given range.
+ * This node is the last elment in the vector v of the consume method.
+ */
+struct foreach_variable_from_relationship : public foreach_relationship {
+  foreach_variable_from_relationship(const std::string &l, std::size_t min,
+                                     std::size_t max, int pos = std::numeric_limits<int>::max())
+      : foreach_relationship(RSHIP_DIR::FROM, l, min, max, pos) {}
+      
+  ~foreach_variable_from_relationship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+};
+
+/**
+ * foreach_bi_dir_relationship is a query operator that scans all outgoing
+ * and incoming relationships of a given node. This node is the last elment 
+ * in the vector v of the consume method or given by the index position pos.
+ */
+struct foreach_all_relationship : public foreach_relationship {
+  foreach_all_relationship(const std::string &l, int pos) : foreach_relationship(RSHIP_DIR::ALL, l, pos) {}
+  
+  ~foreach_all_relationship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+};
+
+/**
+ * foreach_variable_bi_dir_relationship is a query operator that scans all
+ * outgoing and incoming relationships of a given node recursively within the given range.
+ * This node is the last elment in the vector v of the consume method or given by the
+ * position index pos.
+ */
+struct foreach_variable_all_relationship : public foreach_relationship {
+  foreach_variable_all_relationship(const std::string &l, std::size_t min,
+                                     std::size_t max, int pos)
+      : foreach_relationship(RSHIP_DIR::ALL, l, min, max, pos) {}
+  ~foreach_variable_all_relationship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    
+  }
+};
+
+/**
+ * foreach_to_relationship is a query operator that scans all incoming
+ * relationships of a given node. This node is the last elment in the vector v
+ * of the consume method.
+ */
+struct foreach_to_relationship : public foreach_relationship {
+  foreach_to_relationship(const std::string &l, int pos = std::numeric_limits<int>::max()) : foreach_relationship(RSHIP_DIR::TO, l, pos) {}
+  ~foreach_to_relationship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+    void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+};
+
+/**
+ * foreach_variable_to_relationship is a query operator that scans all incoming
+ * relationships of a given node recursively within the given range.
+ * This node is the last elment in the vector v of the consume method.
+ */
+struct foreach_variable_to_relationship : public foreach_relationship {
+  foreach_variable_to_relationship(const std::string &l, std::size_t min,
+                                   std::size_t max, int pos = std::numeric_limits<int>::max())
+      : foreach_relationship(RSHIP_DIR::TO, l, min, max, pos) {}
+  ~foreach_variable_to_relationship() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+    void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+};
+
+/**
+ * is_property is a query operator for filtering nodes/relationships based on
+ * their properties. For this purpose, the name of the property and a predicate
+ * function for checking the value of this property have to be given.
+ */
+struct is_property : public qop, public std::enable_shared_from_this<is_property> {
+  is_property(const std::string &p, std::function<bool(const p_item &)> pred)
+      : property(p), pcode(0), predicate(pred) {}
+  ~is_property() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 1;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  std::string property;
+  dcode_t pcode;
+  std::function<bool(const p_item &)> predicate;
+};
+
+/**
+ * node_has_label is a query operator representing a filter for nodes which have
+ * the given label.
+ */
+struct node_has_label : public qop, public std::enable_shared_from_this<node_has_label> {
+  node_has_label(const std::vector<std::string> &l) : labels(l), lcode(0) {
+    type_ = qop_type::node_has_label;
+  }
+  node_has_label(const std::string &l) : label(l), lcode(0) {
+    type_ = qop_type::node_has_label;
+  }
+  ~node_has_label() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = labels.empty() ? 1 : labels.size();
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  std::vector<std::string> labels;
+  std::string label;
+  dcode_t lcode;
+};
+
+struct expand : public qop, public std::enable_shared_from_this<expand> {
+  expand(EXPAND dir) : dir_(dir) { type_ = qop_type::expand;  }
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 1;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  EXPAND dir_;
+  std::string label;
+};
+
+/**
+ * get_from_node is a query operator for retrieving the node at the FROM side of
+ * a relationship which is given in the last element of vector v.
+ */
+struct get_from_node : public expand {
+  get_from_node() : expand(EXPAND::IN) {}
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+};
+
+/**
+ * get_to_node is a query operator for retrieving the node at the TO side of
+ * a relationship which is given in the last element of vector v.
+ */
+struct get_to_node : public expand {
+  get_to_node() : expand(EXPAND::OUT) {}
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+};
+
+/**
+ * printer is a query operator to output the query results collected in the
+ * vector v to standard output.
+ */
+struct printer : public qop, public std::enable_shared_from_this<printer> {
+  printer() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    if(has_subscriber())
+      subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+};
+
+/**
+ * limit_result is a query operator for producing only the given number of
+ * results.
+ */
+struct limit_result : public qop, std::enable_shared_from_this<limit_result> {
+  limit_result(std::size_t n) : num_(n), processed_(0) { type_ = qop_type::limit;  }
+  ~limit_result() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  std::size_t num_, processed_;
+};
+
+#ifdef QOP_RECOVERY
+struct crash_at : public qop {
+  crash_at(std::size_t n) : num_(n), processed_(0) {}
+  ~crash_at() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  std::size_t num_, processed_;
+};
+#endif
+
+/**
+ * nodes_connected appends the relationship object between a source and a
+ * destination node, whose positions in the query tuple are given by the
+ * src_des pair.
+ * When no relationship exist between them, the boolean b sets whether a
+ * null_t is appended instead (true) or not (false)
+ */
+struct nodes_connected : public qop, public std::enable_shared_from_this<nodes_connected> {
+  nodes_connected(std::pair<int, int> src_des, bool b)  : append_null_(b), src_des_nodes_(src_des) {} 
+  ~nodes_connected() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  bool append_null_;
+  std::pair<int, int> src_des_nodes_;
+};
+
+extern result_set::sort_spec_list sort_spec_;
+/**
+ * order_by implements an operator for sorting results either by giving a
+ * comparison function or a specificaton of sorting criteria.
+ */
+struct order_by : public qop, public std::enable_shared_from_this<order_by> {
+    order_by(const result_set::sort_spec_list &spec) /*: sort_spec_(spec)*/ { type_ = qop_type::order_by; sort_spec_=spec; }
+ 
+  order_by(std::function<bool(const qr_tuple &, const qr_tuple &)> func)
+      //: cmp_func_(func) 
+  { 
+    cmp_func_ = func;
+    type_ = qop_type::order_by;  
+  }
+  ~order_by() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void finish(query_ctx &ctx);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  static void sort(result_set *rs) {
+      query_ctx ctx; // TODO!!!!
+      if (cmp_func_ != nullptr)
+        rs->sort(ctx, cmp_func_);
+      else {
+        rs->sort(ctx, sort_spec_);
+      }
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  result_set results_;
+  static std::function<bool(const qr_tuple &, const qr_tuple &)> cmp_func_;
+};
+
+/**
+ * group_by implements an operator for grouping tuples and optional aggregations
+ * like count, sum, average, and percentage count.
+ * The grouping keys are query result(s) given by their positions in the query tuple.
+ * The aggregate type(s) and aggregate attribute(s) are given
+ * as a string-integer pair. The aggregate types above are specified as "count",
+ * "sum", "avg" and "pcount" respectively. The integer denotes the position of the
+ * aggregate attribute in the tuples of grps. 
+ */
+struct group_by : public qop, public std::enable_shared_from_this<group_by> {
+  group_by(const std::vector<std::size_t> &pos);
+  group_by(const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+  group_by(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+  ~group_by() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void finish(query_ctx &ctx);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  std::mutex m_;
+  std::mutex grp_mutex_;
+  std::size_t grpkey_cnt_;
+  std::vector<std::string> grpkey_set_;
+  std::vector<std::size_t> grpkey_pos_;
+  std::unordered_map<std::string, std::size_t> grpkey_map_;
+  std::unordered_map<std::size_t, qr_tuple> grp_tpl_map_;
+  std::vector<std::pair<std::string, std::size_t>> aggrs_;
+  std::unordered_map<std::size_t, std::size_t> grp_size_map_;
+};
+
+#ifdef QOP_RECOVERY
+struct persistent_group_by : public qop {
+  persistent_group_by(const std::vector<std::size_t> &pos);
+  persistent_group_by(const std::vector<std::size_t> &pos,
+    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
+  ~persistent_group_by() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void finish(query_ctx &ctx);
+
+  std::size_t grpkey_cnt_;
+  std::vector<std::string> grpkey_set_;
+  std::vector<std::size_t> grpkey_pos_;
+  std::unordered_map<std::string, std::size_t> grpkey_map_;
+  std::unordered_map<std::size_t, qr_tuple> grp_tpl_map_;
+  std::vector<std::pair<std::string, std::size_t>> aggrs_;
+  std::unordered_map<std::size_t, std::size_t> grp_size_map_;
+
+  std::map<std::size_t, std::vector<std::size_t>> pgrp_tpl_pos_;
+};
+#endif
+
+/**
+ * distinct_tuples implements an operator for outputing distinct
+ * result tuples.
+ */
+struct distinct_tuples : public qop, public std::enable_shared_from_this<distinct_tuples> {
+  distinct_tuples() = default;
+  ~distinct_tuples() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  std::mutex m_;
+  std::set<std::string> keys_;
+};
+
+/**
+ * filter_tuple implements an operator that filters a tuple
+ * based on a predicate function.
+ */
+struct filter_tuple : public qop, public std::enable_shared_from_this<filter_tuple> {
+  filter_tuple(std::function<bool(const qr_tuple &)> func)
+      : pred_func1_(func) { type_ = qop_type::filter;  }
+  filter_tuple(const expr &ex): ex_(ex) { type_ = qop_type::filter;  }
+
+  ~filter_tuple() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void finish(query_ctx &ctx);
+
+  expr get_expression() { return ex_; }
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 1;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  std::function<bool(const qr_tuple &)> pred_func1_;
+  std::function<bool(const qr_tuple &, expr&)> pred_func2_;
+  expr ex_;
+};
+
+/**
+ * qr_tuple_append implements an operator that appends a query
+ * result to a query tuple. The query result is computed from
+ * already existing query results in the tuple.
+ */
+struct qr_tuple_append : public qop, public std::enable_shared_from_this<qr_tuple_append> {
+  qr_tuple_append(std::function<query_result(const qr_tuple &)> func)
+      : func_(func) {}
+  ~qr_tuple_append() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void finish(query_ctx &ctx);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  std::function<query_result(const qr_tuple &)> func_;
+};
+
+/**
+ * union_all_qres implements an operator that unions all the
+ * query tuples of the left query pipeline and the right query
+ * pipeline(s).
+ */
+struct union_all_qres : public qop, public std::enable_shared_from_this<union_all_qres> {
+  union_all_qres() : init(true) {}
+  // union_all_qres() = default;
+  ~union_all_qres() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process_left(query_ctx &ctx, const qr_tuple &v);
+  void process_right(query_ctx &ctx, const qr_tuple &v);
+
+  void r_finish(query_ctx &ctx);
+  void finish(query_ctx &ctx);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  bool is_binary() const override { return true; }
+  bool init;
+  std::list<qr_tuple> res_;
+};
+
+/**
+ * count_result implements an operator that counts the
+ * query tuples of the query pipeline.
+ */
+struct count_result : public qop, public std::enable_shared_from_this<count_result> {
+  count_result() : count_(0) {}
+  ~count_result() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void finish(query_ctx &ctx);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  uint64_t count_;
+};
+
+/**
+ * shortest_path_opr implements an operator that finds the
+ * unweighted shortest path between two nodes.
+ * all_spaths_ specfies if all shortest path of equal 
+ * distance are searched.
+ */
+struct shortest_path_opr : public qop, public std::enable_shared_from_this<shortest_path_opr> {
+  shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
+    rship_predicate pred, bool bidir, bool all) : bidirectional_(bidir),
+          all_spaths_(all), rpred_(pred), start_stop_(uv) {}
+  ~shortest_path_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void finish(query_ctx &ctx);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  path_item path_;
+  bool bidirectional_;
+  bool all_spaths_;
+  rship_predicate rpred_;
+  std::pair<std::size_t, std::size_t> start_stop_;
+};
+
+/**
+ * weighted_shortest_path_opr implements an operator that finds the
+ * weighted shortest path between two nodes.
+ * all_spaths_ specfies if all shortest path of equal 
+ * weight are searched.
+ */
+struct weighted_shortest_path_opr : public qop, public std::enable_shared_from_this<weighted_shortest_path_opr> {
+  weighted_shortest_path_opr(std::pair<std::size_t, std::size_t> uv, rship_predicate pred,
+    rship_weight weight, bool bidir, bool all) : bidirectional_(bidir), all_spaths_(all),
+      rpred_(pred), rweight_(weight), start_stop_(uv) {}
+  ~weighted_shortest_path_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  path_item path_;
+  bool bidirectional_;
+  bool all_spaths_;
+  rship_predicate rpred_;
+  rship_weight rweight_;
+  std::pair<std::size_t, std::size_t> start_stop_;
+};
+
+#ifdef USE_GUNROCK
+/**
+ * gunrock_bfs_opr implements an operator for Breadth-First Search 
+ * leveraging Gunrock.
+ */
+struct gunrock_bfs_opr : public qop {
+  gunrock_bfs_opr(std::size_t start,
+                  bool bidir) : start_(start), bidirectional_(bidir) {}
+  ~gunrock_bfs_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t start_;
+  bool bidirectional_;
+};
+
+/**
+ * weighted_sssp_opr implements an operator for Single-Source
+ * Shortest Path search leveraging Gunrock.
+ */
+struct gunrock_sssp_opr : public qop {
+  gunrock_sssp_opr(std::size_t start, rship_weight weight, bool bidir) :
+                    start_(start), rweight_(weight), bidirectional_(bidir) {}
+  ~gunrock_sssp_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  std::size_t start_;
+  rship_weight rweight_;
+  bool bidirectional_;
+};
+
+/**
+ * gunrock_pr implements an operator for the PageRank algorithm leveraging Gunrock.
+ */
+struct gunrock_pr_opr : public qop {
+  gunrock_pr_opr(bool bidir) : bidirectional_(bidir) {}
+  ~gunrock_pr_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(graph_db_ptr &gdb, const qr_tuple &v);
+
+  bool bidirectional_;
+};
+#endif
+
+/**
+ * k_weighted_shortest_path_opr implements an operator that finds the
+ * top k weighted shortest path between two nodes.
+ */
+struct k_weighted_shortest_path_opr : public qop, public std::enable_shared_from_this<k_weighted_shortest_path_opr> {
+  k_weighted_shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
+    std::size_t k, rship_predicate pred, rship_weight weight, bool b) : 
+    k_(k), bidirectional_(b), rpred_(pred), rweight_(weight), start_stop_(uv) {}
+  ~k_weighted_shortest_path_opr() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  std::size_t k_;
+  path_item path_;
+  bool bidirectional_;
+  rship_predicate rpred_;
+  rship_weight rweight_;
+  std::pair<std::size_t, std::size_t> start_stop_;
+};
+
+/**
+ * csr_data implements an operator to get data for for conversion 
+ * to the CSR format.
+ * The ids of the neighbours of each node of the graph are obtained. 
+ * In addition, the weight of the relationship connecting each 
+ * neighbouring node is computed from the weight function. 
+ * The bidirectional flag specifies whether only outgoing relationships 
+ * are considered (false) or both outgoing and incoming relationships 
+ * are considered (true).
+ */
+struct csr_data : public qop, public std::enable_shared_from_this<csr_data> {
+  csr_data(rship_weight func, bool bidir = false,
+           std::size_t pos = std::numeric_limits<std::size_t>::max())
+           : pos_(pos), bidirectional_(bidir), weight_func_(func) {}
+  ~csr_data() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+  }
+
+  std::size_t pos_;
+  bool bidirectional_;
+  std::function<double (relationship &)> weight_func_;
+};
+
+/**
+ * Operator for printing the content of a result set.
+ */
+std::ostream &operator<<(std::ostream &os, const result_set &rs);
+
+/**
+ * collect_result is a query operator for collecting results of a query: either
+ * to check the results or to further process the data. Note, that all result
+ * values are represented as strings.
+ */
+struct collect_result : public qop, public std::enable_shared_from_this<collect_result> {
+  collect_result(result_set &res) : results_(res) { type_ = qop_type::collect;  }
+  ~collect_result() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void finish(query_ctx &ctx);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 1;
+
+    vis.visit(shared_from_this());
+    if(has_subscriber())
+      subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
+
+  }
+
+  result_set &results_;
+private:
+  std::mutex collect_mtx;
+};
+
+/**
+ * end_pipeline is a query operator to end a query pipeline without
+ * collecting the query results.
+ */
+struct end_pipeline : public qop, public std::enable_shared_from_this<end_pipeline> {
+  end_pipeline() {
+    type_ = qop_type::end;
+    other_ = qop_type::none;
+  }
+
+  void dump(std::ostream &os) const override;
+
+  void process();
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+
+    vis.visit(shared_from_this());
+    if(has_subscriber()) {
+      //subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
+    }
+  }
+
+  void set_other(qop_type other, std::size_t other_idx = -1) {
+    other_ = other;
+    other_idx_ = other_idx;
+  }
+
+  qop_type other_;
+  std::size_t other_idx_;
+};
+
+#ifdef QOP_RECOVERY
+/**
+ * persist is a query operator to persist intermediate results to storage for recovery
+ */
+struct persist_result : public qop {
+  persist_result() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+};
+#endif 
+/**
+ * Macro to simplify definition of arguments in project etc.
+ * Usage: Instead of requiring to define a lambda expression
+ *        we simply use PExpr_(my_func(res, ...))
+ *        Note that res has to be used to refer to the query_result vector.
+ */
+#define PExpr_(i, func)                                                        \
+  projection::expr {                                                           \
+    i, [&](auto ctx, auto res) { return func; }                                \
+  }
+
+#define PVar_(i)                                                               \
+  projection::expr { i, nullptr }
+
+/**
+ * Structure to express projections on tuple elements
+ */
+struct projection_expr {
+    /**
+     * Possible projection types
+     */
+    enum PROJECTION_TYPE {
+        PROPERTY_PR,
+        FORWARD_PR,
+        FUNCTIONAL_VAL,
+        CONDITIONAL_VAL,
+    };
+
+    typedef int (*int_prj_func_node)(node *n);
+
+    typedef query_result (*udf_projection)(query_ctx*, void*);
+    /**
+     * The position of the tuple element to project
+     */
+    std::size_t id;
+
+    /**
+     * The projection key / property name
+     */
+    std::string key;
+
+    /**
+     * The property type
+     */
+    result_type type;
+
+    /**
+     * Flag to project only if the key exists
+     */
+    bool if_exist_;
+
+    /**
+     * List to check if a tuple element has the properties
+     */
+    std::vector<std::string> has_properties;
+
+    /**
+     * If/Else construct to express an alternative projection
+     */
+    std::pair<std::string, std::string> then_else;
+    
+    /**
+     * UDF for projection
+     */
+    int_prj_func_node int_node_func;
+    udf_projection udf_function;
+
+    /**
+     * The actual projection type
+     */
+    PROJECTION_TYPE prt;
+
+    projection_expr(udf_projection udf) : udf_function(udf), prt(PROJECTION_TYPE::FUNCTIONAL_VAL) {}
+    projection_expr(std::size_t i) : id(i), type(result_type::none), int_node_func(nullptr), prt(PROJECTION_TYPE::FORWARD_PR)  {}
+    projection_expr(std::size_t i, int_prj_func_node func) : id(i), int_node_func(func), prt(PROJECTION_TYPE::FUNCTIONAL_VAL) {}
+    projection_expr(std::size_t i, std::string k, result_type t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist), prt(PROJECTION_TYPE::PROPERTY_PR) {}
+    projection_expr(std::size_t i, std::vector<std::string> properties, std::pair<std::string, std::string> then) : 
+        id(i), has_properties(properties), then_else(then), prt(PROJECTION_TYPE::CONDITIONAL_VAL) {}
+};
+
+/**
+ * projection implements a project operator.
+ */
+struct projection : public qop, public std::enable_shared_from_this<projection> {
+  struct expr {
+    std::size_t vidx;
+    std::function<query_result(query_ctx&, const query_result&)> func;
+    expr() = default;
+    // expr(const expr& ex) = default;
+    expr(std::size_t i, std::function<query_result(query_ctx&, const query_result&)> f) : vidx(i), func(f) {}
+  };
+
+  using expr_list = std::vector<expr>;
+
+  projection(const expr_list &exprs);
+
+  projection(std::vector<projection_expr> prexpr) : prexpr_(prexpr) {
+    type_ = qop_type::project;
+  }
+
+  void dump(std::ostream &os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
+    operator_id_ = op_id;
+    auto next_offset = 0;
+
+    vis.visit(shared_from_this());
+    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);      
+  }
+
+  expr_list exprs_;
+  std::size_t nvars_, npvars_;
+  std::vector<std::size_t> var_map_;
+  std::set<std::size_t> accessed_vars_;
+
+  std::vector<projection_expr> prexpr_;
+  std::vector<int> new_types;
+};
+
+/**
+ *  namespace for builtin functions used in project, filter etc.
+ */
+namespace builtin {
+
+query_result forward(query_result &res);
+
+
+/**
+ * Returns true if the node/relationship has the property specified by
+ * the key. Otherwise, return false.
+ */	
+bool has_property(query_result &pv, const std::string &key);
+
+/**
+ * Returns true if the node/relationship has the given label specified. 
+ * Otherwise, return false.
+ */	
+bool has_label(query_result &pv, const std::string &l);
+
+/**
+ * Return the integer value of the property of a node/relationship stored in
+ * projection_result res and identified by the given key.
+ */
+query_result int_property(const query_result &res, 
+                 const std::string &key);
+
+/**
+ * Return the double value of the property of a node/relationship stored in
+ * projection_result res and identified by the given key.
+ */
+query_result double_property(const query_result &res, 
+                       const std::string &key);
+
+/**
+ * Return the string value of the property of a node/relationship stored in
+ * projection_result res and identified by the given key.
+ */
+query_result string_property(const query_result &res, 
+                            const std::string &key);
+
+/**
+ * Return the unsigned 64-bit integer value of the property of a node/relationship 
+ * stored in projection_result res and identified by the given key.
+ */
+query_result uint64_property(const query_result &res, 
+                 const std::string &key);
+
+/**
+ * Return the ptime value of the property of a node/relationship 
+ * stored in projection_result res and identified by the given key.
+ */
+query_result ptime_property(const query_result &res, 
+                 const std::string &key);
+
+/**
+ * Return the string representation of the date property of a node/relationship 
+ * stored in projection_result res and identified by the given key.
+ */
+query_result pr_date(const query_result &pv, 
+                 const std::string &key);
+
+/**
+ * Return the year of the date property of a node/relationship 
+ * stored in projection_result res and identified by the given key.
+ */
+query_result pr_year(const query_result &pv, 
+                 const std::string &key);
+
+/**
+ * Return the month of the date property of a node/relationship 
+ * stored in projection_result res and identified by the given key.
+ */
+query_result pr_month(const query_result &pv, 
+                 const std::string &key);
+
+/**
+ * Return the string representation of a node/relationship stored in
+ * projection_result res.
+ */
+std::string string_rep(query_result &res);
+
+/**
+ * Convert the given string value into an integer.
+ */
+int to_int(const std::string &s);
+
+/**
+ * Convert the given date value into its string representation.
+ */
+std::string int_to_datestring(int v);
+std::string int_to_datestring(const query_result& v);
+
+/**
+ * Convert the given date string (2019-02-12) into an int value (posix time).
+ */
+int datestring_to_int(const std::string &d);
+
+/**
+ * Convert the given datetime value into its string representation.
+ */
+std::string int_to_dtimestring(int v);
+
+std::string int_to_dtimestring(const query_result& v);
+
+/**
+ * Convert the given date+time string (2019-01-22T19:59:59.221+0000) into an int
+ * value (posix time).
+ */
+int dtimestring_to_int(const std::string &d);
+
+/*
+CASE:
+ return !string_property(res, 0, "content").empty() ?
+    string_property(res, 0, "content") :
+    string_property(res, 0, "imageFile"); },
+
+*/
+
+} // namespace builtin
+
+#endif
