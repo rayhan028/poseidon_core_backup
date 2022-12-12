@@ -73,7 +73,7 @@ TEST_CASE("Testing nvm_chunked_vec", "[nvm_chunked_vec]") {
     // make sure we have enough space for 1000 records
     REQUIRE(vec.capacity() > 1000);
 
-    CHECK_THROWS_AS(vec.at(10000), index_out_of_range);
+    CHECK_THROWS_AS(vec.at(100000), index_out_of_range);
 
     // store 1000 records in the array
     for (offset_t i = 0; i < 1000; i++) {
@@ -326,11 +326,11 @@ TEST_CASE("Testing nvm_chunked_vec", "[nvm_chunked_vec]") {
     vec.resize(16);
 
     // make sure we have enough space for 1000 records
-    REQUIRE(vec.capacity() > 1000);
+    REQUIRE(vec.capacity() > 12000);
     std::cout << "#chunks = " << vec.num_chunks()
               << ", elems = " << vec.elements_per_chunk() << std::endl;
     // store 1000 records in the array
-    for (offset_t i = 0; i < 1000; i++) {
+    for (offset_t i = 0; i < 12000; i++) {
       record rec;
       rec.head = i + 1;
       rec.i = i * 100 + 1;
@@ -347,19 +347,19 @@ TEST_CASE("Testing nvm_chunked_vec", "[nvm_chunked_vec]") {
     REQUIRE(vec.capacity() > 1000);
 
     auto iter = vec.range(5, 10);
-    offset_t first = 0, last = 320, num = 0;
+    offset_t first = 0, last = 5120, num = 0;
     while (iter) {
       auto &rec = *iter;
       if (first == 0) {
         first = rec.head;
-        REQUIRE(first == 321);
+        REQUIRE(first == 5121);
       }
       REQUIRE(last + 1 == rec.head);
       last = rec.head;
       num++;
       ++iter;
     }
-    REQUIRE(num == 6 * 64);
+    REQUIRE(num == 6 * 1024);
 
     pop.close();
     remove(test_path.c_str());
