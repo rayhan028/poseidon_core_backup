@@ -51,7 +51,7 @@ TEST_CASE("Testing chunked_vec", "[mem_chunked_vec]") {
     // make sure we have enough space for 1000 records
     REQUIRE(vec.capacity() > 1000);
 
-    CHECK_THROWS_AS(vec.at(10000), index_out_of_range);
+    CHECK_THROWS_AS(vec.at(100000), index_out_of_range);
 
     // store 1000 records in the array
     for (offset_t i = 0; i < 1000; i++) {
@@ -248,15 +248,16 @@ TEST_CASE("Testing chunked_vec", "[mem_chunked_vec]") {
   }
 
   SECTION("Adding many records and iterate over the chunks") {
+    // NOTE: works only for CHUNK_SIZE 65536!!!
     // resize it to 16 chunks
     vec.resize(16);
 
     // make sure we have enough space for 1000 records
-    REQUIRE(vec.capacity() > 1000);
+    REQUIRE(vec.capacity() > 12000);
     std::cout << "#chunks = " << vec.num_chunks()
               << ", elems = " << vec.elements_per_chunk() << std::endl;
-    // store 1000 records in the array
-    for (offset_t i = 0; i < 1000; i++) {
+    // store 7000 records in the array
+    for (offset_t i = 0; i < 12000; i++) {
       record rec;
       rec.head = i + 1;
       rec.i = i * 100 + 1;
@@ -266,18 +267,19 @@ TEST_CASE("Testing chunked_vec", "[mem_chunked_vec]") {
     }
 
     auto iter = vec.range(5, 10);
-    offset_t first = 0, last = 320, num = 0;
+    offset_t first = 0, last = 5110, num = 0;
     while (iter) {
       auto &rec = *iter;
+      // std::cout << "first=" << rec.head << std::endl;
       if (first == 0) {
         first = rec.head;
-        REQUIRE(first == 321);
+        REQUIRE(first == 5111);
       }
       REQUIRE(last + 1 == rec.head);
       last = rec.head;
       num++;
       ++iter;
     }
-    REQUIRE(num == 6 * 64);
+    REQUIRE(num == 6 * 1022);
   }
 }
