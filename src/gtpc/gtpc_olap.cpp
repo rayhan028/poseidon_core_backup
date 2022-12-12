@@ -25,7 +25,8 @@ void gtpc_olap_1(graph_db_ptr &gdb, result_set &rs) {
   // auto delta = gen_random_uniform_int(60, 120);
   auto max_ship_dt = time_from_string(std::string("2010-02-14 00:00:00.000"));
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+  auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("OrderLine")
@@ -57,7 +58,9 @@ void gtpc_olap_2(graph_db_ptr &gdb, result_set &rs) {
   std::string region = "EUROPE";
   // auto region = REGIONS[gen_random_uniform_int(0, 9)];
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Region")
@@ -126,7 +129,9 @@ void gtpc_olap_3(graph_db_ptr &gdb, result_set &rs) {
   std::string state = "A";
   auto date = time_from_string(std::string("2011-10-30 00:00:00.000"));
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Customer")
@@ -169,7 +174,9 @@ void gtpc_olap_3(graph_db_ptr &gdb, result_set &rs) {
 void gtpc_olap_4(graph_db_ptr &gdb, result_set &rs) {
   auto sqtr = time_from_string(std::string("2011-08-01 00:00:00.000"));
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Order")
@@ -205,7 +212,9 @@ void gtpc_olap_5(graph_db_ptr &gdb, result_set &rs) {
   // auto region = REGIONS[gen_random_uniform_int(0, 9)];
   auto sdt = time_from_string(std::string("2010-01-01 00:00:00.000"));
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Region")
@@ -256,7 +265,9 @@ void gtpc_olap_6(graph_db_ptr &gdb, result_set &rs) {
   // auto quantity = gen_random_uniform_int(24, 25);
   auto quantity = 5;
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("OrderLine")
@@ -288,7 +299,9 @@ void gtpc_olap_7(graph_db_ptr &gdb, result_set &rs) {
   auto sdt = time_from_string(std::string("2011-01-01 00:00:00.000"));
   auto edt = time_from_string(std::string("2012-01-01 00:00:00.000"));
 
-    auto q1 = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q1 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Nation")
@@ -326,7 +339,7 @@ void gtpc_olap_7(graph_db_ptr &gdb, result_set &rs) {
                         PExpr_(6, pj::pr_year(res, "delivery_d")),
                         PExpr_(6, pj::double_property(res, "amount")) });
 
-    auto q2 = query(gdb)
+    auto q2 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Nation")
@@ -387,7 +400,9 @@ void gtpc_olap_8(graph_db_ptr &gdb, result_set &rs) {
   auto sdt = time_from_string(std::string("2011-01-01 00:00:00.000"));
   auto edt = time_from_string(std::string("2012-01-01 00:00:00.000"));
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Region")
@@ -446,7 +461,9 @@ void gtpc_olap_8(graph_db_ptr &gdb, result_set &rs) {
 void gtpc_olap_9(graph_db_ptr &gdb, result_set &rs) {
   std::string data = "BB";
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Item")
@@ -490,7 +507,9 @@ void gtpc_olap_9(graph_db_ptr &gdb, result_set &rs) {
 void gtpc_olap_10(graph_db_ptr &gdb, result_set &rs) {
   auto sdt = time_from_string(std::string("2011-08-01 00:00:00.000"));
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Order")
@@ -537,7 +556,9 @@ void gtpc_olap_11(graph_db_ptr &gdb, result_set &rs) {
   std::string nation = "GERMANY";
   double fraction = 0.0001;
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Nation")
@@ -573,7 +594,9 @@ void gtpc_olap_11(graph_db_ptr &gdb, result_set &rs) {
 void gtpc_olap_12(graph_db_ptr &gdb, result_set &rs) {
   auto sdt = time_from_string(std::string("2011-04-01 00:00:00.000"));
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("OrderLine")
@@ -616,7 +639,9 @@ void gtpc_olap_12(graph_db_ptr &gdb, result_set &rs) {
 void gtpc_olap_13(graph_db_ptr &gdb, result_set &rs) {
   auto carrier_id = 8;
 
-    auto q1 = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q1 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Order")
@@ -627,7 +652,7 @@ void gtpc_olap_13(graph_db_ptr &gdb, result_set &rs) {
                 return (*(reinterpret_cast<const int *>(prop.value_))) > carrier_id; });
 #endif
 
-    auto q2 = query(gdb)
+    auto q2 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Customer")
@@ -638,7 +663,7 @@ void gtpc_olap_13(graph_db_ptr &gdb, result_set &rs) {
                 auto connected = false;
                 auto src = boost::get<node *>(lv[0]);
                 auto des = boost::get<node *>(rv[0]);
-                gdb->foreach_from_relationship_of_node((*src), [&](auto &r) {
+                ctx.foreach_from_relationship_of_node((*src), [&](auto &r) {
                   if (r.to_node_id() == des->id())
                     connected = true;
                 });
@@ -650,7 +675,7 @@ void gtpc_olap_13(graph_db_ptr &gdb, result_set &rs) {
               .project({PVar_(0),
                         PVar_(2)});
 
-    auto q3 = query(gdb)
+    auto q3 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Order")
@@ -680,7 +705,9 @@ void gtpc_olap_14(graph_db_ptr &gdb, result_set &rs) {
   auto sdt = time_from_string(std::string("2011-04-01 00:00:00.000"));
   std::string data = "PR";
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("OrderLine")
@@ -721,7 +748,9 @@ void gtpc_olap_14(graph_db_ptr &gdb, result_set &rs) {
 void gtpc_olap_15(graph_db_ptr &gdb, result_set &rs) {
   auto sdt = time_from_string(std::string("2011-04-01 00:00:00.000"));
 
-    auto q1 = query(gdb)
+  query_ctx ctx(gdb);
+
+  auto q1 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("OrderLine")
@@ -744,7 +773,7 @@ void gtpc_olap_15(graph_db_ptr &gdb, result_set &rs) {
               .groupby({0}, {{"sum", 1}})
               .groupby({}, {{"max", 1}});
 
-    auto q2 = query(gdb)
+    auto q2 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("OrderLine")
@@ -786,7 +815,8 @@ void gtpc_olap_16(graph_db_ptr &gdb, result_set &rs) {
   std::string data = "zz";
   std::string comment = "bad";
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+    auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Item")
@@ -812,7 +842,7 @@ void gtpc_olap_16(graph_db_ptr &gdb, result_set &rs) {
                 std::regex r(".*" + comment + ".*");
                 return !std::regex_match(s, r); })
               .project({PExpr_(0, pj::string_property(res, "name")),
-                        projection::expr(0, [&](auto res) {
+                        projection::expr(0, [&](query_ctx& ctx, const query_result& res) {
                           auto str = boost::get<std::string>(pj::string_property(res, "data"));
                           auto brand = str.substr(1, 3);
                           return query_result(brand); }),
@@ -832,7 +862,8 @@ void gtpc_olap_16(graph_db_ptr &gdb, result_set &rs) {
 void gtpc_olap_17(graph_db_ptr &gdb, result_set &rs) {
   std::string data = "b";
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+    auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Item")
@@ -882,7 +913,8 @@ void gtpc_olap_17(graph_db_ptr &gdb, result_set &rs) {
 void gtpc_olap_18(graph_db_ptr &gdb, result_set &rs) {
   auto amount = 100;
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+    auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Order")
@@ -928,7 +960,8 @@ void gtpc_olap_19(graph_db_ptr &gdb, result_set &rs) {
   auto quantity1 = 1;
   auto quantity2 = 10;
 
-    auto q1 = query(gdb)
+  query_ctx ctx(gdb);
+    auto q1 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Item")
@@ -954,7 +987,7 @@ void gtpc_olap_19(graph_db_ptr &gdb, result_set &rs) {
                 auto amount = boost::get<int>(v[0]);
                 return quantity1 <= amount && amount <= quantity2; });
 
-   auto q2 = query(gdb)
+   auto q2 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Item")
@@ -980,7 +1013,7 @@ void gtpc_olap_19(graph_db_ptr &gdb, result_set &rs) {
                 auto amount = boost::get<int>(v[0]);
                 return quantity1 <= amount && amount <= quantity2; });
 
-    auto q3 = query(gdb)
+    auto q3 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Item")
@@ -1019,7 +1052,8 @@ void gtpc_olap_20(graph_db_ptr &gdb, result_set &rs) {
   auto date = time_from_string(std::string("2011-10-30 00:00:00.000"));
   std::string nation = "CHINA";
 
-    auto q = query(gdb)
+  query_ctx ctx(gdb);
+    auto q = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Item")
@@ -1071,7 +1105,8 @@ void gtpc_olap_20(graph_db_ptr &gdb, result_set &rs) {
 void gtpc_olap_21(graph_db_ptr &gdb, result_set &rs) {
   std::string nation = "SAUDI ARABIA";
 
-    auto q1 = query(gdb)
+  query_ctx ctx(gdb);
+    auto q1 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Order")
@@ -1084,7 +1119,7 @@ void gtpc_olap_21(graph_db_ptr &gdb, result_set &rs) {
                         PVar_(2),
                         PExpr_(2, pj::ptime_property(res, "delivery_d")) });
 
-    auto q2 = query(gdb)
+    auto q2 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Nation")
@@ -1119,7 +1154,7 @@ void gtpc_olap_21(graph_db_ptr &gdb, result_set &rs) {
                 return boost::get<ptime>(v[5]) < boost::get<ptime>(v[8]);})
               .groupby({0, 1, 2, 3});
 
-    auto q3 = query(gdb)
+    auto q3 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Nation")
@@ -1171,7 +1206,8 @@ void gtpc_olap_21(graph_db_ptr &gdb, result_set &rs) {
 void gtpc_olap_22(graph_db_ptr &gdb, result_set &rs) {
     std::vector<std::string> ph = {"1", "2", "3", "4", "5", "6", "7"};
 
-    auto q1 = query(gdb)
+  query_ctx ctx(gdb);
+    auto q1 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Customer")
@@ -1192,7 +1228,7 @@ void gtpc_olap_22(graph_db_ptr &gdb, result_set &rs) {
                 return pred1 && pred2; })
               .groupby({}, {{"avg", 0}});
 
-    auto q2 = query(gdb)
+    auto q2 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Customer")
@@ -1216,7 +1252,7 @@ void gtpc_olap_22(graph_db_ptr &gdb, result_set &rs) {
               .from_relationships(":hasPlaced", 0)
               .to_node("Order");
 
-    auto q3 = query(gdb)
+    auto q3 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Customer")
@@ -1237,7 +1273,7 @@ void gtpc_olap_22(graph_db_ptr &gdb, result_set &rs) {
                 return pred1 && pred2; })
               .groupby({}, {{"avg", 0}});
 
-    auto q4 = query(gdb)
+    auto q4 = query(ctx)
 #ifdef RUN_PARALLEL
               .all_nodes()
               .has_label("Customer")
@@ -1263,7 +1299,7 @@ void gtpc_olap_22(graph_db_ptr &gdb, result_set &rs) {
               .where_qr_tuple([&](const qr_tuple &v) {
                 // return v[4].type() == typeid(null_val);
                 return v[4].type() != typeid(null_val); })
-              .project({projection::expr(0, [&](auto res) {
+              .project({projection::expr(0, [&](query_ctx& cx, const query_result& res) {
                           auto str = boost::get<std::string>(pj::string_property(res, "state"));
                           auto sub = str.substr(1, 1);
                           return query_result(sub); }),

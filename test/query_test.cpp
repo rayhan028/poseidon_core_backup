@@ -247,7 +247,6 @@ TEST_CASE("Testing query operators", "[qop]") {
     q.print_plan();
   }
   ctx.abort_transaction();
-
   graph_pool::destroy(pool);
 }
 

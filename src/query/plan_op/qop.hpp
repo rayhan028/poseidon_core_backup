@@ -1401,6 +1401,7 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
     std::size_t vidx;
     std::function<query_result(query_ctx&, const query_result&)> func;
     expr() = default;
+    // expr(const expr& ex) = default;
     expr(std::size_t i, std::function<query_result(query_ctx&, const query_result&)> f) : vidx(i), func(f) {}
   };
 
@@ -1463,56 +1464,56 @@ bool has_label(query_result &pv, const std::string &l);
  * Return the integer value of the property of a node/relationship stored in
  * projection_result res and identified by the given key.
  */
-query_result int_property(query_result &res, 
+query_result int_property(const query_result &res, 
                  const std::string &key);
 
 /**
  * Return the double value of the property of a node/relationship stored in
  * projection_result res and identified by the given key.
  */
-query_result double_property(query_result &res, 
+query_result double_property(const query_result &res, 
                        const std::string &key);
 
 /**
  * Return the string value of the property of a node/relationship stored in
  * projection_result res and identified by the given key.
  */
-query_result string_property(query_result &res, 
+query_result string_property(const query_result &res, 
                             const std::string &key);
 
 /**
  * Return the unsigned 64-bit integer value of the property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-query_result uint64_property(query_result &res, 
+query_result uint64_property(const query_result &res, 
                  const std::string &key);
 
 /**
  * Return the ptime value of the property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-query_result ptime_property(query_result &res, 
+query_result ptime_property(const query_result &res, 
                  const std::string &key);
 
 /**
  * Return the string representation of the date property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-query_result pr_date(query_result &pv, 
+query_result pr_date(const query_result &pv, 
                  const std::string &key);
 
 /**
  * Return the year of the date property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-query_result pr_year(query_result &pv, 
+query_result pr_year(const query_result &pv, 
                  const std::string &key);
 
 /**
  * Return the month of the date property of a node/relationship 
  * stored in projection_result res and identified by the given key.
  */
-query_result pr_month(query_result &pv, 
+query_result pr_month(const query_result &pv, 
                  const std::string &key);
 
 /**

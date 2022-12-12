@@ -1316,7 +1316,7 @@ void projection::process(query_ctx &ctx, const qr_tuple &v) {
   qr_tuple res(exprs_.size());
   for (auto i = 0u; i < exprs_.size(); i++) {
     auto &ex = exprs_[i];
-    // spdlog::info("projection::process: pv={}, i={}, vidx={}", pv.size(), i, ex.vidx);
+    // spdlog::info("projection::process: pv={}, i={}, vidx={} --> {}", pv.size(), i, ex.vidx, var_map_[ex.vidx]);
     try {
       if (ex.func != nullptr)
         res[i] = ex.func(ctx, pv[var_map_[ex.vidx]]);
@@ -1385,39 +1385,39 @@ bool has_label(query_result &pv, const std::string &l) {
   return false;
 }
 
-query_result int_property(query_result &pv, const std::string &key) {
+query_result int_property(const query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
-    auto nd = boost::get<node_description &>(pv);
+    auto nd = boost::get<const node_description &>(pv);
     auto o = get_property<int>(nd.properties, key);
     return o.has_value() ? query_result(o.value()) : query_result(null_val);
   } else if (pv.type() == typeid(rship_description &)) {
-    auto rd = boost::get<rship_description &>(pv);
+    auto rd = boost::get<const rship_description &>(pv);
     auto o = get_property<int>(rd.properties, key);
     return o.has_value() ? query_result(o.value()) : query_result(null_val);
   }
   return null_val;
 }
 
-query_result double_property(query_result &pv, const std::string &key) {
+query_result double_property(const query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
-    auto nd = boost::get<node_description &>(pv);
+    auto nd = boost::get<const node_description &>(pv);
     auto o = get_property<double>(nd.properties, key);
     return o.has_value() ? query_result(o.value()) : query_result(null_val);
   } else if (pv.type() == typeid(rship_description &)) {
-    auto rd = boost::get<rship_description &>(pv);
+    auto rd = boost::get<const rship_description &>(pv);
     auto o = get_property<double>(rd.properties, key);
     return o.has_value() ? query_result(o.value()) : query_result(null_val);
   }
   return null_val;
 }
 
-query_result string_property(query_result &pv, const std::string &key) {
+query_result string_property(const query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
-    auto nd = boost::get<node_description &>(pv);
+    auto nd = boost::get<const node_description &>(pv);
     auto o = get_property<std::string>(nd.properties, key);
     return o.has_value() ? query_result(o.value()) : query_result(null_val);
   } else if (pv.type() == typeid(rship_description &)) {
-    auto rd = boost::get<rship_description &>(pv);
+    auto rd = boost::get<const rship_description &>(pv);
     auto o = get_property<std::string>(rd.properties, key);
     return o.has_value() ? query_result(o.value()) : query_result(null_val);
   }
@@ -1425,42 +1425,42 @@ query_result string_property(query_result &pv, const std::string &key) {
   return null_val;
 }
 
-query_result uint64_property(query_result &pv, const std::string &key) {
+query_result uint64_property(const query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
-    auto nd = boost::get<node_description &>(pv);
+    auto nd = boost::get<const node_description &>(pv);
     auto o = get_property<uint64_t>(nd.properties, key);
     return o.has_value() ? query_result(o.value()) : query_result(null_val);
   } else if (pv.type() == typeid(rship_description &)) {
-    auto rd = boost::get<rship_description &>(pv);
+    auto rd = boost::get<const rship_description &>(pv);
     auto o = get_property<uint64_t>(rd.properties, key);
     return o.has_value() ? query_result(o.value()) : query_result(null_val);
   }
   return null_val;
 }
 
-query_result  ptime_property(query_result &pv, const std::string &key) {
+query_result  ptime_property(const query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
-    auto nd = boost::get<node_description &>(pv);
+    auto nd = boost::get<const node_description &>(pv);
     auto o = get_property<ptime>(nd.properties, key);
     return o.has_value() ? query_result(o.value()) : query_result(null_val);
   } else if (pv.type() == typeid(rship_description &)) {
-    auto rd = boost::get<rship_description &>(pv);
+    auto rd = boost::get<const rship_description &>(pv);
     auto o = get_property<ptime>(rd.properties, key);
     return o.has_value() ? query_result(o.value()) : query_result(null_val);
   }
   return null_val;
 }
 
-query_result pr_date(query_result &pv, const std::string &key) {
+query_result pr_date(const query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
-    auto nd = boost::get<node_description &>(pv);
+    auto nd = boost::get<const node_description &>(pv);
     if (nd.has_property(key)) {
       auto o = get_property<ptime>(nd.properties, key);
       return o.has_value() ? query_result(to_iso_extended_string(o.value().date()))
         : query_result(null_val);
     }
   } else if (pv.type() == typeid(rship_description &)) {
-    auto rd = boost::get<rship_description &>(pv);
+    auto rd = boost::get<const rship_description &>(pv);
     if (rd.has_property(key)) {
       auto o = get_property<ptime>(rd.properties, key);
       return o.has_value() ? query_result(to_iso_extended_string(o.value().date()))
@@ -1470,9 +1470,9 @@ query_result pr_date(query_result &pv, const std::string &key) {
   return null_val;
 }
 
-query_result pr_year(query_result &pv, const std::string &key) {
+query_result pr_year(const query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
-    auto nd = boost::get<node_description &>(pv);
+    auto nd = boost::get<const node_description &>(pv);
     if (nd.has_property(key)) {
       auto o = get_property<ptime>(nd.properties, key);
       if (o.has_value()) {
@@ -1483,7 +1483,7 @@ query_result pr_year(query_result &pv, const std::string &key) {
       return query_result(null_val);
     }
   } else if (pv.type() == typeid(rship_description &)) {
-    auto rd = boost::get<rship_description &>(pv);
+    auto rd = boost::get<const rship_description &>(pv);
     if (rd.has_property(key)) {
       auto o = get_property<ptime>(rd.properties, key);
       if (o.has_value()) {
@@ -1497,9 +1497,9 @@ query_result pr_year(query_result &pv, const std::string &key) {
   return null_val;
 }
 
-query_result pr_month(query_result &pv, const std::string &key) {
+query_result pr_month(const query_result &pv, const std::string &key) {
   if (pv.type() == typeid(node_description &)) {
-    auto nd = boost::get<node_description &>(pv);
+    auto nd = boost::get<const node_description &>(pv);
     if (nd.has_property(key)) {
       auto o = get_property<ptime>(nd.properties, key);
       if (o.has_value()) {
@@ -1510,7 +1510,7 @@ query_result pr_month(query_result &pv, const std::string &key) {
       return query_result(null_val);
     }
   } else if (pv.type() == typeid(rship_description &)) {
-    auto rd = boost::get<rship_description &>(pv);
+    auto rd = boost::get<const rship_description &>(pv);
     if (rd.has_property(key)) {
       auto o = get_property<ptime>(rd.properties, key);
       if (o.has_value()) {
