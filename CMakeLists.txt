@@ -23,7 +23,7 @@ option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
 option(BUILD_GTPC       "Build code for GTPC benchmark"          OFF)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
 option(CSR_DELTA        "Use delta store for updating CSR"       OFF)
-option(USE_UPMEM        "Use UPMEM SDK for PIM"                  OFF)
+option(USE_UPMEM        "Use UPMEM SDK for PIM"                  ON)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -778,7 +778,7 @@ add_executable(csv_loader
 if(USE_UPMEM MATCHES ON)
 add_executable(dpu_test
   src/cmds/dpu.cpp
-  src/cmds/dpu_scan.cpp
+  src/upmem/host/dpu_scan.cpp
  )
 
  target_link_libraries(dpu_test
