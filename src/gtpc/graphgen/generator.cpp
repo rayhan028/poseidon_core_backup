@@ -393,8 +393,8 @@ void GtpcGenerator::generateOrdersAndOrderLines() {
             makeDate(2010, 2012, o_entry_d.data());
 
             // @formatter:off
-            o_csv << id2 /*<< o_d_id << o_w_id << o_c_id*/ << o_entry_d << (o_c_id>2100 ? kNull : std::to_string(o_carrier_id))
-                  << o_ol_cnt << o_all_local << (o_c_id>2100 ? (int64_t)1 : (int64_t)0) << csv::endl;
+            o_csv << id2 /*<< o_d_id << o_w_id << o_c_id*/ << o_entry_d << (id2>2100 ? kNull : std::to_string(o_carrier_id))
+                  << o_ol_cnt << o_all_local << (id2>2100 ? (int64_t)1 : (int64_t)0) << csv::endl;
             // @formatter:on
 
             hasPlaced_csv << id1 << id2 << csv::endl;
@@ -408,7 +408,7 @@ void GtpcGenerator::generateOrdersAndOrderLines() {
                makeAlphaString(24, 24, ol_dist_info.data());
                makeDate(2011, 2012, ol_del_d.data());
 
-               if (o_c_id>2100) {
+               if (id2>2100) {
                   ol_amount = (float) (makeNumber(10L, 10000L)) / 100.0f;
                   // @formatter:off
                   ol_csv << id3 /*<< o_id << o_d_id << o_w_id*/ << ol_number /*<< ol_i_id << o_w_id*/ << kNullDate
