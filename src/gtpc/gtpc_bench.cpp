@@ -42,7 +42,7 @@ void run_olap_query_stream(graph_db_ptr gdb, std::size_t stream) {
         return true;
       }
       catch (const std::exception &ex) {
-        spdlog::error("Query #{} in OLAP Stream #{} Failed:", (idx + 1), stream);
+        spdlog::error("Query #{} in OLAP Stream #{} failed.", (idx + 1), stream);
         std::cerr << ex.what() << "\n";
         return false;
       }
@@ -54,7 +54,7 @@ void run_olap_query_stream(graph_db_ptr gdb, std::size_t stream) {
 #ifdef PRINT_RESULT
     std::cout << rs << "\n";
 #endif
-    spdlog::info("Query #{} in OLAP Stream #{}: {} msecs:", (idx + 1), stream, t);
+    spdlog::info("Query #{} in OLAP Stream #{}: {} msecs", (idx + 1), stream, t);
   }
 }
 
@@ -79,7 +79,7 @@ void run_oltp_query_stream(graph_db_ptr gdb, std::size_t stream) {
         return true;
       }
       catch (const std::exception &ex) {
-        spdlog::error("Query #{} in OLTP Stream #{} Failed:", (idx + 1), stream);
+        spdlog::error("Query #{} in OLTP Stream #{} failed", (idx + 1), stream);
         std::cerr << ex.what() << "\n";
         return false;
       }
@@ -91,7 +91,7 @@ void run_oltp_query_stream(graph_db_ptr gdb, std::size_t stream) {
 #ifdef PRINT_RESULT
     std::cout << rs << "\n";
 #endif
-    spdlog::info("Query #{} in OLTP Stream #{}: {} msecs: ", (idx + 1), stream, t);
+    spdlog::info("Query #{} in OLTP Stream #{}: {} msecs", (idx + 1), stream, t);
   }
 }
 
@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
     desc.add_options()
         ("help,h", "Help")
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
-        ("import,i", value<std::string>(&gtpc_home), "Path to directories containing SNB CSV files")
+        ("import,i", value<std::string>(&gtpc_home), "Path to directories containing GTPC CSV files")
         ("strict,s", bool_switch()->default_value(false), "Strict mode - assumes that all columns contain values of the same type")
         ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem pool")
         ("db,d", value<std::string>(&db_name)->required(),"Database name (required)")

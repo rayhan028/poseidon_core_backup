@@ -661,12 +661,12 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
   CsvParser parser = CsvParser(f).delimiter(delim);
   std::size_t num = 0;
 
-  // std::vector<std::string> fp;
-  // boost::split(fp, filename, boost::is_any_of(":"));
+  std::vector<std::string> fp;
+  boost::split(fp, filename, boost::is_any_of("/"));
   // spdlog::info("fp = {} : {}", fp.back(), fp.size());
   // assert(fp.back().find(".csv", fp.size()-4) != std::string::npos);
   std::vector<std::string> fn;
-  boost::split(fn, filename, boost::is_any_of("_"));
+  boost::split(fn, fp.back(), boost::is_any_of("_"));
   auto label = ":" + fn[1];
   auto label_code = dict_->insert(label);
   auto src_node = fn[0];

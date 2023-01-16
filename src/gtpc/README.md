@@ -9,3 +9,5 @@
 ```bash
 ./gtpc_bench --import "/path/to/generated/gtpc/files" --pool "/path/to/pmem/pool" --db "Graph DB name" --olap "OLAP streams" --oltp "OLTP streams"
 ```
+
+ LOAD CSV WITH HEADERS FROM 'file:///bla.csv' FIELDTERMINATOR '|'

@@ -16,11 +16,10 @@ using namespace boost::program_options;
 
 
 /**
- * Import data from the given list of CSV files. The list contains
- * not only the files names but also nodes/relationships as well as
- * the labels.
+ * Import data from the given list of CSV files from the import directly. The list contains
+ * not only the files names but also nodes/relationships as well as the labels.
  */
-bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
+bool import_csv_files(graph_db_ptr &gdb, const std::string& import_dir, const std::vector<std::string> &files,
                       char delimiter, std::string format, bool strict) {
   graph_db::mapping_t id_mapping;
 
@@ -35,15 +34,17 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
       }
 
       std::size_t num = 0;
+      std::string import_file = import_dir + "/" + result[2];
+
       auto start = std::chrono::steady_clock::now();
       if (format == "n4j") {
-        num = gdb->import_typed_n4j_nodes_from_csv(result[1], result[2],
+        num = gdb->import_typed_n4j_nodes_from_csv(result[1], import_file, 
                                                    delimiter, id_mapping);
       }
       else {
         num = strict
-          ? gdb->import_typed_nodes_from_csv(result[1], result[2], delimiter, id_mapping)
-          : gdb->import_nodes_from_csv(result[1], result[2], delimiter, id_mapping);
+          ? gdb->import_typed_nodes_from_csv(result[1], import_file, delimiter, id_mapping)
+          : gdb->import_nodes_from_csv(result[1], import_file, delimiter, id_mapping);
       }
       auto end = std::chrono::steady_clock::now();
 
@@ -53,6 +54,7 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
     else if (s.find("relationships:") != std::string::npos) {
       std::vector<std::string> result;
       boost::split(result, s, boost::is_any_of(":"));
+      std::string import_file = import_dir + "/" + result[2];
 
       if (format == "n4j") {
         if (result.size() < 2 || result.size() > 3) {
@@ -68,15 +70,16 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
       }
 
       std::size_t num = 0;
+   
       auto start = std::chrono::steady_clock::now();
       if (format == "n4j") {
         auto rship_type = result.size() == 3 ? result[1] : "";
-        num = gdb->import_typed_n4j_relationships_from_csv(result.back(), delimiter, id_mapping, rship_type);
+        num = gdb->import_typed_n4j_relationships_from_csv(import_file, delimiter, id_mapping, rship_type);
       }
       else {
         num = strict
-         ? gdb->import_typed_relationships_from_csv(result[2], delimiter, id_mapping)
-         : gdb->import_relationships_from_csv(result[2], delimiter, id_mapping);
+         ? gdb->import_typed_relationships_from_csv(import_file, delimiter, id_mapping)
+         : gdb->import_relationships_from_csv(import_file, delimiter, id_mapping);
       }
       auto end = std::chrono::steady_clock::now();
 
@@ -96,7 +99,7 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
 }
 
 int main(int argc, char* argv[]) {
-  std::string db_name, pool_path, log_file, dot_file, format;
+  std::string db_name, pool_path, log_file, dot_file, format, import_dir;
   std::vector<std::string> import_files;
   char delim_character = '|';
   bool strict = false;
@@ -115,6 +118,7 @@ int main(int argc, char* argv[]) {
         ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem/file pool")
         ("log,l", value<std::string>(&log_file), "Write log messages to the given file")
         ("output,o", value<std::string>(&dot_file), "Dump the graph to the given file (in DOT format)")
+        ("directory", value<std::string>(&import_dir)->default_value("."), "Directory containing the import files")
         ("import,i", value<std::vector<std::string>>()->composing()->required(),
         "Import files in CSV format (either nodes:<node type>:<filename> or "
         "relationships:<rship type>:<filename>")
@@ -134,6 +138,9 @@ int main(int argc, char* argv[]) {
 
     if (vm.count("import"))
       import_files = vm["import"].as<std::vector<std::string>>();
+
+    if (vm.count("directory"))
+      import_dir = vm["directory"].as<std::string>();
 
     if (vm.count("log"))
       log_file = vm["log"].as<std::string>();
@@ -193,7 +200,7 @@ int main(int argc, char* argv[]) {
 
   
   spdlog::info("--------- Importing files ...");
-  import_csv_files(graph, import_files, delim_character, format, strict);
+  import_csv_files(graph, import_dir, import_files, delim_character, format, strict);
   graph->print_stats();
 
   // graph->dump();

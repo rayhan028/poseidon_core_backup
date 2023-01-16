@@ -19,9 +19,11 @@
 
 using namespace boost::program_options;
 
-void load_gtpc_data(graph_db_ptr &graph, const std::string& path, bool strict) {
+void load_gtpc_data(graph_db_ptr &graph, const std::string& p, bool strict) {
   std::string post_fix = "_0_0.csv";
 
+  std::string path = p;
+  if (path.back() != '/') path.append("/");
   std::vector<std::string> node_files =
     {path + "customer" + post_fix,
     path + "district" + post_fix,
@@ -98,7 +100,7 @@ void load_gtpc_data(graph_db_ptr &graph,
 
       std::vector<std::string> fp;
       boost::split(fp, file, boost::is_any_of("/"));
-       assert(fp.back().find(".csv",fp.size()-4) != std::string::npos);
+      // assert(fp.back().find(".csv",fp.size()-4) != std::string::npos);
       auto pos = fp.back().find("_");
       auto label = fp.back().substr(0, pos);
       if (label[0] >= 'a' && label[0] <= 'z')
@@ -155,7 +157,7 @@ void load_gtpc_data(graph_db_ptr &graph,
 
       std::vector<std::string> fp;
       boost::split(fp, file, boost::is_any_of("/"));
-      assert(fp.back().find(".csv",fp.size()-4) != std::string::npos);
+      // assert(fp.back().find(".csv",fp.size()-4) != std::string::npos);
       std::vector<std::string> fn;
       boost::split(fn, fp.back(), boost::is_any_of("_"));
       auto label = ":" + fn[1];

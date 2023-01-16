@@ -42,7 +42,7 @@ void run_olap_query_stream(graph_db_ptr gdb, std::size_t stream) {
         return true;
       }
       catch (const std::exception &ex) {
-        spdlog::error("Query #{} in OLAP Stream #{} Failed:", (idx + 1), stream);
+        spdlog::error("Query #{} in OLAP Stream #{} failed.", (idx + 1), stream);
         std::cerr << ex.what() << "\n";
         return false;
       }
@@ -54,7 +54,7 @@ void run_olap_query_stream(graph_db_ptr gdb, std::size_t stream) {
 #ifdef PRINT_RESULT
     std::cout << rs << "\n";
 #endif
-    spdlog::info("Query #{} in OLAP Stream #{}: {} msecs:", (idx + 1), stream, t);
+    spdlog::info("Query #{} in OLAP Stream #{}: {} msecs.", (idx + 1), stream, t);
   }
 }
 
