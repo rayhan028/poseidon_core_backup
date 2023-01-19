@@ -44,7 +44,7 @@ result_set::sort_spec_list sort_spec_;
 /* ------------------------------------------------------------------------ */
 
 p_item qop::get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const {
-  auto qv = v[var-1];
+  auto qv = v[var];
   p_item res;
   switch (qv.which()) {
     case 0: // node *

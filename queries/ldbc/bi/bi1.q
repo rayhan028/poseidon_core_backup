@@ -9,7 +9,7 @@ Project([$0:int, $1:int, $2:int, $3:int, $4:int, $5:int, $7:double],
                         )
                     )
                 ),
-                Count(
+                Aggregate([count($0:node)], 
                     Project([udf::year($0.creationDate:datetime), udf::isComment($0:qresult), $0.length:int, udf::lengthCategory($0.length:int)], 
                         Filter($0.creationDate < %date, 
                             NodeScan("Post", "Comment")

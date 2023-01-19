@@ -74,4 +74,8 @@ TEST_CASE("Insert queries into radix indexx", "[radix_index]") {
 	remove(test_path.c_str());
 #endif
 }
+
+#else
+TEST_CASE("Dummy test", "[radix_tst]") {
+}
 #endif

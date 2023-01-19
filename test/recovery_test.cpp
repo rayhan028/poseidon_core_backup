@@ -66,5 +66,8 @@ TEST_CASE("Recovery of aborted inserts", "[graph_db]") {
     graph_pool::destroy(pool);
 }
 
+#else
+TEST_CASE("Dummy test", "[graph_db]") {
+}
  #endif
 

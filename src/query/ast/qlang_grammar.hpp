@@ -127,6 +127,7 @@ struct key_Count : TAO_PEGTL_KEYWORD("Count") {};
 struct key_append : TAO_PEGTL_KEYWORD("Append") {};
 struct key_create : TAO_PEGTL_KEYWORD("Create") {};
 struct key_algo : TAO_PEGTL_KEYWORD("Algorithm") {};
+struct key_match : TAO_PEGTL_KEYWORD("Match") {};
 struct key_end : TAO_PEGTL_KEYWORD("End") {};
 
 struct op_name : sor< key_node_scan, 
@@ -147,6 +148,7 @@ struct op_name : sor< key_node_scan,
                     key_append,
                     key_create,
                     key_algo,
+                    key_match,
                     key_end
                     > {};
 

@@ -366,4 +366,9 @@ TEST_CASE("Testing nvm_chunked_vec", "[nvm_chunked_vec]") {
   }
 }
 
+#else
+
+TEST_CASE("Dummy test", "[nvm_chunked_vec]") {
+}
+
 #endif

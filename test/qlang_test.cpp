@@ -120,12 +120,17 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
   REQUIRE_THROWS(pegtl::parse<qlang::rship_pattern, pegtl::nothing>(
       pegtl::string_input<>("($1)<-(r:Label)->($2)", "")));
 
+  REQUIRE(pegtl::parse<qlang::param, pegtl::nothing>(
+      pegtl::string_input<>("($1)<-[r:Label]->($2)", "")));
+
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Create((n:Label { name1: 'Val1', name2: 42 }))", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Create((n:Label { name1: 'Val1', name2: 42 }), NodeScan('Person'))", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("GroupBy([$0.Id:int, $1.Name:string, $3.Age:int], [count($0.Name:string), avg($3.Age:int)])", "")));
+  REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+      pegtl::string_input<>("Aggregate([count($0.Name:string), avg($3.Age:int)])", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Limit(20, Sort([$4.Age:int DESC, $1.Name:string ASC]))", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
@@ -142,4 +147,7 @@ TEST_CASE("Testing the poseidon parser", "[qlang]") {
       pegtl::string_input<>("CrossJoin(@q, NodeScan('Order'))", "")));
   REQUIRE(pegtl::parse<qlang::qoperator, pegtl::nothing>(
       pegtl::string_input<>("Project([udf::year($0.creationDate:datetime), udf::isComment($0:node), $0.length:int, udf::lengthCategory($0.length:int)], Filter($0.creationDate < %date, NodeScan('Post', 'Comment')))", "")));
+  //(pegtl::parse<qlang::qoperator, pegtl::nothing>(
+  //    pegtl::string_input<>("Match((Order)-[:contains]->(Orderline))", "")));
+
  }

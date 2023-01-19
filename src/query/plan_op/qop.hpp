@@ -223,10 +223,6 @@ protected:
   template <typename T>
   T get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const;
 
-  int get_int_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const;
-  double get_double_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const;
-  std::string get_string_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const;
-
   qop_ptr subscriber_; // pointer to the subsequent operator which receives and
                        // processes the results
 
