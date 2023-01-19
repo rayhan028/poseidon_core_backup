@@ -87,8 +87,8 @@ std::ostream& operator<<(std::ostream& os, ast_op& op) {
             os << "Sort("; break;
         case ast_op::union_all:
             os << "Union("; break;
-        case ast_op::count:
-            os << "Count("; break;
+        case ast_op::aggregate:
+            os << "Aggregate("; break;
         case ast_op::group_by:
             os << "GroupBy("; break;
         case ast_op::hash_join:

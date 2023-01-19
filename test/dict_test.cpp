@@ -21,8 +21,8 @@
                           // this in one cpp file
 
 #include <boost/filesystem.hpp>
-#include "spdlog/fmt/fmt.h"
-#include "catch.hpp"
+#include "fmt/format.h"
+#include <catch2/catch_test_macros.hpp>
 #include "config.h"
 #include "defs.hpp"
 #include "dict.hpp"

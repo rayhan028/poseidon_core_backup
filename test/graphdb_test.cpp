@@ -22,7 +22,7 @@
 
 #include <set>
 
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include "config.h"
 #include "exceptions.hpp"
 #include "graph_pool.hpp"

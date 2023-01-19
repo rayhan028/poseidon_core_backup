@@ -43,6 +43,92 @@ result_set::sort_spec_list sort_spec_;
 
 /* ------------------------------------------------------------------------ */
 
+p_item qop::get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const {
+  auto qv = v[var-1];
+  p_item res;
+  switch (qv.which()) {
+    case 0: // node *
+      {
+        auto nptr = boost::get<node *>(qv);
+        res = ctx.gdb_->get_property_value(*nptr, prop);
+      }
+      break;
+    case 1: // relationship *
+      {
+        auto rptr = boost::get<relationship *>(qv);
+        res = ctx.gdb_->get_property_value(*rptr, prop);
+      }
+      break;
+    default:
+      // return null
+      break;
+  }
+  return res;
+}
+
+template <>
+int qop::get_property_value<int>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const {
+  int res = 0;
+  auto qv = get_property_value(ctx, v, var, prop);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = (int)qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = (int)qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
+double qop::get_property_value<double>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const {
+  double res = 0;
+  auto qv = get_property_value(ctx, v, var, prop);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = (double)qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = (double)qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
+std::string qop::get_property_value<std::string>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const {
+  std::string res;
+  auto qv = get_property_value(ctx, v, var, prop);
+  switch (qv.typecode()) {
+    case p_item::p_dcode:
+      break;
+    case p_item::p_int:
+      res = std::to_string(qv.get<int>());
+      break;
+    case p_item::p_double:
+      res = std::to_string(qv.get<double>());
+      break;
+    case p_item::p_uint64:
+      res = std::to_string(qv.get<uint64_t>());
+      break;
+    // TODO
+  }
+  return res;
+}
+
+/* ------------------------------------------------------------------------ */
+
 void scan_nodes::start(query_ctx &ctx) {
   if (label.empty() && labels.empty())
 #ifdef QOP_RECOVERY
@@ -364,12 +450,15 @@ void get_to_node::dump(std::ostream &os) const {
 void printer::dump(std::ostream &os) const { os << "printer()"; }
 
 void printer::process(query_ctx &ctx, const qr_tuple &v) {
+  if (ntuples_ == 0)
+    std::cout << "+------------------------------------------------------------------------+\n";
+  ntuples_++;
   auto my_visitor = boost::hana::overload(
       [&](const node_description& n) { std::cout << n; },
       [&](const rship_description& r) { std::cout << r; },
       [&](node *n) { std::cout << ctx.gdb_->get_node_description(n->id()); },
       [&](relationship *r) { std::cout << ctx.gdb_->get_relationship_label(*r); },
-      [&](int i) { std::cout << i; }, [&](double d) { std::cout << d; },
+      [&](int i) { std::cout << i; }, [&](double d) { std::cout << fmt::format("{:f}", d); },
       [&](const std::string &s) { std::cout << s; },
       [&](uint64_t ll) { std::cout << ll; },
       [&](null_t n) { std::cout << "NULL"; },
@@ -385,6 +474,15 @@ void printer::process(query_ctx &ctx, const qr_tuple &v) {
   }
   std::cout << "\n";
 }
+
+void printer::finish(query_ctx &ctx) {
+  auto s = fmt::format("{} tuples(s) returned. ", ntuples_);
+  std::cout << "+-- " << s;
+  for (auto i = 80-s.length()-11; i > 0; i--) 
+    std::cout << "-";
+  std::cout << "+\n";
+}
+
 
 /* ------------------------------------------------------------------------ */
 
@@ -471,6 +569,146 @@ void order_by::finish(query_ctx &ctx) {
 }
 
 /* ------------------------------------------------------------------------ */
+void aggregate::init_aggregates() {
+  for (auto i = 0u; i < aggr_exprs_.size(); i++) {
+    auto& ex = aggr_exprs_[i];
+    switch (ex.func) {
+      case expr::f_count:
+        aggr_vals_[i] = 0;
+        break;
+      case expr::f_sum:
+      case expr::f_avg:
+        aggr_vals_[i] = (ex.aggr_type == 2 ? 0 : 0.0);
+        break;
+      case expr::f_min:
+        if (ex.aggr_type == 2)
+          aggr_vals_[i] = std::numeric_limits<int>::max();
+        else if (ex.aggr_type == 3)
+          aggr_vals_[i] = std::numeric_limits<double>::max();
+        else if (ex.aggr_type == 4)
+          aggr_vals_[i] = std::string("~~~~~~~~~~~~~~~");
+        break;
+      case expr::f_max:
+        if (ex.aggr_type == 2)
+          aggr_vals_[i] = std::numeric_limits<int>::min();
+        else if (ex.aggr_type == 3)
+          aggr_vals_[i] = std::numeric_limits<double>::min();
+        else if (ex.aggr_type == 4)
+          aggr_vals_[i] = std::string("                ");
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+void aggregate::dump(std::ostream &os) const {
+  os << "aggregate([ ";
+  for (auto& ex : aggr_exprs_) {
+    switch (ex.func) {
+      case expr::f_count:
+        os << "count(";
+        break;
+      case expr::f_sum:
+        os << "sum(";
+        break;
+      case expr::f_min:
+        os << "min(";
+        break;
+      case expr::f_max:
+        os << "max(";
+        break;
+      case expr::f_avg:
+        os << "avg(";
+        break;
+      // TODO
+      default:
+        break;
+    }
+    os << ex.var << "." << ex.property << ") ";
+  }
+  os << "]) - " << PROF_DUMP;
+}
+
+void aggregate::process(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE;
+  for (auto i = 0u; i < aggr_exprs_.size(); i++) {
+    auto& ex = aggr_exprs_[i];
+    switch (ex.func) {
+      case expr::f_count:
+        aggr_vals_[i] = boost::get<int>(aggr_vals_[i]) + 1;
+        break;
+      case expr::f_sum:
+        if (ex.aggr_type == 2)
+          aggr_vals_[i] = boost::get<int>(aggr_vals_[i]) + get_property_value<int>(ctx, v, ex.var, ex.property);
+        else if (ex.aggr_type == 3)
+          aggr_vals_[i] = boost::get<double>(aggr_vals_[i]) + get_property_value<double>(ctx, v, ex.var, ex.property);
+        break;
+      case expr::f_min:
+        if (ex.aggr_type == 2)
+          aggr_vals_[i] = std::min(boost::get<int>(aggr_vals_[i]), get_property_value<int>(ctx, v, ex.var, ex.property));
+        else if (ex.aggr_type == 3)
+          aggr_vals_[i] = std::min(boost::get<double>(aggr_vals_[i]), get_property_value<double>(ctx, v, ex.var, ex.property));
+        else if (ex.aggr_type == 4)
+          aggr_vals_[i] = std::min(boost::get<std::string>(aggr_vals_[i]), get_property_value<std::string>(ctx, v, ex.var, ex.property));
+        break;
+      case expr::f_avg:
+        if (ex.aggr_type == 2)
+          aggr_vals_[i] = std::max(boost::get<int>(aggr_vals_[i]), get_property_value<int>(ctx, v, ex.var, ex.property));
+        else if (ex.aggr_type == 3)
+          aggr_vals_[i] = std::max(boost::get<double>(aggr_vals_[i]), get_property_value<double>(ctx, v, ex.var, ex.property));
+        else if (ex.aggr_type == 4)
+          aggr_vals_[i] = std::max(boost::get<std::string>(aggr_vals_[i]), get_property_value<std::string>(ctx, v, ex.var, ex.property));
+        break;
+      // TODO
+      default:
+        break;
+    }
+  }
+  PROF_POST(0);
+}
+
+void aggregate::finish(query_ctx &ctx) {
+  PROF_PRE0;
+  qr_tuple v(aggr_exprs_.size());
+  for (auto i = 0u; i < aggr_exprs_.size(); i++) {
+    auto& ex = aggr_exprs_[i];
+    switch (ex.func) {
+      case expr::f_count:
+        v[i] = boost::get<int>(aggr_vals_[i]);
+        break;
+      case expr::f_sum:
+        if (ex.aggr_type == 2)
+          v[i] = boost::get<int>(aggr_vals_[i]);
+        else if (ex.aggr_type == 3)
+          v[i] = boost::get<double>(aggr_vals_[i]);
+        break;
+      case expr::f_avg:
+        {
+          auto& p = boost::get<std::pair<double, int>>(aggr_vals_[i]);
+          v[i] = p.first / p.second;
+        }
+        break;
+      case expr::f_min:
+      case expr::f_max:
+        if (ex.aggr_type == 2)
+          v[i] = boost::get<int>(aggr_vals_[i]);
+        else if (ex.aggr_type == 3)
+          v[i] = boost::get<double>(aggr_vals_[i]);
+        else if (ex.aggr_type == 4)
+          v[i] = boost::get<std::string>(aggr_vals_[i]);
+        break;
+      // TODO
+      default:
+        v[i] = 0;
+    }
+  }  
+  consume_(ctx, v);
+  finish_(ctx);
+  PROF_POST(1);
+}
+
+/* ------------------------------------------------------------------------ */
 
 group_by::group_by(const std::vector<std::size_t> &pos) :
     grpkey_cnt_(0), grpkey_pos_(pos) {}
@@ -480,7 +718,7 @@ group_by::group_by(const std::vector<std::size_t> &pos,
     grpkey_cnt_(0), grpkey_pos_(pos), aggrs_(aggrs) {}
 
 void group_by::dump(std::ostream &os) const {
-  os << "group_by([]) - " << PROF_DUMP;
+  os << "group_by([" << grpkey_pos_.size() << "],[" << aggrs_.size() << "]) - " << PROF_DUMP;
 }
 
 group_by::group_by(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,

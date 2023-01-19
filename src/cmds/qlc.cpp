@@ -7,12 +7,14 @@
 #include <boost/program_options.hpp>
 
 #include "linenoise.hpp"
+#include "fmt/chrono.h"
 #include "qproc.hpp"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
 
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
+
 
 graph_pool_ptr pool;
 
@@ -135,15 +137,11 @@ void print_result(qresult_iterator& qres) {
 void exec_query(const std::string &qstr, qproc::mode qmode) {
   try {
   auto start_qp = std::chrono::steady_clock::now();
-  auto res = qproc_ptr->execute_query(qmode, qstr, true);
+  auto res = qproc_ptr->execute_and_output_query(qmode, qstr, true);
   auto end_qp = std::chrono::steady_clock::now();
 
-  print_result(res);
-
   std::chrono::duration<double> diff = end_qp - start_qp;
-  std::cout << "Query executed in " 
-            << diff.count()
-            << " secs" << std::endl;
+  fmt::print("Query executed in {}\n", diff); 
   } catch (std::exception& exc) {
     std::cerr << "Error in query execution: " << exc.what() << std::endl;
   }
@@ -353,7 +351,6 @@ int main(int argc, char* argv[]) {
       start_shell = vm["shell"].as<bool>();
 
     if (vm.count("qmode")) {
-      std::cout << "qmode = " << qmode_str << std::endl;
       if (qmode_str != "llvm" && qmode_str != "interp" && qmode_str != "adapt") {
         std::cout << "ERROR: unknown query mode value: 'llvm' or 'interp' or 'adapt' expected.\n";
         return -1;
@@ -397,6 +394,7 @@ int main(int argc, char* argv[]) {
 
   // graph->dump();
 
+    /*
     {
         auto& nodes = graph->get_nodes();
         node n;
@@ -405,6 +403,7 @@ int main(int argc, char* argv[]) {
                   << "offset of id_       : " << n._offset() << " bytes\n"
                   << "offset of node_label: " << ((uint64_t)((uint8_t *)&n.node_label) - (uint64_t)((uint8_t *)&n)) << " bytes"<< std::endl; 
     }
+    */
 
   query_ctx ctx(graph);
   qproc_ptr = std::make_unique<qproc>(ctx);

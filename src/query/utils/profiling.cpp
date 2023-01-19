@@ -18,6 +18,7 @@
  */
 
 #include <chrono>
+#include <fmt/chrono.h>
 #include "profiling.hpp"
 
 #ifdef QOP_PROFILING
@@ -36,7 +37,7 @@ void prof_metrics::post_hook(uint64_t n) {
 std::ostream& prof_metrics::dump(std::ostream& os) const {   
     os << "{ in=" << in_records_ 
        << " | out=" << out_records_ 
-       << " | time=" << (double)(std::chrono::duration_cast<std::chrono::microseconds>(proc_time_).count()) << " µsecs"
+       << " | time=" << fmt::format("{}", proc_time_) // (double)(std::chrono::duration_cast<std::chrono::microseconds>(proc_time_).count()) << " µsecs"
        << " }";
     return os;
 }

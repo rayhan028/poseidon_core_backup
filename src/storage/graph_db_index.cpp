@@ -179,7 +179,7 @@ void graph_db::index_lookup(std::list<index_id> &idx_ptrs, uint64_t key, node_co
 }
 
 void graph_db::restore_indexes(const std::string &pool_path, const std::string &prefix) {
-  spdlog::info("graph_db::restore_indexes()");
+  spdlog::debug("graph_db::restore_indexes()");
   // forall files in prefix with idx_
   boost::filesystem::path path_obj {pool_path};
   path_obj /= prefix;

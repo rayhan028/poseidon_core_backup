@@ -53,6 +53,8 @@ private:
   qop_ptr expand_to_qplan(ast_op_ptr ast, qop_ptr child);
   qop_ptr project_to_qplan(ast_op_ptr ast, qop_ptr child);
   qop_ptr sort_to_qplan(graph_db_ptr gdb, ast_op_ptr ast, qop_ptr child);
+  qop_ptr groupby_to_qplan(ast_op_ptr ast, qop_ptr child);
+  qop_ptr aggregate_to_qplan(ast_op_ptr ast, qop_ptr child);
   qop_ptr union_to_qplan(ast_op_ptr ast, qop_ptr child1, qop_ptr child2);
   qop_ptr cross_join_to_qplan(ast_op_ptr ast, qop_ptr child1, qop_ptr child2);
   qop_ptr leftouter_join_to_qplan(ast_op_ptr ast, qop_ptr child1, qop_ptr child2);

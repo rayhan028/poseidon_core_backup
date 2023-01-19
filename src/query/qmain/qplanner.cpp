@@ -220,6 +220,60 @@ qop_ptr qplanner::sort_to_qplan(graph_db_ptr gdb, ast_op_ptr ast, qop_ptr child)
   return qop_append2(child, qp);
 }
 
+qop_ptr qplanner::aggregate_to_qplan(ast_op_ptr ast, qop_ptr child) {
+  std::vector<aggregate::expr> aggrs; 
+
+  assert (ast->num_params() == 1);
+  auto aggr_list = ast->get_param<aggr_spec_list>(0);
+  for (auto& aggr : aggr_list) {
+    auto v_id = qparser::extract_tuple_id(aggr.aname);
+    auto v_name = qparser::extract_variable_name(aggr.aname);
+
+    aggregate::expr::func_t aggr_func = aggregate::expr::f_count;
+    std::size_t aggr_type = 2;
+
+    if (aggr.afunc == "count")
+      aggr_func = aggregate::expr::f_count;
+    else if (aggr.afunc == "sum")
+      aggr_func = aggregate::expr::f_sum;
+
+    if (aggr.atype == "int")
+      aggr_type = 2;
+    else if (aggr.atype == "double")
+      aggr_type = 3;
+    else if (aggr.atype == "string")
+      aggr_type = 4;
+    aggrs.push_back(aggregate::expr{ aggr_func, v_id, v_name, aggr_type });
+  }
+
+  auto qp = std::make_shared<aggregate>(aggrs);
+  return qop_append2(child, qp);
+}
+
+
+qop_ptr qplanner::groupby_to_qplan(ast_op_ptr ast, qop_ptr child) {
+  std::cout << "groupby: nparams = " << ast->num_params() << std::endl;
+  std::vector<std::size_t> groups;
+  std::vector<std::pair<std::string, std::size_t>> aggrs;
+
+  if (ast->num_params() == 1) {
+    auto aggr_list = ast->get_param<aggr_spec_list>(0);
+    for (auto& aggr : aggr_list) {
+      std::cout << "---->> " << aggr.aname << std::endl;
+      auto v_id = qparser::extract_tuple_id(aggr.aname);
+      auto v_name = qparser::extract_variable_name(aggr.aname);
+
+      aggrs.push_back(std::make_pair(aggr.afunc, v_id));
+    }
+  }
+  else if (ast->num_params() == 2) {
+    auto grp_list = ast->get_param<proj_spec_list>(0);
+    auto aggr_list = ast->get_param<aggr_spec_list>(1);
+  }
+  auto qp = std::make_shared<group_by>(groups, aggrs);
+  return qop_append(child, qp);
+}
+
 qop_ptr qplanner::union_to_qplan(ast_op_ptr ast, qop_ptr child1, qop_ptr child2) {
   auto qop = std::make_shared<union_all_qres>();
   child1->connect(qop, std::bind(&union_all_qres::process_right, qop.get(), ph::_1, ph::_2));
@@ -279,6 +333,12 @@ qop_ptr qplanner::ast_to_qplan(graph_db_ptr& gdb, ast_op_ptr ast, std::vector<qo
       break;
     case ast_op::sort:
       qop = sort_to_qplan(gdb, ast, child1);
+      break;
+    case ast_op::aggregate:
+      qop = aggregate_to_qplan(ast, child1);
+      break;
+    case ast_op::group_by:
+      qop = groupby_to_qplan(ast, child1);
       break;
     case ast_op::union_all:
       qop = union_to_qplan(ast, child1, child2);

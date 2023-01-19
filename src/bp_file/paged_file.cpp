@@ -38,7 +38,7 @@ bool paged_file::open(const std::string& path, int file_type) {
     }
     else {
         file_.open(path, std::fstream::in | std::fstream::out | std::fstream::binary);
-        spdlog::info("open existing paged_file: {}, header size: {}", path, sizeof(header_));
+        spdlog::debug("open existing paged_file: {}, header size: {}", path, sizeof(header_));
 
         // read & check header
         file_.read((char *) &header_, sizeof(header_));
@@ -52,7 +52,7 @@ bool paged_file::open(const std::string& path, int file_type) {
         header_callback_(header_read, header_.payload_);
     file_.seekp(0, file_.end);
     npages_ = ((unsigned long)file_.tellp() - sizeof(file_header)) / PAGE_SIZE;
-    spdlog::info("file '{}' opened with {} pages", path, npages_);
+    spdlog::debug("file '{}' opened with {} pages", path, npages_);
     return is_open();
 }
 

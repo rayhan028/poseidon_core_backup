@@ -20,6 +20,7 @@ struct printer;
 struct limit_result;
 struct nodes_connected;
 struct order_by;
+struct aggregate;
 struct group_by;
 struct distinct_tuples;
 struct filter_tuple;
@@ -71,6 +72,8 @@ public:
     virtual void visit(std::shared_ptr<nodes_connected> op) { }
 
     virtual void visit(std::shared_ptr<order_by> op) { }
+
+    virtual void visit(std::shared_ptr<aggregate> op) { }
 
     virtual void visit(std::shared_ptr<group_by> op) { }
 

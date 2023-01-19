@@ -3,7 +3,7 @@
 #define CATCH_CONFIG_CONSOLE_WIDTH 160
 
 #include <iostream>
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include "qparser.hpp"
 #include "ast.hpp"
 

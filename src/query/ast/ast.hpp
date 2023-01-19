@@ -92,7 +92,7 @@ struct ast_op {
         limit, 
         sort,
         union_all,
-        count,
+        aggregate,
         group_by,
         hash_join, 
         leftouter_join,

@@ -44,6 +44,25 @@ qresult_iterator qproc::execute_query(qproc::mode m, const std::string& qstr, bo
     return qresult_iterator(std::move(result));
 }
 
+std::size_t qproc::execute_and_output_query(mode m, const std::string& qstr, bool print_plan) {
+  auto qplan = prepare_query(qstr, print_plan);
+    qplan.append_printer(); // TODO: if we print then we should return at least the number of tuples via result
+    prepare_plan(qplan);
+
+    if (m == Interpret) {
+        interp_query(qplan);
+        if (print_plan)
+            qplan.print_plan();
+    }
+    else {
+        // TODO: compile & execute query
+        compile_query(qplan);
+        if (print_plan)
+            qplan.print_plan();
+    }
+    return 0; // qplan.result_size();    
+}
+
 query_set qproc::prepare_query(const std::string& qstr, bool print_plan) {
     auto op_tree = parser_.parse(qstr);
     if (print_plan)

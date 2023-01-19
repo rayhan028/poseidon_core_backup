@@ -1,6 +1,6 @@
 include(../cmake/Testing.cmake.in)
 
-include_directories(${CATCH_INCLUDE_DIR})
+include_directories(${catch2_SOURCE_DIR}/include)
 
 #=============================================
 
@@ -27,6 +27,7 @@ add_executable(abort_insert
 
 target_link_libraries(abort_insert
   poseidon_core
+  Catch2::Catch2WithMain
   ${PMDK_LIBRARIES}
 )
 

@@ -50,8 +50,13 @@ set(CMAKE_MACOSX_RPATH 1)
 # add_code_coverage()
 
 # Require C++20
-include(c++-standards)
-cxx_20()
+#include(c++-standards)
+#cxx_20()
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+include(FetchContent REQUIRED)
 
 if(USE_UPMEM MATCHES ON)
   add_definitions( "-DUSE_UPMEM" )
@@ -189,79 +194,43 @@ set_property(TARGET gunrock PROPERTY IMPORTED_LOCATION "/usr/lib/libgunrock.so")
 message(STATUS "Include library gunrock. Make sure /usr/lib/libgunrock.so exists!")
 endif()
 
-# Catch =================================================================== #
-include(FetchContent REQUIRED)
+# Catch2 =================================================================== #
 FetchContent_Declare(
-  catch
+  Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v2.13.7
+  GIT_TAG        v3.0.1
 )
-# FetchContent_GetProperties(catch)
-if(NOT catch_POPULATED)
-  message(STATUS "Populating catch")
-  FetchContent_Populate(catch)
-  set(CATCH_INCLUDE_DIR ${catch_SOURCE_DIR}/single_include/catch2)
-  add_library(Catch2::Catch IMPORTED INTERFACE)
-  add_library(Catch2 INTERFACE)
-  add_library(Catch2::Test ALIAS Catch2)
-  target_include_directories(Catch2 INTERFACE ${CATCH_INCLUDE_DIR})
-  set_property(TARGET Catch2::Catch PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CATCH_INCLUDE_DIR}")
-endif()
+
+FetchContent_MakeAvailable(Catch2)
 
 # CSVParser =================================================================== #
-include(FetchContent REQUIRED)
  FetchContent_Declare(
   CSV
   GIT_REPOSITORY https://github.com/AriaFallah/csv-parser.git
 #  GIT_TAG        1.2.1
-  )
-FetchContent_GetProperties(CSV)
+)
 
-if(NOT CSV_POPULATED)
-  message(STATUS "Populating CSV")
-  FetchContent_Populate(CSV)
-  set(CSV_INCLUDE_DIR ${csv_SOURCE_DIR})
-  add_library(CSV IMPORTED INTERFACE)
-  set_property(TARGET CSV PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CSV_INCLUDE_DIR}")
-  set(CSV_CXX_STANDARD 11)
-endif()
+FetchContent_MakeAvailable(CSV)
 
 # spdlog =================================================================== #
-
-include(FetchContent REQUIRED)
  FetchContent_Declare(
   spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog.git
    GIT_TAG        v1.11.0
-  )
-FetchContent_GetProperties(spdlog)
+)
 
-if(NOT spdlog_POPULATED)
-  message(STATUS "Populating spdlog")
-  FetchContent_Populate(spdlog)
-  # find_package(spdlog REQUIRED)
-  set(SPDLOG_BUILD_TESTS OFF CACHE INTERNAL "")
-  add_subdirectory(${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR} EXCLUDE_FROM_ALL)
-  set(SPDLOG_INCLUDE_DIR ${spdlog_SOURCE_DIR}/include)
-endif()
+FetchContent_MakeAvailable(spdlog)
 
 # Google Benchmark ============================================================== #
-
 FetchContent_Declare(
   benchmark
   GIT_REPOSITORY https://github.com/google/benchmark.git
   GIT_TAG        v1.6.1
   GIT_SHALLOW    TRUE
 )
-FetchContent_GetProperties(benchmark)
-if(NOT benchmark_POPULATED)
-  message(STATUS "Populating benchmark (google)")
-  set(BENCHMARK_ENABLE_TESTING OFF CACHE INTERNAL "")
-  set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE INTERNAL "")
-  FetchContent_Populate(benchmark)
-  add_subdirectory(${benchmark_SOURCE_DIR} ${benchmark_BINARY_DIR} EXCLUDE_FROM_ALL)
-  set(BENCHMARK_INCLUDE_DIR ${benchmark_SOURCE_DIR}/include)
-endif()
+
+FetchContent_MakeAvailable(benchmark)
+
 
 if(USE_LLVM MATCHES ON)
 # LLVM ============================================================== #
@@ -276,40 +245,34 @@ XRay WindowsManifest TableGen Symbolize DebugInfoPDB OrcJIT OrcError JITLink Obj
 endif() 
 
 # PEGTL =================================================================== #
-include(FetchContent REQUIRED)
  FetchContent_Declare(
   pegtl
   GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
   GIT_TAG       3.2.2
   )
-FetchContent_GetProperties(pegtl)
-if(NOT pegtl_POPULATED)
-  message(STATUS "Populating PEGTL")
-  FetchContent_Populate(pegtl)
-  set(PEGTL_INCLUDE_DIR ${pegtl_SOURCE_DIR}/include)
-  add_library(PEGTL IMPORTED INTERFACE)
-  set_property(TARGET PEGTL PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${PEGTL_INCLUDE_DIR}")
-endif()
+
+FetchContent_MakeAvailable(pegtl)
+
 
 # linenoise =================================================================== #
-include(FetchContent REQUIRED)
  FetchContent_Declare(
   linenoise
   GIT_REPOSITORY https://github.com/yhirose/cpp-linenoise.git
  #  GIT_TAG        1.2.1
   )
-FetchContent_GetProperties(linenoise)
 
-if(NOT linenoise_POPULATED)
-  message(STATUS "Populating linenoise")
-  FetchContent_Populate(linenoise)
-  set(LINENOISE_INCLUDE_DIR ${linenoise_SOURCE_DIR})
-  add_library(LINENOISE IMPORTED INTERFACE)
-  set_property(TARGET LINENOISE PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${LINENOISE_INCLUDE_DIR}")
-endif()
+FetchContent_MakeAvailable(linenoise)
+
+# fmt =================================================================== #
+FetchContent_Declare(
+  fmt
+  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+  GIT_TAG        9.1.0
+)
+
+FetchContent_MakeAvailable(fmt)
 
 # pybind11 =================================================================== #
-include(FetchContent REQUIRED)
  FetchContent_Declare(
   pybind11
   GIT_REPOSITORY https://github.com/pybind/pybind11.git
@@ -393,11 +356,12 @@ endif()
 
 #-----------------------------------------------------------------------------------------
 
-include_directories("${PEGTL_INCLUDE_DIR}")
-include_directories("${CSV_INCLUDE_DIR}")
-include_directories("${SPDLOG_INCLUDE_DIR}")
+include_directories("${pegtl_SOURCE_DIR}/include")
+include_directories("${csv_SOURCE_DIR}")
+include_directories("${spdlog_SOURCE_DIR}/include")
 include_directories("${PROJECT_SOURCE_DIR}/src")
-include_directories("${LINENOISE_INCLUDE_DIR}")
+include_directories("${linenoise_SOURCE_DIR}")
+include_directories("${fmt_SOURCE_DIR}/include")
 
 #-----------------------------------------------------------------------------------------
 
@@ -656,6 +620,7 @@ target_link_libraries(poseidon
   ${Python3_LIBRARIES}
   ${PMDK_LIBRARIES}
   spdlog::spdlog_header_only
+  fmt::fmt
 )
 
 set_target_properties(poseidon PROPERTIES PREFIX "" SUFFIX ".so")
@@ -776,9 +741,10 @@ add_executable(qlc
  )
 
  target_link_libraries(qlc
- poseidon_core
- ${PMDK_LIBRARIES}
- Boost::program_options
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+  fmt::fmt
 )
 
 add_executable(csv_loader

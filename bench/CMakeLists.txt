@@ -12,7 +12,7 @@ foreach(ONE_BENCH_CPP ${ALL_BENCH_CPP})
 
    add_executable(${TARGET_NAME} ${ONE_BENCH_CPP})
    set_target_properties(${TARGET_NAME} PROPERTIES OUTPUT_NAME ${ONE_BENCH_EXEC}) 
-   include_directories("${BENCHMARK_INCLUDE_DIR}")
+   include_directories("${benchmark_SOURCE_DIR}/include")
 
    target_link_libraries(${TARGET_NAME} 
       ${POSEIDON_GTPC}      

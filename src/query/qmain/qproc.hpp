@@ -43,6 +43,7 @@ public:
     ~qproc() = default;
 
     qresult_iterator execute_query(mode m, const std::string& qstr, bool print_plan = false);
+    std::size_t execute_and_output_query(mode m, const std::string& qstr, bool print_plan = false);
     
     query_set prepare_query(const std::string& qstr, bool print_plan = false);
     
