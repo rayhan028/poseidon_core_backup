@@ -19,6 +19,7 @@ foreach(ONE_BENCH_CPP ${ALL_BENCH_CPP})
       ${POSEIDON_LDBC}
       poseidon_core
       benchmark
+      fmt::fmt
       ${PMDK_LIBRARIES}
       Boost::program_options
    )
