@@ -11,6 +11,7 @@ macro( build_executable arg )
       ${POSEIDON_LDBC}
       poseidon_core
       Catch2::Catch2WithMain
+      fmt::fmt
       ${BENCHMARK_LIB}
       ${PMDK_LIBRARIES}
       ${MALLOC_LIB}
