@@ -259,6 +259,7 @@ FetchContent_MakeAvailable(pegtl)
 FetchContent_MakeAvailable(linenoise)
 
 # fmt =================================================================== #
+set (BUILD_SHARED_LIBS ON)
 FetchContent_Declare(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
