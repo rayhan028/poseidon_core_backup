@@ -15,7 +15,7 @@ option(USE_PMDK         "Use Intel PMDK"                         ON)
 option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
 option(USE_LLVM         "Use LLVM for query compilation"         ON)
-option(USE_IN_MEMORY    "Use only in-memory storage"             ON)
+option(USE_IN_MEMORY    "Use only in-memory storage"             OFF)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
 option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
@@ -513,6 +513,7 @@ target_link_libraries(poseidon_core
   Boost::date_time
   Boost::thread
   spdlog::spdlog_header_only
+  fmt::fmt
   ${gunrock_linkLib}
   ${CUDA_LIB}
 )
