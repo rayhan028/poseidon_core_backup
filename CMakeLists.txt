@@ -729,6 +729,7 @@ add_executable(gtpc_generator
 target_link_libraries(gtpc_generator
   ${POSEIDON_GTPC}
   poseidon_core
+  fmt::fmt
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
