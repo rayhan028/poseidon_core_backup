@@ -28,6 +28,7 @@ add_executable(abort_insert
 target_link_libraries(abort_insert
   poseidon_core
   Catch2::Catch2WithMain
+  fmt::fmt
   ${PMDK_LIBRARIES}
 )
 
