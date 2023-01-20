@@ -227,7 +227,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(benchmark)
 
-
 if(USE_LLVM MATCHES ON)
 # LLVM ============================================================== #
 find_package(LLVM REQUIRED CONFIG)
@@ -637,6 +636,7 @@ add_executable(run_ldbc_bi
 target_link_libraries(run_ldbc_bi
   ${POSEIDON_LDBC}
   poseidon_core
+  fmt::fmt
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
@@ -651,6 +651,7 @@ target_link_libraries(run_ldbc_is
   ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
+  fmt::fmt
   Boost::program_options
 )
 
@@ -664,6 +665,7 @@ target_link_libraries(run_ldbc_updates
   ${POSEIDON_LDBC}
   poseidon_core
   ${PMDK_LIBRARIES}
+  fmt::fmt
   Boost::program_options
 )
 
@@ -677,6 +679,7 @@ add_executable(run_ldbc_jit_reads
 target_link_libraries(run_ldbc_jit_reads
   ${POSEIDON_LDBC}
   poseidon_core
+  fmt::fmt
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
@@ -690,6 +693,7 @@ add_executable(run_ldbc_jit_bi
 target_link_libraries(run_ldbc_jit_bi
   ${POSEIDON_LDBC}
   poseidon_core
+  fmt::fmt
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
@@ -712,6 +716,7 @@ add_executable(run_gtpc
 target_link_libraries(run_gtpc
   ${POSEIDON_GTPC}
   poseidon_core
+  fmt::fmt
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
@@ -749,6 +754,7 @@ add_executable(csv_loader
 
  target_link_libraries(csv_loader
  poseidon_core
+ fmt::fmt
  ${PMDK_LIBRARIES}
  Boost::program_options
 )
