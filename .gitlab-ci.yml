@@ -31,7 +31,7 @@ test:
     - pip install pytest --user
     - echo pass | sudo -S mkdir -m 777 -p /mnt/pmem0/poseidon
     - cd build
-    - ctest
+    - ctest --output-on-failure
   dependencies:
     - build
 
