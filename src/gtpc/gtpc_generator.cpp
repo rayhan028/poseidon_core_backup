@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
   }
 
   std::string wstr = (warehouses > 1) ? "warehouses" : "warehouse";
-  spdlog::info("--------- Generating GTPC data with {} " + wstr + " ... ", warehouses);
+  spdlog::info("--------- Generating GTPC data with {} {}", warehouses, wstr);
   auto start = std::chrono::steady_clock::now();
 
   GtpcGenerator generator((uint32_t)warehouses, directory);
