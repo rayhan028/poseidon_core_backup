@@ -49,10 +49,6 @@ set(CMAKE_MACOSX_RPATH 1)
 # include(code-coverage)
 # add_code_coverage()
 
-# Require C++20
-#include(c++-standards)
-#cxx_20()
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -222,13 +218,13 @@ FetchContent_MakeAvailable(CSV)
 FetchContent_MakeAvailable(spdlog)
 
 # Google Benchmark ============================================================== #
+set(BENCHMARK_ENABLE_TESTING OFF)
 FetchContent_Declare(
   benchmark
   GIT_REPOSITORY https://github.com/google/benchmark.git
   GIT_TAG        v1.6.1
   GIT_SHALLOW    TRUE
 )
-
 FetchContent_MakeAvailable(benchmark)
 
 
