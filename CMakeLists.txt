@@ -19,8 +19,6 @@ option(USE_IN_MEMORY    "Use only in-memory storage"             OFF)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
 option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
-option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
-option(BUILD_GTPC       "Build code for GTPC benchmark"          ON)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
 option(CSR_DELTA        "Use delta store for updating CSR"       OFF)
 option(USE_UPMEM        "Use UPMEM SDK for PIM"                  OFF)
@@ -137,9 +135,6 @@ include_directories(${PROJECT_SOURCE_DIR}/src/query/qmain)
 include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
-include_directories(${PROJECT_SOURCE_DIR}/src/ldbc)
-include_directories(${PROJECT_SOURCE_DIR}/src/gtpc)  
-include_directories(${PROJECT_SOURCE_DIR}/src/gtpc/graphgen)
 include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 include_directories(${PROJECT_SOURCE_DIR}/src/pool)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
@@ -217,16 +212,6 @@ FetchContent_MakeAvailable(CSV)
 
 FetchContent_MakeAvailable(spdlog)
 
-# Google Benchmark ============================================================== #
-set(BENCHMARK_ENABLE_TESTING OFF)
-FetchContent_Declare(
-  benchmark
-  GIT_REPOSITORY https://github.com/google/benchmark.git
-  GIT_TAG        v1.6.1
-  GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(benchmark)
-
 if(USE_LLVM MATCHES ON)
 # LLVM ============================================================== #
 find_package(LLVM REQUIRED CONFIG)
@@ -294,19 +279,18 @@ else()
   set(DYLIB_LIBRARY "")
 endif()
 
+#---------------------------------------------------------------------------
+
+
 ###########################
 # Python Interface
 ###########################
 #
 find_package(Python3 COMPONENTS Interpreter)
 
-#---------------------------------------------------------------------------
-
 if (BUILD_PYTHON)
 message(STATUS "PYTHON")
 find_package (Python3 COMPONENTS Interpreter Development)
-#  find_package(PythonInterp)
-#  find_package(PythonLibs)
   if (Python3_Development_FOUND)
     message(STATUS "Python Version ${PYTHON_VERSION_MAJOR} found - building the Python API.")
     message("PythonInclude ${Python3_INCLUDE_DIRS}")
@@ -441,6 +425,7 @@ set(src_files
   src/bp_file/bufferpool.cpp
   src/btree/index_map.cpp
   src/query/plan_op/qop.cpp
+  src/query/plan_op/qop_analytics.cpp
   src/query/expr/expression.cpp
   src/query/interp/expr_interpreter.cpp
   src/query/interp/qinterp.cpp
@@ -451,7 +436,7 @@ set(src_files
   src/query/qmain/qparser.cpp
   src/query/qmain/qplanner.cpp
   src/query/qmain/qproc.cpp
-  src/qop/query.cpp
+  src/qop/query_builder.cpp
   src/query/utils/query_printer.cpp
   src/query/utils/thread_pool.cpp
   src/query/utils/profiling.cpp
@@ -522,85 +507,6 @@ target_include_directories( ${PROJECT_NAME}
     PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
 
-#-------------------------------------------------------------------
-# Build library for LDBC benchmark
-#
-if(BUILD_LDBC MATCHES ON)
-
-set(ldbc_files
-  src/ldbc/ldbc_graphalytics.cpp
-  src/ldbc/ldbc_bi.cpp
-  src/ldbc/ldbc_is.cpp
-  src/ldbc/ldbc_updates.cpp
-  src/ldbc/ldbc_loader.cpp
-  src/ldbc/ldbc_deletes.cpp
-  src/ldbc/qps/ldbc_is_qp2.cpp
-  src/ldbc/qps/ldbc_is_qp3.cpp
-  src/ldbc/qps/ldbc_is_qp4.cpp
-  src/ldbc/qps/ldbc_is_qp5.cpp
-)
-
-# Using OBJECT to avoid to build object files multiple times due to inclusion
-# in different libraries.
-# macOS doesn't like SHARED, Linux needs it
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-add_library(poseidon_ldbc_obj OBJECT ${ldbc_files})
-else()
-add_library(poseidon_ldbc_obj OBJECT SHARED ${ldbc_files})
-endif()
-
-# Poseidon LDBC library for building C++ applications
-add_library(poseidon_ldbc SHARED
-  $<TARGET_OBJECTS:poseidon_ldbc_obj>
-)
-
-target_link_libraries(poseidon_ldbc
-  poseidon_core
-)
-
-set(POSEIDON_LDBC "poseidon_ldbc")
-else()
-set(POSEIDON_LDBC "")
-
-endif()
-
-#-------------------------------------------------------------------
-# Build library for GTPC benchmark
-#
-if(BUILD_GTPC MATCHES ON)
-
-set(gtpc_files
-  src/gtpc/gtpc_loader.cpp
-  src/gtpc/gtpc_olap.cpp
-  src/gtpc/gtpc_oltp.cpp
-  src/gtpc/graphgen/csv_writer.cpp
-  src/gtpc/graphgen/data_source.cpp
-  src/gtpc/graphgen/generator.cpp
-)
-
-# Using OBJECT to avoid to build object files multiple times due to inclusion
-# in different libraries.
-# macOS doesn't like SHARED, Linux needs it
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-add_library(poseidon_gtpc_obj OBJECT ${gtpc_files})
-else()
-add_library(poseidon_gtpc_obj OBJECT SHARED ${gtpc_files})
-endif()
-
-# Poseidon GTPC library for building C++ applications
-add_library(poseidon_gtpc SHARED
-  $<TARGET_OBJECTS:poseidon_gtpc_obj>
-)
-
-target_link_libraries(poseidon_gtpc
-  poseidon_core
-)
-set(POSEIDON_GTPC "poseidon_gtpc")
-else()
-set(POSEIDON_GTPC "")
-endif()
-
-
 if (BUILD_PYTHON)
 message("Build python ${PYTHON_SOURCES}")
 # Python Poseidon library for loading a module into the python3 interpreter
@@ -624,121 +530,6 @@ set_target_properties(poseidon PROPERTIES PREFIX "" SUFFIX ".so")
 endif()
 
 #-----------------------------------------------------------------------------------------
-#
-# Some programs for LDBC benchmarking.
-#
-
-if(BUILD_LDBC MATCHES ON)
-# The program for executing BI queries.
-#
-add_executable(run_ldbc_bi
-  src/cmds/ldbc/run_ldbc_bi.cpp
-)
-
-target_link_libraries(run_ldbc_bi
-  ${POSEIDON_LDBC}
-  poseidon_core
-  fmt::fmt
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-
-# The program for executing short read queries.
-#
-add_executable(run_ldbc_is
-  src/cmds/ldbc/run_ldbc_is.cpp
- )
-
-target_link_libraries(run_ldbc_is
-  ${POSEIDON_LDBC}
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  fmt::fmt
-  Boost::program_options
-)
-
-# The program for executing interactive update queries.
-#
-add_executable(run_ldbc_updates
-  src/cmds/ldbc/run_ldbc_updates.cpp
- )
-
-target_link_libraries(run_ldbc_updates
-  ${POSEIDON_LDBC}
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  fmt::fmt
-  Boost::program_options
-)
-
-if(USE_LLVM MATCHES ON)
-# The program for executing jitted short read queries.
-#
-add_executable(run_ldbc_jit_reads
-  src/ldbc/ldbc_jit_reads.cpp
- )
-
-target_link_libraries(run_ldbc_jit_reads
-  ${POSEIDON_LDBC}
-  poseidon_core
-  fmt::fmt
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-
-# The program for executing jitted bi queries.
-#
-add_executable(run_ldbc_jit_bi
-  src/ldbc/ldbc_jit_bi.cpp
- )
-
-target_link_libraries(run_ldbc_jit_bi
-  ${POSEIDON_LDBC}
-  poseidon_core
-  fmt::fmt
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-
-endif()
-
-endif()
-#-----------------------------------------------------------------------------------------
-#
-# Some programs for GTPC benchmarking.
-#
-
-if(BUILD_GTPC MATCHES ON)
-# The program for executing gtpc queries.
-#
-add_executable(run_gtpc
-  src/cmds/gtpc/run_gtpc.cpp
- )
-
-target_link_libraries(run_gtpc
-  ${POSEIDON_GTPC}
-  poseidon_core
-  fmt::fmt
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-
-add_executable(gtpc_generator
-  src/gtpc/gtpc_generator.cpp
- )
-
-target_link_libraries(gtpc_generator
-  ${POSEIDON_GTPC}
-  poseidon_core
-  fmt::fmt
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-
-endif()
-
-
-#-----------------------------------------------------------------------------------------
 
 add_executable(qlc
   src/cmds/qlc.cpp
@@ -748,7 +539,6 @@ add_executable(qlc
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
-  fmt::fmt
 )
 
 add_executable(csv_loader
@@ -757,7 +547,6 @@ add_executable(csv_loader
 
  target_link_libraries(csv_loader
  poseidon_core
- fmt::fmt
  ${PMDK_LIBRARIES}
  Boost::program_options
 )
@@ -775,20 +564,6 @@ add_executable(dpu_test
  ${DPU_LIB}
 )
 endif()
-#-----------------------------------------------------------------------------------------
-
-add_library(ldbc_udf SHARED
-  queries/ldbc/is/is_udf.cpp
-)
-
-target_link_libraries(ldbc_udf
-  ${LLVM_LIB}
-  Boost::filesystem
-  Boost::date_time
-  Boost::thread
-  poseidon_core
-  ${PMDK_LIBRARIES}
-)
 
 #-----------------------------------------------------------------------------------------
 #
@@ -796,12 +571,6 @@ target_link_libraries(ldbc_udf
 #
 enable_testing()
 add_subdirectory(test)
-
-#-----------------------------------------------------------------------------------------
-#
-# Micro-benchmarking using Google Benchmark
-#
-add_subdirectory(bench)
 
 #-----------------------------------------------------------------------------------------
 

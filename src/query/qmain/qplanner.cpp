@@ -34,7 +34,7 @@ query_set qplanner::transform(query_ctx& ctx, ast_op_ptr op_tree) {
     auto qop_p = ast_to_qplan(ctx.gdb_, op_tree, sources);
     query_set qset;
     for (auto& src : sources) {
-        query q(ctx, src);
+        query_builder q(ctx, src);
         qset.add(q);
     }
     return qset;

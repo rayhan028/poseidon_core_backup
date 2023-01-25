@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -17,17 +17,18 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef query_hpp_
-#define query_hpp_
+#ifndef query_builder_hpp_
+#define query_builder_hpp_
 
 #include <initializer_list>
 
 #include "graph_db.hpp"
 #include "query_ctx.hpp"
 #include "qop.hpp"
+#include "qop_analytics.hpp"
 
 /**
- * The query class allows to construct a plan for executing a graph query in dot
+ * The query_builder class allows to construct a plan for executing a graph query in dot
  * notation. The individual methods represent plan operators which can be
  * combined into a query. Example: auto q = query(graph) .all_nodes()
  *            .from_relationships()
@@ -37,34 +38,34 @@
  *            .print();
  *   q.start();
  */
-class query {
+class query_builder {
   friend class query_set;
 public:
   /**
    * Constructor for a query on the given graph database.
    */
-  query(query_ctx& ctx) : ctx_(ctx) {}
+  query_builder(query_ctx& ctx) : ctx_(ctx) {}
 
-  query(query_ctx& ctx, qop_ptr qop);
+  query_builder(query_ctx& ctx, qop_ptr qop);
 
   /**
    * Default destructor.
    */
-  ~query() = default;
+  ~query_builder() = default;
 
-  query &operator=(const query &);
+  query_builder &operator=(const query_builder &);
 
   /**
    * Add a scan over all nodes (optionally with the given label = type).
    */
-  query &all_nodes(const std::string &label = "");
-  query &all_nodes(std::map<std::size_t, std::vector<std::size_t>> &range_map, const std::string &label = "");
+  query_builder &all_nodes(const std::string &label = "");
+  query_builder &all_nodes(std::map<std::size_t, std::vector<std::size_t>> &range_map, const std::string &label = "");
 
   /**
    * Add a scan over all nodes with the label which satisfy the given predicate
    * on the property with the given key.
    */
-  query &nodes_where(const std::string &label, const std::string &key,
+  query_builder &nodes_where(const std::string &label, const std::string &key,
                      std::function<bool(const p_item &)> pred);
   
   /**
@@ -72,15 +73,15 @@ public:
    * on the property with the given key. This is for entity objects belonging to the same
    * abstract entity (e.g. Post and Comment are sub-classes of Message)
    */
-  query &nodes_where(const std::vector<std::string> &labels, const std::string &key,
+  query_builder &nodes_where(const std::vector<std::string> &labels, const std::string &key,
                      std::function<bool(const p_item &)> pred);
 
   /**
    * Add an index scan over nodes where the key is equal to the given value. 
    */
-  query &nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val);
+  query_builder &nodes_where_indexed(const std::string &label, const std::string &prop, uint64_t val);
 
-  query &nodes_where_indexed(const std::vector<std::string> &labels,
+  query_builder &nodes_where_indexed(const std::vector<std::string> &labels,
                               const std::string &prop, uint64_t val);
 
   /**
@@ -89,9 +90,9 @@ public:
    * checked, too. 2) Nodes that were already explored, i.e. other than the frontier,
    * can also be re-explored, given their position.
    */
-  query &to_relationships(const std::string &label = "",
+  query_builder &to_relationships(const std::string &label = "",
                           int pos = std::numeric_limits<int>::max());
-  query &to_relationships(std::pair<int, int> range,
+  query_builder &to_relationships(std::pair<int, int> range,
                           const std::string &label = "",
                           int pos = std::numeric_limits<int>::max());
 
@@ -101,10 +102,10 @@ public:
    * checked, too. 2) Nodes that were already explored, i.e. other than the frontier,
    * can also be re-explored, given their position.
    */
-  query &from_relationships(const std::string &label = "",
+  query_builder &from_relationships(const std::string &label = "",
                             int pos = std::numeric_limits<int>::max());
 
-  query &from_relationships(std::pair<int, int> range,
+  query_builder &from_relationships(std::pair<int, int> range,
                             const std::string &label = "",
                             int pos = std::numeric_limits<int>::max());
 
@@ -114,10 +115,10 @@ public:
    * checked, too. 2) Nodes that were already explored, i.e. other than the frontier,
    * can also be re-explored, given their position.
    */
-  query &all_relationships(const std::string &label = "",
+  query_builder &all_relationships(const std::string &label = "",
                             int pos = std::numeric_limits<int>::max());
 
-  query &all_relationships(std::pair<int, int> range,
+  query_builder &all_relationships(std::pair<int, int> range,
                             const std::string &label = "",
                             int pos = std::numeric_limits<int>::max());
 
@@ -127,43 +128,43 @@ public:
    * node/relationship that was processed, i.e. in a pattern like
    * (n1:Node)-[r:Relationship]->(n2:Node) it refers to the node n2.
    */
-  query &property(const std::string &key,
+  query_builder &property(const std::string &key,
                   std::function<bool(const p_item &)> pred);
 
-  query &filter(const expr &ex);
+  query_builder &filter(const expr &ex);
 
   /**
    * Add an operator the retrieves the node at the destination side of the
    * currently processed relationship with an optional filter for label(s).
    */
-  query &to_node(const std::string &label = "");
+  query_builder &to_node(const std::string &label = "");
 
-  query &to_node(const std::vector<std::string> &labels);
+  query_builder &to_node(const std::vector<std::string> &labels);
 
   /**
    * Add an operator the retrieves the node at the source side of the
    * currently processed relationship with an optional filter for label(s).
    */
-  query &from_node(const std::string &label = "");
+  query_builder &from_node(const std::string &label = "");
 
-  query &from_node(const std::vector<std::string> &labels);
+  query_builder &from_node(const std::vector<std::string> &labels);
 
   /**
    * Add a filter operator that checks whether the last node/relationship
    * in the result has the given label.
    */
-  query &has_label(const std::string &label);
+  query_builder &has_label(const std::string &label);
 
   /**
    * Add a filter operator that checks whether the last node/relationship
    * in the result has one of the given labels.
    */
-  query &has_label(const std::vector<std::string> &labels);
+  query_builder &has_label(const std::vector<std::string> &labels);
 
   /**
    * Add a limit operator that produces only the first n result elements.
    */
-  query &limit(std::size_t n);
+  query_builder &limit(std::size_t n);
 
   /**
    * Add an operator that appends the relationship object between a source and a
@@ -172,20 +173,20 @@ public:
    * When no relationship exist between them, the boolean b sets whether a
    * null_t is appended instead (true) or not (false)
    */
-  query &rship_exists(std::pair<int, int> src_des, bool append_null = true);
+  query_builder &rship_exists(std::pair<int, int> src_des, bool append_null = true);
 
   /**
    * Add a projection operator that applies the given list of projection
    * functions to the query result.
    */
-  query &project(const projection::expr_list &exprs);
+  query_builder &project(const projection::expr_list &exprs);
 
-  query &project(std::vector<projection_expr> prexpr);
+  query_builder &project(std::vector<projection_expr> prexpr);
 
   /**
    * Add an operator for sorting the results.
    */
-  query &orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp);
+  query_builder &orderby(std::function<bool(const qr_tuple &, const qr_tuple &)> cmp);
 
   /**
    * Add an operator for grouping and optional aggregation. The positions of the 
@@ -194,10 +195,10 @@ public:
    * attribute(s) (in the tuple) to be aggregated are given as the vector of 
    * string-int pairs aggrs.
    */
-  query &groupby(const std::vector<std::size_t> &pos);
-  query &groupby(const std::vector<std::size_t> &pos,
+  query_builder &groupby(const std::vector<std::size_t> &pos);
+  query_builder &groupby(const std::vector<std::size_t> &pos,
     const std::vector<std::pair<std::string, std::size_t>> &aggrs);
-  query &groupby(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
+  query_builder &groupby(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
     const std::vector<std::pair<std::string, std::size_t>> &aggrs);
   
 
@@ -205,81 +206,81 @@ public:
    * Add an operator for eliminating duplicates in result tuples.
    * Resulting tuples are distinct tuples.
    */
-  query &distinct();
+  query_builder &distinct();
 
   /**
    * Add an operator to filter projected result tuples based on the pred function.
    */
-  query &where_qr_tuple(std::function<bool(const qr_tuple &)> pred);
+  query_builder &where_qr_tuple(std::function<bool(const qr_tuple &)> pred);
 
   /**
    * Add an operator that applies a function on multiple query results in the 
    * same query tuple and appends the result to the tuple.
    */
-  query &append_to_qr_tuple(std::function<query_result(const qr_tuple &)> func);
+  query_builder &append_to_qr_tuple(std::function<query_result(const qr_tuple &)> func);
 
   /**
    * Add an operator to unions all the query tuples of the left query 
    * pipeline and the right query pipeline(s).
    */
-  query &union_all(query &other);
+  query_builder &union_all(query_builder &other);
 
-  query &union_all(std::initializer_list<query *> queries);
+  query_builder &union_all(std::initializer_list<query_builder *> queries);
 
   /**
    * Add an operator to count the number of tuples in the pipeline.
    */
-  query &count();
+  query_builder &count();
 
   /**
    * Add a print operator for outputting the query results to cout.
    */
-  query &print();
+  query_builder &print();
 
   /**
    * Add an operator for collecting the query results in the given result_set
    * object.
    */
-  query &collect(result_set &rs);
+  query_builder &collect(result_set &rs);
 
   /**
    * Ends a query pipeline.
    */
-  query &finish();
+  query_builder &finish();
 
 #ifdef QOP_RECOVERY
   /**
    * Add an operator for recovering stored intermediate results 
    * and pushing them to the query pipeline.
    */
-  query &recover_results();
+  query_builder &recover_results();
 
   /**
    * Perists intermediate tuple results
    */
-  query &persist();
+  query_builder &persist();
 
   /**
    * Add an operator to continue a sequential scan starting from given checkpoint positions
    */
-  query &continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label = "");
+  query_builder &continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label = "");
 
   /**
    * Add an operator to group query tuples where the intermediate results stored in PMem
    */
-  query &pgroupby(const std::vector<std::size_t> &pos,
+  query_builder &pgroupby(const std::vector<std::size_t> &pos,
     const std::vector<std::pair<std::string, std::size_t>> &aggrs);
 
   /**
    * Add an operator to intentionally crash a query after a certain tuple count
    */
-  query &crash(std::size_t n);
+  query_builder &crash(std::size_t n);
 #endif 
   /**
    * Add an operator for constructing the cartesian product of the query tuples 
    * of the left and right query pipelines.
    */
-  query &crossjoin(query &other);
+  query_builder &crossjoin(query_builder &other);
 
   /**
    * Add a nested loop join operator for merging tuples of two
@@ -287,7 +288,7 @@ public:
    * is the same as the node at another given position in the right tuple.
    * The node positions are specified by the pos pair. 
    */
-  query &join_on_node(std::pair<int, int> left_right, query &other);
+  query_builder &join_on_node(std::pair<int, int> left_right, query_builder &other);
 
   /**
    * Add a hash join operator for merging tuples of two
@@ -295,13 +296,13 @@ public:
    * is the same as the node at another given position in the right tuple.
    * The node positions are specified by the pos pair. 
    */
-  query &hashjoin_on_node(std::pair<int, int> left_right, query &other);
+  query_builder &hashjoin_on_node(std::pair<int, int> left_right, query_builder &other);
 
   /**
    * Add a left outerjoin operator for merging tuples of two queries based 
    * on the given join condition. Dangling tuples are padded with "null_val" 
    */
-  query &outerjoin(query &other, std::function<bool(const qr_tuple &, const qr_tuple &)> pred);
+  query_builder &outerjoin(query_builder &other, std::function<bool(const qr_tuple &, const qr_tuple &)> pred);
 
   /**
    * Add a left outerjoin operator for merging tuples of two queries if the node
@@ -309,7 +310,7 @@ public:
    * given position in the right tuple. The node positions are specified by the
    * pos pair. Dangling tuples are padded with "NULL" consume_(gdb, {&n});
    */
-  query &outerjoin_on_node(const std::pair<int, int> &left_right, query &other);
+  query_builder &outerjoin_on_node(const std::pair<int, int> &left_right, query_builder &other);
 
   /**
    * Add a join operator for merging tuples of two 
@@ -318,7 +319,7 @@ public:
    * and an object (at a given position) in the right tuple as 
    * the destination node 
    */
-  query &join_on_rship(std::pair<int, int> src_des, query &other);
+  query_builder &join_on_rship(std::pair<int, int> src_des, query_builder &other);
 
   /**
    * Add a left outerjoin operator for merging tuples of two 
@@ -327,7 +328,7 @@ public:
    * and an object (at a given position) in the right tuple as 
    * the destination node 
    */
-  query &outerjoin_on_rship(std::pair<int, int> src_des, query &other);
+  query_builder &outerjoin_on_rship(std::pair<int, int> src_des, query_builder &other);
 
   /**
    * Add an operator to find the unweighted shortest path between the pair 
@@ -339,7 +340,7 @@ public:
    * path.
    * all_spaths specfies if all shortest path of equal distance are searched.
   */
-  query &algo_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+  query_builder &algo_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
         rship_predicate rpred, bool bidirectional = false, bool all_spaths = false);
 
   /**
@@ -353,7 +354,7 @@ public:
    * query tuple.
    * all_spaths specfies if all shortest path of equal weight are searched.
   */
-  query &algo_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+  query_builder &algo_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
         rship_predicate rpred, rship_weight weight, bool bidirectional = false,
         bool all_spaths = false);
 
@@ -361,17 +362,17 @@ public:
   /**
    * Add an operator for Breadth-First Search algorithm leveraging Gunrock.
   */
-  query &gunrock_bfs(std::size_t start, bool bidirectional = false);
+  query_builder &gunrock_bfs(std::size_t start, bool bidirectional = false);
 
   /**
    * Add an operator for Single-Source Shortest Path algorithm leveraging Gunrock.
   */
-  query &gunrock_sssp(std::size_t start, rship_weight weight, bool bidirectional = false);
+  query_builder &gunrock_sssp(std::size_t start, rship_weight weight, bool bidirectional = false);
 
   /**
    * Add an operator for PageRank algorithm leveraging Gunrock.
   */
-  query &gunrock_pr(bool bidirectional = false);
+  query_builder &gunrock_pr(bool bidirectional = false);
 #endif
 
   /**
@@ -384,7 +385,7 @@ public:
    * The operator appends the total weight of the shortest path to the
    * query tuple.
   */
-  query &algo_k_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
+  query_builder &algo_k_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
       std::size_t k, rship_predicate rpred, rship_weight weight, bool bidirectional = false);
 
   /**
@@ -396,13 +397,13 @@ public:
    * are considered (false) or both outgoing and incoming relationships 
    * are considered (true).
   */
-  query &csr(rship_weight weight, bool bidirectional = false,
+  query_builder &csr(rship_weight weight, bool bidirectional = false,
              std::size_t pos = std::numeric_limits<std::size_t>::max());
 
   /**
    * Add an operator for invoking a LUA function as part of the query.
    */
-  /* query &call_lua(const std::string &proc_name,
+  /* query_builder &call_lua(const std::string &proc_name,
                   const std::vector<std::size_t> &params);
    */
 
@@ -411,13 +412,13 @@ public:
   /**
    * Add an operator for creating a node.
    */
-  query &create(const std::string &label, const properties_t &props);
+  query_builder &create(const std::string &label, const properties_t &props);
 
   /**
    * Add an operator for creating a relationship that connects two nodes 
    * at any given positions in the result.
    */
-  query &create_rship(std::pair<int, int> src_des, const std::string &label,
+  query_builder &create_rship(std::pair<int, int> src_des, const std::string &label,
                         const properties_t &props);
 
   /**
@@ -427,13 +428,13 @@ public:
    * node by default) is at the last position in the right query. The default 
    * relationship direction can be changed via a flag..
    */
-  query &create_rship(query &other, int l_node_pos, const std::string &label,
+  query_builder &create_rship(query_builder &other, int l_node_pos, const std::string &label,
                         const properties_t &props, bool src_to_des = true);
 
   /**
    *  Add an operator for updating a node.
    */
-  query &update(std::size_t var, properties_t &props);
+  query_builder &update(std::size_t var, properties_t &props);
 
   /**
    * Add an operator for deleting the last node in a query tuple.
@@ -441,21 +442,21 @@ public:
    * The optional pos specifies a node to be deleted at other
    * positions in the tuple.
    */
-  query &delete_detach(const std::size_t pos = std::numeric_limits<std::size_t>::max());
+  query_builder &delete_detach(const std::size_t pos = std::numeric_limits<std::size_t>::max());
 
   /**
    * Add an operator for deleting the last node in a query tuple.
    * The optional pos specifies a node to be deleted at other
    * positions in the tuple.
    */
-  query &delete_node(const std::size_t pos = std::numeric_limits<std::size_t>::max());
+  query_builder &delete_node(const std::size_t pos = std::numeric_limits<std::size_t>::max());
 
   /**
    * Add an operator for deleting the last relationship in a query tuple.
    * The optional pos specifies a relationship to be deleted at other
    * positions in the tuple.
    */
-  query &delete_rship(const std::size_t pos = std::numeric_limits<std::size_t>::max());
+  query_builder &delete_rship(const std::size_t pos = std::numeric_limits<std::size_t>::max());
 
   /*-------------------------------------------------------------------*/
 
@@ -469,8 +470,8 @@ public:
    */
   void print_plan(std::ostream& os = std::cout);
 
-  static void start(std::initializer_list<query *> queries);
-  static void print_plans(std::initializer_list<query *> queries, std::ostream& os = std::cout);
+  static void start(std::initializer_list<query_builder *> queries);
+  static void print_plans(std::initializer_list<query_builder *> queries, std::ostream& os = std::cout);
 
   void extract_args();
   /**
@@ -481,8 +482,8 @@ public:
   qop_ptr &plan_head() { return plan_head_; }
 
 private:
-  query &append_op(qop_ptr op, qop::consume_func cf, qop::finish_func ff);
-  query &append_op(qop_ptr op, qop::consume_func cf);
+  query_builder &append_op(qop_ptr op, qop::consume_func cf, qop::finish_func ff);
+  query_builder &append_op(qop_ptr op, qop::consume_func cf);
 
   qop_ptr plan_head_, plan_tail_;
   // graph_db_ptr graph_db_;

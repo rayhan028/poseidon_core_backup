@@ -218,7 +218,7 @@ class BPTree {
    * Print the structure and content of the B+ tree to stdout.
    */
   void print() const {
-    std::cout << "rootNode #" << rootPid << std::endl;
+    std::cout << "rootNode #" << rootPid << "(" << depth << ")" << std::endl;
     if (depth == 0) {
       // the trivial case
       printLeafNode(0, reinterpret_cast<LeafNode *>(rootNode));
@@ -892,6 +892,9 @@ class BPTree {
     SplitInfo childSplitInfo;
     bool split = false, hasSplit = false;
 
+    if (node == nullptr)
+      print();
+    assert(node != nullptr);
     auto pos = lookupPositionInBranchNode(node, key);
     auto pid = node->children[pos];
     auto n = load_node(pid);
@@ -980,6 +983,7 @@ class BPTree {
                                          const KeyType &key) const {
     // we perform a simple linear search, perhaps we should try a binary
     // search instead?
+    assert(node != nullptr);
     unsigned int pos = 0;
     const unsigned int num = node->numKeys;
     for (; pos < num && node->keys[pos] <= key; pos++)
@@ -1000,6 +1004,7 @@ class BPTree {
                                         const KeyType &key) const {
     // we perform a simple linear search, perhaps we should try a binary
     // search instead?
+    assert(node != nullptr);
     unsigned int pos = 0;
     const unsigned int num = node->numKeys;
     for (; pos < num && node->keys[pos] < key; pos++)

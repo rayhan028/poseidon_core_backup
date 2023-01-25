@@ -4,6 +4,7 @@
 #include "qop.hpp"
 #include "join.hpp"
 #include "qop_visitor.hpp"
+#include "jit/p_context.hpp"
 
 void get_rhs_type(qop_ptr  &qop, std::vector<int> &typv);
 

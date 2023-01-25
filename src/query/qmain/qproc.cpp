@@ -90,7 +90,7 @@ bool qproc::load_library(const std::string& lib_path) {
 class prepare_expr_visitor : public expression_visitor {
 public:
     prepare_expr_visitor(query_ctx& ctx, std::shared_ptr<boost::dll::shared_library> udf_lib) : 
-        ctx_(ctx), udf_lib_(udf_lib) {}
+        udf_lib_(udf_lib) {}
     ~prepare_expr_visitor() = default;
 
     void visit(int rank, std::shared_ptr<func_call> op) override {
@@ -104,7 +104,6 @@ public:
         }
     }
 private:
-    query_ctx& ctx_;
     std::shared_ptr<boost::dll::shared_library> udf_lib_;
 };
 

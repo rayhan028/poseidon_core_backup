@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -32,17 +32,17 @@ bufferpool::~bufferpool() {
 }
 
 void bufferpool::register_file(uint8_t file_id, paged_file_ptr pf) {
-    assert(file_id < 10);
+    assert(file_id < MAX_PFILES);
     files_[file_id] = pf;
 }
 
 paged_file_ptr bufferpool::get_file(uint8_t file_id) {
-    assert(file_id < 10 && files_[file_id]);
+    assert(file_id < MAX_PFILES && files_[file_id]);
     return files_[file_id];
 }
 
 void bufferpool::scan_file(uint8_t file_id, std::function<void(page *p)> cb) {
-    assert(file_id < 10 && files_[file_id]);
+    assert(file_id < MAX_PFILES && files_[file_id]);
     auto pos = slots_.find_first();
     if (pos == boost::dynamic_bitset<>::npos) {
         evict_page();
@@ -57,7 +57,7 @@ void bufferpool::scan_file(uint8_t file_id, std::function<void(page *p)> cb) {
 }
  
 std::pair<page*, paged_file::page_id> bufferpool::last_valid_page(uint8_t file_id) {
-    assert(file_id < 10 && files_[file_id]);
+    assert(file_id < MAX_PFILES && files_[file_id]);
     auto pid = files_[file_id]->last_valid_page();
     return std::make_pair(fetch_page(pid | (static_cast<uint64_t>(file_id) << 60)), pid);
 }
@@ -88,7 +88,7 @@ page *bufferpool::fetch_page(paged_file::page_id pid) {
 }
     
 std::pair<page*, paged_file::page_id> bufferpool::allocate_page(uint8_t file_id) {
-    assert(file_id < 10 && files_[file_id]);
+    assert(file_id < MAX_PFILES && files_[file_id]);
     paged_file::page_id pid = files_[file_id]->allocate_page();
     spdlog::debug("bufferpool::allocate_page -> {} in file {} -> {}", pid, file_id, (pid | (static_cast<uint64_t>(file_id) << 60)));
     return std::make_pair(fetch_page(pid | (static_cast<uint64_t>(file_id) << 60)), pid);
@@ -101,7 +101,7 @@ void bufferpool::free_page(paged_file::page_id pid) {
     if (iter != ptable_.end()) {
         auto raw_pid = pid & 0xFFFFFFFFFFFFFFF;
         auto file_id = (pid & 0xF000000000000000) >> 60;
-        assert(file_id < 10 && files_[file_id]);
+        assert(file_id < MAX_PFILES && files_[file_id]);
         spdlog::debug("free_page: #{}(raw:{}|file_id:{})", pid, raw_pid, file_id);
         memset(iter->second.p_, 0, sizeof(PAGE_SIZE));
         ptable_.erase(pid);
@@ -198,7 +198,7 @@ std::pair<page *, std::size_t> bufferpool::load_page_from_file(paged_file::page_
 
     // select file
     auto file_id = (pid & 0xF000000000000000) >> 60;
-    assert(file_id < 10 && files_[file_id]);
+    assert(file_id < MAX_PFILES && files_[file_id]);
     files_[file_id]->read_page(raw_pid, buffer_[pos]);
     spdlog::debug("read page {}|{} from file {}", pid, raw_pid, file_id);
     return std::make_pair(&(buffer_[pos]), pos);
@@ -207,7 +207,7 @@ std::pair<page *, std::size_t> bufferpool::load_page_from_file(paged_file::page_
 void bufferpool::write_page_to_file(paged_file::page_id pid, page *pg) {
     auto raw_pid = pid & 0xFFFFFFFFFFFFFFF;
     auto file_id = (pid & 0xF000000000000000) >> 60;
-    assert(file_id < 10 && files_[file_id]);
+    assert(file_id < MAX_PFILES && files_[file_id]);
     spdlog::debug("write page {}|{} to file {}", pid, raw_pid, file_id);
     files_[file_id]->write_page(raw_pid, *pg);
 }

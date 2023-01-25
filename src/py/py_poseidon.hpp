@@ -23,7 +23,7 @@
 #include "defs.hpp"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
-#include "query.hpp"
+#include "query_builder.hpp"
 
 #include <pybind11/pybind11.h>
 

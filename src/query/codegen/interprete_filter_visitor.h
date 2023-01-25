@@ -3,7 +3,7 @@
 
 #include "qcompiler.hpp"
 #include "expression.hpp"
-#include "query.hpp"
+#include "query_builder.hpp"
 
 class interprete_filter_visitor : public expression_visitor {
     dcode_t dict_value_;

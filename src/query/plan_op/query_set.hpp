@@ -20,7 +20,7 @@
 #ifndef query_set_hpp_
 #define query_set_hpp_
 
-#include "query.hpp"
+#include "query_builder.hpp"
 
 namespace ph = std::placeholders;
 
@@ -33,10 +33,10 @@ class query_set {
 public:
   query_set() = default;
 
-  void add(query &q) { queries_.push_back(q); }
+  void add(query_builder &q) { queries_.push_back(q); }
   std::size_t size() const { return queries_.size(); }
-  query& front() { return queries_.front(); }
-  query &at(std::size_t i) { return queries_[i];  }
+  query_builder& front() { return queries_.front(); }
+  query_builder &at(std::size_t i) { return queries_[i];  }
   bool empty() const { return queries_.empty(); }
 
   void accept(qop_visitor& visitor);
@@ -55,7 +55,7 @@ public:
   void print_plan(std::ostream& os = std::cout);
 
 private:
-  std::vector<query> queries_;
+  std::vector<query_builder> queries_;
 };
 
 #endif

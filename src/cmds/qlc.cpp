@@ -1,6 +1,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <filesystem>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -134,10 +135,10 @@ void print_result(qresult_iterator& qres) {
  * Execute the query given as string. If qex_cc is set to true then the
  * query is compiled using LLVM, otherwise the query interpreter is used.
  */
-void exec_query(const std::string &qstr, qproc::mode qmode) {
+void exec_query(const std::string &qstr, qproc::mode qmode, bool print_plan) {
   try {
   auto start_qp = std::chrono::steady_clock::now();
-  auto res = qproc_ptr->execute_and_output_query(qmode, qstr, true);
+  qproc_ptr->execute_and_output_query(qmode, qstr, print_plan);
   auto end_qp = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> diff = end_qp - start_qp;
@@ -187,13 +188,14 @@ void sync_db(graph_db_ptr &gdb) {
 
 void show_help() {
   std::cout << "Available commands:\n"
-            << "\thelp          " << "show this help" << "\n"
-            << "\tstring s      " << "display the dictionary code of the string s" << "\n"
-            << "\tcode c        " << "display the string of the dictionary code c" << "\n"
-            << "\tstats         " << "print database statistics" << "\n"
-            << "\tsync          " << "ensure that all pages are written to disk" << "\n"
-            << "\t@file         " << "execute the query stored in the given file" << "\n"
-            << "\t<query-expr>  " << "execute the given query" << std::endl;
+            << "\thelp                  " << "show this help" << "\n"
+            << "\tstring s              " << "display the dictionary code of the string s" << "\n"
+            << "\tcode c                " << "display the string of the dictionary code c" << "\n"
+            << "\tstats                 " << "print database statistics" << "\n"
+            << "\tsync                  " << "ensure that all pages are written to disk" << "\n"
+            << "\t@file                 " << "execute the query stored in the given file" << "\n"
+            << "\texplain <query-expr>  " << "execute the given query and print the plan" << "\n"
+            << "\t<query-expr>          " << "execute the given query" << std::endl;
 }
 
 /**
@@ -226,7 +228,7 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
 
     if (line.rfind("@", 0) == 0) {
       auto query_string = read_from_file(line.substr(1));
-      exec_query(query_string, qmode);
+      exec_query(query_string, qmode, false);
     } 
 #if USE_LLVM    
     else if(line.rfind("set", 0) == 0) { // save sub-query: > q1:End(NodeScan("Person"))
@@ -235,7 +237,7 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
     } else if(line.rfind("run", 0) == 0) { // run saved query plan -> run:q1
       spdlog::info("Execute query: {} ", line.substr(line.find(":") + 1));
       //qlc.exec_plan(line.substr(line.find(":") + 1), gdb);
-      exec_query(line.substr(line.find(":") + 1), qmode);
+      exec_query(line.substr(line.find(":") + 1), qmode, false);
     }
 #endif
     else if (line.rfind("help", 0) == 0) {
@@ -263,8 +265,12 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
         std::cout << "dict string for '" << s << "': " << gdb->get_dictionary()->lookup_code(std::stoi(s)) << std::endl;
       }
     }
+    else if (line.rfind("explain ", 0) == 0) {
+      auto qstr = line.substr(8);
+      exec_query(qstr, qmode, true);
+    }
     else
-      exec_query(line, qmode);
+      exec_query(line, qmode, false);
 
     // Add line to history
     linenoise::AddHistory(line.c_str());
@@ -279,7 +285,6 @@ int main(int argc, char* argv[]) {
   std::string db_name, pool_path, query_file, dot_file, qmode_str, format = "ldbc";
   std::vector<std::string> import_files;
   bool start_shell = false;
-  bool n4j_mode = false;
   qproc::mode qmode = qproc::Compile; 
   char delim_character = ',';
   bool strict = false;
@@ -306,6 +311,9 @@ int main(int argc, char* argv[]) {
 
     variables_map vm;
     store(parse_command_line(argc, argv, desc), vm);
+    std::filesystem::path config_file(getenv("HOME") + std::string("/poseidon.ini"));
+    std::ifstream ifs(config_file.string());
+    store(parse_config_file(ifs, desc), vm);
 
     if (vm.count("help")) {
       std::cout << "Poseidon Graph Database Version " << POSEIDON_VERSION << " ("
@@ -418,7 +426,7 @@ int main(int argc, char* argv[]) {
   if (!query_file.empty()) {
     // load the query from the file
     auto query_string = read_from_file(query_file);
-    exec_query(query_string, qmode);
+    exec_query(query_string, qmode, false);
   }
 }
  

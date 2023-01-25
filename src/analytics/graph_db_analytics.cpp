@@ -22,7 +22,7 @@
 #include "graph_db.hpp"
 #include "parser.hpp"
 #include "spdlog/spdlog.h"
-#include "query.hpp"
+#include "query_builder.hpp"
 #ifdef USE_GUNROCK
 #include "graph_db_analytics.cu"
 #endif
@@ -156,7 +156,7 @@ void graph_db::parallel_host_csr_build(csr_arrays &csr, rship_weight weight_func
   result_set rs;
   graph_db_ptr gptr(this);
   query_ctx ctx(gptr);
-  auto q = query(ctx)
+  auto q = query_builder(ctx)
                 .all_nodes()
                 .csr(weight_func, bidirectional)
                 .orderby([&](const qr_tuple q1, const qr_tuple q2) {

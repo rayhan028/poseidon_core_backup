@@ -25,7 +25,7 @@
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
 #include "qop.hpp"
-#include "query.hpp"
+#include "query_builder.hpp"
 
 #include <set>
 #include <iostream>

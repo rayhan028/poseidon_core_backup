@@ -3,7 +3,9 @@
 #define CATCH_CONFIG_CONSOLE_WIDTH 160
 
 #include <iostream>
+#include <fstream>
 #include <catch2/catch_test_macros.hpp>
+#include "spdlog/spdlog.h"
 #include "qparser.hpp"
 #include "ast.hpp"
 

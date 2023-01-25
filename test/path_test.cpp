@@ -23,7 +23,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "config.h"
 #include "qop.hpp"
-#include "query.hpp"
+#include "query_builder.hpp"
 #include "graph_pool.hpp"
 
 using namespace boost::posix_time;
