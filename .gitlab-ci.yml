@@ -17,7 +17,7 @@ build:
     - make -j 3
     # clean up unnecessary files and strip binaries
     - rm -rf _deps 
-    - strip bench/*_bench test/*_test
+    - strip test/*_test
   artifacts:
     paths:
       - build/
