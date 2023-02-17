@@ -317,9 +317,23 @@ public:
         }
     }
 
-    virtual void visit(int rank, std::shared_ptr<and_predicate> op) override {}
+    virtual void visit(int rank, std::shared_ptr<and_predicate> op) override {
+        if (valid_operands()) {
+            auto v2 = pop(stack_);
+            auto v1 = pop(stack_);
+            bool res = boost::get<int>(v1) && boost::get<int>(v2);
+            stack_.push(query_result(res ? 1 : 0));
+        }
+    }
 
-    virtual void visit(int rank, std::shared_ptr<or_predicate> op) override {}
+    virtual void visit(int rank, std::shared_ptr<or_predicate> op) override {
+         if (valid_operands()) {
+            auto v2 = pop(stack_);
+            auto v1 = pop(stack_);
+            bool res = boost::get<int>(v1) || boost::get<int>(v2);
+            stack_.push(query_result(res ? 1 : 0));
+        }       
+    }
 
     virtual void visit(int rank, std::shared_ptr<call_predicate> op) override {}
 

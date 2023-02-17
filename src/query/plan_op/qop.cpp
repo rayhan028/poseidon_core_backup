@@ -81,6 +81,26 @@ int qop::get_property_value<int>(query_ctx &ctx, const qr_tuple& v, std::size_t 
 }
 
 template <>
+uint64_t qop::get_property_value<uint64_t>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const {
+  uint64_t res = 0;
+  auto qv = get_property_value(ctx, v, var, prop);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = (int)qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = (int)qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
 double qop::get_property_value<double>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const {
   double res = 0;
   auto qv = get_property_value(ctx, v, var, prop);
@@ -581,6 +601,8 @@ void aggregate::init_aggregates() {
           aggr_vals_[i] = std::numeric_limits<double>::max();
         else if (ex.aggr_type == 4)
           aggr_vals_[i] = std::string("~~~~~~~~~~~~~~~");
+        else if (ex.aggr_type == 5)
+          aggr_vals_[i] = (uint64_t)std::numeric_limits<uint64_t>::max();
         break;
       case expr::f_max:
         if (ex.aggr_type == 2)
@@ -589,6 +611,8 @@ void aggregate::init_aggregates() {
           aggr_vals_[i] = std::numeric_limits<double>::min();
         else if (ex.aggr_type == 4)
           aggr_vals_[i] = std::string("                ");
+        else if (ex.aggr_type == 5)
+          aggr_vals_[i] = (uint64_t)std::numeric_limits<uint64_t>::min();
         break;
       default:
         break;
@@ -645,15 +669,20 @@ void aggregate::process(query_ctx &ctx, const qr_tuple &v) {
           aggr_vals_[i] = std::min(boost::get<double>(aggr_vals_[i]), get_property_value<double>(ctx, v, ex.var, ex.property));
         else if (ex.aggr_type == 4)
           aggr_vals_[i] = std::min(boost::get<std::string>(aggr_vals_[i]), get_property_value<std::string>(ctx, v, ex.var, ex.property));
+        else if (ex.aggr_type == 5)
+          aggr_vals_[i] = std::min(boost::get<uint64_t>(aggr_vals_[i]), get_property_value<uint64_t>(ctx, v, ex.var, ex.property));
         break;
-      case expr::f_avg:
+      case expr::f_max:
         if (ex.aggr_type == 2)
           aggr_vals_[i] = std::max(boost::get<int>(aggr_vals_[i]), get_property_value<int>(ctx, v, ex.var, ex.property));
         else if (ex.aggr_type == 3)
           aggr_vals_[i] = std::max(boost::get<double>(aggr_vals_[i]), get_property_value<double>(ctx, v, ex.var, ex.property));
         else if (ex.aggr_type == 4)
           aggr_vals_[i] = std::max(boost::get<std::string>(aggr_vals_[i]), get_property_value<std::string>(ctx, v, ex.var, ex.property));
+        else if (ex.aggr_type == 5)
+          aggr_vals_[i] = std::max(boost::get<uint64_t>(aggr_vals_[i]), get_property_value<uint64_t>(ctx, v, ex.var, ex.property));
         break;
+      case expr::f_avg:
       // TODO
       default:
         break;
@@ -691,6 +720,8 @@ void aggregate::finish(query_ctx &ctx) {
           v[i] = boost::get<double>(aggr_vals_[i]);
         else if (ex.aggr_type == 4)
           v[i] = boost::get<std::string>(aggr_vals_[i]);
+        else if (ex.aggr_type == 5)
+          v[i] = boost::get<uint64_t>(aggr_vals_[i]);
         break;
       // TODO
       default:
@@ -1194,7 +1225,6 @@ void collect_result::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   // we transform node and relationship into their string representations ...
   qr_tuple res(v.size());
-
   auto my_visitor = boost::hana::overload(
       [&](const node_description& n) { return n.to_string(); },
       [&](const rship_description& r) { return r.to_string(); },
@@ -1270,14 +1300,23 @@ void recover_scan::finish(query_ctx &ctx) {
 
 /* ------------------------------------------------------------------------ */
 
+projection::projection(const expr_list &exprs, std::vector<projection_expr>& prexpr) : exprs_(exprs), prexpr_(prexpr) {
+  type_ = qop_type::project;
+  init_expr_vars();
+}
+
 projection::projection(const expr_list &exprs) : exprs_(exprs) {
   type_ = qop_type::project;
+  init_expr_vars();
+}
+
+void projection::init_expr_vars() {
   if (exprs_.empty())
     return;
   // we build a mapping table where for each expression variable refering to a
   // property a new index is created
-      auto it =
-      std::max_element(exprs_.begin(), exprs_.end(),
+  auto it =
+    std::max_element(exprs_.begin(), exprs_.end(),
                        [](expr &e1, expr &e2) { return e1.vidx < e2.vidx; });
 
   nvars_ = it->vidx + 1;

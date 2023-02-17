@@ -34,6 +34,9 @@ void scan_task::operator()() {
    callee_(tx_, graph_db_, range_.first, range_.second, consumer_);
 }
 
+query_ctx::~query_ctx() {
+}
+ 
 void query_ctx::_nodes_by_label(graph_db *gdb, const std::string &label,
                               node_consumer_func consumer) {
 #ifdef USE_TX
@@ -122,7 +125,7 @@ void query_ctx::parallel_nodes(node_consumer_func consumer) {
   thread_pool pool;
 
   const int nchunks = 1;
-  spdlog::info("Start parallel query with {} threads",
+  spdlog::debug("Start parallel query with {} threads",
                 gdb_->nodes_->num_chunks() / nchunks + 1);
 
   res.reserve(gdb_->nodes_->num_chunks() / nchunks + 1);

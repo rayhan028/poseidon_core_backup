@@ -129,7 +129,7 @@ class BPTree {
   void close() {
     auto fptr = bpool_.get_file(file_id_);
     auto data = fptr->get_header_payload();
-    spdlog::debug("write btree depth: {} and root: {}", depth, rootPid);
+    // spdlog::debug("write btree depth: {} and root: {}", depth, rootPid);
     memcpy(data, &depth, sizeof(unsigned int));
     memcpy(data + sizeof(unsigned int), &rootPid, sizeof(paged_file::page_id));
 

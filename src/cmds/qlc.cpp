@@ -9,7 +9,7 @@
 
 #include "linenoise.hpp"
 #include "fmt/chrono.h"
-#include "qproc.hpp"
+#include "query_proc.hpp"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
 
@@ -30,7 +30,7 @@ graph_db_ptr graph;
 
 using namespace boost::program_options;
 
-std::unique_ptr<qproc> qproc_ptr;
+std::unique_ptr<query_proc> qproc_ptr;
 /**
  * Import data from the given list of CSV files. The list contains
  * not only the files names but also nodes/relationships as well as
@@ -135,7 +135,7 @@ void print_result(qresult_iterator& qres) {
  * Execute the query given as string. If qex_cc is set to true then the
  * query is compiled using LLVM, otherwise the query interpreter is used.
  */
-void exec_query(const std::string &qstr, qproc::mode qmode, bool print_plan) {
+void exec_query(const std::string &qstr, query_proc::mode qmode, bool print_plan) {
   try {
   auto start_qp = std::chrono::steady_clock::now();
   qproc_ptr->execute_and_output_query(qmode, qstr, print_plan);
@@ -188,20 +188,22 @@ void sync_db(graph_db_ptr &gdb) {
 
 void show_help() {
   std::cout << "Available commands:\n"
-            << "\thelp                  " << "show this help" << "\n"
-            << "\tstring s              " << "display the dictionary code of the string s" << "\n"
-            << "\tcode c                " << "display the string of the dictionary code c" << "\n"
-            << "\tstats                 " << "print database statistics" << "\n"
-            << "\tsync                  " << "ensure that all pages are written to disk" << "\n"
-            << "\t@file                 " << "execute the query stored in the given file" << "\n"
-            << "\texplain <query-expr>  " << "execute the given query and print the plan" << "\n"
-            << "\t<query-expr>          " << "execute the given query" << std::endl;
+            << "\thelp                             " << "show this help" << "\n"
+            << "\tstring s                         " << "display the dictionary code of the string s" << "\n"
+            << "\tcode c                           " << "display the string of the dictionary code c" << "\n"
+            << "\tstats                            " << "print database statistics" << "\n"
+            << "\tsync                             " << "ensure that all pages are written to disk" << "\n"
+            << "\tcreate index <label> <property>  " << "ensure that all pages are written to disk" << "\n"
+            << "\tdrop index <label> <property>    " << "ensure that all pages are written to disk" << "\n"
+            << "\t@file                            " << "execute the query stored in the given file" << "\n"
+            << "\texplain <query-expr>             " << "execute the given query and print the plan" << "\n"
+            << "\t<query-expr>                     " << "execute the given query" << std::endl;
 }
 
 /**
  * Run an interactive shell for entering and executing queries.
  */
-void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
+void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
   const auto path = "history.txt";
   // Enable the multi-line mode
   linenoise::SetMultiLine(true);
@@ -265,6 +267,45 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
         std::cout << "dict string for '" << s << "': " << gdb->get_dictionary()->lookup_code(std::stoi(s)) << std::endl;
       }
     }
+    else if (line.rfind("create index", 0) == 0) {
+      if (line.length() > 12) {
+        auto str = line.substr(12);
+        trim(str);        
+        std::vector<std::string> s;
+        boost::split(s, str, boost::is_any_of(" "));
+        if (s.size() == 2) {
+          std::cout << "create index " << s[0] << "-" << s[1] << std::endl;
+          query_ctx ctx(gdb);
+          ctx.run_transaction([&]() {
+            if (!ctx.gdb_->has_index(s[0], s[1]))
+              ctx.gdb_->create_index(s[0], s[1]);
+            return true;
+          });
+        }
+        else
+          std::cout << "ERROR: invalid command" << std::endl;
+      }
+
+    }
+    else if (line.rfind("drop index", 0) == 0) {
+      if (line.length() > 10) {
+        auto str = line.substr(10);
+        trim(str);        
+        std::vector<std::string> s;
+        boost::split(s, str, boost::is_any_of(" "));
+        if (s.size() == 2) {
+          std::cout << "drop index " << s[0] << "-" << s[1] << std::endl;
+          query_ctx ctx(gdb);
+          ctx.run_transaction([&]() {
+            if (ctx.gdb_->has_index(s[0], s[1]))
+              ctx.gdb_->drop_index(s[0], s[1]);
+            return true;
+          });
+        }
+        else
+          std::cout << "ERROR: invalid command" << std::endl;
+      }      
+    }
     else if (line.rfind("explain ", 0) == 0) {
       auto qstr = line.substr(8);
       exec_query(qstr, qmode, true);
@@ -285,7 +326,7 @@ int main(int argc, char* argv[]) {
   std::string db_name, pool_path, query_file, dot_file, qmode_str, format = "ldbc";
   std::vector<std::string> import_files;
   bool start_shell = false;
-  qproc::mode qmode = qproc::Compile; 
+  query_proc::mode qmode = query_proc::Compile; 
   char delim_character = ',';
   bool strict = false;
 
@@ -364,11 +405,11 @@ int main(int argc, char* argv[]) {
         return -1;
       }
       if (qmode_str == "llvm")
-        qmode = qproc::Compile;
+        qmode = query_proc::Compile;
       else if (qmode_str == "interp")
-        qmode = qproc::Interpret;
+        qmode = query_proc::Interpret;
       else
-        qmode = qproc::Adaptive;
+        qmode = query_proc::Adaptive;
     }
 
     if (start_shell && !query_file.empty()) {
@@ -414,7 +455,7 @@ int main(int argc, char* argv[]) {
     */
 
   query_ctx ctx(graph);
-  qproc_ptr = std::make_unique<qproc>(ctx);
+  qproc_ptr = std::make_unique<query_proc>(ctx);
 
   if (start_shell) {
     run_shell(graph, qmode);

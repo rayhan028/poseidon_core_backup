@@ -20,9 +20,9 @@
 #include "query_set.hpp"
 #include "query_printer.hpp"
 
-void query_set::start() {
+void query_set::start(query_ctx& ctx) {
   for (auto &q : queries_) {
-    q.start();
+    q.start(ctx);
   }
 }
 

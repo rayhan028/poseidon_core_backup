@@ -162,7 +162,7 @@ void graph_db::parallel_host_csr_build(csr_arrays &csr, rship_weight weight_func
                 .orderby([&](const qr_tuple q1, const qr_tuple q2) {
                   return boost::get<uint64_t>(q1[1]) < boost::get<uint64_t>(q2[1]); })
                 .collect(rs);
-  q.start();
+  q.start(ctx);
 
   // std::cout << rs << "\n";
 

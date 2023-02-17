@@ -190,8 +190,10 @@ std::ostream &operator<<(std::ostream &os, const result_set &rs) {
       [&](const rship_description& r) { os << r; },
       [&](node *n) { /*os << gdb->get_node_description(*n); */ },
       [&](relationship *r) { /* os << gdb->get_relationship_label(*r); */ },
-      [&](int i) { os << i; }, [&](double d) { os << d; },
-      [&](const std::string &s) { os << s; }, [&](uint64_t ll) { os << ll; },
+      [&](int i) { os << i; }, 
+      [&](double d) { os << d; },
+      [&](const std::string &s) { os << s; }, 
+      [&](uint64_t ll) { os << ll; },
       [&](null_t n) { os << "NULL"; },
       [&](array_t arr) {
         os << "[ ";

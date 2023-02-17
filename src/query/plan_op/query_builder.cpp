@@ -492,13 +492,14 @@ query_builder &query_builder::delete_rship(const std::size_t pos) {
                    std::bind(&remove_rship::process, op.get(), ph::_1, ph::_2));
 }
 
-void query_builder::start() { 
-  plan_head_->start(ctx_); 
+void query_builder::start(query_ctx& ctx) { 
+  assert(ctx.gdb_->get_dictionary());
+  plan_head_->start(ctx); 
 }
 
-void query_builder::start(std::initializer_list<query_builder *> queries) {
+void query_builder::start(query_ctx& ctx, std::initializer_list<query_builder *> queries) {
   for (auto &q : queries) {
-    q->start();
+    q->start(ctx);
   }
 }
 

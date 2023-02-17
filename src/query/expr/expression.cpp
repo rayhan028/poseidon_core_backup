@@ -132,8 +132,19 @@ void func_call::accept(int rank, expression_visitor &fep) {
     fep.visit(rank, shared_from_this());
 }
 
-binary_predicate::binary_predicate(FOP fop, const expr left, const expr right, bool prec, bool is_bool)
-        : left_(left), right_(right), fop_(fop), is_bool_(is_bool), prec_(prec) {}
+void math_expression::accept(int rank, expression_visitor &fep) {
+    // TODO    
+}
+
+std::string math_expression::dump() const {
+    auto lhs = (*left_).dump();
+    auto rhs = (*right_).dump();
+    auto op = fop_str(fop_);
+    return lhs + op + rhs ;
+}
+
+binary_predicate::binary_predicate(FOP fop, const expr left, const expr right, bool prec, bool is_bool) : 
+    binary_expression(fop, left, right), is_bool_(is_bool), prec_(prec) {}
 
 std::string binary_predicate::dump() const {
     auto lhs = (*left_).dump();

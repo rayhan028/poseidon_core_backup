@@ -148,7 +148,6 @@ struct op_name : sor< key_node_scan,
                     key_append,
                     key_create,
                     key_algo,
-                    key_match,
                     key_end
                     > {};
 
@@ -231,10 +230,25 @@ struct param_list : list<param, comma, space> {};
 // struct qoperator : seq<ws, op_name, ws, one<'('>, ws, opt<param_list>, ws, one<')'>, ws> {};
 struct qoperator : if_must<op_name, ws, one<'('>, ws, opt<param_list>, ws, one<')'>, ws> {};
 
+struct path_component : if_must<left_rship_dir, 
+                          one<'['>, opt<space>, node_or_rship_pattern, opt<space>, one <']'>, 
+                          right_rship_dir, 
+                          node_pattern> {};
+
+struct path_pattern : if_must<node_pattern, list<path_component, ws> > {};
+/*                       left_rship_dir, 
+                          one<'['>, opt<space>, node_or_rship_pattern, opt<space>, one <']'>, 
+                          right_rship_dir, 
+                          node_pattern> {};*/
+
+struct match_operator : if_must<key_match, ws, one<'('>, path_pattern, one<')'>, ws> {};
+
 /* ------------------------------------------------------------- */
 
 template <typename Rule> struct my_selector : std::false_type {};
 template <> struct my_selector<qoperator> : std::true_type {};
+template <> struct my_selector<match_operator> : std::true_type {};
+template <> struct my_selector<path_pattern> : std::true_type {};
 template <> struct my_selector<param> : std::true_type {};
 template <> struct my_selector<expression> : std::true_type {};
 template <> struct my_selector<literal_string> : std::true_type {};

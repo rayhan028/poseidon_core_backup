@@ -824,6 +824,7 @@ struct aggregate : public qop, public std::enable_shared_from_this<aggregate> {
   using val_t = boost::variant<
     double,                  // double values (min, max, sum)
     int,                     // int values (min, max, sum, count)
+    uint64_t,                // uint64_t (min, max, sum)
     std::string,             // string values (min, max)  
     std::pair<double, int>>; // pair of values for avg (sum, cnt)
   std::vector<val_t> aggr_vals_;
@@ -1257,8 +1258,9 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
   using expr_list = std::vector<expr>;
 
   projection(const expr_list &exprs);
+  projection(const expr_list &exprs, std::vector<projection_expr>& prexpr);
 
-  projection(std::vector<projection_expr> prexpr) : prexpr_(prexpr) {
+  projection(const std::vector<projection_expr>& prexpr) : prexpr_(prexpr) {
     type_ = qop_type::project;
   }
 
@@ -1279,6 +1281,8 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
     vis.visit(shared_from_this());
     subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);      
   }
+
+  void init_expr_vars();
 
   expr_list exprs_;
   std::size_t nvars_, npvars_;

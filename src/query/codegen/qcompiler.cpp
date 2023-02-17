@@ -25,7 +25,7 @@ std::unique_ptr<p_jit> qcompiler::initializeJitCompiler() {
 std::mutex tp_mut;
 
 
-qcompiler::qcompiler(query_ctx ctx) 
+qcompiler::qcompiler(query_ctx& ctx) 
     :
     jit_(initializeJitCompiler()),
     ctx_(PContext(ctx.gdb_)),  

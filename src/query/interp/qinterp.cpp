@@ -20,7 +20,7 @@
 
 void qinterp::execute(query_ctx& ctx, query_set& qset) {
   ctx.run_transaction([&]() {
-    qset.start(); 
+    qset.start(ctx); 
     return true;
   });    
 }

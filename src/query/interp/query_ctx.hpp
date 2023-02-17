@@ -29,10 +29,11 @@
 
 struct query_ctx {
     query_ctx() = default;
-    query_ctx(graph_db_ptr& gdb) : gdb_(gdb) {}
+    query_ctx(query_ctx& ctx) : gdb_(ctx.gdb_) {  }
+    query_ctx(graph_db_ptr& gdb) : gdb_(gdb) {  }
+    ~query_ctx();
 
     graph_db_ptr gdb_;
-
 
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;

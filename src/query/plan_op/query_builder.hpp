@@ -463,14 +463,14 @@ public:
   /**
    * Start the execution of the query.
    */
-  void start();
+  void start(query_ctx& ctx);
 
   /**
    * Print the query plan.
    */
   void print_plan(std::ostream& os = std::cout);
 
-  static void start(std::initializer_list<query_builder *> queries);
+  static void start(query_ctx& ctx, std::initializer_list<query_builder *> queries);
   static void print_plans(std::initializer_list<query_builder *> queries, std::ostream& os = std::cout);
 
   void extract_args();
@@ -486,7 +486,6 @@ private:
   query_builder &append_op(qop_ptr op, qop::consume_func cf);
 
   qop_ptr plan_head_, plan_tail_;
-  // graph_db_ptr graph_db_;
   query_ctx& ctx_;
 };
 
