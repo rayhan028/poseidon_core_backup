@@ -28,6 +28,10 @@ endif()
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(USE_PMDK OFF)
   set(LLVM_DIR "/opt/homebrew/opt/llvm@12/lib/cmake/llvm")
+  set(ANTLR_EXECUTABLE "/opt/homebrew/Cellar/antlr/4.11.1/antlr-4.11.1-complete.jar")
+else()
+# set variable pointing to the antlr tool that supports C++
+# set(ANTLR_EXECUTABLE "/opt/homebrew/Cellar/antlr/4.11.1/antlr-4.11.1-complete.jar")
 endif()
 
 # Don't try to contact github everytime.
@@ -55,34 +59,25 @@ include(FetchContent REQUIRED)
 #-------------------------------------------------------------------------------
 # ANTLR4 Parser generator
 #
-# required if linking to static library
-#add_definitions(-DANTLR4CPP_STATIC)
 
-# using /MD flag for antlr4_runtime (for Visual C++ compilers only)
-#set(ANTLR4_WITH_STATIC_CRT OFF)
+find_package(ANTLR)
 
-# Specify the version of the antlr4 library needed for this project.
-# By default the latest version of antlr4 will be used.  You can specify a
-# specific, stable version by setting a repository tag value or a link
-# to a zip file containing the library source.
-# set(ANTLR4_TAG 4.11.1)
-# set(ANTLR4_ZIP_REPOSITORY https://github.com/antlr/antlr4/archive/refs/tags/4.11.1.zip)
-
-# add external build for antlrcpp
-include(ExternalAntlr4Cpp)
-# add antrl4cpp artifacts to project environment
-include_directories(${ANTLR4_INCLUDE_DIRS})
-
-# set variable pointing to the antlr tool that supports C++
-# this is not required if the jar file can be found under PATH environment
-set(ANTLR_EXECUTABLE /opt/homebrew/Cellar/antlr/4.11.1/antlr-4.11.1-complete.jar)
-
+if(ANTLR_FOUND)
 # add macros to generate ANTLR Cpp code from grammar
-find_package(ANTLR REQUIRED)
+message("ANTLR found")
+  antlr_target(grammar src/query/parser/poseidon.g4 
+    COMPILE_FLAGS -Xexact-output-dir -visitor
+    OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/src/query/antlr4_generated
+  )
+else()
+  set(ANTLR_grammar_CXX_OUTPUTS 
+    src/query/antlr4_generated/poseidonLexer.h
+    src/query/antlr4_generated/poseidonLexer.cpp
+    src/query/antlr4_generated/poseidonParser.h
+    src/query/antlr4_generated/poseidonParser.cpp)
+endif()
 
-antlr_target(grammar src/query/parser/poseidon.g4 
-  COMPILE_FLAGS -Xexact-output-dir -visitor
-)
+# message("grammar: ${ANTLR_grammar_CXX_OUTPUTS}")
 
 #-------------------------------------------------------------------------------
 
@@ -157,26 +152,22 @@ include_directories(${PROJECT_BINARY_DIR}/generated)
 include_directories(${PROJECT_SOURCE_DIR}/src/vec)
 include_directories(${PROJECT_SOURCE_DIR}/src/storage)
 include_directories(${PROJECT_SOURCE_DIR}/src/bp_file)
-include_directories(${PROJECT_SOURCE_DIR}/src/query/ast)
+include_directories(${PROJECT_SOURCE_DIR}/src/query)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/parser)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/codegen)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/utils)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/plan_op)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/interp)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/expr)
-include_directories(${PROJECT_SOURCE_DIR}/src/query/qmain)
-include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
 include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 include_directories(${PROJECT_SOURCE_DIR}/src/pool)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
-include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
-include_directories(${PROJECT_SOURCE_DIR}/src/ql)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics/gunrock)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics/util)
-include_directories(${ANTLR4_INCLUDE_DIRS})
+include_directories(${PROJECT_SOURCE_DIR}/src/antlr4_cpp_runtime/src)
 include_directories(${PROJECT_BINARY_DIR}/antlr4cpp_generated_src)
 if (USE_GUNROCK MATCHES ON)
   include_directories(${CUDA_INCLUDE_DIRS})
@@ -260,13 +251,13 @@ XRay WindowsManifest TableGen Symbolize DebugInfoPDB OrcJIT OrcError JITLink Obj
 endif() 
 
 # PEGTL =================================================================== #
- FetchContent_Declare(
-  pegtl
-  GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
-  GIT_TAG       3.2.2
-  )
-
-FetchContent_MakeAvailable(pegtl)
+# FetchContent_Declare(
+#  pegtl
+#  GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
+#  GIT_TAG       3.2.2
+#  )
+#
+#FetchContent_MakeAvailable(pegtl)
 
 
 # linenoise =================================================================== #
@@ -343,7 +334,7 @@ endif()
 
 #-----------------------------------------------------------------------------------------
 
-include_directories("${pegtl_SOURCE_DIR}/include")
+# include_directories("${pegtl_SOURCE_DIR}/include")
 include_directories("${csv_SOURCE_DIR}")
 include_directories("${spdlog_SOURCE_DIR}/include")
 include_directories("${PROJECT_SOURCE_DIR}/src")
@@ -469,9 +460,6 @@ set(src_files
   src/query/plan_op/update.cpp
   src/query/plan_op/join.cpp
   src/query/plan_op/query_set.cpp
-#  src/query/qmain/qparser.cpp
-#  src/query/qmain/qplanner.cpp
-#  src/query/qmain/qproc.cpp
   src/query/plan_op/query_builder.cpp
   src/query/utils/query_printer.cpp
   src/query/utils/thread_pool.cpp
@@ -481,10 +469,6 @@ set(src_files
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
   ${llvm_src}
-#  src/ql/queryc_qcomp.cpp
-#  src/ql/queryc_qex.cpp
-#  src/ql/queryc.cpp
- # src/query/ast/ast.cpp
   src/query/parser/query_planner.cpp
   src/query/parser/query_proc.cpp
   ${csr_delta_src}
@@ -533,7 +517,8 @@ endif()
 
 target_link_libraries(poseidon_core
   ${LLVM_LIB}
-  antlr4_shared
+  antlr4_cpp_runtime
+#  antlr4_shared
   Boost::filesystem
   Boost::date_time
   Boost::thread
@@ -542,6 +527,14 @@ target_link_libraries(poseidon_core
   ${gunrock_linkLib}
   ${CUDA_LIB}
 )
+
+
+#add_custom_command(TARGET poseidon_core
+#                   POST_BUILD
+#                   COMMAND ${CMAKE_COMMAND}
+#                           -E copy ${ANTLR4_RUNTIME_LIBRARIES} .
+#                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
 
 target_include_directories( ${PROJECT_NAME}
     PUBLIC ${PROJECT_SOURCE_DIR}/include
@@ -557,7 +550,8 @@ add_library(poseidon SHARED
 
 target_link_libraries(poseidon
   ${LLVM_LIB}
-  antlr4_shared
+  antlr4_cpp_runtime
+  # antlr4_shared
   Boost::filesystem
   Boost::date_time
   Boost::thread
@@ -572,6 +566,10 @@ endif()
 
 #-----------------------------------------------------------------------------------------
 
+add_subdirectory(src/antlr4_cpp_runtime)
+
+#-----------------------------------------------------------------------------------------
+
 add_executable(qlc
   src/cmds/qlc.cpp
  )
@@ -581,12 +579,6 @@ add_executable(qlc
   ${PMDK_LIBRARIES}
   Boost::program_options
 )
-
-add_custom_command(TARGET qlc
-                   POST_BUILD
-                   COMMAND ${CMAKE_COMMAND}
-                           -E copy ${ANTLR4_RUNTIME_LIBRARIES} .
-                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_executable(csv_loader
   src/cmds/csv_loader.cpp

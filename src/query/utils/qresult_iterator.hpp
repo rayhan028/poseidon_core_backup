@@ -27,7 +27,6 @@
 #include <iterator>
 #include <condition_variable>
 #include "defs.hpp"
-#include "ast.hpp"
 #include "query_ctx.hpp"
 
 struct node;

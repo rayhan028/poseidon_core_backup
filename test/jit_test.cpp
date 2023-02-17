@@ -31,7 +31,7 @@
 
 #ifdef USE_LLVM
 #include "query_builder.hpp"
-#include "qproc.hpp"
+#include "query_proc.hpp"
 #endif
 
 std::string test_path = PMDK_PATH("jit_tst");

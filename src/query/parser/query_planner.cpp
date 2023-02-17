@@ -1,0 +1,572 @@
+/*
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
+ *
+ * This file is part of the Poseidon package.
+ *
+ * Poseidon is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Poseidon is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
+ */
+#include "query_planner.hpp"
+#include "join.hpp"
+#include "update.hpp"
+#include "properties.hpp"
+
+uint32_t query_planner::extract_tuple_id(const std::string& var_name) {
+  auto dot_pos = var_name.find(".");
+  return std::stoi(var_name.substr(1, dot_pos - 1));
+}
+
+std::string query_planner::trim_string(const std::string& s) {
+  std::string s2 = s;
+  if (s2[0] == '\'' || s2[0] == '"')
+    s2 = s2.substr(1, s2.size()-2);
+  return s2;
+}
+query_set query_planner::get_query_plan() {
+    query_set qset;
+
+    for (auto qop : sources_) {
+        query_builder q(qctx_, qop);
+        qset.add(q);
+    }
+    
+    return qset;
+} 
+
+std::any query_planner::visitQuery(poseidonParser::QueryContext *ctx) {
+    sources_.clear();
+    return visit(ctx->query_operator()); 
+}
+
+std::any query_planner::visitNode_scan_op(poseidonParser::Node_scan_opContext *ctx) {
+    qop_ptr op = nullptr;
+    // auto res = visitChildren(ctx);
+
+    auto p = ctx->scan_param();
+    if (p == nullptr)
+        op = std::make_shared<scan_nodes>();
+    else if (p->STRING_() != nullptr)
+        op = std::make_shared<scan_nodes>(trim_string(p->STRING_()->getText()));
+    else if (p->scan_list() != nullptr) {
+        std::vector<std::string> label_list;
+        for (auto& s : p->scan_list()->STRING_())
+            label_list.push_back(trim_string(s->getText()));
+        op = std::make_shared<scan_nodes>(label_list);
+    }
+    sources_.push_back(op);
+    return std::make_any<qop_ptr>(op);
+} 
+
+std::any query_planner::visitFilter_op(poseidonParser::Filter_opContext *ctx) {
+    auto ch = visit(ctx->query_operator());
+    auto child_op = std::any_cast<qop_ptr>(ch);
+
+    auto ex = visit(ctx->logical_expr());
+    auto qp = std::make_shared<filter_tuple>(std::any_cast<expr>(ex));
+    auto qop = qop_append(child_op, qp);
+
+    return std::make_any<qop_ptr>(qop);
+}
+
+std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) {
+    std::vector<projection_expr> prexprs;
+    projection::expr_list pexprs;
+
+    // TODO: handle UDFs
+    for (auto& pexpr : ctx->proj_list()->proj_expr()) {
+        auto var = pexpr->Var()->getText();
+        auto var_id = extract_tuple_id(var);
+        auto attr = pexpr->Identifier_()->getText();
+        auto attr_type = pexpr->type_spec();
+        if (attr_type->StringType_() != nullptr) {
+            pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::string_property(res, attr); } )));
+            prexprs.push_back({var_id, attr, result_type::string});
+        } else if (attr_type->IntType_() != nullptr) {
+            pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::int_property(res, attr); } )));
+            prexprs.push_back({var_id, attr, result_type::integer});
+        } else if (attr_type->DoubleType_() != nullptr) {
+            pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::double_property(res, attr); } )));
+            prexprs.push_back({var_id, attr, result_type::double_t});
+        } else if (attr_type->Uint64Type_() != nullptr) {
+            pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::uint64_property(res, attr); } )));
+            prexprs.push_back({var_id, attr, result_type::uint64});
+        } else if (attr_type->DateType_() != nullptr) {
+            pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::ptime_property(res, attr); } )));
+            prexprs.push_back({var_id, attr, result_type::date});
+        }
+    }
+       
+    auto qp = std::make_shared<projection>(pexprs, prexprs);
+
+    auto ch = visit(ctx->query_operator());
+    auto child_op = std::any_cast<qop_ptr>(ch);
+    auto qop = qop_append(child_op, qp);
+
+    return std::make_any<qop_ptr>(qop);
+}
+
+std::any query_planner::visitLimit_op(poseidonParser::Limit_opContext *ctx) {
+    auto param = ctx->INTEGER()->getText();
+    auto limit = std::stoi(param);
+    auto qp = std::make_shared<limit_result>(limit);
+      
+    auto ch = visit(ctx->query_operator());
+    auto child_op = std::any_cast<qop_ptr>(ch);
+    auto qop = qop_append(child_op, qp);
+
+    return std::make_any<qop_ptr>(qop);
+}
+
+std::any query_planner::visitExpand_op(poseidonParser::Expand_opContext *ctx) {
+    qop_ptr qop = nullptr;
+    auto param = ctx->expand_dir()->getText();
+ 
+    auto ch = visit(ctx->query_operator());
+    auto child = std::any_cast<qop_ptr>(ch);
+
+    if (param == "IN") {
+        auto qp = std::make_shared<get_from_node>();
+        qop = qop_append(child, qp);
+    }
+    else if (param == "OUT") {
+        auto qp = std::make_shared<get_to_node>();
+        qop = qop_append(child, qp);
+    }
+
+    if (ctx->STRING_() != nullptr) {
+        auto label = trim_string(ctx->STRING_()->getText());
+        auto qp2 = std::make_shared<node_has_label>(label);
+        qop = qop_append(qop, qp2);
+    }
+
+    return std::make_any<qop_ptr>(qop);
+}
+
+std::any query_planner::visitSort_op(poseidonParser::Sort_opContext *ctx) {
+    result_set::sort_spec_list sort_list;
+
+    for (auto& sexpr : ctx->sort_list()->sort_expr()) {
+        auto vidx = extract_tuple_id(sexpr->Var()->getText());
+        auto tspec = sexpr->type_spec();
+        std::size_t cmp_type = 0;
+        if (tspec->IntType_() == nullptr)
+            cmp_type = 2;
+        else if (tspec->DoubleType_() != nullptr)
+            cmp_type = 3;
+        else if (tspec->Uint64Type_() != nullptr)
+            cmp_type = 5;
+        else if (tspec->StringType_() != nullptr)
+            cmp_type = 4;
+        else if (tspec->DateType_() != nullptr)
+            cmp_type = 6;
+
+        auto s_order = sexpr->sort_spec()->DescOrder_() != nullptr ? result_set::sort_spec::Desc : result_set::sort_spec::Asc;   
+        sort_list.push_back(result_set::sort_spec(vidx, cmp_type, s_order)); 
+    }
+    auto ch = visit(ctx->query_operator());
+    auto child = std::any_cast<qop_ptr>(ch);
+
+    auto qp = std::make_shared<order_by>(sort_list);
+    auto qop = qop_append(child, qp);
+
+    return std::make_any<qop_ptr>(qop);
+}
+
+std::any query_planner::visitForeach_relationship_op(poseidonParser::Foreach_relationship_opContext *ctx) {
+    qop_ptr qop = nullptr;
+    int origin_idx = std::numeric_limits<int>::max();
+
+    auto dir = ctx->rship_dir();
+    auto label = trim_string(ctx->STRING_()->getText());
+    auto cardinality = ctx->rship_cardinality();
+    auto rship_src = ctx->rship_source_var();
+
+    auto ch = visit(ctx->query_operator());
+    auto child = std::any_cast<qop_ptr>(ch);
+
+    int m1 = 0, m2 = 0;
+    if (cardinality != nullptr) {
+        m1 = std::stoi(cardinality->INTEGER()[0]->getText());
+        m2 = std::stoi(cardinality->INTEGER()[1]->getText());
+    }
+
+    if (rship_src != nullptr)
+        origin_idx = extract_tuple_id(rship_src->Var()->getText());
+
+    if (dir->FromDir_() != nullptr) {
+        if (cardinality != nullptr) {
+            auto qp = std::make_shared<foreach_variable_from_relationship>(label, m1, m2, origin_idx);
+            qop = qop_append(child, qp);            
+        }
+        else {
+            auto qp = std::make_shared<foreach_from_relationship>(label, origin_idx);
+            qop = qop_append(child, qp);            
+        }
+    }
+    else if (dir->ToDir_() != nullptr) {
+        if (cardinality != nullptr) {
+            auto qp = std::make_shared<foreach_variable_to_relationship>(label, m1, m2, origin_idx);
+            qop = qop_append(child, qp);            
+        }
+        else {
+            auto qp = std::make_shared<foreach_to_relationship>(label, origin_idx);
+            qop = qop_append(child, qp);            
+        }
+    }
+    else if (dir->AllDir_() != nullptr) {
+        if (cardinality != nullptr) {
+            auto qp = std::make_shared<foreach_variable_all_relationship>(label, m1, m2, origin_idx);
+            qop = qop_append(child, qp);            
+        }
+        else {
+            auto qp = std::make_shared<foreach_all_relationship>(label, origin_idx);
+            qop = qop_append(child, qp);            
+        }
+    }
+    return std::make_any<qop_ptr>(qop);    
+}
+
+std::any query_planner::visitCrossjoin_op(poseidonParser::Crossjoin_opContext *ctx) {
+    auto qop = std::make_shared<cross_join>();
+    auto ch1 = visit(ctx->query_operator()[0]);
+    auto ch2 = visit(ctx->query_operator()[1]);
+    auto child1 = std::any_cast<qop_ptr>(ch1);
+    auto child2 = std::any_cast<qop_ptr>(ch2);
+
+    child1->connect(qop, std::bind(&cross_join::process_right, qop.get(), ph::_1, ph::_2));
+    child2->connect(qop, std::bind(&cross_join::process_left, qop.get(), ph::_1, ph::_2));
+   
+    return std::make_any<qop_ptr>(qop);        
+}
+
+/*
+std::any query_planner::visitHashjoin_op(poseidonParser::Hashjoin_opContext *ctx) {
+    auto qop = std::make_shared<hash_join>();
+    auto ch1 = visit(ctx->query_operator()[0]);
+    auto ch2 = visit(ctx->query_operator()[1]);
+    auto child1 = std::any_cast<qop_ptr>(ch1);
+    auto child2 = std::any_cast<qop_ptr>(ch2);
+
+    
+    child1->connect(qop, std::bind(&hash_join::process_right, qop.get(), ph::_1, ph::_2));
+    child2->connect(qop, std::bind(&hash_join::process_left, qop.get(), ph::_1, ph::_2));
+   
+    return std::make_any<qop_ptr>(qop);        
+}
+*/
+std::any query_planner::visitAggregate_op(poseidonParser::Aggregate_opContext *ctx) {
+    std::vector<aggregate::expr> aggrs; 
+    auto ch = visit(ctx->query_operator());
+    auto child = std::any_cast<qop_ptr>(ch);
+
+    auto aggr_list = ctx->aggregate_list()->aggr_expr();
+    for (auto& aggr : aggr_list) {
+        auto expr = aggr->proj_expr();
+        auto v_id = extract_tuple_id(expr->Var()->getText());
+        auto v_name = expr->Identifier_()->getText();
+        auto tspec = expr->type_spec();
+
+        aggregate::expr::func_t aggr_func = aggregate::expr::f_count;
+        std::size_t aggr_type = 2;
+
+        if (aggr->aggr_func()->Count_() != nullptr)
+            aggr_func = aggregate::expr::f_count;
+        else if (aggr->aggr_func()->Sum_() != nullptr)
+            aggr_func = aggregate::expr::f_sum;
+        else if (aggr->aggr_func()->Avg_() != nullptr)
+            aggr_func = aggregate::expr::f_avg;
+        else if (aggr->aggr_func()->Min_() != nullptr)
+            aggr_func = aggregate::expr::f_min;
+        else if (aggr->aggr_func()->Max_() != nullptr)
+            aggr_func = aggregate::expr::f_max;
+
+        if (tspec->IntType_() == nullptr)
+            aggr_type = 2;
+        else if (tspec->DoubleType_() != nullptr)
+            aggr_type = 3;
+        else if (tspec->StringType_() != nullptr)
+            aggr_type = 4;
+        aggrs.push_back(aggregate::expr{ aggr_func, v_id, v_name, aggr_type });
+    }
+
+    auto qp = std::make_shared<aggregate>(aggrs);
+    auto qop = qop_append2(child, qp); 
+    return std::make_any<qop_ptr>(qop);
+}
+
+std::any query_planner::visitMatch_op(poseidonParser::Match_opContext *ctx) {
+    return visit(ctx->path_pattern());
+}
+
+std::any query_planner::visitPath_pattern(poseidonParser::Path_patternContext *ctx) {
+    // construct a node_scan with an optional filter
+    auto ch = visit(ctx->node_pattern());
+    auto node_op = std::any_cast<qop_ptr>(ch);
+
+    // get the sequence of foreach_relationship + expand
+    auto paths = ctx->path_component();
+    auto origin_idx = 0; 
+    for (auto& p : paths) {
+        /*
+         * 1. Rship_pattern
+         */
+        auto label = std::string(":") + p->rship_pattern()->Identifier_().back()->getText();
+        // TODO: handle direction of relationship
+        auto rship_op = std::make_shared<foreach_from_relationship>(label, origin_idx);
+        node_op = qop_append(node_op, rship_op);  
+        auto get_op = std::make_shared<get_to_node>();
+        node_op = qop_append(node_op, get_op); 
+        origin_idx++;
+        /*
+         * 2. Node_pattern
+         */
+        label = trim_string(p->node_pattern()->Identifier_().back()->getText());
+        auto hl_op = std::make_shared<node_has_label>(label);
+        node_op = qop_append(node_op, hl_op);
+        origin_idx++;
+    }
+    return std::make_any<qop_ptr>(node_op);
+}
+
+expr query_planner::property_list_to_expr(properties_t& plist) {
+    if (plist.size() == 1) {
+        auto prop = *(plist.begin());
+        auto lhs_expr = Key(0, prop.first);
+        boost::any& val = prop.second;
+        expr rhs_expr;
+        if (val.type() == typeid(int))
+            rhs_expr = Int(boost::any_cast<int>(val));
+        else if (val.type() == typeid(double) || val.type() == typeid(float))
+            rhs_expr = Float(boost::any_cast<double>(val));
+        else if (val.type() == typeid(std::string))
+            rhs_expr = Str(boost::any_cast<std::string>(val)); 
+
+        return EQ(lhs_expr, rhs_expr);
+    }
+    for (auto& p : plist) {
+
+    }
+    // TODO
+}
+
+std::any query_planner::visitNode_pattern(poseidonParser::Node_patternContext *ctx) {
+    auto label = ctx->Identifier_().back()->getText();
+    auto op = std::make_shared<scan_nodes>(trim_string(label));
+    sources_.push_back(op);
+    // TODO: build a filter if a property list is given
+    if (ctx->property_list() != nullptr) {
+        auto pl = visit(ctx->property_list());
+        auto props = std::any_cast<properties_t>(pl);     
+
+        auto ex = property_list_to_expr(props);
+        auto qop = std::make_shared<filter_tuple>(ex);
+        auto op2 = qop_append(op, qop); 
+        return std::make_any<qop_ptr>(op2);  
+    }
+    return std::make_any<qop_ptr>(op);
+}
+
+std::any query_planner::visitCreate_op(poseidonParser::Create_opContext *ctx) {
+    qop_ptr child = nullptr, qop = nullptr;;
+    if (ctx->query_operator() != nullptr) {
+        auto ch = visit(ctx->query_operator());
+        child = std::any_cast<qop_ptr>(ch);
+    }
+    if (ctx->create_node() != nullptr) {
+        auto res = visit(ctx->create_node());
+        auto qp = std::any_cast<std::shared_ptr<create_node>>(res);
+        qop = !child ? qp : qop_append(child, qp); 
+    }
+    else if (ctx->create_rship() != nullptr) {
+        auto res = visit(ctx->create_rship());
+        auto qp = std::any_cast<std::shared_ptr<create_relationship>>(res);
+        qop = !child ? qp : qop_append(child, qp); 
+    }
+
+    if (!child)
+        sources_.push_back(qop);
+    return std::make_any<qop_ptr>(qop);
+}
+
+std::any query_planner::visitCreate_node(poseidonParser::Create_nodeContext *ctx) {
+    properties_t props; 
+    if (ctx->property_list() != nullptr) {
+        auto pl = visit(ctx->property_list());
+        props = std::any_cast<properties_t>(pl);
+    }    
+    auto label = trim_string(ctx->Identifier_().back()->getText());
+    auto qp = std::make_shared<create_node>(label, props);
+    return std::make_any<std::shared_ptr<create_node>>(qp);
+}
+
+std::any query_planner::visitCreate_rship(poseidonParser::Create_rshipContext *ctx) {
+    properties_t props; 
+    if (ctx->property_list() != nullptr) {
+        auto pl = visit(ctx->property_list());
+        props = std::any_cast<properties_t>(pl);
+    }    
+    auto label = trim_string(ctx->Identifier_().back()->getText()); 
+    auto from = extract_tuple_id(ctx->node_var()[0]->Var()->getText());
+    auto to = extract_tuple_id(ctx->node_var()[1]->Var()->getText());
+    auto nodes = std::make_pair(from, to); 
+    auto qp = std::make_shared<create_relationship>(label, props, nodes);
+    return std::make_any<std::shared_ptr<create_relationship>>(qp);  
+}
+
+std::any query_planner::visitProperty_list(poseidonParser::Property_listContext *ctx) {
+    properties_t props;
+    for (auto& p : ctx->property()) {
+        auto pname = p->Identifier_()->getText();
+        boost::any pval;
+        if (p->value()->INTEGER())
+            pval = std::stoi(p->value()->INTEGER()->getText());
+        else if (p->value()->FLOAT())
+            pval = std::stod(p->value()->FLOAT()->getText());
+        else if (p->value()->STRING_())
+            pval = trim_string(p->value()->STRING_()->getText());
+        props.insert({ pname, pval});
+    }  
+    return std::make_any<properties_t>(props);
+}
+  
+
+std::any query_planner::visitLogical_expr(poseidonParser::Logical_exprContext *ctx) {
+    int num_ex = ctx->boolean_expr().size();
+    auto le = visit(ctx->boolean_expr(0));
+    auto lhs_expr = std::any_cast<expr>(le);
+    for (auto i = 1; i < num_ex; i++) {
+        auto re = visit(ctx->boolean_expr(i));
+        auto rhs_expr = std::any_cast<expr>(re);
+        auto or_expr = OR(lhs_expr, rhs_expr);
+        lhs_expr = or_expr;
+    }
+    return std::make_any<expr>(lhs_expr);    
+}
+
+std::any query_planner::visitBoolean_expr(poseidonParser::Boolean_exprContext *ctx) {
+    int num_ex = ctx->equality_expr().size();
+    auto le = visit(ctx->equality_expr(0));
+    auto lhs_expr = std::any_cast<expr>(le);
+    for (auto i = 1; i < num_ex; i++) {
+        auto re = visit(ctx->equality_expr(i));
+        auto rhs_expr = std::any_cast<expr>(re);
+        auto and_expr = AND(lhs_expr, rhs_expr);
+        lhs_expr = and_expr;
+    }
+    return std::make_any<expr>(lhs_expr);
+}
+
+std::any query_planner::visitEquality_expr(poseidonParser::Equality_exprContext *ctx) {
+    int num_ex = ctx->relational_expr().size();
+    auto le = visit(ctx->relational_expr(0));
+    auto lhs_expr = std::any_cast<expr>(le);
+    for (auto i = 1; i < num_ex; i++) {
+        auto re = visit(ctx->relational_expr(i));
+        auto rhs_expr = std::any_cast<expr>(re);
+        auto eq_expr = (ctx->EQUALS(i-1) != nullptr) ? EQ(lhs_expr, rhs_expr) : NEQ(lhs_expr, rhs_expr);
+        lhs_expr = eq_expr;
+    }
+    return std::make_any<expr>(lhs_expr);
+}
+
+std::any query_planner::visitRelational_expr(poseidonParser::Relational_exprContext *ctx) {
+    int num_ex = ctx->additive_expr().size();
+    auto le = visit(ctx->additive_expr(0));
+    auto lhs_expr = std::any_cast<expr>(le);
+    for (auto i = 1; i < num_ex; i++) {
+        auto re = visit(ctx->additive_expr(i));
+        auto rhs_expr = std::any_cast<expr>(re);
+        if (ctx->LT(i-1) != nullptr) {
+            auto mult_expr = LT(lhs_expr, rhs_expr);
+            lhs_expr = mult_expr;
+        }
+        else if (ctx->LTEQ(i-1) != nullptr) {
+            auto mult_expr = LE(lhs_expr, rhs_expr);
+            lhs_expr = mult_expr;
+        }
+        else if (ctx->GT(i-1) != nullptr) {
+            auto mult_expr = GT(lhs_expr, rhs_expr);
+            lhs_expr = mult_expr;
+        }
+        else if (ctx->GTEQ(i-1) != nullptr) {
+            auto mult_expr = GE(lhs_expr, rhs_expr);
+            lhs_expr = mult_expr;
+        }
+    }
+    return std::make_any<expr>(lhs_expr);      
+}
+
+std::any query_planner::visitAdditive_expr(poseidonParser::Additive_exprContext *ctx) {
+    int num_ex = ctx->multiplicative_expr().size();
+    auto le = visit(ctx->multiplicative_expr(0));
+    auto lhs_expr = std::any_cast<expr>(le);
+    for (auto i = 1; i < num_ex; i++) {
+        auto re = visit(ctx->multiplicative_expr(i));
+        auto rhs_expr = std::any_cast<expr>(re);
+        auto add_expr = (ctx->PLUS_(i-1) != nullptr) ? PLUS(lhs_expr, rhs_expr) : MINUS(lhs_expr, rhs_expr);
+        lhs_expr = add_expr;
+    }
+    return std::make_any<expr>(lhs_expr);    
+}
+
+std::any query_planner::visitMultiplicative_expr(poseidonParser::Multiplicative_exprContext *ctx) {
+    int num_ex = ctx->unary_expr().size();
+    auto le = visit(ctx->unary_expr(0));
+    auto lhs_expr = std::any_cast<expr>(le);
+    for (auto i = 1; i < num_ex; i++) {
+        auto re = visit(ctx->unary_expr(i));
+        auto rhs_expr = std::any_cast<expr>(re);
+        if (ctx->MULT(i-1) != nullptr) {
+            auto mult_expr = MULT(lhs_expr, rhs_expr);
+            lhs_expr = mult_expr;
+        }
+        else if (ctx->DIV(i-1) != nullptr) {
+            auto mult_expr = DIV(lhs_expr, rhs_expr);
+            lhs_expr = mult_expr;
+        }
+        else if (ctx->MOD(i-1) != nullptr) {
+            auto mult_expr = MOD(lhs_expr, rhs_expr);
+            lhs_expr = mult_expr;
+        }
+    }
+    return std::make_any<expr>(lhs_expr);  
+}
+
+std::any query_planner::visitUnary_expr(poseidonParser::Unary_exprContext *ctx) {
+    auto ex = visit(ctx->primary_expr());
+    auto un_expr = std::any_cast<expr>(ex);
+    return std::make_any<expr>((ctx->NOT() != nullptr) ? /*NOT*/(un_expr) : un_expr);
+}
+
+std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *ctx) {
+    std::any res;
+
+    if (ctx->logical_expr() != nullptr)
+        res = visit(ctx->logical_expr());    
+    else if (ctx->value() != nullptr) {
+        if (ctx->value()->INTEGER())
+            res = std::make_any<expr>(Int(std::stoi(ctx->value()->INTEGER()->getText())));
+        else if (ctx->value()->FLOAT())
+            res = std::make_any<expr>(Float(std::stod(ctx->value()->FLOAT()->getText())));
+        else if (ctx->value()->STRING_())
+            res = std::make_any<expr>(Str(trim_string(ctx->value()->STRING_()->getText())));
+        else
+            assert("Primary expression not handled");
+    }
+    else if (ctx->variable() != nullptr) {
+        auto var_id = extract_tuple_id(ctx->variable()->Var()->getText());
+        auto attr = ctx->variable()->Identifier_()->getText();
+        res = std::make_any<expr>(Key(var_id, attr));
+    }
+    return res;
+}
