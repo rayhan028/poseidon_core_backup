@@ -21,6 +21,29 @@ struct mr_node {
     uint32_t node_label;  
 };
 
+struct mr_relationship {
+    uint8_t dummy_[40];
+    uint64_t id_;
+    uint64_t src_node_;
+    uint64_t dest_node_;
+    uint64_t next_src_rship_;
+    uint64_t next_dest_rship_;
+    uint64_t property_list_;
+    uint32_t rship_label_;
+};
+
+struct mr_pitem {
+    uint8_t value_[8];
+    uint32_t key_;
+    uint8_t flags_;
+};
+
+struct mr_property_set {
+    uint64_t next_;
+    uint64_t owner;
+    struct mr_pitem items_[3];
+};
+
 struct mrchunk {
     struct mr_node data[ELEMENTS_PER_CHUNK];
     struct mrchunk* next;
