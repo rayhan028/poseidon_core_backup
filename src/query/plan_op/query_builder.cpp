@@ -18,9 +18,10 @@
  */
 
 #include "query_builder.hpp"
-#include "join.hpp"
+#include "qop_joins.hpp"
 // #include "lua_poseidon.hpp"
-#include "update.hpp"
+#include "qop_updates.hpp"
+#include "qop_aggregates.hpp"
 #include "query_printer.hpp"
 #include <memory>
 
@@ -256,6 +257,20 @@ query_builder &query_builder::orderby(std::function<bool(const qr_tuple &, const
                    std::bind(&order_by::finish, op.get(), ph::_1));
 }
 
+query_builder &query_builder::groupby(const std::vector<group_by::group>& grps, const std::vector<group_by::expr>& exprs) {
+  auto op = std::make_shared<group_by>(grps, exprs);
+  return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
+                   std::bind(&group_by::finish, op.get(), ph::_1));
+}
+
+query_builder &query_builder::aggr(const std::vector<aggregate::expr>& exprs) {
+  auto op = std::make_shared<aggregate>(exprs);
+  return append_op(op, std::bind(&aggregate::process, op.get(), ph::_1, ph::_2),
+                   std::bind(&aggregate::finish, op.get(), ph::_1));
+
+}
+
+/*
 query_builder &
 query_builder::groupby(const std::vector<std::size_t> &pos) {
   auto op = std::make_shared<group_by>(pos);
@@ -278,6 +293,7 @@ query_builder::groupby(std::list<qr_tuple> &grps, const std::vector<std::size_t>
   return append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
                    std::bind(&group_by::finish, op.get(), ph::_1));
 }
+*/
 
 query_builder &
 query_builder::distinct() {

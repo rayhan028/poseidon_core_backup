@@ -78,8 +78,7 @@ enum class qop_type {
     create,
     aggregate,
     order_by,
-    group,
-    aggr,
+    group_by,
     store,
     end
 };
@@ -100,6 +99,15 @@ enum class result_type {
     none = 9,
     qres = 10
 };
+
+/**
+ * Functions to get a property value (defined by var=pos and property name) from a qr_tuple.
+ */
+p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop);
+
+template <typename T>
+T get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop);
+
 
 struct qop;
 using qop_ptr = std::shared_ptr<qop>;
@@ -217,10 +225,6 @@ struct qop {
 
   qop_type type_;
 protected:
-  p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const;
-
-  template <typename T>
-  T get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const;
 
   qop_ptr subscriber_; // pointer to the subsequent operator which receives and
                        // processes the results
@@ -787,49 +791,7 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
   static std::function<bool(const qr_tuple &, const qr_tuple &)> cmp_func_;
 };
 
-struct aggregate : public qop, public std::enable_shared_from_this<aggregate> {
-  struct expr {
-    enum func_t { f_count, f_sum, f_min, f_max, f_avg, f_pcount } func;
-    uint32_t var;
-    std::string property;
-    std::size_t aggr_type; // typecode of aggregation - corresponds to query_result.which()
-  };
-  aggregate(const std::vector<expr> exp) : aggr_exprs_ (exp), aggr_vals_(exp.size()) { init_aggregates(); }
-  ~aggregate() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(query_ctx &ctx, const qr_tuple &v);
-
-  void finish(query_ctx &ctx);
-
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
-    if (has_subscriber())
-      subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_ += next_offset, interpreted);
-  }
-
-  void init_aggregates(); 
-
-  std::vector<expr> aggr_exprs_;
-
-  using val_t = boost::variant<
-    double,                  // double values (min, max, sum)
-    int,                     // int values (min, max, sum, count)
-    uint64_t,                // uint64_t (min, max, sum)
-    std::string,             // string values (min, max)  
-    std::pair<double, int>>; // pair of values for avg (sum, cnt)
-  std::vector<val_t> aggr_vals_;
-};
-
+#if 0
 /**
  * group_by implements an operator for grouping tuples and optional aggregations
  * like count, sum, average, and percentage count.
@@ -877,6 +839,7 @@ struct group_by : public qop, public std::enable_shared_from_this<group_by> {
   std::vector<std::pair<std::string, std::size_t>> aggrs_;
   std::unordered_map<std::size_t, std::size_t> grp_size_map_;
 };
+#endif
 
 #ifdef QOP_RECOVERY
 struct persistent_group_by : public qop {

@@ -49,6 +49,7 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
     }
 
     SECTION("GroupBy") {
+        REQUIRE(qp.parse_("GroupBy([$0:int], [count($1:string), sum($2:int)], Project([$0.attr1:int, $0.attr2:string, $0.attr3:int], NodeScan('Nodes')))"));
         REQUIRE(qp.parse_("GroupBy([$0.attr:int], [count($0.attr:string), sum($1.attr:int)], NodeScan('Nodes'))"));
         REQUIRE(qp.parse_("GroupBy([$0.attr:int, $0.attr:datetime], [count($0.attr:string), sum($1.attr:int)], NodeScan('Nodes'))"));
         REQUIRE_FALSE(qp.parse_("GroupBy([count($0.attr:string), sum($1.attr:int)], NodeScan('Nodes'))"));

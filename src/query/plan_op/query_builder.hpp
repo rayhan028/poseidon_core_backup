@@ -25,6 +25,7 @@
 #include "graph_db.hpp"
 #include "query_ctx.hpp"
 #include "qop.hpp"
+#include "qop_aggregates.hpp"
 #include "qop_analytics.hpp"
 
 /**
@@ -195,12 +196,16 @@ public:
    * attribute(s) (in the tuple) to be aggregated are given as the vector of 
    * string-int pairs aggrs.
    */
+  /*
   query_builder &groupby(const std::vector<std::size_t> &pos);
   query_builder &groupby(const std::vector<std::size_t> &pos,
     const std::vector<std::pair<std::string, std::size_t>> &aggrs);
   query_builder &groupby(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
     const std::vector<std::pair<std::string, std::size_t>> &aggrs);
-  
+  */
+  query_builder &groupby(const std::vector<group_by::group>& grps, const std::vector<group_by::expr>& exprs);
+
+  query_builder &aggr(const std::vector<aggregate::expr>& exprs);
 
   /**
    * Add an operator for eliminating duplicates in result tuples.

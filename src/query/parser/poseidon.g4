@@ -27,7 +27,7 @@ scan_list : '[' STRING_ (',' STRING_)* ']' ;
 // Project
 project_op : Project_ '(' proj_list ',' query_operator ')' ;
 proj_list : '[' proj_expr (',' proj_expr)* ']' ;
-proj_expr : Var '.' Identifier_ ':' type_spec 
+proj_expr : Var ('.' Identifier_)? ':' type_spec 
         | function_call
         ;
 type_spec : IntType_ | DoubleType_ | Uint64Type_ | StringType_ | DateType_;
@@ -66,7 +66,8 @@ aggr_func : Count_ | Sum_ | Avg_ | Min_ | Max_ ;
 
 // GroupBy
 group_by_op : GroupBy_ '(' grouping_list ',' aggregate_list ',' query_operator ')' ;
-grouping_list : proj_list ;
+grouping_list : '[' grouping_expr (',' grouping_expr)* ']' ;
+grouping_expr : Var ('.' Identifier_)? ':' type_spec ;
 
 // Filter
 filter_op : Filter_ '(' logical_expr ',' query_operator ')' ;

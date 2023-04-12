@@ -1,5 +1,5 @@
 
-// Generated from src/query/parser/poseidon.g4 by ANTLR 4.11.1
+// Generated from src/query/parser/poseidon.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -128,6 +128,10 @@ public:
   }
 
   virtual std::any visitGrouping_list(poseidonParser::Grouping_listContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitGrouping_expr(poseidonParser::Grouping_exprContext *ctx) override {
     return visitChildren(ctx);
   }
 

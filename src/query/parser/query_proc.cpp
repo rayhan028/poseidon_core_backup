@@ -25,7 +25,7 @@
 #include "antlr4_generated/poseidonBaseVisitor.h"
 
 #include "qop.hpp"
-#include "join.hpp"
+#include "qop_joins.hpp"
 #include "func_call_expr.hpp"
 
 query_proc::query_proc(query_ctx &ctx) : qctx_(ctx), compiler_(ctx) { 

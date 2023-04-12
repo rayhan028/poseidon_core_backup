@@ -1,5 +1,5 @@
 
-// Generated from src/query/parser/poseidon.g4 by ANTLR 4.11.1
+// Generated from src/query/parser/poseidon.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -76,6 +76,8 @@ public:
     virtual std::any visitGroup_by_op(poseidonParser::Group_by_opContext *context) = 0;
 
     virtual std::any visitGrouping_list(poseidonParser::Grouping_listContext *context) = 0;
+
+    virtual std::any visitGrouping_expr(poseidonParser::Grouping_exprContext *context) = 0;
 
     virtual std::any visitFilter_op(poseidonParser::Filter_opContext *context) = 0;
 

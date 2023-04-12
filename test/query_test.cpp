@@ -934,15 +934,66 @@ TEST_CASE("Testing Groupby operator", "[qop]") {
     graph->add_node("Person", {{"age", boost::any(100)},
                               {"firstName", boost::any(std::string("Michael"))},
                               {"lastName", boost::any(std::string("G."))}});
-
-    result_set rs, expected;
-    auto q = query_builder(ctx)
+    return true;
+  });
+  // TODO: works only if we run queries in a separate transaction!
+   ctx.run_transaction([&]() {
+   {
+      result_set rs, expected;
+      auto q = query_builder(ctx)
               .all_nodes("Person")
               .project({PExpr_(0, pj::int_property(res, "age")),
                         PExpr_(0, pj::string_property(res, "firstName")),
                         PExpr_(0, pj::string_property(res, "lastName"))})
-              .groupby({1}, {{"count", 0}, {"pcount", 0}, {"sum", 0},
-                              {"avg", 0}, {"min", 0}, {"max", 0}})
+              .groupby(
+                {
+                  // group_by::group{ 0, "firstName", string_type }
+                  group_by::group{ 1, "", string_type }
+                }, 
+                { 
+                  // group_by::expr{ group_by::expr::f_count, 0, "age", int_type },
+                  group_by::expr{ group_by::expr::f_count, 0, "", int_type },
+                  // group_by::expr{ group_by::expr::f_avg, 0, "age", double_type }
+                  group_by::expr{ group_by::expr::f_avg, 0, "", double_type },
+                  group_by::expr{ group_by::expr::f_sum, 0, "", int_type },
+                  group_by::expr{ group_by::expr::f_min, 0, "", int_type },
+                  group_by::expr{ group_by::expr::f_max, 0, "", int_type }
+                })
+//              .groupby({1}, {{"count", 0}, {"pcount", 0}, {"sum", 0},
+//                              {"avg", 0}, {"min", 0}, {"max", 0}})
+              .collect(rs);
+
+      q.start(ctx);
+      rs.wait();
+      q.print_plan();
+
+      expected.data.push_back(
+        {query_result("Anastasia"), query_result("1"), query_result("48.000000"),
+          query_result("48"), query_result("48"), query_result("48") });
+      expected.data.push_back(
+        {query_result("Michael"), query_result("2"), query_result("88.500000"),
+          query_result("177"),  query_result("77"), query_result("100")});
+      expected.data.push_back(
+        {query_result("John"), query_result("3"), query_result("33.000000"),
+          query_result("99"), query_result("20"), query_result("42")});
+
+      REQUIRE(rs == expected);
+    }
+    {
+      result_set rs, expected;
+      auto q = query_builder(ctx)
+              .all_nodes("Person")
+              .groupby(
+                {
+                  group_by::group{ 0, "firstName", string_type }
+                }, 
+                { 
+                  group_by::expr{ group_by::expr::f_count, 0, "age", int_type },
+                  group_by::expr{ group_by::expr::f_avg, 0, "age", double_type },
+                  group_by::expr{ group_by::expr::f_sum, 0, "age", int_type },
+                  group_by::expr{ group_by::expr::f_min, 0, "age", int_type },
+                  group_by::expr{ group_by::expr::f_max, 0, "age", int_type }
+                })
               .collect(rs);
 
     q.start(ctx);
@@ -950,19 +1001,17 @@ TEST_CASE("Testing Groupby operator", "[qop]") {
     q.print_plan();
 
     expected.data.push_back(
-      {query_result("John"), query_result("3"), query_result("50.000000"),
-        query_result("99"), query_result("33.000000"), query_result("20"),
-        query_result("42")});
+      {query_result("Anastasia"), query_result("1"), query_result("48.000000"),
+        query_result("48"), query_result("48"), query_result("48") });
     expected.data.push_back(
-      {query_result("Michael"), query_result("2"), query_result("33.333333"),
-        query_result("177"), query_result("88.500000"), query_result("77"),
-        query_result("100")});
+      {query_result("Michael"), query_result("2"), query_result("88.500000"),
+        query_result("177"),  query_result("77"), query_result("100")});
     expected.data.push_back(
-      {query_result("Anastasia"), query_result("1"), query_result("16.666667"),
-        query_result("48"), query_result("48.000000"), query_result("48"),
-        query_result("48") });
+      {query_result("John"), query_result("3"), query_result("33.000000"),
+        query_result("99"), query_result("20"), query_result("42")});
 
     REQUIRE(rs == expected);
+    }
     return true;
   });
   graph_pool::destroy(pool);

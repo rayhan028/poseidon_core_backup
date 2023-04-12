@@ -17,8 +17,9 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 #include "query_planner.hpp"
-#include "join.hpp"
-#include "update.hpp"
+#include "qop_joins.hpp"
+#include "qop_aggregates.hpp"
+#include "qop_updates.hpp"
 #include "properties.hpp"
 
 uint32_t query_planner::extract_tuple_id(const std::string& var_name) {
@@ -86,26 +87,33 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
     for (auto& pexpr : ctx->proj_list()->proj_expr()) {
         auto var = pexpr->Var()->getText();
         auto var_id = extract_tuple_id(var);
-        auto attr = pexpr->Identifier_()->getText();
+        std::string attr;
+        if (pexpr->Identifier_() != nullptr)
+            attr = pexpr->Identifier_()->getText();
         auto attr_type = pexpr->type_spec();
-        if (attr_type->StringType_() != nullptr) {
-            pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::string_property(res, attr); } )));
-            prexprs.push_back({var_id, attr, result_type::string});
-        } else if (attr_type->IntType_() != nullptr) {
-            pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::int_property(res, attr); } )));
-            prexprs.push_back({var_id, attr, result_type::integer});
-        } else if (attr_type->DoubleType_() != nullptr) {
-            pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::double_property(res, attr); } )));
-            prexprs.push_back({var_id, attr, result_type::double_t});
-        } else if (attr_type->Uint64Type_() != nullptr) {
-            pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::uint64_property(res, attr); } )));
-            prexprs.push_back({var_id, attr, result_type::uint64});
-        } else if (attr_type->DateType_() != nullptr) {
-            pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::ptime_property(res, attr); } )));
-            prexprs.push_back({var_id, attr, result_type::date});
+        if (attr.empty()) {
+            // TODO: handle cases where attr is empty
+
+        }
+        else {
+            if (attr_type->StringType_() != nullptr) {
+                pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::string_property(res, attr); } )));
+                prexprs.push_back({var_id, attr, result_type::string});
+            } else if (attr_type->IntType_() != nullptr) {
+                pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::int_property(res, attr); } )));
+                prexprs.push_back({var_id, attr, result_type::integer});
+            } else if (attr_type->DoubleType_() != nullptr) {
+                pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::double_property(res, attr); } )));
+                prexprs.push_back({var_id, attr, result_type::double_t});
+            } else if (attr_type->Uint64Type_() != nullptr) {
+                pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::uint64_property(res, attr); } )));
+                prexprs.push_back({var_id, attr, result_type::uint64});
+            } else if (attr_type->DateType_() != nullptr) {
+                pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::ptime_property(res, attr); } )));
+                prexprs.push_back({var_id, attr, result_type::date});
+            }
         }
     }
-       
     auto qp = std::make_shared<projection>(pexprs, prexprs);
 
     auto ch = visit(ctx->query_operator());
@@ -277,7 +285,7 @@ std::any query_planner::visitAggregate_op(poseidonParser::Aggregate_opContext *c
         auto tspec = expr->type_spec();
 
         aggregate::expr::func_t aggr_func = aggregate::expr::f_count;
-        std::size_t aggr_type = 2;
+        qr_type aggr_type = int_type;
 
         if (aggr->aggr_func()->Count_() != nullptr)
             aggr_func = aggregate::expr::f_count;
@@ -291,17 +299,77 @@ std::any query_planner::visitAggregate_op(poseidonParser::Aggregate_opContext *c
             aggr_func = aggregate::expr::f_max;
 
         if (tspec->IntType_() == nullptr)
-            aggr_type = 2;
+            aggr_type = int_type;
         else if (tspec->DoubleType_() != nullptr)
-            aggr_type = 3;
+            aggr_type = double_type;
         else if (tspec->StringType_() != nullptr)
-            aggr_type = 4;
+            aggr_type = string_type;
         aggrs.push_back(aggregate::expr{ aggr_func, v_id, v_name, aggr_type });
     }
 
     auto qp = std::make_shared<aggregate>(aggrs);
     auto qop = qop_append2(child, qp); 
     return std::make_any<qop_ptr>(qop);
+}
+
+std::any query_planner::visitGroup_by_op(poseidonParser::Group_by_opContext *ctx) {
+   std::vector<aggregate::expr> aggrs; 
+   std::vector<group_by::group> grps;
+
+    auto ch = visit(ctx->query_operator());
+    auto child = std::any_cast<qop_ptr>(ch);
+
+    auto grp_list = ctx->grouping_list()->grouping_expr();
+    for (auto& gexpr : grp_list) {
+        auto var = gexpr->Var()->getText();
+        auto var_id = extract_tuple_id(var);
+        std::string attr;
+        if (gexpr->Identifier_() != nullptr)
+            attr = gexpr->Identifier_()->getText();
+        auto tspec = gexpr->type_spec();
+        qr_type grp_type = int_type;
+        if (tspec->IntType_() == nullptr)
+            grp_type = int_type;
+        else if (tspec->DoubleType_() != nullptr)
+            grp_type = double_type;
+        else if (tspec->StringType_() != nullptr)
+            grp_type = string_type;
+        grps.push_back(group_by::group{ var_id, attr, grp_type });
+    }
+
+    auto aggr_list = ctx->aggregate_list()->aggr_expr();
+    for (auto& aggr : aggr_list) {
+        auto expr = aggr->proj_expr();
+        auto v_id = extract_tuple_id(expr->Var()->getText());
+        auto v_name = expr->Identifier_()->getText();
+        auto tspec = expr->type_spec();
+
+        aggregate::expr::func_t aggr_func = aggregate::expr::f_count;
+        qr_type aggr_type = int_type;
+
+        if (aggr->aggr_func()->Count_() != nullptr)
+            aggr_func = aggregate::expr::f_count;
+        else if (aggr->aggr_func()->Sum_() != nullptr)
+            aggr_func = aggregate::expr::f_sum;
+        else if (aggr->aggr_func()->Avg_() != nullptr)
+            aggr_func = aggregate::expr::f_avg;
+        else if (aggr->aggr_func()->Min_() != nullptr)
+            aggr_func = aggregate::expr::f_min;
+        else if (aggr->aggr_func()->Max_() != nullptr)
+            aggr_func = aggregate::expr::f_max;
+
+        if (tspec->IntType_() == nullptr)
+            aggr_type = int_type;
+        else if (tspec->DoubleType_() != nullptr)
+            aggr_type = double_type;
+        else if (tspec->StringType_() != nullptr)
+            aggr_type = string_type;
+        aggrs.push_back(aggregate::expr{ aggr_func, v_id, v_name, aggr_type });
+    }
+
+    auto qp = std::make_shared<group_by>(grps, aggrs);
+    auto qop = qop_append2(child, qp); 
+    return std::make_any<qop_ptr>(qop);    
 }
 
 std::any query_planner::visitMatch_op(poseidonParser::Match_opContext *ctx) {

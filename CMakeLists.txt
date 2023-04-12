@@ -28,7 +28,7 @@ endif()
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(USE_PMDK OFF)
   set(LLVM_DIR "/opt/homebrew/opt/llvm@12/lib/cmake/llvm")
-  set(ANTLR_EXECUTABLE "/opt/homebrew/Cellar/antlr/4.11.1/antlr-4.11.1-complete.jar")
+  set(ANTLR_EXECUTABLE "/opt/homebrew/Cellar/antlr/4.12.0/antlr-4.12.0-complete.jar")
 else()
 # set variable pointing to the antlr tool that supports C++
 # set(ANTLR_EXECUTABLE "/opt/homebrew/Cellar/antlr/4.11.1/antlr-4.11.1-complete.jar")
@@ -452,13 +452,15 @@ set(src_files
   src/bp_file/bufferpool.cpp
   src/btree/index_map.cpp
   src/query/plan_op/qop.cpp
+  src/query/plan_op/qop_aggregates.cpp
   src/query/plan_op/qop_analytics.cpp
+  src/query/plan_op/qop_updates.cpp
+  src/query/plan_op/qop_joins.cpp
   src/query/expr/expression.cpp
   src/query/interp/expr_interpreter.cpp
   src/query/interp/qinterp.cpp
   src/query/interp/query_ctx.cpp
-  src/query/plan_op/update.cpp
-  src/query/plan_op/join.cpp
+
   src/query/plan_op/query_set.cpp
   src/query/plan_op/query_builder.cpp
   src/query/utils/query_printer.cpp

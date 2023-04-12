@@ -1,5 +1,5 @@
 
-// Generated from src/query/parser/poseidon.g4 by ANTLR 4.11.1
+// Generated from src/query/parser/poseidon.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -35,13 +35,13 @@ public:
     RuleMatch_op = 18, RulePath_pattern = 19, RulePath_component = 20, RuleNode_pattern = 21, 
     RuleRship_pattern = 22, RuleAggregate_op = 23, RuleAggregate_list = 24, 
     RuleAggr_expr = 25, RuleAggr_func = 26, RuleGroup_by_op = 27, RuleGrouping_list = 28, 
-    RuleFilter_op = 29, RuleLogical_expr = 30, RuleBoolean_expr = 31, RuleEquality_expr = 32, 
-    RuleRelational_expr = 33, RuleAdditive_expr = 34, RuleMultiplicative_expr = 35, 
-    RuleUnary_expr = 36, RulePrimary_expr = 37, RuleVariable = 38, RuleValue = 39, 
-    RuleFunction_call = 40, RuleUdf_prefix = 41, RuleParam_list = 42, RuleParam = 43, 
-    RuleSort_op = 44, RuleSort_list = 45, RuleSort_expr = 46, RuleSort_spec = 47, 
-    RuleCreate_op = 48, RuleCreate_node = 49, RuleProperty_list = 50, RuleProperty = 51, 
-    RuleCreate_rship = 52, RuleNode_var = 53
+    RuleGrouping_expr = 29, RuleFilter_op = 30, RuleLogical_expr = 31, RuleBoolean_expr = 32, 
+    RuleEquality_expr = 33, RuleRelational_expr = 34, RuleAdditive_expr = 35, 
+    RuleMultiplicative_expr = 36, RuleUnary_expr = 37, RulePrimary_expr = 38, 
+    RuleVariable = 39, RuleValue = 40, RuleFunction_call = 41, RuleUdf_prefix = 42, 
+    RuleParam_list = 43, RuleParam = 44, RuleSort_op = 45, RuleSort_list = 46, 
+    RuleSort_expr = 47, RuleSort_spec = 48, RuleCreate_op = 49, RuleCreate_node = 50, 
+    RuleProperty_list = 51, RuleProperty = 52, RuleCreate_rship = 53, RuleNode_var = 54
   };
 
   explicit poseidonParser(antlr4::TokenStream *input);
@@ -90,6 +90,7 @@ public:
   class Aggr_funcContext;
   class Group_by_opContext;
   class Grouping_listContext;
+  class Grouping_exprContext;
   class Filter_opContext;
   class Logical_exprContext;
   class Boolean_exprContext;
@@ -244,9 +245,9 @@ public:
     Proj_exprContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *Var();
-    antlr4::tree::TerminalNode *Identifier_();
     antlr4::tree::TerminalNode *COLON_();
     Type_specContext *type_spec();
+    antlr4::tree::TerminalNode *Identifier_();
     Function_callContext *function_call();
 
 
@@ -601,7 +602,12 @@ public:
   public:
     Grouping_listContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    Proj_listContext *proj_list();
+    antlr4::tree::TerminalNode *LBRACKET();
+    std::vector<Grouping_exprContext *> grouping_expr();
+    Grouping_exprContext* grouping_expr(size_t i);
+    antlr4::tree::TerminalNode *RBRACKET();
+    std::vector<antlr4::tree::TerminalNode *> COMMA_();
+    antlr4::tree::TerminalNode* COMMA_(size_t i);
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -609,6 +615,22 @@ public:
   };
 
   Grouping_listContext* grouping_list();
+
+  class  Grouping_exprContext : public antlr4::ParserRuleContext {
+  public:
+    Grouping_exprContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *Var();
+    antlr4::tree::TerminalNode *COLON_();
+    Type_specContext *type_spec();
+    antlr4::tree::TerminalNode *Identifier_();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Grouping_exprContext* grouping_expr();
 
   class  Filter_opContext : public antlr4::ParserRuleContext {
   public:
