@@ -32,7 +32,7 @@
 #include "qresult_iterator.hpp"
 
 /**
- * qproc is the main entry class for the Poseidon query processor. It
+ * query_proc is the main entry class for the Poseidon query processor. It
  * encapsulates the parser, the query planner as well as the query compiler and
  * interpreter.
  */

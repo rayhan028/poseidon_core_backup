@@ -627,6 +627,10 @@ void graph_db::print_stats() {
   std::cout << rprops << " relationship properties total." << std::endl;
 
   std::cout << dict_->size() << " strings in dictionary." << std::endl;
+
+#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY)
+  std::cout << "bufferpool hit ratio: " << bpool_.hit_ratio() << std::endl;
+#endif
 }
 
 node::id_t graph_db::add_node(const std::string &label,

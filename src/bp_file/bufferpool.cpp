@@ -20,7 +20,7 @@
 #include "bufferpool.hpp"
 #include "spdlog/spdlog.h"
 
-bufferpool::bufferpool(std::size_t bsize) : bsize_(bsize), slots_(bsize_) {
+bufferpool::bufferpool(std::size_t bsize) : bsize_(bsize), slots_(bsize_), p_reads_(0), l_reads_(0) {
     spdlog::debug("bufferpool()");
     buffer_ = new page[bsize_];
     slots_.set(); // set everything to 1 == unused
@@ -51,6 +51,8 @@ void bufferpool::scan_file(uint8_t file_id, std::function<void(page *p)> cb) {
     slots_.flip(pos);
 
     files_[file_id]->scan_pages(buffer_[pos], [&](page& pg, paged_file::page_id pid) {
+        l_reads_++;
+        p_reads_++;
         cb(&pg);
     });
     slots_.flip(pos);
@@ -64,6 +66,7 @@ std::pair<page*, paged_file::page_id> bufferpool::last_valid_page(uint8_t file_i
 
 page *bufferpool::fetch_page(paged_file::page_id pid) {
     std::unique_lock lock(mutex_);
+    l_reads_++;
     auto iter = ptable_.find(pid);
     spdlog::debug("bufferpool::fetch_page {}", pid & 0xFFFFFFFFFFFFFFF);
     if (iter != ptable_.end()) {
@@ -201,6 +204,7 @@ std::pair<page *, std::size_t> bufferpool::load_page_from_file(paged_file::page_
     assert(file_id < MAX_PFILES && files_[file_id]);
     files_[file_id]->read_page(raw_pid, buffer_[pos]);
     spdlog::debug("read page {}|{} from file {}", pid, raw_pid, file_id);
+    p_reads_++;
     return std::make_pair(&(buffer_[pos]), pos);
 }
 
@@ -220,4 +224,9 @@ void bufferpool::dump() {
 
         std::cout << "page #" << pid << ", file=" << file_id << ", dirty=" << iter->second.dirty_ << std::endl;
     }
+}
+
+double bufferpool::hit_ratio() const {
+    // spdlog::info("bufferpool: logical reads={}, physical reads={}", l_reads_, p_reads_);
+    return (double) (l_reads_ - p_reads_) / (double) l_reads_;
 }

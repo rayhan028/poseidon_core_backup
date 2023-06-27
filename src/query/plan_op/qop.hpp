@@ -39,7 +39,7 @@
 #include "expression.hpp"
 #include "qresult_iterator.hpp"
 #include "qop_visitor.hpp"
-#include "query_arg.hpp"
+// #include "query_arg.hpp"
 #include "query_ctx.hpp"
 
 template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
@@ -98,6 +98,23 @@ enum class result_type {
     uint64 = 8,
     none = 9,
     qres = 10
+};
+
+/**
+ * Directions of relationships.
+ */
+enum class RSHIP_DIR {
+    FROM = 0,
+    TO = 1,
+    ALL = 2
+};
+
+/**
+ * Directions of the expand operator.
+ */
+enum class EXPAND {
+    IN,
+    OUT
 };
 
 /**

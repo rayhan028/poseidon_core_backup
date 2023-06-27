@@ -109,6 +109,8 @@ public:
      */
     void purge();
     
+    double hit_ratio() const;
+    
 private:
     void dump();
     
@@ -130,6 +132,8 @@ private:
     boost::dynamic_bitset<> slots_; // a bitset indicating which slot in buffer_ is occupied
 
     std::array<paged_file_ptr, MAX_PFILES> files_; // the registered paged_files
+
+    std::size_t p_reads_, l_reads_; // number of physical and logical reads
 
     mutable std::recursive_mutex mutex_;
 };

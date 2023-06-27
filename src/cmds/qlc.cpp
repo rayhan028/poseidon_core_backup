@@ -17,20 +17,18 @@
 #include "spdlog/spdlog.h"
 
 
-graph_pool_ptr pool;
-
 #ifdef USE_PMDK
-
 #define POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
-
 #define PMEM_PATH "/mnt/pmem0/poseidon/"
-
 #endif
-graph_db_ptr graph;
+
 
 using namespace boost::program_options;
 
+graph_pool_ptr pool;
+graph_db_ptr graph;
 std::unique_ptr<query_proc> qproc_ptr;
+
 /**
  * Import data from the given list of CSV files. The list contains
  * not only the files names but also nodes/relationships as well as
@@ -137,12 +135,12 @@ void print_result(qresult_iterator& qres) {
  */
 void exec_query(const std::string &qstr, query_proc::mode qmode, bool print_plan) {
   try {
-  auto start_qp = std::chrono::steady_clock::now();
-  qproc_ptr->execute_and_output_query(qmode, qstr, print_plan);
-  auto end_qp = std::chrono::steady_clock::now();
+    auto start_qp = std::chrono::steady_clock::now();
+    qproc_ptr->execute_and_output_query(qmode, qstr, print_plan);
+    auto end_qp = std::chrono::steady_clock::now();
 
-  std::chrono::duration<double> diff = end_qp - start_qp;
-  fmt::print("Query executed in {}\n", diff); 
+    std::chrono::duration<double> diff = end_qp - start_qp;
+    fmt::print("Query executed in {}\n", diff); 
   } catch (std::exception& exc) {
     std::cerr << "Error in query execution: " << exc.what() << std::endl;
   }
@@ -193,8 +191,8 @@ void show_help() {
             << "\tcode c                           " << "display the string of the dictionary code c" << "\n"
             << "\tstats                            " << "print database statistics" << "\n"
             << "\tsync                             " << "ensure that all pages are written to disk" << "\n"
-            << "\tcreate index <label> <property>  " << "ensure that all pages are written to disk" << "\n"
-            << "\tdrop index <label> <property>    " << "ensure that all pages are written to disk" << "\n"
+            << "\tcreate index <label> <property>  " << "create an index for the given label/property" << "\n"
+            << "\tdrop index <label> <property>    " << "delete the index for the given label/property" << "\n"
             << "\t@file                            " << "execute the query stored in the given file" << "\n"
             << "\texplain <query-expr>             " << "execute the given query and print the plan" << "\n"
             << "\t<query-expr>                     " << "execute the given query" << std::endl;
@@ -274,7 +272,7 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
         std::vector<std::string> s;
         boost::split(s, str, boost::is_any_of(" "));
         if (s.size() == 2) {
-          std::cout << "create index " << s[0] << "-" << s[1] << std::endl;
+          spdlog::info("create index {}-{}", s[0], s[1]);
           query_ctx ctx(gdb);
           ctx.run_transaction([&]() {
             if (!ctx.gdb_->has_index(s[0], s[1]))
@@ -294,7 +292,7 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
         std::vector<std::string> s;
         boost::split(s, str, boost::is_any_of(" "));
         if (s.size() == 2) {
-          std::cout << "drop index " << s[0] << "-" << s[1] << std::endl;
+          spdlog::info("drop index {}-{}", s[0], s[1]);
           query_ctx ctx(gdb);
           ctx.run_transaction([&]() {
             if (ctx.gdb_->has_index(s[0], s[1]))

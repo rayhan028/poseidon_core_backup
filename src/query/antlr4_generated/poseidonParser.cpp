@@ -1,5 +1,5 @@
 
-// Generated from src/query/parser/poseidon.g4 by ANTLR 4.12.0
+// Generated from src/query/parser/poseidon.g4 by ANTLR 4.13.0
 
 
 #include "poseidonVisitor.h"
@@ -37,10 +37,19 @@ struct PoseidonParserStaticData final {
 };
 
 ::antlr4::internal::OnceFlag poseidonParserOnceFlag;
+#if ANTLR4_USE_THREAD_LOCAL_CACHE
+static thread_local
+#endif
 PoseidonParserStaticData *poseidonParserStaticData = nullptr;
 
 void poseidonParserInitialize() {
+#if ANTLR4_USE_THREAD_LOCAL_CACHE
+  if (poseidonParserStaticData != nullptr) {
+    return;
+  }
+#else
   assert(poseidonParserStaticData == nullptr);
+#endif
   auto staticData = std::make_unique<PoseidonParserStaticData>(
     std::vector<std::string>{
       "query", "query_operator", "node_scan_op", "scan_param", "scan_list", 
@@ -4729,5 +4738,9 @@ poseidonParser::Node_varContext* poseidonParser::node_var() {
 }
 
 void poseidonParser::initialize() {
+#if ANTLR4_USE_THREAD_LOCAL_CACHE
+  poseidonParserInitialize();
+#else
   ::antlr4::internal::call_once(poseidonParserOnceFlag, poseidonParserInitialize);
+#endif
 }

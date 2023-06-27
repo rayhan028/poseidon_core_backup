@@ -16,6 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
+
+#include "fmt/format.h"
+
 #include "query_proc.hpp"
 #include "query_planner.hpp"
 
@@ -27,6 +30,33 @@
 #include "qop.hpp"
 #include "qop_joins.hpp"
 #include "func_call_expr.hpp"
+
+class LexerErrorListener : public antlr4::BaseErrorListener {
+public:
+  LexerErrorListener() = default;
+
+  virtual void syntaxError(antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line, size_t charPositionInLine,
+                           const std::string &msg, std::exception_ptr e) override;
+};
+
+void LexerErrorListener::syntaxError(antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line, size_t charPositionInLine,
+                           const std::string &msg, std::exception_ptr e) {
+    spdlog::info("LexerErrorListener::syntaxError");
+}
+
+class ParserErrorListener : public antlr4::BaseErrorListener {
+public:
+  ParserErrorListener() = default;
+
+  virtual void syntaxError(antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line, size_t charPositionInLine,
+                           const std::string &msg, std::exception_ptr e) override;
+};
+
+void ParserErrorListener::syntaxError(antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line, size_t charPositionInLine,
+                           const std::string &msg, std::exception_ptr e) {
+    std::string mstr = fmt::format("syntax error at line {}:{}: {}", line, charPositionInLine, msg);
+    throw query_processing_error(mstr);
+}
 
 query_proc::query_proc(query_ctx &ctx) : qctx_(ctx), compiler_(ctx) { 
 }
@@ -69,8 +99,8 @@ qresult_iterator query_proc::execute_query(query_proc::mode m, const std::string
 }
 
 std::size_t query_proc::execute_and_output_query(mode m, const std::string& qstr, bool print_plan) {
-  auto qplan = prepare_query(qstr);
-    qplan.append_printer(); // TODO: if we print then we should return at least the number of tuples via result
+    auto qplan = prepare_query(qstr);
+    qplan.append_printer(); 
     prepare_plan(qplan);
 
     if (m == Interpret) {
@@ -91,7 +121,17 @@ query_set query_proc::prepare_query(const std::string &query) {
     antlr4::ANTLRInputStream input(query);
     poseidonLexer lexer(&input);
     antlr4::CommonTokenStream tokens(&lexer);
-    poseidonParser parser(&tokens);    
+    poseidonParser parser(&tokens);   
+    LexerErrorListener lexerErrorListener;
+    ParserErrorListener parserErrorListener;
+    // parser.setErrorHandler(std::make_shared<antlr4::BailErrorStrategy>());
+    lexer.removeErrorListeners();
+    lexer.addErrorListener(&lexerErrorListener);
+
+    parser.removeParseListeners();
+    parser.removeErrorListeners();
+    parser.addErrorListener(&parserErrorListener);
+
     poseidonParser::QueryContext* tree = parser.query();
     
     query_planner visitor(qctx_);

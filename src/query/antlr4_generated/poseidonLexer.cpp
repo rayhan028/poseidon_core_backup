@@ -1,5 +1,5 @@
 
-// Generated from src/query/parser/poseidon.g4 by ANTLR 4.12.0
+// Generated from src/query/parser/poseidon.g4 by ANTLR 4.13.0
 
 
 #include "poseidonLexer.h"
@@ -42,10 +42,19 @@ struct PoseidonLexerStaticData final {
 };
 
 ::antlr4::internal::OnceFlag poseidonlexerLexerOnceFlag;
+#if ANTLR4_USE_THREAD_LOCAL_CACHE
+static thread_local
+#endif
 PoseidonLexerStaticData *poseidonlexerLexerStaticData = nullptr;
 
 void poseidonlexerLexerInitialize() {
+#if ANTLR4_USE_THREAD_LOCAL_CACHE
+  if (poseidonlexerLexerStaticData != nullptr) {
+    return;
+  }
+#else
   assert(poseidonlexerLexerStaticData == nullptr);
+#endif
   auto staticData = std::make_unique<PoseidonLexerStaticData>(
     std::vector<std::string>{
       "T__0", "T__1", "T__2", "T__3", "T__4", "Filter_", "Nodescan_", "Match_", 
@@ -294,5 +303,9 @@ const atn::ATN& poseidonLexer::getATN() const {
 
 
 void poseidonLexer::initialize() {
+#if ANTLR4_USE_THREAD_LOCAL_CACHE
+  poseidonlexerLexerInitialize();
+#else
   ::antlr4::internal::call_once(poseidonlexerLexerOnceFlag, poseidonlexerLexerInitialize);
+#endif
 }

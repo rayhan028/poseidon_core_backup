@@ -28,7 +28,7 @@ endif()
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(USE_PMDK OFF)
   set(LLVM_DIR "/opt/homebrew/opt/llvm@12/lib/cmake/llvm")
-  set(ANTLR_EXECUTABLE "/opt/homebrew/Cellar/antlr/4.12.0/antlr-4.12.0-complete.jar")
+  set(ANTLR_EXECUTABLE "/opt/homebrew/Cellar/antlr/4.13.0/antlr-4.13.0-complete.jar")
 else()
 # set variable pointing to the antlr tool that supports C++
 # set(ANTLR_EXECUTABLE "/opt/homebrew/Cellar/antlr/4.11.1/antlr-4.11.1-complete.jar")
