@@ -73,6 +73,8 @@ public:
 
     virtual std::any visitAggr_func(poseidonParser::Aggr_funcContext *context) = 0;
 
+    virtual std::any visitUnion_op(poseidonParser::Union_opContext *context) = 0;
+
     virtual std::any visitGroup_by_op(poseidonParser::Group_by_opContext *context) = 0;
 
     virtual std::any visitGrouping_list(poseidonParser::Grouping_listContext *context) = 0;

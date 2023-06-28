@@ -60,8 +60,9 @@ std::any query_planner::visitNode_scan_op(poseidonParser::Node_scan_opContext *c
         op = std::make_shared<scan_nodes>(trim_string(p->STRING_()->getText()));
     else if (p->scan_list() != nullptr) {
         std::vector<std::string> label_list;
-        for (auto& s : p->scan_list()->STRING_())
+        for (auto& s : p->scan_list()->STRING_()) {
             label_list.push_back(trim_string(s->getText()));
+        }
         op = std::make_shared<scan_nodes>(label_list);
     }
     sources_.push_back(op);
@@ -309,6 +310,19 @@ std::any query_planner::visitAggregate_op(poseidonParser::Aggregate_opContext *c
 
     auto qp = std::make_shared<aggregate>(aggrs);
     auto qop = qop_append2(child, qp); 
+    return std::make_any<qop_ptr>(qop);
+}
+
+std::any query_planner::visitUnion_op(poseidonParser::Union_opContext *ctx) {
+    auto qop = std::make_shared<union_all_qres>();
+
+    auto ch1 = visit(ctx->query_operator()[0]);
+    auto ch2 = visit(ctx->query_operator()[1]);
+    auto child1 = std::any_cast<qop_ptr>(ch1);
+    auto child2 = std::any_cast<qop_ptr>(ch2);
+    child1->connect(qop, std::bind(&union_all_qres::process_right, qop.get(), ph::_1, ph::_2));
+    child2->connect(qop, std::bind(&union_all_qres::process_left, qop.get(), ph::_1, ph::_2), std::bind(&union_all_qres::finish, qop.get(), ph::_1));
+
     return std::make_any<qop_ptr>(qop);
 }
 

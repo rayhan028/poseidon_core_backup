@@ -13,6 +13,7 @@ query_operator : filter_op
         | expand_op
         | aggregate_op
         | group_by_op
+        | union_op
         | sort_op
         | create_op
         ;
@@ -27,8 +28,8 @@ scan_list : '[' STRING_ (',' STRING_)* ']' ;
 // Project
 project_op : Project_ '(' proj_list ',' query_operator ')' ;
 proj_list : '[' proj_expr (',' proj_expr)* ']' ;
-proj_expr : Var ('.' Identifier_)? ':' type_spec 
-        | function_call
+proj_expr : function_call
+        | Var ('.' Identifier_)? ':' type_spec 
         ;
 type_spec : IntType_ | DoubleType_ | Uint64Type_ | StringType_ | DateType_;
 
@@ -63,6 +64,9 @@ aggregate_op : Aggregate_ '(' aggregate_list ',' query_operator ')' ;
 aggregate_list : '[' aggr_expr (',' aggr_expr)*']' ;
 aggr_expr : aggr_func '(' proj_expr ')';
 aggr_func : Count_ | Sum_ | Avg_ | Min_ | Max_ ;
+
+// Union
+union_op : Union_ '(' query_operator ',' query_operator ')';
 
 // GroupBy
 group_by_op : GroupBy_ '(' grouping_list ',' aggregate_list ',' query_operator ')' ;
@@ -127,6 +131,7 @@ Aggregate_   : 'Aggregate' ;
 GroupBy_     : 'GroupBy' ;
 Sort_        : 'Sort' ;
 Create_      : 'Create' ;
+Union_       : 'Union' ;
 
 IntType_     : 'int' ;
 Uint64Type_  : 'uint64';

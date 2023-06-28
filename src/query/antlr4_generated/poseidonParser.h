@@ -15,15 +15,15 @@ public:
     T__0 = 1, T__1 = 2, T__2 = 3, T__3 = 4, T__4 = 5, Filter_ = 6, Nodescan_ = 7, 
     Match_ = 8, Project_ = 9, Limit_ = 10, CrossJoin_ = 11, HashJoin_ = 12, 
     Expand_ = 13, ForeachRelationship_ = 14, Aggregate_ = 15, GroupBy_ = 16, 
-    Sort_ = 17, Create_ = 18, IntType_ = 19, Uint64Type_ = 20, DoubleType_ = 21, 
-    StringType_ = 22, DateType_ = 23, Count_ = 24, Sum_ = 25, Avg_ = 26, 
-    Min_ = 27, Max_ = 28, UDF_ = 29, InExpandDir_ = 30, OutExpandDir_ = 31, 
-    FromDir_ = 32, ToDir_ = 33, AllDir_ = 34, DescOrder_ = 35, AscOrder_ = 36, 
-    INTEGER = 37, FLOAT = 38, Identifier_ = 39, Var = 40, NAME_ = 41, STRING_ = 42, 
-    COLON_ = 43, DOUBLE_COLON = 44, COMMA_ = 45, LPAREN = 46, RPAREN = 47, 
-    LBRACKET = 48, RBRACKET = 49, OR = 50, AND = 51, EQUALS = 52, NOTEQUALS = 53, 
-    LT = 54, LTEQ = 55, GT = 56, GTEQ = 57, PLUS_ = 58, MULT = 59, DIV = 60, 
-    MOD = 61, NOT = 62, WHITESPACE = 63
+    Sort_ = 17, Create_ = 18, Union_ = 19, IntType_ = 20, Uint64Type_ = 21, 
+    DoubleType_ = 22, StringType_ = 23, DateType_ = 24, Count_ = 25, Sum_ = 26, 
+    Avg_ = 27, Min_ = 28, Max_ = 29, UDF_ = 30, InExpandDir_ = 31, OutExpandDir_ = 32, 
+    FromDir_ = 33, ToDir_ = 34, AllDir_ = 35, DescOrder_ = 36, AscOrder_ = 37, 
+    INTEGER = 38, FLOAT = 39, Identifier_ = 40, Var = 41, NAME_ = 42, STRING_ = 43, 
+    COLON_ = 44, DOUBLE_COLON = 45, COMMA_ = 46, LPAREN = 47, RPAREN = 48, 
+    LBRACKET = 49, RBRACKET = 50, OR = 51, AND = 52, EQUALS = 53, NOTEQUALS = 54, 
+    LT = 55, LTEQ = 56, GT = 57, GTEQ = 58, PLUS_ = 59, MULT = 60, DIV = 61, 
+    MOD = 62, NOT = 63, WHITESPACE = 64
   };
 
   enum {
@@ -34,14 +34,15 @@ public:
     RuleRship_source_var = 15, RuleExpand_op = 16, RuleExpand_dir = 17, 
     RuleMatch_op = 18, RulePath_pattern = 19, RulePath_component = 20, RuleNode_pattern = 21, 
     RuleRship_pattern = 22, RuleAggregate_op = 23, RuleAggregate_list = 24, 
-    RuleAggr_expr = 25, RuleAggr_func = 26, RuleGroup_by_op = 27, RuleGrouping_list = 28, 
-    RuleGrouping_expr = 29, RuleFilter_op = 30, RuleLogical_expr = 31, RuleBoolean_expr = 32, 
-    RuleEquality_expr = 33, RuleRelational_expr = 34, RuleAdditive_expr = 35, 
-    RuleMultiplicative_expr = 36, RuleUnary_expr = 37, RulePrimary_expr = 38, 
-    RuleVariable = 39, RuleValue = 40, RuleFunction_call = 41, RuleUdf_prefix = 42, 
-    RuleParam_list = 43, RuleParam = 44, RuleSort_op = 45, RuleSort_list = 46, 
-    RuleSort_expr = 47, RuleSort_spec = 48, RuleCreate_op = 49, RuleCreate_node = 50, 
-    RuleProperty_list = 51, RuleProperty = 52, RuleCreate_rship = 53, RuleNode_var = 54
+    RuleAggr_expr = 25, RuleAggr_func = 26, RuleUnion_op = 27, RuleGroup_by_op = 28, 
+    RuleGrouping_list = 29, RuleGrouping_expr = 30, RuleFilter_op = 31, 
+    RuleLogical_expr = 32, RuleBoolean_expr = 33, RuleEquality_expr = 34, 
+    RuleRelational_expr = 35, RuleAdditive_expr = 36, RuleMultiplicative_expr = 37, 
+    RuleUnary_expr = 38, RulePrimary_expr = 39, RuleVariable = 40, RuleValue = 41, 
+    RuleFunction_call = 42, RuleUdf_prefix = 43, RuleParam_list = 44, RuleParam = 45, 
+    RuleSort_op = 46, RuleSort_list = 47, RuleSort_expr = 48, RuleSort_spec = 49, 
+    RuleCreate_op = 50, RuleCreate_node = 51, RuleProperty_list = 52, RuleProperty = 53, 
+    RuleCreate_rship = 54, RuleNode_var = 55
   };
 
   explicit poseidonParser(antlr4::TokenStream *input);
@@ -88,6 +89,7 @@ public:
   class Aggregate_listContext;
   class Aggr_exprContext;
   class Aggr_funcContext;
+  class Union_opContext;
   class Group_by_opContext;
   class Grouping_listContext;
   class Grouping_exprContext;
@@ -146,6 +148,7 @@ public:
     Expand_opContext *expand_op();
     Aggregate_opContext *aggregate_op();
     Group_by_opContext *group_by_op();
+    Union_opContext *union_op();
     Sort_opContext *sort_op();
     Create_opContext *create_op();
 
@@ -244,11 +247,11 @@ public:
   public:
     Proj_exprContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
+    Function_callContext *function_call();
     antlr4::tree::TerminalNode *Var();
     antlr4::tree::TerminalNode *COLON_();
     Type_specContext *type_spec();
     antlr4::tree::TerminalNode *Identifier_();
-    Function_callContext *function_call();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -577,6 +580,24 @@ public:
   };
 
   Aggr_funcContext* aggr_func();
+
+  class  Union_opContext : public antlr4::ParserRuleContext {
+  public:
+    Union_opContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *Union_();
+    antlr4::tree::TerminalNode *LPAREN();
+    std::vector<Query_operatorContext *> query_operator();
+    Query_operatorContext* query_operator(size_t i);
+    antlr4::tree::TerminalNode *COMMA_();
+    antlr4::tree::TerminalNode *RPAREN();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Union_opContext* union_op();
 
   class  Group_by_opContext : public antlr4::ParserRuleContext {
   public:
