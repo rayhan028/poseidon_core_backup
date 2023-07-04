@@ -43,6 +43,8 @@ public:
 
     virtual std::any visitHashjoin_op(poseidonParser::Hashjoin_opContext *context) = 0;
 
+    virtual std::any visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opContext *context) = 0;
+
     virtual std::any visitForeach_relationship_op(poseidonParser::Foreach_relationship_opContext *context) = 0;
 
     virtual std::any visitRship_dir(poseidonParser::Rship_dirContext *context) = 0;

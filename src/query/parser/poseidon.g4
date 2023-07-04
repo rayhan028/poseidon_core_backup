@@ -9,6 +9,7 @@ query_operator : filter_op
         | limit_op
         | crossjoin_op
         | hashjoin_op
+        | leftouterjoin_op
         | foreach_relationship_op
         | expand_op
         | aggregate_op
@@ -31,7 +32,7 @@ proj_list : '[' proj_expr (',' proj_expr)* ']' ;
 proj_expr : function_call
         | Var ('.' Identifier_)? ':' type_spec 
         ;
-type_spec : IntType_ | DoubleType_ | Uint64Type_ | StringType_ | DateType_;
+type_spec : IntType_ | DoubleType_ | Uint64Type_ | StringType_ | DateType_ | ResultType_ ;
 
 // Limit
 limit_op : Limit_ '(' INTEGER ',' query_operator ')' ;
@@ -41,6 +42,9 @@ crossjoin_op : CrossJoin_ '(' query_operator ',' query_operator ')' ;
 
 // HashJoin
 hashjoin_op : HashJoin_ '(' logical_expr ',' query_operator ',' query_operator ')' ;
+
+// LeftOuterJoin
+leftouterjoin_op : LeftOuterJoin_ '(' logical_expr ',' query_operator ',' query_operator ')' ;
 
 // ForeachRelationship
 foreach_relationship_op : ForeachRelationship_ '(' rship_dir ',' STRING_ (',' rship_cardinality)?  (',' rship_source_var)? ',' query_operator ')' ;
@@ -99,7 +103,7 @@ function_call : udf_prefix Identifier_ '(' param_list? ')' ;
 udf_prefix    : UDF_ DOUBLE_COLON ;
 param_list    : param (',' param)* ;
 param         : value
-              | variable ':' type_spec
+              | Var ('.' Identifier_)? ':' type_spec
               ;
 
 // Sort
@@ -125,6 +129,7 @@ Project_     : 'Project' ;
 Limit_       : 'Limit' ;
 CrossJoin_   : 'CrossJoin' ;
 HashJoin_    : 'HashJoin' ;
+LeftOuterJoin_ : 'LeftOuterJoin' ;
 Expand_      : 'Expand' ;
 ForeachRelationship_ : 'ForeachRelationship' ;
 Aggregate_   : 'Aggregate' ;
@@ -138,6 +143,7 @@ Uint64Type_  : 'uint64';
 DoubleType_  : 'double' ;
 StringType_  : 'string' ;
 DateType_    : 'datetime' ;
+ResultType_  : 'qresult' ;
 
 Count_       : 'count' ;
 Sum_         : 'sum' ;

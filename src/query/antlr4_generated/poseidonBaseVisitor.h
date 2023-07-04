@@ -63,6 +63,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitForeach_relationship_op(poseidonParser::Foreach_relationship_opContext *ctx) override {
     return visitChildren(ctx);
   }

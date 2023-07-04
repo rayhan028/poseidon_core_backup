@@ -14,6 +14,7 @@
 #include "graph_pool.hpp"
 
 #include "spdlog/sinks/basic_file_sink.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
 
@@ -106,6 +107,7 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
       return false;
     }
   }
+  gdb->flush();
   return true;
 }
 
@@ -156,10 +158,10 @@ std::string read_from_file(const std::string& qfile) {
       qstr.append(line);
     myfile.close();
   } else {
-    std::cout << "File not found" << std::endl;
+    std::cerr << "File not found" << std::endl;
   }
   
-  spdlog::info("execute query {}", qstr);
+  // spdlog::info("execute query {}", qstr);
   return qstr;
 }
 
@@ -189,6 +191,7 @@ void show_help() {
             << "\thelp                             " << "show this help" << "\n"
             << "\tstring s                         " << "display the dictionary code of the string s" << "\n"
             << "\tcode c                           " << "display the string of the dictionary code c" << "\n"
+            << "\tload <library>                   " << "load the given shared library" << "\n"
             << "\tstats                            " << "print database statistics" << "\n"
             << "\tsync                             " << "ensure that all pages are written to disk" << "\n"
             << "\tcreate index <label> <property>  " << "create an index for the given label/property" << "\n"
@@ -246,6 +249,22 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
     else if (line.rfind("stats", 0) == 0) {
       print_stats(gdb);
     }
+    else if (line.rfind("load", 0) == 0) {
+      if (line.length() > 4) {
+        auto lib_path = line.substr(4);
+        trim(lib_path);
+        spdlog::info("trying to load shared library '{}'", lib_path);
+        try {
+          if (qproc_ptr->load_library(lib_path)) {
+            std::cout << "library '" << lib_path << "' loaded successfully." << std::endl;
+          }
+          else 
+            std::cerr << "ERROR: cannot load library '" << lib_path << "'" << std::endl;
+        } catch (std::exception& exc) {
+            std::cerr << "ERROR: cannot load library '" << lib_path << "'" << std::endl;
+        }
+      }
+    }
     else if (line.rfind("sync", 0) == 0) {
       sync_db(gdb);
     }    
@@ -281,7 +300,7 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
           });
         }
         else
-          std::cout << "ERROR: invalid command" << std::endl;
+          std::cerr << "ERROR: invalid command" << std::endl;
       }
 
     }
@@ -328,7 +347,9 @@ int main(int argc, char* argv[]) {
   char delim_character = ',';
   bool strict = false;
 
-  spdlog::info("Starting poseidon_cli, Version {}", POSEIDON_VERSION);
+  auto console = spdlog::stdout_color_mt("poseidon");
+  spdlog::set_default_logger(console);
+  spdlog::info("Starting poseidon qlc, Version {}", POSEIDON_VERSION);
 
   try {
     options_description desc{"Options"};
@@ -385,7 +406,7 @@ int main(int argc, char* argv[]) {
       format = vm["format"].as<std::string>();
 
     if (format != "n4j" && format != "gtpc" && format != "ldbc") {
-      std::cout
+      std::cerr
           << "ERROR: choose format --n4j or --gtpc or --ldbc.\n";
       return -1;
     }
@@ -411,7 +432,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (start_shell && !query_file.empty()) {
-      std::cout
+      std::cerr
           << "ERROR: options --shell and --query cannot be used together.\n";
       return -1;
     }

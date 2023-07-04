@@ -84,34 +84,60 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
     std::vector<projection_expr> prexprs;
     projection::expr_list pexprs;
 
-    // TODO: handle UDFs
     for (auto& pexpr : ctx->proj_list()->proj_expr()) {
-        auto var = pexpr->Var()->getText();
-        auto var_id = extract_tuple_id(var);
-        std::string attr;
-        if (pexpr->Identifier_() != nullptr)
-            attr = pexpr->Identifier_()->getText();
-        auto attr_type = pexpr->type_spec();
-        if (attr.empty()) {
-            // TODO: handle cases where attr is empty
+        if (pexpr->Var() != nullptr) {
+            auto var = pexpr->Var()->getText();
+            auto var_id = extract_tuple_id(var);
+            std::string attr;
+            if (pexpr->Identifier_() != nullptr)
+                attr = pexpr->Identifier_()->getText();
+            auto attr_type = pexpr->type_spec();
+            if (attr.empty()) {
+                // TODO: handle cases where attr is empty
 
+            }
+            else {
+                if (attr_type->StringType_() != nullptr) {
+                    pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::string_property(res, attr); } )));
+                    prexprs.push_back({var_id, attr, result_type::string});
+                } else if (attr_type->IntType_() != nullptr) {
+                    pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::int_property(res, attr); } )));
+                    prexprs.push_back({var_id, attr, result_type::integer});
+                } else if (attr_type->DoubleType_() != nullptr) {
+                    pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::double_property(res, attr); } )));
+                    prexprs.push_back({var_id, attr, result_type::double_t});
+                } else if (attr_type->Uint64Type_() != nullptr) {
+                    pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::uint64_property(res, attr); } )));
+                    prexprs.push_back({var_id, attr, result_type::uint64});
+                } else if (attr_type->DateType_() != nullptr) {
+                    pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::ptime_property(res, attr); } )));
+                    prexprs.push_back({var_id, attr, result_type::date});
+                }
+            }
         }
-        else {
-            if (attr_type->StringType_() != nullptr) {
-                pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::string_property(res, attr); } )));
-                prexprs.push_back({var_id, attr, result_type::string});
-            } else if (attr_type->IntType_() != nullptr) {
-                pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::int_property(res, attr); } )));
-                prexprs.push_back({var_id, attr, result_type::integer});
-            } else if (attr_type->DoubleType_() != nullptr) {
-                pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::double_property(res, attr); } )));
-                prexprs.push_back({var_id, attr, result_type::double_t});
-            } else if (attr_type->Uint64Type_() != nullptr) {
-                pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::uint64_property(res, attr); } )));
-                prexprs.push_back({var_id, attr, result_type::uint64});
-            } else if (attr_type->DateType_() != nullptr) {
-                pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::ptime_property(res, attr); } )));
-                prexprs.push_back({var_id, attr, result_type::date});
+        else if (pexpr->function_call() != nullptr) {
+            // handle UDFs
+            auto fc = pexpr->function_call();
+            auto fc_name = fc->Identifier_()->getText();
+            std::cout << "handle UDF: " << fc_name << std::endl;
+            auto fc_params = fc->param_list()->param();
+            assert(fc_params.size() == 1);
+            // TODO: handle UDFs with more than one parameter
+            auto fc_func = udf_lib_->get<query_result(query_ctx*, void*)>(fc_name);
+            auto& pm = fc_params[0];
+            if (pm->value() != nullptr) {
+                std::cout << "\tparam value: " << pm->value()->getText() << std::endl; 
+                // pexprs.push_back(projection::expr());
+                // prexprs.push_back({});
+            }
+            else {
+                std::cout << "extract from " << pm->Var()->getText() << std::endl;
+                auto p_idx = extract_tuple_id(pm->Var()->getText());
+                auto p_attr = pm->Identifier_();
+                auto p_type = pm->type_spec();
+                std::cout << "\tparam var: " << p_idx << ":" << p_type->getText() << std::endl;
+                pexprs.push_back(projection::expr(p_idx, ([=](auto ctx, auto res) { return fc_func(&ctx, &res); } )));
+                prexprs.push_back({fc_func});
             }
         }
     }
@@ -254,6 +280,22 @@ std::any query_planner::visitCrossjoin_op(poseidonParser::Crossjoin_opContext *c
 
     child1->connect(qop, std::bind(&cross_join::process_right, qop.get(), ph::_1, ph::_2));
     child2->connect(qop, std::bind(&cross_join::process_left, qop.get(), ph::_1, ph::_2));
+   
+    return std::make_any<qop_ptr>(qop);        
+}
+
+std::any query_planner::visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opContext *ctx) {
+    // extract expression
+    auto ex = visit(ctx->logical_expr());
+    auto qop = std::make_shared<left_outerjoin>(std::any_cast<expr>(ex));
+
+    auto ch1 = visit(ctx->query_operator()[0]);
+    auto ch2 = visit(ctx->query_operator()[1]);
+    auto child1 = std::any_cast<qop_ptr>(ch1);
+    auto child2 = std::any_cast<qop_ptr>(ch2);
+
+    child1->connect(qop, std::bind(&left_outerjoin::process_right, qop.get(), ph::_1, ph::_2));
+    child2->connect(qop, std::bind(&left_outerjoin::process_left, qop.get(), ph::_1, ph::_2));
    
     return std::make_any<qop_ptr>(qop);        
 }

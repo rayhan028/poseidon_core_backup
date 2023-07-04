@@ -14,16 +14,17 @@ public:
   enum {
     T__0 = 1, T__1 = 2, T__2 = 3, T__3 = 4, T__4 = 5, Filter_ = 6, Nodescan_ = 7, 
     Match_ = 8, Project_ = 9, Limit_ = 10, CrossJoin_ = 11, HashJoin_ = 12, 
-    Expand_ = 13, ForeachRelationship_ = 14, Aggregate_ = 15, GroupBy_ = 16, 
-    Sort_ = 17, Create_ = 18, Union_ = 19, IntType_ = 20, Uint64Type_ = 21, 
-    DoubleType_ = 22, StringType_ = 23, DateType_ = 24, Count_ = 25, Sum_ = 26, 
-    Avg_ = 27, Min_ = 28, Max_ = 29, UDF_ = 30, InExpandDir_ = 31, OutExpandDir_ = 32, 
-    FromDir_ = 33, ToDir_ = 34, AllDir_ = 35, DescOrder_ = 36, AscOrder_ = 37, 
-    INTEGER = 38, FLOAT = 39, Identifier_ = 40, Var = 41, NAME_ = 42, STRING_ = 43, 
-    COLON_ = 44, DOUBLE_COLON = 45, COMMA_ = 46, LPAREN = 47, RPAREN = 48, 
-    LBRACKET = 49, RBRACKET = 50, OR = 51, AND = 52, EQUALS = 53, NOTEQUALS = 54, 
-    LT = 55, LTEQ = 56, GT = 57, GTEQ = 58, PLUS_ = 59, MULT = 60, DIV = 61, 
-    MOD = 62, NOT = 63, WHITESPACE = 64
+    LeftOuterJoin_ = 13, Expand_ = 14, ForeachRelationship_ = 15, Aggregate_ = 16, 
+    GroupBy_ = 17, Sort_ = 18, Create_ = 19, Union_ = 20, IntType_ = 21, 
+    Uint64Type_ = 22, DoubleType_ = 23, StringType_ = 24, DateType_ = 25, 
+    ResultType_ = 26, Count_ = 27, Sum_ = 28, Avg_ = 29, Min_ = 30, Max_ = 31, 
+    UDF_ = 32, InExpandDir_ = 33, OutExpandDir_ = 34, FromDir_ = 35, ToDir_ = 36, 
+    AllDir_ = 37, DescOrder_ = 38, AscOrder_ = 39, INTEGER = 40, FLOAT = 41, 
+    Identifier_ = 42, Var = 43, NAME_ = 44, STRING_ = 45, COLON_ = 46, DOUBLE_COLON = 47, 
+    COMMA_ = 48, LPAREN = 49, RPAREN = 50, LBRACKET = 51, RBRACKET = 52, 
+    OR = 53, AND = 54, EQUALS = 55, NOTEQUALS = 56, LT = 57, LTEQ = 58, 
+    GT = 59, GTEQ = 60, PLUS_ = 61, MULT = 62, DIV = 63, MOD = 64, NOT = 65, 
+    WHITESPACE = 66
   };
 
   explicit poseidonLexer(antlr4::CharStream *input);

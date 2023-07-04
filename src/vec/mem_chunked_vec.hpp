@@ -33,7 +33,7 @@
 #include "defs.hpp"
 #include "exceptions.hpp"
 
-#include "spdlog/spdlog.h"
+// #include "spdlog/spdlog.h"
 
 #define DEFAULT_CHUNK_SIZE 65536 // 4096 // 65536
 
