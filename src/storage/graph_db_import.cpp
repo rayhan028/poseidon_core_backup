@@ -615,13 +615,17 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
       assert(type_col >= 0);*/
     } else {     
       mapping_t::const_iterator it = node_id_from_field(m, src_node, row[start_col]);
-      if (it == m.end())
+      if (it == m.end()) {
+        spdlog::info("mapping not found for node id #{}-{}", src_node, row[start_col]);
         continue;
+      }
       node::id_t from_node = it->second;
       
       it = node_id_from_field(m, des_node, row[end_col]);
-      if (it == m.end())
+      if (it == m.end()) {
+        spdlog::info("mapping not found for node id #{}-{}", des_node, row[end_col]);
         continue;
+      }
       node::id_t to_node = it->second;      
       //auto &label = row[type_col]; // neo4j
 

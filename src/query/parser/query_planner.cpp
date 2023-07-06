@@ -474,6 +474,10 @@ expr query_planner::property_list_to_expr(properties_t& plist) {
             rhs_expr = Float(boost::any_cast<double>(val));
         else if (val.type() == typeid(std::string))
             rhs_expr = Str(boost::any_cast<std::string>(val)); 
+        else if (val.type() == typeid(long))
+            rhs_expr = Int(boost::any_cast<long>(val)); 
+        else
+            std::cerr << "ERROR in property_list_to_expr: rhs not handled " << val.type().name() << std::endl;
 
         return EQ(lhs_expr, rhs_expr);
     }
@@ -553,7 +557,7 @@ std::any query_planner::visitProperty_list(poseidonParser::Property_listContext 
         auto pname = p->Identifier_()->getText();
         boost::any pval;
         if (p->value()->INTEGER())
-            pval = std::stoi(p->value()->INTEGER()->getText());
+            pval = std::stol(p->value()->INTEGER()->getText());
         else if (p->value()->FLOAT())
             pval = std::stod(p->value()->FLOAT()->getText());
         else if (p->value()->STRING_())

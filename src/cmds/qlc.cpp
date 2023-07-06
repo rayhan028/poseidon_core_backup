@@ -186,6 +186,36 @@ void sync_db(graph_db_ptr &gdb) {
   gdb->flush();
 }
 
+void print_object(graph_db_ptr &gdb, const std::string &cmd) {
+  if (cmd.starts_with("node") && cmd.length() > 5) {
+    auto s = cmd.substr(5);
+    auto id = std::stoul(s);
+
+    gdb->run_transaction([&]() {
+      auto& n = gdb->node_by_id(id);
+      std::cout << std::dec << "#" << n.id() 
+                << ", label=" << gdb->get_dictionary()->lookup_code(n.node_label) << ", from="
+                << uint64_to_string(n.from_rship_list) << ", to=" << uint64_to_string(n.to_rship_list) 
+                << ", props=" << uint64_to_string(n.property_list) << std::endl;
+      return true;
+    });
+  }
+  else if (cmd.starts_with("rship")) {
+    auto s = cmd.substr(6);
+    auto id = std::stoul(s);
+    gdb->run_transaction([&]() {
+      auto& r = gdb->rship_by_id(id);
+      std::cout << "#" << r.id() 
+              << ", label = " << gdb->get_dictionary()->lookup_code(r.rship_label) << ", " << r.src_node
+              << "->" << r.dest_node << ", next_src=" << uint64_to_string(r.next_src_rship) << ", next_dest="
+              << uint64_to_string(r.next_dest_rship) << std::endl;
+      return true;
+    });
+  }
+  else
+    std::cerr << "ERROR: invalid print command" << std::endl;
+}
+
 void show_help() {
   std::cout << "Available commands:\n"
             << "\thelp                             " << "show this help" << "\n"
@@ -198,7 +228,8 @@ void show_help() {
             << "\tdrop index <label> <property>    " << "delete the index for the given label/property" << "\n"
             << "\t@file                            " << "execute the query stored in the given file" << "\n"
             << "\texplain <query-expr>             " << "execute the given query and print the plan" << "\n"
-            << "\t<query-expr>                     " << "execute the given query" << std::endl;
+            << "\t<query-expr>                     " << "execute the given query" << "\n"
+            << "\tprint node|rship <id>            " << "print the raw data of the node/relationship with given id" << std::endl;
 }
 
 /**
@@ -248,6 +279,13 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
     }
     else if (line.rfind("stats", 0) == 0) {
       print_stats(gdb);
+    }
+    else if (line.rfind("print", 0) == 0) {
+      if (line.length() > 6) {
+        auto s = line.substr(6);
+        trim(s);
+        print_object(gdb, s);
+      }
     }
     else if (line.rfind("load", 0) == 0) {
       if (line.length() > 4) {
