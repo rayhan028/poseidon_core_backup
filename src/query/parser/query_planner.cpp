@@ -119,7 +119,6 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
             // handle UDFs
             auto fc = pexpr->function_call();
             auto fc_name = fc->Identifier_()->getText();
-            std::cout << "handle UDF: " << fc_name << std::endl;
             auto fc_params = fc->param_list()->param();
             assert(fc_params.size() == 1);
             // TODO: handle UDFs with more than one parameter
@@ -131,11 +130,9 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
                 // prexprs.push_back({});
             }
             else {
-                std::cout << "extract from " << pm->Var()->getText() << std::endl;
                 auto p_idx = extract_tuple_id(pm->Var()->getText());
                 auto p_attr = pm->Identifier_();
                 auto p_type = pm->type_spec();
-                std::cout << "\tparam var: " << p_idx << ":" << p_type->getText() << std::endl;
                 pexprs.push_back(projection::expr(p_idx, ([=](auto ctx, auto res) { return fc_func(&ctx, &res); } )));
                 prexprs.push_back({fc_func});
             }
@@ -194,7 +191,7 @@ std::any query_planner::visitSort_op(poseidonParser::Sort_opContext *ctx) {
         auto vidx = extract_tuple_id(sexpr->Var()->getText());
         auto tspec = sexpr->type_spec();
         std::size_t cmp_type = 0;
-        if (tspec->IntType_() == nullptr)
+        if (tspec->IntType_() != nullptr)
             cmp_type = 2;
         else if (tspec->DoubleType_() != nullptr)
             cmp_type = 3;
@@ -212,7 +209,7 @@ std::any query_planner::visitSort_op(poseidonParser::Sort_opContext *ctx) {
     auto child = std::any_cast<qop_ptr>(ch);
 
     auto qp = std::make_shared<order_by>(sort_list);
-    auto qop = qop_append(child, qp);
+    auto qop = qop_append2(child, qp);
 
     return std::make_any<qop_ptr>(qop);
 }

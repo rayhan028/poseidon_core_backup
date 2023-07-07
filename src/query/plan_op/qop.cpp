@@ -26,6 +26,8 @@
 #include <boost/dynamic_bitset.hpp>
 #include <boost/hana.hpp>
 
+#include <fmt/ostream.h>
+
 #include "qop.hpp"
 #include "profiling.hpp"
 
@@ -465,42 +467,51 @@ void get_to_node::dump(std::ostream &os) const {
 
 /* ------------------------------------------------------------------------ */
 
+template <> struct fmt::formatter<ptime> : ostream_formatter {};
+template <> struct fmt::formatter<node_description> : ostream_formatter {};
+template <> struct fmt::formatter<rship_description> : ostream_formatter {};
+
 void printer::dump(std::ostream &os) const { os << "printer()"; }
 
 void printer::process(query_ctx &ctx, const qr_tuple &v) {
-  if (ntuples_ == 0)
-    std::cout << "+------------------------------------------------------------------------+\n";
+  if (ntuples_ == 0) {
+    std::cout << "+";
+    for (auto i = 0u; i < v.size(); i++)
+      std::cout << fmt::format("{0:-^{1}}+", "", 20);
+    std::cout << "\n";
+    output_width_ = 21 * v.size() + 1;
+  }
   ntuples_++;
   auto my_visitor = boost::hana::overload(
-      [&](const node_description& n) { std::cout << n; },
-      [&](const rship_description& r) { std::cout << r; },
-      [&](node *n) { std::cout << ctx.gdb_->get_node_description(n->id()); },
-      [&](relationship *r) { std::cout << ctx.gdb_->get_relationship_label(*r); },
-      [&](int i) { std::cout << i; }, [&](double d) { std::cout << fmt::format("{:f}", d); },
-      [&](const std::string &s) { std::cout << s; },
-      [&](uint64_t ll) { std::cout << ll; },
-      [&](null_t n) { std::cout << "NULL"; },
+      [&](const node_description& n) { std::cout << fmt::format(" {:<18} |", n); },
+      [&](const rship_description& r) { std::cout << fmt::format(" {:<18} |", r); },
+      [&](node *n) { std::cout << fmt::format(" {:<18} |", ctx.gdb_->get_node_description(n->id())); },
+      [&](relationship *r) { std::cout << fmt::format(" {:<18} |", ctx.gdb_->get_relationship_label(*r)); },
+      [&](int i) { std::cout << fmt::format(" {:>18} |", i); }, 
+      [&](double d) { std::cout << fmt::format(" {:>18f} |", d); },
+      [&](const std::string &s) { std::cout << fmt::format(" {:<18.18} |", s); },
+      [&](uint64_t ll) { std::cout << fmt::format(" {:>18} |", ll); },
+      [&](null_t n) { std::cout << fmt::format(" {:>18} |", "NULL"); },
       [&](array_t arr) {
         std::cout << "[ ";
         for (auto elem : arr.elems)
           std::cout << elem << " ";
         std::cout << " ]"; },
-      [&](ptime dt) { std::cout << dt; });
+      [&](ptime dt) { std::cout << fmt::format(" {:<18.18} |", dt); });
+  std::cout << "|";
   for (auto &ge : v) {
     boost::apply_visitor(my_visitor, ge);
-    std::cout << " ";
   }
   std::cout << "\n";
 }
 
 void printer::finish(query_ctx &ctx) {
-  auto s = fmt::format("{} tuples(s) returned. ", ntuples_);
+  auto s = fmt::format("{} tuple(s) returned. ", ntuples_);
   std::cout << "+-- " << s;
-  for (auto i = 80-s.length()-11; i > 0; i--) 
+  for (int i = output_width_ - s.length() - 5; i > 0; i--) 
     std::cout << "-";
   std::cout << "+\n";
 }
-
 
 /* ------------------------------------------------------------------------ */
 
@@ -564,7 +575,13 @@ void nodes_connected::process(query_ctx &ctx, const qr_tuple &v) {
 std::function<bool(const qr_tuple &, const qr_tuple &)> order_by::cmp_func_ = 0;
 
 void order_by::dump(std::ostream &os) const {
-  os << "order_by([]) - " << PROF_DUMP;
+  os << "order_by([";
+  if (! sort_spec_.empty()) {
+    for (auto& sspec : sort_spec_) {
+      os << " " << sspec.vidx << ":" << sspec.s_order;
+    }
+  }
+  os << " ]) - " << PROF_DUMP;
 }
 
 void order_by::process(query_ctx &ctx, const qr_tuple &v) {

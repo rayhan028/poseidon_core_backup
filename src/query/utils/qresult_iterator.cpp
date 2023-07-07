@@ -153,7 +153,7 @@ bool result_set::qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple 
         break;
     }
     } catch (std::exception& exc) {
-      std::cout << "exception in boost::get at #" << sp.vidx << std::endl;
+      std::cout << "qr_compare - exception in boost::get at #" << sp.vidx << " for " << sp.cmp_type << " : " << exc.what() << std::endl;
     }
     return true;
   };

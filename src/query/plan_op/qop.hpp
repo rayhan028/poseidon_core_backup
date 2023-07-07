@@ -658,7 +658,7 @@ struct get_to_node : public expand {
  * vector v to standard output.
  */
 struct printer : public qop, public std::enable_shared_from_this<printer> {
-  printer() : ntuples_(0) {}
+  printer() : ntuples_(0), output_width_(0) {}
 
   void dump(std::ostream &os) const override;
 
@@ -682,6 +682,7 @@ struct printer : public qop, public std::enable_shared_from_this<printer> {
   }
 
   std::size_t ntuples_;
+  std::size_t output_width_;
 };
 
 /**
@@ -765,7 +766,7 @@ extern result_set::sort_spec_list sort_spec_;
  * comparison function or a specificaton of sorting criteria.
  */
 struct order_by : public qop, public std::enable_shared_from_this<order_by> {
-    order_by(const result_set::sort_spec_list &spec) /*: sort_spec_(spec)*/ { type_ = qop_type::order_by; sort_spec_=spec; }
+    order_by(const result_set::sort_spec_list &spec) /*: sort_spec_(spec)*/ { type_ = qop_type::order_by; sort_spec_= spec; }
  
   order_by(std::function<bool(const qr_tuple &, const qr_tuple &)> func)
       //: cmp_func_(func) 

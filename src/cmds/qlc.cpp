@@ -241,7 +241,7 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
   linenoise::SetMultiLine(true);
 
   // Set max length of the history
-  linenoise::SetHistoryMaxLen(4);
+  linenoise::SetHistoryMaxLen(1000);
   // Load history
   linenoise::LoadHistory(path);
   linenoise::SetCompletionCallback(query_completion);
