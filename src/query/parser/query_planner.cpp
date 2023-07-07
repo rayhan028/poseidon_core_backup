@@ -575,7 +575,7 @@ std::any query_planner::visitProperty_list(poseidonParser::Property_listContext 
         auto pname = p->Identifier_()->getText();
         boost::any pval;
         if (p->value()->INTEGER())
-            pval = std::stol(p->value()->INTEGER()->getText());
+            pval = std::stoi(p->value()->INTEGER()->getText());
         else if (p->value()->FLOAT())
             pval = std::stod(p->value()->FLOAT()->getText());
         else if (p->value()->STRING_())
