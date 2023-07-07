@@ -67,6 +67,14 @@ public:
 
     virtual std::any visitRship_pattern(poseidonParser::Rship_patternContext *context) = 0;
 
+    virtual std::any visitDir_spec(poseidonParser::Dir_specContext *context) = 0;
+
+    virtual std::any visitLeft_dir(poseidonParser::Left_dirContext *context) = 0;
+
+    virtual std::any visitRight_dir(poseidonParser::Right_dirContext *context) = 0;
+
+    virtual std::any visitNo_dir(poseidonParser::No_dirContext *context) = 0;
+
     virtual std::any visitAggregate_op(poseidonParser::Aggregate_opContext *context) = 0;
 
     virtual std::any visitAggregate_list(poseidonParser::Aggregate_listContext *context) = 0;

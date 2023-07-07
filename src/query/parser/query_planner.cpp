@@ -443,10 +443,31 @@ std::any query_planner::visitPath_pattern(poseidonParser::Path_patternContext *c
          */
         auto label = std::string(":") + p->rship_pattern()->Identifier_().back()->getText();
         // TODO: handle direction of relationship
-        auto rship_op = std::make_shared<foreach_from_relationship>(label, origin_idx);
-        node_op = qop_append(node_op, rship_op);  
-        auto get_op = std::make_shared<get_to_node>();
-        node_op = qop_append(node_op, get_op); 
+        auto dir = p->rship_pattern()->dir_spec();
+        if (dir[0]->no_dir() != nullptr && dir[1]->right_dir() != nullptr) {
+            // -[]->
+            auto rship_op = std::make_shared<foreach_from_relationship>(label, origin_idx);
+            node_op = qop_append(node_op, rship_op);  
+            auto get_op = std::make_shared<get_to_node>();
+            node_op = qop_append(node_op, get_op); 
+        }
+        else if (dir[0]->left_dir() != nullptr && dir[1]->no_dir() != nullptr) {
+            // <-[]-
+            auto rship_op = std::make_shared<foreach_to_relationship>(label, origin_idx);
+            node_op = qop_append(node_op, rship_op);  
+            auto get_op = std::make_shared<get_from_node>();
+            node_op = qop_append(node_op, get_op); 
+        }
+        else if (dir[0]->no_dir() != nullptr && dir[1]->no_dir() != nullptr) {
+            // -[]-
+            auto rship_op = std::make_shared<foreach_all_relationship>(label, origin_idx);
+            node_op = qop_append(node_op, rship_op);  
+            auto get_op = std::make_shared<get_to_node>();
+            node_op = qop_append(node_op, get_op); 
+        }
+        else {
+            throw query_processing_error("invalid relationship direction");
+        }
         origin_idx++;
         /*
          * 2. Node_pattern

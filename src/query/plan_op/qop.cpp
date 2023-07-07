@@ -506,7 +506,6 @@ void printer::process(query_ctx &ctx, const qr_tuple &v) {
 }
 
 void printer::finish(query_ctx &ctx) {
-  std::cout << "printer::finish" << std::endl;
   auto s = fmt::format("{} tuple(s) returned. ", ntuples_);
   std::cout << "+-- " << s;
   for (int i = output_width_ - s.length() - 5; i > 0; i--) 

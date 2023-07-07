@@ -111,6 +111,22 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitDir_spec(poseidonParser::Dir_specContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitLeft_dir(poseidonParser::Left_dirContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitRight_dir(poseidonParser::Right_dirContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitNo_dir(poseidonParser::No_dirContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitAggregate_op(poseidonParser::Aggregate_opContext *ctx) override {
     return visitChildren(ctx);
   }

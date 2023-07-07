@@ -61,7 +61,12 @@ match_op : Match_ '(' path_pattern ')' ;
 path_pattern : node_pattern path_component* ;
 path_component : rship_pattern node_pattern ; 
 node_pattern : '(' (Identifier_)? ':' Identifier_ property_list? ')' ;
-rship_pattern : '-' '[' (Identifier_)? ':' Identifier_ ']' '->' ;
+rship_pattern : dir_spec '[' (Identifier_)? ':' Identifier_ ']' dir_spec ;
+
+dir_spec: left_dir | right_dir | no_dir ;
+left_dir : '<-' ;
+right_dir : '->' ;
+no_dir    : '-' ;
 
 // Aggregate
 aggregate_op : Aggregate_ '(' aggregate_list ',' query_operator ')' ;

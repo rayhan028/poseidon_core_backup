@@ -12,19 +12,19 @@
 class  poseidonLexer : public antlr4::Lexer {
 public:
   enum {
-    T__0 = 1, T__1 = 2, T__2 = 3, T__3 = 4, T__4 = 5, Filter_ = 6, Nodescan_ = 7, 
-    Match_ = 8, Project_ = 9, Limit_ = 10, CrossJoin_ = 11, HashJoin_ = 12, 
-    LeftOuterJoin_ = 13, Expand_ = 14, ForeachRelationship_ = 15, Aggregate_ = 16, 
-    GroupBy_ = 17, Sort_ = 18, Create_ = 19, Union_ = 20, IntType_ = 21, 
-    Uint64Type_ = 22, DoubleType_ = 23, StringType_ = 24, DateType_ = 25, 
-    ResultType_ = 26, Count_ = 27, Sum_ = 28, Avg_ = 29, Min_ = 30, Max_ = 31, 
-    UDF_ = 32, InExpandDir_ = 33, OutExpandDir_ = 34, FromDir_ = 35, ToDir_ = 36, 
-    AllDir_ = 37, DescOrder_ = 38, AscOrder_ = 39, INTEGER = 40, FLOAT = 41, 
-    Identifier_ = 42, Var = 43, NAME_ = 44, STRING_ = 45, COLON_ = 46, DOUBLE_COLON = 47, 
-    COMMA_ = 48, LPAREN = 49, RPAREN = 50, LBRACKET = 51, RBRACKET = 52, 
-    OR = 53, AND = 54, EQUALS = 55, NOTEQUALS = 56, LT = 57, LTEQ = 58, 
-    GT = 59, GTEQ = 60, PLUS_ = 61, MULT = 62, DIV = 63, MOD = 64, NOT = 65, 
-    WHITESPACE = 66
+    T__0 = 1, T__1 = 2, T__2 = 3, T__3 = 4, T__4 = 5, T__5 = 6, Filter_ = 7, 
+    Nodescan_ = 8, Match_ = 9, Project_ = 10, Limit_ = 11, CrossJoin_ = 12, 
+    HashJoin_ = 13, LeftOuterJoin_ = 14, Expand_ = 15, ForeachRelationship_ = 16, 
+    Aggregate_ = 17, GroupBy_ = 18, Sort_ = 19, Create_ = 20, Union_ = 21, 
+    IntType_ = 22, Uint64Type_ = 23, DoubleType_ = 24, StringType_ = 25, 
+    DateType_ = 26, ResultType_ = 27, Count_ = 28, Sum_ = 29, Avg_ = 30, 
+    Min_ = 31, Max_ = 32, UDF_ = 33, InExpandDir_ = 34, OutExpandDir_ = 35, 
+    FromDir_ = 36, ToDir_ = 37, AllDir_ = 38, DescOrder_ = 39, AscOrder_ = 40, 
+    INTEGER = 41, FLOAT = 42, Identifier_ = 43, Var = 44, NAME_ = 45, STRING_ = 46, 
+    COLON_ = 47, DOUBLE_COLON = 48, COMMA_ = 49, LPAREN = 50, RPAREN = 51, 
+    LBRACKET = 52, RBRACKET = 53, OR = 54, AND = 55, EQUALS = 56, NOTEQUALS = 57, 
+    LT = 58, LTEQ = 59, GT = 60, GTEQ = 61, PLUS_ = 62, MULT = 63, DIV = 64, 
+    MOD = 65, NOT = 66, WHITESPACE = 67
   };
 
   explicit poseidonLexer(antlr4::CharStream *input);
