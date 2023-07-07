@@ -359,7 +359,7 @@ std::any query_planner::visitUnion_op(poseidonParser::Union_opContext *ctx) {
     auto ch2 = visit(ctx->query_operator()[1]);
     auto child1 = std::any_cast<qop_ptr>(ch1);
     auto child2 = std::any_cast<qop_ptr>(ch2);
-    child1->connect(qop, std::bind(&union_all_qres::process_right, qop.get(), ph::_1, ph::_2));
+    child1->connect(qop, std::bind(&union_all_qres::process_right, qop.get(), ph::_1, ph::_2), std::bind(&union_all_qres::r_finish, qop.get(), ph::_1));
     child2->connect(qop, std::bind(&union_all_qres::process_left, qop.get(), ph::_1, ph::_2), std::bind(&union_all_qres::finish, qop.get(), ph::_1));
 
     return std::make_any<qop_ptr>(qop);

@@ -56,6 +56,8 @@ public:
   void interp_query(query_set &plan);
   void compile_query(query_set &plan);
 
+  void abort_transaction();
+  
   bool load_library(const std::string &lib_path);
 
 private:

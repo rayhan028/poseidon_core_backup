@@ -150,6 +150,10 @@ void query_proc::compile_query(query_set& plan) {
     compiler_.execute(plan);    
 }
 
+void query_proc::abort_transaction() {
+    qctx_.abort_transaction();
+}
+
 bool query_proc::load_library(const std::string& lib_path) {
     udf_lib_ = std::make_shared<boost::dll::shared_library>(lib_path);
     if (udf_lib_->is_loaded()) {

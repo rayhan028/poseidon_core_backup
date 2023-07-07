@@ -6,7 +6,7 @@ Union(
                     ForeachRelationship(TO, ':containerOf',
                         Expand(OUT, 'Post',
                             ForeachRelationship(FROM, ':replyOf', 1, 100,
-                                Filter($0.id == 16492677,
+                                Filter($0.id == 561,
                                     NodeScan('Comment')
                                 )
                             )
@@ -21,7 +21,7 @@ Union(
             ForeachRelationship(FROM, ':hasModerator',
                 Expand(IN, 'Forum',
                     ForeachRelationship(TO, ':containerOf',
-                        Filter($0.id == 16492674,
+                        Filter($0.id == 233,
                             NodeScan('Post')
                         )
                     )

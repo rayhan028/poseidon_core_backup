@@ -145,6 +145,7 @@ void exec_query(const std::string &qstr, query_proc::mode qmode, bool print_plan
     fmt::print("Query executed in {}\n", diff); 
   } catch (std::exception& exc) {
     std::cerr << "Error in query execution: " << exc.what() << std::endl;
+    qproc_ptr->abort_transaction();
   }
 }
 

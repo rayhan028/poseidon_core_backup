@@ -506,6 +506,7 @@ void printer::process(query_ctx &ctx, const qr_tuple &v) {
 }
 
 void printer::finish(query_ctx &ctx) {
+  std::cout << "printer::finish" << std::endl;
   auto s = fmt::format("{} tuple(s) returned. ", ntuples_);
   std::cout << "+-- " << s;
   for (int i = output_width_ - s.length() - 5; i > 0; i--) 
@@ -1049,18 +1050,23 @@ void union_all_qres::dump(std::ostream &os) const { // TODO
 }
 
 void union_all_qres::process_left(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE;
   if (init) {
     for (auto &r : res_)
       consume_(ctx, r);
     init = false;
   }
   consume_(ctx, v);
+  PROF_POST(1);
 }
 
 void union_all_qres::process_right(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE;
   res_.push_back(v);
   // consume_(gdb, v);
+  PROF_POST(1);
 }
+
 void union_all_qres::r_finish(query_ctx &ctx) { }
 void union_all_qres::finish(query_ctx &ctx) { qop::default_finish(ctx); }
 
