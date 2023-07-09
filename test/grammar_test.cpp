@@ -15,6 +15,13 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE(qp.parse_("NodeScan(['Comment', 'Post'])"));
     }
 
+    SECTION("IndexScan") {
+        REQUIRE(qp.parse_("IndexScan('Person', 'id', 42)"));
+        REQUIRE(qp.parse_("IndexScan('Person', 'name', 'Dave')"));
+        REQUIRE_FALSE(qp.parse_("IndexScan()"));
+        REQUIRE_FALSE(qp.parse_("IndexScan('Person')"));
+    }
+
     SECTION("Filter") {
         REQUIRE(qp.parse_("Filter($0.id == 42, NodeScan('Person'))"));
         REQUIRE(qp.parse_("Filter($0.num > 1.0, NodeScan('Person'))"));

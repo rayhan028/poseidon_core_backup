@@ -212,7 +212,6 @@ void bufferpool::write_page_to_file(paged_file::page_id pid, page *pg) {
     auto raw_pid = pid & 0xFFFFFFFFFFFFFFF;
     auto file_id = (pid & 0xF000000000000000) >> 60;
     assert(file_id < MAX_PFILES && files_[file_id]);
-    spdlog::debug("write page {}|{} to file {}", pid, raw_pid, file_id);
     files_[file_id]->write_page(raw_pid, *pg);
 }
 

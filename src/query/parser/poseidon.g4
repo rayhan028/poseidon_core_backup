@@ -4,6 +4,7 @@ grammar poseidon;
 query : query_operator EOF ;
 query_operator : filter_op 
         | node_scan_op 
+        | index_scan_op
         | match_op 
         | project_op 
         | limit_op
@@ -25,6 +26,9 @@ scan_param : STRING_
            | scan_list
            ;
 scan_list : '[' STRING_ (',' STRING_)* ']' ;
+
+index_scan_op : Indexscan_ '(' index_scan_param ')' ;
+index_scan_param : STRING_ ',' STRING_ ',' value ;
 
 // Project
 project_op : Project_ '(' proj_list ',' query_operator ')' ;
@@ -129,6 +133,7 @@ node_var     : '(' Var ')' ;
 // Lexer
 Filter_      : 'Filter' ;
 Nodescan_    : 'NodeScan' ;
+Indexscan_   : 'IndexScan' ;
 Match_       : 'Match' ;
 Project_     : 'Project' ;
 Limit_       : 'Limit' ;

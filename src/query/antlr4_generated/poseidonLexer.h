@@ -13,18 +13,18 @@ class  poseidonLexer : public antlr4::Lexer {
 public:
   enum {
     T__0 = 1, T__1 = 2, T__2 = 3, T__3 = 4, T__4 = 5, T__5 = 6, Filter_ = 7, 
-    Nodescan_ = 8, Match_ = 9, Project_ = 10, Limit_ = 11, CrossJoin_ = 12, 
-    HashJoin_ = 13, LeftOuterJoin_ = 14, Expand_ = 15, ForeachRelationship_ = 16, 
-    Aggregate_ = 17, GroupBy_ = 18, Sort_ = 19, Create_ = 20, Union_ = 21, 
-    IntType_ = 22, Uint64Type_ = 23, DoubleType_ = 24, StringType_ = 25, 
-    DateType_ = 26, ResultType_ = 27, Count_ = 28, Sum_ = 29, Avg_ = 30, 
-    Min_ = 31, Max_ = 32, UDF_ = 33, InExpandDir_ = 34, OutExpandDir_ = 35, 
-    FromDir_ = 36, ToDir_ = 37, AllDir_ = 38, DescOrder_ = 39, AscOrder_ = 40, 
-    INTEGER = 41, FLOAT = 42, Identifier_ = 43, Var = 44, NAME_ = 45, STRING_ = 46, 
-    COLON_ = 47, DOUBLE_COLON = 48, COMMA_ = 49, LPAREN = 50, RPAREN = 51, 
-    LBRACKET = 52, RBRACKET = 53, OR = 54, AND = 55, EQUALS = 56, NOTEQUALS = 57, 
-    LT = 58, LTEQ = 59, GT = 60, GTEQ = 61, PLUS_ = 62, MULT = 63, DIV = 64, 
-    MOD = 65, NOT = 66, WHITESPACE = 67
+    Nodescan_ = 8, Indexscan_ = 9, Match_ = 10, Project_ = 11, Limit_ = 12, 
+    CrossJoin_ = 13, HashJoin_ = 14, LeftOuterJoin_ = 15, Expand_ = 16, 
+    ForeachRelationship_ = 17, Aggregate_ = 18, GroupBy_ = 19, Sort_ = 20, 
+    Create_ = 21, Union_ = 22, IntType_ = 23, Uint64Type_ = 24, DoubleType_ = 25, 
+    StringType_ = 26, DateType_ = 27, ResultType_ = 28, Count_ = 29, Sum_ = 30, 
+    Avg_ = 31, Min_ = 32, Max_ = 33, UDF_ = 34, InExpandDir_ = 35, OutExpandDir_ = 36, 
+    FromDir_ = 37, ToDir_ = 38, AllDir_ = 39, DescOrder_ = 40, AscOrder_ = 41, 
+    INTEGER = 42, FLOAT = 43, Identifier_ = 44, Var = 45, NAME_ = 46, STRING_ = 47, 
+    COLON_ = 48, DOUBLE_COLON = 49, COMMA_ = 50, LPAREN = 51, RPAREN = 52, 
+    LBRACKET = 53, RBRACKET = 54, OR = 55, AND = 56, EQUALS = 57, NOTEQUALS = 58, 
+    LT = 59, LTEQ = 60, GT = 61, GTEQ = 62, PLUS_ = 63, MULT = 64, DIV = 65, 
+    MOD = 66, NOT = 67, WHITESPACE = 68
   };
 
   explicit poseidonLexer(antlr4::CharStream *input);

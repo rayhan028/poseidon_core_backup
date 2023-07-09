@@ -41,6 +41,7 @@ public:
 
     std::any visitQuery(poseidonParser::QueryContext *ctx) override;
     std::any visitNode_scan_op(poseidonParser::Node_scan_opContext *ctx) override;
+    std::any visitIndex_scan_op(poseidonParser::Index_scan_opContext *ctx) override;
     std::any visitProject_op(poseidonParser::Project_opContext *ctx) override;
     std::any visitFilter_op(poseidonParser::Filter_opContext *ctx) override;
     std::any visitLimit_op(poseidonParser::Limit_opContext *ctx) override;

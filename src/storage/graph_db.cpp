@@ -550,6 +550,9 @@ bool graph_db::commit_transaction() {
 
 bool graph_db::abort_transaction() {
 #ifdef USE_TX
+  if (!current_transaction_)
+    return false;
+
   check_tx_context();
   auto tx = current_transaction();
   auto xid = tx->xid();
@@ -768,7 +771,7 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
 
 node &graph_db::get_valid_node_version(node &n, xid_t xid) {
   if (n.is_locked_by(xid)) {
-    spdlog::debug("[tx {}] node #{} is locked by {}", short_ts(xid), n.id(), short_ts(n.txn_id()));
+    // spdlog::debug("[tx {}] node #{} is locked by {}", short_ts(xid), n.id(), short_ts(n.txn_id()));
     // because the node is locked we know that it was already updated by us
     // and we should look for the dirty object containing the new values
     assert(n.has_dirty_versions());
@@ -776,8 +779,8 @@ node &graph_db::get_valid_node_version(node &n, xid_t xid) {
   }
   // or (2) is not locked and xid is in [bts,cts]
   if (!n.is_locked()) {
-    spdlog::debug("node_by_id: node #{} is unlocked: [{}, {}] <=> {}", n.id(),
-                 n.bts(), n.cts(), xid);
+    //spdlog::debug("node_by_id: node #{} is unlocked: [{}, {}] <=> {}", n.id(),
+    //             n.bts(), n.cts(), xid);
     return n.is_valid_for(xid) ? n : n.find_valid_version(xid)->elem_;
   }
 

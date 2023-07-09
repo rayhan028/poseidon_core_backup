@@ -51,7 +51,6 @@ std::any query_planner::visitQuery(poseidonParser::QueryContext *ctx) {
 
 std::any query_planner::visitNode_scan_op(poseidonParser::Node_scan_opContext *ctx) {
     qop_ptr op = nullptr;
-    // auto res = visitChildren(ctx);
 
     auto p = ctx->scan_param();
     if (p == nullptr)
@@ -65,6 +64,30 @@ std::any query_planner::visitNode_scan_op(poseidonParser::Node_scan_opContext *c
         }
         op = std::make_shared<scan_nodes>(label_list);
     }
+    sources_.push_back(op);
+    return std::make_any<qop_ptr>(op);
+} 
+
+std::any query_planner::visitIndex_scan_op(poseidonParser::Index_scan_opContext *ctx) {
+    qop_ptr op = nullptr;
+
+    auto p = ctx->index_scan_param();
+    auto label = trim_string(p->STRING_(0)->getText());
+    auto property = trim_string(p->STRING_(1)->getText());
+
+    if (! qctx_.gdb_->has_index(label, property))
+        throw unknown_index();
+    
+    auto v = p->value();
+    uint64_t key = 0;
+    if (v->INTEGER() != nullptr)
+        key = std::stoi(v->INTEGER()->getText());
+    else if (v->STRING_() != nullptr) {
+        auto str = v->STRING_()->getText();
+        key = qctx_.gdb_->get_code(str);
+    }
+    auto idx_id = qctx_.gdb_->get_index(label, property);
+    op = std::make_shared<index_scan>(idx_id, key);
     sources_.push_back(op);
     return std::make_any<qop_ptr>(op);
 } 

@@ -29,6 +29,10 @@ public:
 
     virtual std::any visitScan_list(poseidonParser::Scan_listContext *context) = 0;
 
+    virtual std::any visitIndex_scan_op(poseidonParser::Index_scan_opContext *context) = 0;
+
+    virtual std::any visitIndex_scan_param(poseidonParser::Index_scan_paramContext *context) = 0;
+
     virtual std::any visitProject_op(poseidonParser::Project_opContext *context) = 0;
 
     virtual std::any visitProj_list(poseidonParser::Proj_listContext *context) = 0;

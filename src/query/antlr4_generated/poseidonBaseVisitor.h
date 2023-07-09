@@ -35,6 +35,14 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitIndex_scan_op(poseidonParser::Index_scan_opContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitIndex_scan_param(poseidonParser::Index_scan_paramContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitProject_op(poseidonParser::Project_opContext *ctx) override {
     return visitChildren(ctx);
   }
