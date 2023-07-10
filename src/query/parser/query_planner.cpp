@@ -532,7 +532,8 @@ std::any query_planner::visitNode_pattern(poseidonParser::Node_patternContext *c
     auto label = ctx->Identifier_().back()->getText();
     auto op = std::make_shared<scan_nodes>(trim_string(label));
     sources_.push_back(op);
-    // TODO: build a filter if a property list is given
+    // TODO: check whether we can process the node pattern with an index scan
+    // build a filter if a property list is given
     if (ctx->property_list() != nullptr) {
         auto pl = visit(ctx->property_list());
         auto props = std::any_cast<properties_t>(pl);     

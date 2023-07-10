@@ -375,7 +375,8 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
     // Save history
     linenoise::SaveHistory(path);
   }
-
+  gdb->flush();
+  gdb->close_files();
 }
 
 int main(int argc, char* argv[]) {

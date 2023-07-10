@@ -43,6 +43,7 @@ bool paged_file::open(const std::string& path, int file_type) {
         // read & check header
         file_.read((char *) &header_, sizeof(header_));
         if (memcmp(header_.fid_, "PSDN", 4) || header_.ftype_ != file_type) {
+            spdlog::info("invalid file: {}, type={}({})", path, header_.ftype_, file_type);
             file_.close();
             return false;
         }
@@ -102,6 +103,7 @@ paged_file::page_id paged_file::allocate_page() {
     }
     // mark slot
     // std::cout << "allocate --> " << pid << " : " << npages_ << std::endl;
+    assert(pid >= 0 && pid < header_.slots_.size());
     header_.slots_.set(pid-1, true);
     delete [] buf;
     return pid;

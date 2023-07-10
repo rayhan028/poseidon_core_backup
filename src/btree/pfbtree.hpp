@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -35,7 +35,7 @@ namespace pfbtree {
  * @tparam N the maximum number of keys on a branch node
  * @tparam M the maximum number of keys on a leaf node
  */
-template <typename KeyType, typename ValueType, int N, int M, int NODE_ALIGNMENT = 64>
+template <typename KeyType, typename ValueType, unsigned int N, unsigned int M, int NODE_ALIGNMENT = 64>
 class BPTree {
   // we need at least two keys on a branch node to be able to split
   static_assert(N > 2, "number of branch keys has to be >2.");
@@ -106,15 +106,16 @@ class BPTree {
     spdlog::debug("read btree depth: {} and root: {}", depth, rootPid);
 
     if (fptr->num_pages() == 0) {
+      spdlog::debug("create a new btree...");
       // we create a new empty B+ tree
       auto pg = bpool_.allocate_page(file_id_);
       rootPid = 1;
-      spdlog::debug("create a new btree: root={}", rootPid);
+      spdlog::debug("btree created with root={}", rootPid);
       rootNode = new(pg.first->payload) LeafNode(rootPid);
     }
     else {
       spdlog::debug("restore a btree with root #{}", rootPid);
-      spdlog::info("B+tree: leaf={}, branch={}", sizeof(LeafNode), sizeof(BranchNode));
+      spdlog::debug("B+tree: leaf={}, branch={}", sizeof(LeafNode), sizeof(BranchNode));
       // otherwise we load the root node
       rootNode = load_node(rootPid);
     }
@@ -128,12 +129,7 @@ class BPTree {
   }
 
   void close() {
-    auto fptr = bpool_.get_file(file_id_);
-    auto data = fptr->get_header_payload();
-    // spdlog::debug("write btree depth: {} and root: {}", depth, rootPid);
-    memcpy(data, &depth, sizeof(unsigned int));
-    memcpy(data + sizeof(unsigned int), &rootPid, sizeof(paged_file::page_id));
-
+    sync();
     // Nodes are deleted automatically by releasing leafPool and branchPool.
     bpool_.flush_all();
   }
@@ -149,6 +145,7 @@ class BPTree {
     SplitInfo splitInfo;
     bool wasSplit = false;
 
+    // make sure we reload the root node in case the page was evicted
     rootNode = load_node(rootPid);
     if (depth == 0) {
       // the root node is a leaf node
@@ -191,6 +188,7 @@ class BPTree {
     assert(val != nullptr);
     bool result = false;
 
+    // make sure we reload the root node in case the page was evicted
     rootNode = load_node(rootPid);
     auto leafNode = findLeafNode(key);
     auto pos = lookupPositionInLeafNode(leafNode, key);
@@ -209,6 +207,7 @@ class BPTree {
    * @return true if the key was found and deleted
    */
   bool erase(const KeyType &key) {
+    // make sure we reload the root node in case the page was evicted
     rootNode = load_node(rootPid);
     if (depth == 0) {
       // special case: the root node is a leaf node and
@@ -244,10 +243,11 @@ class BPTree {
    * @param func the function called for each entry
    */
   void scan(ScanFunc func) {
-    // we traverse to the leftmost leaf node
+    // make sure we reload the root node in case the page was evicted
     rootNode = load_node(rootPid);
     void *node = rootNode;
     auto d = depth;
+    // we traverse to the leftmost leaf node
     while (d-- > 0) {
       // as long as we aren't at the leaf level we follow the path down
       BranchNode *n = reinterpret_cast<BranchNode *>(node);
@@ -279,6 +279,7 @@ class BPTree {
    * @param func the function called for each entry
    */
   void scan(const KeyType &minKey, const KeyType &maxKey, ScanFunc func) const {
+    // make sure we reload the root node in case the page was evicted
     rootNode = load_node(rootPid);
     auto leaf = findLeafNode(minKey);
 
@@ -300,6 +301,15 @@ class BPTree {
 #ifndef UNIT_TESTS
  private:
 #endif
+
+  void sync() {
+    auto fptr = bpool_.get_file(file_id_);
+    auto data = fptr->get_header_payload();
+    spdlog::debug("write btree depth: {} and root: {}", depth, rootPid);
+    memcpy(data, &depth, sizeof(unsigned int));
+    memcpy(data + sizeof(unsigned int), &rootPid, sizeof(paged_file::page_id));
+  }
+
   /* ------------------------------------------------------------------- */
   /*                        DELETE AT LEAF LEVEL                         */
   /* ------------------------------------------------------------------- */
@@ -1091,8 +1101,6 @@ class BPTree {
      * Constructor for creating a new empty leaf node.
      */
     LeafNode(paged_file::page_id id) : ntype(0), pid(id), numKeys(0), nextLeaf(0), prevLeaf(0) {}
-   // ~LeafNode() { std::cout << "~LeafNode: " << std::hex << this <<
-   //    std::endl; }
 
     uint8_t ntype;                    //< node type for consistency check (0=leaf, 1=branch)
     paged_file::page_id pid;          //< the page_id of the underlying page
@@ -1111,10 +1119,8 @@ class BPTree {
      * Constructor for creating a new empty branch node.
      */
     BranchNode(paged_file::page_id id) : ntype(1), pid(id), numKeys(0) {}
-    // ~BranchNode() { std::cout << "~BranchNode: " << std::hex << this << std::dec <<
-     //   std::endl; }
 
-    // 1 + 8 + 8 + N*8 + (N+1)*8 = 17 + 8 * (2N+1)
+    // 1 + 8 + 8 + N*8 + (N+1)*8 bytes
     u_int8_t ntype;               //< node type for consistency check (0=leaf, 1=branch)
     paged_file::page_id pid;      //< the page_id of the underlying page
     unsigned int numKeys;         //< the number of currently stored keys

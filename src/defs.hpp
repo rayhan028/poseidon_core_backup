@@ -45,6 +45,7 @@
 #define RSHIP_FILE_ID  2
 #define NPROPS_FILE_ID 3
 #define RPROPS_FILE_ID 4
+#define INDEX_FILE_ID  5
 
 /**
  * Typedef used for codes in string dictionaries and type tables.
