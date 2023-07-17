@@ -258,6 +258,7 @@ class BPTree {
     auto leaf = reinterpret_cast<LeafNode *>(node);
     assert(leaf->ntype == 0);
     while (leaf != nullptr) {
+      assert(leaf->ntype == 0);
       // for each key-value pair call func
       for (auto i = 0u; i < leaf->numKeys; i++) {
         auto &key = leaf->keys[i];
@@ -266,7 +267,6 @@ class BPTree {
       }
       // move to the next leaf node
       leaf = reinterpret_cast<LeafNode *>(load_node(leaf->nextLeaf));
-      assert(leaf->ntype == 0);
     }
   }
 
