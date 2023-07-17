@@ -504,8 +504,9 @@ std::any query_planner::visitPath_pattern(poseidonParser::Path_patternContext *c
 }
 
 expr query_planner::property_list_to_expr(properties_t& plist) {
-    if (plist.size() == 1) {
-        auto prop = *(plist.begin());
+    expr ex;
+    for (auto& p : plist) {
+        auto prop = p;
         auto lhs_expr = Key(0, prop.first);
         boost::any& val = prop.second;
         expr rhs_expr;
@@ -518,14 +519,15 @@ expr query_planner::property_list_to_expr(properties_t& plist) {
         else if (val.type() == typeid(long))
             rhs_expr = Int(boost::any_cast<long>(val)); 
         else
-            std::cerr << "ERROR in property_list_to_expr: rhs not handled " << val.type().name() << std::endl;
-
-        return EQ(lhs_expr, rhs_expr);
+            spdlog::info("ERROR in property_list_to_expr: rhs not handled {}", val.type().name());
+        
+        expr ex2 = EQ(lhs_expr, rhs_expr);
+        if (ex)
+            ex = AND(ex, ex2);
+        else
+            ex = ex2;
     }
-    for (auto& p : plist) {
-
-    }
-    // TODO
+    return ex;
 }
 
 std::any query_planner::visitNode_pattern(poseidonParser::Node_patternContext *ctx) {
