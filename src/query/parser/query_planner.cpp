@@ -532,20 +532,37 @@ expr query_planner::property_list_to_expr(properties_t& plist) {
 
 std::any query_planner::visitNode_pattern(poseidonParser::Node_patternContext *ctx) {
     auto label = ctx->Identifier_().back()->getText();
+    if (ctx->property_list() == nullptr) {
+        auto op = std::make_shared<scan_nodes>(trim_string(label));
+        sources_.push_back(op);
+        return std::make_any<qop_ptr>(op);
+    }
+ 
+    auto pl = visit(ctx->property_list());
+    auto props = std::any_cast<properties_t>(pl);     
+ 
+    if (props.size() == 1) {
+        // check whether we can process the node pattern with an index scan
+        auto pname = props.begin()->first;
+        spdlog::info("lookup index {}.{}", label, pname);
+  
+        if (qctx_.gdb_ && qctx_.gdb_->has_index(label, pname)) {
+            auto idx_id = qctx_.gdb_->get_index(label, pname);
+            boost::any& val = props.begin()->second;
+            auto key = boost::any_cast<int>(val);
+            auto op = std::make_shared<index_scan>(idx_id, key);
+            sources_.push_back(op);
+            return std::make_any<qop_ptr>(op);
+        }
+    }
     auto op = std::make_shared<scan_nodes>(trim_string(label));
     sources_.push_back(op);
-    // TODO: check whether we can process the node pattern with an index scan
-    // build a filter if a property list is given
-    if (ctx->property_list() != nullptr) {
-        auto pl = visit(ctx->property_list());
-        auto props = std::any_cast<properties_t>(pl);     
-
-        auto ex = property_list_to_expr(props);
-        auto qop = std::make_shared<filter_tuple>(ex);
-        auto op2 = qop_append(op, qop); 
-        return std::make_any<qop_ptr>(op2);  
-    }
-    return std::make_any<qop_ptr>(op);
+    
+    // build a filter if a property list is given and an index couldn't be used
+    auto ex = property_list_to_expr(props);
+    auto qop = std::make_shared<filter_tuple>(ex);
+    auto op2 = qop_append(op, qop); 
+    return std::make_any<qop_ptr>(op2);  
 }
 
 std::any query_planner::visitCreate_op(poseidonParser::Create_opContext *ctx) {
