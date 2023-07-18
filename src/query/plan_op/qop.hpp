@@ -1385,6 +1385,8 @@ std::string int_to_dtimestring(const query_result& v);
  */
 int dtimestring_to_int(const std::string &d);
 
+bool is_null(const query_result& pv);
+
 /*
 CASE:
  return !string_property(res, 0, "content").empty() ?

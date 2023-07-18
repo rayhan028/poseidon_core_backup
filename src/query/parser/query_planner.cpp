@@ -145,6 +145,8 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
             auto fc_params = fc->param_list()->param();
             assert(fc_params.size() == 1);
             // TODO: handle UDFs with more than one parameter
+            if (!udf_lib_ || !udf_lib_->is_loaded())
+                throw udf_not_found();
             auto fc_func = udf_lib_->get<query_result(query_ctx*, void*)>(fc_name);
             auto& pm = fc_params[0];
             if (pm->value() != nullptr) {

@@ -1532,4 +1532,6 @@ int dtimestring_to_int(const std::string &dt) {
   return time_t(secs);
 }
 
+bool is_null(const query_result& pv) { return pv.type() == typeid(null_t); }
+
 } // namespace builtin
