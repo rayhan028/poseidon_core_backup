@@ -155,8 +155,8 @@ private:
  * Dangling tuples are padded with "null_val" 
  */
 struct left_outerjoin : public qop, public std::enable_shared_from_this<left_outerjoin> {
-  left_outerjoin(const expr &ex) : ex_(ex) {}
-  left_outerjoin(std::function<bool(const qr_tuple &, const qr_tuple &)> pred) : pred_(pred) {} 
+  left_outerjoin(const expr &ex) : phases_(0), ex_(ex) {}
+  left_outerjoin(std::function<bool(const qr_tuple &, const qr_tuple &)> pred) : phases_(0), pred_(pred) {} 
   ~left_outerjoin() = default;
 
   void dump(std::ostream &os) const override;
@@ -165,7 +165,8 @@ struct left_outerjoin : public qop, public std::enable_shared_from_this<left_out
   void process_right(query_ctx &ctx, const qr_tuple &v);
 
   void finish(query_ctx &ctx);
-  
+  void l_finish(query_ctx &ctx) {}  
+
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
     if (has_subscriber())
@@ -179,6 +180,7 @@ struct left_outerjoin : public qop, public std::enable_shared_from_this<left_out
   expr get_expression() { return ex_; }
 
 private:
+  std::size_t phases_;
   std::vector<qr_tuple> input_;
   std::function<bool(const qr_tuple &, const qr_tuple &)> pred_;
   expr ex_;  

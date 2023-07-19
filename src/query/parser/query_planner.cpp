@@ -21,6 +21,7 @@
 #include "qop_aggregates.hpp"
 #include "qop_updates.hpp"
 #include "properties.hpp"
+#include "func_call_expr.hpp"
 
 uint32_t query_planner::extract_tuple_id(const std::string& var_name) {
   auto dot_pos = var_name.find(".");
@@ -316,8 +317,10 @@ std::any query_planner::visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opCo
     auto child1 = std::any_cast<qop_ptr>(ch1);
     auto child2 = std::any_cast<qop_ptr>(ch2);
 
-    child1->connect(qop, std::bind(&left_outerjoin::process_right, qop.get(), ph::_1, ph::_2));
-    child2->connect(qop, std::bind(&left_outerjoin::process_left, qop.get(), ph::_1, ph::_2));
+    child1->connect(qop, std::bind(&left_outerjoin::process_right, qop.get(), ph::_1, ph::_2),
+                        std::bind(&left_outerjoin::finish, qop.get(), ph::_1));
+    child2->connect(qop, std::bind(&left_outerjoin::process_left, qop.get(), ph::_1, ph::_2),
+                        std::bind(&left_outerjoin::finish, qop.get(), ph::_1));
    
     return std::make_any<qop_ptr>(qop);        
 }
@@ -384,7 +387,7 @@ std::any query_planner::visitUnion_op(poseidonParser::Union_opContext *ctx) {
     auto ch2 = visit(ctx->query_operator()[1]);
     auto child1 = std::any_cast<qop_ptr>(ch1);
     auto child2 = std::any_cast<qop_ptr>(ch2);
-    child1->connect(qop, std::bind(&union_all_qres::process_right, qop.get(), ph::_1, ph::_2), std::bind(&union_all_qres::r_finish, qop.get(), ph::_1));
+    child1->connect(qop, std::bind(&union_all_qres::process_right, qop.get(), ph::_1, ph::_2), std::bind(&union_all_qres::finish, qop.get(), ph::_1));
     child2->connect(qop, std::bind(&union_all_qres::process_left, qop.get(), ph::_1, ph::_2), std::bind(&union_all_qres::finish, qop.get(), ph::_1));
 
     return std::make_any<qop_ptr>(qop);
@@ -758,6 +761,30 @@ std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *c
         auto var_id = extract_tuple_id(ctx->variable()->Var()->getText());
         auto attr = ctx->variable()->Identifier_()->getText();
         res = std::make_any<expr>(Key(var_id, attr));
+    }
+    else if (ctx->function_call() != nullptr) {
+        // handle UDFs - TODO: should be combined with code in visitProject_op
+        auto fc = ctx->function_call();
+        auto fc_name = fc->Identifier_()->getText();
+        auto fc_params = fc->param_list()->param();
+        std::vector<expr> param_list;
+
+        for (auto i = 0u; i < fc_params.size(); i++) {
+            auto& pm = fc_params[i];
+            if (pm->value() != nullptr) {
+                std::cout << "\tparam value: " << pm->value()->getText() << std::endl; 
+                // TODO: add parameter value
+            }
+            else {
+                auto p_idx = extract_tuple_id(pm->Var()->getText());
+                auto p_attr = pm->Identifier_();
+                auto p_type = pm->type_spec();
+                // add parameter variable
+                param_list.push_back(Key(p_idx, p_attr != nullptr ? p_attr->getText() : ""));
+            }
+        }
+        res = std::make_any<expr>(Fct(fc_name, param_list));
+
     }
     return res;
 }

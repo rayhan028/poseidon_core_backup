@@ -1050,10 +1050,10 @@ void union_all_qres::dump(std::ostream &os) const { // TODO
 
 void union_all_qres::process_left(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
-  if (init) {
+  if (init_) {
     for (auto &r : res_)
       consume_(ctx, r);
-    init = false;
+    init_ = false;
   }
   consume_(ctx, v);
   PROF_POST(1);
@@ -1066,8 +1066,11 @@ void union_all_qres::process_right(query_ctx &ctx, const qr_tuple &v) {
   PROF_POST(1);
 }
 
-void union_all_qres::r_finish(query_ctx &ctx) { }
-void union_all_qres::finish(query_ctx &ctx) { qop::default_finish(ctx); }
+// void union_all_qres::r_finish(query_ctx &ctx) { }
+void union_all_qres::finish(query_ctx &ctx) { 
+  if (++phases_ > 0)
+    qop::default_finish(ctx); 
+}
 
 /* ------------------------------------------------------------------------ */
 

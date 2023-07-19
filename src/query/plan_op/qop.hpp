@@ -991,7 +991,7 @@ struct qr_tuple_append : public qop, public std::enable_shared_from_this<qr_tupl
  * pipeline(s).
  */
 struct union_all_qres : public qop, public std::enable_shared_from_this<union_all_qres> {
-  union_all_qres() : init(true) {}
+  union_all_qres() : init_(true), phases_(0) {}
   // union_all_qres() = default;
   ~union_all_qres() = default;
 
@@ -1000,7 +1000,7 @@ struct union_all_qres : public qop, public std::enable_shared_from_this<union_al
   void process_left(query_ctx &ctx, const qr_tuple &v);
   void process_right(query_ctx &ctx, const qr_tuple &v);
 
-  void r_finish(query_ctx &ctx);
+  // void r_finish(query_ctx &ctx);
   void finish(query_ctx &ctx);
 
   void accept(qop_visitor& vis) override { 
@@ -1018,7 +1018,9 @@ struct union_all_qres : public qop, public std::enable_shared_from_this<union_al
   }
 
   bool is_binary() const override { return true; }
-  bool init;
+
+  bool init_;
+  std::size_t phases_;
   std::list<qr_tuple> res_;
 };
 
@@ -1385,6 +1387,9 @@ std::string int_to_dtimestring(const query_result& v);
  */
 int dtimestring_to_int(const std::string &d);
 
+/**
+ * Return true if the value represented by pv is a null value.
+ */
 bool is_null(const query_result& pv);
 
 /*

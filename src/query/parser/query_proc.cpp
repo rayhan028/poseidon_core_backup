@@ -104,6 +104,7 @@ std::size_t query_proc::execute_and_output_query(mode m, const std::string& qstr
     prepare_plan(qplan);
 
     if (m == Interpret) {
+        // qplan.print_plan();
         interp_query(qplan);
         if (print_plan)
             qplan.print_plan();
@@ -169,13 +170,12 @@ public:
     ~prepare_expr_visitor() = default;
 
     void visit(int rank, std::shared_ptr<func_call> op) override {
-        auto func_name = op->func_name_.substr(5);
-        // std::cout << "prepare func_call: " << func_name << " : " << op->param_list_.size() << std::endl;     
+        // std::cout << "prepare func_call: " << op->func_name_ << " : " << op->param_list_.size() << std::endl;     
         if (op->param_list_.size() == 1) {          
-            op->func1_ptr_ = udf_lib_->get<query_result(query_ctx&, query_result&)>(func_name);
+            op->func1_ptr_ = udf_lib_->get<query_result(query_ctx&, query_result&)>(op->func_name_);
         } 
         else if (op->param_list_.size() == 2) {
-            op->func2_ptr_ = udf_lib_->get<query_result(query_ctx&, query_result&, query_result&)>(func_name);
+            op->func2_ptr_ = udf_lib_->get<query_result(query_ctx&, query_result&, query_result&)>(op->func_name_);
         }
     }
 private:

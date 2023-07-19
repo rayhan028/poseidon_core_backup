@@ -528,5 +528,8 @@ int main(int argc, char* argv[]) {
     auto query_string = read_from_file(query_file);
     exec_query(query_string, qmode, false);
   }
+
+  graph->flush();
+  graph->close_files();
 }
  
