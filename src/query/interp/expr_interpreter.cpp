@@ -40,6 +40,14 @@ inline bool int_less_than(const query_result& r1, const query_result& r2) {
     return boost::get<int>(r1) < boost::get<int>(r2);
 }
 
+inline bool uint64_less_than(const query_result& r1, const query_result& r2) {
+    return boost::get<uint64_t>(r1) < boost::get<uint64_t>(r2);
+}
+
+inline bool uint64_greater_than(const query_result& r1, const query_result& r2) {
+    return boost::get<uint64_t>(r1) > boost::get<uint64_t>(r2);
+}
+
 // ----------- query_result::double -----------
 inline bool double_not_equal(const query_result& r1, const query_result& r2) {
     return boost::get<double>(r1) != boost::get<double>(r2);
@@ -112,10 +120,16 @@ bool less_than(const query_result& qr1, const query_result& qr2) {
                 return double_less_than(qr1, qr2);
             case 4: // std::string
                 return string_less_than(qr1, qr2);
+            case 5: // uint64_t
+                return uint64_less_than(qr1, qr2);
             default:
                 break;
         }
     } 
+    else if (qr1.which() == 2 && qr2.which() == 5)
+        return (uint64_t)boost::get<int>(qr1) < boost::get<uint64_t>(qr2);
+    else if (qr1.which() == 5 && qr2.which() == 2)
+        return boost::get<uint64_t>(qr1) < (uint64_t)boost::get<int>(qr2);
     return false;
 }
 
@@ -135,10 +149,16 @@ bool greater_than(const query_result& qr1, const query_result& qr2) {
                 return double_greater_than(qr1, qr2);
             case 4: // std::string
                 return string_greater_than(qr1, qr2);
+            case 5: // uint64_t
+                return uint64_greater_than(qr1, qr2);
             default:
                 break;
         }
     } 
+    else if (qr1.which() == 2 && qr2.which() == 5)
+        return (uint64_t)boost::get<int>(qr1) > boost::get<uint64_t>(qr2);
+    else if (qr1.which() == 5 && qr2.which() == 2)
+        return boost::get<uint64_t>(qr1) > (uint64_t)boost::get<int>(qr2);
     return false;
 }
 
@@ -279,7 +299,7 @@ public:
     }
     
     virtual void visit(int rank, std::shared_ptr<le_predicate> op) override {
-        std::cout << "visit le_predicate: <=" << std::endl;       
+        // std::cout << "visit le_predicate: <=" << std::endl;       
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
@@ -289,17 +309,17 @@ public:
     }
 
     virtual void visit(int rank, std::shared_ptr<lt_predicate> op) override {
-        std::cout << "visit lt_predicate: <" << std::endl;       
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
+            // std::cout << "visit lt_predicate: <" << v1 << ", " << v2 << std::endl;       
             bool res = less_than(v1, v2);
             stack_.push(query_result(res ? 1 : 0));
         }    
     }
 
     virtual void visit(int rank, std::shared_ptr<ge_predicate> op) override {
-        std::cout << "visit ge_predicate: >=" << std::endl;              
+        // std::cout << "visit ge_predicate: >=" << std::endl;              
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
