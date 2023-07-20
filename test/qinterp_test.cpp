@@ -242,81 +242,81 @@ void create_data(graph_db_ptr &graph) {
          {"content", boost::any(std::string("Content of comment_1642217"))}});
 
     // IS 1
-    graph->add_relationship(mahinda, Kelaniya, ":isLocatedIn", {});
-    graph->add_relationship(baruch, Gobi, ":isLocatedIn", {});
+    graph->add_relationship(mahinda, Kelaniya, "isLocatedIn", {});
+    graph->add_relationship(baruch, Gobi, "isLocatedIn", {});
 
     // IS 2
-    graph->add_relationship(cmt1, ravalomanana, ":hasCreator", {});
-    graph->add_relationship(cmt2, ravalomanana, ":hasCreator", {});
-    graph->add_relationship(cmt3, ravalomanana, ":hasCreator", {});
-    graph->add_relationship(cmt4, ravalomanana, ":hasCreator", {});
-    graph->add_relationship(cmt5, ravalomanana, ":hasCreator", {});
-    graph->add_relationship(cmt6, ravalomanana, ":hasCreator", {});
-    graph->add_relationship(cmt7, ravalomanana, ":hasCreator", {});
-    graph->add_relationship(cmt8, ravalomanana, ":hasCreator", {});
-    graph->add_relationship(cmt9, ravalomanana, ":hasCreator", {});
-    graph->add_relationship(cmt10, ravalomanana, ":hasCreator", {});
-    graph->add_relationship(cmt11, ravalomanana, ":hasCreator", {});
-    graph->add_relationship(cmt12, ravalomanana, ":hasCreator", {});
+    graph->add_relationship(cmt1, ravalomanana, "hasCreator", {});
+    graph->add_relationship(cmt2, ravalomanana, "hasCreator", {});
+    graph->add_relationship(cmt3, ravalomanana, "hasCreator", {});
+    graph->add_relationship(cmt4, ravalomanana, "hasCreator", {});
+    graph->add_relationship(cmt5, ravalomanana, "hasCreator", {});
+    graph->add_relationship(cmt6, ravalomanana, "hasCreator", {});
+    graph->add_relationship(cmt7, ravalomanana, "hasCreator", {});
+    graph->add_relationship(cmt8, ravalomanana, "hasCreator", {});
+    graph->add_relationship(cmt9, ravalomanana, "hasCreator", {});
+    graph->add_relationship(cmt10, ravalomanana, "hasCreator", {});
+    graph->add_relationship(cmt11, ravalomanana, "hasCreator", {});
+    graph->add_relationship(cmt12, ravalomanana, "hasCreator", {});
 
-    graph->add_relationship(cmt1, post1, ":replyOf", {});
-    graph->add_relationship(cmt2, post2, ":replyOf", {});
-    graph->add_relationship(cmt3, post2, ":replyOf", {});
-    graph->add_relationship(cmt4, post3, ":replyOf", {});
-    graph->add_relationship(cmt5, post1, ":replyOf", {});
-    graph->add_relationship(cmt6, post1, ":replyOf", {});
-    graph->add_relationship(cmt7, post3, ":replyOf", {});
-    graph->add_relationship(cmt8, post3, ":replyOf", {});
-    graph->add_relationship(cmt9, post2, ":replyOf", {});
-    graph->add_relationship(cmt10, post5, ":replyOf", {});
-    graph->add_relationship(cmt11, cmt12, ":replyOf", {});
-    graph->add_relationship(cmt12, post4, ":replyOf", {});
+    graph->add_relationship(cmt1, post1, "replyOf", {});
+    graph->add_relationship(cmt2, post2, "replyOf", {});
+    graph->add_relationship(cmt3, post2, "replyOf", {});
+    graph->add_relationship(cmt4, post3, "replyOf", {});
+    graph->add_relationship(cmt5, post1, "replyOf", {});
+    graph->add_relationship(cmt6, post1, "replyOf", {});
+    graph->add_relationship(cmt7, post3, "replyOf", {});
+    graph->add_relationship(cmt8, post3, "replyOf", {});
+    graph->add_relationship(cmt9, post2, "replyOf", {});
+    graph->add_relationship(cmt10, post5, "replyOf", {});
+    graph->add_relationship(cmt11, cmt12, "replyOf", {});
+    graph->add_relationship(cmt12, post4, "replyOf", {});
 
-    graph->add_relationship(post1, ravalomanana, ":hasCreator", {});
-    graph->add_relationship(post2, p1, ":hasCreator", {});
-    graph->add_relationship(post3, p2, ":hasCreator", {});
-    graph->add_relationship(post4, p3, ":hasCreator", {});
-    graph->add_relationship(post5, ravalomanana, ":hasCreator", {});
+    graph->add_relationship(post1, ravalomanana, "hasCreator", {});
+    graph->add_relationship(post2, p1, "hasCreator", {});
+    graph->add_relationship(post3, p2, "hasCreator", {});
+    graph->add_relationship(post4, p3, "hasCreator", {});
+    graph->add_relationship(post5, ravalomanana, "hasCreator", {});
 
     // IS 3
     graph->add_relationship(
-        mahinda, baruch, ":knows",
+        mahinda, baruch, "knows",
         {{"creationDate", boost::any(time_from_string(
                               std::string("2010-03-13 07:37:21.718")))}});
     graph->add_relationship(
-        mahinda, fritz, ":knows",
+        mahinda, fritz, "knows",
         {{"creationDate", boost::any(time_from_string(
                               std::string("2010-09-20 09:42:43.187")))}});
     graph->add_relationship(
-        mahinda, andrei, ":knows",
+        mahinda, andrei, "knows",
         {{"creationDate", boost::any(time_from_string(
                               std::string("2011-01-02 06:43:41.955")))}});
     graph->add_relationship(
-        mahinda, ottoB, ":knows",
+        mahinda, ottoB, "knows",
         {{"creationDate", boost::any(time_from_string(
                               std::string("2012-09-07 01:11:30.195")))}});
     graph->add_relationship(
-        mahinda, ottoR, ":knows",
+        mahinda, ottoR, "knows",
         {{"creationDate", boost::any(time_from_string(
                               std::string("2012-09-07 01:11:30.195")))}});
 
     // IS 5
-    graph->add_relationship(post_16492674, mahinda, ":hasCreator", {});
-    graph->add_relationship(comment_12362343, andrei, ":hasCreator", {});
+    graph->add_relationship(post_16492674, mahinda, "hasCreator", {});
+    graph->add_relationship(comment_12362343, andrei, "hasCreator", {});
 
     // IS 6
     graph->add_relationship(forum_37, post_16492674, ":containerOf", {});
     graph->add_relationship(forum_37, hoChi, ":hasModerator", {});
-    graph->add_relationship(comment_16492675, post_16492674, ":replyOf", {});
-    graph->add_relationship(comment_16492676, comment_16492675, ":replyOf", {});
-    graph->add_relationship(comment_16492677, comment_16492676, ":replyOf", {});
+    graph->add_relationship(comment_16492675, post_16492674, "replyOf", {});
+    graph->add_relationship(comment_16492676, comment_16492675, "replyOf", {});
+    graph->add_relationship(comment_16492677, comment_16492676, "replyOf", {});
 
     // IS 7
-    graph->add_relationship(comment_1642217, comment_16492676, ":replyOf", {});
-    graph->add_relationship(comment_1642217, lomana, ":hasCreator", {});
-    graph->add_relationship(comment_16492677, amin, ":hasCreator", {});
-    graph->add_relationship(comment_16492676, bingbing, ":hasCreator", {});
-    graph->add_relationship(lomana, bingbing, ":knows", {});
+    graph->add_relationship(comment_1642217, comment_16492676, "replyOf", {});
+    graph->add_relationship(comment_1642217, lomana, "hasCreator", {});
+    graph->add_relationship(comment_16492677, amin, "hasCreator", {});
+    graph->add_relationship(comment_16492676, bingbing, "hasCreator", {});
+    graph->add_relationship(lomana, bingbing, "knows", {});
 
     // IU1
     graph->add_node(
@@ -435,7 +435,7 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
       auto res =
           qp.execute_query(query_proc::Interpret,
                            "Project([$2.id:uint64], Expand(OUT, 'Person', "
-                           "ForeachRelationship(FROM, ':knows', Filter($0.id "
+                           "ForeachRelationship(FROM, 'knows', Filter($0.id "
                            "== 933, NodeScan('Person')))))");
       result_set expected;
       expected.append({qv_("838375")});

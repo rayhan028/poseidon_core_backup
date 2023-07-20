@@ -47,10 +47,10 @@ TEST_CASE("Testing the poseidon query processor", "[query_proc]") {
     }
 
     SECTION("Expand") {
-        auto plan = qp.prepare_query("Expand(OUT, 'Person', ForeachRelationship(FROM, ':knows', 1, 3, NodeScan('Person')))");
+        auto plan = qp.prepare_query("Expand(OUT, 'Person', ForeachRelationship(FROM, 'knows', 1, 3, NodeScan('Person')))");
         plan.print_plan(os);
         os << std::ends;
-        REQUIRE(std::string(os.str()) == "node_has_label([Person]) - { in=0 | out=0 | time=0s }\n└── get_to_node(){ in=0 | out=0 | time=0s }\n    └── foreach_variable_from_relationship([:knows, (1,3)]) - { in=0 | out=0 | time=0s }\n        └── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n");
+        REQUIRE(std::string(os.str()) == "node_has_label([Person]) - { in=0 | out=0 | time=0s }\n└── get_to_node(){ in=0 | out=0 | time=0s }\n    └── foreach_variable_from_relationship([knows, (1,3)]) - { in=0 | out=0 | time=0s }\n        └── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n");
     }
 
     SECTION("Aggregate") {
@@ -71,21 +71,21 @@ TEST_CASE("Testing the poseidon query processor", "[query_proc]") {
         auto plan = qp.prepare_query("Match((p1:Person)-[:knows]->(p2:Person))");
         plan.print_plan(os);
         os << std::ends;
-        REQUIRE(std::string(os.str()) == "node_has_label([Person]) - { in=0 | out=0 | time=0s }\n└── get_to_node(){ in=0 | out=0 | time=0s }\n    └── foreach_from_relationship([:knows]) - { in=0 | out=0 | time=0s }\n        └── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n");
+        REQUIRE(std::string(os.str()) == "node_has_label([Person]) - { in=0 | out=0 | time=0s }\n└── get_to_node(){ in=0 | out=0 | time=0s }\n    └── foreach_from_relationship([knows]) - { in=0 | out=0 | time=0s }\n        └── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n");
     }
 
     SECTION("Match2") {
         auto plan = qp.prepare_query("Match((p1:Person { id: 42 } )-[:knows]->(p2:Person))");
         plan.print_plan(os);
         os << std::ends;
-        REQUIRE(std::string(os.str()) == "node_has_label([Person]) - { in=0 | out=0 | time=0s }\n└── get_to_node(){ in=0 | out=0 | time=0s }\n    └── foreach_from_relationship([:knows]) - { in=0 | out=0 | time=0s }\n        └── filter_tuple([$0.id==42]) - { in=0 | out=0 | time=0s }\n            └── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n");
+        REQUIRE(std::string(os.str()) == "node_has_label([Person]) - { in=0 | out=0 | time=0s }\n└── get_to_node(){ in=0 | out=0 | time=0s }\n    └── foreach_from_relationship([knows]) - { in=0 | out=0 | time=0s }\n        └── filter_tuple([$0.id==42]) - { in=0 | out=0 | time=0s }\n            └── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n");
     }
 
     SECTION("Match3") {
         auto plan = qp.prepare_query("Match((p1:Person { id: 42, name: 'Peter' } )-[:knows]->(p2:Person))");
         plan.print_plan(os);
         os << std::ends;
-        REQUIRE(std::string(os.str()) == "node_has_label([Person]) - { in=0 | out=0 | time=0s }\n└── get_to_node(){ in=0 | out=0 | time=0s }\n    └── foreach_from_relationship([:knows]) - { in=0 | out=0 | time=0s }\n        └── filter_tuple([$0.id==42&&$0.name==Peter]) - { in=0 | out=0 | time=0s }\n            └── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n");
+        REQUIRE(std::string(os.str()) == "node_has_label([Person]) - { in=0 | out=0 | time=0s }\n└── get_to_node(){ in=0 | out=0 | time=0s }\n    └── foreach_from_relationship([knows]) - { in=0 | out=0 | time=0s }\n        └── filter_tuple([$0.id==42&&$0.name==Peter]) - { in=0 | out=0 | time=0s }\n            └── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n");
     }
 
    SECTION("Filter") {

@@ -588,7 +588,7 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
   assert(fp.back().find(".csv", filename.size()-4) != std::string::npos);
   std::vector<std::string> fn;
   boost::split(fn, fp.back(), boost::is_any_of("_"));
-  auto label = ":" + fn[1];
+  auto label = /*":" + */ fn[1];
   auto src_node = fn[0];
   auto des_node = fn[2];
 
@@ -671,7 +671,7 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
   // assert(fp.back().find(".csv", fp.size()-4) != std::string::npos);
   std::vector<std::string> fn;
   boost::split(fn, fp.back(), boost::is_any_of("_"));
-  auto label = ":" + fn[1];
+  auto label = /*":" + */fn[1];
   auto label_code = dict_->insert(label);
   auto src_node = fn[0];
   auto des_node = fn[2];

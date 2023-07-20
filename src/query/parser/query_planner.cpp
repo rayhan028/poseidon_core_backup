@@ -473,7 +473,7 @@ std::any query_planner::visitPath_pattern(poseidonParser::Path_patternContext *c
         /*
          * 1. Rship_pattern
          */
-        auto label = std::string(":") + p->rship_pattern()->Identifier_().back()->getText();
+        auto label = /*std::string(":") + */ p->rship_pattern()->Identifier_().back()->getText();
         // TODO: handle direction of relationship
         auto dir = p->rship_pattern()->dir_spec();
         if (dir[0]->no_dir() != nullptr && dir[1]->right_dir() != nullptr) {
