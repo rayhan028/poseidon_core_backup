@@ -380,7 +380,8 @@ query_builder &query_builder::outerjoin_on_node(const std::pair<int, int> &left_
 query_builder &query_builder::outerjoin(query_builder &other, std::function<bool(const qr_tuple &, const qr_tuple &)> pred) {
   auto op = std::make_shared<left_outerjoin>(pred);
   other.append_op(
-      op, std::bind(&left_outerjoin::process_right, op.get(), ph::_1, ph::_2));
+      op, std::bind(&left_outerjoin::process_right, op.get(), ph::_1, ph::_2),
+      std::bind(&left_outerjoin::finish, op.get(), ph::_1));
   return append_op(
       op, std::bind(&left_outerjoin::process_left, op.get(), ph::_1, ph::_2),
       std::bind(&left_outerjoin::finish, op.get(), ph::_1));

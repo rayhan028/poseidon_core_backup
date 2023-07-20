@@ -118,7 +118,9 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
             auto attr_type = pexpr->type_spec();
             if (attr.empty()) {
                 // TODO: handle cases where attr is empty
-
+                // spdlog::info("Project: TODO!!");
+                pexprs.push_back(projection::expr(var_id, ([=](auto qctx_, auto res) { return builtin::forward(res); } )));
+                prexprs.push_back({var_id});
             }
             else {
                 if (attr_type->StringType_() != nullptr) {
@@ -301,8 +303,10 @@ std::any query_planner::visitCrossjoin_op(poseidonParser::Crossjoin_opContext *c
     auto child1 = std::any_cast<qop_ptr>(ch1);
     auto child2 = std::any_cast<qop_ptr>(ch2);
 
-    child1->connect(qop, std::bind(&cross_join::process_right, qop.get(), ph::_1, ph::_2));
-    child2->connect(qop, std::bind(&cross_join::process_left, qop.get(), ph::_1, ph::_2));
+    child1->connect(qop, std::bind(&cross_join::process_right, qop.get(), ph::_1, ph::_2), 
+        std::bind(&cross_join::finish, qop.get(), ph::_1));
+    child2->connect(qop, std::bind(&cross_join::process_left, qop.get(), ph::_1, ph::_2),
+        std::bind(&cross_join::finish, qop.get(), ph::_1));
    
     return std::make_any<qop_ptr>(qop);        
 }
@@ -317,9 +321,9 @@ std::any query_planner::visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opCo
     auto child1 = std::any_cast<qop_ptr>(ch1);
     auto child2 = std::any_cast<qop_ptr>(ch2);
 
-    child1->connect(qop, std::bind(&left_outerjoin::process_right, qop.get(), ph::_1, ph::_2),
+    child2->connect(qop, std::bind(&left_outerjoin::process_right, qop.get(), ph::_1, ph::_2),
                         std::bind(&left_outerjoin::finish, qop.get(), ph::_1));
-    child2->connect(qop, std::bind(&left_outerjoin::process_left, qop.get(), ph::_1, ph::_2),
+    child1->connect(qop, std::bind(&left_outerjoin::process_left, qop.get(), ph::_1, ph::_2),
                         std::bind(&left_outerjoin::finish, qop.get(), ph::_1));
    
     return std::make_any<qop_ptr>(qop);        

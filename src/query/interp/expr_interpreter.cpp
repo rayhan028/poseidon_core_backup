@@ -179,7 +179,7 @@ public:
     }
 
     virtual void visit(int rank, std::shared_ptr<key_token> op) override {
-        // std::cout << "visit key_token: " << op->qr_id_ << ", " << op->key_ << std::endl;
+        // std::cout << "visit key_token: " << op->qr_id_ << ", " << op->key_ << " : " << tup_.size() << std::endl;
         // TODO: we should replace string key_ by its dcode_t in prepare_expr_visitor
         auto inp = tup_[op->qr_id_];
         p_item res;
@@ -210,6 +210,7 @@ public:
                 break;
             }
             default:
+                // std::cout << "visit key_token ==> " << inp.which() << std::endl;
                 // Ooops!!
                 break;
         }
@@ -233,7 +234,7 @@ public:
                 // node* or relationship*
                 break;
             default:
-                std::cout << "cannot push: " << res.typecode() << std::endl;
+                // spdlog::info("cannot push for #{} : inp={}, res={}", op->qr_id_, inp.which(), res.typecode());
                 break;
         }            
         // std::cout << "PUSH: " << res << std::endl;

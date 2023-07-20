@@ -44,7 +44,10 @@ void cross_join::process_right(query_ctx &ctx, const qr_tuple &v) {
   PROF_POST(0);
 }
 
-void cross_join::finish(query_ctx &ctx) { qop::default_finish(ctx); }
+void cross_join::finish(query_ctx &ctx) { 
+  if (++phases_ > 1)
+    qop::default_finish(ctx); 
+}
 
 /* ------------------------------------------------------------------------ */
 
@@ -185,8 +188,10 @@ void left_outerjoin::process_left(query_ctx &ctx, const qr_tuple &v) {
       n++;
     }
   }
-  if (!input_.empty() && dangling_tuple) {
-    qr_tuple nll(input_.front().size(), query_result(null_t(-1)));
+  if (/*!input_.empty() &&*/ dangling_tuple) {
+    // TODO: determine size (width) of input_
+    auto space = input_.empty() ? 1 : input_.front().size();
+    qr_tuple nll(space, query_result(null_t(-1)));
     auto res = concat(v, nll);
     consume_(ctx, res);
     n++;
@@ -201,7 +206,7 @@ void left_outerjoin::process_right(query_ctx &ctx, const qr_tuple &v) {
 }
 
 void left_outerjoin::finish(query_ctx &ctx) { 
-  if (++phases_ > 0)
+  if (++phases_ > 1)
     qop::default_finish(ctx); 
 }
 

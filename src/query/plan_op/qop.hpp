@@ -1000,7 +1000,6 @@ struct union_all_qres : public qop, public std::enable_shared_from_this<union_al
   void process_left(query_ctx &ctx, const qr_tuple &v);
   void process_right(query_ctx &ctx, const qr_tuple &v);
 
-  // void r_finish(query_ctx &ctx);
   void finish(query_ctx &ctx);
 
   void accept(qop_visitor& vis) override { 

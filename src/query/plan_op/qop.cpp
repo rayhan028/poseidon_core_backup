@@ -169,7 +169,14 @@ void scan_nodes::start(query_ctx &ctx) {
 }
 
 void scan_nodes::dump(std::ostream &os) const {
-  os << "scan_nodes([" << label << "]) - " << PROF_DUMP;
+  if (labels.size() > 0) {
+    os << "scan_nodes(["; 
+    for (auto& l : labels) 
+      os << " " << l;
+    os << "]) - " << PROF_DUMP;
+  }
+  else
+    os << "scan_nodes([" << label << "]) - " << PROF_DUMP;
 }
 
 #ifdef QOP_RECOVERY
@@ -193,10 +200,10 @@ void continue_scan_nodes::dump(std::ostream &os) const {
 
 void index_scan::start(query_ctx &ctx) {
   if (idxs.empty())
-    ctx.gdb_->index_lookup(idx, key, [&](node &n) { consume_(ctx, {&n}); });
+    ctx.gdb_->index_lookup(idx, key, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
   else
-    ctx.gdb_->index_lookup(idxs, key, [&](node &n) { consume_(ctx, {&n}); });
-  
+    ctx.gdb_->index_lookup(idxs, key, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
+
   qop::default_finish(ctx);
 }
 
@@ -1045,30 +1052,31 @@ void qr_tuple_append::process(query_ctx &ctx, const qr_tuple &v) {
 /* ------------------------------------------------------------------------ */
 
 void union_all_qres::dump(std::ostream &os) const { // TODO
-  os << "union_all_qres() - " << PROF_DUMP;
+  os << "union_all() - " << PROF_DUMP;
 }
 
 void union_all_qres::process_left(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
+  /*
   if (init_) {
     for (auto &r : res_)
       consume_(ctx, r);
     init_ = false;
   }
+  */
   consume_(ctx, v);
   PROF_POST(1);
 }
 
 void union_all_qres::process_right(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
-  res_.push_back(v);
-  // consume_(gdb, v);
+  // res_.push_back(v);
+  consume_(ctx, v);
   PROF_POST(1);
 }
 
-// void union_all_qres::r_finish(query_ctx &ctx) { }
 void union_all_qres::finish(query_ctx &ctx) { 
-  if (++phases_ > 0)
+  if (++phases_ > 1)
     qop::default_finish(ctx); 
 }
 

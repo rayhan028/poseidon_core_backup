@@ -36,7 +36,7 @@ TEST_CASE("Testing the poseidon query processor", "[query_proc]") {
         auto plan = qp.prepare_query("Union(NodeScan('Comment'), NodeScan('Person'))");
         plan.print_plan(os);
         os << std::ends;
-        REQUIRE(std::string(os.str()) == "union_all_qres() - { in=0 | out=0 | time=0s }\n├── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n└── scan_nodes([Comment]) - { in=0 | out=0 | time=0s }\n");
+        REQUIRE(std::string(os.str()) == "union_all() - { in=0 | out=0 | time=0s }\n├── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n└── scan_nodes([Comment]) - { in=0 | out=0 | time=0s }\n");
     }
 
     SECTION("Project") {

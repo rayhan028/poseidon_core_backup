@@ -27,7 +27,7 @@
  * product of the results provided by the two input query operators.
  */
 struct cross_join : public qop, public std::enable_shared_from_this<cross_join> {
-  cross_join() = default;
+  cross_join() : phases_(0) {}
   cross_join(qop_ptr &rhs) : rhs_(rhs) {}
   ~cross_join() = default;
 
@@ -55,7 +55,9 @@ struct cross_join : public qop, public std::enable_shared_from_this<cross_join> 
   bool is_binary() const override { return true; }
 
   qop_ptr &get_rhs() { return rhs_; }
+
 private:
+  std::size_t phases_;
   std::list<qr_tuple> input_;
   qop_ptr rhs_;
 };
@@ -165,8 +167,7 @@ struct left_outerjoin : public qop, public std::enable_shared_from_this<left_out
   void process_right(query_ctx &ctx, const qr_tuple &v);
 
   void finish(query_ctx &ctx);
-  void l_finish(query_ctx &ctx) {}  
-
+  
   void accept(qop_visitor& vis) override { 
     vis.visit(shared_from_this()); 
     if (has_subscriber())
