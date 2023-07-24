@@ -91,6 +91,7 @@ qresult_iterator query_proc::execute_query(query_proc::mode m, const std::string
     }
     else {
         // TODO: compile & execute query
+        // qplan.print_plan();
         compile_query(qplan);
         if (print_plan)
             qplan.print_plan();
