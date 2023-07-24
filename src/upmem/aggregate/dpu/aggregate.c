@@ -8,50 +8,44 @@
 
 #include "../common/common.h"
 
-__mram_noinit struct dpu_params dpu_args; // TODO: place in WRAM
-__mram_noinit struct mrchunk mr_chunks[MAX_CHUNKS_PER_DPU];
+__host dpu_params dpu_parameters;
+__host aggr_res dpu_results;
 
 #if defined(COUNT) || defined(AVERAGE)
-__mram_noinit uint64_t dpu_cnt_res[NR_TASKLETS];
-__mram_noinit uint64_t dpu_cnt_val; // TODO: place in WRAM
+aggr_val_t dpu_cnt_res[NR_TASKLETS];
+// __host aggr_val_t dpu_cnt_val;
 #endif
 
 #if defined(SUM) || defined(AVERAGE)
-__mram_noinit uint64_t dpu_sum_res[NR_TASKLETS];
-__mram_noinit uint64_t dpu_sum_val;
+aggr_val_t dpu_sum_res[NR_TASKLETS];
+// __host aggr_val_t dpu_sum_val;
 #endif
 
 #ifdef AVERAGE
-__mram_noinit double dpu_avg_res[NR_TASKLETS];
-__mram_noinit double dpu_avg_val;
+double dpu_avg_res[NR_TASKLETS];
+// __host double dpu_avg_val;
 #endif
 
 #ifdef MINIMUM
-__mram_noinit uint64_t dpu_min_res[NR_TASKLETS];
-__mram_noinit uint64_t dpu_min_val;
+aggr_val_t dpu_min_res[NR_TASKLETS];
+// __host aggr_val_t dpu_min_val;
 #endif
 
 #ifdef MAXIMUM
-__mram_noinit uint64_t dpu_max_res[NR_TASKLETS];
-__mram_noinit uint64_t dpu_max_val;
+aggr_val_t dpu_max_res[NR_TASKLETS];
+// __host aggr_val_t dpu_max_val;
 #endif
-
-
-// __host struct dpu_arg dpu_args;
-// __host struct dpu_aggr_res DPU_RESULTS[NR_TASKLETS];
-
-// __mram_noinit struct mrchunk dpu_chunks[MAX_CHUNKS_PER_DPU];
 
 BARRIER_INIT(aggr_barrier, NR_TASKLETS);
 
-void compute_aggr() {
-    uint64_t cnt = 0;
-    uint64_t sum = 0;
+void compute_aggregates() {
+    aggr_val_t cnt = 0;
+    aggr_val_t sum = 0;
     double avg = 0.0;
-    uint64_t min = 18446744073709551615ul;
-    uint64_t max = 0;
+    aggr_val_t min = 18446744073709551615ul;
+    aggr_val_t max = 0;
 
-    for (unsigned int i = 0; i < NR_TASKLETS; i++) {
+    for (uint32_t i = 0; i < NR_TASKLETS; i++) {
         #if defined(COUNT) || defined(AVERAGE)
         cnt += dpu_cnt_res[i];
         #endif
@@ -74,37 +68,39 @@ void compute_aggr() {
     }
 
     #if defined(COUNT) || defined(AVERAGE)
-    dpu_cnt_val = cnt;
+    dpu_results.cnt = cnt;
     #endif
 
     #if defined(SUM) || defined(AVERAGE)
-    dpu_sum_val = sum;
+    dpu_results.sum = sum;
     #endif
 
     #ifdef AVERAGE
-    if (dpu_cnt_val > 0) {
-        avg = dpu_sum_val / (double)dpu_cnt_val;
+    if (dpu_results.cnt > 0) {
+        avg = dpu_results.sum / (double)dpu_results.cnt;
     }
-    dpu_avg_val = avg;
+    dpu_results.avg = avg;
     #endif
 
     #ifdef MINIMUM
-    dpu_min_val = min;
+    dpu_results.min = min;
     #endif
 
     #ifdef MAXIMUM
-    dpu_max_val = max;
+    dpu_results.max = max;
     #endif
 }
 
-int aggr_kernel() {
+int aggregation() {
     unsigned int tasklet_id = me();
     // printf("Tasklet: %d\n", tasklet_id);
 
-    // struct mrchunk * ch = (struct mrchunk *)&mr_chunk_buf[0];
-    // printf("node id_: %lu\n", ch->data[1].id_);
+    if (tasklet_id == 0) {
+        mem_reset();
+    }
+    barrier_wait(&aggr_barrier);
 
-    // initialize tasklet result buffers
+    /* initialize tasklet result buffers */
     #if defined(COUNT) || defined(AVERAGE)
     dpu_cnt_res[tasklet_id] = 0;
     #endif
@@ -125,85 +121,49 @@ int aggr_kernel() {
     dpu_max_res[tasklet_id] = 0;
     #endif
 
-    for (unsigned int ch = 0; ch < dpu_args.chunks; ch++) {
-        for (unsigned int i = tasklet_id; i < ELEMENTS_PER_CHUNK; i += NR_TASKLETS) {
+    mrnode* mr_elems = (mrnode*) DPU_MRAM_HEAP_POINTER;
+    mrnode* wr_elems = (mrnode*) mem_alloc(NUM_WR_ELEMS_PER_TASKLET * ELEM_SIZE);
+    for (uint64_t i = tasklet_id * NUM_WR_ELEMS_PER_TASKLET; i < dpu_parameters.elems; i += NUM_WR_ELEMS_PER_TASKLET * NR_TASKLETS) {
+
+        mram_read((__mram_ptr void const*) &mr_elems[i], wr_elems, NUM_WR_ELEMS_PER_TASKLET * ELEM_SIZE);
+
+        uint32_t num_elems = ((i + NUM_WR_ELEMS_PER_TASKLET) < dpu_parameters.elems) ?
+                             NUM_WR_ELEMS_PER_TASKLET :
+                             dpu_parameters.elems - i;
+
+        for (uint32_t j = 0; j < num_elems; j++) {
             #if defined(COUNT) || defined(AVERAGE)
             dpu_cnt_res[tasklet_id]++;
             #endif
 
             #if defined(SUM) || defined(AVERAGE)
-            dpu_sum_res[tasklet_id] += mr_chunks[ch].data[i].id_;
+            dpu_sum_res[tasklet_id] += wr_elems[j].id_;
             #endif
 
             #ifdef MINIMUM
-            if (dpu_min_res[tasklet_id] > mr_chunks[ch].data[i].id_) {
-                dpu_min_res[tasklet_id] = mr_chunks[ch].data[i].id_;
+            if (dpu_min_res[tasklet_id] > wr_elems[j].id_) {
+                dpu_min_res[tasklet_id] = wr_elems[j].id_;
             }
             #endif
 
             #ifdef MAXIMUM
-            if (dpu_max_res[tasklet_id] < mr_chunks[ch].data[i].id_) {
-                dpu_max_res[tasklet_id] = mr_chunks[ch].data[i].id_;
+            if (dpu_max_res[tasklet_id] < wr_elems[j].id_) {
+                dpu_max_res[tasklet_id] = wr_elems[j].id_;
             }
             #endif
         }
     }
 
     barrier_wait(&aggr_barrier);
-    if (tasklet_id == 0) { // first tasklet collects the DPU local results
-        compute_aggr();
-        printf("Processed chunks: %lu\n", dpu_args.chunks);
+    if (tasklet_id == 0) { /* first tasklet collects the DPU local results */
+        compute_aggregates();
+        // printf("Processed elements: %lu\n", dpu_parameters.elems);
     }
 
-// #ifdef PRINTER
-//     printf("Tasklet: %d\n", tasklet_id);
-//     printf("CACHE_SIZE_BYTES: %d\n", CACHE_SIZE_BYTES);
-//     printf("NR_TASKLETS: %d\n", NR_TASKLETS);
-// #endif
-//     if (tasklet_id == 0) {
-//         mem_reset();
-//     }
-
-//     barrier_wait(&aggr_barrier);
-//     struct dpu_aggr_res* result = &DPU_RESULTS[tasklet_id];
-//     uint32_t num_chunks = dpu_args.chunks;
-//     // uint32_t elems_per_chunk = dpu_args.elems_per_chunk;
-//     uint32_t chunks_size_bytes = num_chunks * sizeof(struct mrchunk);
-
-//     uint32_t tasklet_beg_addr = tasklet_id * CACHE_SIZE_BYTES;
-//     printf("Tasklet: %u, tasklet_beg_addr: %u\n", tasklet_id, tasklet_beg_addr);
-
-//     uint32_t chunks_beg_addr = (uint32_t)DPU_MRAM_HEAP_POINTER;
-
-//     uint8_t* cache = (uint8_t*) mem_alloc(CACHE_SIZE_BYTES);
-
-//     barrier_wait(&aggr_barrier);
-
-//     printf("chunks_size_bytes: %d\n", chunks_size_bytes);
-
-//     for (uint32_t c = 0; c < num_chunks; c++) {
-//         uint32_t chunk_addr = (uint32_t)(DPU_MRAM_HEAP_POINTER + c * sizeof(struct mrchunk));
-
-//         uint32_t start_node = tasklet_id * CACHE_SIZE;
-//         for (uint32_t n = start_node; n < ELEMENTS_PER_CHUNK; n += (CACHE_SIZE * NR_TASKLETS)) {
-//             printf("tasklet_id = %u, start_node = %u\n", tasklet_id, start_node);
-//             // printf("tasklet_id = %u, byte_index = %u\n", tasklet_id, byte_index);
-//         }
-//     }
-
-
-/*
-
-817 / 19 = 43 nodes per tasklet
-
-
-43 * 80 = 3440 bytes per cache
-
-*/
     return 0;
 }
 
-int (*kernels[NUM_KERNELS])() = {aggr_kernel};
+int (*kernels[NUM_KERNELS])() = {aggregation};
 
 int main() {
     return kernels[0]();
