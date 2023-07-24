@@ -9,8 +9,6 @@
 
 #define KB (1 << 10)
 #define MB (KB << 10)
-#define MRAM_SIZE (64 * MB)
-#define MRAM_INPUT_BUFFER (48 * MB)
 
 #define NR_TASKLETS 16
 #define NR_DPUS 2
@@ -23,12 +21,33 @@
 typedef struct mrnode mrnode;
 typedef struct dpu_params dpu_params;
 typedef struct aggr_res aggr_res;
-typedef uint64_t prop_code_t;
-typedef uint64_t aggr_val_t;
+typedef struct htable_entry htable_entry;
+typedef uint32_t prop_code_t;
+typedef uint32_t aggr_val_t;
 
-#define NR_NODE_PROPS 8
+#define NR_ELEM_PROPS 4
+#define GROUP_KEY 3
+#define AGGR_KEY 2
+#define NR_PARTITIONS 4
+#define NR_GROUPS 4
+
+#if defined(SUM) || defined(AVERAGE)
+    #define SUM_KEY AGGR_KEY
+#endif
+
+#ifdef MINIMUM
+    #define MIN_KEY AGGR_KEY
+#endif
+
+#ifdef MAXIMUM
+    #define MAX_KEY AGGR_KEY
+#endif
+
 #define ELEMS_PER_CHUNK 817
 
+#define NR_KERNERLS 2
+
+#if 0
 struct mrnode {
     uint8_t dummy_[40];       // transaction mgmt data
     uint64_t id_;
@@ -38,7 +57,14 @@ struct mrnode {
                               // where this node acts as to node
     uint64_t property_list;   // index in property list
     uint32_t node_label;
-    prop_code_t properties[NR_NODE_PROPS];
+    prop_code_t properties[NR_ELEM_PROPS];
+};
+#endif
+
+struct mrnode {
+    uint64_t id_;
+    prop_code_t properties[NR_ELEM_PROPS];
+    uint32_t node_label;
 };
 
 struct mrchunk {
@@ -49,26 +75,34 @@ struct mrchunk {
     char pad[58];
 };
 
+typedef enum kernel {
+    partition_phase = 0,
+    aggregation_phase = 1,
+} kernel;
+
 struct dpu_params {
-    uint64_t elems;
-    // uint64_t elems_per_chunk;
+    union {
+        uint32_t num_elems;
+        uint32_t num_partitions;
+    };
+    kernel phase;   
 };
 
 struct aggr_res {
 #if defined(COUNT) || defined(AVERAGE)
-    uint64_t cnt;
+    aggr_val_t cnt;
 #endif
 
 #if defined(SUM) || defined(AVERAGE)
-    uint64_t sum;
+    aggr_val_t sum;
 #endif
 
 #ifdef MINIMUM
-    uint64_t min;
+    aggr_val_t min;
 #endif
 
 #ifdef MAXIMUM
-    uint64_t max;
+    aggr_val_t max;
 #endif
 
 #ifdef AVERAGE
@@ -76,15 +110,38 @@ struct aggr_res {
 #endif
 };
 
-// #define MAX_CHUNKS_PER_DPU (MRAM_SIZE / sizeof(struct mrchunk))
-#define MAX_CHUNKS_PER_DPU 401
+struct htable_entry {
+    prop_code_t key;
+    aggr_res val;
+};
 
 #define DIVCEIL(n, d) (((n) - 1) / (d) + 1)
 #define ROUNDUP(n, d) ((n / d) * d + d)
 
-#define ELEM_SIZE sizeof(mrnode)
-#define NUM_WR_ELEMS (16 * 14)
-#define NUM_WR_ELEMS_PER_TASKLET (NUM_WR_ELEMS / NR_TASKLETS)
+#define MRAM_SIZE (64 * MB)
+#define WRAM_SIZE (64 * KB)
+#define MAX_MRAM_WRAM_XFER_SIZE (2 * KB)
+#define MRAM_INPUT_BUFFER (48 * MB)
+#define WRAM_INPUT_BUFFER (48 * KB)
+#define ELEM_SIZE sizeof(mrnode) 
+
+#define MRAM_INPUT_BUFFER_PARTITION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the partitioned elements */
+
+#define NR_WR_ELEMS_PARTITION (((2 * KB) / ELEM_SIZE) * 16) /* TODO: tune */
+#define NR_WR_ELEMS_PER_TASKLET_PARTITION (NR_WR_ELEMS_PARTITION / NR_TASKLETS)
+
+#define MRAM_INPUT_BUFFER_AGGREGATION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the hash table results */
+
+#define NR_WR_ELEMS_AGGREGATION ((2 * KB) / ELEM_SIZE / 16) /* TODO: tune */
+// #define NR_WR_ELEMS_PER_TASKLET_AGGREGATION (NR_WR_ELEMS_AGGREGATION / NR_TASKLETS)
+#define NR_WR_ELEMS_PER_TASKLET_AGGREGATION 16
+
+#define HASH_TABLE_SIZE (32 * KB)
+#define HASH_TABLE_ENTRY_SIZE sizeof(htable_entry)
+#define NR_HASH_TABLE_ENTRIES (HASH_TABLE_SIZE / HASH_TABLE_ENTRY_SIZE)
+#define NR_HASH_TABLE_CHUNKS (HASH_TABLE_SIZE / MAX_MRAM_WRAM_XFER_SIZE)
+#define NR_HASH_TABLE_CHUNK_ENTRIES (NR_HASH_TABLE_ENTRIES / NR_HASH_TABLE_CHUNKS)
+
 
 // #define PRINTER
 #define PRINT_ERROR(fmt, ...)       fprintf(stderr, "\033[0;31mERROR:\033[0m   " fmt "\n", ##__VA_ARGS__)
@@ -92,8 +149,5 @@ struct aggr_res {
 #define PRINT_INFO(cond, fmt, ...)  if(cond) printf("\033[0;32mINFO:\033[0m    " fmt "\n", ##__VA_ARGS__)
 #define PRINT(fmt, ...)             printf(fmt "\n", ##__VA_ARGS__)
 #define PRINT_TOP_RULE              printf("\033[0;33m\n====================\033[0m\n");
-#define LOG_MSG(msg)               std::cout << msg
-
-#define NUM_KERNELS 1
 
 #endif

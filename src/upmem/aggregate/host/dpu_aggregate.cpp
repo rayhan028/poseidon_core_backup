@@ -3,8 +3,11 @@
 #include <dpu>
 #include <dpu_log.h>
 
+#include <random>
+
 #include "../common/timer.hpp"
 #include "../common/common.h"
+#include "../common/hash.h"
 
 #define NR_TASKLETS 16
 #define MAX_THREADS 32
@@ -20,7 +23,7 @@ void collect_res(struct aggr_res &res, uint32_t num, uint64_t* cnt_vals,
     uint64_t cnt = 0;
     uint64_t sum = 0;
     double avg = 0.0;
-    uint64_t min = 18446744073709551615ul;
+    uint64_t min = UNKNOWN;
     uint64_t max = 0;
 
     for (uint32_t d = 0; d < num; d++) {
@@ -65,27 +68,41 @@ void collect_res(struct aggr_res &res, uint32_t num, uint64_t* cnt_vals,
     #endif
 }
 
-void validate_aggr(const struct aggr_res &lhs, const struct aggr_res &rhs) {
+void validate_aggr(const std::unordered_map<uint32_t, aggr_res> &lhs, const std::unordered_map<uint32_t, aggr_res> &rhs) {
+    assert(lhs.size() == rhs.size());
+
     bool equal = true;
-    if (lhs.cnt != rhs.cnt) { // TODO: use bits of a config variable to represent which aggregates to validate
-        equal = false;
-        PRINT_ERROR("\"cnt\" is not equal");
-    }
-    if (lhs.sum != rhs.sum) {
-        equal = false;
-        PRINT_ERROR("\"sum\" is not equal");
-    }
-    if (lhs.avg != rhs.avg) {
-        equal = false;
-        PRINT_ERROR("\"avg\" is not equal");
-    }
-    if (lhs.min != rhs.min) {
-        equal = false;
-        PRINT_ERROR("\"min\" is not equal");
-    }
-    if (lhs.max != rhs.max) {
-        equal = false;
-        PRINT_ERROR("\"max\" is not equal");
+    for (auto &[lhs_key, lhs_res] : lhs) {
+        auto iter = rhs.find(lhs_key);
+        if (iter == rhs.end()) {
+            equal = false;
+            PRINT_ERROR("Key not found");
+        }
+        else {
+            auto rhs_res = iter->second;
+
+            if (lhs_res.cnt != rhs_res.cnt) {
+                equal = false;
+                PRINT_ERROR("\"cnt\" is not equal");
+            }
+            if (lhs_res.sum != rhs_res.sum) {
+                equal = false;
+                PRINT_ERROR("\"sum\" is not equal");
+            }
+            if (lhs_res.avg != rhs_res.avg) {
+                equal = false;
+                PRINT_ERROR("\"avg\" is not equal");
+            }
+            if (lhs_res.min != rhs_res.min) {
+                equal = false;
+                PRINT_ERROR("\"min\" is not equal");
+            }
+            if (lhs_res.max != rhs_res.max) {
+                equal = false;
+                PRINT_ERROR("\"max\" is not equal");
+            }
+        }
+
     }
 
     if (equal) {
@@ -161,7 +178,7 @@ void parallel_cpu_aggr(graph_db_ptr &graph, struct aggr_res &cpu_res, std::size_
         #endif
 
         #ifdef MINIMUM
-        cpu_min_res[t] = 18446744073709551615ul;
+        cpu_min_res[t] = UNKNOWN_CODE;
         #endif
 
         #ifdef MAXIMUM
@@ -194,144 +211,77 @@ void parallel_cpu_aggr(graph_db_ptr &graph, struct aggr_res &cpu_res, std::size_
     PRINT("CPU results collected");
 }
 
-void sequential_cpu_aggr(graph_db_ptr &graph, struct aggr_res &cpu_res) {
-    uint64_t cnt = 0;
-    uint64_t sum = 0;
-    double avg = 0.0;
-    uint64_t min = 18446744073709551615ul;
-    uint64_t max = 0;
+void sequential_cpu_aggr(struct mrnode* elems_buf, uint32_t num_elems, std::unordered_map<uint32_t, aggr_res> &hash_table) {
 
-    auto &nodes = graph->get_nodes();
-    auto iter = nodes->as_vec().chunk_list_begin();
-    auto end = nodes->as_vec().chunk_list_end();
-    auto elems_per_chunk = nodes->as_vec().elements_per_chunk();
-    auto last_offs = nodes->as_vec().last_used();
+    for (uint32_t e = 0; e < num_elems; e++) {
+        mrnode &elem = elems_buf[e];
+        uint32_t group_key = elem.properties[GROUP_KEY];
+        // uint32_t hash = aggr_hash(group_key) % NR_HASH_TABLE_ENTRIES;
+        uint32_t hash = group_key;
 
-    uint32_t ch = 0;
-    uint64_t offs = 0;
-    while (iter != end) {
-        for (unsigned int i = 0; i < elems_per_chunk; i++) {
-            offs = ch * elems_per_chunk + i;
-            // if ((*iter)->is_used(i)) { // TODO: implement on DPU program
-                if (offs > last_offs) {
-                    break;
-                }
+        if (hash_table.find(hash) != hash_table.end()) {
+            auto &aggr = hash_table[hash];
 
-                auto &n = (*iter)->data_[i];
-                uint64_t nid = n.id();
-                // assert(nid == offs);
+            #if defined(COUNT) || defined(AVERAGE)
+            aggr.cnt++;
+            #endif
 
-                #if defined(COUNT) || defined(AVERAGE)
-                cnt++;
-                #endif
+            #if defined(SUM) || defined(AVERAGE)
+            aggr.sum += elem.properties[SUM_KEY];
+            #endif
 
-                #if defined(SUM) || defined(AVERAGE)
-                sum += nid;
-                #endif
-
-                #ifdef MINIMUM
-                if (nid < min) {
-                    min = nid;
-                }
-                #endif
-
-                #ifdef MAXIMUM
-                if (nid > max) {
-                    max = nid;
-                }
-                #endif
-            // }
-        }
-        iter++;
-        ch++;
-    }
-
-    #if defined(COUNT) || defined(AVERAGE)
-    cpu_res.cnt = cnt;
-    #endif
-    #if defined(SUM) || defined(AVERAGE)
-    cpu_res.sum = sum;
-    #endif
-    #ifdef AVERAGE
-    if (cnt > 0) {
-        avg = sum / (double)cnt;
-    }
-    cpu_res.avg = avg;
-    #endif
-    #ifdef MINIMUM
-    cpu_res.min = min;
-    #endif
-    #ifdef MAXIMUM
-    cpu_res.max = max;
-    #endif
-}
-
-struct mrchunk* chunks_from_mram_heap(dpu_set_t &dpu_set, std::size_t chunks_per_dpu, uint32_t num_dpus) {
-    // retrieve chunks from MRAM
-    uint32_t d = 0;
-    dpu_set_t dpu;
-    struct mrchunk* chunks = (struct mrchunk*) malloc(chunks_per_dpu * num_dpus * sizeof(mrchunk));
-    DPU_FOREACH(dpu_set, dpu, d) {
-        DPU_ASSERT(dpu_prepare_xfer(dpu, &chunks[d * chunks_per_dpu]));
-    }
-    DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_FROM_DPU, DPU_MRAM_HEAP_POINTER_NAME, 0, chunks_per_dpu * sizeof(mrchunk), DPU_XFER_DEFAULT));
-
-    return chunks;
-}
-
-void validate_chunks(graph_db_ptr &graph, struct mrchunk* chunks) {
-
-    auto &nodes = graph->get_nodes();
-    auto iter_beg = nodes->as_vec().chunk_list_begin();
-    auto iter_end = nodes->as_vec().chunk_list_end();
-    auto elems_per_chunk = nodes->as_vec().elements_per_chunk();
-
-    uint32_t i = 0;
-    bool equal = true;
-    auto iter = iter_beg;
-    while (iter != iter_end) {
-        struct mrchunk chunk;
-        memcpy(&chunk, *iter, sizeof(mrchunk));
-        for (std::size_t j = 0; j < elems_per_chunk; j++) {
-        // for (std::size_t j = 0; j < 7; j++) {
-            // if ((*iter)->is_used((i * elems_per_chunk) + j)) {
-            if ((*iter)->is_used(j)) {
-                mrnode n1, n2;
-                memcpy(&n1, &chunk.data[j], sizeof(mrnode));
-                memcpy(&n2, &chunks[i].data[j], sizeof(mrnode));
-                bool f1 = n1.id_ != n2.id_;
-                bool f2 = n1.from_rship_list != n2.from_rship_list;
-                bool f3 = n1.to_rship_list != n2.to_rship_list;
-                bool f4 = n1.property_list != n2.property_list;
-                bool f5 = n1.node_label != n2.node_label;
-                // TODO: n1.dummy_ == n2.dummy_
-                if (f1 || f2 || f3 || f4 || f5) {
-                    equal = false;
-                    #ifdef PRINTER
-                    PRINT("Mismatch in Node: %lu", n2.id_);
-                    #endif
-                }
-                #ifdef PRINTER
-                PRINT_INFO(true, "Printing node %lu---", n2.id_);
-                PRINT("id_: %lu", n2.id_);
-                PRINT("from_rship_list: %lu", n2.from_rship_list);
-                PRINT("to_rship_list: %lu", n2.to_rship_list);
-                PRINT("property_list: %lu", n2.property_list);
-                PRINT("node_label: %u", n2.node_label);
-                #endif
+            #ifdef MINIMUM
+            if (elem.properties[MIN_KEY] < aggr.min) {
+                aggr.min = elem.properties[MIN_KEY];
             }
+            #endif
+
+            #ifdef MAXIMUM
+            if (elem.properties[MAX_KEY] > aggr.max) {
+                aggr.max = elem.properties[MAX_KEY];
+            }
+            #endif
         }
-        i++;
-        iter++;
+        else {
+            aggr_res aggr;
+            aggr.cnt = 0;
+            aggr.sum = 0;
+            aggr.avg = 0.0;
+            aggr.min = UNKNOWN_CODE;
+            aggr.max = 0;
+
+            #if defined(COUNT) || defined(AVERAGE)
+            aggr.cnt++;
+            #endif
+
+            #if defined(SUM) || defined(AVERAGE)
+            aggr.sum += elem.properties[SUM_KEY];
+            #endif
+
+            #ifdef MINIMUM
+            if (elem.properties[MIN_KEY] < aggr.min) {
+                aggr.min = elem.properties[MIN_KEY];
+            }
+            #endif
+
+            #ifdef MAXIMUM
+            if (elem.properties[MAX_KEY] > aggr.max) {
+                aggr.max = elem.properties[MAX_KEY];
+            }
+            #endif
+
+            hash_table.emplace(std::piecewise_construct, std::forward_as_tuple(hash), std::forward_as_tuple(aggr));
+        }
     }
 
-    if (equal) {
-        PRINT_TOP_RULE;
-        PRINT_INFO(true, "Chunks are equal");
+#ifdef AVERAGE
+    for (auto &res : hash_table) {
+        auto &rs = res.second;
+        if (rs.cnt > 0) {
+            rs.avg = rs.sum / (double)rs.cnt;
+        }
     }
-    else {
-        PRINT_ERROR("Chunks are not equal");
-    }
+#endif
 }
 
 void initialize_props(graph_db_ptr &graph, struct mrnode* nodes_ptr) {
@@ -342,9 +292,24 @@ void initialize_props(graph_db_ptr &graph, struct mrnode* nodes_ptr) {
     auto elems_per_chunk = nodes->as_vec().elements_per_chunk();
     auto last_offs = nodes->as_vec().last_used();
 
+    uint64_t cmt_cnt = 0;
+    uint64_t post_cnt = 0;
+
+    std::random_device rd;
+    std::mt19937::result_type seed = rd() ^ (
+        (std::mt19937::result_type)
+            std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count() +
+        (std::mt19937::result_type)
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count());
+
+    std::mt19937 gen(seed);
+    std::uniform_int_distribution<prop_code_t> dist(1, 20);
+
     uint32_t ch = 0;
     uint32_t offs = 0;
-    bool equal = true;
+    uint32_t pos = 0;
     while (iter != end) {
         for (uint32_t j = 0; j < elems_per_chunk; j++) {
             offs = ch * elems_per_chunk + j;
@@ -356,79 +321,56 @@ void initialize_props(graph_db_ptr &graph, struct mrnode* nodes_ptr) {
                 auto &n = (*iter)->data_[j];
                 uint64_t nid = n.id();
                 // assert(nid == offs);
-                struct mrnode &mrn = nodes_ptr[offs];
-                memcpy(&mrn, &n, sizeof(node));
 
-                {
-                    auto prop = 0;
+                uint32_t lc = n.node_label;
+                if (lc == 1 /* Comment */ || lc == 5827195 /* Post */) {
+                    struct mrnode &mrn = nodes_ptr[pos++];
+                    mrn.id_ = nid;
+                    mrn.node_label = lc;
+
                     graph->begin_transaction();
-                    auto node_desc = graph->get_node_description(nid);
-                    for (auto &[key, value] : node_desc.properties) {
-                        // std::cout << key << " : " << value << "\n";
-                        const std::type_info &ti = value.type();
-                        if (ti == typeid(std::string)) {
-                            auto str = any_cast<std::string>(&value);
-                            auto c = graph->get_code(*str);
-                            mrn.properties[prop++] = c;
-                        }
-                        else if (ti == typeid(uint64_t)) {
-                            auto val = any_cast<uint64_t>(&value);
-                            mrn.properties[prop++] = *val;
-                        }
-                        else if (ti == typeid(boost::posix_time::ptime)) {
-                            auto dt = any_cast<boost::posix_time::ptime>(&value);
-                            boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
-                            uint64_t secs = (uint64_t)(*dt - epoch).total_seconds();
-                            mrn.properties[prop++] = secs;
-                        }
-                        else if (ti == typeid(int)) {
-                            auto val = any_cast<int>(&value);
-                            mrn.properties[prop++] = *val;
-                        }
-                        else if (ti == typeid(double)) {
-                            auto val = any_cast<double>(&value);
-                            double d = *val;
-                            memcpy(&mrn.properties[prop++], &d, sizeof(double));
-                        }
-                        else {
-                            mrn.properties[prop++] = UNKNOWN_CODE;
-                        }
-                    }
-                    graph->commit_transaction();
-                }
 
-                bool f1 = nid != mrn.id_;
-                bool f2 = n.from_rship_list != mrn.from_rship_list;
-                bool f3 = n.to_rship_list != mrn.to_rship_list;
-                bool f4 = n.property_list != mrn.property_list;
-                bool f5 = n.node_label != mrn.node_label;
-                if (f1 || f2 || f3 || f4 || f5) {
-                    equal = false;
-                    #ifdef PRINTER
-                    PRINT("Mismatch in Node: %lu : %lu", nid, mrn.id_);
-                    PRINT_INFO(true, "Printing node %lu : %lu", nid, mrn.id_);
-                    PRINT("id_: %lu : %lu", n, mrn.id_);
-                    PRINT("from_rship_list: %lu : %lu", n.from_rship_list, mrn.from_rship_list);
-                    PRINT("to_rship_list: %lu : %lu", n.to_rship_list, mrn.to_rship_list);
-                    PRINT("property_list: %lu : %lu", n.property_list, mrn.property_list);
-                    PRINT("node_label: %u : %u", n.node_label, mrn.node_label);
-                    #endif
+                    auto prop = 0;
+                    auto node_desc = graph->get_node_description(nid);
+                    auto iter = node_desc.properties.find("creationDate");
+                    auto value = iter->second;
+                    auto dt = any_cast<boost::posix_time::ptime>(&value);
+                    auto dtstr = to_iso_extended_string(dt->date());
+                    auto yrstr = dtstr.substr(0, dtstr.find("-"));
+                    mrn.properties[prop++] = (prop_code_t)std::stoi(yrstr); /* Key: 0 */
+
+                    if (lc == 1) { /* Key: 1 */
+                        mrn.properties[prop++] = (prop_code_t)1;
+                        cmt_cnt++;
+                    }
+                    else if (lc == 5827195) {
+                        mrn.properties[prop++] = (prop_code_t)0;
+                        post_cnt++;
+                    }
+
+                    iter = node_desc.properties.find("length");
+                    value = iter->second;
+                    auto len = any_cast<int>(&value);
+
+                    mrn.properties[prop++] = (prop_code_t)(*len); /* Key: 2 */
+
+                    prop_code_t val = (*len >= 0 && *len < 40) ?
+                                   0 :
+                                   (*len >= 40 && *len < 80) ?
+                                   1 :
+                                   (*len >= 80 && *len < 160) ?
+                                   2 : 3;
+                    mrn.properties[prop++] = val; /* Key: 3 */
+
+                    // mrn.properties[prop++] = dist(gen);
+
+                    graph->commit_transaction();
                 }
             // }
         }
         ch++;
         iter++;
     }
-
-#ifdef PRINTER
-    if (equal) {
-        PRINT_TOP_RULE;
-        PRINT_INFO(true, "Chunks are equal");
-    }
-    else {
-        PRINT_ERROR("Chunks are not equal");
-    }
-#endif
 }
 
 void dpu_aggregate(graph_db_ptr &graph, uint32_t num_of_dpus, std::string dpu_binary) {
@@ -470,39 +412,33 @@ void dpu_aggregate(graph_db_ptr &graph, uint32_t num_of_dpus, std::string dpu_bi
         assert(num_dpus == NR_DPUS);
         auto num_chunks = nodes->as_vec().num_chunks();
         auto elems_per_chunk = nodes->as_vec().elements_per_chunk();
-        uint64_t total_elems = nodes->as_vec().last_used() + 1;
-        uint32_t elems_per_dpu = DIVCEIL(total_elems, num_dpus);
-        auto elems_size_per_dpu = sizeof(mrnode) * elems_per_dpu;
-        bool dpu_overflow = elems_size_per_dpu > MRAM_INPUT_BUFFER;
+        uint32_t total_elems = (151043 /* Comment */ + 135701 /* Post */);
+        uint32_t elems_per_dpu = DIVCEIL(total_elems, NR_DPUS);
+        auto elems_size_per_dpu = ELEM_SIZE * elems_per_dpu;
+        bool dpu_overflow = elems_size_per_dpu > MRAM_INPUT_BUFFER_PARTITION;
 
         PRINT_TOP_RULE;
         PRINT("DPUs: %u", num_dpus);
         PRINT("Ranks: %u", num_ranks);
         PRINT("Chunks: %lu", num_chunks);
         PRINT("Elements per chunk: %u", elems_per_chunk);
-        PRINT("Elements: %lu", total_elems);
+        PRINT("Elements: %u", total_elems);
         PRINT("Elements per DPU: %u", elems_per_dpu);
-        PRINT("Element Size: %lu", sizeof(mrnode));
+        PRINT("Element Size: %lu", ELEM_SIZE);
         PRINT("Element Size per DPU: %lu (%lu MB)", elems_size_per_dpu, (elems_size_per_dpu / MB));
 
-        struct aggr_res dpu_res;
-        uint64_t cnt = 0;
-        uint64_t sum = 0;
-        double avg = 0.0;
-        uint64_t min = 18446744073709551615ul;
-        uint64_t max = 0;
-
         if (dpu_overflow) {
-            PRINT_INFO(true, "Max. %d (%d MB) MRAM input buffer exceeded. Adjusting...", MRAM_INPUT_BUFFER, (MRAM_INPUT_BUFFER / MB));
-            elems_per_dpu = MRAM_INPUT_BUFFER / sizeof(mrnode);
-            elems_size_per_dpu = sizeof(mrnode) * elems_per_dpu;
+            #if 0 /* TODO */
+            PRINT_INFO(true, "Max. %d (%d MB) MRAM input buffer exceeded. Adjusting...", MRAM_INPUT_BUFFER_PARTITION, (MRAM_INPUT_BUFFER_PARTITION / MB));
+            elems_per_dpu = (MRAM_INPUT_BUFFER_PARTITION / 2) / ELEM_SIZE;
+            elems_size_per_dpu = ELEM_SIZE * elems_per_dpu;
             uint32_t dpu_exec_rounds = DIVCEIL(total_elems, (elems_per_dpu * num_dpus));
 
             PRINT("DPU execution rounds: %u", dpu_exec_rounds);
             PRINT("Elements per DPU: %u", elems_per_dpu);
             PRINT("Element Size per DPU: %lu (%lu MB)", elems_size_per_dpu, (elems_size_per_dpu / MB));
 
-            mrnode* elems_buffer = (mrnode*) malloc (sizeof(mrnode) * elems_per_dpu * num_dpus * dpu_exec_rounds);
+            mrnode* elems_buffer = (mrnode*) malloc (ELEM_SIZE * elems_per_dpu * num_dpus * dpu_exec_rounds);
             initialize_props(graph, elems_buffer);
 
             aggr_res local_dpu_res[NR_DPUS][dpu_exec_rounds];
@@ -525,7 +461,7 @@ void dpu_aggregate(graph_db_ptr &graph, uint32_t num_of_dpus, std::string dpu_bi
                     DPU_FOREACH(dpu_set, dpu, dpuid) {
                         DPU_ASSERT(dpu_prepare_xfer(dpu, &elems_buffer[round * NR_DPUS * elems_per_dpu + dpuid * last_round_elems_per_dpu]));
                     }
-                    DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_TO_DPU, DPU_MRAM_HEAP_POINTER_NAME, 0, sizeof(mrnode) * elems_per_dpu, DPU_XFER_DEFAULT));
+                    DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_TO_DPU, DPU_MRAM_HEAP_POINTER_NAME, 0, ELEM_SIZE * elems_per_dpu, DPU_XFER_DEFAULT));
                     t.stop();
 
                     /* transfer DPU parameters to DPU */
@@ -549,7 +485,7 @@ void dpu_aggregate(graph_db_ptr &graph, uint32_t num_of_dpus, std::string dpu_bi
                     DPU_FOREACH(dpu_set, dpu, dpuid) {
                         DPU_ASSERT(dpu_prepare_xfer(dpu, &elems_buffer[(round * NR_DPUS + dpuid) * elems_per_dpu]));
                     }
-                    DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_TO_DPU, DPU_MRAM_HEAP_POINTER_NAME, 0, sizeof(mrnode) * elems_per_dpu, DPU_XFER_DEFAULT));
+                    DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_TO_DPU, DPU_MRAM_HEAP_POINTER_NAME, 0, ELEM_SIZE * elems_per_dpu, DPU_XFER_DEFAULT));
                     t.stop();
 
                     /* transfer DPU parameters to DPU */
@@ -607,119 +543,233 @@ void dpu_aggregate(graph_db_ptr &graph, uint32_t num_of_dpus, std::string dpu_bi
                     #endif
                 }
             }
+            #endif
         }
         else {
 
-            mrnode* elems_buffer = (mrnode*) malloc (sizeof(mrnode) * elems_per_dpu * num_dpus);
+            mrnode* elems_buffer = (mrnode*) malloc (ELEM_SIZE * elems_per_dpu * NR_DPUS);
             initialize_props(graph, elems_buffer);
 
-            /* transfer chunks to DPU */
+            /* transfer data to DPU */
             PRINT("Transfer input data to DPUs...");
             t.start("CPU to DPU xfer (input data)");
             DPU_FOREACH(dpu_set, dpu, dpuid) {
                 DPU_ASSERT(dpu_prepare_xfer(dpu, &elems_buffer[dpuid * elems_per_dpu]));
             }
-            DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_TO_DPU, DPU_MRAM_HEAP_POINTER_NAME, 0, sizeof(mrnode) * elems_per_dpu, DPU_XFER_DEFAULT));
+            DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_TO_DPU, DPU_MRAM_HEAP_POINTER_NAME, 0, ELEM_SIZE * elems_per_dpu, DPU_XFER_DEFAULT));
             t.stop();
 
-            /* transfer DPU parameters to DPU */
-            PRINT("Transfer input parameters to DPUs...");
+            /* transfer partition parameters to DPU */
+            PRINT("Transfer partition parameters to DPUs...");
             dpu_params params[num_dpus];
             DPU_FOREACH(dpu_set, dpu, dpuid) {
                 uint32_t elems = (dpuid == (NR_DPUS - 1)) ?
-                                (total_elems - dpuid * elems_per_dpu) :
-                                elems_per_dpu;
-                params[dpuid].elems = elems;
+                                 (total_elems - dpuid * elems_per_dpu) :
+                                 elems_per_dpu;
+                params[dpuid].num_elems = elems;
+                params[dpuid].phase = partition_phase;
                 DPU_ASSERT(dpu_prepare_xfer(dpu, &params[dpuid]));
             }
             DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_TO_DPU, "dpu_parameters", 0, sizeof(dpu_params), DPU_XFER_DEFAULT));
 
-            /* launch the aggregate kernel */
-            PRINT("Executing aggregate kernel on DPUs...");
+            /* launch the partition kernel */
+            PRINT("Executing partition kernel on DPUs...");
+            t.start("DPU exec (partition kernel)");
+            DPU_ASSERT(dpu_launch(dpu_set, DPU_SYNCHRONOUS));
+            t.stop();
+
+            /* dump DPU logs */
+            PRINT("Dump DPU Logs...");
+            DPU_FOREACH(dpu_set, dpu, dpuid) {
+                // std::cout << "DPU " << d << "\n";
+                DPU_ASSERT(dpu_log_read(dpu, stdout));
+            }
+
+            /* retrieve local histograms from DPUs */
+            PRINT("Transfer histograms of local paritions to CPU...");
+            uint32_t local_part_sizes[NR_DPUS][NR_PARTITIONS];
+            t.start("DPU to CPU transfer (local histograms)");
+            DPU_FOREACH(dpu_set, dpu, dpuid) {
+                DPU_ASSERT(dpu_prepare_xfer(dpu, &local_part_sizes[dpuid]));
+            }
+            DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_FROM_DPU, "dpu_partition_sizes", 0, sizeof(uint32_t) * NR_PARTITIONS, DPU_XFER_DEFAULT));
+            t.stop();
+
+            /* compute prefix sum for CPU partition buffers */
+            uint32_t prefix = 0;
+            uint32_t global_prefix_sum[NR_PARTITIONS][NR_DPUS];
+            for (auto p = 0; p < NR_PARTITIONS; p++) {
+                for (auto d = 0; d < NR_DPUS; d++) {
+                    global_prefix_sum[p][d] = prefix;
+                    prefix += local_part_sizes[d][p];
+                }
+            }
+
+            /* copy local partitions from DPUs into global partition buffers on CPU */
+            PRINT("Transfer DPU local partitions to CPU global partition buffers...");
+            mrnode* global_part_buffer = (mrnode*) malloc (ELEM_SIZE * total_elems);
+            uint32_t mroffs[NR_DPUS] = {0};
+            t.start("DPU to CPU xfer (local partitions)");
+            for (uint32_t p = 0; p < NR_PARTITIONS; p++) {
+                DPU_FOREACH(dpu_set, dpu, dpuid) {
+                    uint32_t input_elems = (dpuid == (NR_DPUS - 1)) ?
+                                           (total_elems - dpuid * elems_per_dpu) :
+                                           elems_per_dpu;
+                    /* TODO: 1) scatter gather xfer, 2) skip data transpose for byte interleaving */
+                    DPU_ASSERT(dpu_copy_from(dpu, DPU_MRAM_HEAP_POINTER_NAME, ELEM_SIZE * (input_elems + mroffs[dpuid]),
+                                             &global_part_buffer[global_prefix_sum[p][dpuid]], ELEM_SIZE * local_part_sizes[dpuid][p]));
+                    mroffs[dpuid] += local_part_sizes[dpuid][p];
+                }
+            }
+            t.stop();
+
+            /* send global partitions to DPUs */
+            PRINT("Transfer global partitions to DPUs...");
+            uint32_t d = 0;
+            uint32_t max_elems_per_dpu = (MRAM_INPUT_BUFFER_AGGREGATION / ELEM_SIZE); /* TODO: reserve space for hash tables */
+            uint32_t assigned_part_sizes[NR_DPUS] = {0};
+            std::unordered_map<uint32_t, std::vector<uint32_t>> dpu_to_assigned_parts;
+            for (uint32_t p = 0; p < NR_PARTITIONS; p++) {
+                uint32_t global_part_size = (p == (NR_PARTITIONS - 1)) ?
+                                            (total_elems - global_prefix_sum[p][0]) :
+                                            (global_prefix_sum[p + 1][0] - global_prefix_sum[p][0]);
+                while ((assigned_part_sizes[d] + global_part_size) >= max_elems_per_dpu) {
+                    /* TODO: avoid looping infinitely when all partitions cannot fit in DPU */
+                    d++;
+                    d %= NR_DPUS; /* we assign global partitions to DPUs in a round-robin fashion */
+                }
+                if (dpu_to_assigned_parts.find(d) == dpu_to_assigned_parts.end()) {
+                    dpu_to_assigned_parts[d];
+                }
+                dpu_to_assigned_parts[d].push_back(p);
+                dpu_to_assigned_parts[d].push_back(global_part_size);
+                assigned_part_sizes[d] += global_part_size;
+                d++;
+                d %= NR_DPUS;
+            }
+
+            t.start("CPU to DPU xfer (global partitions)");
+            uint32_t htable_offsets[NR_DPUS];
+            uint32_t num_partitions[NR_DPUS];
+            DPU_FOREACH(dpu_set, dpu, dpuid) {
+                uint32_t i = 0;
+                uint32_t part_offs = 0;
+                auto &partitions = dpu_to_assigned_parts[dpuid];
+                uint32_t num_parts = partitions.size() / 2; /* for each partition, we store the partition's index and size consecutively */
+                uint32_t partition_sizes[num_parts];
+
+                /* transfer the partitions */
+                for (uint32_t j = 0; j < partitions.size(); j += 2) {
+                    uint32_t p = partitions[j];
+                    uint32_t part_size = partitions[j + 1];
+                    partition_sizes[i++] = part_size;
+                    /* TODO: 1) scatter gather xfer, 2) skip data transpose for byte interleaving */
+                    DPU_ASSERT(dpu_copy_to(dpu, DPU_MRAM_HEAP_POINTER_NAME, sizeof(uint32_t) * num_parts + ELEM_SIZE * part_offs, /* we store partition sizes at the beginning of MRAM */
+                                           &global_part_buffer[global_prefix_sum[p][0]], ELEM_SIZE * part_size));
+                    part_offs += part_size;
+                }
+                /* send the sizes of the partitions */
+                DPU_ASSERT(dpu_copy_to(dpu, DPU_MRAM_HEAP_POINTER_NAME, 0, partition_sizes, sizeof(uint32_t) * num_parts));
+                htable_offsets[dpuid] = part_offs;
+                num_partitions[dpuid] = num_parts;
+            }
+            t.stop();
+
+            /* transfer aggregation parameters to DPUs */
+            PRINT("Transfer aggregation parameters to DPUs...");
+            DPU_FOREACH(dpu_set, dpu, dpuid) {
+                params[dpuid].num_partitions = num_partitions[dpuid];
+                params[dpuid].phase = aggregation_phase;
+                DPU_ASSERT(dpu_prepare_xfer(dpu, &params[dpuid]));
+            }
+            DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_TO_DPU, "dpu_parameters", 0, sizeof(dpu_params), DPU_XFER_DEFAULT));
+
+            /* launch the aggregation kernel */
+            PRINT("Executing aggregation kernel on DPUs...");
             t.start("DPU exec (aggregation kernel)");
             DPU_ASSERT(dpu_launch(dpu_set, DPU_SYNCHRONOUS));
             t.stop();
 
-            /* retrieve local aggregation results from DPUs */
-            PRINT("Transfer local results from DPUs...");
-            aggr_res local_dpu_res[num_dpus];
-            t.start("DPU to CPU transfer (local res)");
+            /* dump DPU logs */
+            PRINT("Dump DPU Logs...");
             DPU_FOREACH(dpu_set, dpu, dpuid) {
-                DPU_ASSERT(dpu_prepare_xfer(dpu, &local_dpu_res[dpuid]));
+                // std::cout << "DPU " << d << "\n";
+                DPU_ASSERT(dpu_log_read(dpu, stdout));
             }
-            DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_FROM_DPU, "dpu_results", 0, sizeof(aggr_res), DPU_XFER_DEFAULT));
+
+            /* retrieve all global partitions' hash tables from DPUs */
+            PRINT("Transfer hash tables of global partitions to CPU...");
+            htable_entry* hash_tables[NR_DPUS];
+            t.start("DPU to CPU transfer (hash tables of global partitions)");
+            DPU_FOREACH(dpu_set, dpu, dpuid) {
+                hash_tables[dpuid] = (htable_entry*) malloc(HASH_TABLE_SIZE * num_partitions[dpuid]);
+                /* TODO: 1) scatter gather xfer, 2) skip data transpose for byte interleaving */
+                DPU_ASSERT(dpu_copy_from(dpu, DPU_MRAM_HEAP_POINTER_NAME, sizeof(uint32_t) * num_partitions[dpuid] + ELEM_SIZE * htable_offsets[dpuid],
+                                         hash_tables[dpuid], sizeof(htable_entry) * num_partitions[dpuid] * NR_HASH_TABLE_ENTRIES));
+            }
             t.stop();
 
-            // /* dump DPU logs */
-            // PRINT("Dump DPU Logs...");
-            // DPU_FOREACH(dpu_set, dpu, dpuid) {
-            //     // std::cout << "DPU " << d << "\n";
-            //     DPU_ASSERT(dpu_log_read(dpu, stdout));
-            // }
+            PRINT("Collect aggregation results of global partitions...");
+            t.start("CPU exec (aggregation results of global partitions)");
+            std::unordered_map<uint32_t, aggr_res> dpu_res;
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                for (uint32_t idx = 0; idx < (num_partitions[d] * NR_HASH_TABLE_ENTRIES); idx++) {
+                    if (hash_tables[d][idx].key != (uint32_t)(-1)) {
+                        uint32_t key = hash_tables[d][idx].key;
+                        aggr_res res;
+                        #if defined(COUNT) || defined(AVERAGE)
+                        res.cnt = hash_tables[d][idx].val.cnt;
+                        #endif
 
-            PRINT("Collect local DPU aggregation results...");
-            t.start("CPU exec (local aggregation res)");
-            for (uint32_t d = 0; d < num_dpus; d++) {
-                #if defined(COUNT) || defined(AVERAGE)
-                cnt += local_dpu_res[d].cnt;
-                #endif
+                        #if defined(SUM) || defined(AVERAGE)
+                        res.sum = hash_tables[d][idx].val.sum;
+                        #endif
 
-                #if defined(SUM) || defined(AVERAGE)
-                sum += local_dpu_res[d].sum;
-                #endif
+                        #ifdef AVERAGE
+                        if (hash_tables[d][idx].val.cnt > 0) {
+                            hash_tables[d][idx].val.avg = hash_tables[d][idx].val.sum / (double)hash_tables[d][idx].val.cnt;
+                        }
+                        res.avg = hash_tables[d][idx].val.avg;
+                        #endif
 
-                #ifdef MINIMUM
-                if (min > local_dpu_res[d].min) {
-                    min = local_dpu_res[d].min;
+                        #ifdef MINIMUM
+                        res.min = hash_tables[d][idx].val.min;
+                        #endif
+
+                        #ifdef MAXIMUM
+                        res.max = hash_tables[d][idx].val.max;
+                        #endif
+
+                        dpu_res.emplace(std::piecewise_construct,
+                                       std::forward_as_tuple(key),
+                                       std::forward_as_tuple(res));
+                    }
                 }
-                #endif
-
-                #ifdef MAXIMUM
-                if (max < local_dpu_res[d].max) {
-                    max = local_dpu_res[d].max;
-                }
-                #endif
             }
+            t.stop();
+
+            /* execute baseline aggregation on CPU */
+            PRINT("Execute aggregates baselines on CPU...");
+            /*
+            // std::size_t threads = 4;
+            std::size_t threads = std::thread::hardware_concurrency();
+            aggr_res seq_cpu_res, par_cpu_res;
+            t.start("Parallel CPU exec (aggregation kernel)");
+            parallel_cpu_aggr(graph, par_cpu_res, threads);
+            t.stop();
+            */
+
+            /* validate CPU and DPU results */
+            PRINT("Validate CPU baseline results...");
+            t.start("Sequential CPU exec (aggregation kernel)");
+            std::unordered_map<uint32_t, aggr_res> seq_cpu_res;
+            sequential_cpu_aggr(elems_buffer, total_elems, seq_cpu_res);
+            t.stop();
+            // validate_aggr(seq_cpu_res, par_cpu_res);
+
+            PRINT("Validate DPU results...");
+            validate_aggr(seq_cpu_res, dpu_res);
         }
-
-        #if defined(COUNT) || defined(AVERAGE) /* TODO: optimize */
-        dpu_res.cnt = cnt;
-        #endif
-        #if defined(SUM) || defined(AVERAGE)
-        dpu_res.sum = sum;
-        #endif
-        #ifdef AVERAGE
-        if (cnt > 0) {
-            avg = sum / (double)cnt;
-        }
-        dpu_res.avg = avg;
-        #endif
-        #ifdef MINIMUM
-        dpu_res.min = min;
-        #endif
-        #ifdef MAXIMUM
-        dpu_res.max = max;
-        #endif
-        t.stop();
-
-        /* execute baseline aggregation on CPU */
-        PRINT("Execute aggregates baselines on CPU...");
-        // std::size_t threads = 4;
-        std::size_t threads = std::thread::hardware_concurrency();
-        aggr_res seq_cpu_res, par_cpu_res;
-        t.start("Parallel CPU exec (aggregation kernel)");
-        parallel_cpu_aggr(graph, par_cpu_res, threads);
-        t.stop();
-
-        /* validate CPU and DPU results */
-        PRINT("Validate CPU baseline results...");
-        t.start("Sequential CPU exec (aggregation kernel)");
-        sequential_cpu_aggr(graph, seq_cpu_res);
-        t.stop();
-        validate_aggr(seq_cpu_res, par_cpu_res);
-
-        PRINT("Validate DPU results...");
-        validate_aggr(seq_cpu_res, dpu_res);
 
         /* free DPUs */
         PRINT("Free DPUs...");
