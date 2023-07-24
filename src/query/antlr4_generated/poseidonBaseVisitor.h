@@ -119,6 +119,18 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitCardinality_spec(poseidonParser::Cardinality_specContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitMin_cardinality(poseidonParser::Min_cardinalityContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitMax_cardinality(poseidonParser::Max_cardinalityContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitDir_spec(poseidonParser::Dir_specContext *ctx) override {
     return visitChildren(ctx);
   }

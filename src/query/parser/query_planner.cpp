@@ -159,8 +159,8 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
             }
             else {
                 auto p_idx = extract_tuple_id(pm->Var()->getText());
-                auto p_attr = pm->Identifier_();
-                auto p_type = pm->type_spec();
+                //auto p_attr = pm->Identifier_();
+                //auto p_type = pm->type_spec();
                 pexprs.push_back(projection::expr(p_idx, ([=](auto ctx, auto res) { return fc_func(&ctx, &res); } )));
                 prexprs.push_back({fc_func});
             }
@@ -353,7 +353,7 @@ std::any query_planner::visitAggregate_op(poseidonParser::Aggregate_opContext *c
     for (auto& aggr : aggr_list) {
         auto expr = aggr->proj_expr();
         auto v_id = extract_tuple_id(expr->Var()->getText());
-        auto v_name = expr->Identifier_()->getText();
+        auto v_name = expr->Identifier_() == nullptr ? "" : expr->Identifier_()->getText();
         auto tspec = expr->type_spec();
 
         aggregate::expr::func_t aggr_func = aggregate::expr::f_count;
@@ -473,32 +473,68 @@ std::any query_planner::visitPath_pattern(poseidonParser::Path_patternContext *c
         /*
          * 1. Rship_pattern
          */
-        auto label = /*std::string(":") + */ p->rship_pattern()->Identifier_().back()->getText();
-        // TODO: handle direction of relationship
+        auto label = p->rship_pattern()->Identifier_().back()->getText();
         auto dir = p->rship_pattern()->dir_spec();
-        if (dir[0]->no_dir() != nullptr && dir[1]->right_dir() != nullptr) {
-            // -[]->
-            auto rship_op = std::make_shared<foreach_from_relationship>(label, origin_idx);
-            node_op = qop_append(node_op, rship_op);  
-            auto get_op = std::make_shared<get_to_node>();
-            node_op = qop_append(node_op, get_op); 
-        }
-        else if (dir[0]->left_dir() != nullptr && dir[1]->no_dir() != nullptr) {
-            // <-[]-
-            auto rship_op = std::make_shared<foreach_to_relationship>(label, origin_idx);
-            node_op = qop_append(node_op, rship_op);  
-            auto get_op = std::make_shared<get_from_node>();
-            node_op = qop_append(node_op, get_op); 
-        }
-        else if (dir[0]->no_dir() != nullptr && dir[1]->no_dir() != nullptr) {
-            // -[]-
-            auto rship_op = std::make_shared<foreach_all_relationship>(label, origin_idx);
-            node_op = qop_append(node_op, rship_op);  
-            auto get_op = std::make_shared<get_to_node>();
-            node_op = qop_append(node_op, get_op); 
+        //  handle direction of relationship
+        auto card_spec = p->rship_pattern()->cardinality_spec();
+
+        unsigned int m1 = std::numeric_limits<unsigned int>::min();
+        unsigned int m2 = std::numeric_limits<unsigned int>::max();
+        if (card_spec != nullptr) {
+            m1 = std::stoi(card_spec->min_cardinality()->INTEGER()->getText());
+            if (card_spec->max_cardinality() != nullptr)
+                m2 = std::stoi(card_spec->max_cardinality()->INTEGER()->getText());
+            spdlog::info("min:max = {}/{}", m1, m2);
+            if (dir[0]->no_dir() != nullptr && dir[1]->right_dir() != nullptr) {
+                // -[]->
+                auto rship_op = std::make_shared<foreach_variable_from_relationship>(label, m1, m2, origin_idx);
+                node_op = qop_append(node_op, rship_op);  
+                auto get_op = std::make_shared<get_to_node>();
+                node_op = qop_append(node_op, get_op); 
+            }
+            else if (dir[0]->left_dir() != nullptr && dir[1]->no_dir() != nullptr) {
+                // <-[]-
+                auto rship_op = std::make_shared<foreach_variable_to_relationship>(label, m1, m2, origin_idx);
+                node_op = qop_append(node_op, rship_op);  
+                auto get_op = std::make_shared<get_from_node>();
+                node_op = qop_append(node_op, get_op); 
+            }
+            else if (dir[0]->no_dir() != nullptr && dir[1]->no_dir() != nullptr) {
+                // -[]-
+                auto rship_op = std::make_shared<foreach_variable_all_relationship>(label, m1, m2, origin_idx);
+                node_op = qop_append(node_op, rship_op);  
+                auto get_op = std::make_shared<get_to_node>();
+                node_op = qop_append(node_op, get_op); 
+            }
+            else {
+                throw query_processing_error("invalid relationship direction");
+            }
         }
         else {
-            throw query_processing_error("invalid relationship direction");
+            if (dir[0]->no_dir() != nullptr && dir[1]->right_dir() != nullptr) {
+                // -[]->
+                auto rship_op = std::make_shared<foreach_from_relationship>(label, origin_idx);
+                node_op = qop_append(node_op, rship_op);  
+                auto get_op = std::make_shared<get_to_node>();
+                node_op = qop_append(node_op, get_op); 
+            }
+            else if (dir[0]->left_dir() != nullptr && dir[1]->no_dir() != nullptr) {
+                // <-[]-
+                auto rship_op = std::make_shared<foreach_to_relationship>(label, origin_idx);
+                node_op = qop_append(node_op, rship_op);  
+                auto get_op = std::make_shared<get_from_node>();
+                node_op = qop_append(node_op, get_op); 
+            }
+            else if (dir[0]->no_dir() != nullptr && dir[1]->no_dir() != nullptr) {
+                // -[]-
+                auto rship_op = std::make_shared<foreach_all_relationship>(label, origin_idx);
+                node_op = qop_append(node_op, rship_op);  
+                auto get_op = std::make_shared<get_to_node>();
+                node_op = qop_append(node_op, get_op); 
+            }
+            else {
+                throw query_processing_error("invalid relationship direction");
+            }
         }
         origin_idx++;
         /*
@@ -782,7 +818,7 @@ std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *c
             else {
                 auto p_idx = extract_tuple_id(pm->Var()->getText());
                 auto p_attr = pm->Identifier_();
-                auto p_type = pm->type_spec();
+                // auto p_type = pm->type_spec();
                 // add parameter variable
                 param_list.push_back(Key(p_idx, p_attr != nullptr ? p_attr->getText() : ""));
             }

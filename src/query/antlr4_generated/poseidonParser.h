@@ -12,19 +12,19 @@
 class  poseidonParser : public antlr4::Parser {
 public:
   enum {
-    T__0 = 1, T__1 = 2, T__2 = 3, T__3 = 4, T__4 = 5, T__5 = 6, Filter_ = 7, 
-    Nodescan_ = 8, Indexscan_ = 9, Match_ = 10, Project_ = 11, Limit_ = 12, 
-    CrossJoin_ = 13, HashJoin_ = 14, LeftOuterJoin_ = 15, Expand_ = 16, 
-    ForeachRelationship_ = 17, Aggregate_ = 18, GroupBy_ = 19, Sort_ = 20, 
-    Create_ = 21, Union_ = 22, IntType_ = 23, Uint64Type_ = 24, DoubleType_ = 25, 
-    StringType_ = 26, DateType_ = 27, ResultType_ = 28, Count_ = 29, Sum_ = 30, 
-    Avg_ = 31, Min_ = 32, Max_ = 33, UDF_ = 34, InExpandDir_ = 35, OutExpandDir_ = 36, 
-    FromDir_ = 37, ToDir_ = 38, AllDir_ = 39, DescOrder_ = 40, AscOrder_ = 41, 
-    INTEGER = 42, FLOAT = 43, Identifier_ = 44, Var = 45, NAME_ = 46, STRING_ = 47, 
-    COLON_ = 48, DOUBLE_COLON = 49, COMMA_ = 50, LPAREN = 51, RPAREN = 52, 
-    LBRACKET = 53, RBRACKET = 54, OR = 55, AND = 56, EQUALS = 57, NOTEQUALS = 58, 
-    LT = 59, LTEQ = 60, GT = 61, GTEQ = 62, PLUS_ = 63, MULT = 64, DIV = 65, 
-    MOD = 66, NOT = 67, WHITESPACE = 68
+    T__0 = 1, T__1 = 2, T__2 = 3, T__3 = 4, T__4 = 5, T__5 = 6, T__6 = 7, 
+    Filter_ = 8, Nodescan_ = 9, Indexscan_ = 10, Match_ = 11, Project_ = 12, 
+    Limit_ = 13, CrossJoin_ = 14, HashJoin_ = 15, LeftOuterJoin_ = 16, Expand_ = 17, 
+    ForeachRelationship_ = 18, Aggregate_ = 19, GroupBy_ = 20, Sort_ = 21, 
+    Create_ = 22, Union_ = 23, IntType_ = 24, Uint64Type_ = 25, DoubleType_ = 26, 
+    StringType_ = 27, DateType_ = 28, ResultType_ = 29, Count_ = 30, Sum_ = 31, 
+    Avg_ = 32, Min_ = 33, Max_ = 34, UDF_ = 35, InExpandDir_ = 36, OutExpandDir_ = 37, 
+    FromDir_ = 38, ToDir_ = 39, AllDir_ = 40, DescOrder_ = 41, AscOrder_ = 42, 
+    INTEGER = 43, FLOAT = 44, Identifier_ = 45, Var = 46, NAME_ = 47, STRING_ = 48, 
+    COLON_ = 49, DOUBLE_COLON = 50, COMMA_ = 51, LPAREN = 52, RPAREN = 53, 
+    LBRACKET = 54, RBRACKET = 55, OR = 56, AND = 57, EQUALS = 58, NOTEQUALS = 59, 
+    LT = 60, LTEQ = 61, GT = 62, GTEQ = 63, PLUS_ = 64, MULT = 65, DIV = 66, 
+    MOD = 67, NOT = 68, WHITESPACE = 69
   };
 
   enum {
@@ -35,16 +35,17 @@ public:
     RuleForeach_relationship_op = 15, RuleRship_dir = 16, RuleRship_cardinality = 17, 
     RuleRship_source_var = 18, RuleExpand_op = 19, RuleExpand_dir = 20, 
     RuleMatch_op = 21, RulePath_pattern = 22, RulePath_component = 23, RuleNode_pattern = 24, 
-    RuleRship_pattern = 25, RuleDir_spec = 26, RuleLeft_dir = 27, RuleRight_dir = 28, 
-    RuleNo_dir = 29, RuleAggregate_op = 30, RuleAggregate_list = 31, RuleAggr_expr = 32, 
-    RuleAggr_func = 33, RuleUnion_op = 34, RuleGroup_by_op = 35, RuleGrouping_list = 36, 
-    RuleGrouping_expr = 37, RuleFilter_op = 38, RuleLogical_expr = 39, RuleBoolean_expr = 40, 
-    RuleEquality_expr = 41, RuleRelational_expr = 42, RuleAdditive_expr = 43, 
-    RuleMultiplicative_expr = 44, RuleUnary_expr = 45, RulePrimary_expr = 46, 
-    RuleVariable = 47, RuleValue = 48, RuleFunction_call = 49, RuleUdf_prefix = 50, 
-    RuleParam_list = 51, RuleParam = 52, RuleSort_op = 53, RuleSort_list = 54, 
-    RuleSort_expr = 55, RuleSort_spec = 56, RuleCreate_op = 57, RuleCreate_node = 58, 
-    RuleProperty_list = 59, RuleProperty = 60, RuleCreate_rship = 61, RuleNode_var = 62
+    RuleRship_pattern = 25, RuleCardinality_spec = 26, RuleMin_cardinality = 27, 
+    RuleMax_cardinality = 28, RuleDir_spec = 29, RuleLeft_dir = 30, RuleRight_dir = 31, 
+    RuleNo_dir = 32, RuleAggregate_op = 33, RuleAggregate_list = 34, RuleAggr_expr = 35, 
+    RuleAggr_func = 36, RuleUnion_op = 37, RuleGroup_by_op = 38, RuleGrouping_list = 39, 
+    RuleGrouping_expr = 40, RuleFilter_op = 41, RuleLogical_expr = 42, RuleBoolean_expr = 43, 
+    RuleEquality_expr = 44, RuleRelational_expr = 45, RuleAdditive_expr = 46, 
+    RuleMultiplicative_expr = 47, RuleUnary_expr = 48, RulePrimary_expr = 49, 
+    RuleVariable = 50, RuleValue = 51, RuleFunction_call = 52, RuleUdf_prefix = 53, 
+    RuleParam_list = 54, RuleParam = 55, RuleSort_op = 56, RuleSort_list = 57, 
+    RuleSort_expr = 58, RuleSort_spec = 59, RuleCreate_op = 60, RuleCreate_node = 61, 
+    RuleProperty_list = 62, RuleProperty = 63, RuleCreate_rship = 64, RuleNode_var = 65
   };
 
   explicit poseidonParser(antlr4::TokenStream *input);
@@ -90,6 +91,9 @@ public:
   class Path_componentContext;
   class Node_patternContext;
   class Rship_patternContext;
+  class Cardinality_specContext;
+  class Min_cardinalityContext;
+  class Max_cardinalityContext;
   class Dir_specContext;
   class Left_dirContext;
   class Right_dirContext;
@@ -571,6 +575,7 @@ public:
     std::vector<antlr4::tree::TerminalNode *> Identifier_();
     antlr4::tree::TerminalNode* Identifier_(size_t i);
     antlr4::tree::TerminalNode *RBRACKET();
+    Cardinality_specContext *cardinality_spec();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -578,6 +583,47 @@ public:
   };
 
   Rship_patternContext* rship_pattern();
+
+  class  Cardinality_specContext : public antlr4::ParserRuleContext {
+  public:
+    Cardinality_specContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *MULT();
+    Min_cardinalityContext *min_cardinality();
+    Max_cardinalityContext *max_cardinality();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Cardinality_specContext* cardinality_spec();
+
+  class  Min_cardinalityContext : public antlr4::ParserRuleContext {
+  public:
+    Min_cardinalityContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *INTEGER();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Min_cardinalityContext* min_cardinality();
+
+  class  Max_cardinalityContext : public antlr4::ParserRuleContext {
+  public:
+    Max_cardinalityContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *INTEGER();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Max_cardinalityContext* max_cardinality();
 
   class  Dir_specContext : public antlr4::ParserRuleContext {
   public:

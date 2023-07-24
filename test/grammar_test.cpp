@@ -89,6 +89,8 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
     
         REQUIRE(qp.parse_("Match((p1:Person)-[:knows]->(p2:Person))"));
         REQUIRE(qp.parse_("Match((p1:Person)-[:knows]-(p2:Person))"));
+        REQUIRE(qp.parse_("Match((p1:Person)-[:knows*0..5]-(p2:Person))"));
+        REQUIRE(qp.parse_("Match((p1:Person)-[:knows*0..]-(p2:Person))"));
         REQUIRE(qp.parse_("Match((p1:Person { id: 42})-[:knows]->(p2:Person))"));
         REQUIRE(qp.parse_("Match((p1:Person { id: 42})<-[:knows]-(p2:Person))"));
         REQUIRE(qp.parse_("Match((p1:Person)-[:knows]->(p2:Person)-[:has]->(o:Order))"));

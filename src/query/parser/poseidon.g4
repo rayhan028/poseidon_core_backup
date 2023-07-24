@@ -65,7 +65,11 @@ match_op : Match_ '(' path_pattern ')' ;
 path_pattern : node_pattern path_component* ;
 path_component : rship_pattern node_pattern ; 
 node_pattern : '(' (Identifier_)? ':' Identifier_ property_list? ')' ;
-rship_pattern : dir_spec '[' (Identifier_)? ':' Identifier_ ']' dir_spec ;
+rship_pattern : dir_spec '[' (Identifier_)? ':' Identifier_ (cardinality_spec)? ']' dir_spec ;
+
+cardinality_spec : '*' min_cardinality '..' (max_cardinality)? ;
+min_cardinality : INTEGER ;
+max_cardinality : INTEGER ;
 
 dir_spec: left_dir | right_dir | no_dir ;
 left_dir : '<-' ;
@@ -170,7 +174,7 @@ AllDir_       : 'ALL' ;
 DescOrder_    : 'DESC' ;
 AscOrder_     : 'ASC' ;
 
-INTEGER     : [1-9][0-9]*;
+INTEGER     : [0-9]+ ;
 FLOAT       : '-'? ('0'..'9')+ '.' ('0'..'9')+ ;
 
 Identifier_  : NAME_ ;

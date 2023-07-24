@@ -18,6 +18,13 @@
 #include "spdlog/spdlog.h"
 
 
+enum cmd_mode {
+  undefined_mode,
+  import_mode,
+  script_mode,
+  shell_mode
+};
+
 #ifdef USE_PMDK
 #define POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
 #define PMEM_PATH "/mnt/pmem0/poseidon/"
@@ -386,6 +393,7 @@ int main(int argc, char* argv[]) {
   query_proc::mode qmode = query_proc::Compile; 
   char delim_character = ',';
   bool strict = false;
+  cmd_mode mode = undefined_mode;
 
   auto console = spdlog::stdout_color_mt("poseidon");
   spdlog::set_default_logger(console);
@@ -430,10 +438,11 @@ int main(int argc, char* argv[]) {
 
     notify(vm);
 
-    if (vm.count("import"))
+    if (vm.count("import")) {
       import_files = vm["import"].as<std::vector<std::string>>();
-
-   if (vm.count("pool"))
+      mode = import_mode;
+    }
+    if (vm.count("pool"))
       pool_path = vm["pool"].as<std::string>();
 
     if (vm.count("delimiter"))
@@ -516,18 +525,19 @@ int main(int argc, char* argv[]) {
   query_ctx ctx(graph);
   qproc_ptr = std::make_unique<query_proc>(ctx);
 
-  if (start_shell) {
+  if (!query_file.empty()) {
+    mode = script_mode;
+    // load the query from the file
+    auto query_string = read_from_file(query_file);
+    exec_query(query_string, qmode, false);
+  }
+
+  if (start_shell || mode == undefined_mode) {
     run_shell(graph, qmode);
   }
 
   //exec_query(graph, "Filter($0.customerId == 42, NodeScan())", false);
   //exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
-
-  if (!query_file.empty()) {
-    // load the query from the file
-    auto query_string = read_from_file(query_file);
-    exec_query(query_string, qmode, false);
-  }
 
   graph->flush();
   graph->close_files();

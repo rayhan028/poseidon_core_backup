@@ -71,6 +71,12 @@ public:
 
     virtual std::any visitRship_pattern(poseidonParser::Rship_patternContext *context) = 0;
 
+    virtual std::any visitCardinality_spec(poseidonParser::Cardinality_specContext *context) = 0;
+
+    virtual std::any visitMin_cardinality(poseidonParser::Min_cardinalityContext *context) = 0;
+
+    virtual std::any visitMax_cardinality(poseidonParser::Max_cardinalityContext *context) = 0;
+
     virtual std::any visitDir_spec(poseidonParser::Dir_specContext *context) = 0;
 
     virtual std::any visitLeft_dir(poseidonParser::Left_dirContext *context) = 0;
