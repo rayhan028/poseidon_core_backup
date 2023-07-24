@@ -125,26 +125,6 @@ void query_ctx::_nodes_by_label(graph_db *gdb, const std::string &label,
 void query_ctx::nodes_by_label(const std::string &label,
                               node_consumer_func consumer) {
     _nodes_by_label(gdb_.get(), label, consumer);
-/*
-#ifdef USE_TX
-  check_tx_context();
-  xid_t txid = current_transaction()->xid();
-#endif
-  auto lc = gdb_->dict_->lookup_string(label);
-  for (auto &n : gdb_->nodes_->as_vec()) {
-#ifdef USE_TX
-    if (n.is_valid()) {
-      auto &nv = gdb_->get_valid_node_version(n, txid);
-      if (nv.node_label == lc) {
-        consumer(nv);
-      }
-    }
-#else
-    if (n.node_label == lc)
-      consumer(n);
-#endif
-  }
-  */
 }
 
 void query_ctx::nodes_by_label(const std::vector<std::string> &labels,
@@ -212,8 +192,8 @@ void query_ctx::parallel_nodes(const std::string &label, node_consumer_func cons
   thread_pool pool;
   auto lc = gdb_->dict_->lookup_string(label);
 
-  const int nchunks = 1;
-  spdlog::debug("Start parallel query with {} threads",
+  const int nchunks = 5;
+  spdlog::info("Start parallel query with {} threads",
                 gdb_->nodes_->num_chunks() / nchunks + 1);
 
   res.reserve(gdb_->nodes_->num_chunks() / nchunks + 1);

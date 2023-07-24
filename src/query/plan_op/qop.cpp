@@ -154,17 +154,18 @@ void scan_nodes::start(query_ctx &ctx) {
 #ifdef QOP_RECOVERY
     if(!ranged) {
 #endif
-      ctx.parallel_nodes([&](node &n) { consume_(ctx, {&n}); });
+      ctx.parallel_nodes([&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
 #ifdef QOP_RECOVERY
     } else {
       ctx.parallel_nodes([&](node &n) { consume_(ctx, {&n}); }, ranges);
     }
 #endif
   else if (!label.empty())
-    ctx.nodes_by_label(label, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
-  // TODO: in case of calling parallel_nodes we should handle this differently
+    // ctx.nodes_by_label(label, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
+    ctx.parallel_nodes(label, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
   else
     ctx.nodes_by_label(labels, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
+
   qop::default_finish(ctx);
 }
 
