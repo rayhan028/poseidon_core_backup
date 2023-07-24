@@ -588,7 +588,7 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
   assert(fp.back().find(".csv", filename.size()-4) != std::string::npos);
   std::vector<std::string> fn;
   boost::split(fn, fp.back(), boost::is_any_of("_"));
-  auto label = ":" + fn[1];
+  auto label = /*":" + */ fn[1];
   auto src_node = fn[0];
   auto des_node = fn[2];
 
@@ -615,13 +615,17 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
       assert(type_col >= 0);*/
     } else {     
       mapping_t::const_iterator it = node_id_from_field(m, src_node, row[start_col]);
-      if (it == m.end())
+      if (it == m.end()) {
+        spdlog::info("mapping not found for node id #{}-{}", src_node, row[start_col]);
         continue;
+      }
       node::id_t from_node = it->second;
       
       it = node_id_from_field(m, des_node, row[end_col]);
-      if (it == m.end())
+      if (it == m.end()) {
+        spdlog::info("mapping not found for node id #{}-{}", des_node, row[end_col]);
         continue;
+      }
       node::id_t to_node = it->second;      
       //auto &label = row[type_col]; // neo4j
 
@@ -667,7 +671,7 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
   // assert(fp.back().find(".csv", fp.size()-4) != std::string::npos);
   std::vector<std::string> fn;
   boost::split(fn, fp.back(), boost::is_any_of("_"));
-  auto label = ":" + fn[1];
+  auto label = /*":" + */fn[1];
   auto label_code = dict_->insert(label);
   auto src_node = fn[0];
   auto des_node = fn[2];

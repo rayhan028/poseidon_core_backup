@@ -28,6 +28,10 @@ endif()
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(USE_PMDK OFF)
   set(LLVM_DIR "/opt/homebrew/opt/llvm@12/lib/cmake/llvm")
+  set(ANTLR_EXECUTABLE "/opt/homebrew/Cellar/antlr/4.13.0/antlr-4.13.0-complete.jar")
+else()
+# set variable pointing to the antlr tool that supports C++
+# set(ANTLR_EXECUTABLE "/opt/homebrew/Cellar/antlr/4.11.1/antlr-4.11.1-complete.jar")
 endif()
 
 # Don't try to contact github everytime.
@@ -51,6 +55,32 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent REQUIRED)
+
+#-------------------------------------------------------------------------------
+# ANTLR4 Parser generator
+#
+
+find_package(ANTLR)
+
+if(ANTLR_FOUND)
+# add macros to generate ANTLR Cpp code from grammar
+message("ANTLR found")
+  antlr_target(grammar src/query/parser/poseidon.g4 
+    COMPILE_FLAGS -Xexact-output-dir -visitor
+    OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/src/query/antlr4_generated
+  )
+else()
+  set(ANTLR_grammar_CXX_OUTPUTS 
+    src/query/antlr4_generated/poseidonLexer.h
+    src/query/antlr4_generated/poseidonLexer.cpp
+    src/query/antlr4_generated/poseidonParser.h
+    src/query/antlr4_generated/poseidonParser.cpp)
+endif()
+
+# message("grammar: ${ANTLR_grammar_CXX_OUTPUTS}")
+
+#-------------------------------------------------------------------------------
+
 
 if(USE_UPMEM MATCHES ON)
   add_definitions( "-DUSE_UPMEM" )
@@ -116,33 +146,29 @@ configure_file(
   ${PROJECT_BINARY_DIR}/generated/config.h
 )
 
-
-
-
 #---------------------------------------------------------------------------
 
 include_directories(${PROJECT_BINARY_DIR}/generated)
 include_directories(${PROJECT_SOURCE_DIR}/src/vec)
 include_directories(${PROJECT_SOURCE_DIR}/src/storage)
 include_directories(${PROJECT_SOURCE_DIR}/src/bp_file)
-include_directories(${PROJECT_SOURCE_DIR}/src/query/ast)
+include_directories(${PROJECT_SOURCE_DIR}/src/query)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/parser)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/codegen)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/utils)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/plan_op)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/interp)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/expr)
-include_directories(${PROJECT_SOURCE_DIR}/src/query/qmain)
-include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
 include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 include_directories(${PROJECT_SOURCE_DIR}/src/pool)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
-include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
-include_directories(${PROJECT_SOURCE_DIR}/src/ql)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics/gunrock)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics/util)
+include_directories(${PROJECT_SOURCE_DIR}/src/antlr4_cpp_runtime/src)
+include_directories(${PROJECT_BINARY_DIR}/antlr4cpp_generated_src)
 if (USE_GUNROCK MATCHES ON)
   include_directories(${CUDA_INCLUDE_DIRS})
 endif()
@@ -225,13 +251,13 @@ XRay WindowsManifest TableGen Symbolize DebugInfoPDB OrcJIT OrcError JITLink Obj
 endif() 
 
 # PEGTL =================================================================== #
- FetchContent_Declare(
-  pegtl
-  GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
-  GIT_TAG       3.2.2
-  )
-
-FetchContent_MakeAvailable(pegtl)
+# FetchContent_Declare(
+#  pegtl
+#  GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
+#  GIT_TAG       3.2.2
+#  )
+#
+#FetchContent_MakeAvailable(pegtl)
 
 
 # linenoise =================================================================== #
@@ -282,6 +308,39 @@ endif()
 #---------------------------------------------------------------------------
 
 
+
+######################
+# Boost C++ library
+######################
+#
+SET(BOOST_MIN_VERSION "1.70.0")
+
+find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
+    program_options
+    filesystem
+    date_time
+    thread
+    REQUIRED)
+
+if (NOT Boost_FOUND)
+     message(FATAL_ERROR "Fatal error: Boost (version >= ${BOOST_MIN_VERSION}) required.\n"
+ )
+endif (NOT Boost_FOUND)
+
+if (Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIR})
+    add_definitions( "-DHAS_BOOST" )
+endif()
+
+#-----------------------------------------------------------------------------------------
+
+# include_directories("${pegtl_SOURCE_DIR}/include")
+include_directories("${csv_SOURCE_DIR}")
+include_directories("${spdlog_SOURCE_DIR}/include")
+include_directories("${PROJECT_SOURCE_DIR}/src")
+include_directories("${linenoise_SOURCE_DIR}")
+include_directories("${fmt_SOURCE_DIR}/include")
+
 ###########################
 # Python Interface
 ###########################
@@ -310,38 +369,6 @@ else ()
         message(STATUS "Don't build python interface")
         set (PYTHON_SOURCES "")
 endif()
-
-######################
-# Boost C++ library
-######################
-#
-SET(BOOST_MIN_VERSION "1.70.0")
-
-find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
-    program_options
-    filesystem
-    date_time
-    thread
-    REQUIRED)
-
-if (NOT Boost_FOUND)
-     message(FATAL_ERROR "Fatal error: Boost (version >= ${BOOST_MIN_VERSION}) required.\n"
- )
-endif (NOT Boost_FOUND)
-
-if (Boost_FOUND)
-    include_directories(${Boost_INCLUDE_DIR})
-    add_definitions( "-DHAS_BOOST" )
-endif()
-
-#-----------------------------------------------------------------------------------------
-
-include_directories("${pegtl_SOURCE_DIR}/include")
-include_directories("${csv_SOURCE_DIR}")
-include_directories("${spdlog_SOURCE_DIR}/include")
-include_directories("${PROJECT_SOURCE_DIR}/src")
-include_directories("${linenoise_SOURCE_DIR}")
-include_directories("${fmt_SOURCE_DIR}/include")
 
 #-----------------------------------------------------------------------------------------
 
@@ -425,18 +452,17 @@ set(src_files
   src/bp_file/bufferpool.cpp
   src/btree/index_map.cpp
   src/query/plan_op/qop.cpp
+  src/query/plan_op/qop_aggregates.cpp
   src/query/plan_op/qop_analytics.cpp
+  src/query/plan_op/qop_updates.cpp
+  src/query/plan_op/qop_joins.cpp
   src/query/expr/expression.cpp
   src/query/interp/expr_interpreter.cpp
   src/query/interp/qinterp.cpp
   src/query/interp/query_ctx.cpp
-  src/query/plan_op/update.cpp
-  src/query/plan_op/join.cpp
+
   src/query/plan_op/query_set.cpp
-  src/query/qmain/qparser.cpp
-  src/query/qmain/qplanner.cpp
-  src/query/qmain/qproc.cpp
-  src/qop/query_builder.cpp
+  src/query/plan_op/query_builder.cpp
   src/query/utils/query_printer.cpp
   src/query/utils/thread_pool.cpp
   src/query/utils/profiling.cpp
@@ -445,15 +471,14 @@ set(src_files
   src/pool/graph_pool.cpp
   src/log/pmlog.cpp
   ${llvm_src}
-#  src/ql/queryc_qcomp.cpp
-#  src/ql/queryc_qex.cpp
-#  src/ql/queryc.cpp
-  src/query/ast/ast.cpp
+  src/query/parser/query_planner.cpp
+  src/query/parser/query_proc.cpp
   ${csr_delta_src}
   ${gunrock_analysis}
   src/analytics/bfs.cpp
   src/analytics/shortest_path.cpp
   src/analytics/graph_db_analytics.cpp
+  ${ANTLR_grammar_CXX_OUTPUTS}
 )
 
 if(USE_GUNROCK MATCHES ON)
@@ -494,6 +519,8 @@ endif()
 
 target_link_libraries(poseidon_core
   ${LLVM_LIB}
+  antlr4_cpp_runtime
+#  antlr4_shared
   Boost::filesystem
   Boost::date_time
   Boost::thread
@@ -502,6 +529,14 @@ target_link_libraries(poseidon_core
   ${gunrock_linkLib}
   ${CUDA_LIB}
 )
+
+
+#add_custom_command(TARGET poseidon_core
+#                   POST_BUILD
+#                   COMMAND ${CMAKE_COMMAND}
+#                           -E copy ${ANTLR4_RUNTIME_LIBRARIES} .
+#                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
 
 target_include_directories( ${PROJECT_NAME}
     PUBLIC ${PROJECT_SOURCE_DIR}/include
@@ -517,6 +552,8 @@ add_library(poseidon SHARED
 
 target_link_libraries(poseidon
   ${LLVM_LIB}
+  antlr4_cpp_runtime
+  # antlr4_shared
   Boost::filesystem
   Boost::date_time
   Boost::thread
@@ -528,6 +565,10 @@ target_link_libraries(poseidon
 
 set_target_properties(poseidon PROPERTIES PREFIX "" SUFFIX ".so")
 endif()
+
+#-----------------------------------------------------------------------------------------
+
+add_subdirectory(src/antlr4_cpp_runtime)
 
 #-----------------------------------------------------------------------------------------
 

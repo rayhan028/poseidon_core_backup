@@ -550,6 +550,9 @@ bool graph_db::commit_transaction() {
 
 bool graph_db::abort_transaction() {
 #ifdef USE_TX
+  if (!current_transaction_)
+    return false;
+
   check_tx_context();
   auto tx = current_transaction();
   auto xid = tx->xid();
@@ -627,6 +630,10 @@ void graph_db::print_stats() {
   std::cout << rprops << " relationship properties total." << std::endl;
 
   std::cout << dict_->size() << " strings in dictionary." << std::endl;
+
+#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY)
+  std::cout << "bufferpool hit ratio: " << bpool_.hit_ratio() << std::endl;
+#endif
 }
 
 node::id_t graph_db::add_node(const std::string &label,
@@ -764,7 +771,7 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
 
 node &graph_db::get_valid_node_version(node &n, xid_t xid) {
   if (n.is_locked_by(xid)) {
-    spdlog::debug("[tx {}] node #{} is locked by {}", short_ts(xid), n.id(), short_ts(n.txn_id()));
+    // spdlog::debug("[tx {}] node #{} is locked by {}", short_ts(xid), n.id(), short_ts(n.txn_id()));
     // because the node is locked we know that it was already updated by us
     // and we should look for the dirty object containing the new values
     assert(n.has_dirty_versions());
@@ -772,8 +779,8 @@ node &graph_db::get_valid_node_version(node &n, xid_t xid) {
   }
   // or (2) is not locked and xid is in [bts,cts]
   if (!n.is_locked()) {
-    spdlog::debug("node_by_id: node #{} is unlocked: [{}, {}] <=> {}", n.id(),
-                 n.bts(), n.cts(), xid);
+    //spdlog::debug("node_by_id: node #{} is unlocked: [{}, {}] <=> {}", n.id(),
+    //             n.bts(), n.cts(), xid);
     return n.is_valid_for(xid) ? n : n.find_valid_version(xid)->elem_;
   }
 

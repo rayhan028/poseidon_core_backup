@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -29,10 +29,11 @@
 
 struct query_ctx {
     query_ctx() = default;
-    query_ctx(graph_db_ptr& gdb) : gdb_(gdb) {}
+    query_ctx(query_ctx& ctx) : gdb_(ctx.gdb_) {  }
+    query_ctx(graph_db_ptr& gdb) : gdb_(gdb) {  }
+    ~query_ctx();
 
     graph_db_ptr gdb_;
-
 
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;
@@ -90,6 +91,8 @@ struct query_ctx {
    * thread pool.
    */
   void parallel_nodes(node_consumer_func consumer);
+
+  void parallel_nodes(const std::string &label, node_consumer_func consumer);
 
 #ifdef QOP_RECOVERY
   /**
@@ -236,10 +239,32 @@ struct scan_task {
 
   static void scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func consumer);
 
-  static std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func consumer)> callee_;
+  static std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, 
+    query_ctx::node_consumer_func consumer)> callee_;
 
   graph_db_ptr graph_db_;
   range range_;
+  query_ctx::node_consumer_func consumer_;
+  transaction_ptr tx_;
+  std::size_t start_pos_;
+};
+
+struct scan_task_with_label {
+  using range = std::pair<std::size_t, std::size_t>;
+  scan_task_with_label(graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+	    query_ctx::node_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0);
+
+  void operator()();
+
+  static void scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+    query_ctx::node_consumer_func consumer);
+
+  static std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+    query_ctx::node_consumer_func consumer)> callee_;
+
+  graph_db_ptr graph_db_;
+  range range_;
+  dcode_t label_;
   query_ctx::node_consumer_func consumer_;
   transaction_ptr tx_;
   std::size_t start_pos_;

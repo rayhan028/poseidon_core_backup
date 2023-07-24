@@ -4,6 +4,7 @@
  * Generates code for the group_by operation
  */
 void codegen_inline_visitor::visit(std::shared_ptr<group_by> op) {
+#if not_yet
     if(pipelined_finish) {
         //main_function = Function::Create(ctx.startFctTy, Function::ExternalLinkage, query_id_str, ctx.getModule());
         main_finish   = Function::Create(ctx.finishFctTy, Function::ExternalLinkage, "finish_"+query_id_str, ctx.getModule());
@@ -207,4 +208,5 @@ void codegen_inline_visitor::visit(std::shared_ptr<group_by> op) {
     prev_bb = group_loop_body;
 
     pipelined_finish = true;
+#endif
 }

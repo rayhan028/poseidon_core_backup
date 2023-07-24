@@ -14,7 +14,7 @@
 #include "graph_pool.hpp"
 
 #ifdef USE_LLVM
-#include "qproc.hpp"
+#include "query_proc.hpp"
 
 const std::string test_path = PMDK_PATH("qcomp_tst");
 
@@ -40,7 +40,7 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
   auto graph = pool->create_graph("my_qc_graph");
 #endif
     query_ctx ctx(graph);
-    qproc qlc(ctx);
+    query_proc qlc(ctx);
 
     SECTION("Transform a scan query into a valid graph algebra expression") {
         std::string scan_query = "NodeScan('Person')";

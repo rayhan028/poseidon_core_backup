@@ -39,7 +39,7 @@
 #include "expression.hpp"
 #include "qresult_iterator.hpp"
 #include "qop_visitor.hpp"
-#include "query_arg.hpp"
+// #include "query_arg.hpp"
 #include "query_ctx.hpp"
 
 template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
@@ -78,8 +78,7 @@ enum class qop_type {
     create,
     aggregate,
     order_by,
-    group,
-    aggr,
+    group_by,
     store,
     end
 };
@@ -100,6 +99,32 @@ enum class result_type {
     none = 9,
     qres = 10
 };
+
+/**
+ * Directions of relationships.
+ */
+enum class RSHIP_DIR {
+    FROM = 0,
+    TO = 1,
+    ALL = 2
+};
+
+/**
+ * Directions of the expand operator.
+ */
+enum class EXPAND {
+    IN,
+    OUT
+};
+
+/**
+ * Functions to get a property value (defined by var=pos and property name) from a qr_tuple.
+ */
+p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop);
+
+template <typename T>
+T get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop);
+
 
 struct qop;
 using qop_ptr = std::shared_ptr<qop>;
@@ -217,10 +242,6 @@ struct qop {
 
   qop_type type_;
 protected:
-  p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const;
-
-  template <typename T>
-  T get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const;
 
   qop_ptr subscriber_; // pointer to the subsequent operator which receives and
                        // processes the results
@@ -637,7 +658,7 @@ struct get_to_node : public expand {
  * vector v to standard output.
  */
 struct printer : public qop, public std::enable_shared_from_this<printer> {
-  printer() : ntuples_(0) {}
+  printer() : ntuples_(0), output_width_(0) {}
 
   void dump(std::ostream &os) const override;
 
@@ -661,6 +682,7 @@ struct printer : public qop, public std::enable_shared_from_this<printer> {
   }
 
   std::size_t ntuples_;
+  std::size_t output_width_;
 };
 
 /**
@@ -744,7 +766,7 @@ extern result_set::sort_spec_list sort_spec_;
  * comparison function or a specificaton of sorting criteria.
  */
 struct order_by : public qop, public std::enable_shared_from_this<order_by> {
-    order_by(const result_set::sort_spec_list &spec) /*: sort_spec_(spec)*/ { type_ = qop_type::order_by; sort_spec_=spec; }
+    order_by(const result_set::sort_spec_list &spec) /*: sort_spec_(spec)*/ { type_ = qop_type::order_by; sort_spec_= spec; }
  
   order_by(std::function<bool(const qr_tuple &, const qr_tuple &)> func)
       //: cmp_func_(func) 
@@ -787,48 +809,7 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
   static std::function<bool(const qr_tuple &, const qr_tuple &)> cmp_func_;
 };
 
-struct aggregate : public qop, public std::enable_shared_from_this<aggregate> {
-  struct expr {
-    enum func_t { f_count, f_sum, f_min, f_max, f_avg, f_pcount } func;
-    uint32_t var;
-    std::string property;
-    std::size_t aggr_type; // typecode of aggregation - corresponds to query_result.which()
-  };
-  aggregate(const std::vector<expr> exp) : aggr_exprs_ (exp), aggr_vals_(exp.size()) { init_aggregates(); }
-  ~aggregate() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(query_ctx &ctx, const qr_tuple &v);
-
-  void finish(query_ctx &ctx);
-
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
-    if (has_subscriber())
-      subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_ += next_offset, interpreted);
-  }
-
-  void init_aggregates(); 
-
-  std::vector<expr> aggr_exprs_;
-
-  using val_t = boost::variant<
-    double,                  // double values (min, max, sum)
-    int,                     // int values (min, max, sum, count)
-    std::string,             // string values (min, max)  
-    std::pair<double, int>>; // pair of values for avg (sum, cnt)
-  std::vector<val_t> aggr_vals_;
-};
-
+#if 0
 /**
  * group_by implements an operator for grouping tuples and optional aggregations
  * like count, sum, average, and percentage count.
@@ -876,6 +857,7 @@ struct group_by : public qop, public std::enable_shared_from_this<group_by> {
   std::vector<std::pair<std::string, std::size_t>> aggrs_;
   std::unordered_map<std::size_t, std::size_t> grp_size_map_;
 };
+#endif
 
 #ifdef QOP_RECOVERY
 struct persistent_group_by : public qop {
@@ -1009,7 +991,7 @@ struct qr_tuple_append : public qop, public std::enable_shared_from_this<qr_tupl
  * pipeline(s).
  */
 struct union_all_qres : public qop, public std::enable_shared_from_this<union_all_qres> {
-  union_all_qres() : init(true) {}
+  union_all_qres() : init_(true), phases_(0) {}
   // union_all_qres() = default;
   ~union_all_qres() = default;
 
@@ -1018,7 +1000,6 @@ struct union_all_qres : public qop, public std::enable_shared_from_this<union_al
   void process_left(query_ctx &ctx, const qr_tuple &v);
   void process_right(query_ctx &ctx, const qr_tuple &v);
 
-  void r_finish(query_ctx &ctx);
   void finish(query_ctx &ctx);
 
   void accept(qop_visitor& vis) override { 
@@ -1036,7 +1017,9 @@ struct union_all_qres : public qop, public std::enable_shared_from_this<union_al
   }
 
   bool is_binary() const override { return true; }
-  bool init;
+
+  bool init_;
+  std::size_t phases_;
   std::list<qr_tuple> res_;
 };
 
@@ -1257,8 +1240,9 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
   using expr_list = std::vector<expr>;
 
   projection(const expr_list &exprs);
+  projection(const expr_list &exprs, std::vector<projection_expr>& prexpr);
 
-  projection(std::vector<projection_expr> prexpr) : prexpr_(prexpr) {
+  projection(const std::vector<projection_expr>& prexpr) : prexpr_(prexpr) {
     type_ = qop_type::project;
   }
 
@@ -1279,6 +1263,8 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
     vis.visit(shared_from_this());
     subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);      
   }
+
+  void init_expr_vars();
 
   expr_list exprs_;
   std::size_t nvars_, npvars_;
@@ -1399,6 +1385,11 @@ std::string int_to_dtimestring(const query_result& v);
  * value (posix time).
  */
 int dtimestring_to_int(const std::string &d);
+
+/**
+ * Return true if the value represented by pv is a null value.
+ */
+bool is_null(const query_result& pv);
 
 /*
 CASE:

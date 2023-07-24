@@ -24,11 +24,13 @@
 #ifdef QOP_PROFILING
 
 void prof_metrics::pre_hook(bool in) {
+    std::lock_guard<std::mutex> guard(m_);
     in_records_ += (in ? 1 : 0);
     start_ = std::chrono::steady_clock::now();
 }
 
 void prof_metrics::post_hook(uint64_t n) {
+    std::lock_guard<std::mutex> guard(m_);
     out_records_ += n;
     auto end = std::chrono::steady_clock::now();
     proc_time_ += end - start_;

@@ -26,6 +26,8 @@
 #include <boost/dynamic_bitset.hpp>
 #include <boost/hana.hpp>
 
+#include <fmt/ostream.h>
+
 #include "qop.hpp"
 #include "profiling.hpp"
 
@@ -37,7 +39,7 @@ result_set::sort_spec_list sort_spec_;
 
 /* ------------------------------------------------------------------------ */
 
-p_item qop::get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const {
+p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
   auto qv = v[var];
   p_item res;
   switch (qv.which()) {
@@ -61,7 +63,7 @@ p_item qop::get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t va
 }
 
 template <>
-int qop::get_property_value<int>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const {
+int get_property_value<int>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
   int res = 0;
   auto qv = get_property_value(ctx, v, var, prop);
   switch (qv.typecode()) {
@@ -81,7 +83,27 @@ int qop::get_property_value<int>(query_ctx &ctx, const qr_tuple& v, std::size_t 
 }
 
 template <>
-double qop::get_property_value<double>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const {
+uint64_t get_property_value<uint64_t>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
+  uint64_t res = 0;
+  auto qv = get_property_value(ctx, v, var, prop);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = (int)qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = (int)qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
+double get_property_value<double>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
   double res = 0;
   auto qv = get_property_value(ctx, v, var, prop);
   switch (qv.typecode()) {
@@ -101,11 +123,12 @@ double qop::get_property_value<double>(query_ctx &ctx, const qr_tuple& v, std::s
 }
 
 template <>
-std::string qop::get_property_value<std::string>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) const {
+std::string get_property_value<std::string>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
   std::string res;
   auto qv = get_property_value(ctx, v, var, prop);
   switch (qv.typecode()) {
     case p_item::p_dcode:
+      res = ctx.gdb_->get_string(qv.get<dcode_t>());
       break;
     case p_item::p_int:
       res = std::to_string(qv.get<int>());
@@ -116,7 +139,10 @@ std::string qop::get_property_value<std::string>(query_ctx &ctx, const qr_tuple&
     case p_item::p_uint64:
       res = std::to_string(qv.get<uint64_t>());
       break;
+    case p_item::p_ptime:
+    case p_item::p_unused:
     // TODO
+      break;
   }
   return res;
 }
@@ -128,22 +154,30 @@ void scan_nodes::start(query_ctx &ctx) {
 #ifdef QOP_RECOVERY
     if(!ranged) {
 #endif
-      ctx.parallel_nodes([&](node &n) { consume_(ctx, {&n}); });
+      ctx.parallel_nodes([&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
 #ifdef QOP_RECOVERY
     } else {
       ctx.parallel_nodes([&](node &n) { consume_(ctx, {&n}); }, ranges);
     }
 #endif
   else if (!label.empty())
-    ctx.nodes_by_label(label, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
-  // TODO: in case of calling parallel_nodes we should handle this differently
+    // ctx.nodes_by_label(label, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
+    ctx.parallel_nodes(label, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
   else
     ctx.nodes_by_label(labels, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
+
   qop::default_finish(ctx);
 }
 
 void scan_nodes::dump(std::ostream &os) const {
-  os << "scan_nodes([" << label << "]) - " << PROF_DUMP;
+  if (labels.size() > 0) {
+    os << "scan_nodes(["; 
+    for (auto& l : labels) 
+      os << " " << l;
+    os << "]) - " << PROF_DUMP;
+  }
+  else
+    os << "scan_nodes([" << label << "]) - " << PROF_DUMP;
 }
 
 #ifdef QOP_RECOVERY
@@ -167,10 +201,10 @@ void continue_scan_nodes::dump(std::ostream &os) const {
 
 void index_scan::start(query_ctx &ctx) {
   if (idxs.empty())
-    ctx.gdb_->index_lookup(idx, key, [&](node &n) { consume_(ctx, {&n}); });
+    ctx.gdb_->index_lookup(idx, key, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
   else
-    ctx.gdb_->index_lookup(idxs, key, [&](node &n) { consume_(ctx, {&n}); });
-  
+    ctx.gdb_->index_lookup(idxs, key, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
+
   qop::default_finish(ctx);
 }
 
@@ -441,42 +475,51 @@ void get_to_node::dump(std::ostream &os) const {
 
 /* ------------------------------------------------------------------------ */
 
+template <> struct fmt::formatter<ptime> : ostream_formatter {};
+template <> struct fmt::formatter<node_description> : ostream_formatter {};
+template <> struct fmt::formatter<rship_description> : ostream_formatter {};
+
 void printer::dump(std::ostream &os) const { os << "printer()"; }
 
 void printer::process(query_ctx &ctx, const qr_tuple &v) {
-  if (ntuples_ == 0)
-    std::cout << "+------------------------------------------------------------------------+\n";
+  if (ntuples_ == 0) {
+    std::cout << "+";
+    for (auto i = 0u; i < v.size(); i++)
+      std::cout << fmt::format("{0:-^{1}}+", "", 20);
+    std::cout << "\n";
+    output_width_ = 21 * v.size() + 1;
+  }
   ntuples_++;
   auto my_visitor = boost::hana::overload(
-      [&](const node_description& n) { std::cout << n; },
-      [&](const rship_description& r) { std::cout << r; },
-      [&](node *n) { std::cout << ctx.gdb_->get_node_description(n->id()); },
-      [&](relationship *r) { std::cout << ctx.gdb_->get_relationship_label(*r); },
-      [&](int i) { std::cout << i; }, [&](double d) { std::cout << fmt::format("{:f}", d); },
-      [&](const std::string &s) { std::cout << s; },
-      [&](uint64_t ll) { std::cout << ll; },
-      [&](null_t n) { std::cout << "NULL"; },
+      [&](const node_description& n) { std::cout << fmt::format(" {:<18} |", n); },
+      [&](const rship_description& r) { std::cout << fmt::format(" {:<18} |", r); },
+      [&](node *n) { std::cout << fmt::format(" {:<18} |", ctx.gdb_->get_node_description(n->id())); },
+      [&](relationship *r) { std::cout << fmt::format(" {:<18} |", ctx.gdb_->get_relationship_label(*r)); },
+      [&](int i) { std::cout << fmt::format(" {:>18} |", i); }, 
+      [&](double d) { std::cout << fmt::format(" {:>18f} |", d); },
+      [&](const std::string &s) { std::cout << fmt::format(" {:<18.18} |", s); },
+      [&](uint64_t ll) { std::cout << fmt::format(" {:>18} |", ll); },
+      [&](null_t n) { std::cout << fmt::format(" {:>18} |", "NULL"); },
       [&](array_t arr) {
         std::cout << "[ ";
         for (auto elem : arr.elems)
           std::cout << elem << " ";
         std::cout << " ]"; },
-      [&](ptime dt) { std::cout << dt; });
+      [&](ptime dt) { std::cout << fmt::format(" {:<18.18} |", dt); });
+  std::cout << "|";
   for (auto &ge : v) {
     boost::apply_visitor(my_visitor, ge);
-    std::cout << " ";
   }
   std::cout << "\n";
 }
 
 void printer::finish(query_ctx &ctx) {
-  auto s = fmt::format("{} tuples(s) returned. ", ntuples_);
+  auto s = fmt::format("{} tuple(s) returned. ", ntuples_);
   std::cout << "+-- " << s;
-  for (auto i = 80-s.length()-11; i > 0; i--) 
+  for (int i = output_width_ - s.length() - 5; i > 0; i--) 
     std::cout << "-";
   std::cout << "+\n";
 }
-
 
 /* ------------------------------------------------------------------------ */
 
@@ -540,7 +583,13 @@ void nodes_connected::process(query_ctx &ctx, const qr_tuple &v) {
 std::function<bool(const qr_tuple &, const qr_tuple &)> order_by::cmp_func_ = 0;
 
 void order_by::dump(std::ostream &os) const {
-  os << "order_by([]) - " << PROF_DUMP;
+  os << "order_by([";
+  if (! sort_spec_.empty()) {
+    for (auto& sspec : sort_spec_) {
+      os << " " << sspec.vidx << ":" << sspec.s_order;
+    }
+  }
+  os << " ]) - " << PROF_DUMP;
 }
 
 void order_by::process(query_ctx &ctx, const qr_tuple &v) {
@@ -563,147 +612,7 @@ void order_by::finish(query_ctx &ctx) {
 }
 
 /* ------------------------------------------------------------------------ */
-void aggregate::init_aggregates() {
-  for (auto i = 0u; i < aggr_exprs_.size(); i++) {
-    auto& ex = aggr_exprs_[i];
-    switch (ex.func) {
-      case expr::f_count:
-        aggr_vals_[i] = 0;
-        break;
-      case expr::f_sum:
-      case expr::f_avg:
-        aggr_vals_[i] = (ex.aggr_type == 2 ? 0 : 0.0);
-        break;
-      case expr::f_min:
-        if (ex.aggr_type == 2)
-          aggr_vals_[i] = std::numeric_limits<int>::max();
-        else if (ex.aggr_type == 3)
-          aggr_vals_[i] = std::numeric_limits<double>::max();
-        else if (ex.aggr_type == 4)
-          aggr_vals_[i] = std::string("~~~~~~~~~~~~~~~");
-        break;
-      case expr::f_max:
-        if (ex.aggr_type == 2)
-          aggr_vals_[i] = std::numeric_limits<int>::min();
-        else if (ex.aggr_type == 3)
-          aggr_vals_[i] = std::numeric_limits<double>::min();
-        else if (ex.aggr_type == 4)
-          aggr_vals_[i] = std::string("                ");
-        break;
-      default:
-        break;
-    }
-  }
-}
-
-void aggregate::dump(std::ostream &os) const {
-  os << "aggregate([ ";
-  for (auto& ex : aggr_exprs_) {
-    switch (ex.func) {
-      case expr::f_count:
-        os << "count(";
-        break;
-      case expr::f_sum:
-        os << "sum(";
-        break;
-      case expr::f_min:
-        os << "min(";
-        break;
-      case expr::f_max:
-        os << "max(";
-        break;
-      case expr::f_avg:
-        os << "avg(";
-        break;
-      // TODO
-      default:
-        break;
-    }
-    os << ex.var << "." << ex.property << ") ";
-  }
-  os << "]) - " << PROF_DUMP;
-}
-
-void aggregate::process(query_ctx &ctx, const qr_tuple &v) {
-  PROF_PRE;
-  for (auto i = 0u; i < aggr_exprs_.size(); i++) {
-    auto& ex = aggr_exprs_[i];
-    switch (ex.func) {
-      case expr::f_count:
-        aggr_vals_[i] = boost::get<int>(aggr_vals_[i]) + 1;
-        break;
-      case expr::f_sum:
-        if (ex.aggr_type == 2)
-          aggr_vals_[i] = boost::get<int>(aggr_vals_[i]) + get_property_value<int>(ctx, v, ex.var, ex.property);
-        else if (ex.aggr_type == 3)
-          aggr_vals_[i] = boost::get<double>(aggr_vals_[i]) + get_property_value<double>(ctx, v, ex.var, ex.property);
-        break;
-      case expr::f_min:
-        if (ex.aggr_type == 2)
-          aggr_vals_[i] = std::min(boost::get<int>(aggr_vals_[i]), get_property_value<int>(ctx, v, ex.var, ex.property));
-        else if (ex.aggr_type == 3)
-          aggr_vals_[i] = std::min(boost::get<double>(aggr_vals_[i]), get_property_value<double>(ctx, v, ex.var, ex.property));
-        else if (ex.aggr_type == 4)
-          aggr_vals_[i] = std::min(boost::get<std::string>(aggr_vals_[i]), get_property_value<std::string>(ctx, v, ex.var, ex.property));
-        break;
-      case expr::f_avg:
-        if (ex.aggr_type == 2)
-          aggr_vals_[i] = std::max(boost::get<int>(aggr_vals_[i]), get_property_value<int>(ctx, v, ex.var, ex.property));
-        else if (ex.aggr_type == 3)
-          aggr_vals_[i] = std::max(boost::get<double>(aggr_vals_[i]), get_property_value<double>(ctx, v, ex.var, ex.property));
-        else if (ex.aggr_type == 4)
-          aggr_vals_[i] = std::max(boost::get<std::string>(aggr_vals_[i]), get_property_value<std::string>(ctx, v, ex.var, ex.property));
-        break;
-      // TODO
-      default:
-        break;
-    }
-  }
-  PROF_POST(0);
-}
-
-void aggregate::finish(query_ctx &ctx) {
-  PROF_PRE0;
-  qr_tuple v(aggr_exprs_.size());
-  for (auto i = 0u; i < aggr_exprs_.size(); i++) {
-    auto& ex = aggr_exprs_[i];
-    switch (ex.func) {
-      case expr::f_count:
-        v[i] = boost::get<int>(aggr_vals_[i]);
-        break;
-      case expr::f_sum:
-        if (ex.aggr_type == 2)
-          v[i] = boost::get<int>(aggr_vals_[i]);
-        else if (ex.aggr_type == 3)
-          v[i] = boost::get<double>(aggr_vals_[i]);
-        break;
-      case expr::f_avg:
-        {
-          auto& p = boost::get<std::pair<double, int>>(aggr_vals_[i]);
-          v[i] = p.first / p.second;
-        }
-        break;
-      case expr::f_min:
-      case expr::f_max:
-        if (ex.aggr_type == 2)
-          v[i] = boost::get<int>(aggr_vals_[i]);
-        else if (ex.aggr_type == 3)
-          v[i] = boost::get<double>(aggr_vals_[i]);
-        else if (ex.aggr_type == 4)
-          v[i] = boost::get<std::string>(aggr_vals_[i]);
-        break;
-      // TODO
-      default:
-        v[i] = 0;
-    }
-  }  
-  consume_(ctx, v);
-  finish_(ctx);
-  PROF_POST(1);
-}
-
-/* ------------------------------------------------------------------------ */
-
+#if 0
 group_by::group_by(const std::vector<std::size_t> &pos) :
     grpkey_cnt_(0), grpkey_pos_(pos) {}
 
@@ -912,7 +821,7 @@ void group_by::finish(query_ctx &ctx) {
   }
   finish_(ctx);
 }
-
+#endif
 #ifdef QOP_RECOVERY
 /* ------------------------------------------------------------------------ */
 persistent_group_by::persistent_group_by(const std::vector<std::size_t> &pos) :
@@ -1144,24 +1053,33 @@ void qr_tuple_append::process(query_ctx &ctx, const qr_tuple &v) {
 /* ------------------------------------------------------------------------ */
 
 void union_all_qres::dump(std::ostream &os) const { // TODO
-  os << "union_all_qres() - " << PROF_DUMP;
+  os << "union_all() - " << PROF_DUMP;
 }
 
 void union_all_qres::process_left(query_ctx &ctx, const qr_tuple &v) {
-  if (init) {
+  PROF_PRE;
+  /*
+  if (init_) {
     for (auto &r : res_)
       consume_(ctx, r);
-    init = false;
+    init_ = false;
   }
+  */
   consume_(ctx, v);
+  PROF_POST(1);
 }
 
 void union_all_qres::process_right(query_ctx &ctx, const qr_tuple &v) {
-  res_.push_back(v);
-  // consume_(gdb, v);
+  PROF_PRE;
+  // res_.push_back(v);
+  consume_(ctx, v);
+  PROF_POST(1);
 }
-void union_all_qres::r_finish(query_ctx &ctx) { }
-void union_all_qres::finish(query_ctx &ctx) { qop::default_finish(ctx); }
+
+void union_all_qres::finish(query_ctx &ctx) { 
+  if (++phases_ > 1)
+    qop::default_finish(ctx); 
+}
 
 /* ------------------------------------------------------------------------ */
 
@@ -1194,7 +1112,6 @@ void collect_result::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   // we transform node and relationship into their string representations ...
   qr_tuple res(v.size());
-
   auto my_visitor = boost::hana::overload(
       [&](const node_description& n) { return n.to_string(); },
       [&](const rship_description& r) { return r.to_string(); },
@@ -1270,14 +1187,23 @@ void recover_scan::finish(query_ctx &ctx) {
 
 /* ------------------------------------------------------------------------ */
 
+projection::projection(const expr_list &exprs, std::vector<projection_expr>& prexpr) : exprs_(exprs), prexpr_(prexpr) {
+  type_ = qop_type::project;
+  init_expr_vars();
+}
+
 projection::projection(const expr_list &exprs) : exprs_(exprs) {
   type_ = qop_type::project;
+  init_expr_vars();
+}
+
+void projection::init_expr_vars() {
   if (exprs_.empty())
     return;
   // we build a mapping table where for each expression variable refering to a
   // property a new index is created
-      auto it =
-      std::max_element(exprs_.begin(), exprs_.end(),
+  auto it =
+    std::max_element(exprs_.begin(), exprs_.end(),
                        [](expr &e1, expr &e2) { return e1.vidx < e2.vidx; });
 
   nvars_ = it->vidx + 1;
@@ -1304,7 +1230,7 @@ projection::projection(const expr_list &exprs) : exprs_(exprs) {
 void projection::dump(std::ostream &os) const {
   os << "project([";
   for (auto &ex : exprs_) {
-    os << " " << ex.vidx;
+    os << " $" << ex.vidx;
     if (ex.func != nullptr)
       os << ".func";
   }
@@ -1617,5 +1543,7 @@ int dtimestring_to_int(const std::string &dt) {
   time_duration::sec_type secs = (pdt - epoch).total_seconds();
   return time_t(secs);
 }
+
+bool is_null(const query_result& pv) { return pv.type() == typeid(null_t); }
 
 } // namespace builtin

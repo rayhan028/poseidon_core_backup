@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -35,7 +35,7 @@ namespace pfbtree {
  * @tparam N the maximum number of keys on a branch node
  * @tparam M the maximum number of keys on a leaf node
  */
-template <typename KeyType, typename ValueType, int N, int M, int NODE_ALIGNMENT = 64>
+template <typename KeyType, typename ValueType, unsigned int N, unsigned int M, int NODE_ALIGNMENT = 64>
 class BPTree {
   // we need at least two keys on a branch node to be able to split
   static_assert(N > 2, "number of branch keys has to be >2.");
@@ -106,14 +106,16 @@ class BPTree {
     spdlog::debug("read btree depth: {} and root: {}", depth, rootPid);
 
     if (fptr->num_pages() == 0) {
+      spdlog::debug("create a new btree...");
       // we create a new empty B+ tree
       auto pg = bpool_.allocate_page(file_id_);
       rootPid = 1;
-      spdlog::debug("create a new btree: root={}", rootPid);
+      spdlog::debug("btree created with root={}", rootPid);
       rootNode = new(pg.first->payload) LeafNode(rootPid);
     }
     else {
       spdlog::debug("restore a btree with root #{}", rootPid);
+      spdlog::debug("B+tree: leaf={}, branch={}", sizeof(LeafNode), sizeof(BranchNode));
       // otherwise we load the root node
       rootNode = load_node(rootPid);
     }
@@ -127,15 +129,11 @@ class BPTree {
   }
 
   void close() {
-    auto fptr = bpool_.get_file(file_id_);
-    auto data = fptr->get_header_payload();
-    spdlog::debug("write btree depth: {} and root: {}", depth, rootPid);
-    memcpy(data, &depth, sizeof(unsigned int));
-    memcpy(data + sizeof(unsigned int), &rootPid, sizeof(paged_file::page_id));
-
+    sync();
     // Nodes are deleted automatically by releasing leafPool and branchPool.
     bpool_.flush_all();
   }
+
   /**
    * Insert an element (a key-value pair) into the B+ tree. If the key @c key
    * already exists, the corresponding value is replaced by @c val.
@@ -145,15 +143,19 @@ class BPTree {
    */
   void insert(const KeyType &key, const ValueType &val) {
     SplitInfo splitInfo;
-
     bool wasSplit = false;
+
+    // make sure we reload the root node in case the page was evicted
+    rootNode = load_node(rootPid);
     if (depth == 0) {
       // the root node is a leaf node
       auto n = reinterpret_cast<LeafNode *>(rootNode);
+      assert(n->ntype == 0);
       wasSplit = insertInLeafNode(n, key, val, &splitInfo);
     } else {
       // the root node is a branch node
       auto n = reinterpret_cast<BranchNode *>(rootNode);
+      assert(n->ntype == 1);
       wasSplit = insertInBranchNode(n, depth, key, val, &splitInfo);
     }
     if (wasSplit) {
@@ -162,11 +164,13 @@ class BPTree {
       root->keys[0] = splitInfo.key;
       root->children[0] = splitInfo.leftChild;
       root->children[1] = splitInfo.rightChild;
+
       root->numKeys++;
       rootNode = root;
       rootPid = root->pid;
-      spdlog::debug("insert -> split: create branch node {}", root->pid);
       depth++;
+      spdlog::debug("insert -> split: create new root: {}:{}, depth = {}", root->pid, root->ntype, depth);
+      assert(root->ntype == 1);
       bpool_.mark_dirty(root->pid | file_mask_);
     }
   }
@@ -180,10 +184,12 @@ class BPTree {
    *                 if the key was found
    * @return true if the key was found, false otherwise
    */
-  bool lookup(const KeyType &key, ValueType *val) const {
+  bool lookup(const KeyType &key, ValueType *val) {
     assert(val != nullptr);
     bool result = false;
 
+    // make sure we reload the root node in case the page was evicted
+    rootNode = load_node(rootPid);
     auto leafNode = findLeafNode(key);
     auto pos = lookupPositionInLeafNode(leafNode, key);
     if (pos < leafNode->numKeys && leafNode->keys[pos] == key) {
@@ -201,6 +207,8 @@ class BPTree {
    * @return true if the key was found and deleted
    */
   bool erase(const KeyType &key) {
+    // make sure we reload the root node in case the page was evicted
+    rootNode = load_node(rootPid);
     if (depth == 0) {
       // special case: the root node is a leaf node and
       // there is no need to handle underflow
@@ -234,18 +242,23 @@ class BPTree {
    *
    * @param func the function called for each entry
    */
-  void scan(ScanFunc func) const {
-    // we traverse to the leftmost leaf node
+  void scan(ScanFunc func) {
+    // make sure we reload the root node in case the page was evicted
+    rootNode = load_node(rootPid);
     void *node = rootNode;
     auto d = depth;
+    // we traverse to the leftmost leaf node
     while (d-- > 0) {
       // as long as we aren't at the leaf level we follow the path down
       BranchNode *n = reinterpret_cast<BranchNode *>(node);
+      assert(n->ntype == 1);
       auto pid = n->children[0];
       node = load_node(pid);
     }
     auto leaf = reinterpret_cast<LeafNode *>(node);
+    assert(leaf->ntype == 0);
     while (leaf != nullptr) {
+      assert(leaf->ntype == 0);
       // for each key-value pair call func
       for (auto i = 0u; i < leaf->numKeys; i++) {
         auto &key = leaf->keys[i];
@@ -266,6 +279,8 @@ class BPTree {
    * @param func the function called for each entry
    */
   void scan(const KeyType &minKey, const KeyType &maxKey, ScanFunc func) const {
+    // make sure we reload the root node in case the page was evicted
+    rootNode = load_node(rootPid);
     auto leaf = findLeafNode(minKey);
 
     while (leaf != nullptr) {
@@ -279,12 +294,22 @@ class BPTree {
       }
       // move to the next leaf node
       leaf = reinterpret_cast<LeafNode *>(load_node(leaf->nextLeaf));
+      assert(leaf->ntype == 0);
     }
   }
 
 #ifndef UNIT_TESTS
  private:
 #endif
+
+  void sync() {
+    auto fptr = bpool_.get_file(file_id_);
+    auto data = fptr->get_header_payload();
+    spdlog::debug("write btree depth: {} and root: {}", depth, rootPid);
+    memcpy(data, &depth, sizeof(unsigned int));
+    memcpy(data + sizeof(unsigned int), &rootPid, sizeof(paged_file::page_id));
+  }
+
   /* ------------------------------------------------------------------- */
   /*                        DELETE AT LEAF LEVEL                         */
   /* ------------------------------------------------------------------- */
@@ -329,7 +354,9 @@ class BPTree {
     // 1. we check whether we can rebalance with one of the siblings
     // but only if both nodes have the same direct parent
     auto prevLeaf = reinterpret_cast<LeafNode *>(load_node(leaf->prevLeaf));
+    assert(prevLeaf->ntype == 0);
     auto nextLeaf = reinterpret_cast<LeafNode *>(load_node(leaf->nextLeaf));
+    assert(nextLeaf->ntype == 0);
     if (pos > 0 && prevLeaf->numKeys > middle) {
       // we have a sibling at the left for rebalancing the keys
       balanceLeafNodes(prevLeaf, leaf);
@@ -398,6 +425,7 @@ class BPTree {
     node2->numKeys = 0;
     if (node2->nextLeaf != 0) {
       auto leaf = reinterpret_cast<LeafNode *>(load_node(node2->nextLeaf));
+      assert(leaf->ntype == 0);
       leaf->prevLeaf = node1->pid;
     }
     bpool_.mark_dirty(node1->pid | file_mask_);
@@ -475,6 +503,7 @@ class BPTree {
     if (d == 1) {
       // the next level is the leaf level
       LeafNode *leaf = reinterpret_cast<LeafNode *>(n);
+      assert(leaf->ntype == 0);
       assert(leaf != nullptr);
       deleted = eraseFromLeafNode(leaf, key);
       unsigned int middle = (M + 1) / 2;
@@ -484,6 +513,7 @@ class BPTree {
       }
     } else {
       BranchNode *child = reinterpret_cast<BranchNode *>(n);
+      assert(child->ntype == 1);
       deleted = eraseFromBranchNode(child, d - 1, key);
 
       pos = lookupPositionInBranchNode(node, key);
@@ -700,11 +730,12 @@ class BPTree {
    * @param node the tree node to print
    */
   void printBranchNode(unsigned int d, BranchNode *node) const {
+    assert(node->ntype == 1);
     for (auto i = 0u; i < d; i++) std::cout << "  ";
-    std::cout << node->pid << ":" << d << " { ";
+    std::cout << "B:" << node->pid << ":" << d << " { ";
     for (auto k = 0u; k < node->numKeys; k++) {
       if (k > 0) std::cout << ", ";
-      std::cout << node->keys[k];
+      std::cout << node->keys[k] << ":" << node->children[k];
     }
     std::cout << " }" << std::endl;
     for (auto k = 0u; k <= node->numKeys; k++) {
@@ -712,9 +743,11 @@ class BPTree {
       auto n = load_node(pid);
       if (d + 1 < depth) {
         auto child = reinterpret_cast<BranchNode *>(n);
+        assert(child->ntype == 1);
         if (child != nullptr) printBranchNode(d + 1, child);
       } else {
         auto leaf = reinterpret_cast<LeafNode *>(n);
+        assert(leaf->ntype == 0);
         printLeafNode(d + 1, leaf);
       }
     }
@@ -742,8 +775,9 @@ class BPTree {
    * @param node the tree node to print
    */
   void printLeafNode(unsigned int d, LeafNode *node) const {
+    assert(node->ntype == 0);
     for (auto i = 0u; i < d; i++) std::cout << "  ";
-    std::cout << "[" << node->pid << "|" << node->prevLeaf << "|" << node->nextLeaf << " : ";
+    std::cout << "L:[" << node->pid << "|" << node->prevLeaf << "|" << node->nextLeaf << " : ";
     for (auto i = 0u; i < node->numKeys; i++) {
       if (i > 0) std::cout << ", ";
       std::cout << "{" << node->keys[i] << " -> " << node->values[i] << "}";
@@ -852,6 +886,7 @@ class BPTree {
    */
   void splitBranchNode(BranchNode *node, const KeyType &splitKey,
                       SplitInfo *splitInfo) {
+    assert(node->ntype == 1);
     // we have an overflow at the branch node, let's split it
     // determine the split position
     unsigned int middle = (N + 1) / 2;
@@ -895,16 +930,19 @@ class BPTree {
     if (node == nullptr)
       print();
     assert(node != nullptr);
+    assert(node->ntype == 1);
     auto pos = lookupPositionInBranchNode(node, key);
     auto pid = node->children[pos];
     auto n = load_node(pid);
     if (depth - 1 == 0) {
       // case #1: our children are leaf nodes
       auto child = reinterpret_cast<LeafNode *>(n);
+      assert(child->ntype == 0);
       hasSplit = insertInLeafNode(child, key, val, &childSplitInfo);
     } else {
       // case #2: our children are branch nodes
       auto child = reinterpret_cast<BranchNode *>(n);
+      assert(child->ntype == 1);
       hasSplit = insertInBranchNode(child, depth - 1, key, val, &childSplitInfo);
     }
     if (hasSplit) {
@@ -918,6 +956,9 @@ class BPTree {
         host = reinterpret_cast<BranchNode *>(load_node(key < splitInfo->key
                                                  ? splitInfo->leftChild
                                                  : splitInfo->rightChild));
+        // spdlog::info("split: page_id={}, ntype={}", host->pid, host->ntype);                                         
+        assert(host->ntype == 1);
+
         split = true;
         pos = lookupPositionInBranchNode(host, key);
       }
@@ -932,6 +973,7 @@ class BPTree {
       }
       // finally, add the new entry at the given position
       host->keys[pos] = childSplitInfo.key;
+      // spdlog::info("insertInBranchNode {}|{}:{}", childSplitInfo.key, childSplitInfo.leftChild, childSplitInfo.rightChild);
       host->children[pos] = childSplitInfo.leftChild;
       host->children[pos + 1] = childSplitInfo.rightChild;
       host->numKeys++;
@@ -959,12 +1001,15 @@ class BPTree {
     while (d-- > 0) {
       // as long as we aren't at the leaf level we follow the path down
       BranchNode *n = reinterpret_cast<BranchNode *>(node);
+      assert(n->ntype == 1);
       auto pos = lookupPositionInBranchNode(n, key);
       auto pid = n->children[pos];
       assert(pid != 0);
       node = load_node(pid);
     }
-    return reinterpret_cast<LeafNode *>(node);
+    auto lnode = reinterpret_cast<LeafNode *>(node);
+    assert(lnode->ntype == 0);
+    return lnode;
   }
 
   /**
@@ -1020,7 +1065,7 @@ class BPTree {
   LeafNode *newLeafNode() {
     auto pg = bpool_.allocate_page(file_id_);
     auto node = new(pg.first->payload) LeafNode(pg.second);
-
+    node->ntype = 0;
     return node;
   }
 
@@ -1036,7 +1081,7 @@ class BPTree {
   BranchNode *newBranchNode() {
     auto pg = bpool_.allocate_page(file_id_);
     auto node = new(pg.first->payload) BranchNode(pg.second);
-
+    node->ntype = 1;
     return node;
   }
 
@@ -1055,16 +1100,15 @@ class BPTree {
     /**
      * Constructor for creating a new empty leaf node.
      */
-    LeafNode(paged_file::page_id id) : pid(id), numKeys(0), nextLeaf(0), prevLeaf(0) {}
-   // ~LeafNode() { std::cout << "~LeafNode: " << std::hex << this <<
-   //    std::endl; }
+    LeafNode(paged_file::page_id id) : ntype(0), pid(id), numKeys(0), nextLeaf(0), prevLeaf(0) {}
 
-    paged_file::page_id pid;
+    uint8_t ntype;                    //< node type for consistency check (0=leaf, 1=branch)
+    paged_file::page_id pid;          //< the page_id of the underlying page
     unsigned int numKeys;             //< the number of currently stored keys
     std::array<KeyType, M> keys;      //< the actual keys
     std::array<ValueType, M> values;  //< the actual values
-    paged_file::page_id nextLeaf;               //< pointer to the subsequent sibling
-    paged_file::page_id prevLeaf;               //< pointer to the preceeding sibling
+    paged_file::page_id nextLeaf;     //< pointer to the subsequent sibling
+    paged_file::page_id prevLeaf;     //< pointer to the preceeding sibling
   };
 
   /**
@@ -1074,15 +1118,15 @@ class BPTree {
     /**
      * Constructor for creating a new empty branch node.
      */
-    BranchNode(paged_file::page_id id) : pid(id), numKeys(0) {}
-    // ~BranchNode() { std::cout << "~BranchNode: " << std::hex << this << std::dec <<
-     //   std::endl; }
+    BranchNode(paged_file::page_id id) : ntype(1), pid(id), numKeys(0) {}
 
-    paged_file::page_id pid;
+    // 1 + 8 + 8 + N*8 + (N+1)*8 bytes
+    u_int8_t ntype;               //< node type for consistency check (0=leaf, 1=branch)
+    paged_file::page_id pid;      //< the page_id of the underlying page
     unsigned int numKeys;         //< the number of currently stored keys
     std::array<KeyType, N> keys;  //< the actual keys
     std::array<paged_file::page_id, N + 1>
-        children;  //< pointers to child nodes (BranchNode or LeafNode)
+        children;                 //< pointers to child nodes (BranchNode or LeafNode)
   };
 };
 

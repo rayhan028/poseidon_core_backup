@@ -27,8 +27,6 @@
 
 #include <boost/any.hpp>
 
-#include "spdlog/spdlog.h"
-
 #include "vec.hpp"
 #include "defs.hpp"
 #include "exceptions.hpp"

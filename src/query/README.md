@@ -6,7 +6,7 @@ This directory contains the code for the query processor of the Poseidon graph d
 
 ## Directory structure
 
-* `ast`: classes for the query parser and the abstract syntax tree
+* `parser`: classes for the query parser
 * `expr`: classes for representing expressions in filters etc.
 * `plan_op`: classes representing plan operators create from the AST and used by the interpreter and code generator
 * `interp`: code of the query interpreter (ahead of time compiler) both for query plans and expressions

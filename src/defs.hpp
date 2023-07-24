@@ -38,13 +38,14 @@
 #include <thrust/device_ptr.h>
 #endif
 
-#define POSEIDON_VERSION "0.0.6"
+#define POSEIDON_VERSION "0.0.7"
 
 #define DICT_FILE_ID   0
 #define NODE_FILE_ID   1
 #define RSHIP_FILE_ID  2
 #define NPROPS_FILE_ID 3
 #define RPROPS_FILE_ID 4
+#define INDEX_FILE_ID  5
 
 /**
  * Typedef used for codes in string dictionaries and type tables.

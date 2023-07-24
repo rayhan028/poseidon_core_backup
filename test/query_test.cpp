@@ -88,7 +88,7 @@ TEST_CASE("Testing query operators", "[qop]") {
   SECTION("limit") {
     result_set rs, expected;
     auto q = query_builder(ctx).all_nodes("Node").limit(3).collect(rs);
-    q.start();
+    q.start(ctx);
 
     rs.wait();
 
@@ -99,7 +99,7 @@ TEST_CASE("Testing query operators", "[qop]") {
   SECTION("count") {
     result_set rs, expected;
     auto q = query_builder(ctx).all_nodes("Node").count().collect(rs);
-    q.start();
+    q.start(ctx);
 
     rs.wait();
     expected.data.push_back({query_result("7")});
@@ -117,7 +117,7 @@ TEST_CASE("Testing query operators", "[qop]") {
                    return boost::get<int>(qr1[0]) < boost::get<int>(qr2[0]);
                  })
                  .collect(rs);
-    q.start();
+    q.start(ctx);
 
     rs.wait();
     for (int i = 1; i <= 7; i++) {
@@ -137,7 +137,7 @@ TEST_CASE("Testing query operators", "[qop]") {
                  .project({PExpr_(0, pj::int_property(res, "id")),
                            PExpr_(0, pj::string_property(res, "name"))})
                  .collect(rs);
-    q.start();
+    q.start(ctx);
 
     rs.wait();
     expected.append({query_result(std::to_string(4)), query_result("aaa4")});
@@ -159,7 +159,7 @@ TEST_CASE("Testing query operators", "[qop]") {
                  .has_label("Movie")
                  .project({PExpr_(0, pj::string_property(res, "title"))})
                  .collect(rs);
-    q.start();
+    q.start(ctx);
 
     rs.wait();
     expected.append({query_result("m1")});
@@ -177,7 +177,7 @@ TEST_CASE("Testing query operators", "[qop]") {
                  .project({PExpr_(0, pj::int_property(res, "id")),
                            PExpr_(0, pj::string_property(res, "name"))})
                  .collect(rs);
-    q.start();
+    q.start(ctx);
 
     rs.wait();
     expected.append({query_result(std::to_string(4)), query_result("aaa4")});
@@ -198,7 +198,7 @@ TEST_CASE("Testing query operators", "[qop]") {
               .project({PExpr_(0, pj::int_property(res, "id")),
                         PExpr_(0, pj::string_property(res, "name"))})
               .collect(rs);
-    q.start();
+    q.start(ctx);
 
     rs.wait();
     expected.append({query_result(std::to_string(3)), query_result("aaa3")});
@@ -214,7 +214,7 @@ TEST_CASE("Testing query operators", "[qop]") {
                  .where_qr_tuple([&](const auto &v) {
                    return boost::get<int>(v[0]) > 4; })
                  .collect(rs);
-    q.start();
+    q.start(ctx);
 
     rs.wait();
     expected.append({query_result("7")});
@@ -233,7 +233,7 @@ TEST_CASE("Testing query operators", "[qop]") {
                    auto val = boost::get<int>(v[0]) + 10;
                    return query_result(val); })
                  .collect(rs);
-    q.start();
+    q.start(ctx);
 
     rs.wait();
     expected.append({query_result("7"), query_result("17")});
@@ -272,7 +272,7 @@ TEST_CASE("Testing join operators", "[qop]") {
                   .project({PExpr_(0, pj::int_property(res, "id")),
                             PExpr_(1, pj::int_property(res, "id"))})
                   .collect(rs);
-    query_builder::start({&q1, &q2});
+    query_builder::start(ctx, {&q1, &q2});
 
     rs.wait();
     expected.data.push_back({query_result("3"), query_result("1")});
@@ -318,7 +318,7 @@ TEST_CASE("Projecting node and relationship datetime properties", "[graph_db]") 
                             PExpr_(2, pj::ptime_property(res, "creationDate")),
                             PExpr_(1, pj::ptime_property(res, "creationDate")) })
                   .collect(rs);
-    q.start();
+    q.start(ctx);
     rs.wait();
 
   expected.data.push_back(
@@ -345,7 +345,7 @@ TEST_CASE("Testing query profiling", "[qop]") {
               .all_nodes("Node")
               .property("name", [&](auto &p) { return p.equal(dc); })
               .collect(rs);
-    q.start();
+    q.start(ctx);
     rs.wait();
     q.print_plan();
     return true;
@@ -380,7 +380,7 @@ TEST_CASE("Testing union_all operator", "[qop]") {
               .union_all(q1)
               .collect(rs);
 
-    query_builder::start({&q1, &q2});
+    query_builder::start(ctx, {&q1, &q2});
     rs.wait();
     query_builder::print_plans({&q1, &q2});
 
@@ -431,7 +431,7 @@ TEST_CASE("Testing union_all operator 2", "[qop]") {
               .union_all({&q1, &q2, &q3})
               .collect(rs);
 
-    query_builder::start({&q1, &q2, &q3, &q4});
+    query_builder::start(ctx, {&q1, &q2, &q3, &q4});
     rs.wait();
     query_builder::print_plans({&q1, &q2, &q3, &q4});
 
@@ -483,7 +483,7 @@ TEST_CASE("Testing outgoing traversal operators", "[qop]") {
                 .project({PExpr_(2, pj::string_property(res, "firstName"))})
                 .collect(rs);
 
-      q.start();
+      q.start(ctx);
       rs.wait();
       q.print_plan();
 
@@ -504,7 +504,7 @@ TEST_CASE("Testing outgoing traversal operators", "[qop]") {
                 .project({PExpr_(2, pj::string_property(res, "firstName"))})
                 .collect(rs);
 
-      q.start();
+      q.start(ctx);
       rs.wait();
       q.print_plan();
 
@@ -564,7 +564,7 @@ TEST_CASE("Testing incoming traversal operators", "[qop]") {
                 .project({PExpr_(2, pj::string_property(res, "firstName"))})
                 .collect(rs);
 
-      q.start();
+      q.start(ctx);
       rs.wait();
       q.print_plan();
 
@@ -583,7 +583,7 @@ TEST_CASE("Testing incoming traversal operators", "[qop]") {
                 .project({PExpr_(2, pj::string_property(res, "firstName"))})
                 .collect(rs);
 
-      q.start();
+      q.start(ctx);
       rs.wait();
       q.print_plan();
 
@@ -651,7 +651,7 @@ TEST_CASE("Testing other Join operators", "[qop]") {
                           PExpr_(5, pj::string_property(res, "firstName"))})
                 .collect(rs);
 
-      query_builder::start({&q1, &q2});
+      query_builder::start(ctx, {&q1, &q2});
       rs.wait();
       query_builder::print_plans({&q1, &q2});
 
@@ -685,7 +685,7 @@ TEST_CASE("Testing other Join operators", "[qop]") {
                           PExpr_(5, pj::string_property(res, "firstName"))})
                 .collect(rs);
 
-      query_builder::start({&q1, &q2});
+      query_builder::start(ctx, {&q1, &q2});
       rs.wait();
       query_builder::print_plans({&q1, &q2});
 
@@ -721,7 +721,7 @@ TEST_CASE("Testing other Join operators", "[qop]") {
                           PExpr_(5, pj::string_property(res, "firstName"))})
                 .collect(rs);
 
-      query_builder::start({&q1, &q2});
+      query_builder::start(ctx, {&q1, &q2});
       rs.wait();
       query_builder::print_plans({&q1, &q2});
 
@@ -754,7 +754,7 @@ TEST_CASE("Testing other Join operators", "[qop]") {
                           PExpr_(1, pj::string_property(res, "firstName"))})
                 .collect(rs);
 
-      query_builder::start({&q1, &q2});
+      query_builder::start(ctx, {&q1, &q2});
       rs.wait();
       query_builder::print_plans({&q1, &q2});
 
@@ -788,7 +788,7 @@ TEST_CASE("Testing other Join operators", "[qop]") {
                           PExpr_(1, pj::string_property(res, "firstName")) })
                 .collect(rs);
 
-      query_builder::start({&q1, &q2});
+      query_builder::start(ctx, {&q1, &q2});
       rs.wait();
       query_builder::print_plans({&q1, &q2});
 
@@ -857,7 +857,7 @@ TEST_CASE("Testing the existence of relationship", "[qop]") {
                           PExpr_(1, pj::string_property(res, "firstName"))})
                 .collect(rs);
 
-      query_builder::start({&q1, &q2});
+      query_builder::start(ctx, {&q1, &q2});
       rs.wait();
       query_builder::print_plans({&q1, &q2});
 
@@ -883,7 +883,7 @@ TEST_CASE("Testing the existence of relationship", "[qop]") {
                           PExpr_(1, pj::string_property(res, "firstName"))})
                 .collect(rs);
 
-      query_builder::start({&q1, &q2});
+      query_builder::start(ctx, {&q1, &q2});
       rs.wait();
       query_builder::print_plans({&q1, &q2});
 
@@ -934,35 +934,84 @@ TEST_CASE("Testing Groupby operator", "[qop]") {
     graph->add_node("Person", {{"age", boost::any(100)},
                               {"firstName", boost::any(std::string("Michael"))},
                               {"lastName", boost::any(std::string("G."))}});
-
-    result_set rs, expected;
-    auto q = query_builder(ctx)
+    return true;
+  });
+  // TODO: works only if we run queries in a separate transaction!
+   ctx.run_transaction([&]() {
+   {
+      result_set rs, expected;
+      auto q = query_builder(ctx)
               .all_nodes("Person")
               .project({PExpr_(0, pj::int_property(res, "age")),
                         PExpr_(0, pj::string_property(res, "firstName")),
                         PExpr_(0, pj::string_property(res, "lastName"))})
-              .groupby({1}, {{"count", 0}, {"pcount", 0}, {"sum", 0},
-                              {"avg", 0}, {"min", 0}, {"max", 0}})
+              .groupby(
+                {
+                  // group_by::group{ 0, "firstName", string_type }
+                  group_by::group{ 1, "", string_type }
+                }, 
+                { 
+                  // group_by::expr{ group_by::expr::f_count, 0, "age", int_type },
+                  group_by::expr{ group_by::expr::f_count, 0, "", int_type },
+                  // group_by::expr{ group_by::expr::f_avg, 0, "age", double_type }
+                  group_by::expr{ group_by::expr::f_avg, 0, "", double_type },
+                  group_by::expr{ group_by::expr::f_sum, 0, "", int_type },
+                  group_by::expr{ group_by::expr::f_min, 0, "", int_type },
+                  group_by::expr{ group_by::expr::f_max, 0, "", int_type }
+                })
+//              .groupby({1}, {{"count", 0}, {"pcount", 0}, {"sum", 0},
+//                              {"avg", 0}, {"min", 0}, {"max", 0}})
               .collect(rs);
 
-    q.start();
+      q.start(ctx);
+      rs.wait();
+      q.print_plan();
+
+      expected.data.push_back(
+        {query_result("Anastasia"), query_result("1"), query_result("48.000000"),
+          query_result("48"), query_result("48"), query_result("48") });
+      expected.data.push_back(
+        {query_result("Michael"), query_result("2"), query_result("88.500000"),
+          query_result("177"),  query_result("77"), query_result("100")});
+      expected.data.push_back(
+        {query_result("John"), query_result("3"), query_result("33.000000"),
+          query_result("99"), query_result("20"), query_result("42")});
+
+      REQUIRE(rs == expected);
+    }
+    {
+      result_set rs, expected;
+      auto q = query_builder(ctx)
+              .all_nodes("Person")
+              .groupby(
+                {
+                  group_by::group{ 0, "firstName", string_type }
+                }, 
+                { 
+                  group_by::expr{ group_by::expr::f_count, 0, "age", int_type },
+                  group_by::expr{ group_by::expr::f_avg, 0, "age", double_type },
+                  group_by::expr{ group_by::expr::f_sum, 0, "age", int_type },
+                  group_by::expr{ group_by::expr::f_min, 0, "age", int_type },
+                  group_by::expr{ group_by::expr::f_max, 0, "age", int_type }
+                })
+              .collect(rs);
+
+    q.start(ctx);
     rs.wait();
     q.print_plan();
 
     expected.data.push_back(
-      {query_result("John"), query_result("3"), query_result("50.000000"),
-        query_result("99"), query_result("33.000000"), query_result("20"),
-        query_result("42")});
+      {query_result("Anastasia"), query_result("1"), query_result("48.000000"),
+        query_result("48"), query_result("48"), query_result("48") });
     expected.data.push_back(
-      {query_result("Michael"), query_result("2"), query_result("33.333333"),
-        query_result("177"), query_result("88.500000"), query_result("77"),
-        query_result("100")});
+      {query_result("Michael"), query_result("2"), query_result("88.500000"),
+        query_result("177"),  query_result("77"), query_result("100")});
     expected.data.push_back(
-      {query_result("Anastasia"), query_result("1"), query_result("16.666667"),
-        query_result("48"), query_result("48.000000"), query_result("48"),
-        query_result("48") });
+      {query_result("John"), query_result("3"), query_result("33.000000"),
+        query_result("99"), query_result("20"), query_result("42")});
 
     REQUIRE(rs == expected);
+    }
     return true;
   });
   graph_pool::destroy(pool);
@@ -1015,7 +1064,7 @@ TEST_CASE("Testing Bi-directional traversal operator", "[qop]") {
               .project({PExpr_(2, pj::string_property(res, "firstName"))})
               .collect(rs);
 
-    q.start();
+    q.start(ctx);
     rs.wait();
     q.print_plan();
 
@@ -1064,7 +1113,7 @@ TEST_CASE("Testing distinct operator", "[qop]") {
               .distinct()
               .collect(rs);
 
-    q.start();
+    q.start(ctx);
     rs.wait();
     q.print_plan();
 

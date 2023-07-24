@@ -25,7 +25,7 @@ std::unique_ptr<p_jit> qcompiler::initializeJitCompiler() {
 std::mutex tp_mut;
 
 
-qcompiler::qcompiler(query_ctx ctx) 
+qcompiler::qcompiler(query_ctx& ctx) 
     :
     jit_(initializeJitCompiler()),
     ctx_(PContext(ctx.gdb_)),  
@@ -145,7 +145,7 @@ void qcompiler::extract_arg(qop_ptr op) {
             query_args.arg(arg_counter, last_joiner);
             break;
         }
-        case qop_type::group: {
+        case qop_type::group_by: {
             query_args.arg(arg_counter, new grouper()); //TODO: allocation
             query_args.arg(arg_counter, new grouper());
             break;
@@ -159,7 +159,7 @@ void qcompiler::extract_arg(qop_ptr op) {
         case qop_type::limit:
         // inline argument, nothing to do here
         case qop_type::project:
-        case qop_type::aggr:
+        case qop_type::aggregate:
         case qop_type::sort:
         case qop_type::any:
         case qop_type::none:

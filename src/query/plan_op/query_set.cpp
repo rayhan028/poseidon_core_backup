@@ -20,9 +20,9 @@
 #include "query_set.hpp"
 #include "query_printer.hpp"
 
-void query_set::start() {
+void query_set::start(query_ctx& ctx) {
   for (auto &q : queries_) {
-    q.start();
+    q.start(ctx);
   }
 }
 
@@ -57,10 +57,10 @@ void query_set::print_plan(std::ostream& os) {
       // std::cout << "try to merge: #0 + #" << i << "...\n";
         merge_qop_trees(trees[0], trees[i], bin_ops);
     }
-    os << "##----------------------------------------------------------------------\n";
+    // os << "##----------------------------------------------------------------------\n";
     trees[0]->print(os);
     print_plan_helper(os, trees[0], "");
-    os << "##----------------------------------------------------------------------\n";
+    // os << "##----------------------------------------------------------------------\n";
 }
 
 void query_set::accept(qop_visitor& visitor) {

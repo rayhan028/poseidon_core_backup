@@ -47,7 +47,7 @@ public:
   /**
    * Start the execution of the query.
    */
-  void start();
+  void start(query_ctx& ctx);
 
  /**
    * Print the query plan.

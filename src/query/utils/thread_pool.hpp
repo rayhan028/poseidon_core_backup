@@ -111,9 +111,9 @@ public:
    * Submit some work and push it to the queue.
    */
   template <typename FunctionType>
-  std::future<typename std::result_of<FunctionType()>::type>
+  std::future<typename std::invoke_result<FunctionType>::type>
   submit(FunctionType f) {
-    using result_type = typename std::result_of<FunctionType()>::type;
+    using result_type = typename std::invoke_result<FunctionType>::type;
 
     std::packaged_task<result_type()> task(std::move(f));
     std::future<result_type> res(task.get_future());

@@ -167,7 +167,7 @@ template <typename T>
 std::optional<T> get_property(const properties_t &p, const std::string &key) {
   auto it = p.find(key);
   if (it == p.end()) {
-    spdlog::warn("unknown property: {}", key);
+    // spdlog::warn("unknown property: {}", key);
     return std::nullopt;
   }
   return std::optional<T> { boost::any_cast<T>(it->second) };

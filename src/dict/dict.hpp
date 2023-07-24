@@ -33,7 +33,6 @@
 #endif
 
 #include "h2table.hpp"
-#include "spdlog/spdlog.h"
 
 /**
  * This class implements an (updatable) string dictionary. Strings are stored in

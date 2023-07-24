@@ -78,7 +78,7 @@ TEST_CASE("Creating and restoring an index on nodes", "[index]") {
 
   graph->run_transaction([&]() {
     for (int i = 0; i < 100; i++) {
-      auto id = graph->add_node("Person",
+      graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
                                {"id", boost::any(i)},
@@ -124,7 +124,7 @@ TEST_CASE("Creating and updating an index on nodes", "[index]") {
 
   graph->run_transaction([&]() {
     for (int i = 0; i < 100; i++) {
-      auto id = graph->add_node("Person",
+      graph->add_node("Person",
                               {{"name", boost::any(std::string("John Doe"))},
                                {"age", boost::any(42)},
                                {"id", boost::any(i)},
@@ -143,7 +143,7 @@ TEST_CASE("Creating and updating an index on nodes", "[index]") {
 
   // create another person 
   graph->run_transaction([&]() {
-    auto id = graph->add_node("Person",
+    graph->add_node("Person",
                               {{"name", boost::any(std::string("Jane Roe"))},
                                {"age", boost::any(66)},
                                {"id", boost::any(1000)},

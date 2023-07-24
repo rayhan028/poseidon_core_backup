@@ -75,7 +75,7 @@ class qcompiler : public qexmode {
     friend struct compile_task;
 
 public: 
-    qcompiler(query_ctx ctx);
+    qcompiler(query_ctx& ctx);
     ~qcompiler();
 
     /**

@@ -48,7 +48,7 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
   std::string prefix = pool_path_;
   if (prefix.length() > 0) prefix += "/";
   prefix += database_name_;
-  idx_file->open(prefix + "/" + "idx_" + node_label + "$" + prop_name + ".db", file_id);
+  idx_file->open(prefix + "/" + "idx_" + node_label + "$" + prop_name + ".db", INDEX_FILE_ID /*file_id*/);
   bpool_.register_file(file_id, idx_file);
   index_files_.push_back(idx_file);
   auto new_idx = make_pf_btree(bpool_, file_id);
@@ -201,7 +201,7 @@ void graph_db::restore_indexes(const std::string &pool_path, const std::string &
 
     auto file_id = index_map_->size() + RPROPS_FILE_ID + 1;
     auto idx_file = std::make_shared<paged_file>();
-    idx_file->open(path_obj.string() + file_name, file_id);
+    idx_file->open(path_obj.string() + file_name, INDEX_FILE_ID /*file_id*/);
     bpool_.register_file(file_id, idx_file);
     index_files_.push_back(idx_file);
     spdlog::info("restore index {} : {} from {} @{}", node_label, prop_name, file_name, file_id);
