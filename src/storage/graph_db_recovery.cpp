@@ -42,34 +42,34 @@ void graph_db::apply_undo_log() {
       if (!l.valid())
 	      continue;
 
-      if (l.log_type() == pmem_log::log_insert) {
+      if (l.log_type() == log_insert) {
         auto rec = l.get<log_ins_record>();
-        if (rec->obj_type == pmem_log::log_node) {
+        if (rec->obj_type == log_node) {
           // delete the node from the nodes_ list
           spdlog::info("recovery: undo insert node {}", rec->oid);
           nvm::transaction::run(pop, [&] { nodes_->remove(rec->oid); });
-        } else if (rec->obj_type == pmem_log::log_rship) {
+        } else if (rec->obj_type == log_rship) {
           // delete the relationship from the rships_ list
           spdlog::info("recovery: undo insert rship {}", rec->oid);
           nvm::transaction::run(pop, [&] { rships_->remove(rec->oid); });
-        } else if (rec->obj_type == pmem_log::log_property) {
+        } else if (rec->obj_type == log_property) {
           // TODO
           spdlog::info("recovery: undo insert property {}", rec->oid);
         }
         // mark the log entry as done
         nvm::transaction::run(pop, [&] { l.set_invalid(); });
-      } else if (l.log_type() == pmem_log::log_update) {
-        if (l.obj_type() == pmem_log::log_node) {
+      } else if (l.log_type() == log_update) {
+        if (l.obj_type() == log_node) {
           auto rec = l.get<log_node_record>();
           // TODO
-        } else if (l.obj_type() == pmem_log::log_rship) {
+        } else if (l.obj_type() == log_rship) {
           auto rec = l.get<log_rship_record>();
           // TODO
-        } else if (l.obj_type() == pmem_log::log_property) {
+        } else if (l.obj_type() == log_property) {
           auto rec = l.get<log_property_record>();
           // TODO
         }
-      } else if (l.log_type() == pmem_log::log_delete) {
+      } else if (l.log_type() == log_delete) {
       }
     }
     spdlog::info("recovery finished for {}", li.txid());

@@ -22,7 +22,6 @@
 #include <boost/hana.hpp>
 #include "graph_db.hpp"
 #include "vec.hpp"
-#include "parser.hpp"
 #include "spdlog/spdlog.h"
 #include "thread_pool.hpp"
 #include <iostream>

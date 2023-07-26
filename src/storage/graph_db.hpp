@@ -37,7 +37,7 @@
 #include "transaction.hpp"
 #include "btree.hpp"
 #include "index_map.hpp"
-#include "pmlog.hpp"
+#include "pm_ulog.hpp"
 #include "gc.hpp"
 #include "robin_hood.h"
 #include "bufferpool.hpp"
@@ -586,7 +586,7 @@ private:
   p_ptr<dict> dict_; // the dictionary used for string compression
 
   p_ptr<index_map> index_map_; // the list of all exisiting indexes
-  p_ptr<pmlog> ulog_; // the undo log 
+  p_ptr<pm_ulog> ulog_; // the undo log 
 
 #ifdef QOP_RECOVERY
   p_ptr<recovery_list> recovery_results_; // stored intermediate tuples of a query

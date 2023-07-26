@@ -24,7 +24,7 @@
 #include "config.h"
 #include "defs.hpp"
 
-#include "pmlog.hpp"
+#include "pm_ulog.hpp"
 
 #ifdef USE_PMDK
 
@@ -34,42 +34,42 @@ namespace nvm = pmem::obj;
 const std::string test_path = poseidon::gPmemPath + "log_test";
 
 struct root {
-  nvm::persistent_ptr<pmlog> log_p;
+  nvm::persistent_ptr<pm_ulog> log_p;
 };
 
 #endif
 
 #ifdef USE_LOGGING
 
-TEST_CASE("creating a log and appending some entries", "[pmlog]") {
+TEST_CASE("creating a log and appending some entries", "[pm_ulog]") {
 #ifdef USE_PMDK
     auto pop = nvm::pool<root>::create(test_path, "", PMEMOBJ_POOL_SIZE);
     auto root_obj = pop.root();
 
     nvm::transaction::run(
-        pop, [&] { root_obj->log_p = nvm::make_persistent<pmlog>(); });
+        pop, [&] { root_obj->log_p = nvm::make_persistent<pm_ulog>(); });
 
-    pmlog &ulog = *(root_obj->log_p);
+    pm_ulog &ulog = *(root_obj->log_p);
 #else
-    pmlog ulog;
+    pm_ulog ulog;
 #endif
 
     auto lid1 = ulog.transaction_begin(42);
     auto lid2 = ulog.transaction_begin(44);
 
-    log_ins_record r1(pmem_log::log_insert, pmem_log::log_node, 1234ul);
+    pmlog::log_ins_record r1(log_insert, log_node, 1234ul);
     ulog.append(lid1, static_cast<void *>(&r1), sizeof(r1));
  
-    log_node_record r2(pmem_log::log_update, pmem_log::log_node, 1236ul, 42, 101ul, 102ul, 103ul);
+    pmlog::log_node_record r2(log_update, 1236ul, 42, 101ul, 102ul, 103ul);
     ulog.append(lid1, static_cast<void *>(&r2), sizeof(r2));
 
-    log_ins_record r3(pmem_log::log_insert, pmem_log::log_node, 1235ul);
+    pmlog::log_ins_record r3(log_insert, log_node, 1235ul);
     ulog.append(lid2, static_cast<void *>(&r3), sizeof(r3));
 
     ulog.transaction_end(lid2);
 
     auto lid3 = ulog.transaction_begin(46);
-    log_node_record r4(pmem_log::log_update, pmem_log::log_node, 1237ul, 44, 201ul, 202ul, 203ul);
+    pmlog::log_node_record r4(log_update, 1237ul, 44, 201ul, 202ul, 203ul);
     ulog.append(lid3, static_cast<void *>(&r4), sizeof(r4));
 
 #ifdef USE_PMDK
@@ -80,9 +80,9 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
     auto root_obj2 = pop2.root();
     REQUIRE(root_obj2 != nullptr);
 
-    pmlog &ulog2 = *(root_obj2->log_p);
+    pm_ulog &ulog2 = *(root_obj2->log_p);
 #else
-    pmlog &ulog2 = ulog;
+    pm_ulog &ulog2 = ulog;
 #endif
 
     // std::cout << "dump log ..." << std::endl;
@@ -95,15 +95,15 @@ TEST_CASE("creating a log and appending some entries", "[pmlog]") {
             nlogs++;
             
             for (auto l = li.begin(); l != li.end(); ++l) {
-                if (l.log_type() == pmem_log::log_insert) {
-                    auto rec = l.get<log_ins_record>(); 
+                if (l.log_type() == log_insert) {
+                    auto rec = l.get<pmlog::log_ins_record>(); 
                     REQUIRE(rec->oid == 1234);
                     ninserts++;
                 }
 
-                else if (l.log_type() == pmem_log::log_update) {
-                    if (l.obj_type() == pmem_log::log_node) {
-                        auto rec = l.get<log_node_record>();
+                else if (l.log_type() == log_update) {
+                    if (l.obj_type() == log_node) {
+                        auto rec = l.get<pmlog::log_node_record>();
                         if (rec->oid == 1236)
                             REQUIRE(rec->label == 42);
                         if (rec->oid == 1237)

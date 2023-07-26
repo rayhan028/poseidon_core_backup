@@ -74,7 +74,6 @@ inline std::string uint64_to_string(uint64_t v) {
   return v == UNKNOWN ? std::string("<null>") : std::to_string(v);
 }
 
-
 #ifdef USE_PMDK
 
 /**

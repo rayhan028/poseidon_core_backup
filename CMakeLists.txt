@@ -469,7 +469,8 @@ set(src_files
   src/query/utils/qresult_iterator.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
-  src/log/pmlog.cpp
+  src/log/pm_ulog.cpp
+  src/log/walog.cpp
   ${llvm_src}
   src/query/parser/query_planner.cpp
   src/query/parser/query_proc.cpp

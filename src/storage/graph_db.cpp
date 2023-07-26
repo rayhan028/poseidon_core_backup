@@ -22,7 +22,6 @@
 
 #include "graph_db.hpp"
 #include "vec.hpp"
-#include "parser.hpp"
 #include "spdlog/spdlog.h"
 #include <iostream>
 #include <stdio.h>
@@ -107,7 +106,7 @@ graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : d
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
 #endif
-  ulog_ = p_make_ptr<pmlog>();
+  ulog_ = p_make_ptr<pm_ulog>();
 #if defined CSR_DELTA && defined USE_TX
   delta_store_ = p_make_ptr<delta_store>();
 #endif
@@ -255,14 +254,14 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
          * -----------------------------------------*/
         // std::cout << "COMMIT DELETE" << std::endl;
         // spdlog::info("COMMIT DELETE: [{},{}]", short_ts(dn->elem_.bts), short_ts(dn->elem_.cts));
-        log_node_record rec (pmem_log::log_delete, pmem_log::log_node, node_id,
+        pmlog::log_node_record rec (log_delete, node_id,
               n.node_label, n.from_rship_list, n.to_rship_list, n.property_list);
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));
+        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
         // log property delete
         auto cb = [log_id, node_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
-          log_property_record rec(pmem_log::log_delete, pmem_log::log_property,
+          pmlog::log_property_record rec(log_delete,
               oid, 0, items, next, node_id);
-          ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
+          ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
         };
         node_properties_->foreach_property_set(n.property_list, cb);
         // Because there might be an active transaction which still needs the object
@@ -297,9 +296,9 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
          * -----------------------------------------*/
         // std::cout << "COMMIT UPDATE" << std::endl;
         // create and append a log_node_record BEFORE we copy the properties and override the label
-        log_node_record rec(pmem_log::log_update, pmem_log::log_node, node_id,
+        pmlog::log_node_record rec(log_update, node_id,
           n.node_label, n.from_rship_list, n.to_rship_list, n.property_list);
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_node_record));
+        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
 		    n.node_label = dn->elem_.node_label;
         n.from_rship_list = dn->elem_.from_rship_list;
         n.to_rship_list = dn->elem_.to_rship_list;
@@ -374,14 +373,14 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
       if (dr->elem_.bts() == dr->elem_.cts()) {
         // CASE #2 = DELETE
         // spdlog::info("COMMIT DELETE: {}, {}", dr->elem_.bts(), dr->elem_.cts());
-        log_rship_record rec { pmem_log::log_delete, pmem_log::log_rship, rel_id,
+        pmlog::log_rship_record rec { log_delete, rel_id,
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));
+        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
         // log property delete
         auto cb = [log_id, rel_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
-          log_property_record rec{ pmem_log::log_update, pmem_log::log_property,
+          pmlog::log_property_record rec{ log_update, 
               oid, 0, items, next, rel_id };
-          ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
+          ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
         };
         rship_properties_->foreach_property_set(r.property_list, cb);
 
@@ -413,10 +412,10 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
       // create and append a log_rship_record BEFORE we copy the properties and override the label
       auto log_id = current_transaction_->logid();
 
-      log_rship_record rec(pmem_log::log_update, pmem_log::log_rship, rel_id,
+      pmlog::log_rship_record rec(log_update, rel_id,
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship);
 
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_rship_record));
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
 		  r.set_timestamps(xid, INF);
 		  r.rship_label = dr->elem_.rship_label;
 		  copy_properties(r, dr);
@@ -648,8 +647,8 @@ node::id_t graph_db::add_node(const std::string &label,
   // create and append a log_ins_record BEFORE the node table is modified
   auto log_id = current_transaction_->logid();
   auto cb = [log_id, this](offset_t n_id) {
-    log_ins_record rec(pmem_log::log_insert, pmem_log::log_node, n_id);
-    ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
+    pmlog::log_ins_record rec(log_insert, log_node, n_id);
+    ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
   };
   auto node_id = append_only ? nodes_->append(node(type_code), txid, cb)
                              : nodes_->insert(node(type_code), txid, cb);
@@ -704,8 +703,8 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
   // create and append a log_ins_record BEFORE the rship table is modified
   auto log_id = current_transaction()->logid();
   auto cb = [log_id, this](offset_t r_id) {
-    log_ins_record rec(pmem_log::log_insert, pmem_log::log_rship, r_id);
-    ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
+    pmlog::log_ins_record rec(log_insert, log_rship, r_id);
+    ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
   };
   auto rid =
       append_only
@@ -1507,9 +1506,9 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
     auto log_id = current_transaction_->logid();
     auto node_id = n.id();
     auto cb = [log_id, node_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
-      log_property_record rec(pmem_log::log_update, pmem_log::log_property,
+      pmlog::log_property_record rec(log_update,
             oid, 0, items, next, node_id);
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
     };
     node_properties_->foreach_property_set(n.property_list, cb);
     // we have to update the properties
@@ -1522,8 +1521,8 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
     // case of system failure.
     auto log_id = current_transaction_->logid();
     auto cb = [log_id, this](offset_t p_id) {
-      log_ins_record rec(pmem_log::log_insert, pmem_log::log_property, p_id);
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
+      pmlog::log_ins_record rec(log_insert, log_property, p_id);
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
     };
     pid = node_properties_->add_pitems(n.id(), dn->properties_, dict_, cb);
   }
@@ -1540,9 +1539,9 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
     auto log_id = current_transaction_->logid();
     auto rship_id = r.id();
     auto cb = [log_id, rship_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
-      log_property_record rec(pmem_log::log_update, pmem_log::log_property,
+      pmlog::log_property_record rec(log_update,
             oid, 0, items, next, rship_id);
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_property_record));
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
     };
     rship_properties_->foreach_property_set(r.property_list, cb);
     // we have to update the properties
@@ -1556,8 +1555,8 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
     // case of system failure.
     auto log_id = current_transaction_->logid();
     auto cb = [log_id, this](offset_t p_id) {
-      log_ins_record rec(pmem_log::log_insert, pmem_log::log_property, p_id);
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(log_ins_record));
+      pmlog::log_ins_record rec(log_insert, log_property, p_id);
+      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
     };
     pid = rship_properties_->add_pitems(r.id(), dr->properties_, dict_, cb);
   }

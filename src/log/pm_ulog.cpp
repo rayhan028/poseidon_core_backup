@@ -17,30 +17,30 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "pmlog.hpp"
+#include "pm_ulog.hpp"
 #include <limits>
 
-pmlog::log_rec_iter &pmlog::log_rec_iter::operator++() {
+pm_ulog::log_rec_iter &pm_ulog::log_rec_iter::operator++() {
   auto old = pos_;
-  auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
+  auto rec_ptr = (pmlog::log_dummy *)(&(chunk_->data_[pos_]));
   switch (rec_ptr->log_type) {
-  case pmem_log::log_insert:
-    pos_ += sizeof(log_ins_record);
+  case log_insert:
+    pos_ += sizeof(pmlog::log_ins_record);
     break;
-  case pmem_log::log_update:
+  case log_update:
     switch (rec_ptr->obj_type) {
-    case pmem_log::log_node:
-      pos_ += sizeof(log_node_record);
+    case log_node:
+      pos_ += sizeof(pmlog::log_node_record);
       break;
-    case pmem_log::log_rship:
-      pos_ += sizeof(log_rship_record);
+    case log_rship:
+      pos_ += sizeof(pmlog::log_rship_record);
       break;
-    case pmem_log::log_property:
-      pos_ += sizeof(log_property_record);
+    case log_property:
+      pos_ += sizeof(pmlog::log_property_record);
       break;
     }
     break;
-  case pmem_log::log_delete:
+  case log_delete:
     // TODO
     break;
   }
@@ -50,29 +50,29 @@ pmlog::log_rec_iter &pmlog::log_rec_iter::operator++() {
   return *this;
 }
 
-pmem_log::log_entry_type pmlog::log_rec_iter::log_type() const {
-  auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
-  return (pmem_log::log_entry_type)rec_ptr->log_type;
+log_entry_type pm_ulog::log_rec_iter::log_type() const {
+  auto rec_ptr = (pmlog::log_dummy *)(&(chunk_->data_[pos_]));
+  return (log_entry_type)rec_ptr->log_type;
 }
 
-pmem_log::log_object_type pmlog::log_rec_iter::obj_type() const {
-  auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
-  return (pmem_log::log_object_type)rec_ptr->obj_type;
+log_object_type pm_ulog::log_rec_iter::obj_type() const {
+  auto rec_ptr = (pmlog::log_dummy *)(&(chunk_->data_[pos_]));
+  return (log_object_type)rec_ptr->obj_type;
 }
 
-void pmlog::log_rec_iter::set_invalid() {
-  auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
+void pm_ulog::log_rec_iter::set_invalid() {
+  auto rec_ptr = (pmlog::log_dummy *)(&(chunk_->data_[pos_]));
   rec_ptr->valid_flag = false;
 }
 
-bool pmlog::log_rec_iter::valid() const { 
-  auto rec_ptr = (log_dummy *)(&(chunk_->data_[pos_]));
+bool pm_ulog::log_rec_iter::valid() const { 
+  auto rec_ptr = (pmlog::log_dummy *)(&(chunk_->data_[pos_]));
   return rec_ptr->valid_flag;
 }
 
 /* -------------------------------------------------------------------------- */
 
-pmlog::log_chunk::log_chunk() : txid_(0), used_(0) {
+pm_ulog::log_chunk::log_chunk() : txid_(0), used_(0) {
 #ifdef USE_PMDK
   auto pop = pmem::obj::pool_by_vptr(this);
   pop.memset_persist(data_, 0, 4076);
@@ -83,7 +83,7 @@ pmlog::log_chunk::log_chunk() : txid_(0), used_(0) {
 
 /* -------------------------------------------------------------------------- */
 
-pmlog::pmlog() {
+pm_ulog::pm_ulog() {
   nlogs_ = 50;
 #ifdef USE_PMDK
   ulog_ = pmem::obj::make_persistent<log_chunk[]>(nlogs_);
@@ -92,14 +92,14 @@ pmlog::pmlog() {
 #endif
 }
 
-pmlog::~pmlog() {
+pm_ulog::~pm_ulog() {
 #ifndef USE_PMDK
   delete[] ulog_;
 #endif
 }
 
 
-pmlog::id_t pmlog::transaction_begin(xid_t txid) {
+pm_ulog::id_t pm_ulog::transaction_begin(xid_t txid) {
 #ifdef USE_PMDK
   auto pop = pmem::obj::pool_by_vptr(this);
   // find the first empty slot in ulog_ and return its index as log_id
@@ -125,13 +125,13 @@ pmlog::id_t pmlog::transaction_begin(xid_t txid) {
   return std::numeric_limits<std::size_t>::max();
 }
 
-void pmlog::transaction_end(pmlog::id_t log_id) {
+void pm_ulog::transaction_end(pm_ulog::id_t log_id) {
   // finally, mark the slot as available
   std::lock_guard<std::mutex> guard(lmtx_);
 
 #ifdef USE_PMDK
   auto pop = pmem::obj::pool_by_vptr(this);
-  pop.memset_persist(&ulog_[log_id], 0, sizeof(pmlog::log_chunk));
+  pop.memset_persist(&ulog_[log_id], 0, sizeof(pm_ulog::log_chunk));
 #else
   memset(&(ulog_[log_id].data_), 0, 4076);
   ulog_[log_id].next_ = nullptr;
@@ -140,7 +140,7 @@ void pmlog::transaction_end(pmlog::id_t log_id) {
 #endif
 }
 
-void pmlog::append(id_t log_id, void *log_entry, uint32_t lsize) {
+void pm_ulog::append(id_t log_id, void *log_entry, uint32_t lsize) {
   std::lock_guard<std::mutex> guard(lmtx_);
   assert(log_id < nlogs_);
   auto entry = &(ulog_[log_id]);
@@ -163,29 +163,29 @@ void pmlog::append(id_t log_id, void *log_entry, uint32_t lsize) {
   }
 }
 
-void pmlog::dump_chunk(log_chunk &log) {
+void pm_ulog::dump_chunk(log_chunk &log) {
   std::cout << "log for tx #" << log.txid_ << ", " << log.used_
             << " bytes used." << std::endl;
   uint32_t pos = 0;
   while (pos < log.used_) {
-    auto rec_ptr = (log_dummy *)(&(log.data_[pos]));
-    if (rec_ptr->log_type == pmem_log::log_insert) {
-      auto ins_rec_ptr = (log_ins_record *)(&(log.data_[pos]));
+    auto rec_ptr = (pmlog::log_dummy *)(&(log.data_[pos]));
+    if (rec_ptr->log_type == log_insert) {
+      auto ins_rec_ptr = (pmlog::log_ins_record *)(&(log.data_[pos]));
       std::cout << "INSERT #" << ins_rec_ptr->oid << std::endl;
-      pos += sizeof(log_ins_record);
-    } else if (rec_ptr->log_type == pmem_log::log_update) {
-      if (rec_ptr->obj_type == pmem_log::log_node) {
-        auto upd_rec_ptr = (log_node_record *)(&(log.data_[pos]));
+      pos += sizeof(pmlog::log_ins_record);
+    } else if (rec_ptr->log_type == log_update) {
+      if (rec_ptr->obj_type == log_node) {
+        auto upd_rec_ptr = (pmlog::log_node_record *)(&(log.data_[pos]));
         std::cout << "UPDATE #" << upd_rec_ptr->oid << ", UNDO={"
                   << upd_rec_ptr->label << "}" << std::endl;
-        pos += sizeof(log_node_record);
+        pos += sizeof(pmlog::log_node_record);
       }
     } else
       return;
   }
 }
 
-void pmlog::dump() {
+void pm_ulog::dump() {
   for (std::size_t i = 0; i < nlogs_; i++)
     if (ulog_[i].txid_ != 0) {
       auto &log = ulog_[i];

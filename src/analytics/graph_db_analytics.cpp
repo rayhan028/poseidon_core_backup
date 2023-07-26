@@ -20,7 +20,6 @@
 #include <boost/algorithm/string.hpp>
 
 #include "graph_db.hpp"
-#include "parser.hpp"
 #include "spdlog/spdlog.h"
 #include "query_builder.hpp"
 #ifdef USE_GUNROCK

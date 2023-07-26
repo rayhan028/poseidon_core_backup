@@ -16,32 +16,22 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef pmlog_hpp_
-#define pmlog_hpp_
+#ifndef pm_ulog_hpp_
+#define pm_ulog_hpp_
 
 #include "defs.hpp"
 #include "transaction.hpp"
 #include "properties.hpp"
+#include "common_log.hpp"
 
-namespace pmem_log {
-/**
- * The different kinds of log entries: insert, update, delete.
- */
-enum log_entry_type { log_insert = 1, log_update = 2, log_delete = 3 };
-
-/**
- * The different objects (nodes, relationships, property_set) represented
- * by the log entries.
- */
-enum log_object_type { log_node = 1, log_rship = 2, log_property = 3 };
-}
+namespace pmlog {
 
 /**
  * A placeholder for log records - not instantiated.
  */
 struct log_dummy {
   uint8_t log_type : 3; // log_entry_type
-  uint8_t obj_type : 2; // log_object_type
+  uint8_t obj_type : 3; // log_object_type
   bool valid_flag;      // true if the record is valid (i.e. not processed yet during recovery)
 };
 
@@ -49,11 +39,11 @@ struct log_dummy {
  * A log record for inserting objects.
  */
 struct log_ins_record {
-  log_ins_record(pmem_log::log_entry_type le, pmem_log::log_object_type lo, offset_t o) : 
+  log_ins_record(log_entry_type le, log_object_type lo, offset_t o) : 
     log_type(le), obj_type(lo), valid_flag(true), oid(o) {}
  
   uint8_t log_type : 3; // log_entry_type
-  uint8_t obj_type : 2; // log_object_type
+  uint8_t obj_type : 3; // log_object_type
   bool valid_flag;      // true if the record is valid (i.e. not processed yet during recovery
   offset_t oid;         // the id (node_id, rship_id) of the object
 };
@@ -62,12 +52,12 @@ struct log_ins_record {
  * A log record for deleting and updating nodes.
  */
 struct log_node_record {
-  log_node_record(pmem_log::log_entry_type le, pmem_log::log_object_type lo, 
+  log_node_record(log_entry_type le, 
                   offset_t o, dcode_t l, offset_t f, offset_t t, offset_t p) : 
-    log_type(le), obj_type(lo), valid_flag(true), oid(o), label(l), from_rship_list(f), to_rship_list(t), property_list(p) {}
+    log_type(le), obj_type(log_node), valid_flag(true), oid(o), label(l), from_rship_list(f), to_rship_list(t), property_list(p) {}
 
   uint8_t log_type : 3; // log_entry_type
-  uint8_t obj_type : 2; // log_object_type
+  uint8_t obj_type : 3; // log_object_type
   bool valid_flag;      // true if the record is valid (i.e. not processed yet during recovery
   offset_t oid;         // the id (node_id, rship_id, property_set) of the object
   dcode_t label;        // the node label
@@ -78,13 +68,13 @@ struct log_node_record {
  * A log record for deleting and updating relationships.
  */
 struct log_rship_record {
-  log_rship_record(pmem_log::log_entry_type le, pmem_log::log_object_type lo, 
+  log_rship_record(log_entry_type le, 
                   offset_t o, dcode_t l, offset_t s, offset_t d, offset_t ns, offset_t nd) : 
-    log_type(le), obj_type(lo), valid_flag(true), oid(o), label(l), src_node(s), dest_node(d), 
+    log_type(le), obj_type(log_rship), valid_flag(true), oid(o), label(l), src_node(s), dest_node(d), 
     next_src_rship(ns), next_dest_rship(nd) {}
 
   uint8_t log_type : 3; // log_entry_type
-  uint8_t obj_type : 2; // log_object_type
+  uint8_t obj_type : 3; // log_object_type
   bool valid_flag;      // true if the record is valid (i.e. not processed yet during recovery
   offset_t oid;         // the id (node_id, rship_id, property_set) of the object
   dcode_t label;        // the relationship label
@@ -95,12 +85,12 @@ struct log_rship_record {
  * A log record for deleting and updating property sets.
  */
 struct log_property_record {
-  log_property_record(pmem_log::log_entry_type le, pmem_log::log_object_type lo, 
+  log_property_record(log_entry_type le,
                   offset_t o, uint8_t f, property_set::p_item_list& pi, offset_t n, offset_t ow) : 
-      log_type(le), obj_type(lo), valid_flag(true), oid(o), flags(f), items(pi), next(n), owner(ow) {}
+      log_type(le), obj_type(log_property), valid_flag(true), oid(o), flags(f), items(pi), next(n), owner(ow) {}
 
   uint8_t log_type : 3; // log_entry_type
-  uint8_t obj_type : 2; // log_object_type
+  uint8_t obj_type : 3; // log_object_type
   bool valid_flag;      // true if the record is valid (i.e. not processed yet during recovery
 
   offset_t oid;
@@ -109,12 +99,14 @@ struct log_property_record {
   offset_t next, owner;
 };
 
+}
+
 /**
- * pmlog implements a undo log for transaction processing storing the log entries in persistent
+ * pm_ulog implements a undo log for transaction processing storing the log entries in persistent
  * memory. For each active transaction a persistent list of log entries is maintained which can
  * be traversed during recovery.
  */
-class pmlog {
+class pm_ulog {
   /*
    * A log_chunk stored a list of log records associated with a transaction.
    */
@@ -151,12 +143,12 @@ public:
     /**
      * Return the type of the log record.
      */
-    pmem_log::log_entry_type log_type() const;
+    log_entry_type log_type() const;
 
     /**
      * Return the object described by this log record.
      */
-    pmem_log::log_object_type obj_type() const;
+    log_object_type obj_type() const;
 
     template <typename T> T *get() { return (T *)(&(chunk_->data_[pos_])); }
 
@@ -231,12 +223,12 @@ public:
   /**
    * Construct a new and empty log.
    */
-  pmlog();
+  pm_ulog();
 
   /**
    * Destructor
    */
-  ~pmlog();
+  ~pm_ulog();
 
   /**
    * This method should be called when a new transaction starts. It reserves a new log and 
