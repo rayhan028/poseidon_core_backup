@@ -43,7 +43,7 @@ void graph_db::apply_undo_log() {
 	      continue;
 
       if (l.log_type() == log_insert) {
-        auto rec = l.get<log_ins_record>();
+        auto rec = l.get<pmlog::log_ins_record>();
         if (rec->obj_type == log_node) {
           // delete the node from the nodes_ list
           spdlog::info("recovery: undo insert node {}", rec->oid);
