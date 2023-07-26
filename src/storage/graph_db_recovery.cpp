@@ -60,13 +60,13 @@ void graph_db::apply_undo_log() {
         nvm::transaction::run(pop, [&] { l.set_invalid(); });
       } else if (l.log_type() == log_update) {
         if (l.obj_type() == log_node) {
-          auto rec = l.get<log_node_record>();
+          auto rec = l.get<pmlog::log_node_record>();
           // TODO
         } else if (l.obj_type() == log_rship) {
-          auto rec = l.get<log_rship_record>();
+          auto rec = l.get<pmlog::log_rship_record>();
           // TODO
         } else if (l.obj_type() == log_property) {
-          auto rec = l.get<log_property_record>();
+          auto rec = l.get<pmlog::log_property_record>();
           // TODO
         }
       } else if (l.log_type() == log_delete) {
