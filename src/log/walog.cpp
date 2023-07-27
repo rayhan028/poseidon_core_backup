@@ -60,7 +60,7 @@ void wa_log::close() {
     if (log_fp_ != nullptr) {
         std::fseek(log_fp_, 0, SEEK_SET);
         std::fwrite((void *)&header_, 1, sizeof(header_), log_fp_);
-        ::fsync(log_fp_->_file);
+        ::fsync(fileno(log_fp_));
         std::fclose(log_fp_);
     }
     log_fp_ = nullptr;
