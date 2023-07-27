@@ -37,7 +37,11 @@
 #include "transaction.hpp"
 #include "btree.hpp"
 #include "index_map.hpp"
+#ifdef USE_PMDK
 #include "pm_ulog.hpp"
+#else
+#include "walog.hpp"
+#endif
 #include "gc.hpp"
 #include "robin_hood.h"
 #include "bufferpool.hpp"
@@ -568,6 +572,7 @@ private:
       node_properties_;   // the list of all properties of nodes 
   p_ptr<property_list<nvm_chunked_vec> >
       rship_properties_;   // the list of all properties of relationships
+  p_ptr<pm_ulog> ulog_; // the undo log 
 #elif defined(USE_IN_MEMORY)
   p_ptr<node_list<mem_chunked_vec> > nodes_; // the list of all nodes of the graph
   p_ptr<relationship_list<mem_chunked_vec> > rships_; // the list of all relationships of the graph
@@ -582,11 +587,11 @@ private:
       node_properties_;   // the list of all properties of nodes 
   p_ptr<property_list<buffered_vec> >
       rship_properties_;   // the list of all properties of relationships
+  p_ptr<wa_log> walog_;
 #endif
   p_ptr<dict> dict_; // the dictionary used for string compression
 
   p_ptr<index_map> index_map_; // the list of all exisiting indexes
-  p_ptr<pm_ulog> ulog_; // the undo log 
 
 #ifdef QOP_RECOVERY
   p_ptr<recovery_list> recovery_results_; // stored intermediate tuples of a query

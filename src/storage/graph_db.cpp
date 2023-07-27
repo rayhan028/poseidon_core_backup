@@ -30,6 +30,10 @@
 
 #ifdef USE_PMDK
 namespace nvm = pmem::obj;
+
+#define UNDO_CB cb
+#else
+#define UNDO_CB nullptr
 #endif
 
 void graph_db::destroy(graph_db_ptr gp) {
@@ -85,6 +89,8 @@ graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : d
   rship_properties_ = p_make_ptr<property_list<nvm_chunked_vec> >();
   dict_ = p_make_ptr<dict>();
   index_map_ = p_make_ptr<index_map>();
+  ulog_ = p_make_ptr<pm_ulog>();
+
 #elif defined(USE_IN_MEMORY)
   nodes_ = p_make_ptr<node_list<mem_chunked_vec> >();
   rships_ = p_make_ptr<relationship_list<mem_chunked_vec> >();
@@ -99,6 +105,7 @@ graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : d
   rships_ = p_make_ptr<relationship_list<buffered_vec> >(bpool_, RSHIP_FILE_ID);
   node_properties_ = p_make_ptr<property_list<buffered_vec> >(bpool_, NPROPS_FILE_ID);
   rship_properties_ = p_make_ptr<property_list<buffered_vec> >(bpool_, RPROPS_FILE_ID);
+  walog_ = p_make_ptr<wa_log>(pool_path_ + "/poseidon.wal");
   index_map_ = p_make_ptr<index_map>();
   restore_indexes(pool_path, db_name);
 #endif
@@ -106,7 +113,6 @@ graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : d
   recovery_results_ = p_make_ptr<recovery_list>();
   recovery_res_ = p_make_ptr<rec_map_t>();
 #endif
-  ulog_ = p_make_ptr<pm_ulog>();
 #if defined CSR_DELTA && defined USE_TX
   delta_store_ = p_make_ptr<delta_store>();
 #endif
@@ -188,7 +194,9 @@ void graph_db::begin_transaction() {
     throw invalid_nested_transaction();
   auto tx = std::make_shared<transaction>();
   current_transaction_ = tx;
+#ifdef USE_PMDK
   tx->set_logid(ulog_->transaction_begin(tx->xid()));
+#endif
 #ifdef USE_TX
   std::lock_guard<std::mutex> guard(*m_);
   active_tx_->insert({tx->xid(), tx});
@@ -254,16 +262,18 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
          * -----------------------------------------*/
         // std::cout << "COMMIT DELETE" << std::endl;
         // spdlog::info("COMMIT DELETE: [{},{}]", short_ts(dn->elem_.bts), short_ts(dn->elem_.cts));
+#ifdef USE_PMDK
         pmlog::log_node_record rec (log_delete, node_id,
               n.node_label, n.from_rship_list, n.to_rship_list, n.property_list);
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
+        ulog_->append(log_id, rec);
         // log property delete
         auto cb = [log_id, node_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
           pmlog::log_property_record rec(log_delete,
               oid, 0, items, next, node_id);
-          ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
+          ulog_->append(log_id, rec);
         };
-        node_properties_->foreach_property_set(n.property_list, cb);
+#endif
+        node_properties_->foreach_property_set(n.property_list, UNDO_CB);
         // Because there might be an active transaction which still needs the object
         // we cannot delete the node, yet. However, we set the bts and cts accordingly.
         {
@@ -296,9 +306,11 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
          * -----------------------------------------*/
         // std::cout << "COMMIT UPDATE" << std::endl;
         // create and append a log_node_record BEFORE we copy the properties and override the label
+#ifdef USE_PMDK
         pmlog::log_node_record rec(log_update, node_id,
           n.node_label, n.from_rship_list, n.to_rship_list, n.property_list);
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
+        ulog_->append(log_id, rec);
+#endif
 		    n.node_label = dn->elem_.node_label;
         n.from_rship_list = dn->elem_.from_rship_list;
         n.to_rship_list = dn->elem_.to_rship_list;
@@ -369,20 +381,22 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		  // case #2: we have updated a relationship, thus copy both properties
 		  // and relationship version to the main tables
 		  // update relationship (label)
-      auto log_id = current_transaction_->logid();
       if (dr->elem_.bts() == dr->elem_.cts()) {
         // CASE #2 = DELETE
         // spdlog::info("COMMIT DELETE: {}, {}", dr->elem_.bts(), dr->elem_.cts());
+#ifdef USE_PMDK
+        auto log_id = current_transaction_->logid();
         pmlog::log_rship_record rec { log_delete, rel_id,
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship };
-        ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
+        ulog_->append(log_id, rec);
         // log property delete
         auto cb = [log_id, rel_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
           pmlog::log_property_record rec{ log_update, 
               oid, 0, items, next, rel_id };
-          ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
+          ulog_->append(log_id, rec);
         };
-        rship_properties_->foreach_property_set(r.property_list, cb);
+#endif
+        rship_properties_->foreach_property_set(r.property_list, UNDO_CB);
 
         // Because there might be an active transaction which still needs the object
         // we cannot delete the relationship, yet. However, we set the cts accordingly.
@@ -410,12 +424,14 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
       else {
         // CASE #3 = UPDATE
       // create and append a log_rship_record BEFORE we copy the properties and override the label
+#ifdef USE_PMDK
       auto log_id = current_transaction_->logid();
 
       pmlog::log_rship_record rec(log_update, rel_id,
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship);
 
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
+      ulog_->append(log_id, rec);
+#endif
 		  r.set_timestamps(xid, INF);
 		  r.rship_label = dr->elem_.rship_label;
 		  copy_properties(r, dr);
@@ -539,8 +555,9 @@ bool graph_db::commit_transaction() {
 #endif
 
 #endif
-
+#ifdef USE_PMDK
   ulog_->transaction_end(current_transaction_->logid());
+#endif
   current_transaction_.reset();
   vacuum(xid);
 #endif
@@ -588,8 +605,9 @@ bool graph_db::abort_transaction() {
     }
   }
   vacuum(xid);
-
+#ifdef USE_PMDK
   ulog_->transaction_end(current_transaction_->logid());
+#endif
   current_transaction_.reset();
 #endif
   return true;
@@ -645,13 +663,17 @@ node::id_t graph_db::add_node(const std::string &label,
 #endif
   auto type_code = dict_->insert(label);
   // create and append a log_ins_record BEFORE the node table is modified
+
+#ifdef USE_PMDK
   auto log_id = current_transaction_->logid();
   auto cb = [log_id, this](offset_t n_id) {
     pmlog::log_ins_record rec(log_insert, log_node, n_id);
-    ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
+    ulog_->append(log_id, rec);
   };
-  auto node_id = append_only ? nodes_->append(node(type_code), txid, cb)
-                             : nodes_->insert(node(type_code), txid, cb);
+#endif
+
+  auto node_id = append_only ? nodes_->append(node(type_code), txid, UNDO_CB)
+                             : nodes_->insert(node(type_code), txid, UNDO_CB);
   // we need the node object not only the id
   auto &n = nodes_->get(node_id);
 
@@ -701,15 +723,17 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
 #endif
   auto type_code = dict_->insert(label);
   // create and append a log_ins_record BEFORE the rship table is modified
+#ifdef USE_PMDK
   auto log_id = current_transaction()->logid();
   auto cb = [log_id, this](offset_t r_id) {
     pmlog::log_ins_record rec(log_insert, log_rship, r_id);
-    ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
+    ulog_->append(log_id, rec);
   };
+#endif
   auto rid =
       append_only
-          ? rships_->append(relationship(type_code, from_id, to_id), txid, cb)
-          : rships_->insert(relationship(type_code, from_id, to_id), txid, cb);
+          ? rships_->append(relationship(type_code, from_id, to_id), txid, UNDO_CB)
+          : rships_->insert(relationship(type_code, from_id, to_id), txid, UNDO_CB);
   auto &r = rships_->get(rid);
 
 #ifdef USE_TX
@@ -1503,14 +1527,16 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
   property_set::id_t pid;
   if (dn->updated()) {
     // create and append a log_property_record
+#ifdef USE_PMDK
     auto log_id = current_transaction_->logid();
     auto node_id = n.id();
     auto cb = [log_id, node_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
       pmlog::log_property_record rec(log_update,
             oid, 0, items, next, node_id);
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
+      ulog_->append(log_id, rec);
     };
-    node_properties_->foreach_property_set(n.property_list, cb);
+#endif
+    node_properties_->foreach_property_set(n.property_list, UNDO_CB);
     // we have to update the properties
     pid = node_properties_->update_pitems(n.id(), n.property_list, dn->properties_,
                                      dict_);
@@ -1519,12 +1545,14 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
     // to the properties_ table
     // But we should log this. Otherwise, the slot might get be lost in
     // case of system failure.
+#ifdef USE_PMDK
     auto log_id = current_transaction_->logid();
     auto cb = [log_id, this](offset_t p_id) {
       pmlog::log_ins_record rec(log_insert, log_property, p_id);
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
+      ulog_->append(log_id, rec);
     };
-    pid = node_properties_->add_pitems(n.id(), dn->properties_, dict_, cb);
+#endif
+    pid = node_properties_->add_pitems(n.id(), dn->properties_, dict_, UNDO_CB);
   }
   n.property_list = pid;
 }
@@ -1536,14 +1564,16 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
   property_set::id_t pid;
   if (dr->updated()) {
     // create and append a log_property_record
+#ifdef USE_PMDK
     auto log_id = current_transaction_->logid();
     auto rship_id = r.id();
     auto cb = [log_id, rship_id, this](offset_t oid, property_set::p_item_list& items, offset_t next) {
       pmlog::log_property_record rec(log_update,
             oid, 0, items, next, rship_id);
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
+      ulog_->append(log_id, rec);
     };
-    rship_properties_->foreach_property_set(r.property_list, cb);
+#endif
+    rship_properties_->foreach_property_set(r.property_list, UNDO_CB);
     // we have to update the properties
     pid = rship_properties_->update_pitems(r.id(), r.property_list, dr->properties_,
                                      dict_);
@@ -1553,12 +1583,14 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
     // to the properties_ table
     // But we should log this. Otherwise, the slot might get be lost in
     // case of system failure.
+#ifdef USE_PMDK
     auto log_id = current_transaction_->logid();
     auto cb = [log_id, this](offset_t p_id) {
       pmlog::log_ins_record rec(log_insert, log_property, p_id);
-      ulog_->append(log_id, static_cast<void *>(&rec), sizeof(rec));
+      ulog_->append(log_id, rec);
     };
-    pid = rship_properties_->add_pitems(r.id(), dr->properties_, dict_, cb);
+#endif
+    pid = rship_properties_->add_pitems(r.id(), dr->properties_, dict_, UNDO_CB);
   }
   r.property_list = pid;
 }

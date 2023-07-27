@@ -29,6 +29,7 @@
 #ifdef USE_LOGGING
 
 TEST_CASE("creating a log and appending some entries", "[walog]") {
+    remove("file.wal");
     wa_log log("file.wal");
 
     xid_t txid = 42;
@@ -98,10 +99,12 @@ TEST_CASE("creating a log and appending some entries", "[walog]") {
     REQUIRE(nlogs == 9);
 
     log2.close();
+    remove("file.wal");
 }
 
 TEST_CASE("creating a log with two transactions and traverse the records backwards", "[walog]") {
-    wa_log log("file.wal");
+    remove("file2.wal");
+    wa_log log("file2.wal");
 
     xid_t txid = 42;
     log.transaction_begin(txid);
@@ -153,7 +156,7 @@ TEST_CASE("creating a log with two transactions and traverse the records backwar
 
     log.close();
 
-    wa_log log2("file.wal");
+    wa_log log2("file2.wal");
     log2.rewind();
 
     offset_t last_entry = 0;
@@ -183,6 +186,7 @@ TEST_CASE("creating a log with two transactions and traverse the records backwar
     REQUIRE(rec4->tx_id == txid2);
 
     log2.close();
+    remove("file2.wal");
 }
 
 #endif

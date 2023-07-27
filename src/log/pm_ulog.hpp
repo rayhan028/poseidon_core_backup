@@ -247,6 +247,11 @@ public:
    */
   void append(id_t log_id, void *log_entry, uint32_t lsize);
 
+  void append(id_t log_id, pmlog::log_node_record &log_entry) { append(log_id, static_cast<void *>(&log_entry), sizeof(log_entry)); }
+  void append(id_t log_id, pmlog::log_rship_record &log_entry) { append(log_id, static_cast<void *>(&log_entry), sizeof(log_entry)); }
+  void append(id_t log_id, pmlog::log_property_record &log_entry) { append(log_id, static_cast<void *>(&log_entry), sizeof(log_entry)); }
+  void append(id_t log_id, pmlog::log_ins_record &log_entry) { append(log_id, static_cast<void *>(&log_entry), sizeof(log_entry)); }
+
   /**
    * Iteratos for traversing the logs.
    */

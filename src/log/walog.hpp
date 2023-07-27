@@ -98,10 +98,10 @@ struct log_rship_record {
 class wa_log {
 public:
    /**
-    * Construct a new and empty log.
+    * Construct a new and empty log or open an existing one.
     */
     wa_log(const std::string& fname);
-
+ 
    /**
     * Destructor
     */
