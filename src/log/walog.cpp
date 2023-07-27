@@ -29,7 +29,7 @@ wa_log::wa_log(const std::string& fname)  {
         header_.last_lsn_ = 0;
         auto res = std::fwrite((void *)&header_, 1, sizeof(header_), log_fp_);
         assert(res == sizeof(header_));
-        ::fsync(log_fp_->_file);
+        ::fsync(fileno(log_fp_));
     }
     else {
         // open an existing file
