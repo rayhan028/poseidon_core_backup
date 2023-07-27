@@ -74,6 +74,9 @@ void graph_db::prepare_files(const std::string &pool_path, const std::string &pf
   bpool_.register_file(RPROPS_FILE_ID, rprops_file_);
 
   dict_ = p_make_ptr<dict>(bpool_, prefix);
+
+  walog_ = p_make_ptr<wa_log>(prefix + "poseidon.wal");
+
 #endif
 }
 
@@ -105,7 +108,6 @@ graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : d
   rships_ = p_make_ptr<relationship_list<buffered_vec> >(bpool_, RSHIP_FILE_ID);
   node_properties_ = p_make_ptr<property_list<buffered_vec> >(bpool_, NPROPS_FILE_ID);
   rship_properties_ = p_make_ptr<property_list<buffered_vec> >(bpool_, RPROPS_FILE_ID);
-  walog_ = p_make_ptr<wa_log>(pool_path_ + "/poseidon.wal");
   index_map_ = p_make_ptr<index_map>();
   restore_indexes(pool_path, db_name);
 #endif

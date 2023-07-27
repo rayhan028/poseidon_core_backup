@@ -460,7 +460,8 @@ public:
   try {
     while (pset_id != UNKNOWN) {
       auto &p = properties_.at(pset_id);
-      cb(pset_id, p.items, p.next);
+      if (cb != nullptr)
+        cb(pset_id, p.items, p.next);
       pset_id = p.next;
     }
   } catch (unknown_id& exc) {
