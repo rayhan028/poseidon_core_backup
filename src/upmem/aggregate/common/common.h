@@ -7,12 +7,17 @@
 #define MINIMUM
 #define MAXIMUM
 
+// #define HIGH_CARDINALITY
+#define LOW_CARDINALITY
+// #define LOW_CARD_1
+#define LOW_CARD_2
+
 #define KB (1 << 10)
 #define MB (KB << 10)
 
 #define NR_TASKLETS 16
-#define NR_DPUS 2
-#define MAX_THREADS 32
+#define NR_DPUS 64
+#define NR_CPU_THREADS 32
 
 #define REP 1
 #define DPU_BIN "./dpu_aggregate"
@@ -30,6 +35,9 @@ typedef uint32_t aggr_val_t;
 #define AGGR_KEY 2
 #define NR_PARTITIONS 4
 #define NR_GROUPS 4
+#define NR_KERNERLS 2
+
+#define ELEMS_PER_CHUNK 817
 
 #if defined(SUM) || defined(AVERAGE)
     #define SUM_KEY AGGR_KEY
@@ -42,10 +50,6 @@ typedef uint32_t aggr_val_t;
 #ifdef MAXIMUM
     #define MAX_KEY AGGR_KEY
 #endif
-
-#define ELEMS_PER_CHUNK 817
-
-#define NR_KERNERLS 2
 
 #if 0
 struct mrnode {
@@ -80,13 +84,20 @@ typedef enum kernel {
     aggregation_phase = 1,
 } kernel;
 
+#ifdef HIGH_CARDINALITY
 struct dpu_params {
     union {
         uint32_t num_elems;
         uint32_t num_partitions;
     };
-    kernel phase;   
+    kernel phase;
 };
+#elif defined LOW_CARDINALITY
+struct dpu_params {
+    uint32_t num_elems;
+    uint32_t htable_offset;
+};
+#endif
 
 struct aggr_res {
 #if defined(COUNT) || defined(AVERAGE)
@@ -123,7 +134,11 @@ struct htable_entry {
 #define MAX_MRAM_WRAM_XFER_SIZE (2 * KB)
 #define MRAM_INPUT_BUFFER (48 * MB)
 #define WRAM_INPUT_BUFFER (48 * KB)
-#define ELEM_SIZE sizeof(mrnode) 
+
+#define ELEM_SIZE sizeof(mrnode)
+#define HASH_TABLE_ENTRY_SIZE sizeof(htable_entry)
+
+#ifdef HIGH_CARDINALITY
 
 #define MRAM_INPUT_BUFFER_PARTITION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the partitioned elements */
 
@@ -137,11 +152,28 @@ struct htable_entry {
 #define NR_WR_ELEMS_PER_TASKLET_AGGREGATION 16
 
 #define HASH_TABLE_SIZE (32 * KB)
-#define HASH_TABLE_ENTRY_SIZE sizeof(htable_entry)
 #define NR_HASH_TABLE_ENTRIES (HASH_TABLE_SIZE / HASH_TABLE_ENTRY_SIZE)
 #define NR_HASH_TABLE_CHUNKS (HASH_TABLE_SIZE / MAX_MRAM_WRAM_XFER_SIZE)
 #define NR_HASH_TABLE_CHUNK_ENTRIES (NR_HASH_TABLE_ENTRIES / NR_HASH_TABLE_CHUNKS)
 
+#elif defined LOW_CARDINALITY
+
+#define NR_WR_ELEMS_PER_TASKLET 16
+#define MRAM_INPUT_BUFFER_SIZE (MRAM_INPUT_BUFFER - MR_HASH_TABLES_SIZE)
+
+#ifdef LOW_CARD_1
+#define HASH_TABLE_SIZE (32 * 64) /* max. hash table size: (32 * 64) */
+#define NR_HASH_TABLE_ENTRIES (HASH_TABLE_SIZE / HASH_TABLE_ENTRY_SIZE)
+#define MR_HASH_TABLES_SIZE (NR_TASKLETS * HASH_TABLE_SIZE)
+#elif defined LOW_CARD_2
+#define HASH_TABLE_SIZE (32 * KB)
+#define NR_HASH_TABLE_ENTRIES (HASH_TABLE_SIZE / HASH_TABLE_ENTRY_SIZE)
+#define NR_HASH_TABLE_CHUNKS (HASH_TABLE_SIZE / MAX_MRAM_WRAM_XFER_SIZE)
+#define NR_HASH_TABLE_CHUNK_ENTRIES (NR_HASH_TABLE_ENTRIES / NR_HASH_TABLE_CHUNKS)
+#define MR_HASH_TABLES_SIZE HASH_TABLE_SIZE
+#endif
+
+#endif
 
 // #define PRINTER
 #define PRINT_ERROR(fmt, ...)       fprintf(stderr, "\033[0;31mERROR:\033[0m   " fmt "\n", ##__VA_ARGS__)
