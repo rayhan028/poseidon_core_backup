@@ -24,6 +24,8 @@
 #include "transaction.hpp"
 #include "properties.hpp"
 #include "common_log.hpp"
+#include "nodes.hpp"
+#include "relationships.hpp"
 
 namespace wal {
 
@@ -38,6 +40,9 @@ struct log_dummy {
     uint64_t prev_offset; // offset (from the beginning of the file) of the previous log entry of the same transaction
 };
 
+/**
+ * A log record for transaction commands (BOT, commit, abort).
+ */
 struct log_tx_record {
     log_tx_record(uint64_t seq, xid_t tx, log_tx_type cmd) : log_type(log_tx), obj_type(log_none), lsn(seq), tx_id(tx), prev_offset(0), tx_cmd(cmd) {}
 
@@ -62,11 +67,11 @@ struct log_node_record {
     uint64_t prev_offset; // offset (from the beginning of the file) of the previous log entry of the same transaction
     offset_t oid;         // the id (node_id, rship_id, property_set) of the object
     struct {
-        dcode_t label;        // the node label
+        dcode_t label;             // the node label
         offset_t from_rship_list, to_rship_list, property_list;
     } before;
     struct after {
-        dcode_t label;        // the node label
+        dcode_t label;             // the node label
         offset_t from_rship_list, to_rship_list, property_list;
     } after;
 };
@@ -84,14 +89,44 @@ struct log_rship_record {
     uint64_t prev_offset; // offset (from the beginning of the file) of the previous log entry of the same transaction
     offset_t oid;         // the id (node_id, rship_id, property_set) of the object
     struct {
-        dcode_t label;        // the relationship label
+        dcode_t label;             // the relationship label
         offset_t src_node, dest_node, next_src_rship, next_dest_rship;
     } before;
     struct {
-        dcode_t label;        // the relationship label
+        dcode_t label;             // the relationship label
         offset_t src_node, dest_node, next_src_rship, next_dest_rship;
     } after;
 };
+
+/**
+ * Construct a log record for inserting a node based on the dirty node data.
+ */
+log_node_record create_insert_node_record(const dirty_node_ptr& nptr);
+
+/**
+ * Construct a log record for deleting a node based on the old node data.
+ */
+log_node_record create_delete_node_record(const node& n);
+
+/**
+ * Construct a log record for updating a node based on the old node and the dirty node data.
+ */
+log_node_record create_update_node_record(const node& n_old, const dirty_node_ptr& n_new);
+
+/**
+ * Construct a log record for inserting a relationship based on the dirty relationship data.
+ */
+log_rship_record create_insert_rship_record(const dirty_rship_ptr& rptr);
+
+/**
+ * Construct a log record for deleting a relationship based on the old relationship data.
+ */
+log_rship_record create_delete_rship_record(const relationship& r);
+
+/**
+ * Construct a log record for updating a relationship based on the old relationship and the dirty relationship data.
+ */
+log_rship_record create_update_rship_record(const relationship& r_old, const dirty_rship_ptr& r_new);
 
 }
 
@@ -108,8 +143,8 @@ public:
     ~wa_log();
 
     /**
-     * 
-    */
+     * Close the log file, called automatically in the desctrutor. 
+     */
     void close();
 
     void rewind();
@@ -130,6 +165,9 @@ public:
     
         log_iter &operator++();
 
+        /**
+         * Return the current position in the log file.
+         */
         offset_t log_position() const { return current_pos_; }
 
         /**
@@ -152,6 +190,9 @@ public:
          */
         u_int64_t lsn() const;
 
+        /**
+         * Return the actual log entry (node, relationship, tx).
+         */
         template <typename T> const T *get() const { return (T *)(&entry_); }
 
     private:
@@ -193,6 +234,9 @@ public:
     log_iter log_begin() { rewind(); return log_iter(log_fp_); }
     log_iter log_end() { return log_iter(nullptr); }
 
+    /**
+     * Return the typed log record stored at the current position.
+     */
     template <typename T> T *get_record(offset_t pos) { fetch_record(pos); return (T *)(&buf_); }
 
    /**

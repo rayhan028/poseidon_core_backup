@@ -10,6 +10,9 @@
 
 #include "config.h"
 #include "defs.hpp"
+#include "qop.hpp"
+#include "qop_scans.hpp"
+#include "qop_relationships.hpp"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
 

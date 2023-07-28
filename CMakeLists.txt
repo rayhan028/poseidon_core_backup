@@ -452,6 +452,8 @@ set(src_files
   src/bp_file/bufferpool.cpp
   src/btree/index_map.cpp
   src/query/plan_op/qop.cpp
+  src/query/plan_op/qop_scans.cpp
+  src/query/plan_op/qop_relationships.cpp
   src/query/plan_op/qop_aggregates.cpp
   src/query/plan_op/qop_analytics.cpp
   src/query/plan_op/qop_updates.cpp

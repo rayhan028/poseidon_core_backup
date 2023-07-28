@@ -2,6 +2,8 @@
 #define POSEIDON_CORE_CODEGEN_INLINE_HPP
 
 #include "qop.hpp"
+#include "qop_scans.hpp"
+#include "qop_relationships.hpp"
 #include "qop_joins.hpp"
 #include "qop_aggregates.hpp"
 #include "qop_visitor.hpp"

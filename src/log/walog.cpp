@@ -20,6 +20,90 @@
 #include <boost/filesystem.hpp>
 #include "walog.hpp"
 
+wal::log_node_record wal::create_insert_node_record(const dirty_node_ptr& nptr) {
+    wal::log_node_record rec(log_insert, nptr->elem_.id());
+    rec.after = {
+       nptr->elem_.node_label,      // label
+       nptr->elem_.from_rship_list, // from_rship_list
+       nptr->elem_.to_rship_list,   // to_rship_list
+       nptr->elem_.property_list    // property_list
+     };
+    return rec;
+}
+
+wal::log_node_record wal::create_delete_node_record(const node& n) {
+    wal::log_node_record rec(log_delete, n.id());
+    rec.before = {
+       n.node_label,      // label
+       n.from_rship_list, // from_rship_list
+       n.to_rship_list,   // to_rship_list
+       n.property_list    // property_list
+     };
+    return rec;
+
+}
+
+wal::log_node_record wal::create_update_node_record(const node& n_old, const dirty_node_ptr& n_new) {
+    wal::log_node_record rec(log_update, n_old.id());
+    rec.before = {
+       n_old.node_label,      // label
+       n_old.from_rship_list, // from_rship_list
+       n_old.to_rship_list,   // to_rship_list
+       n_old.property_list    // property_list
+     };
+    rec.after = {
+       n_new->elem_.node_label,      // label
+       n_new->elem_.from_rship_list, // from_rship_list
+       n_new->elem_.to_rship_list,   // to_rship_list
+       n_new->elem_.property_list    // property_list
+     };
+    return rec;
+}
+
+wal::log_rship_record wal::create_insert_rship_record(const dirty_rship_ptr& rptr) {
+    wal::log_rship_record rec(log_insert, rptr->elem_.id());
+    rec.after = {
+        rptr->elem_.rship_label,    // label
+        rptr->elem_.src_node,       // src_node
+        rptr->elem_.dest_node,      // dest_node
+        rptr->elem_.next_src_rship, // next_src_rship
+        rptr->elem_.next_dest_rship // next_dest_rship
+    };
+    return rec;
+}
+
+wal::log_rship_record wal::create_delete_rship_record(const relationship& r) {
+    wal::log_rship_record rec(log_delete, r.id());
+    rec.before = {
+        r.rship_label,     // label
+        r.src_node,       // src_node
+        r.dest_node,      // dest_node
+        r.next_src_rship, // next_src_rship
+        r.next_dest_rship // next_dest_rship
+    };
+    return rec;
+}
+
+wal::log_rship_record wal::create_update_rship_record(const relationship& r_old, const dirty_rship_ptr& r_new) {
+    wal::log_rship_record rec(log_update, r_old.id());
+    rec.before = {
+        r_old.rship_label,     // label
+        r_old.src_node,       // src_node
+        r_old.dest_node,      // dest_node
+        r_old.next_src_rship, // next_src_rship
+        r_old.next_dest_rship // next_dest_rship
+    };
+    rec.after = {
+        r_new->elem_.rship_label,    // label
+        r_new->elem_.src_node,       // src_node
+        r_new->elem_.dest_node,      // dest_node
+        r_new->elem_.next_src_rship, // next_src_rship
+        r_new->elem_.next_dest_rship // next_dest_rship
+    };
+    return rec;
+}
+
+
 wa_log::wa_log(const std::string& fname)  {
    boost::filesystem::path path_obj(fname);
     // check if path exists and is of a regular file

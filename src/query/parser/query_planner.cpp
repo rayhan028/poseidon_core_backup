@@ -17,6 +17,9 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 #include "query_planner.hpp"
+#include "qop.hpp"
+#include "qop_scans.hpp"
+#include "qop_relationships.hpp"
 #include "qop_joins.hpp"
 #include "qop_aggregates.hpp"
 #include "qop_updates.hpp"

@@ -177,9 +177,9 @@ bool bufferpool::evict_page() {
         auto pid = *it1;
         auto it2 = ptable_.find(pid);
         if (it2 != ptable_.end()) {
-            spdlog::info("bufferpool::evict_page {}", pid & 0xFFFFFFFFFFFFFFF);
             if (it2->second.dirty_) {
-                // TODO: write UNDO log!
+                spdlog::info("bufferpool::evict dirty page {}", pid & 0xFFFFFFFFFFFFFFF);
+                // TODO: write WAL log record for UNDO
                 write_page_to_file(pid, it2->second.p_);
             }
             slots_.set(it2->second.pos_);

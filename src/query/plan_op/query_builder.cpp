@@ -19,6 +19,8 @@
 
 #include "query_builder.hpp"
 #include "qop_joins.hpp"
+#include "qop_scans.hpp"
+#include "qop_relationships.hpp"
 // #include "lua_poseidon.hpp"
 #include "qop_updates.hpp"
 #include "qop_aggregates.hpp"

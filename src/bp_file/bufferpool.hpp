@@ -109,6 +109,9 @@ public:
      */
     void purge();
     
+    /**
+     * Calculate and return the bufferpool hit ratio.
+     */
     double hit_ratio() const;
     
 private:

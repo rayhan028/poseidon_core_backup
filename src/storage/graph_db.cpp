@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -173,8 +173,10 @@ void graph_db::runtime_initialize() {
 #endif
   // make sure the dictionary is initialized
   // dict_->initialize();
+#ifdef USE_PMDK
   // perform recovery using the undo log
   apply_undo_log();
+#endif
 #if defined CSR_DELTA && defined USE_TX
   delta_store_->initialize();
 #endif
@@ -199,6 +201,7 @@ void graph_db::begin_transaction() {
 #ifdef USE_PMDK
   tx->set_logid(ulog_->transaction_begin(tx->xid()));
 #endif
+  walog_->transaction_begin(tx->xid());  
 #ifdef USE_TX
   std::lock_guard<std::mutex> guard(*m_);
   active_tx_->insert({tx->xid(), tx});
@@ -207,13 +210,14 @@ void graph_db::begin_transaction() {
 }
 
 void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
-  auto xid = tx->xid();
- 	auto &n = nodes_->get(node_id);
-  // If the node was already deleted we can skip all other entries...
-  if (n.cts() != INF) {
-    n.remove_dirty_version(0);
-    return;
-  }
+    // TODO: add WAL log entry for REDO
+    auto xid = tx->xid();
+ 	  auto &n = nodes_->get(node_id);
+    // If the node was already deleted we can skip all other entries...
+    if (n.cts() != INF) {
+      n.remove_dirty_version(0);
+      return;
+    }
 	  /* A dirty object was just inserted, when add_node() or update_node() was executed.
 	   * So there must be at least one dirty version.
 	   */
@@ -235,6 +239,11 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		  // are stored in a dirty_node object in this case, we simply copy the
 		  // properties to property_list and release the lock
 		  // spdlog::info("commit INSERT transaction {}: copy properties", xid);
+#ifndef USE_PMDK
+      // TODO: handle properties
+      auto log_rec = wal::create_insert_node_record(dn);
+      walog_->append(xid, log_rec);
+#endif
 		  copy_properties(n, dn);
       n.node_label = dn->elem_.node_label;
       n.from_rship_list = dn->elem_.from_rship_list;
@@ -256,7 +265,6 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		  // and node version to the main tables
 		  // spdlog::info("commit UPDATE transaction {}: copy properties", xid);
 		  // update node (label)
-      auto log_id = current_transaction_->logid();
 
       if (dn->elem_.bts() == dn->elem_.cts()) {
         /* ------------------------------------------
@@ -265,6 +273,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         // std::cout << "COMMIT DELETE" << std::endl;
         // spdlog::info("COMMIT DELETE: [{},{}]", short_ts(dn->elem_.bts), short_ts(dn->elem_.cts));
 #ifdef USE_PMDK
+        auto log_id = current_transaction_->logid();
         pmlog::log_node_record rec (log_delete, node_id,
               n.node_label, n.from_rship_list, n.to_rship_list, n.property_list);
         ulog_->append(log_id, rec);
@@ -274,6 +283,10 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
               oid, 0, items, next, node_id);
           ulog_->append(log_id, rec);
         };
+#else
+        auto log_rec = wal::create_delete_node_record(n);
+        walog_->append(xid, log_rec);
+        // TODO: handle properties!!
 #endif
         node_properties_->foreach_property_set(n.property_list, UNDO_CB);
         // Because there might be an active transaction which still needs the object
@@ -309,9 +322,13 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         // std::cout << "COMMIT UPDATE" << std::endl;
         // create and append a log_node_record BEFORE we copy the properties and override the label
 #ifdef USE_PMDK
+        auto log_id = current_transaction_->logid();
         pmlog::log_node_record rec(log_update, node_id,
           n.node_label, n.from_rship_list, n.to_rship_list, n.property_list);
         ulog_->append(log_id, rec);
+#else
+        auto log_rec = wal::create_update_node_record(n, dn);
+        walog_->append(xid, log_rec);
 #endif
 		    n.node_label = dn->elem_.node_label;
         n.from_rship_list = dn->elem_.from_rship_list;
@@ -344,6 +361,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
   }
 
 void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t rel_id) {
+    // TODO: add WAL log entry for REDO
   // std::cout << "commit_dirty_relationship" << std::endl;
   auto xid = tx->xid();
 	auto& r = rships_->get(rel_id);
@@ -368,6 +386,11 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		  // its properties are stored in a dirty_rship object in this case, we
 		  // simply copy the properties to property_list and release the lock
 		  // set bts/cts
+#ifndef USE_PMDK
+      // TODO: handle properties
+      auto log_rec = wal::create_insert_rship_record(dr);
+      walog_->append(xid, log_rec);
+#endif
 		  r.set_timestamps(xid, INF);
 		  copy_properties(r, dr);
 
@@ -397,6 +420,10 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
               oid, 0, items, next, rel_id };
           ulog_->append(log_id, rec);
         };
+#else
+        auto log_rec = wal::create_delete_rship_record(r);
+        walog_->append(xid, log_rec);
+        // TODO: handle properties!!
 #endif
         rship_properties_->foreach_property_set(r.property_list, UNDO_CB);
 
@@ -433,6 +460,9 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship);
 
       ulog_->append(log_id, rec);
+#else
+      auto log_rec = wal::create_update_rship_record(r, dr);
+      walog_->append(xid, log_rec);
 #endif
 		  r.set_timestamps(xid, INF);
 		  r.rship_label = dr->elem_.rship_label;
@@ -560,6 +590,8 @@ bool graph_db::commit_transaction() {
 #ifdef USE_PMDK
   ulog_->transaction_end(current_transaction_->logid());
 #endif
+  walog_->transaction_commit(xid);  
+
   current_transaction_.reset();
   vacuum(xid);
 #endif
@@ -610,6 +642,8 @@ bool graph_db::abort_transaction() {
 #ifdef USE_PMDK
   ulog_->transaction_end(current_transaction_->logid());
 #endif
+  walog_->transaction_abort(xid);  
+
   current_transaction_.reset();
 #endif
   return true;
@@ -1387,28 +1421,28 @@ void graph_db::detach_delete_node(node::id_t id) {
 }
 
 void graph_db::delete_relationship(node::id_t src, node::id_t dest) {
- #ifdef USE_TX
-  // acquire lock and create a dirty object
-  check_tx_context();
-  xid_t txid = current_transaction()->xid();
+#ifdef USE_TX
+    // acquire lock and create a dirty object
+    check_tx_context();
+    xid_t txid = current_transaction()->xid();
 
-  auto &n = this->node_by_id(src);
+    auto &n = this->node_by_id(src);
 
-  auto relship_id = n.from_rship_list;
-  while (relship_id != UNKNOWN) {
-    auto& relship = rships_->get(relship_id);
-    if (relship.is_locked_by(txid)) {
-      // because the relationship is locked we know that it was already updated
-      // by us and we should look for the dirty object containing the new values
-      assert(relship.has_dirty_versions());
-      if (relship.has_valid_version(txid) && (relship.to_node_id() == dest))
+    auto relship_id = n.from_rship_list;
+    while (relship_id != UNKNOWN) {
+      auto& relship = rships_->get(relship_id);
+      if (relship.is_locked_by(txid)) {
+        // because the relationship is locked we know that it was already updated
+        // by us and we should look for the dirty object containing the new values
+        assert(relship.has_dirty_versions());
+        if (relship.has_valid_version(txid) && (relship.to_node_id() == dest))
+          return delete_relationship(relship_id);
+      }
+      else if (relship.is_valid_for(txid) && (relship.to_node_id() == dest))
         return delete_relationship(relship_id);
-    }
-    else if (relship.is_valid_for(txid) && (relship.to_node_id() == dest))
-      return delete_relationship(relship_id);
 
-    relship_id = relship.next_src_rship;
-  }
+      relship_id = relship.next_src_rship;
+    }
 
 #else
   auto &n = this->node_by_id(src);
