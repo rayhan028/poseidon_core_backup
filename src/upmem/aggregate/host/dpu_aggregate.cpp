@@ -9,64 +9,6 @@
 #include "../common/common.h"
 #include "../common/hash.h"
 
-#define NR_TASKLETS 16
-#define MAX_THREADS 32
-
-uint64_t cpu_cnt_res[MAX_THREADS];
-uint64_t cpu_sum_res[MAX_THREADS];
-double cpu_avg_res[MAX_THREADS];
-uint64_t cpu_min_res[MAX_THREADS];
-uint64_t cpu_max_res[MAX_THREADS];
-
-void collect_res(struct aggr_res &res, uint32_t num, uint64_t* cnt_vals,
-                uint64_t* sum_vals, double* avg_vals, uint64_t* min_vals, uint64_t* max_vals) {
-    uint64_t cnt = 0;
-    uint64_t sum = 0;
-    double avg = 0.0;
-    uint64_t min = UNKNOWN;
-    uint64_t max = 0;
-
-    for (uint32_t d = 0; d < num; d++) {
-        #if defined(COUNT) || defined(AVERAGE)
-        cnt += cnt_vals[d];
-        #endif
-
-        #if defined(SUM) || defined(AVERAGE)
-        sum += sum_vals[d];
-        #endif
-
-        #ifdef MINIMUM
-        if (min > min_vals[d]) {
-            min = min_vals[d];
-        }
-        #endif
-
-        #ifdef MAXIMUM
-        if (max < max_vals[d]) {
-            max = max_vals[d];
-        }
-        #endif
-    }
-
-    #if defined(COUNT) || defined(AVERAGE)
-    res.cnt = cnt;
-    #endif
-    #if defined(SUM) || defined(AVERAGE)
-    res.sum = sum;
-    #endif
-    #ifdef AVERAGE
-    if (cnt > 0) {
-        avg = sum / (double)cnt;
-    }
-    res.avg = avg;
-    #endif
-    #ifdef MINIMUM
-    res.min = min;
-    #endif
-    #ifdef MAXIMUM
-    res.max = max;
-    #endif
-}
 
 void validate_aggr(const std::unordered_map<uint32_t, aggr_res> &lhs, const std::unordered_map<uint32_t, aggr_res> &rhs) {
     assert(lhs.size() == rhs.size());
