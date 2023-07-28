@@ -657,6 +657,7 @@ void dpu_aggregate(graph_db_ptr &graph, uint32_t num_of_dpus, std::string dpu_bi
                 auto &partitions = dpu_to_assigned_parts[dpuid];
                 uint32_t num_parts = partitions.size() / 2; /* for each partition, we store the partition's index and size consecutively */
                 uint32_t partition_sizes[num_parts];
+                uint32_t num_parts_aligned = (num_parts % 2 == 0) ? num_parts : (num_parts + 1);
 
                 /* transfer the partitions */
                 for (uint32_t j = 0; j < partitions.size(); j += 2) {
@@ -664,12 +665,12 @@ void dpu_aggregate(graph_db_ptr &graph, uint32_t num_of_dpus, std::string dpu_bi
                     uint32_t part_size = partitions[j + 1];
                     partition_sizes[i++] = part_size;
                     /* TODO: 1) scatter gather xfer, 2) skip data transpose for byte interleaving */
-                    DPU_ASSERT(dpu_copy_to(dpu, DPU_MRAM_HEAP_POINTER_NAME, sizeof(uint32_t) * num_parts + ELEM_SIZE * part_offs, /* we store partition sizes at the beginning of MRAM */
+                    DPU_ASSERT(dpu_copy_to(dpu, DPU_MRAM_HEAP_POINTER_NAME, sizeof(uint32_t) * num_parts_aligned + ELEM_SIZE * part_offs, /* we store partition sizes at the beginning of MRAM */
                                            &global_part_buffer[global_prefix_sum[p][0]], ELEM_SIZE * part_size));
                     part_offs += part_size;
                 }
                 /* send the sizes of the partitions */
-                DPU_ASSERT(dpu_copy_to(dpu, DPU_MRAM_HEAP_POINTER_NAME, 0, partition_sizes, sizeof(uint32_t) * num_parts));
+                DPU_ASSERT(dpu_copy_to(dpu, DPU_MRAM_HEAP_POINTER_NAME, 0, partition_sizes, sizeof(uint32_t) * num_parts_aligned));
                 htable_offsets[dpuid] = part_offs;
                 num_partitions[dpuid] = num_parts;
             }
@@ -703,8 +704,9 @@ void dpu_aggregate(graph_db_ptr &graph, uint32_t num_of_dpus, std::string dpu_bi
             t.start("DPU to CPU transfer (hash tables of global partitions)");
             DPU_FOREACH(dpu_set, dpu, dpuid) {
                 hash_tables[dpuid] = (htable_entry*) malloc(HASH_TABLE_SIZE * num_partitions[dpuid]);
+                uint32_t num_parts_aligned = (num_partitions[dpuid] % 2 == 0) ? num_partitions[dpuid] : (num_partitions[dpuid] + 1);
                 /* TODO: 1) scatter gather xfer, 2) skip data transpose for byte interleaving */
-                DPU_ASSERT(dpu_copy_from(dpu, DPU_MRAM_HEAP_POINTER_NAME, sizeof(uint32_t) * num_partitions[dpuid] + ELEM_SIZE * htable_offsets[dpuid],
+                DPU_ASSERT(dpu_copy_from(dpu, DPU_MRAM_HEAP_POINTER_NAME, sizeof(uint32_t) * num_parts_aligned + ELEM_SIZE * htable_offsets[dpuid],
                                          hash_tables[dpuid], sizeof(htable_entry) * num_partitions[dpuid] * NR_HASH_TABLE_ENTRIES));
             }
             t.stop();

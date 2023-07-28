@@ -60,7 +60,7 @@ int aggregation() {
 
         /* get partition sizes from MRAM */
         wr_partition_sizes = (uint32_t*) mem_alloc(dpu_parameters.num_partitions * sizeof(uint32_t));
-        mram_read((__mram_ptr void const*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[0], wr_partition_sizes, dpu_parameters.num_partitions * sizeof(uint32_t));
+        mram_read((__mram_ptr void const*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[0], wr_partition_sizes, dpu_parameters.num_partitions * sizeof(uint32_t)); /* TODO: increase data size for improved bandwidth utilization */
 
         mr_htable_offs = 0;
         for (uint32_t p = 0; p < dpu_parameters.num_partitions; p++) {
@@ -74,7 +74,11 @@ int aggregation() {
 
     /* group and compute aggregation for each partition */
     uint32_t part_offs = 0;
-    mrnode* mr_elems = (mrnode*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[dpu_parameters.num_partitions];
+    uint32_t num_parts_aligned = (dpu_parameters.num_partitions % 2 == 0) ?
+                                 dpu_parameters.num_partitions :
+                                 (dpu_parameters.num_partitions + 1);
+
+    mrnode* mr_elems = (mrnode*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[num_parts_aligned];
     mrnode* wr_elems = (mrnode*) mem_alloc(NR_WR_ELEMS_PER_TASKLET_AGGREGATION * ELEM_SIZE);
 
     for (uint32_t partition = 0; partition < dpu_parameters.num_partitions; partition++) {
