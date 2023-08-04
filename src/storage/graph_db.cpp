@@ -113,11 +113,7 @@ graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : d
   index_map_ = p_make_ptr<index_map>();
   restore_indexes(pool_path, db_name);
 #endif
-#ifdef QOP_RECOVERY
-  recovery_results_ = p_make_ptr<recovery_list>();
-  recovery_res_ = p_make_ptr<rec_map_t>();
-#endif
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
   delta_store_ = p_make_ptr<delta_store>();
 #endif
   active_tx_ = new std::map<xid_t, transaction_ptr>();
@@ -135,9 +131,7 @@ graph_db::~graph_db() {
   delete m_;
   delete garbage_;
   delete gcm_;
-#ifdef USE_TX
   current_transaction_.reset();
-#endif
   close_files();
 }
 
@@ -170,10 +164,6 @@ void graph_db::runtime_initialize() {
   spdlog::info("graph_db::runtime_initialize()");
   nodes_->runtime_initialize();
   rships_->runtime_initialize();
-#ifdef QOP_RECOVERY
-  recovery_results_->runtime_initialize();
-  recovery_res_->runtime_initialize();
-#endif
   // make sure the dictionary is initialized
   // dict_->initialize();
 
@@ -182,7 +172,7 @@ void graph_db::runtime_initialize() {
   apply_log();
 #endif
 
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
   delta_store_->initialize();
 #endif
   // recreate volatile objects: active_tx_ table and mutex
@@ -209,11 +199,9 @@ void graph_db::begin_transaction() {
 #ifdef USE_LOGGING
   walog_->transaction_begin(tx->xid());  
 #endif
-#ifdef USE_TX
   std::lock_guard<std::mutex> guard(*m_);
   active_tx_->insert({tx->xid(), tx});
   // spdlog::info("begin transaction {}", tx->xid());
-#endif
 }
 
 void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
@@ -505,7 +493,6 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 }
 
 bool graph_db::commit_transaction() {
-#ifdef USE_TX
   check_tx_context();
   auto tx = current_transaction();
   auto xid = tx->xid();
@@ -612,12 +599,11 @@ bool graph_db::commit_transaction() {
 
   current_transaction_.reset();
   vacuum(xid);
-#endif
+
   return true;
 }
 
 bool graph_db::abort_transaction() {
-#ifdef USE_TX
   if (!current_transaction_)
     return false;
 
@@ -667,7 +653,7 @@ bool graph_db::abort_transaction() {
 #endif
 
   current_transaction_.reset();
-#endif
+
   return true;
 }
 
@@ -713,12 +699,9 @@ void graph_db::print_stats() {
 
 node::id_t graph_db::add_node(const std::string &label,
                               const properties_t &props, bool append_only) {
-#ifdef USE_TX
   check_tx_context();
   xid_t txid = current_transaction()->xid();
-#else
-  xid_t txid = 0;
-#endif
+
   auto type_code = dict_->lookup_string(label);
   if (type_code == 0) {
     type_code = dict_->insert(label);
@@ -743,7 +726,6 @@ node::id_t graph_db::add_node(const std::string &label,
   // we need the node object not only the id
   auto &n = nodes_->get(node_id);
 
-#ifdef USE_TX
   // handle properties
   const auto dirty_list = node_properties_->build_dirty_property_list(props, dict_);
   const auto &dv = n.add_dirty_version(
@@ -751,17 +733,8 @@ node::id_t graph_db::add_node(const std::string &label,
   dv->elem_.set_dirty();
 
   current_transaction()->add_dirty_node(node_id);
-#else
-  // save properties
-  if (!props.empty()) {
-    property_set::id_t pid =
-        append_only ? node_properties_->append_properties(node_id, props, dict_)
-                    : node_properties_->add_properties(node_id, props, dict_);
-    n.property_list = pid;
-  }
-#endif
 
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
 #ifdef DIFF_DELTA
   current_transaction()->add_inserted_node(node_id);
 #elif defined ADJ_DELTA
@@ -777,16 +750,10 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
                                               const std::string &label,
                                               const properties_t &props,
                                               bool append_only) {
-#ifdef USE_TX
   check_tx_context();
   xid_t txid = current_transaction()->xid();
   auto &from_node = node_by_id(from_id);
   auto &to_node = node_by_id(to_id);
-#else
-  xid_t txid = 0;
-  auto &from_node = nodes_->get(from_id);
-  auto &to_node = nodes_->get(to_id);
-#endif
   auto type_code = dict_->insert(label);
   // create and append a log_ins_record BEFORE the rship table is modified
 #ifdef USE_PMDK
@@ -802,7 +769,6 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
           : rships_->insert(relationship(type_code, from_id, to_id), txid, UNDO_CB);
   auto &r = rships_->get(rid);
 
-#ifdef USE_TX
   const auto dirty_list = rship_properties_->build_dirty_property_list(props, dict_);
   const auto &rv = r.add_dirty_version(
       std::make_unique<dirty_rship>(r, dirty_list, false /* insert */));
@@ -810,37 +776,10 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
 
   current_transaction()->add_dirty_relationship(rid);
 
-#else
-  // save properties
-  if (!props.empty()) {
-    property_set::id_t pid =
-        append_only
-            ? rship_properties_->append_properties(rid, props, dict_)
-            : rship_properties_->add_properties(rid, props, dict_);
-    r.property_list = pid;
-  }
-#endif
-#ifdef USE_TX
   update_from_node(current_transaction(), from_node, r);
   update_to_node(current_transaction(), to_node, r);
-#else
-  // update the list of relationships for each of both nodes
-  if (from_node.from_rship_list == UNKNOWN)
-    from_node.from_rship_list = rid;
-  else {
-    r.next_src_rship = from_node.from_rship_list;
-    from_node.from_rship_list = rid;
-  }
 
-  if (to_node.to_rship_list == UNKNOWN)
-    to_node.to_rship_list = rid;
-  else {
-    r.next_dest_rship = to_node.to_rship_list;
-    to_node.to_rship_list = rid;
-  }
-#endif
-
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
 #ifdef DIFF_DELTA
   auto weight = delta_store_->weight_func_(rv->elem_);
   current_transaction()->add_inserted_neighbour(from_id, to_id, weight);
@@ -913,7 +852,6 @@ relationship &graph_db::get_valid_rship_version(relationship &r, xid_t xid) {
 }
 
 node &graph_db::node_by_id(node::id_t id) {
-#ifdef USE_TX
   check_tx_context();
   auto xid = current_transaction()->xid();
   /// spdlog::info("[{}] try to fetch node #{}", xid, id);
@@ -921,29 +859,21 @@ node &graph_db::node_by_id(node::id_t id) {
   n.prepare();
   n.set_rts(xid);
   return get_valid_node_version(n, xid);
-#else
-  return nodes_->get(id);
-#endif
 }
 
 relationship &graph_db::rship_by_id(relationship::id_t id) {
-#ifdef USE_TX
   check_tx_context();
   auto xid = current_transaction()->xid();
   auto &r = rships_->get(id);
   r.prepare();
   r.set_rts(xid);
   return get_valid_rship_version(r, xid);
-#else
-  return rships_->get(id);
-#endif
 }
 
 node_description graph_db::get_node_description(node::id_t nid) {
   std::string label;
   properties_t props;
   auto& n = node_by_id(nid);
-#ifdef USE_TX
   auto xid = current_transaction()->xid();
   // spdlog::info("get_node_description @{}", (unsigned long)&n);
   if (!n.has_dirty_versions()) {
@@ -981,10 +911,6 @@ node_description graph_db::get_node_description(node::id_t nid) {
       label = dict_->lookup_code(dn->elem_.node_label);
     }
   }
-#else
-  props = node_properties_->all_properties(n.property_list, dict_);
-  label = dict_->lookup_code(n.node_label);
-#endif
   return node_description{n.id(), label, props};
 }
 
@@ -992,7 +918,6 @@ rship_description graph_db::get_rship_description(relationship::id_t rid) {
   std::string label;
   properties_t props;
   auto& r = rship_by_id(rid);
-#ifdef USE_TX
   auto xid = current_transaction()->xid();
   if (!r.has_dirty_versions()) {
    // the simple case: no concurrent transactions are active and
@@ -1017,10 +942,6 @@ rship_description graph_db::get_rship_description(relationship::id_t rid) {
       label = dict_->lookup_code(dr->elem_.rship_label);
     }
   }
-#else
-  props = rship_properties_->all_properties(r.property_list, dict_);
-  label = dict_->lookup_code(r.rship_label);
-#endif
   return rship_description{r.id(), r.from_node_id(), r.to_node_id(),
                            label, props};
 }
@@ -1032,7 +953,6 @@ const char *graph_db::get_relationship_label(const relationship &r) {
 void graph_db::update_node(node &n, const properties_t &props,
                            const std::string &label) {
   auto lc = label.empty() ? 0 : dict_->insert(label);
-#ifdef USE_TX
   // acquire lock and create a dirty object
   check_tx_context();
   xid_t txid = current_transaction()->xid();
@@ -1081,16 +1001,6 @@ void graph_db::update_node(node &n, const properties_t &props,
 
     current_transaction()->add_dirty_node(n.id());
   }
-#else
-  if (lc > 0)
-    n.node_label = lc;
-  auto rid =
-      node_properties_->update_properties(n.id(), n.property_list, props, dict_);
-  if (rid != n.property_list) {
-    auto &n2 = nodes_->get(n.id());
-    n2.property_list = rid;
-  }
-#endif
 }
 
 void graph_db::update_from_node(transaction_ptr tx, node &n, relationship& r) {
@@ -1206,7 +1116,6 @@ void graph_db::update_to_node(transaction_ptr tx, node &n, relationship& r) {
 void graph_db::update_relationship(relationship &r, const properties_t &props,
                                    const std::string &label) {
   auto lc = label.empty() ? 0 : dict_->insert(label);
-#ifdef USE_TX
   // acquire lock and create a dirty object
   check_tx_context();
   xid_t txid = current_transaction()->xid();
@@ -1255,20 +1164,9 @@ void graph_db::update_relationship(relationship &r, const properties_t &props,
 
   current_transaction()->add_dirty_relationship(r.id());
   }
-#else
-  if (lc > 0)
-    r.rship_label = lc;
-  auto rid =
-      rship_properties_->update_properties(r.id(), r.property_list, props, dict_);
-  if (rid != r.property_list) {
-    auto &r2 = rships_->get(r.id());
-    r2.property_list = rid;
-  }
-#endif
 }
 
 void graph_db::delete_node(node::id_t id) {
- #ifdef USE_TX
   // acquire lock and create a dirty object
   check_tx_context();
   xid_t txid = current_transaction()->xid();
@@ -1312,21 +1210,8 @@ void graph_db::delete_node(node::id_t id) {
 
   current_transaction()->add_dirty_node(n.id());
   // spdlog::info("delete_node: {}", n.id());
-#else
-  auto &n = this->node_by_id(id);
-  if (n.from_rship_list != UNKNOWN || n.to_rship_list != UNKNOWN) {
-    // in this case we have to abort
-    spdlog::info("abort delete of node #{}", n.id());
-    throw orphaned_relationship();
-  }
 
-  // delete the node properties
-  node_properties_->remove_properties(n.property_list);
-  // delete the node object
-  nodes_->remove(id);
-#endif
-
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
 #ifdef DIFF_DELTA
   current_transaction()->add_deleted_node(id);
 #elif defined ADJ_DELTA
@@ -1338,7 +1223,6 @@ void graph_db::delete_node(node::id_t id) {
 
 void graph_db::detach_delete_node(node::id_t id) {
   spdlog::info("try to detach_delete_node: {}", id);
-#ifdef USE_TX
   // acquire lock and create a dirty object
   check_tx_context();
   xid_t txid = current_transaction()->xid();
@@ -1414,33 +1298,8 @@ void graph_db::detach_delete_node(node::id_t id) {
 
   current_transaction()->add_dirty_node(n.id());
 
-#else
-  auto &n = this->node_by_id(id);
 
-  // we collect the ids of all relationships in which n is involved
-  std::list<relationship::id_t> rships;
-  auto relship_id = n.from_rship_list;
-  while (relship_id != UNKNOWN) {
-    rships.push_back(relship_id);
-    auto& relship = rships_->get(relship_id);
-    relship_id = relship.next_src_rship;
-  }
-  relship_id = n.to_rship_list;
-  while (relship_id != UNKNOWN) {
-    rships.push_back(relship_id);
-    auto& relship = rships_->get(relship_id);
-    relship_id = relship.next_dest_rship;
-  }
-
-  for (auto& r : rships) {
-    spdlog::info("detach_delete_node => delete rship: {}", r);
-    delete_relationship(r);
-  }
-  node_properties_->remove_properties(n.property_list);
-  nodes_->remove(id);
-#endif
-
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
 #ifdef DIFF_DELTA
   current_transaction()->add_deleted_node(id);
 #elif defined ADJ_DELTA
@@ -1451,7 +1310,6 @@ void graph_db::detach_delete_node(node::id_t id) {
 }
 
 void graph_db::delete_relationship(node::id_t src, node::id_t dest) {
-#ifdef USE_TX
     // acquire lock and create a dirty object
     check_tx_context();
     xid_t txid = current_transaction()->xid();
@@ -1474,21 +1332,9 @@ void graph_db::delete_relationship(node::id_t src, node::id_t dest) {
       relship_id = relship.next_src_rship;
     }
 
-#else
-  auto &n = this->node_by_id(src);
-
-  auto relship_id = n.from_rship_list;
-  while (relship_id != UNKNOWN) {
-    auto& relship = rships_->get(relship_id);
-    if (relship.to_node_id() == dest)
-      return delete_relationship(relship_id);
-    relship_id = relship.next_src_rship;
-  }
-#endif
 }
 
 void graph_db::delete_relationship(relationship::id_t id) {
- #ifdef USE_TX
   // acquire lock and create a dirty object
   check_tx_context();
   xid_t txid = current_transaction()->xid();
@@ -1525,17 +1371,8 @@ void graph_db::delete_relationship(relationship::id_t id) {
   newv->elem_.set_dirty();
 
   current_transaction()->add_dirty_relationship(r.id());
-#else
-  auto &r = this->rship_by_id(id);
 
-  // delete the relationship properties
-  rship_properties_->remove_properties(r.property_list);
-
-  // delete the relationship object
-  rships_->remove(id);
-#endif
-
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
 #ifdef DIFF_DELTA
   auto from_id = newv->elem_.from_node_id();
   auto to_id = newv->elem_.to_node_id();

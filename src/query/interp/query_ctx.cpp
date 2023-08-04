@@ -30,18 +30,11 @@ void scan_task::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, st
     }
     auto iter = gdb->get_nodes()->range(first, last);
     while (iter) {
-#ifdef USE_TX
 	    auto &n = *iter;
 	    if (n.is_valid()) {
 	      auto &nv = gdb->get_valid_node_version(n, xid);
 		    consumer(nv);
-#ifdef QOP_RECOVERY
-        gdb->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
-#endif
 	  }
-#else
-	  consumer_(*iter);
-#endif
 	  ++iter;
   }
 }
@@ -68,20 +61,12 @@ void scan_task_with_label::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_
     }
     auto iter = gdb->get_nodes()->range(first, last);
     while (iter) {
-#ifdef USE_TX
 	    auto &n = *iter;
 	    if (n.is_valid()) {
 	      auto &nv = gdb->get_valid_node_version(n, xid);
         if (nv.node_label == label)
   		    consumer(nv);
-#ifdef QOP_RECOVERY
-        gdb->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
-#endif
 	  }
-#else
-    if (iter->node_label == label_)
-	    consumer_(*iter);
-#endif
 	  ++iter;
   }
 }
@@ -100,25 +85,18 @@ query_ctx::~query_ctx() {
  
 void query_ctx::_nodes_by_label(graph_db *gdb, const std::string &label,
                               node_consumer_func consumer) {
-#ifdef USE_TX
   check_tx_context();
   xid_t txid = current_transaction()->xid();
-#endif
   auto lc = gdb->dict_->lookup_string(label);
   // spdlog::info("_nodes_by_label: '{}' -> {}", label, lc);
   for (auto &n : gdb->nodes_->as_vec()) {
 
-#ifdef USE_TX
     if (n.is_valid()) {
       auto &nv = gdb->get_valid_node_version(n, txid);
       if (nv.node_label == lc) {
         consumer(nv);
       }
     }
-#else
-    if (n.node_label == lc)
-      consumer(n);
-#endif
   }
 }
 
@@ -129,15 +107,14 @@ void query_ctx::nodes_by_label(const std::string &label,
 
 void query_ctx::nodes_by_label(const std::vector<std::string> &labels,
                               node_consumer_func consumer) {
-#ifdef USE_TX
   check_tx_context();
   xid_t txid = current_transaction()->xid();
-#endif
+
   std::vector<dcode_t> codes(labels.size());
   for (auto i = 0u; i < labels.size(); i++) 
     codes[i] = gdb_->dict_->lookup_string(labels[i]);
   for (auto &n : gdb_->nodes_->as_vec()) {
-#ifdef USE_TX
+
     if (n.is_valid()) {
       auto &nv = gdb_->get_valid_node_version(n, txid);
       for (auto &lc : codes) {
@@ -147,21 +124,11 @@ void query_ctx::nodes_by_label(const std::vector<std::string> &labels,
         }
       }
     }
-#else
-    for (auto &lc : codes) {
-      if (n.node_label == lc) {
-        consumer(n);
-        break;
-      }
-    }
-#endif
   }
 }
 
 void query_ctx::parallel_nodes(node_consumer_func consumer) {
-#ifdef USE_TX
   check_tx_context();
-#endif
   std::vector<std::future<void>> res;
   thread_pool pool;
 
@@ -185,9 +152,7 @@ void query_ctx::parallel_nodes(node_consumer_func consumer) {
 }
 
 void query_ctx::parallel_nodes(const std::string &label, node_consumer_func consumer) {
-#ifdef USE_TX
   check_tx_context();
-#endif
   std::vector<std::future<void>> res;
   thread_pool pool;
   auto lc = gdb_->dict_->lookup_string(label);
@@ -211,41 +176,11 @@ void query_ctx::parallel_nodes(const std::string &label, node_consumer_func cons
   }
 }
 
-#ifdef QOP_RECOVERY
-void query_ctx::parallel_nodes(node_consumer_func consumer, std::map<std::size_t, std::vector<std::size_t>> &range_map) {
-#ifdef USE_TX
-  check_tx_context();
-#endif
-  const int nchunks = 25;
-  spdlog::debug("Start parallel query with {} threads",
-                range_map.size());
-
-  std::vector<std::future<void>> res;
-  res.reserve(range_map.size());
-  thread_pool pool;
-
-  for(auto & r : range_map) {
-    auto start = r.second.front();
-    auto end = r.second.back();
-    res.push_back(pool.submit(
-        scan_task(this, *nodes_, start, end, consumer, current_transaction_)));
-  }
-  
-  // std::cout << "waiting ..." << std::endl;
-  for (auto &f : res) {
-    f.get();
-  }
-}
-#endif 
-
 void query_ctx::nodes(node_consumer_func consumer) {
-#ifdef USE_TX
   check_tx_context();
   xid_t txid = current_transaction()->xid();
-#endif
 
   for (auto &n : gdb_->nodes_->as_vec()) {
-#ifdef USE_TX
     // spdlog::info("#{} ===> {},{} | {}", n.id(), short_ts(n.bts), short_ts(n.cts), short_ts(txid));
     if (n.is_valid()) {
       try {
@@ -253,9 +188,6 @@ void query_ctx::nodes(node_consumer_func consumer) {
         consumer(nv);
       } catch (unknown_id& exc) { /* ignore */ }
     }
-#else
-    consumer(n);
-#endif
   }
 }
 
@@ -270,21 +202,14 @@ void query_ctx::nodes_where(const std::string &pkey, p_item::predicate_func pred
 
 void query_ctx::relationships_by_label(const std::string &label,
                                       rship_consumer_func consumer) {
-#ifdef USE_TX
   check_tx_context();
   xid_t txid = current_transaction()->xid();
-#endif
 
   auto lc = gdb_->dict_->lookup_string(label);
   for (auto &r : gdb_->rships_->as_vec()) {
-#ifdef USE_TX
     auto &rv = gdb_->get_valid_rship_version(r, txid);
     if (rv.rship_label == lc)
       consumer(rv);
-#else
-    if (r.rship_label == lc)
-      consumer(r);
-#endif
   }
 }
 

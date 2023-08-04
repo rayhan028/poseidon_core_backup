@@ -244,10 +244,6 @@ p_jit::p_jit(ExitOnError ExitOnErr)
                 pointerToJITTargetAddress(&end_notify), JITSymbolFlags::Exported);
         M[Mangle("node_to_description")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&node_to_description), JITSymbolFlags::Exported);
-#ifdef QOP_RECOVERY
-        M[Mangle("persist_tuple")] = JITEvaluatedSymbol(
-                pointerToJITTargetAddress(&persist_tuple), JITSymbolFlags::Exported);
-#endif
         M[Mangle("print_int")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&print_int), JITSymbolFlags::Exported);
 

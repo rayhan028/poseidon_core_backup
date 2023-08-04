@@ -29,7 +29,7 @@
 
 
 void graph_db::poseidon_to_csr(csr_arrays &csr, rship_weight weight_func, bool bidirectional) {
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
   if (delta_store_->delta_mode_) {
     // we use weight_func and bidirectional as per the delta store
     #ifdef USE_GUNROCK
@@ -105,7 +105,7 @@ void graph_db::host_csr_build(csr_arrays &csr, rship_weight weight_func, bool bi
     }
     row_offsets.push_back(edges);
   }
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
   delta_store_->last_txn_id_ = txid; // update id of the last transaction that made a CSR update
   delta_store_->last_node_id_ = row_offsets.size() - 2; // update last node id in the CSR
 
@@ -182,7 +182,7 @@ void graph_db::parallel_host_csr_build(csr_arrays &csr, rship_weight weight_func
     row_offsets.push_back(total_edges);
     nid++;
   }
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
   auto txid = current_transaction()->xid();
   delta_store_->last_txn_id_ = txid; // update id of the last transaction that made a CSR update
   delta_store_->last_node_id_ = row_offsets.size() - 2; // update last node id in the CSR
@@ -214,7 +214,7 @@ void graph_db::parallel_host_csr_build(csr_arrays &csr, rship_weight weight_func
 #endif
 }
 
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
 void graph_db::host_csr_update_with_delta(csr_arrays &csr) {
   auto tx = current_transaction();
   if (!tx)

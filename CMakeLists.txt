@@ -12,13 +12,11 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         ON)
-option(USE_TX           "Provide Transaction Support"            ON)
 option(USE_LOGGING      "Use logging for failure atomicity"      ON)
 option(USE_LLVM         "Use LLVM for query compilation"         ON)
 option(USE_IN_MEMORY    "Use only in-memory storage"             OFF)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
-option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
 option(CSR_DELTA        "Use delta store for updating CSR"       OFF)
 option(USE_UPMEM        "Use UPMEM SDK for PIM"                  OFF)
@@ -97,11 +95,6 @@ if(USE_PMDK MATCHES ON AND USE_IN_MEMORY MATCHES OFF)
   include(pmdk)
 endif()
 
-# Transaction support
-if(USE_TX MATCHES ON)
-  add_definitions( "-DUSE_TX" )
-endif()
-
 if(USE_LOGGING MATCHES ON)
   add_definitions( "-DUSE_LOGGING" )
 endif()
@@ -116,10 +109,6 @@ endif()
 
 if(USE_IN_MEMORY MATCHES ON)
   add_definitions( "-DUSE_IN_MEMORY" )
-endif()
-
-if(QOP_RECOVERY MATCHES ON)
-  add_definitions( "-DQOP_RECOVERY" )
 endif()
 
 if(CSR_DELTA MATCHES ON)
@@ -422,12 +411,6 @@ else()
   set(llvm_src "")
 endif()
 
-if(QOP_RECOVERY MATCHES ON)
-  set(qoprec_src src/storage/recovery.cpp)
-else()
-  set(qoprec_src "")
-endif()
-
 if(CSR_DELTA MATCHES ON)
   set(csr_delta_src src/storage/csr_delta.cpp)
 else()
@@ -442,7 +425,6 @@ set(src_files
   src/storage/nodes.cpp
   src/storage/relationships.cpp
   src/storage/properties.cpp
-  ${qoprec_src}
   src/storage/graph_db.cpp
   src/storage/graph_db_import.cpp
   src/storage/graph_db_index.cpp

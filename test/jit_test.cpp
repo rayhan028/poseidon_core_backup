@@ -66,9 +66,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 #endif
   query_ctx ctx(graph);
 
-#ifdef USE_TX
   ctx.begin_transaction();
-#endif
 
   int num_persons = 100;
   int num_books = 42;
@@ -94,9 +92,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
     graph->add_relationship(i, b, ":HAS_READ", {});
   }
 
-#ifdef USE_TX
   ctx.commit_transaction();
-#endif
   
     SECTION("Scan all nodes for given label") {
         qcompiler queryEngine(ctx);
@@ -370,9 +366,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 #endif
   query_ctx ctx(graph);
 
-#ifdef USE_TX
   ctx.begin_transaction();
-#endif
 
   int num_persons = 100;
   int num_books = 42;
@@ -397,9 +391,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
       graph->add_relationship(p, b, ":HAS_READ", {});
     }
   }
-#ifdef USE_TX
   ctx.commit_transaction();
-#endif
 
 	// auto chunks = graph->get_nodes()->num_chunks(); 
   
@@ -829,9 +821,7 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
   auto graph = pool->create_graph("my_graph");
 #endif
 
-#ifdef USE_TX
   graph->begin_transaction();
-#endif
 
   auto num_towns = 42u;
   
@@ -857,9 +847,8 @@ TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVaria
         graph->add_relationship(t3, t2, ":CONNECTED", {});
   }
 
-#ifdef USE_TX
   graph->commit_transaction();
-#endif
+
   graph->dump_dot("towns.dot");
 
 	auto chunks = graph->get_nodes()->num_chunks();

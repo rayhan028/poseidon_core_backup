@@ -49,15 +49,13 @@ void transaction::add_dirty_relationship(offset_t id) {
 }
 
 void check_tx_context() {
-#ifdef USE_TX
   if (!current_transaction_)
     throw out_of_transaction_scope();
-#endif
 }
 
 transaction_ptr current_transaction() { return current_transaction_; }
 
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
 #ifdef DIFF_DELTA
   void transaction::add_deleted_node(offset_t nid) {
     delta_ids_.deleted_nodes_.push_back(nid);

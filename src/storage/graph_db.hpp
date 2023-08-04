@@ -30,10 +30,7 @@
 #include "nodes.hpp"
 #include "properties.hpp"
 #include "relationships.hpp"
-#ifdef QOP_RECOVERY
-#include <libpmemobj++/container/concurrent_hash_map.hpp>
-#include "recovery.hpp"
-#endif
+
 #include "transaction.hpp"
 #include "btree.hpp"
 #include "index_map.hpp"
@@ -48,7 +45,7 @@
 
 #include "analytics.hpp"
 
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
 #include "csr_delta.hpp"
 #endif
 
@@ -68,12 +65,6 @@ public:
 
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;
-
-#ifdef QOP_RECOVERY
-  using tuple_consumer_func = std::function<void(const qr_tuple &, int)>;
-
-  using rec_map_t = pmem::obj::concurrent_hash_map<p<int>, p<int>>;
-#endif
 
   static void destroy(p_ptr<graph_db> gp);
 
@@ -380,43 +371,6 @@ public:
 
   void index_lookup(std::list<index_id> &idxs, uint64_t key, node_consumer_func consumer);
 
-#ifdef QOP_RECOVERY
-  /**
-   * Return the checkpoints for each touched chunked from the last query
-   */
-  const p_ptr<rec_map_t>& get_query_checkpoints() { return recovery_res_; }
-
-  /**
-   * Stores the tuple of a query into intermediate storage
-   */
-  std::vector<std::size_t> store_query_result(qr_tuple &qr, std::size_t chunk);
-
-  /**
-   * Stores the checkpoint of a chunk into intermediate storage
-   */
-  void store_iter(std::pair<std::size_t, std::size_t> iter_pos);
-
-  /**
-   * Recovers the stored intermediate results into a given list
-   */
-  void restore_results(std::list<qr_tuple> &result_list);
-
-  /**
-   * Returns the checkpoint positions to continue a failed query
-   */
-  std::map<std::size_t, std::size_t> restore_positions();
-
-  const p_ptr<recovery_list>& get_recovery_results() { return recovery_results_; } 
-
-  intermediate_result &ir_by_id(offset_t id);
-  void tuple_by_ids(std::vector<offset_t> ids, qr_tuple &fwd_tpl);
-  int get_stored_results();
-
-  void clear_result_storage();
-  void recover_scan_parallel(tuple_consumer_func consumer);
-  const p_ptr<recovery_list>& get_rec_list() { return recovery_results_; }
-#endif
-
 /* ---------------- Analytics support ---------------- */
 
   /**
@@ -441,7 +395,7 @@ public:
    */
   void parallel_host_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
 
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
   /**
    * Updates the existing CSR using the appropriate deltas in the CSR delta store, such that it 
    * represents the latest snapshot of the graph data.
@@ -450,7 +404,7 @@ public:
 #endif
 #endif
 
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
   /**
    * Returns a reference to the CSR delta store.
    */
@@ -599,11 +553,7 @@ private:
 
   p_ptr<index_map> index_map_; // the list of all exisiting indexes
 
-#ifdef QOP_RECOVERY
-  p_ptr<recovery_list> recovery_results_; // stored intermediate tuples of a query
-  p_ptr<rec_map_t> recovery_res_; // stored checkpoints of the chunks 
-#endif
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
   p_ptr<delta_store> delta_store_; // the CSR delta store
 #endif
   /**

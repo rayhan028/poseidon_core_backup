@@ -289,14 +289,6 @@ auto & tp = tp_m[std::this_thread::get_id()];
     tp.clear();
 }
 }
-#ifdef QOP_RECOVERY
-void persist_tuple(query_ctx *ctx, qr_tuple *qr) {
-#ifdef USE_PMDK
-    ctx->gdb_->store_query_result(*qr, 0);
-#endif
-    qr->clear();
-}
-#endif
 
 qr_tuple *obtain_mat_tuple() {
     //auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());

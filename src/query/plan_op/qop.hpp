@@ -441,18 +441,6 @@ struct limit_result : public qop, std::enable_shared_from_this<limit_result> {
   std::size_t num_, processed_;
 };
 
-#ifdef QOP_RECOVERY
-struct crash_at : public qop {
-  crash_at(std::size_t n) : num_(n), processed_(0) {}
-  ~crash_at() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(query_ctx &ctx, const qr_tuple &v);
-
-  std::size_t num_, processed_;
-};
-#endif
 
 /**
  * nodes_connected appends the relationship object between a source and a
@@ -535,81 +523,6 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
   result_set results_;
   static std::function<bool(const qr_tuple &, const qr_tuple &)> cmp_func_;
 };
-
-#if 0
-/**
- * group_by implements an operator for grouping tuples and optional aggregations
- * like count, sum, average, and percentage count.
- * The grouping keys are query result(s) given by their positions in the query tuple.
- * The aggregate type(s) and aggregate attribute(s) are given
- * as a string-integer pair. The aggregate types above are specified as "count",
- * "sum", "avg" and "pcount" respectively. The integer denotes the position of the
- * aggregate attribute in the tuples of grps. 
- */
-struct group_by : public qop, public std::enable_shared_from_this<group_by> {
-  group_by(const std::vector<std::size_t> &pos);
-  group_by(const std::vector<std::size_t> &pos,
-    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
-  group_by(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
-    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
-  ~group_by() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(query_ctx &ctx, const qr_tuple &v);
-
-  void finish(query_ctx &ctx);
-
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
-    if (has_subscriber())
-      subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
-  std::mutex m_;
-  std::mutex grp_mutex_;
-  std::size_t grpkey_cnt_;
-  std::vector<std::string> grpkey_set_;
-  std::vector<std::size_t> grpkey_pos_;
-  std::unordered_map<std::string, std::size_t> grpkey_map_;
-  std::unordered_map<std::size_t, qr_tuple> grp_tpl_map_;
-  std::vector<std::pair<std::string, std::size_t>> aggrs_;
-  std::unordered_map<std::size_t, std::size_t> grp_size_map_;
-};
-#endif
-
-#ifdef QOP_RECOVERY
-struct persistent_group_by : public qop {
-  persistent_group_by(const std::vector<std::size_t> &pos);
-  persistent_group_by(const std::vector<std::size_t> &pos,
-    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
-  ~persistent_group_by() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(query_ctx &ctx, const qr_tuple &v);
-
-  void finish(query_ctx &ctx);
-
-  std::size_t grpkey_cnt_;
-  std::vector<std::string> grpkey_set_;
-  std::vector<std::size_t> grpkey_pos_;
-  std::unordered_map<std::string, std::size_t> grpkey_map_;
-  std::unordered_map<std::size_t, qr_tuple> grp_tpl_map_;
-  std::vector<std::pair<std::string, std::size_t>> aggrs_;
-  std::unordered_map<std::size_t, std::size_t> grp_size_map_;
-
-  std::map<std::size_t, std::vector<std::size_t>> pgrp_tpl_pos_;
-};
-#endif
 
 /**
  * distinct_tuples implements an operator for outputing distinct
@@ -860,18 +773,6 @@ struct end_pipeline : public qop, public std::enable_shared_from_this<end_pipeli
   std::size_t other_idx_;
 };
 
-#ifdef QOP_RECOVERY
-/**
- * persist is a query operator to persist intermediate results to storage for recovery
- */
-struct persist_result : public qop {
-  persist_result() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(query_ctx &ctx, const qr_tuple &v);
-};
-#endif 
 /**
  * Macro to simplify definition of arguments in project etc.
  * Usage: Instead of requiring to define a lambda expression

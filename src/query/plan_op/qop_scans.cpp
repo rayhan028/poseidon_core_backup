@@ -22,15 +22,7 @@
 
 void scan_nodes::start(query_ctx &ctx) {
   if (label.empty() && labels.empty())
-#ifdef QOP_RECOVERY
-    if(!ranged) {
-#endif
       ctx.parallel_nodes([&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
-#ifdef QOP_RECOVERY
-    } else {
-      ctx.parallel_nodes([&](node &n) { consume_(ctx, {&n}); }, ranges);
-    }
-#endif
   else if (!label.empty())
     // ctx.nodes_by_label(label, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
     ctx.parallel_nodes(label, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
@@ -50,25 +42,6 @@ void scan_nodes::dump(std::ostream &os) const {
   else
     os << "scan_nodes([" << label << "]) - " << PROF_DUMP;
 }
-
-#ifdef QOP_RECOVERY
-/* ------------------------------------------------------------------------ */
-
-void continue_scan_nodes::start(query_ctx &ctx) {
-#ifdef USE_PMDK
-  ctx.continue_parallel_nodes(check_points, [&](node &n) { consume_(ctx, {&n}); });
-#endif
-  qop::default_finish(ctx);
-}
-
-void continue_scan_nodes::dump(std::ostream &os) const {
-  os << "continue_scan_nodes([" << label << "])=>";
-  if (subscriber_)
-    subscriber_->dump(os);
-}
-
-/* ------------------------------------------------------------------------ */
-#endif
 
 void index_scan::start(query_ctx &ctx) {
   if (idxs.empty())

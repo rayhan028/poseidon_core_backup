@@ -49,7 +49,7 @@ uint64_t gunrock_pr_csr(graph_db_ptr gdb, bool bidirectional, pr_result &result,
 
   if (!quiet) { // For performance analysis
     std::cout << "Executed PR using Gunrock with CSR graph representation. \n";
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
     std::cout << "Full CSR build:         " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << "[ms]" << "\n";
 #else
     std::cout << "CSR update with delta:         " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << "[ms]" << "\n";

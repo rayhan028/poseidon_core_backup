@@ -60,34 +60,6 @@ struct scan_nodes : public qop, public std::enable_shared_from_this<scan_nodes> 
   bool ranged;
 };
 
-#ifdef QOP_RECOVERY
-struct continue_scan_nodes : public qop {
-  continue_scan_nodes(std::map<std::size_t, std::size_t> &cp, const std::string &l) : label(l), check_points(cp) {}
-  continue_scan_nodes() = default;
-  ~continue_scan_nodes() = default;
-
-  void dump(std::ostream &os) const override;
-
-  virtual void start(query_ctx &ctx) override;
-
-  std::string label;
-  std::map<std::size_t, std::size_t> check_points;
-};
-
-struct recover_scan : public qop {
-  recover_scan() = default;
-  ~recover_scan() = default;
-
-  void dump(std::ostream &os) const override;
-
-  virtual void start(query_ctx &ctx) override;
-
-  void finish(query_ctx &ctx);
-
-  std::map<int, qr_tuple> tuple_map_;
-};
-#endif
-
 /**
  * index_scan represents a query operator for scanning an index on nodes for
  * a given property key/value. All the matching nodes are then forwarded to the

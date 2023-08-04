@@ -231,10 +231,6 @@ extern "C" relationship* create_rship_func(query_ctx *ctx, char *label, node *n1
  */
  void collect_tuple(query_ctx *ctx, result_set *rs, bool print);
 
-#ifdef QOP_RECOVERY
- void persist_tuple(query_ctx *ctx, qr_tuple *qr);
-#endif
-
 qr_tuple &get_qr_tuple();
 
 /**

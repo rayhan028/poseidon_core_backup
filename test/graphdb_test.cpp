@@ -489,11 +489,9 @@ TEST_CASE("Checking a node update", "[graph_db]") {
 
   node::id_t p1;
 
-#ifdef USE_TX
   {
     // add a new node
     graph->begin_transaction();
-#endif
 
     p1 = graph->add_node(":Person",
                          {{"name", boost::any(std::string("John"))},
@@ -502,14 +500,12 @@ TEST_CASE("Checking a node update", "[graph_db]") {
                           {"dummy2", boost::any(11)},
                           {"dummy3", boost::any(12)},
                           {"city", boost::any(std::string("Berlin"))}});
-#ifdef USE_TX
     graph->commit_transaction();
   }
   {
     REQUIRE_THROWS(check_tx_context());
     // perform an update
     graph->begin_transaction();
-#endif
 
     auto &n1 = graph->node_by_id(p1);
     graph->update_node(n1, {{"name", boost::any(std::string("Anne"))},
@@ -529,7 +525,6 @@ TEST_CASE("Checking a node update", "[graph_db]") {
             get_property<const std::string>(ndescr.properties, "city").value());
     REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
     REQUIRE(get_property<int>(ndescr.properties, "zipcode").value() == 12345);
-#ifdef USE_TX
     graph->commit_transaction();
   }
   {
@@ -553,7 +548,6 @@ TEST_CASE("Checking a node update", "[graph_db]") {
 
     graph->commit_transaction();
   }
-#endif
 
   graph_pool::destroy(pool);
 }
@@ -564,11 +558,9 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
 
   node::id_t p1;
 
-#ifdef USE_TX
   {
     // add a new node
     graph->begin_transaction();
-#endif
 
     p1 = graph->add_node(":Person",
                          {{"name", boost::any(std::string("John"))},
@@ -577,14 +569,12 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
                           {"dummy2", boost::any(11)},
                           {"dummy3", boost::any(12)},
                           {"city", boost::any(std::string("Berlin"))}});
-#ifdef USE_TX
     graph->commit_transaction();
   }
   {
     REQUIRE_THROWS(check_tx_context());
     // perform an update
     graph->begin_transaction();
-#endif
 
     auto &n1 = graph->node_by_id(p1);
     graph->update_node(n1, {{"name", boost::any(std::string("Anne"))},
@@ -626,7 +616,6 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
     REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
     REQUIRE(get_property<int>(ndescr.properties, "zipcode").value() == 12346);
     }
-#ifdef USE_TX
     graph->commit_transaction();
   }
   {
@@ -650,7 +639,6 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
 
     graph->commit_transaction();
   }
-#endif
 
   graph_pool::destroy(pool);
 }
@@ -662,10 +650,8 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
 
   node::id_t p1;
   relationship::id_t r;
-#ifdef USE_TX
   {
     ctx.begin_transaction();
-#endif
 
     // add two nodes and one relationship
     p1 = graph->add_node("Person", {});
@@ -674,14 +660,12 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
         p1, p2, "KNOWS",
         {{"p1", boost::any(std::string("val"))}, {"p2", boost::any(10)}});
 
-#ifdef USE_TX
     ctx.commit_transaction();
   }
   {
     REQUIRE_THROWS(check_tx_context());
     // perform an update
     ctx.begin_transaction();
-#endif
 
     auto &n1 = graph->node_by_id(p1);
     ctx.foreach_from_relationship_of_node(n1, [&](relationship &rel) {
@@ -707,7 +691,6 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
       REQUIRE(get_property<int>(reldesc.properties, "p3").value() == 30);
     });
 
-#ifdef USE_TX
     ctx.commit_transaction();
   }
   {
@@ -732,7 +715,6 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
 
     ctx.commit_transaction();
   }
-#endif
 
   graph_pool::destroy(pool);
 }

@@ -253,34 +253,6 @@ public:
    */
   query_builder &finish();
 
-#ifdef QOP_RECOVERY
-  /**
-   * Add an operator for recovering stored intermediate results 
-   * and pushing them to the query pipeline.
-   */
-  query_builder &recover_results();
-
-  /**
-   * Perists intermediate tuple results
-   */
-  query_builder &persist();
-
-  /**
-   * Add an operator to continue a sequential scan starting from given checkpoint positions
-   */
-  query_builder &continue_scan(std::map<std::size_t, std::size_t> &cp, const std::string &label = "");
-
-  /**
-   * Add an operator to group query tuples where the intermediate results stored in PMem
-   */
-  query_builder &pgroupby(const std::vector<std::size_t> &pos,
-    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
-
-  /**
-   * Add an operator to intentionally crash a query after a certain tuple count
-   */
-  query_builder &crash(std::size_t n);
-#endif 
   /**
    * Add an operator for constructing the cartesian product of the query tuples 
    * of the left and right query pipelines.

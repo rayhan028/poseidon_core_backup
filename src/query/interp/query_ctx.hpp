@@ -94,13 +94,6 @@ struct query_ctx {
 
   void parallel_nodes(const std::string &label, node_consumer_func consumer);
 
-#ifdef QOP_RECOVERY
-  /**
-   * Continues the scan from the given positions (checkpoints) and invokes the given consumer function for each node.
-   */
-  void parallel_nodes(node_consumer_func consumer, std::map<std::size_t, std::vector<std::size_t>> &range_map);
-  void continue_parallel_nodes(std::map<std::size_t, std::size_t> &check_points, node_consumer_func consumer);
-#endif
   /**
    * Scans all nodes which satisfy the given predicate on the property with
    * label pkey and invokes for each of these nodes the consumer function.
