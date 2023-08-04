@@ -13,7 +13,7 @@ endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         ON)
 option(USE_TX           "Provide Transaction Support"            ON)
-option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
+option(USE_LOGGING      "Use logging for failure atomicity"      ON)
 option(USE_LLVM         "Use LLVM for query compilation"         ON)
 option(USE_IN_MEMORY    "Use only in-memory storage"             OFF)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
@@ -437,7 +437,7 @@ endif()
 set(src_files 
   src/dict/string_pool.cpp 
   src/dict/paged_string_pool.cpp 
-  src/dict/h2table.cpp
+  src/dict/code_table.cpp
   src/dict/dict.cpp
   src/storage/nodes.cpp
   src/storage/relationships.cpp
@@ -585,10 +585,19 @@ add_executable(qlc
   Boost::program_options
 )
 
+add_executable(wal_dump
+  src/cmds/wal_dump.cpp
+)
+
+target_link_libraries(wal_dump
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
 add_executable(csv_loader
   src/cmds/csv_loader.cpp
  )
-
  target_link_libraries(csv_loader
  poseidon_core
  ${PMDK_LIBRARIES}

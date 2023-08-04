@@ -345,7 +345,7 @@ public:
   /**
    * Perform recovery using the undo log.
    */ 
-  void apply_undo_log();
+  void apply_log();
 
   /* ---------------- index management ---------------- */
   
@@ -558,6 +558,12 @@ private:
    * 
    */
   void restore_indexes(const std::string &pool_path, const std::string &prefix);
+
+#if defined(USE_LOGGING) && !defined(USE_PMDK)
+  void apply_redo(wa_log& log, wa_log::log_iter& li);
+
+  void apply_undo(wa_log& log, xid_t txid, offset_t pos);
+#endif
 
   std::string database_name_; //
   bufferpool bpool_; //

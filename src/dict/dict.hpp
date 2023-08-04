@@ -32,7 +32,7 @@
 #include "paged_string_pool.hpp"
 #endif
 
-#include "h2table.hpp"
+#include "code_table.hpp"
 
 /**
  * This class implements an (updatable) string dictionary. Strings are stored in
@@ -120,7 +120,7 @@ private:
     std::shared_ptr<paged_file> dict_file_;
     std::shared_ptr<paged_string_pool> pool_;  // the string pool for storing the actual strings
 #endif
-    h2table *table_;  		             // the hash table for mapping codes to strings
+    code_table *table_;  		             // the hash table for mapping codes to strings
     mutable std::shared_mutex m_;        // a mutex for synchronizing access to the dictionary
 };
 

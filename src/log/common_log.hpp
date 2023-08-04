@@ -30,7 +30,7 @@ enum log_entry_type { log_tx = 1, log_insert = 2, log_update = 3, log_delete = 4
  * The different objects (nodes, relationships, property_set) represented
  * by the log entries.
  */
-enum log_object_type { log_none = 1, log_node = 2, log_rship = 3, log_property = 4 };
+enum log_object_type { log_none = 1, log_node = 2, log_rship = 3, log_property = 4, log_dict = 5 };
 
 enum log_tx_type { log_bot = 1, log_commit = 2, log_abort = 3 };
 

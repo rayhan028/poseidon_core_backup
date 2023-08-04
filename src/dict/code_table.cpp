@@ -20,7 +20,7 @@
 #include <functional>
 #include <math.h>
 #include <set>
-#include "h2table.hpp"
+#include "code_table.hpp"
 #if defined(USE_PMDK) || defined(USE_IN_MEMORY)
 #include "string_pool.hpp"
 #else
@@ -28,28 +28,28 @@
 #endif
 #include "spdlog/spdlog.h"
 
-void h2table::rebuild() {
-    spdlog::debug("rebuild dictionary...");
-    pool_->scan([this](const char *s, dcode_t c) {
+void code_table::rebuild() {
+    spdlog::info("rebuild dictionary...");
+    auto res = pool_->scan([this](const char *s, dcode_t c) {
         insert(std::string(s), c);
     });
-    spdlog::debug("finished.");
+    spdlog::info("finished {}.", res ? "successfully" : "with errors");
 }
 
-void h2table::print() const {
+void code_table::print() const {
 }
 
-dcode_t h2table::find(const std::string& s) {
+dcode_t code_table::find(const std::string& s) {
     auto key = std::hash<std::string>{}(s);
     auto res = map_.find(key);
     return res != map_.end() ? res->second : UNKNOWN_CODE;
 }
 
-dcode_t h2table::get(dcode_t id) {
+dcode_t code_table::get(dcode_t id) {
     return id;
 }
 
-dcode_t h2table::insert(const std::string& s, dcode_t id) {
+dcode_t code_table::insert(const std::string& s, dcode_t id) {
     auto key = std::hash<std::string>{}(s);
     map_.emplace(key, id);
     return id;

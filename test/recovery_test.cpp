@@ -29,13 +29,15 @@
 
 #include <boost/process.hpp>
 
-#if defined USE_PMDK && defined USE_LOGGING
-#define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
-
-// namespace nvm = pmem::obj;
-const std::string test_path = poseidon::gPmemPath + "recovery_test";
+#ifdef USE_LOGGING
 
 namespace bp = boost::process;
+
+const std::string test_path = PMDK_PATH("recovery_tst");
+
+#ifdef USE_PMDK
+
+#define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
 
 TEST_CASE("Recovery of aborted inserts", "[graph_db]") {
     char buf[1024];
@@ -66,8 +68,41 @@ TEST_CASE("Recovery of aborted inserts", "[graph_db]") {
     graph_pool::destroy(pool);
 }
 
-#else
-TEST_CASE("Dummy test", "[graph_db]") {
+#else // USE_PMDK
+
+TEST_CASE("Recovery of aborted inserts using WAL", "[graph_db]") {
+    char buf[1024];
+    remove(test_path.c_str());
+    spdlog::debug("getcwd {}", getcwd(buf, 1024)); 
+    std::string prog(buf);
+    prog += "/abort_insert";
+    spdlog::info("exec prog '{}'", prog);
+    int result = bp::system(prog, test_path, "my_graph");
+    REQUIRE(result == 0);
+
+    spdlog::info("recovery_test: reopen database...");
+
+    auto pool = graph_pool::open(test_path);
+    auto graph = pool->open_graph("my_graph");
+    query_ctx ctx(graph);
+
+    // check that we have one insert
+    ctx.run_transaction([&]() {
+    	int num_nodes = 0;
+    	ctx.nodes([&](auto& n) { num_nodes++; });
+    	REQUIRE(num_nodes == 1);
+
+    	// but also that the slots are not occupied
+    	auto& n = graph->node_by_id(0);
+        std::cout << "node = " << graph->get_node_description(n.id()) << std::endl;
+        // std::cout << "node = " << n.id() << std::endl;
+ 	    return false;
+    });
+
+    graph_pool::destroy(pool);
 }
- #endif
+
+#endif
+
+#endif // USE_LOGGING
 

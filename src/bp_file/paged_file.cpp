@@ -116,6 +116,7 @@ paged_file::page_id paged_file::last_valid_page() {
         if (header_.slots_.test(i)) {
             return i+1;
         }
+        if (i == 0) break;
         i--;
     }
     return allocate_page();
@@ -133,7 +134,7 @@ bool paged_file::free_page(paged_file::page_id pid) {
 bool paged_file::read_page(paged_file::page_id pid, page& pg) {
     // check slot & npages_
     if (pid == 0 || (pid-1) > npages_ || !header_.slots_.test(pid-1)) {
-        spdlog::info("ERROR in read_page in {}: {}, {} -> {}", file_name_, pid, npages_, header_.slots_.test(pid-1));
+        spdlog::info("ERROR in read_page in {}: {}, pages={} -> slot={}", file_name_, pid, npages_, header_.slots_.test(pid-1));
         throw index_out_of_range();
     }
     // std::cout << "read from pos " << (pid-1) * PAGE_SIZE + sizeof(file_header) << std::endl;

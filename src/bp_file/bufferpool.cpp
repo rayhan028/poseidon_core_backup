@@ -61,6 +61,7 @@ void bufferpool::scan_file(uint8_t file_id, std::function<void(page *p)> cb) {
 std::pair<page*, paged_file::page_id> bufferpool::last_valid_page(uint8_t file_id) {
     assert(file_id < MAX_PFILES && files_[file_id]);
     auto pid = files_[file_id]->last_valid_page();
+    // spdlog::info("last_valid_page: {}", pid);
     return std::make_pair(fetch_page(pid | (static_cast<uint64_t>(file_id) << 60)), pid);
 }
 
@@ -68,7 +69,7 @@ page *bufferpool::fetch_page(paged_file::page_id pid) {
     std::unique_lock lock(mutex_);
     l_reads_++;
     auto iter = ptable_.find(pid);
-    spdlog::debug("bufferpool::fetch_page {}", pid & 0xFFFFFFFFFFFFFFF);
+    // spdlog::info("bufferpool::fetch_page {}", pid & 0xFFFFFFFFFFFFFFF);
     if (iter != ptable_.end()) {
         // move pid in lru_list_
         auto iter2 = std::find(lru_list_.begin(), lru_list_.end(), pid);
@@ -203,8 +204,8 @@ std::pair<page *, std::size_t> bufferpool::load_page_from_file(paged_file::page_
     // select file
     auto file_id = (pid & 0xF000000000000000) >> 60;
     assert(file_id < MAX_PFILES && files_[file_id]);
+    // spdlog::info("read page {}|{} from file {}", pid, raw_pid, file_id);
     files_[file_id]->read_page(raw_pid, buffer_[pos]);
-    spdlog::debug("read page {}|{} from file {}", pid, raw_pid, file_id);
     p_reads_++;
     return std::make_pair(&(buffer_[pos]), pos);
 }

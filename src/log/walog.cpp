@@ -200,6 +200,17 @@ void wa_log::append(xid_t tx_id, wal::log_rship_record &log_entry)  {
     // spdlog::info("last_offset={}", last_offsets_[tx_id]);
 }  
 
+void wa_log::append(xid_t tx_id, wal::log_dict_record &log_entry)  { 
+    log_entry.lsn = next_lsn(); 
+    log_entry.tx_id = tx_id; 
+    auto it = last_offsets_.find(tx_id);
+    if (it != last_offsets_.end())
+        log_entry.prev_offset = it->second;
+    last_offsets_[tx_id] = std::ftell(log_fp_);
+    append(static_cast<void *>(&log_entry), sizeof(log_entry)); 
+    // spdlog::info("last_offset={}", last_offsets_[tx_id]);
+}  
+
 void wa_log::append(void *log_entry, uint32_t lsize) {
     // spdlog::info("write record at {}", std::ftell(log_fp_));
     auto res = std::fwrite(log_entry, 1, lsize, log_fp_);
@@ -235,6 +246,9 @@ void wa_log::fetch_record(offset_t pos) {
         break;
     case log_property:
         break;
+    case log_dict:
+        nbytes = sizeof(wal::log_dict_record);
+        break;
     }
     memcpy(buf_, &rec, sizeof(rec));
     std::fread((void *)&buf_[sizeof(rec)], 1, nbytes - sizeof(rec), log_fp_);
@@ -263,6 +277,9 @@ bool wa_log::log_iter::read_log_entry() {
         nbytes = sizeof(wal::log_rship_record);
         break;
     case log_property:
+        break;
+    case log_dict:
+        nbytes = sizeof(wal::log_dict_record);
         break;
     }
     memcpy(entry_, &rec, sizeof(rec));

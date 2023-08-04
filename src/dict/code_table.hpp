@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef h2table_hpp_
-#define h2table_hpp_
+#ifndef code_table_hpp_
+#define code_table_hpp_
 
 #include <string>
 #include <limits>
@@ -30,15 +30,15 @@ class string_pool;
 class paged_string_pool;
 #endif
 
-class h2table {
+class code_table {
     friend class dict;
 public:
 #if defined (USE_PMDK) || (USE_IN_MEMORY)
     h2table(p_ptr<string_pool> pool) : pool_(pool) {}
 #else
-    h2table(std::shared_ptr<paged_string_pool> pool) : pool_(pool) {}
+    code_table(std::shared_ptr<paged_string_pool> pool) : pool_(pool) {}
 #endif
-    ~h2table() = default;
+    ~code_table() = default;
     
     dcode_t find(const std::string& s);
     dcode_t get(dcode_t id);
@@ -57,4 +57,4 @@ private:
     robin_hood::unordered_map<uint64_t, dcode_t> map_;
 };
 
-#endif /* h2table_hpp */
+#endif /* code_table_hpp */

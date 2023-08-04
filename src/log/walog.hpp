@@ -99,6 +99,23 @@ struct log_rship_record {
 };
 
 /**
+ * A log record for adding strings to the dictionary.
+ */
+struct log_dict_record {
+    log_dict_record(dcode_t c, const std::string& s) : log_type(log_insert), obj_type(log_dict), lsn(0), code(c) {
+        strcpy(str, s.c_str());
+    }
+
+    uint8_t log_type : 3; // log_entry_type
+    uint8_t obj_type : 3; // log_object_type
+    uint64_t lsn;         // log sequence number
+    xid_t tx_id;          // id of the updating transaction
+    uint64_t prev_offset; // offset (from the beginning of the file) of the previous log entry of the same transaction
+    dcode_t code;
+    char str[1024];
+};
+
+/**
  * Construct a log record for inserting a node based on the dirty node data.
  */
 log_node_record create_insert_node_record(const dirty_node_ptr& nptr);
@@ -199,7 +216,7 @@ public:
         bool read_log_entry();
 
         FILE *fp_;
-        uint8_t entry_[sizeof(wal::log_rship_record)];
+        uint8_t entry_[sizeof(wal::log_dict_record)];
         offset_t current_pos_;
     };
 
@@ -226,6 +243,7 @@ public:
 
     void append(xid_t tx_id, wal::log_node_record &log_entry);
     void append(xid_t tx_id, wal::log_rship_record &log_entry);
+    void append(xid_t tx_id, wal::log_dict_record &log_entry);
     // void append(xid_t tx_id, wal::log_property_record &log_entry) { log_entry.tx_id = tx_id; append(static_cast<void *>(&log_entry), sizeof(log_entry)); }
 
    /**

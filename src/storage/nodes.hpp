@@ -45,6 +45,8 @@ using dirty_node_ptr = std::unique_ptr<dirty_node>;
  * dictionary, only the code value is stored as part of the node.
  */
 struct node : public txn<dirty_node_ptr> {
+  friend class graph_db;
+  
   template <template <typename I> typename V> friend class node_list;
 
   using id_t =

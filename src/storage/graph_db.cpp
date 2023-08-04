@@ -75,7 +75,9 @@ void graph_db::prepare_files(const std::string &pool_path, const std::string &pf
 
   dict_ = p_make_ptr<dict>(bpool_, prefix);
 
+#ifdef USE_LOGGING
   walog_ = p_make_ptr<wa_log>(prefix + "poseidon.wal");
+#endif
 
 #endif
 }
@@ -160,11 +162,12 @@ void graph_db::close_files() {
   for (auto pf : index_files_) {
     pf->close();
   }
+  if (walog_) walog_->close();
 }
 
 
 void graph_db::runtime_initialize() {
-  spdlog::debug("graph_db::runtime_initialize()");
+  spdlog::info("graph_db::runtime_initialize()");
   nodes_->runtime_initialize();
   rships_->runtime_initialize();
 #ifdef QOP_RECOVERY
@@ -173,10 +176,12 @@ void graph_db::runtime_initialize() {
 #endif
   // make sure the dictionary is initialized
   // dict_->initialize();
-#ifdef USE_PMDK
-  // perform recovery using the undo log
-  apply_undo_log();
+
+#ifdef USE_LOGGING
+  // perform recovery using the log
+  apply_log();
 #endif
+
 #if defined CSR_DELTA && defined USE_TX
   delta_store_->initialize();
 #endif
@@ -201,7 +206,9 @@ void graph_db::begin_transaction() {
 #ifdef USE_PMDK
   tx->set_logid(ulog_->transaction_begin(tx->xid()));
 #endif
+#ifdef USE_LOGGING
   walog_->transaction_begin(tx->xid());  
+#endif
 #ifdef USE_TX
   std::lock_guard<std::mutex> guard(*m_);
   active_tx_->insert({tx->xid(), tx});
@@ -239,7 +246,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		  // are stored in a dirty_node object in this case, we simply copy the
 		  // properties to property_list and release the lock
 		  // spdlog::info("commit INSERT transaction {}: copy properties", xid);
-#ifndef USE_PMDK
+#if defined USE_LOGGING && !defined(USE_PMDK)
       // TODO: handle properties
       auto log_rec = wal::create_insert_node_record(dn);
       walog_->append(xid, log_rec);
@@ -272,6 +279,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
          * -----------------------------------------*/
         // std::cout << "COMMIT DELETE" << std::endl;
         // spdlog::info("COMMIT DELETE: [{},{}]", short_ts(dn->elem_.bts), short_ts(dn->elem_.cts));
+#ifdef USE_LOGGING
 #ifdef USE_PMDK
         auto log_id = current_transaction_->logid();
         pmlog::log_node_record rec (log_delete, node_id,
@@ -287,6 +295,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         auto log_rec = wal::create_delete_node_record(n);
         walog_->append(xid, log_rec);
         // TODO: handle properties!!
+#endif
 #endif
         node_properties_->foreach_property_set(n.property_list, UNDO_CB);
         // Because there might be an active transaction which still needs the object
@@ -321,6 +330,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
          * -----------------------------------------*/
         // std::cout << "COMMIT UPDATE" << std::endl;
         // create and append a log_node_record BEFORE we copy the properties and override the label
+#ifdef USE_LOGGING
 #ifdef USE_PMDK
         auto log_id = current_transaction_->logid();
         pmlog::log_node_record rec(log_update, node_id,
@@ -329,6 +339,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 #else
         auto log_rec = wal::create_update_node_record(n, dn);
         walog_->append(xid, log_rec);
+#endif
 #endif
 		    n.node_label = dn->elem_.node_label;
         n.from_rship_list = dn->elem_.from_rship_list;
@@ -386,7 +397,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		  // its properties are stored in a dirty_rship object in this case, we
 		  // simply copy the properties to property_list and release the lock
 		  // set bts/cts
-#ifndef USE_PMDK
+#if defined USE_LOGGING && !defined(USE_PMDK)
       // TODO: handle properties
       auto log_rec = wal::create_insert_rship_record(dr);
       walog_->append(xid, log_rec);
@@ -409,6 +420,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
       if (dr->elem_.bts() == dr->elem_.cts()) {
         // CASE #2 = DELETE
         // spdlog::info("COMMIT DELETE: {}, {}", dr->elem_.bts(), dr->elem_.cts());
+#ifdef USE_LOGGING
 #ifdef USE_PMDK
         auto log_id = current_transaction_->logid();
         pmlog::log_rship_record rec { log_delete, rel_id,
@@ -424,6 +436,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
         auto log_rec = wal::create_delete_rship_record(r);
         walog_->append(xid, log_rec);
         // TODO: handle properties!!
+#endif
 #endif
         rship_properties_->foreach_property_set(r.property_list, UNDO_CB);
 
@@ -453,6 +466,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
       else {
         // CASE #3 = UPDATE
       // create and append a log_rship_record BEFORE we copy the properties and override the label
+#ifdef USE_LOGGING
 #ifdef USE_PMDK
       auto log_id = current_transaction_->logid();
 
@@ -463,6 +477,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 #else
       auto log_rec = wal::create_update_rship_record(r, dr);
       walog_->append(xid, log_rec);
+#endif
 #endif
 		  r.set_timestamps(xid, INF);
 		  r.rship_label = dr->elem_.rship_label;
@@ -587,10 +602,13 @@ bool graph_db::commit_transaction() {
 #endif
 
 #endif
+#ifdef USE_LOGGING
 #ifdef USE_PMDK
   ulog_->transaction_end(current_transaction_->logid());
-#endif
+#else
   walog_->transaction_commit(xid);  
+#endif
+#endif
 
   current_transaction_.reset();
   vacuum(xid);
@@ -639,10 +657,14 @@ bool graph_db::abort_transaction() {
     }
   }
   vacuum(xid);
+
+#ifdef USE_LOGGING 
 #ifdef USE_PMDK
   ulog_->transaction_end(current_transaction_->logid());
-#endif
+#else
   walog_->transaction_abort(xid);  
+#endif
+#endif
 
   current_transaction_.reset();
 #endif
@@ -697,10 +719,18 @@ node::id_t graph_db::add_node(const std::string &label,
 #else
   xid_t txid = 0;
 #endif
-  auto type_code = dict_->insert(label);
-  // create and append a log_ins_record BEFORE the node table is modified
+  auto type_code = dict_->lookup_string(label);
+  if (type_code == 0) {
+    type_code = dict_->insert(label);
+#if defined USE_LOGGING && !defined(USE_PMDK)
+    spdlog::info("add log_dict_record {}, {}", label, type_code);
+    wal::log_dict_record log_rec(type_code, label);
+     walog_->append(txid, log_rec);
+#endif
+  }
 
 #ifdef USE_PMDK
+  // create and append a log_ins_record BEFORE the node table is modified
   auto log_id = current_transaction_->logid();
   auto cb = [log_id, this](offset_t n_id) {
     pmlog::log_ins_record rec(log_insert, log_node, n_id);
