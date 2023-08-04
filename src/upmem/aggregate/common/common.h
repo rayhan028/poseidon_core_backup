@@ -7,8 +7,9 @@
 #define MINIMUM
 #define MAXIMUM
 
-#define HIGH_CARDINALITY
-#define HIGH_CARD_1
+#define HIGH_CARDINALITY_V2
+// #define HIGH_CARDINALITY
+// #define HIGH_CARD_1
 // #define HIGH_CARD_2
 // #define LOW_CARDINALITY
 // #define LOW_CARD_1
@@ -35,8 +36,8 @@ typedef uint32_t aggr_val_t;
 #define NR_ELEM_PROPS 4
 #define GROUP_KEY 3
 #define AGGR_KEY 2
+#define GROUP_KEY_CARDINALITY 1048576
 #define NR_PARTITIONS 1024
-#define NR_GROUPS 4
 #define NR_KERNERLS 2
 
 #define ELEMS_PER_CHUNK 817
@@ -86,7 +87,7 @@ typedef enum kernel {
     aggregation_phase = 1,
 } kernel;
 
-#ifdef HIGH_CARDINALITY
+#if defined HIGH_CARDINALITY || defined HIGH_CARDINALITY_V2
 struct dpu_params {
     union {
         uint32_t num_elems;
@@ -140,7 +141,25 @@ struct htable_entry {
 #define ELEM_SIZE sizeof(mrnode)
 #define HASH_TABLE_ENTRY_SIZE sizeof(htable_entry)
 
-#ifdef HIGH_CARDINALITY
+#ifdef HIGH_CARDINALITY_V2
+
+#define MRAM_INPUT_BUFFER_PARTITION MRAM_INPUT_BUFFER /* reserve half the MRAM buffer to flush the partitioned elements */
+
+#define NR_WR_ELEMS_PARTITION (((2 * KB) / sizeof(prop_code_t)) * 16) /* TODO: tune */
+#define NR_WR_ELEMS_PER_TASKLET_PARTITION (NR_WR_ELEMS_PARTITION / NR_TASKLETS)
+
+#define MRAM_INPUT_BUFFER_AGGREGATION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the hash table results. TODO: tune */
+
+#define NR_WR_ELEMS_AGGREGATION (((2 * KB) / ELEM_SIZE) * 16) /* TODO: tune */
+// #define NR_WR_ELEMS_PER_TASKLET_AGGREGATION (NR_WR_ELEMS_AGGREGATION / NR_TASKLETS)
+#define NR_WR_ELEMS_PER_TASKLET_AGGREGATION 16
+
+#define HASH_TABLE_SIZE (32 * KB)
+#define NR_HASH_TABLE_ENTRIES (HASH_TABLE_SIZE / HASH_TABLE_ENTRY_SIZE)
+#define NR_HASH_TABLE_CHUNKS (HASH_TABLE_SIZE / MAX_MRAM_WRAM_XFER_SIZE)
+#define NR_HASH_TABLE_CHUNK_ENTRIES (NR_HASH_TABLE_ENTRIES / NR_HASH_TABLE_CHUNKS)
+
+#elif defined HIGH_CARDINALITY
 
 #define MRAM_INPUT_BUFFER_PARTITION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the partitioned elements */
 
