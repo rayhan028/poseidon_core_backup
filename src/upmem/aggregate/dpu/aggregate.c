@@ -13,47 +13,26 @@
 
 
 __host dpu_params dpu_parameters;
-__host aggr_res dpu_results;
-__host uint32_t dpu_partition_sizes[NR_PARTITIONS];
+
+htable_entry* hash_table;
+
+BARRIER_INIT(aggr_barrier, NR_TASKLETS);
+VMUTEX_INIT(aggr_vmutex, NR_HASH_TABLE_ENTRIES, 16);
+// MUTEX_POOL_INIT(aggr_mutexpl, 8);
+// MUTEX_INIT(aggr_mutex);
+
+#ifdef HIGH_CARDINALITY /* partition data such that hash table for each partition fits in WRAM */
 
 /* partition parameters */
+__host uint32_t dpu_partition_sizes[NR_PARTITIONS];
+
 uint32_t histogram[NR_TASKLETS][NR_PARTITIONS];
 uint32_t prefix_sum[NR_TASKLETS + 1][NR_PARTITIONS];
 /* TODO: uint32_t prefix_sum[NR_PARTITIONS][NR_TASKLETS + 1]; */
 uint32_t copy_count[NR_TASKLETS][NR_PARTITIONS];
-
-/* aggregation parameters */
-htable_entry* hash_table;
-uint32_t* wr_partition_sizes;
 uint32_t mr_htable_offs;
+uint32_t* wr_partition_sizes;
 
-#if defined(COUNT) || defined(AVERAGE)
-aggr_val_t dpu_cnt_res[NR_TASKLETS];
-#endif
-
-#if defined(SUM) || defined(AVERAGE)
-aggr_val_t dpu_sum_res[NR_TASKLETS];
-#endif
-
-#ifdef AVERAGE
-double dpu_avg_res[NR_TASKLETS];
-#endif
-
-#ifdef MINIMUM
-aggr_val_t dpu_min_res[NR_TASKLETS];
-#endif
-
-#ifdef MAXIMUM
-aggr_val_t dpu_max_res[NR_TASKLETS];
-#endif
-
-BARRIER_INIT(aggr_barrier, NR_TASKLETS);
-// VMUTEX_INIT(aggr_vmutex, NR_HASH_TABLE_ENTRIES, 16);
-MUTEX_POOL_INIT(aggr_mutexpl, 8);
-// MUTEX_INIT(aggr_mutex);
-
-
-#ifdef HIGH_CARDINALITY /* partition data such that hash table for each partition fits in WRAM */
 
 int aggregation() {
     unsigned int tasklet_id = me();
@@ -102,7 +81,7 @@ int aggregation() {
             for (uint32_t j = 0; j < num_elems; j++) {
                 uint32_t grp_key = wr_elems[j].properties[GROUP_KEY];
                 // uint32_t idx = aggr_hash(grp_key) % NR_HASH_TABLE_ENTRIES;
-                uint32_t idx = grp_key;
+                uint32_t idx = grp_key % NR_HASH_TABLE_ENTRIES;
 
                 while (1) {
                     vmutex_lock(&aggr_vmutex, idx);
@@ -216,7 +195,7 @@ int partition() {
         for (uint32_t j = 0; j < num_elems; j++) {
             prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
             // uint32_t partition = global_partition_hash(grp_key) % NR_PARTITIONS;
-            uint32_t partition = grp_key;
+            uint32_t partition = grp_key % NR_PARTITIONS;
             histogram[tasklet_id][partition]++;
         }
     }
@@ -278,7 +257,7 @@ int partition() {
         for (uint32_t j = 0; j < num_elems; j++) {
             prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
             // uint32_t partition = glb_partition_hash(grp_key) % NR_PARTITIONS;
-            uint32_t partition = grp_key;
+            uint32_t partition = grp_key % NR_PARTITIONS;
             uint32_t mroffs = prefix_sum[tasklet_id][partition] + copy_count[tasklet_id][partition];
             copy_count[tasklet_id][partition]++;
             mram_write(&wr_elems[j], (__mram_ptr void*) &mr_elems[dpu_parameters.num_elems + mroffs], ELEM_SIZE);

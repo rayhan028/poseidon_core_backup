@@ -7,10 +7,10 @@
 #define MINIMUM
 #define MAXIMUM
 
-// #define HIGH_CARDINALITY
-#define LOW_CARDINALITY
+#define HIGH_CARDINALITY
+// #define LOW_CARDINALITY
 // #define LOW_CARD_1
-#define LOW_CARD_2
+// #define LOW_CARD_2
 
 #define KB (1 << 10)
 #define MB (KB << 10)
@@ -33,7 +33,7 @@ typedef uint32_t aggr_val_t;
 #define NR_ELEM_PROPS 4
 #define GROUP_KEY 3
 #define AGGR_KEY 2
-#define NR_PARTITIONS 4
+#define NR_PARTITIONS 64
 #define NR_GROUPS 4
 #define NR_KERNERLS 2
 
@@ -149,7 +149,7 @@ struct htable_entry {
 
 #define NR_WR_ELEMS_AGGREGATION ((2 * KB) / ELEM_SIZE / 16) /* TODO: tune */
 // #define NR_WR_ELEMS_PER_TASKLET_AGGREGATION (NR_WR_ELEMS_AGGREGATION / NR_TASKLETS)
-#define NR_WR_ELEMS_PER_TASKLET_AGGREGATION 16
+#define NR_WR_ELEMS_PER_TASKLET_AGGREGATION 5
 
 #define HASH_TABLE_SIZE (32 * KB)
 #define NR_HASH_TABLE_ENTRIES (HASH_TABLE_SIZE / HASH_TABLE_ENTRY_SIZE)
