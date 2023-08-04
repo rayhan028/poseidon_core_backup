@@ -8,6 +8,8 @@
 #define MAXIMUM
 
 #define HIGH_CARDINALITY
+#define HIGH_CARD_1
+// #define HIGH_CARD_2
 // #define LOW_CARDINALITY
 // #define LOW_CARD_1
 // #define LOW_CARD_2
@@ -33,7 +35,7 @@ typedef uint32_t aggr_val_t;
 #define NR_ELEM_PROPS 4
 #define GROUP_KEY 3
 #define AGGR_KEY 2
-#define NR_PARTITIONS 64
+#define NR_PARTITIONS 1024
 #define NR_GROUPS 4
 #define NR_KERNERLS 2
 

@@ -307,7 +307,7 @@ void initialize_props(graph_db_ptr &graph, struct mrnode* nodes_ptr) {
                     iter = node_desc.properties.find("id");
                     value = iter->second;
                     auto id = any_cast<uint64_t>(&value);
-                    mrn.properties[prop++] = (prop_code_t)(*id % 65536); /* Key: 3 */
+                    mrn.properties[prop++] = (prop_code_t)(*id % 131072); /* Key: 3 */
                     // mrn.properties[prop++] = dist(gen);
                     #elif defined LOW_CARDINALITY
                     prop_code_t val = (*len >= 0 && *len < 40) ?
