@@ -105,7 +105,8 @@ wal::log_rship_record wal::create_update_rship_record(const relationship& r_old,
 
 
 wa_log::wa_log(const std::string& fname)  {
-   boost::filesystem::path path_obj(fname);
+    spdlog::info("open WAL file '{}'", fname);
+    boost::filesystem::path path_obj(fname);
     // check if path exists and is of a regular file
     if (! boost::filesystem::exists(path_obj)) {
         // create a new file
@@ -211,6 +212,14 @@ void wa_log::append(xid_t tx_id, wal::log_dict_record &log_entry)  {
     // spdlog::info("last_offset={}", last_offsets_[tx_id]);
 }  
 
+void wa_log::checkpoint() {
+    std::fseek(log_fp_, 0, SEEK_END);
+    wal::log_checkpoint_record log_entry(next_lsn());
+    append(static_cast<void *>(&log_entry), sizeof(log_entry)); 
+    ::fsync(fileno(log_fp_));
+    // spdlog::info("write checkpoint to WAL");
+}
+
 void wa_log::append(void *log_entry, uint32_t lsize) {
     // spdlog::info("write record at {}", std::ftell(log_fp_));
     auto res = std::fwrite(log_entry, 1, lsize, log_fp_);
@@ -268,7 +277,10 @@ bool wa_log::log_iter::read_log_entry() {
     switch(rec.obj_type) {
     case log_none:
         // TX entry
-        nbytes = sizeof(wal::log_tx_record);
+        if (rec.log_type == log_tx)
+            nbytes = sizeof(wal::log_tx_record);
+        else if (rec.log_type == log_chkpt)
+            nbytes = sizeof(wal::log_checkpoint_record);
         break;
     case log_node:
         nbytes = sizeof(wal::log_node_record);

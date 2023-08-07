@@ -29,8 +29,6 @@
 
 #include <boost/process.hpp>
 
-#ifdef USE_LOGGING
-
 namespace bp = boost::process;
 
 const std::string test_path = PMDK_PATH("recovery_tst");
@@ -68,7 +66,7 @@ TEST_CASE("Recovery of aborted inserts", "[graph_db]") {
     graph_pool::destroy(pool);
 }
 
-#else // USE_PMDK
+#elif defined(USE_PFILES)
 
 TEST_CASE("Recovery of aborted inserts using WAL", "[graph_db]") {
     char buf[1024];
@@ -103,6 +101,4 @@ TEST_CASE("Recovery of aborted inserts using WAL", "[graph_db]") {
 }
 
 #endif
-
-#endif // USE_LOGGING
 

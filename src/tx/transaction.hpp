@@ -97,6 +97,7 @@ public:
 
   /**
    * Store the id of the log associated with this transaction.
+   * NOTE: Used only for PMDK.
    */
   void set_logid(std::size_t lid) { logid_ = lid; }
 

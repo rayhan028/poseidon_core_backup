@@ -146,6 +146,9 @@ void graph_db::apply_redo(wa_log& log, wa_log::log_iter& li) {
         // delete properties
     }
     break;
+  default:
+    // we ignore checkpoints 
+    break;
   }
 }
 
@@ -156,7 +159,9 @@ void graph_db::apply_undo(wa_log& log, xid_t txid, offset_t pos) {
 void graph_db::apply_log() {
   // map of transaction id, offset of the last log entry for this transaction
   std::map<xid_t, offset_t> loser_tx;
-
+  uint64_t max_lsn = 0;
+  bool redo_performed = false;
+  
   boost::filesystem::path path_obj {pool_path_};
   path_obj /= database_name_;
   std::string prefix = path_obj.string() + "/";
@@ -177,17 +182,27 @@ void graph_db::apply_log() {
           loser_tx[li.transaction_id()] = li.log_position(); break;
       }
     }
+    else if (li.log_type() == log_chkpt) {
+      // we found a checkpoint, i.e. all redo log entries 
+      // before this LSN can be ignored
+      max_lsn = li.lsn();
+    }
     else {
       loser_tx[li.transaction_id()] = li.log_position();
     }
   }
-  spdlog::info("recovery from log: {} losers", loser_tx.size());
+  spdlog::info("recovery from log: {} losers, starting at LSN #{}", loser_tx.size(), max_lsn);
 
   // 2. apply redo
   for(auto li = log.log_begin(); li != log.log_end(); ++li) {
-    if (li.obj_type() != log_none) {
+    if (li.lsn() > max_lsn && li.obj_type() != log_none) {
+      redo_performed = true;
       apply_redo(log, li);
     }
+  }
+  if (redo_performed) {
+    flush();
+    log.checkpoint();
   }
   
   // 3. apply undo 

@@ -22,16 +22,19 @@
 #include "defs.hpp"
 
 /**
- * The different kinds of log entries: transaction control, insert, update, delete.
+ * The different kinds of log entries: transaction control, insert, update, delete, and checkpoint.
  */
-enum log_entry_type { log_tx = 1, log_insert = 2, log_update = 3, log_delete = 4 };
+enum log_entry_type { log_tx = 1, log_insert = 2, log_update = 3, log_delete = 4, log_chkpt = 5 };
 
 /**
- * The different objects (nodes, relationships, property_set) represented
+ * The different objects (nodes, relationships, property_set, dictionary updates) represented
  * by the log entries.
  */
 enum log_object_type { log_none = 1, log_node = 2, log_rship = 3, log_property = 4, log_dict = 5 };
 
+/**
+ * The different entry types of a transaction: begin, commit, abort.
+ */
 enum log_tx_type { log_bot = 1, log_commit = 2, log_abort = 3 };
 
 #endif

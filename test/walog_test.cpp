@@ -188,5 +188,8 @@ TEST_CASE("creating a log with two transactions and traverse the records backwar
     log2.close();
     remove("file2.wal");
 }
+#else
+
+TEST_CASE("dummy test", "[walog]") {}
 
 #endif

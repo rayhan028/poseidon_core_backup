@@ -46,7 +46,7 @@ void graph_db::destroy(graph_db_ptr gp) {
 
 void graph_db::prepare_files(const std::string &pool_path, const std::string &pfx) {
 #ifdef USE_PFILES
-  spdlog::debug("graph_db: prepare files {} / {}", pool_path, pfx);
+  spdlog::info("graph_db: prepare files {} / {}", pool_path, pfx);
   boost::filesystem::path path_obj {pool_path};
   path_obj /= pfx;
   // check if path exists and is of a regular file
@@ -75,7 +75,6 @@ void graph_db::prepare_files(const std::string &pool_path, const std::string &pf
 
   dict_ = p_make_ptr<dict>(bpool_, prefix);
 
-  walog_ = p_make_ptr<wa_log>(prefix + "poseidon.wal");
 #endif
 }
 
@@ -168,6 +167,11 @@ void graph_db::runtime_initialize() {
 
   // perform recovery using the log
   apply_log();
+
+#ifdef USE_PFILES
+  std::string prefix = pool_path_ + "/" + database_name_;
+  walog_ = p_make_ptr<wa_log>(prefix + "/poseidon.wal");
+#endif
 
 #if defined CSR_DELTA
   delta_store_->initialize();
@@ -689,10 +693,10 @@ node::id_t graph_db::add_node(const std::string &label,
   auto type_code = dict_->lookup_string(label);
   if (type_code == 0) {
     type_code = dict_->insert(label);
-#if defined USE_LOGGING && !defined(USE_PMDK)
-    spdlog::info("add log_dict_record {}, {}", label, type_code);
+#ifdef USE_PFILES
+    // spdlog::info("add log_dict_record {}, {}", label, type_code);
     wal::log_dict_record log_rec(type_code, label);
-     walog_->append(txid, log_rec);
+    walog_->append(txid, log_rec);
 #endif
   }
 
@@ -739,8 +743,13 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
   auto &from_node = node_by_id(from_id);
   auto &to_node = node_by_id(to_id);
   auto type_code = dict_->insert(label);
-  // create and append a log_ins_record BEFORE the rship table is modified
+#ifdef USE_PFILES
+    // spdlog::info("add log_dict_record {}, {}", label, type_code);
+    wal::log_dict_record log_rec(type_code, label);
+    walog_->append(txid, log_rec);
+#endif
 #ifdef USE_PMDK
+  // create and append a log_ins_record BEFORE the rship table is modified
   auto log_id = current_transaction()->logid();
   auto cb = [log_id, this](offset_t r_id) {
     pmlog::log_ins_record rec(log_insert, log_rship, r_id);

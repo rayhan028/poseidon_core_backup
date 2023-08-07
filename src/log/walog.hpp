@@ -116,6 +116,19 @@ struct log_dict_record {
 };
 
 /**
+ * A log record for checkpoints.
+ */
+struct log_checkpoint_record {
+    log_checkpoint_record(uint64_t l) : log_type(log_chkpt), obj_type(log_none), lsn(l), tx_id(0), prev_offset(0) {}
+
+    uint8_t log_type : 3; // log_entry_type
+    uint8_t obj_type : 3; // log_object_type
+    uint64_t lsn;         // log sequence number
+    xid_t tx_id;          // id of the transaction
+    uint64_t prev_offset; // offset (from the beginning of the file) of the previous log entry of the same transaction
+};
+
+/**
  * Construct a log record for inserting a node based on the dirty node data.
  */
 log_node_record create_insert_node_record(const dirty_node_ptr& nptr);
@@ -244,7 +257,10 @@ public:
     void append(xid_t tx_id, wal::log_node_record &log_entry);
     void append(xid_t tx_id, wal::log_rship_record &log_entry);
     void append(xid_t tx_id, wal::log_dict_record &log_entry);
+
     // void append(xid_t tx_id, wal::log_property_record &log_entry) { log_entry.tx_id = tx_id; append(static_cast<void *>(&log_entry), sizeof(log_entry)); }
+
+    void checkpoint();
 
    /**
     * Iterators for traversing the log.

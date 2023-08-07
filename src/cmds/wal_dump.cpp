@@ -40,6 +40,17 @@ void dump_node_record(const wal::log_node_record *rec) {
 
 void dump_rship_record(const wal::log_rship_record *rec) {
     std::cout << rec->lsn << ": Tx#" << short_ts(rec->tx_id) << " Relationship @" << rec->oid;
+    if (rec->log_type == log_insert) {
+        std::cout << " created { label="
+                << rec->after.label << " }";
+    }
+    else if (rec->log_type == log_update) {
+        std::cout << " updated { label="
+                << rec->after.label << "(" << rec->before.label << ") }";
+    }
+    else if (rec->log_type == log_delete) {
+        std::cout << "deleted.";
+    }
 
     std::cout << std::endl;
 }
@@ -49,8 +60,11 @@ void dump_dict_record(const wal::log_dict_record *rec) {
         << rec->code << " -> " << rec->str << std::endl;
 }
 
+void dump_checkpoint_record(const wal::log_checkpoint_record *rec) {
+    std::cout << rec->lsn << ": Checkpoint" << std::endl;
+}
+
 int main(int argc, char **argv) {
-    std::cout << "sizeof=" << sizeof(wal::log_dict_record) << std::endl;
     if (argc != 2) {
         std::cerr << "Usage: wal_dump <log_file>" << std::endl;
         exit(-1);
@@ -62,7 +76,10 @@ int main(int argc, char **argv) {
     for(auto li = log.log_begin(); li != log.log_end(); ++li) {
         if (li.log_type() == log_tx) {
             dump_tx_record(li.get<wal::log_tx_record>());
-         }
+        }
+        else if (li.log_type() == log_chkpt) {
+            dump_checkpoint_record(li.get<wal::log_checkpoint_record>());
+        }
         else {
             switch (li.obj_type()) {
                 case log_node:

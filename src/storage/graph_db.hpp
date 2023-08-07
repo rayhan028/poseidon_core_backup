@@ -420,7 +420,7 @@ public:
   void poseidon_to_coo(edge_coords* edge_coordinates, float* edge_values, rship_weight weight_func, bool bidirectional = false);
 
   /**
-   * 
+   * Writes all modified pages from the bufferpool back to disk.
    */
   void flush();
 
