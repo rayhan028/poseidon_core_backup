@@ -41,14 +41,15 @@ string_pool::~string_pool() {
 #endif
 }
 
-void string_pool::scan(std::function<void(const char *s, dcode_t c)> cb) {
+bool string_pool::scan(std::function<void(const char *s, dcode_t c)> cb) {
     auto pos = 1u;
     for (auto p = 1u; p < last_; p++) {
         if (pool_[p] == '\0') {
             cb(&pool_[pos], pos);
             pos = p + 1;
         }
-    }    
+    } 
+    return true;   
 }
 
 const char *string_pool::extract(dcode_t pos) const {
