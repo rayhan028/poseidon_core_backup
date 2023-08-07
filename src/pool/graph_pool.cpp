@@ -100,7 +100,7 @@ void graph_pool::drop_graph(const std::string& name) {
 
 graph_pool_ptr graph_pool::create(const std::string& path, unsigned long long pool_size) {
     auto self = std::make_unique<graph_pool>();
-#if !defined(USE_IN_MEMORY)
+#ifdef USE_PFILES
     self->path_ = path;
     boost::filesystem::path path_obj(path);
     // check if path exists and is of a regular file
@@ -114,7 +114,7 @@ graph_pool_ptr graph_pool::create(const std::string& path, unsigned long long po
 graph_pool_ptr graph_pool::open(const std::string& path, bool init) {
     auto self = std::make_unique<graph_pool>();
     self->path_ = path;
-#if !defined(USE_IN_MEMORY)
+#ifdef USE_PFILES
     boost::filesystem::path path_obj(path);
     // check if path exists and is of a regular file
     if (! boost::filesystem::exists(path_obj)) {
@@ -129,7 +129,7 @@ void graph_pool::destroy(graph_pool_ptr& p) {
     for (auto& gp : p->graphs_) { 
         graph_db::destroy(gp.second);
     }
-#if !defined(USE_IN_MEMORY)
+#ifdef USE_PFILES
     boost::filesystem::path path_obj(p->path_);
     boost::filesystem::remove_all(path_obj);  
 #endif
@@ -148,7 +148,7 @@ graph_db_ptr graph_pool::create_graph(const std::string& name) {
 
 graph_db_ptr graph_pool::open_graph(const std::string& name) {
     // TODO: check whether graph directory exists
-#if !defined(USE_IN_MEMORY)
+#ifdef USE_PFILES
     boost::filesystem::path path_obj(path_);
     path_obj /= name;
     // check if path exists and is of a regular file
@@ -167,7 +167,7 @@ void graph_pool::drop_graph(const std::string& name) {
     auto iter = graphs_.find(name);
     if (iter == graphs_.end())
         throw unknown_db();
-#if !defined(USE_IN_MEMORY)
+#ifdef USE_PFILES
     boost::filesystem::path path_obj(name);
     boost::filesystem::remove_all(path_obj);
 #endif

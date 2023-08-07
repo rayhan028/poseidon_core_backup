@@ -251,6 +251,7 @@ TEST_CASE("Checking reuse of space in a nvm_node_list", "[nvm_node_list]") {
 //       node_list with mem_chunked_vec
 // ----------------------------------------------------------------------------
 
+#ifdef USE_IN_MEMORY
 TEST_CASE("Creating a few nodes in the mem_node_list", "[mem_node_list]") {
 
   SECTION("Creating nodes") {
@@ -321,11 +322,12 @@ TEST_CASE("Appending a node to a mem_node_list", "[mem_node_list]") {
 TEST_CASE("Checking reuse of space in a mem_node_list", "[mem_node_list]") {
   // TODO
 }
+#endif
 
 // ----------------------------------------------------------------------------
 //       node_list with buffered_vec
 // ----------------------------------------------------------------------------
-
+#ifdef USE_PFILES
 TEST_CASE("Creating a few nodes in the pfile_node_list", "[pfile_node_list]") {
   create_dir("my_ntest1");
 
@@ -467,6 +469,7 @@ TEST_CASE("Appending a node to a pfile_node_list", "[pfile_node_list]") {
   delete_dir("my_ntest4");
 }
 
+#endif
 TEST_CASE("Checking reuse of space in a pfile_node_list", "[pfile_node_list]") {
   // TODO
 }

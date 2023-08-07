@@ -19,11 +19,12 @@
 #ifndef vec_hpp_
 #define vec_hpp_
 
-#include "mem_chunked_vec.hpp"
-#include "buffered_vec.hpp"
-
 #ifdef USE_PMDK
-#include "nvm_chunked_vec.hpp"
+# include "nvm_chunked_vec.hpp"
+#elif defined(USE_PFILES)
+# include "buffered_vec.hpp"
+#else
+# include "mem_chunked_vec.hpp"
 #endif
 
 #endif

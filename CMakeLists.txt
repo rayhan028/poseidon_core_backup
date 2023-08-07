@@ -12,7 +12,6 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         ON)
-option(USE_LOGGING      "Use logging for failure atomicity"      ON)
 option(USE_LLVM         "Use LLVM for query compilation"         ON)
 option(USE_IN_MEMORY    "Use only in-memory storage"             OFF)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
@@ -78,7 +77,29 @@ endif()
 # message("grammar: ${ANTLR_grammar_CXX_OUTPUTS}")
 
 #-------------------------------------------------------------------------------
+# Storage system: PMEM, IN_MEMORY or PFILES
 
+if(USE_PMDK MATCHES ON AND USE_IN_MEMORY MATCHES ON)
+  message(FATAL_ERROR "Cannot use PMDK and IN_MEMORY at the same time.")
+endif()
+
+if(USE_PMDK MATCHES ON AND USE_IN_MEMORY MATCHES OFF)
+  message(STATUS "looking for PMDK")
+  add_definitions( "-DUSE_PMDK" )
+# Include the PMDK module
+include(pmdk)
+endif()
+
+
+if(USE_IN_MEMORY MATCHES ON)
+  add_definitions( "-DUSE_IN_MEMORY" )
+endif()
+
+if(USE_PMDK MATCHES OFF AND USE_IN_MEMORY MATCHES OFF)
+  add_definitions( "-DUSE_PFILES" )
+endif()
+
+#-------------------------------------------------------------------------------
 
 if(USE_UPMEM MATCHES ON)
   add_definitions( "-DUSE_UPMEM" )
@@ -89,16 +110,6 @@ if(USE_UPMEM MATCHES ON)
   set(DPU_LIB "-ldpu")
 endif()
 
-# Include the PMDK module
-if(USE_PMDK MATCHES ON AND USE_IN_MEMORY MATCHES OFF)
-  message(STATUS "looking for PMDK")
-  include(pmdk)
-endif()
-
-if(USE_LOGGING MATCHES ON)
-  add_definitions( "-DUSE_LOGGING" )
-endif()
-
 if(QOP_PROFILING MATCHES ON)
   add_definitions( "-DQOP_PROFILING" )
 endif()
@@ -107,9 +118,6 @@ if(USE_LLVM MATCHES ON)
   add_definitions( "-DUSE_LLVM" )
 endif()
 
-if(USE_IN_MEMORY MATCHES ON)
-  add_definitions( "-DUSE_IN_MEMORY" )
-endif()
 
 if(CSR_DELTA MATCHES ON)
   add_definitions( "-DCSR_DELTA" )

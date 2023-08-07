@@ -37,7 +37,7 @@ namespace nvm = pmem::obj;
 #endif
 
 void graph_db::destroy(graph_db_ptr gp) {
-#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY) 
+#ifdef USE_PFILES
   boost::filesystem::path path_obj(gp->database_name_);
   if (boost::filesystem::exists(path_obj))
     boost::filesystem::remove_all(path_obj);
@@ -45,7 +45,7 @@ void graph_db::destroy(graph_db_ptr gp) {
 }
 
 void graph_db::prepare_files(const std::string &pool_path, const std::string &pfx) {
-#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY) 
+#ifdef USE_PFILES
   spdlog::debug("graph_db: prepare files {} / {}", pool_path, pfx);
   boost::filesystem::path path_obj {pool_path};
   path_obj /= pfx;
@@ -75,15 +75,12 @@ void graph_db::prepare_files(const std::string &pool_path, const std::string &pf
 
   dict_ = p_make_ptr<dict>(bpool_, prefix);
 
-#ifdef USE_LOGGING
   walog_ = p_make_ptr<wa_log>(prefix + "poseidon.wal");
-#endif
-
 #endif
 }
 
 graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : database_name_(db_name)
-#if defined(USE_PMDK) || defined(USE_IN_MEMORY)
+#ifndef USE_PFILES
 , bpool_(0)
 #endif
  {
@@ -167,10 +164,8 @@ void graph_db::runtime_initialize() {
   // make sure the dictionary is initialized
   // dict_->initialize();
 
-#ifdef USE_LOGGING
   // perform recovery using the log
   apply_log();
-#endif
 
 #if defined CSR_DELTA
   delta_store_->initialize();
@@ -195,8 +190,7 @@ void graph_db::begin_transaction() {
   current_transaction_ = tx;
 #ifdef USE_PMDK
   tx->set_logid(ulog_->transaction_begin(tx->xid()));
-#endif
-#ifdef USE_LOGGING
+#elif defined(USE_PFILES)
   walog_->transaction_begin(tx->xid());  
 #endif
   std::lock_guard<std::mutex> guard(*m_);
@@ -234,7 +228,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
 		  // are stored in a dirty_node object in this case, we simply copy the
 		  // properties to property_list and release the lock
 		  // spdlog::info("commit INSERT transaction {}: copy properties", xid);
-#if defined USE_LOGGING && !defined(USE_PMDK)
+#ifdef USE_PFILES
       // TODO: handle properties
       auto log_rec = wal::create_insert_node_record(dn);
       walog_->append(xid, log_rec);
@@ -267,7 +261,6 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
          * -----------------------------------------*/
         // std::cout << "COMMIT DELETE" << std::endl;
         // spdlog::info("COMMIT DELETE: [{},{}]", short_ts(dn->elem_.bts), short_ts(dn->elem_.cts));
-#ifdef USE_LOGGING
 #ifdef USE_PMDK
         auto log_id = current_transaction_->logid();
         pmlog::log_node_record rec (log_delete, node_id,
@@ -279,11 +272,10 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
               oid, 0, items, next, node_id);
           ulog_->append(log_id, rec);
         };
-#else
+#elif defined(USE_PFILES)
         auto log_rec = wal::create_delete_node_record(n);
         walog_->append(xid, log_rec);
         // TODO: handle properties!!
-#endif
 #endif
         node_properties_->foreach_property_set(n.property_list, UNDO_CB);
         // Because there might be an active transaction which still needs the object
@@ -318,16 +310,14 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
          * -----------------------------------------*/
         // std::cout << "COMMIT UPDATE" << std::endl;
         // create and append a log_node_record BEFORE we copy the properties and override the label
-#ifdef USE_LOGGING
 #ifdef USE_PMDK
         auto log_id = current_transaction_->logid();
         pmlog::log_node_record rec(log_update, node_id,
           n.node_label, n.from_rship_list, n.to_rship_list, n.property_list);
         ulog_->append(log_id, rec);
-#else
+#elif defined(USE_PFILES)
         auto log_rec = wal::create_update_node_record(n, dn);
         walog_->append(xid, log_rec);
-#endif
 #endif
 		    n.node_label = dn->elem_.node_label;
         n.from_rship_list = dn->elem_.from_rship_list;
@@ -385,7 +375,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
 		  // its properties are stored in a dirty_rship object in this case, we
 		  // simply copy the properties to property_list and release the lock
 		  // set bts/cts
-#if defined USE_LOGGING && !defined(USE_PMDK)
+#ifdef USE_PFILES
       // TODO: handle properties
       auto log_rec = wal::create_insert_rship_record(dr);
       walog_->append(xid, log_rec);
@@ -408,7 +398,6 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
       if (dr->elem_.bts() == dr->elem_.cts()) {
         // CASE #2 = DELETE
         // spdlog::info("COMMIT DELETE: {}, {}", dr->elem_.bts(), dr->elem_.cts());
-#ifdef USE_LOGGING
 #ifdef USE_PMDK
         auto log_id = current_transaction_->logid();
         pmlog::log_rship_record rec { log_delete, rel_id,
@@ -420,11 +409,10 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
               oid, 0, items, next, rel_id };
           ulog_->append(log_id, rec);
         };
-#else
+#elif defined(USE_PFILES)
         auto log_rec = wal::create_delete_rship_record(r);
         walog_->append(xid, log_rec);
         // TODO: handle properties!!
-#endif
 #endif
         rship_properties_->foreach_property_set(r.property_list, UNDO_CB);
 
@@ -454,7 +442,6 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
       else {
         // CASE #3 = UPDATE
       // create and append a log_rship_record BEFORE we copy the properties and override the label
-#ifdef USE_LOGGING
 #ifdef USE_PMDK
       auto log_id = current_transaction_->logid();
 
@@ -462,10 +449,9 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
           r.rship_label, r.src_node, r.dest_node, r.next_src_rship, r.next_dest_rship);
 
       ulog_->append(log_id, rec);
-#else
+#elif defined(USE_PFILES)
       auto log_rec = wal::create_update_rship_record(r, dr);
       walog_->append(xid, log_rec);
-#endif
 #endif
 		  r.set_timestamps(xid, INF);
 		  r.rship_label = dr->elem_.rship_label;
@@ -589,12 +575,10 @@ bool graph_db::commit_transaction() {
 #endif
 
 #endif
-#ifdef USE_LOGGING
 #ifdef USE_PMDK
   ulog_->transaction_end(current_transaction_->logid());
-#else
+#elif defined(USE_PFILES)
   walog_->transaction_commit(xid);  
-#endif
 #endif
 
   current_transaction_.reset();
@@ -643,13 +627,11 @@ bool graph_db::abort_transaction() {
     }
   }
   vacuum(xid);
-
-#ifdef USE_LOGGING 
+ 
 #ifdef USE_PMDK
   ulog_->transaction_end(current_transaction_->logid());
-#else
+#elif defined(USE_PFILES)
   walog_->transaction_abort(xid);  
-#endif
 #endif
 
   current_transaction_.reset();
@@ -692,7 +674,7 @@ void graph_db::print_stats() {
 
   std::cout << dict_->size() << " strings in dictionary." << std::endl;
 
-#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY)
+#ifdef USE_PFILES
   std::cout << "bufferpool hit ratio: " << bpool_.hit_ratio() << std::endl;
 #endif
 }

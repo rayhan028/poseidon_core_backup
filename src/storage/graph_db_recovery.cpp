@@ -29,8 +29,6 @@ using namespace boost::posix_time;
 namespace nvm = pmem::obj;
 #endif
 
-#ifdef USE_LOGGING
-
 #ifdef USE_PMDK
 void graph_db::apply_log() {
   spdlog::info("checking undo log...");
@@ -82,7 +80,8 @@ void graph_db::apply_log() {
   }
   // TODO: cleanup ulog_
 }
-#else // USE_PMDK
+
+#elif defined(USE_PFILES)
 
 void graph_db::apply_redo(wa_log& log, wa_log::log_iter& li) {
   switch (li.log_type()) {
@@ -197,6 +196,9 @@ void graph_db::apply_log() {
   }
 }
 
+#else // USE_IN_MEMORY
+void graph_db::apply_log() {
+  // do nothing
+}
 #endif
 
-#endif

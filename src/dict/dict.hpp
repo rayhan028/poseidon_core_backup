@@ -25,11 +25,11 @@
 #include <shared_mutex>
 #include "defs.hpp"
 
-#if defined(USE_PMDK) || defined(USE_IN_MEMORY)
-#include "string_pool.hpp"
-#else
+#ifdef USE_PFILES
 #include "bufferpool.hpp"
 #include "paged_string_pool.hpp"
+#else
+#include "string_pool.hpp"
 #endif
 
 #include "code_table.hpp"
@@ -49,10 +49,10 @@ public:
      * Create a new dictionary with the initial string pool size. The prefix argument 
      * is used only for the path of a paged file.
      */
-#if defined(USE_PMDK) || defined(USE_IN_MEMORY)
-    dict(const std::string& prefix = "", uint32_t init_pool_size = 100000);
-#else
+#ifdef USE_PFILES
     dict(bufferpool& bpool, const std::string& prefix = "", uint32_t init_pool_size = 100000);
+#else
+    dict(const std::string& prefix = "", uint32_t init_pool_size = 100000);
 #endif
 
     /**
@@ -107,18 +107,18 @@ public:
     std::size_t count_string_pool_size();
     
     void close_file() { 
-#if !defined(USE_PMDK) && !defined(USE_IN_MEMORY)
+#ifdef USE_PFILES
 	dict_file_->close();
 #endif
     }
 
 private:
-#if defined(USE_PMDK) || defined(USE_IN_MEMORY)
-    p_ptr<string_pool> pool_;        // the string pool for storing the actual strings
-#else
+#ifdef USE_PFILES
     bufferpool& bpool_;
     std::shared_ptr<paged_file> dict_file_;
     std::shared_ptr<paged_string_pool> pool_;  // the string pool for storing the actual strings
+#else
+    p_ptr<string_pool> pool_;        // the string pool for storing the actual strings
 #endif
     code_table *table_;  		             // the hash table for mapping codes to strings
     mutable std::shared_mutex m_;        // a mutex for synchronizing access to the dictionary

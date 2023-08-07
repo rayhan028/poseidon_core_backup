@@ -21,10 +21,10 @@
 #include <math.h>
 #include <set>
 #include "code_table.hpp"
-#if defined(USE_PMDK) || defined(USE_IN_MEMORY)
-#include "string_pool.hpp"
-#else
+#ifdef USE_PFILES
 #include "paged_string_pool.hpp"
+#else
+#include "string_pool.hpp"
 #endif
 #include "spdlog/spdlog.h"
 

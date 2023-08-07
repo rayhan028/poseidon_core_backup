@@ -24,19 +24,19 @@
 #include "defs.hpp"
 #include "robin_hood.h"
 
-#if defined(USE_PMDK) || defined(USE_IN_MEMORY)
-class string_pool;
-#else
+#ifdef USE_PFILES
 class paged_string_pool;
+#else
+class string_pool;
 #endif
 
 class code_table {
     friend class dict;
 public:
-#if defined (USE_PMDK) || (USE_IN_MEMORY)
-    code_table(p_ptr<string_pool> pool) : pool_(pool) {}
-#else
+#ifdef USE_PFILES
     code_table(std::shared_ptr<paged_string_pool> pool) : pool_(pool) {}
+#else
+    code_table(p_ptr<string_pool> pool) : pool_(pool) {}
 #endif
     ~code_table() = default;
     
@@ -49,10 +49,10 @@ public:
     void rebuild();
     void resize() {};
 private:
-#if defined(USE_PMDK) || (USE_IN_MEMORY)
-    p_ptr<string_pool> pool_;
-#else    
+#ifdef USE_PFILES
     std::shared_ptr<paged_string_pool> pool_;
+#else    
+    p_ptr<string_pool> pool_;
 #endif
     robin_hood::unordered_map<uint64_t, dcode_t> map_;
 };

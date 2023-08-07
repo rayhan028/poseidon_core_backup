@@ -24,9 +24,9 @@
 #include "config.h"
 #include "defs.hpp"
 
-#include "walog.hpp"
+#ifdef USE_PFILES
 
-#ifdef USE_LOGGING
+#include "walog.hpp"
 
 TEST_CASE("creating a log and appending some entries", "[walog]") {
     remove("file.wal");

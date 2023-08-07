@@ -30,13 +30,13 @@
 #include "nodes.hpp"
 #include "properties.hpp"
 #include "relationships.hpp"
-
+#include "vec.hpp"
 #include "transaction.hpp"
 #include "btree.hpp"
 #include "index_map.hpp"
 #ifdef USE_PMDK
 #include "pm_ulog.hpp"
-#else
+#elif defined(USE_PFILES)
 #include "walog.hpp"
 #endif
 #include "gc.hpp"
@@ -513,7 +513,7 @@ private:
    */
   void restore_indexes(const std::string &pool_path, const std::string &prefix);
 
-#if defined(USE_LOGGING) && !defined(USE_PMDK)
+#ifdef USE_PFILES
   void apply_redo(wa_log& log, wa_log::log_iter& li);
 
   void apply_undo(wa_log& log, xid_t txid, offset_t pos);
@@ -540,7 +540,7 @@ private:
       node_properties_;   // the list of all properties of nodes 
   p_ptr<property_list<mem_chunked_vec> >
       rship_properties_;   // the list of all properties of relationships
-#else
+#else // USE_PFILES
   p_ptr<node_list<buffered_vec> > nodes_; // the list of all nodes of the graph
   p_ptr<relationship_list<buffered_vec> > rships_; // the list of all relationships of the graph
   p_ptr<property_list<buffered_vec> >
