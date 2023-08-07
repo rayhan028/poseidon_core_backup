@@ -1,6 +1,6 @@
 #include "codegen.hpp"
 
-void codegen_inline_visitor::visit(std::shared_ptr<nested_loop_join> op) {
+void codegen_inline_visitor::visit(std::shared_ptr<nested_loop_join_op> op) {
     pipelined = true;
     jids.push_back(query_id_inline);
     

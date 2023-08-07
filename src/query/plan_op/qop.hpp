@@ -442,39 +442,6 @@ struct limit_result : public qop, std::enable_shared_from_this<limit_result> {
 };
 
 
-/**
- * nodes_connected appends the relationship object between a source and a
- * destination node, whose positions in the query tuple are given by the
- * src_des pair.
- * When no relationship exist between them, the boolean b sets whether a
- * null_t is appended instead (true) or not (false)
- */
-struct nodes_connected : public qop, public std::enable_shared_from_this<nodes_connected> {
-  nodes_connected(std::pair<int, int> src_des, bool b)  : append_null_(b), src_des_nodes_(src_des) {} 
-  ~nodes_connected() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(query_ctx &ctx, const qr_tuple &v);
-
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
-    if (has_subscriber())
-      subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
-  bool append_null_;
-  std::pair<int, int> src_des_nodes_;
-};
-
 extern result_set::sort_spec_list sort_spec_;
 /**
  * order_by implements an operator for sorting results either by giving a
@@ -593,47 +560,13 @@ struct filter_tuple : public qop, public std::enable_shared_from_this<filter_tup
 };
 
 /**
- * qr_tuple_append implements an operator that appends a query
- * result to a query tuple. The query result is computed from
- * already existing query results in the tuple.
- */
-struct qr_tuple_append : public qop, public std::enable_shared_from_this<qr_tuple_append> {
-  qr_tuple_append(std::function<query_result(const qr_tuple &)> func)
-      : func_(func) {}
-  ~qr_tuple_append() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(query_ctx &ctx, const qr_tuple &v);
-
-  void finish(query_ctx &ctx);
-
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
-    if (has_subscriber())
-      subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
-  std::function<query_result(const qr_tuple &)> func_;
-};
-
-/**
- * union_all_qres implements an operator that unions all the
+ * union_all_op implements an operator that unions all the
  * query tuples of the left query pipeline and the right query
  * pipeline(s).
  */
-struct union_all_qres : public qop, public std::enable_shared_from_this<union_all_qres> {
-  union_all_qres() : init_(true), phases_(0) {}
-  // union_all_qres() = default;
-  ~union_all_qres() = default;
+struct union_all_op : public qop, public std::enable_shared_from_this<union_all_op> {
+  union_all_op() : init_(true), phases_(0) {}
+  ~union_all_op() = default;
 
   void dump(std::ostream &os) const override;
 

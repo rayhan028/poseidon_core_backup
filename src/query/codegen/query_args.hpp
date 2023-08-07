@@ -81,7 +81,7 @@ public:
         ab_.arg(arg_cnt_++, j);
     }
 
-    virtual void visit(std::shared_ptr<cross_join> op) override {
+    virtual void visit(std::shared_ptr<cross_join_op> op) override {
         auto last_joiner = joiner_list_.back();
         ab_.arg(arg_cnt_++, last_joiner);
     }

@@ -82,45 +82,6 @@ struct create_relationship : public qop, public std::enable_shared_from_this<cre
 };
 
 /**
- * create_rship_on_join implements a binary operator for creating a new
- * relationship. The operator connects two nodes from two different queries:
- * One of the nodes (the source node by default) is at a given position in 
- * the left query and the other (the destination node by default) is at the 
- * last position in the right query. The default relationship direction can be
- * changed via a flag.
- */
-struct create_rship_on_join : public qop, public std::enable_shared_from_this<create_rship_on_join> {
-  create_rship_on_join(const std::string &l) : label(l) {}
-  create_rship_on_join(const std::string &l, const properties_t &p,
-                      int pos, bool dir_flag)
-      : label(l), props(p), l_node_pos(pos), src_to_des(dir_flag) {}
-  ~create_rship_on_join() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process_left(query_ctx &ctx, const qr_tuple &v);
-  void process_right(query_ctx &ctx, const qr_tuple &v);
-
-  void finish(query_ctx &ctx);
-
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
-    if (has_subscriber())
-      subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
-  }
-
-  std::string label;
-  properties_t props;
-  int l_node_pos;
-  bool src_to_des;
-  node *r_node_; 
-};
-
-/**
  * update_node represents a query operator for updating properties of a node
  * which is passed via consume parameters.
  */
@@ -201,12 +162,12 @@ struct remove_node : public qop, public std::enable_shared_from_this<remove_node
 };
 
 /**
- * remove_rship implements an operator for deleting the last relationship in a query tuple.
+ * remove_relationship implements an operator for deleting the last relationship in a query tuple.
  * The optional p specifies a relationship to be deleted at other positions in the tuple.
  */
-struct remove_rship : public qop, public std::enable_shared_from_this<remove_rship> {
-  remove_rship(std::size_t p)  : pos_(p) {} 
-  ~remove_rship() = default;
+struct remove_relationship : public qop, public std::enable_shared_from_this<remove_relationship> {
+  remove_relationship(std::size_t p)  : pos_(p) {} 
+  ~remove_relationship() = default;
 
   void dump(std::ostream &os) const override;
 

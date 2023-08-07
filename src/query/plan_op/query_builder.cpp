@@ -218,12 +218,6 @@ query_builder &query_builder::limit(std::size_t n) {
                    std::bind(&limit_result::process, op.get(), ph::_1, ph::_2));
 }
 
-query_builder &query_builder::rship_exists(std::pair<int, int> src_des, bool append_null) {
-  auto op = std::make_shared<nodes_connected>(src_des, append_null);
-  return append_op(op,
-                   std::bind(&nodes_connected::process, op.get(), ph::_1, ph::_2));
-}
-
 query_builder &query_builder::print() {
   auto op = std::make_shared<printer>();
   return append_op(op, std::bind(&printer::process, op.get(), ph::_1, ph::_2));
@@ -310,30 +304,24 @@ query_builder::where_qr_tuple(std::function<bool(const qr_tuple &)> pred) {
                    std::bind(&filter_tuple::process, op.get(), ph::_1, ph::_2));
 }
 
-query_builder &
-query_builder::append_to_qr_tuple(std::function<query_result(const qr_tuple &)> func) {
-  auto op = std::make_shared<qr_tuple_append>(func);
-  return append_op(op,
-                   std::bind(&qr_tuple_append::process, op.get(), ph::_1, ph::_2));
-}
 
 query_builder &query_builder::union_all(query_builder &other) {
-  auto op = std::make_shared<union_all_qres>();
+  auto op = std::make_shared<union_all_op>();
   other.append_op(
-      op, std::bind(&union_all_qres::process_right, op.get(), ph::_1, ph::_2));
+      op, std::bind(&union_all_op::process_right, op.get(), ph::_1, ph::_2));
   return append_op(
-      op, std::bind(&union_all_qres::process_left, op.get(), ph::_1, ph::_2),
-      std::bind(&union_all_qres::finish, op.get(), ph::_1));
+      op, std::bind(&union_all_op::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&union_all_op::finish, op.get(), ph::_1));
 }
 
 query_builder &query_builder::union_all(std::initializer_list<query_builder *> queries) {
-  auto op = std::make_shared<union_all_qres>();
+  auto op = std::make_shared<union_all_op>();
   for (auto &q : queries)
     q->append_op(
-        op, std::bind(&union_all_qres::process_right, op.get(), ph::_1, ph::_2));
+        op, std::bind(&union_all_op::process_right, op.get(), ph::_1, ph::_2));
   return append_op(
-      op, std::bind(&union_all_qres::process_left, op.get(), ph::_1, ph::_2),
-      std::bind(&union_all_qres::finish, op.get(), ph::_1));
+      op, std::bind(&union_all_op::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&union_all_op::finish, op.get(), ph::_1));
 }
 
 query_builder &query_builder::count() {
@@ -343,68 +331,41 @@ query_builder &query_builder::count() {
                    std::bind(&count_result::finish, op.get(), ph::_1));
 }
 
-query_builder &query_builder::crossjoin(query_builder &other) {
-  auto op = std::make_shared<cross_join>(other.plan_head());
+query_builder &query_builder::cross_join(query_builder &other) {
+  auto op = std::make_shared<cross_join_op>(other.plan_head());
   other.append_op(
-      op, std::bind(&cross_join::process_right, op.get(), ph::_1, ph::_2));
+      op, std::bind(&cross_join_op::process_right, op.get(), ph::_1, ph::_2));
   return append_op(
-      op, std::bind(&cross_join::process_left, op.get(), ph::_1, ph::_2),
-      std::bind(&cross_join::finish, op.get(), ph::_1));
+      op, std::bind(&cross_join_op::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&cross_join_op::finish, op.get(), ph::_1));
 }
 
-query_builder &query_builder::join_on_node(std::pair<int, int> left_right, query_builder &other) {
-  auto op = std::make_shared<nested_loop_join>(left_right, other.plan_head());
+query_builder &query_builder::nested_loop_join(std::pair<int, int> left_right, query_builder &other) {
+  auto op = std::make_shared<nested_loop_join_op>(left_right, other.plan_head());
   other.append_op(
-      op, std::bind(&nested_loop_join::process_right, op.get(), ph::_1, ph::_2));
+      op, std::bind(&nested_loop_join_op::process_right, op.get(), ph::_1, ph::_2));
   return append_op(
-      op, std::bind(&nested_loop_join::process_left, op.get(), ph::_1, ph::_2),
-      std::bind(&nested_loop_join::finish, op.get(), ph::_1));
+      op, std::bind(&nested_loop_join_op::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&nested_loop_join_op::finish, op.get(), ph::_1));
 }
 
-query_builder &query_builder::hashjoin_on_node(std::pair<int, int> left_right, query_builder &other) {
-  auto op = std::make_shared<hash_join>(left_right, other.plan_head());
+query_builder &query_builder::hash_join(std::pair<int, int> left_right, query_builder &other) {
+  auto op = std::make_shared<hash_join_op>(left_right, other.plan_head());
   other.append_op(
-      op, std::bind(&hash_join::build_phase, op.get(), ph::_1, ph::_2));
+      op, std::bind(&hash_join_op::build_phase, op.get(), ph::_1, ph::_2));
   return append_op(
-      op, std::bind(&hash_join::probe_phase, op.get(), ph::_1, ph::_2),
-      std::bind(&hash_join::finish, op.get(), ph::_1));
+      op, std::bind(&hash_join_op::probe_phase, op.get(), ph::_1, ph::_2),
+      std::bind(&hash_join_op::finish, op.get(), ph::_1));
 }
 
-query_builder &query_builder::outerjoin_on_node(const std::pair<int, int> &left_right, query_builder &other) {
-  auto op = std::make_shared<left_outerjoin_on_node>(left_right, other.plan_head());
+query_builder &query_builder::left_outer_join(query_builder &other, std::function<bool(const qr_tuple &, const qr_tuple &)> pred) {
+  auto op = std::make_shared<left_outer_join_op>(pred);
   other.append_op(
-      op, std::bind(&left_outerjoin_on_node::process_right, op.get(), ph::_1, ph::_2));
+      op, std::bind(&left_outer_join_op::process_right, op.get(), ph::_1, ph::_2),
+      std::bind(&left_outer_join_op::finish, op.get(), ph::_1));
   return append_op(
-      op, std::bind(&left_outerjoin_on_node::process_left, op.get(), ph::_1, ph::_2),
-      std::bind(&left_outerjoin_on_node::finish, op.get(), ph::_1));
-}
-
-query_builder &query_builder::outerjoin(query_builder &other, std::function<bool(const qr_tuple &, const qr_tuple &)> pred) {
-  auto op = std::make_shared<left_outerjoin>(pred);
-  other.append_op(
-      op, std::bind(&left_outerjoin::process_right, op.get(), ph::_1, ph::_2),
-      std::bind(&left_outerjoin::finish, op.get(), ph::_1));
-  return append_op(
-      op, std::bind(&left_outerjoin::process_left, op.get(), ph::_1, ph::_2),
-      std::bind(&left_outerjoin::finish, op.get(), ph::_1));
-}
-
-query_builder &query_builder::join_on_rship(std::pair<int, int> src_des, query_builder &other) {
-  auto op = std::make_shared<rship_join>(src_des);
-  other.append_op(
-      op, std::bind(&rship_join::process_right, op.get(), ph::_1, ph::_2));
-  return append_op(
-      op, std::bind(&rship_join::process_left, op.get(), ph::_1, ph::_2),
-      std::bind(&rship_join::finish, op.get(), ph::_1));
-}
-
-query_builder &query_builder::outerjoin_on_rship(std::pair<int, int> src_des, query_builder &other) {
-  auto op = std::make_shared<left_outerjoin_on_rship>(src_des);
-  other.append_op(
-      op, std::bind(&left_outerjoin_on_rship::process_right, op.get(), ph::_1, ph::_2));
-  return append_op(
-      op, std::bind(&left_outerjoin_on_rship::process_left, op.get(), ph::_1, ph::_2),
-      std::bind(&left_outerjoin_on_rship::finish, op.get(), ph::_1));
+      op, std::bind(&left_outer_join_op::process_left, op.get(), ph::_1, ph::_2),
+      std::bind(&left_outer_join_op::finish, op.get(), ph::_1));
 }
 
 query_builder &query_builder::algo_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
@@ -477,16 +438,6 @@ query_builder &query_builder::create_rship(std::pair<int, int> src_des, const st
       op, std::bind(&create_relationship::process, op.get(), ph::_1, ph::_2));
 }
 
-query_builder &query_builder::create_rship(query_builder &other, int l_node_pos, const std::string &label,
-                        const properties_t &props, bool src_to_des) {
-  auto op = std::make_shared<create_rship_on_join>(label, props, l_node_pos, src_to_des);
-  other.append_op(
-      op, std::bind(&create_rship_on_join::process_right, op.get(), ph::_1, ph::_2));
-  return append_op(
-      op, std::bind(&create_rship_on_join::process_left, op.get(), ph::_1, ph::_2),
-      std::bind(&create_rship_on_join::finish, op.get(), ph::_1));
-}
-
 query_builder &query_builder::update(std::size_t var, properties_t &props) {
   auto op = std::make_shared<update_node>(var, props);
   return append_op(op,
@@ -506,9 +457,9 @@ query_builder &query_builder::delete_node(const std::size_t pos) {
 }
 
 query_builder &query_builder::delete_rship(const std::size_t pos) {
-  auto op = std::make_shared<remove_rship>(pos);
+  auto op = std::make_shared<remove_relationship>(pos);
   return append_op(op,
-                   std::bind(&remove_rship::process, op.get(), ph::_1, ph::_2));
+                   std::bind(&remove_relationship::process, op.get(), ph::_1, ph::_2));
 }
 
 void query_builder::start(query_ctx& ctx) { 

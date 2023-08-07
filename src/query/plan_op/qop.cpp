@@ -306,31 +306,6 @@ void limit_result::process(query_ctx &ctx, const qr_tuple &v) {
 
 /* ------------------------------------------------------------------------ */
 
-void nodes_connected::dump(std::ostream &os) const {
-  os << "nodes_connected([" "]) - " << PROF_DUMP;
-}
-
-void nodes_connected::process(query_ctx &ctx, const qr_tuple &v) {
-  auto src = boost::get<node *>(v[src_des_nodes_.first]);
-  auto des = boost::get<node *>(v[src_des_nodes_.second]);
-  bool found = false;
-
-  ctx.foreach_from_relationship_of_node((*src), [&](auto &r) {
-      if (r.to_node_id() == des->id()){
-        found = true;
-        auto res = append(v, query_result(&r));
-        consume_(ctx, res);
-      }
-  });
-
-  if (!found && append_null_){
-    auto res = append(v, query_result(null_val));
-    consume_(ctx, res);
-  }
-}
-
-/* ------------------------------------------------------------------------ */
-
 std::function<bool(const qr_tuple &, const qr_tuple &)> order_by::cmp_func_ = 0;
 
 void order_by::dump(std::ostream &os) const {
@@ -423,25 +398,11 @@ void filter_tuple::process(query_ctx &ctx, const qr_tuple &v) {
 
 /* ------------------------------------------------------------------------ */
 
-void qr_tuple_append::dump(std::ostream &os) const {
-  os << "qr_tuple_append([]) - " << PROF_DUMP;
-}
-
-void qr_tuple_append::process(query_ctx &ctx, const qr_tuple &v) {
-  PROF_PRE;
-  auto a = func_(v);
-  auto res = append(v, a);
-  consume_(ctx, res);
-  PROF_POST(1);
-}
-
-/* ------------------------------------------------------------------------ */
-
-void union_all_qres::dump(std::ostream &os) const { // TODO
+void union_all_op::dump(std::ostream &os) const { // TODO
   os << "union_all() - " << PROF_DUMP;
 }
 
-void union_all_qres::process_left(query_ctx &ctx, const qr_tuple &v) {
+void union_all_op::process_left(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   /*
   if (init_) {
@@ -454,14 +415,14 @@ void union_all_qres::process_left(query_ctx &ctx, const qr_tuple &v) {
   PROF_POST(1);
 }
 
-void union_all_qres::process_right(query_ctx &ctx, const qr_tuple &v) {
+void union_all_op::process_right(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   // res_.push_back(v);
   consume_(ctx, v);
   PROF_POST(1);
 }
 
-void union_all_qres::finish(query_ctx &ctx) { 
+void union_all_op::finish(query_ctx &ctx) { 
   if (++phases_ > 1)
     qop::default_finish(ctx); 
 }

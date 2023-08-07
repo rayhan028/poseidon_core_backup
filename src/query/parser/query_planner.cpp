@@ -300,16 +300,16 @@ std::any query_planner::visitForeach_relationship_op(poseidonParser::Foreach_rel
 }
 
 std::any query_planner::visitCrossjoin_op(poseidonParser::Crossjoin_opContext *ctx) {
-    auto qop = std::make_shared<cross_join>();
+    auto qop = std::make_shared<cross_join_op>();
     auto ch1 = visit(ctx->query_operator()[0]);
     auto ch2 = visit(ctx->query_operator()[1]);
     auto child1 = std::any_cast<qop_ptr>(ch1);
     auto child2 = std::any_cast<qop_ptr>(ch2);
 
-    child1->connect(qop, std::bind(&cross_join::process_right, qop.get(), ph::_1, ph::_2), 
-        std::bind(&cross_join::finish, qop.get(), ph::_1));
-    child2->connect(qop, std::bind(&cross_join::process_left, qop.get(), ph::_1, ph::_2),
-        std::bind(&cross_join::finish, qop.get(), ph::_1));
+    child1->connect(qop, std::bind(&cross_join_op::process_right, qop.get(), ph::_1, ph::_2), 
+        std::bind(&cross_join_op::finish, qop.get(), ph::_1));
+    child2->connect(qop, std::bind(&cross_join_op::process_left, qop.get(), ph::_1, ph::_2),
+        std::bind(&cross_join_op::finish, qop.get(), ph::_1));
    
     return std::make_any<qop_ptr>(qop);        
 }
@@ -317,17 +317,17 @@ std::any query_planner::visitCrossjoin_op(poseidonParser::Crossjoin_opContext *c
 std::any query_planner::visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opContext *ctx) {
     // extract expression
     auto ex = visit(ctx->logical_expr());
-    auto qop = std::make_shared<left_outerjoin>(std::any_cast<expr>(ex));
+    auto qop = std::make_shared<left_outer_join_op>(std::any_cast<expr>(ex));
 
     auto ch1 = visit(ctx->query_operator()[0]);
     auto ch2 = visit(ctx->query_operator()[1]);
     auto child1 = std::any_cast<qop_ptr>(ch1);
     auto child2 = std::any_cast<qop_ptr>(ch2);
 
-    child2->connect(qop, std::bind(&left_outerjoin::process_right, qop.get(), ph::_1, ph::_2),
-                        std::bind(&left_outerjoin::finish, qop.get(), ph::_1));
-    child1->connect(qop, std::bind(&left_outerjoin::process_left, qop.get(), ph::_1, ph::_2),
-                        std::bind(&left_outerjoin::finish, qop.get(), ph::_1));
+    child2->connect(qop, std::bind(&left_outer_join_op::process_right, qop.get(), ph::_1, ph::_2),
+                        std::bind(&left_outer_join_op::finish, qop.get(), ph::_1));
+    child1->connect(qop, std::bind(&left_outer_join_op::process_left, qop.get(), ph::_1, ph::_2),
+                        std::bind(&left_outer_join_op::finish, qop.get(), ph::_1));
    
     return std::make_any<qop_ptr>(qop);        
 }
@@ -388,14 +388,14 @@ std::any query_planner::visitAggregate_op(poseidonParser::Aggregate_opContext *c
 }
 
 std::any query_planner::visitUnion_op(poseidonParser::Union_opContext *ctx) {
-    auto qop = std::make_shared<union_all_qres>();
+    auto qop = std::make_shared<union_all_op>();
 
     auto ch1 = visit(ctx->query_operator()[0]);
     auto ch2 = visit(ctx->query_operator()[1]);
     auto child1 = std::any_cast<qop_ptr>(ch1);
     auto child2 = std::any_cast<qop_ptr>(ch2);
-    child1->connect(qop, std::bind(&union_all_qres::process_right, qop.get(), ph::_1, ph::_2), std::bind(&union_all_qres::finish, qop.get(), ph::_1));
-    child2->connect(qop, std::bind(&union_all_qres::process_left, qop.get(), ph::_1, ph::_2), std::bind(&union_all_qres::finish, qop.get(), ph::_1));
+    child1->connect(qop, std::bind(&union_all_op::process_right, qop.get(), ph::_1, ph::_2), std::bind(&union_all_op::finish, qop.get(), ph::_1));
+    child2->connect(qop, std::bind(&union_all_op::process_left, qop.get(), ph::_1, ph::_2), std::bind(&union_all_op::finish, qop.get(), ph::_1));
 
     return std::make_any<qop_ptr>(qop);
 }

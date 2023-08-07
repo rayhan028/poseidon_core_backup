@@ -23,11 +23,11 @@
 
 #define HASHER
 
-void cross_join::dump(std::ostream &os) const { 
+void cross_join_op::dump(std::ostream &os) const { 
   os << "cross_join() - " << PROF_DUMP;
 }
 
-void cross_join::process_left(query_ctx &ctx, const qr_tuple &v) {
+void cross_join_op::process_left(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   uint64_t n = 0;
   for (auto &inp : input_) {
@@ -38,24 +38,24 @@ void cross_join::process_left(query_ctx &ctx, const qr_tuple &v) {
   PROF_POST(n);
 }
 
-void cross_join::process_right(query_ctx &ctx, const qr_tuple &v) {
+void cross_join_op::process_right(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE0;
   input_.push_back(v);
   PROF_POST(0);
 }
 
-void cross_join::finish(query_ctx &ctx) { 
+void cross_join_op::finish(query_ctx &ctx) { 
   if (++phases_ > 1)
     qop::default_finish(ctx); 
 }
 
 /* ------------------------------------------------------------------------ */
 
-void nested_loop_join::dump(std::ostream &os) const { // TODO
+void nested_loop_join_op::dump(std::ostream &os) const { // TODO
   os << "nested_loop_join() - " << PROF_DUMP;
 }
 
-void nested_loop_join::process_left(query_ctx &ctx, const qr_tuple &v) {
+void nested_loop_join_op::process_left(query_ctx &ctx, const qr_tuple &v) {
   auto n = boost::get<node *>(v[left_right_nodes_.first]);
   auto nid = n->id();
 
@@ -69,22 +69,22 @@ void nested_loop_join::process_left(query_ctx &ctx, const qr_tuple &v) {
   }
 }
 
-void nested_loop_join::process_right(query_ctx &ctx, const qr_tuple &v) {
+void nested_loop_join_op::process_right(query_ctx &ctx, const qr_tuple &v) {
   auto n = boost::get<node *>(v[left_right_nodes_.second]);
   auto nd = n->id();
   join_ids_.push_back(nd);
   input_.push_back(v);
 }
 
-void nested_loop_join::finish(query_ctx &ctx) { qop::default_finish(ctx); }
+void nested_loop_join_op::finish(query_ctx &ctx) { qop::default_finish(ctx); }
 
 /* ------------------------------------------------------------------------ */
 
-void hash_join::dump(std::ostream &os) const { // TODO
+void hash_join_op::dump(std::ostream &os) const { // TODO
   os << "hash_join() - " << PROF_DUMP;
 }
 
-void hash_join::probe_phase(query_ctx &ctx, const qr_tuple &v) {
+void hash_join_op::probe_phase(query_ctx &ctx, const qr_tuple &v) {
   auto n = boost::get<node *>(v[left_right_nodes_.first]);
   auto nid = n->id();
   #ifdef HASHER
@@ -103,7 +103,7 @@ void hash_join::probe_phase(query_ctx &ctx, const qr_tuple &v) {
   }
 }
 
-void hash_join::build_phase(query_ctx &ctx, const qr_tuple &v) {
+void hash_join_op::build_phase(query_ctx &ctx, const qr_tuple &v) {
   auto n = boost::get<node *>(v[left_right_nodes_.second]);
   auto nd = n->id();
 
@@ -116,60 +116,24 @@ void hash_join::build_phase(query_ctx &ctx, const qr_tuple &v) {
   input_[bucket].push_back(v);
 }
 
-uint64_t hash_join::hasher(uint64_t id){
+uint64_t hash_join_op::hasher(uint64_t id){
   id = (id ^ (id >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
   id = (id ^ (id >> 27)) * UINT64_C(0x94d049bb133111eb);
   id = id ^ (id >> 31);
   return id;
 }
-void hash_join::finish(query_ctx &ctx) { qop::default_finish(ctx); }
+void hash_join_op::finish(query_ctx &ctx) { qop::default_finish(ctx); }
 
 /* ------------------------------------------------------------------------ */
 
-void left_outerjoin_on_node::dump(std::ostream &os) const {
-  os << "left_outerjoin_on_node() - " << PROF_DUMP;
-}
-
-void left_outerjoin_on_node::process_left(query_ctx &ctx, const qr_tuple &v) {
-  auto n = boost::get<node *>(v[left_right_nodes_.first]);
-  auto nid = n->id();
-
-  auto i = 0;
-  bool dangling_tuple = true;
-  for (auto id : join_ids_) {
-    if (id == nid){
-      dangling_tuple = false;
-      auto res = concat(v, input_[i]);
-      consume_(ctx, res);
-    }
-    i++;
-  }
-  if (dangling_tuple) {
-    qr_tuple nll(input_.front().size(), query_result(null_t(-1)));
-    auto res = concat(v, nll);
-    consume_(ctx, res);
-  }
-}
-
-void left_outerjoin_on_node::process_right(query_ctx &ctx, const qr_tuple &v) {
-  auto n = boost::get<node *>(v[left_right_nodes_.second]);
-  auto nd = n->id();
-  join_ids_.push_back(nd);
-  input_.push_back(v);
-}
-
-void left_outerjoin_on_node::finish(query_ctx &ctx) { qop::default_finish(ctx); }
-
-/* ------------------------------------------------------------------------ */
-
-void left_outerjoin::dump(std::ostream &os) const {
-  os << "left_outerjoin(";
+void left_outer_join_op::dump(std::ostream &os) const {
+  os << "left_outer_join(";
   if (ex_) 
     os << ex_->dump();
   os << ") - " << PROF_DUMP;
 }
 
-void left_outerjoin::process_left(query_ctx &ctx, const qr_tuple &v) {
+void left_outer_join_op::process_left(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   bool dangling_tuple = true;
   uint64_t n = 0;
@@ -199,78 +163,13 @@ void left_outerjoin::process_left(query_ctx &ctx, const qr_tuple &v) {
   PROF_POST(n);
 }
 
-void left_outerjoin::process_right(query_ctx &ctx, const qr_tuple &v) {
+void left_outer_join_op::process_right(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE0;
   input_.push_back(v);
   PROF_POST(0);
 }
 
-void left_outerjoin::finish(query_ctx &ctx) { 
+void left_outer_join_op::finish(query_ctx &ctx) { 
   if (++phases_ > 1)
     qop::default_finish(ctx); 
 }
-
-/* ------------------------------------------------------------------------ */
-
-void left_outerjoin_on_rship::dump(std::ostream &os) const { // TODO
-  os << "left_outerjoin() - " << PROF_DUMP;
-}
-
-void left_outerjoin_on_rship::process_left(query_ctx &ctx, const qr_tuple &v) {
-  auto src = boost::get<node *>(v[src_des_nodes_.first]);
-  bool dangling_tuple = true;
-
-  for (auto &inp : input_) {
-    bool found = false;
-    auto des = boost::get<node *>(inp[src_des_nodes_.second]);
-    ctx.foreach_from_relationship_of_node((*src), [&](auto &r) {
-      if (r.to_node_id() == des->id()){
-        dangling_tuple = false;
-        found = true;
-      }
-    });
-    if (found) {
-      auto res = concat(v, inp);
-      consume_(ctx, res);
-    }
-  }
-  if (dangling_tuple){
-    qr_tuple nll(input_.front().size(), query_result(null_t(-1)));
-    auto res = concat(v, nll);
-    consume_(ctx, res);
-  }
-}
-
-void left_outerjoin_on_rship::process_right(query_ctx &ctx, const qr_tuple &v) {
-  input_.push_back(v);
-}
-
-void left_outerjoin_on_rship::finish(query_ctx &ctx) { qop::default_finish(ctx); }
-
-/* ------------------------------------------------------------------------ */
-
-void rship_join::dump(std::ostream &os) const { // TODO
-  os << "rship_join() - " << PROF_DUMP;
-}
-
-void rship_join::process_left(query_ctx &ctx, const qr_tuple &v) {
-  auto src = boost::get<node *>(v[src_des_nodes_.first]);
-
-  for (auto &inp : input_) {
-    auto des = boost::get<node *>(inp[src_des_nodes_.second]);
-    ctx.foreach_from_relationship_of_node((*src), [&](auto &r) {
-      if (r.to_node_id() == des->id()){
-        auto res = append(concat(v, inp), query_result(&r));
-        consume_(ctx, res);
-      }
-    });
-  }
-}
-
-void rship_join::process_right(query_ctx &ctx, const qr_tuple &v) {
-  input_.push_back(v);
-}
-
-void rship_join::finish(query_ctx &ctx) { qop::default_finish(ctx); }
-
-/* ------------------------------------------------------------------------ */

@@ -293,7 +293,7 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         result_set rss;        
         auto rhs = query_builder(ctx).all_nodes("Book").finish();
         auto rhsp = rhs.plan_head();
-        auto lhs = query_builder(ctx).all_nodes("Person").crossjoin(rhs).collect(rs).plan_head();
+        auto lhs = query_builder(ctx).all_nodes("Person").cross_join(rhs).collect(rs).plan_head();
 
         arg_builder args;
         cross_joiner j;
@@ -312,36 +312,6 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
         
         REQUIRE(rss.data.size() == (unsigned int)num_persons * (unsigned int)num_books);
     }
-
-    SECTION("Find connected nodes between two results with a LeftJoin") {
-        qcompiler queryEngine(ctx);
-
-        //auto rhs = Scan("Book", End());
-        //auto lhs = Scan("Person", Join(JOIN_OP::LEFT_OUTER, {0,0}, Collect(), rhs));
-
-        result_set rss;        
-        auto rhs = query_builder(ctx).all_nodes("Book").finish();
-        auto rhsp = rhs.plan_head();
-        auto lhs = query_builder(ctx).all_nodes("Person").outerjoin_on_node({0,0}, rhs).collect(rss).plan_head();
-
-        arg_builder args;
-        cross_joiner j;
-
-        args.arg(1, "Book");
-        args.arg(2, &j);
-
-        queryEngine.generate(rhsp, false);
-        queryEngine.run(args);
-
-        args.arg(1, "Person");
-        args.arg(2, &j);
-        args.arg(3, &rss);
-
-        queryEngine.generate(lhs, false);
-        queryEngine.run(args);
-
-        REQUIRE(rss.data.size() == (size_t)num_books);
-    }   
 
     REQUIRE(true);
 
@@ -486,7 +456,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         auto l_expr = query_builder(ctx).all_nodes("Person")
                         .from_relationships(":HAS_READ")
                         .to_node("Book")
-                        .crossjoin(r)
+                        .cross_join(r)
                         .project({{0, "age", result_type::integer}, {0, "num", result_type::uint64}, 
                         {3, "name", result_type::string}})
                         .collect(rss).plan_head();
@@ -556,7 +526,7 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
         queryEngine.generate(r_expr.plan_head(), false);
         queryEngine.run(args);
 
-        auto l_expr = query_builder(ctx).all_nodes("Person").join_on_node({0,0}, r_expr).collect(rs);
+        auto l_expr = query_builder(ctx).all_nodes("Person").nested_loop_join({0,0}, r_expr).collect(rs);
         args.arg(1, "Book");
         args.arg(2, &j);
         args.arg(3, &rs);

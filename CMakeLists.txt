@@ -373,10 +373,8 @@ endif()
 
 if(USE_LLVM MATCHES ON)
   set(codegen_operators_src
-    src/query/codegen/operators/append.cpp
     src/query/codegen/operators/aggregation.cpp
     src/query/codegen/operators/collect.cpp
-    src/query/codegen/operators/connected.cpp
     src/query/codegen/operators/create.cpp
     src/query/codegen/operators/expand.cpp
     src/query/codegen/operators/filter.cpp

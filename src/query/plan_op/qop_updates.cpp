@@ -82,42 +82,6 @@ void create_relationship::process(query_ctx &ctx, const qr_tuple &v) {
 
 /* ------------------------------------------------------------------------ */
 
-void create_rship_on_join::dump(std::ostream &os) const {
-  os << "create_relationship([" << label << "]";
-  if (!props.empty()) {
-    os << ", {";
-    bool first = true;
-    for (auto &p : props) {
-      if (!first)
-        os << ", ";
-      os << p.first << ": " << p.second;
-      first = false;
-    }
-    os << "}";
-  }
-  os << ")";
-}
-
-void create_rship_on_join::process_left(query_ctx &ctx, const qr_tuple &v) {
-  auto n = boost::get<node *>(v[l_node_pos]);
-  if (src_to_des) {
-    ctx.gdb_->add_relationship(n->id(), r_node_->id(), label, props, true);
-    consume_(ctx, v);
-  }
-  else {
-    ctx.gdb_->add_relationship(r_node_->id(), n->id(), label, props, true);
-    consume_(ctx, v);
-  }
-}
-
-void create_rship_on_join::process_right(query_ctx &ctx, const qr_tuple &v) {
-  r_node_ = boost::get<node *>(v.back());
-}
-
-void create_rship_on_join::finish(query_ctx &ctx) { qop::default_finish(ctx); }
-
-/* ------------------------------------------------------------------------ */
-
 void update_node::dump(std::ostream &os) const {
   os << "update_node([ " << var_no_ << " ]";
   if (!props.empty()) {
@@ -209,13 +173,13 @@ void remove_node::process(query_ctx &ctx, const qr_tuple &v) {
 
 /* ------------------------------------------------------------------------ */
 
-void remove_rship::dump(std::ostream &os) const {
-  os << "remove_rship([" "])=>";
+void remove_relationship::dump(std::ostream &os) const {
+  os << "remove_relationship([" "])=>";
   if (subscriber_)
     subscriber_->dump(os);
 }
 
-void remove_rship::process(query_ctx &ctx, const qr_tuple &v) {
+void remove_relationship::process(query_ctx &ctx, const qr_tuple &v) {
   qr_tuple res = v;
   relationship * r = nullptr;
   if (pos_ == std::numeric_limits<std::size_t>::max()) {

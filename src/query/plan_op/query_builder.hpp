@@ -167,14 +167,6 @@ public:
    */
   query_builder &limit(std::size_t n);
 
-  /**
-   * Add an operator that appends the relationship object between a source and a
-   * destination node, whose positions in the query tuple are given by the
-   * src_des pair.
-   * When no relationship exist between them, the boolean b sets whether a
-   * null_t is appended instead (true) or not (false)
-   */
-  query_builder &rship_exists(std::pair<int, int> src_des, bool append_null = true);
 
   /**
    * Add a projection operator that applies the given list of projection
@@ -219,12 +211,6 @@ public:
   query_builder &where_qr_tuple(std::function<bool(const qr_tuple &)> pred);
 
   /**
-   * Add an operator that applies a function on multiple query results in the 
-   * same query tuple and appends the result to the tuple.
-   */
-  query_builder &append_to_qr_tuple(std::function<query_result(const qr_tuple &)> func);
-
-  /**
    * Add an operator to unions all the query tuples of the left query 
    * pipeline and the right query pipeline(s).
    */
@@ -257,7 +243,7 @@ public:
    * Add an operator for constructing the cartesian product of the query tuples 
    * of the left and right query pipelines.
    */
-  query_builder &crossjoin(query_builder &other);
+  query_builder &cross_join(query_builder &other);
 
   /**
    * Add a nested loop join operator for merging tuples of two
@@ -265,7 +251,7 @@ public:
    * is the same as the node at another given position in the right tuple.
    * The node positions are specified by the pos pair. 
    */
-  query_builder &join_on_node(std::pair<int, int> left_right, query_builder &other);
+  query_builder &nested_loop_join(std::pair<int, int> left_right, query_builder &other);
 
   /**
    * Add a hash join operator for merging tuples of two
@@ -273,39 +259,13 @@ public:
    * is the same as the node at another given position in the right tuple.
    * The node positions are specified by the pos pair. 
    */
-  query_builder &hashjoin_on_node(std::pair<int, int> left_right, query_builder &other);
+  query_builder &hash_join(std::pair<int, int> left_right, query_builder &other);
 
   /**
-   * Add a left outerjoin operator for merging tuples of two queries based 
+   * Add a left outer join operator for merging tuples of two queries based 
    * on the given join condition. Dangling tuples are padded with "null_val" 
    */
-  query_builder &outerjoin(query_builder &other, std::function<bool(const qr_tuple &, const qr_tuple &)> pred);
-
-  /**
-   * Add a left outerjoin operator for merging tuples of two queries if the node
-   * at a given position in the left tuple is the same as the node at another
-   * given position in the right tuple. The node positions are specified by the
-   * pos pair. Dangling tuples are padded with "NULL" consume_(gdb, {&n});
-   */
-  query_builder &outerjoin_on_node(const std::pair<int, int> &left_right, query_builder &other);
-
-  /**
-   * Add a join operator for merging tuples of two 
-   * queries if there exists a relationship defined by an object
-   * (at a given position) in the left tuple as the source node 
-   * and an object (at a given position) in the right tuple as 
-   * the destination node 
-   */
-  query_builder &join_on_rship(std::pair<int, int> src_des, query_builder &other);
-
-  /**
-   * Add a left outerjoin operator for merging tuples of two 
-   * queries if there exists a relationship defined by an object
-   * (at a given position) in the left tuple as the source node 
-   * and an object (at a given position) in the right tuple as 
-   * the destination node 
-   */
-  query_builder &outerjoin_on_rship(std::pair<int, int> src_des, query_builder &other);
+  query_builder &left_outer_join(query_builder &other, std::function<bool(const qr_tuple &, const qr_tuple &)> pred);
 
   /**
    * Add an operator to find the unweighted shortest path between the pair 
@@ -397,16 +357,6 @@ public:
    */
   query_builder &create_rship(std::pair<int, int> src_des, const std::string &label,
                         const properties_t &props);
-
-  /**
-   * Add an operator for creating a relationship that connects two nodes 
-   * from two different queries: One of the nodes (the source node by default) 
-   * is at a given position in the left query and the other (the destination 
-   * node by default) is at the last position in the right query. The default 
-   * relationship direction can be changed via a flag..
-   */
-  query_builder &create_rship(query_builder &other, int l_node_pos, const std::string &label,
-                        const properties_t &props, bool src_to_des = true);
 
   /**
    *  Add an operator for updating a node.
