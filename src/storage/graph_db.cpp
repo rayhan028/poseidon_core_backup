@@ -143,6 +143,7 @@ void graph_db::flush(const std::set<offset_t>& dirty_chunks) {
 }
 
 void graph_db::close_files() {
+#ifdef USE_PFILES
   // spdlog::info("graph_db::close_files()");
   if (dict_) dict_->close_file();
   if (node_file_) node_file_->close();
@@ -154,6 +155,7 @@ void graph_db::close_files() {
     pf->close();
   }
   if (walog_) walog_->close();
+#endif
 }
 
 
