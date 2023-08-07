@@ -34,7 +34,7 @@ class code_table {
     friend class dict;
 public:
 #if defined (USE_PMDK) || (USE_IN_MEMORY)
-    h2table(p_ptr<string_pool> pool) : pool_(pool) {}
+    code_table(p_ptr<string_pool> pool) : pool_(pool) {}
 #else
     code_table(std::shared_ptr<paged_string_pool> pool) : pool_(pool) {}
 #endif
