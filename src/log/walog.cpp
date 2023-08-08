@@ -17,7 +17,7 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include "walog.hpp"
 
 wal::log_node_record wal::create_insert_node_record(const dirty_node_ptr& nptr) {
@@ -106,9 +106,9 @@ wal::log_rship_record wal::create_update_rship_record(const relationship& r_old,
 
 wa_log::wa_log(const std::string& fname)  {
     spdlog::info("open WAL file '{}'", fname);
-    boost::filesystem::path path_obj(fname);
+    std::filesystem::path path_obj(fname);
     // check if path exists and is of a regular file
-    if (! boost::filesystem::exists(path_obj)) {
+    if (! std::filesystem::exists(path_obj)) {
         // create a new file
         log_fp_ = std::fopen(fname.c_str(), "w+b");
         header_.last_lsn_ = 0;
@@ -141,10 +141,12 @@ void wa_log::rewind() {
     std::fseek(log_fp_, sizeof(header_), SEEK_SET);
 }
 
-void wa_log::close() {
+void wa_log::close(bool trunc) {
     if (log_fp_ != nullptr) {
         std::fseek(log_fp_, 0, SEEK_SET);
         std::fwrite((void *)&header_, 1, sizeof(header_), log_fp_);
+        if (trunc)
+            ::ftruncate(fileno(log_fp_), sizeof(header_));
         ::fsync(fileno(log_fp_));
         std::fclose(log_fp_);
     }
@@ -213,11 +215,11 @@ void wa_log::append(xid_t tx_id, wal::log_dict_record &log_entry)  {
 }  
 
 void wa_log::checkpoint() {
+    spdlog::info("write checkpoint to WAL");
     std::fseek(log_fp_, 0, SEEK_END);
     wal::log_checkpoint_record log_entry(next_lsn());
     append(static_cast<void *>(&log_entry), sizeof(log_entry)); 
     ::fsync(fileno(log_fp_));
-    // spdlog::info("write checkpoint to WAL");
 }
 
 void wa_log::append(void *log_entry, uint32_t lsize) {

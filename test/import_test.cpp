@@ -24,46 +24,29 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include "config.h"
+#include "graph_pool.hpp"
 #include "graph_db.hpp"
 #include "query_ctx.hpp"
 #include "qop.hpp"
 
-#ifdef USE_PMDK
-#define PMEMOBJ_POOL_SIZE ((size_t)(1024 * 1024 * 80))
-
-namespace nvm = pmem::obj;
-const std::string test_path = poseidon::gPmemPath + "import_test";
-
-nvm::pool_base prepare_pool() {
-	  if (access(test_path.c_str(), F_OK) == 0) {
-		  remove(test_path.c_str());
-	  }
-  auto pop = nvm::pool_base::create(test_path, "", PMEMOBJ_POOL_SIZE);
-  return pop;
-}
-#endif
+const std::string test_path = PMDK_PATH("import_tst");
 
 TEST_CASE("Importing a node", "[graph_db]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  graph_db_ptr graph;
-  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
-#else
-  auto graph = p_make_ptr<graph_db>("my_import_db1");
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_import_db1");
 
 {
   graph->begin_transaction();
-  graph->add_node(":Person", {{"name", boost::any(std::string("Anne"))},
+  graph->add_node("Person", {{"name", boost::any(std::string("Anne"))},
                                   {"age", boost::any(28)}});
   graph->commit_transaction();
 }
-  auto nid = graph->import_node(":Actor", {{"name", boost::any(std::string("John"))},
+  auto nid = graph->import_node("Actor", {{"name", boost::any(std::string("John"))},
                                   {"age", boost::any(42)}});
 
   graph->begin_transaction();
   auto nd = graph->get_node_description(nid);
-    REQUIRE(nd.label == ":Actor");
+    REQUIRE(nd.label == "Actor");
     REQUIRE(nd.id == nid);
   REQUIRE(std::string("John") ==
           get_property<const std::string>(nd.properties, "name").value());
@@ -71,27 +54,16 @@ TEST_CASE("Importing a node", "[graph_db]") {
 
   graph->abort_transaction();
 
-#ifdef USE_PMDK
-  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-  pop.close();
-  remove(test_path.c_str());
-#else
-  graph_db::destroy(graph);
-#endif
+  graph_pool::destroy(pool);
 }
 
 TEST_CASE("Importing a typed node", "[graph_db]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  graph_db_ptr graph;
-  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
-#else
-  auto graph = p_make_ptr<graph_db>("my_import_db2");
-#endif
+   auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_import_db2");
 
 {
   graph->begin_transaction();
-  graph->add_node(":Person", {{"name", boost::any(std::string("Anne"))},
+  graph->add_node("Person", {{"name", boost::any(std::string("Anne"))},
                                   {"age", boost::any(28)}});
   graph->commit_transaction();
 }
@@ -116,23 +88,12 @@ TEST_CASE("Importing a typed node", "[graph_db]") {
 
   graph->abort_transaction();
 
-#ifdef USE_PMDK
-  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-  pop.close();
-  remove(test_path.c_str());
-#else
-  graph_db::destroy(graph);
-#endif
+  graph_pool::destroy(pool);
 }
 
 TEST_CASE("Importing nodes from CSV (old version)", "[graph_db]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  graph_db_ptr graph;
-  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
-#else
-  auto graph = p_make_ptr<graph_db>("my_import_db3");
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_import_db3");
 
   std::string home(".");
   auto h = getenv("TEST_HOME");
@@ -142,13 +103,8 @@ TEST_CASE("Importing nodes from CSV (old version)", "[graph_db]") {
   graph_db::mapping_t id_map;
   auto num = graph->import_nodes_from_csv("Place", home + "/test/places.csv", '|', id_map);
   REQUIRE(num == 1460);
-#ifdef USE_PMDK
-  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-  pop.close();
-  remove(test_path.c_str());
-#else
-  graph_db::destroy(graph);
-#endif
+
+  graph_pool::destroy(pool);
 }
 
 #if 0
@@ -181,13 +137,8 @@ TEST_CASE("Importing nodes from CSV", "[graph_db]") {
 #endif
 
 TEST_CASE("Importing nodes with many properties from CSV", "[graph_db]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  graph_db_ptr graph;
-  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
-#else
-  auto graph = p_make_ptr<graph_db>("my_import_db4");
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_import_db4");
 
   std::string home(".");
   auto h = getenv("TEST_HOME");
@@ -207,23 +158,13 @@ TEST_CASE("Importing nodes with many properties from CSV", "[graph_db]") {
   });
   graph->commit_transaction();
 
-#ifdef USE_PMDK
-  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-  pop.close();
-  remove(test_path.c_str());
-#else
-  graph_db::destroy(graph);
-#endif
+  graph_pool::destroy(pool);
 }
 
 TEST_CASE("Importing nodes with many properties from Neo4j style CSV", "[graph_db]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  graph_db_ptr graph;
-  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
-#else
-  auto graph = p_make_ptr<graph_db>("my_import_db5");
-#endif
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_import_db5");
+
 
   std::string home(".");
   auto h = getenv("TEST_HOME");
@@ -243,11 +184,5 @@ TEST_CASE("Importing nodes with many properties from Neo4j style CSV", "[graph_d
   num = graph->import_typed_n4j_relationships_from_csv(home + "/test/roles.csv", ',', id_map);
   REQUIRE(num == 9);
 
-#ifdef USE_PMDK
-  nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-  pop.close();
-  remove(test_path.c_str());
-#else
-  graph_db::destroy(graph);
-#endif
+  graph_pool::destroy(pool);
 }

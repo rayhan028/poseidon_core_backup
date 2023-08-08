@@ -18,7 +18,7 @@
  */
 
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include "graph_db.hpp"
 #include "vec.hpp"
@@ -38,20 +38,20 @@ namespace nvm = pmem::obj;
 
 void graph_db::destroy(graph_db_ptr gp) {
 #ifdef USE_PFILES
-  boost::filesystem::path path_obj(gp->database_name_);
-  if (boost::filesystem::exists(path_obj))
-    boost::filesystem::remove_all(path_obj);
+  std::filesystem::path path_obj(gp->database_name_);
+  if (std::filesystem::exists(path_obj))
+    std::filesystem::remove_all(path_obj);
 #endif
 }
 
 void graph_db::prepare_files(const std::string &pool_path, const std::string &pfx) {
 #ifdef USE_PFILES
-  spdlog::info("graph_db: prepare files {} / {}", pool_path, pfx);
-  boost::filesystem::path path_obj {pool_path};
+  spdlog::debug("graph_db: prepare files {} / {}", pool_path, pfx);
+  std::filesystem::path path_obj(pool_path);
   path_obj /= pfx;
   // check if path exists and is of a regular file
-  if (! boost::filesystem::exists(path_obj))
-    boost::filesystem::create_directory(path_obj);
+  if (! std::filesystem::exists(path_obj))
+    std::filesystem::create_directory(path_obj);
 
   std::string prefix = path_obj.string() + "/";
 
@@ -113,9 +113,12 @@ graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : d
   delta_store_ = p_make_ptr<delta_store>();
 #endif
   active_tx_ = new std::map<xid_t, transaction_ptr>();
+  /*
   m_ = new std::mutex();
   garbage_ = new gc_list();
   gcm_ = new std::mutex();
+  */
+ runtime_initialize();
 }
 
 graph_db::~graph_db() {
@@ -153,7 +156,10 @@ void graph_db::close_files() {
   for (auto pf : index_files_) {
     pf->close();
   }
-  if (walog_) walog_->close();
+  if (walog_) {
+    // if we close the log regularly, we can truncate it
+    walog_->close(true);
+  }
 #endif
 }
 
@@ -249,7 +255,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
       // TODO: handle the case of multiple indexes
       auto idx = get_index(dn->elem_.node_label, dn->properties_);
       if (idx.first.which() > 0) {
-        spdlog::info("NODE INDEX UPDATE: insert");
+        spdlog::debug("NODE INDEX UPDATE: insert");
         index_insert(idx, dn->elem_.id(), dn->properties_);
       }
 	    // we can already delete the object from the dirty version list
@@ -297,7 +303,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         auto props = node_properties_->build_dirty_property_list(n.property_list);
         auto idx = get_index(dn->elem_.node_label, props);
         if (idx.first.which() > 0) {
-          spdlog::info("NODE INDEX UPDATE: delete");
+          spdlog::debug("NODE INDEX UPDATE: delete");
           index_delete(idx, n.id(), props);
         }
 
@@ -340,7 +346,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         it++;
         auto idx = get_index(dn->elem_.node_label, dn->properties_);
         if (idx.first.which() > 0) {
-          spdlog::info("NODE INDEX UPDATE: update: {}", n.dirty_list()->size());
+          spdlog::debug("NODE INDEX UPDATE: update: {}", n.dirty_list()->size());
           index_update(idx, dn->elem_.id(), (*it)->properties_, dn->properties_);
         }
 		    // we can already delete the object from the dirty version list

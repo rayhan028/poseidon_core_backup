@@ -386,6 +386,19 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
   gdb->close_files();
 }
 
+std::string check_config_files(const std::string& fname) {
+  std::filesystem::path cwd_config_file(fname);
+  if (std::filesystem::exists(cwd_config_file))
+    return cwd_config_file.string();
+  
+  std::string full_name = getenv("HOME") + std::string("/") + fname;
+  std::filesystem::path home_config_file(full_name);
+  if (std::filesystem::exists(home_config_file))
+    return home_config_file.string();
+
+  return "";
+}
+
 int main(int argc, char* argv[]) {
   std::string db_name, pool_path, query_file, dot_file, qmode_str, format = "ldbc";
   std::vector<std::string> import_files;
@@ -419,9 +432,13 @@ int main(int argc, char* argv[]) {
 
     variables_map vm;
     store(parse_command_line(argc, argv, desc), vm);
-    std::filesystem::path config_file(getenv("HOME") + std::string("/poseidon.ini"));
-    std::ifstream ifs(config_file.string());
-    store(parse_config_file(ifs, desc), vm);
+    auto config_name = check_config_files("poseidon.ini");
+    // std::filesystem::path config_file(getenv("HOME") + std::string("/poseidon.ini"));
+    if (! config_name.empty()) {
+      spdlog::info("loading config from '{}'", config_name);
+      std::ifstream ifs(config_name);
+      store(parse_config_file(ifs, desc), vm);
+    }
 
     if (vm.count("help")) {
       std::cout << "Poseidon Graph Database Version " << POSEIDON_VERSION << " ("

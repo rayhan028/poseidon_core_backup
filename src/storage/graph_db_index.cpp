@@ -18,7 +18,7 @@
  */
 
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <boost/hana.hpp>
 #include "graph_db.hpp"
 #include "vec.hpp"
@@ -51,7 +51,7 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
   bpool_.register_file(file_id, idx_file);
   index_files_.push_back(idx_file);
   auto new_idx = make_pf_btree(bpool_, file_id);
-  spdlog::debug("create_index #{}: fill index: {}", file_id, prop_name);
+  // spdlog::debug("create_index #{}: fill index: {} in file '{}'", file_id, prop_name, prefix + "/" + "idx_" + node_label + "$" + prop_name + ".db");
 #endif
   auto pc = dict_->lookup_string(prop_name);
 
@@ -62,7 +62,7 @@ index_id graph_db::create_index(const std::string& node_label, const std::string
     if (!val.empty()) {
       // because we don't distinguish differently typed indexes we use the raw value here
       auto v = val.get_raw(); // val.template get<int>();
-      // spdlog::info("create_index: {} -> {}", v, n.id());      
+      // spdlog::debug("create_index: {} -> {}", v, n.id());      
       new_idx->insert(v, n.id());
     }
   });
@@ -178,12 +178,11 @@ void graph_db::index_lookup(std::list<index_id> &idx_ptrs, uint64_t key, node_co
 }
 
 void graph_db::restore_indexes(const std::string &pool_path, const std::string &prefix) {
-  spdlog::debug("graph_db::restore_indexes()");
   // forall files in prefix with idx_
-  boost::filesystem::path path_obj {pool_path};
+  std::filesystem::path path_obj(pool_path);
   path_obj /= prefix;
-  path_obj /= "/";
-  for (auto const& dir_entry : boost::filesystem::directory_iterator{path_obj}) {
+  spdlog::debug("graph_db::restore_indexes from {} ({},{})", path_obj.string(), pool_path, prefix);
+  for (auto const& dir_entry : std::filesystem::directory_iterator{path_obj}) {
     auto pname = dir_entry;
     auto file_name = pname.path().filename().string();
     if (! file_name.starts_with("idx_")) {
@@ -200,10 +199,11 @@ void graph_db::restore_indexes(const std::string &pool_path, const std::string &
 
     auto file_id = index_map_->size() + RPROPS_FILE_ID + 1;
     auto idx_file = std::make_shared<paged_file>();
-    idx_file->open(path_obj.string() + file_name, INDEX_FILE_ID /*file_id*/);
+
+    idx_file->open(path_obj.string() + "/" + file_name, INDEX_FILE_ID /*file_id*/);
     bpool_.register_file(file_id, idx_file);
     index_files_.push_back(idx_file);
-    spdlog::info("restore index {} : {} from {} @{}", node_label, prop_name, file_name, file_id);
+    spdlog::debug("restore index {} : {} from file '{}' @{}", node_label, prop_name, path_obj.string() + file_name, file_id);
     auto new_idx = make_pf_btree(bpool_, file_id);
     index_map_->register_index(node_label + ":" + prop_name, new_idx);
   }

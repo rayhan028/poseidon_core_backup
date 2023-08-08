@@ -17,7 +17,7 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include "graph_db.hpp"
 #include "spdlog/spdlog.h"
 #include "thread_pool.hpp"
@@ -162,7 +162,7 @@ void graph_db::apply_log() {
   uint64_t max_lsn = 0;
   bool redo_performed = false;
   
-  boost::filesystem::path path_obj {pool_path_};
+  std::filesystem::path path_obj(pool_path_);
   path_obj /= database_name_;
   std::string prefix = path_obj.string() + "/";
 

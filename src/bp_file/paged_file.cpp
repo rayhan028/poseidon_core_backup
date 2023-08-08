@@ -17,7 +17,7 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 #include <iostream>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include "defs.hpp"
 #include "exceptions.hpp"
 #include "paged_file.hpp"
@@ -26,9 +26,9 @@
 
 bool paged_file::open(const std::string& path, int file_type) {
     file_name_ = path;
-    boost::filesystem::path path_obj(path);
+    std::filesystem::path path_obj(path);
     // check if path exists and is of a regular file
-    if (! boost::filesystem::exists(path_obj)) {
+    if (! std::filesystem::exists(path_obj)) {
         file_.open(path, std::fstream::in | std::fstream::out | std::fstream::trunc | std::fstream::binary);
         header_.ftype_ = file_type;
         header_.slots_.reset();

@@ -175,7 +175,7 @@ public:
     /**
      * Close the log file, called automatically in the desctrutor. 
      */
-    void close();
+    void close(bool trunc = false);
 
     void rewind();
 
