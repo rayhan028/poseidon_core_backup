@@ -146,6 +146,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/ql)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics/gunrock)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics/util)
+include_directories(${PROJECT_SOURCE_DIR}/src/upmem/aggregation/include)
 if (USE_GUNROCK MATCHES ON)
   include_directories(${CUDA_INCLUDE_DIRS})
 endif()
@@ -778,15 +779,18 @@ add_executable(csv_loader
 )
 
 if(USE_UPMEM MATCHES ON)
-add_executable(dpu_test
+add_executable(dpu_host
   src/cmds/dpu.cpp
-  # src/upmem/mram_scan/host/dpu_scan.cpp
-  # src/upmem/aggregate/host/dpu_aggregate.cpp
-  # src/upmem/traversal/host/dpu_traversal.cpp
-  src/upmem/join/host/dpu_join.cpp
+  # src/upmem/scan/host/dpu_scan.cpp
+  src/upmem/aggregation/host/utils.cpp
+  src/upmem/aggregation/host/hash_aggr_hi_card_v1.cpp
+  src/upmem/aggregation/host/hash_aggr_hi_card_v2.cpp
+  src/upmem/aggregation/host/hash_aggr_low_card.cpp
+  src/upmem/aggregation/host/sort_aggr_hi_card.cpp
+  # src/upmem/join/host/dpu_join.cpp
  )
 
- target_link_libraries(dpu_test
+ target_link_libraries(dpu_host
  poseidon_core
  ${PMDK_LIBRARIES}
  Boost::program_options

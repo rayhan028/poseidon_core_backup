@@ -12,12 +12,13 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
+#include "aggregation.hpp"
+
 using namespace boost::program_options;
 
 graph_pool_ptr pool;
 graph_db_ptr graph;
 
-void dpu_scan(graph_db_ptr &gdb);
 
 
 /**
@@ -184,6 +185,18 @@ int main(int argc, char* argv[]) {
     graph->print_stats();
   }
 
-  dpu_scan(graph);
+  // dpu_scan(graph);
+  // dpu_join();
+
+#ifdef HASH_BASED_HIGH_CARDINALITY_V1
+  hash_aggregation_hi_card_v1(graph);
+#elif defined HASH_BASED_HIGH_CARDINALITY_V2
+  hash_aggregation_hi_card_v2(graph);
+#elif defined HASH_BASED_LOW_CARDINALITY
+  hash_aggregation_low_card(graph);
+#elif defined SORT_BASED_HIGH_CARDINALITY
+  sort_aggregation(graph);
+#endif
+
 }
- 
+
