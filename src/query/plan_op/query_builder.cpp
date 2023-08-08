@@ -325,10 +325,12 @@ query_builder &query_builder::union_all(std::initializer_list<query_builder *> q
 }
 
 query_builder &query_builder::count() {
-  auto op = std::make_shared<count_result>();
+  std::vector<aggregate::expr> exprs;
+  exprs.push_back(aggregate::expr(aggregate::expr::f_count, 0, "", int_type));
+  auto op = std::make_shared<aggregate>(exprs);
   return append_op(op,
-                   std::bind(&count_result::process, op.get(), ph::_1, ph::_2),
-                   std::bind(&count_result::finish, op.get(), ph::_1));
+                   std::bind(&aggregate::process, op.get(), ph::_1, ph::_2),
+                   std::bind(&aggregate::finish, op.get(), ph::_1));
 }
 
 query_builder &query_builder::cross_join(query_builder &other) {

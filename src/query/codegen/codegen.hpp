@@ -69,9 +69,7 @@ public:
 
     void visit(std::shared_ptr<union_all_op> op) { } 
 
-    void visit(std::shared_ptr<count_result> op) { } 
-
-    void visit(std::shared_ptr<shortest_path_opr> op) { } 
+     void visit(std::shared_ptr<shortest_path_opr> op) { } 
 
     void visit(std::shared_ptr<weighted_shortest_path_opr> op) { } 
 

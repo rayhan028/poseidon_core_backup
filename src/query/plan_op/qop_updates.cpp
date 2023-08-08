@@ -69,9 +69,9 @@ void create_relationship::dump(std::ostream &os) const {
 }
 
 void create_relationship::process(query_ctx &ctx, const qr_tuple &v) {
-  assert(v[src_des_nodes_.first].which() == 0);
+  assert(v[src_des_nodes_.first].which() == node_ptr_type);
   auto n1 = boost::get<node *>(v[src_des_nodes_.first]);
-  assert(v[src_des_nodes_.second].which() == 0);
+  assert(v[src_des_nodes_.second].which() == node_ptr_type);
   auto n2 = boost::get<node *>(v[src_des_nodes_.second]);
   auto rid = ctx.gdb_->add_relationship(n1->id(), n2->id(), label, props, true);
   auto& r = ctx.gdb_->rship_by_id(rid);
@@ -103,7 +103,7 @@ void update_node::dump(std::ostream &os) const {
 void update_node::process(query_ctx &ctx, const qr_tuple &v) {
   // fetch the node to be updated
   auto &ge = v[var_no_];
-  assert(ge.which() == 0); // TODO: raise exception
+  assert(ge.which() == node_ptr_type); // TODO: raise exception
   auto n = boost::get<node *>(ge);
   // update the node
   ctx.gdb_->update_node(*n, props);

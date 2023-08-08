@@ -27,7 +27,9 @@
 #include "query_ctx.hpp"
 #include "query_set.hpp"
 
+#ifdef USE_LLVM
 #include "qcompiler.hpp"
+#endif
 #include "qinterp.hpp"
 #include "qresult_iterator.hpp"
 
@@ -65,7 +67,9 @@ private:
 
   query_ctx& qctx_;
   qinterp interp_;
+#ifdef USE_LLVM
   qcompiler compiler_;
+#endif
   std::shared_ptr<boost::dll::shared_library> udf_lib_;
 };
 

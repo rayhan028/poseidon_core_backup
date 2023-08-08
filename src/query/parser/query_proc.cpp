@@ -58,8 +58,11 @@ void ParserErrorListener::syntaxError(antlr4::Recognizer *recognizer, antlr4::To
     throw query_processing_error(mstr);
 }
 
-query_proc::query_proc(query_ctx &ctx) : qctx_(ctx), compiler_(ctx) { 
-}
+query_proc::query_proc(query_ctx &ctx) : qctx_(ctx)
+#ifdef USE_LLVM
+, compiler_(ctx) 
+#endif
+{}
 
 bool query_proc::parse_(const std::string &query) {
     antlr4::ANTLRInputStream input(query);
@@ -149,7 +152,11 @@ void query_proc::interp_query(query_set& plan) {
 }
 
 void query_proc::compile_query(query_set& plan) {
+#ifdef USE_LLVM
     compiler_.execute(plan);    
+#else
+    abort();
+#endif
 }
 
 void query_proc::abort_transaction() {

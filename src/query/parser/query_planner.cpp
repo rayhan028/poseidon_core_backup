@@ -18,12 +18,15 @@
  */
 #include "query_planner.hpp"
 #include "qop.hpp"
+#include "qop_builtins.hpp"
 #include "qop_scans.hpp"
 #include "qop_relationships.hpp"
 #include "qop_joins.hpp"
 #include "qop_aggregates.hpp"
 #include "qop_updates.hpp"
 #include "properties.hpp"
+#include "expression.hpp"
+#include "binary_expression.hpp"
 #include "func_call_expr.hpp"
 
 uint32_t query_planner::extract_tuple_id(const std::string& var_name) {

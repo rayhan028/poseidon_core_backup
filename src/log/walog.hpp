@@ -160,26 +160,12 @@ log_rship_record create_update_rship_record(const relationship& r_old, const dir
 
 }
 
+/**
+ * wa_log implements the file-based write-ahead log for Poseidon.
+*/
 class wa_log {
 public:
-   /**
-    * Construct a new and empty log or open an existing one.
-    */
-    wa_log(const std::string& fname);
- 
-   /**
-    * Destructor
-    */
-    ~wa_log();
-
     /**
-     * Close the log file, called automatically in the desctrutor. 
-     */
-    void close(bool trunc = false);
-
-    void rewind();
-
-   /**
     * An iterator for traversing the log file.
     */
     class log_iter {
@@ -233,6 +219,27 @@ public:
         offset_t current_pos_;
     };
 
+  /**
+    * Construct a new and empty log or open an existing one.
+    */
+    wa_log(const std::string& fname);
+ 
+   /**
+    * Destructor
+    */
+    ~wa_log();
+
+    /**
+     * Close the log file, called automatically in the desctrutor. 
+     */
+    void close(bool trunc = false);
+
+    /**
+     * Reset the file pointer to the beginning of the log file.
+     */
+    void rewind();
+
+
    /**
     * This method should be called when a new transaction starts. It reserves a new log and 
     * returns its id which should be used for this transaction.
@@ -260,10 +267,15 @@ public:
 
     // void append(xid_t tx_id, wal::log_property_record &log_entry) { log_entry.tx_id = tx_id; append(static_cast<void *>(&log_entry), sizeof(log_entry)); }
 
+    /**
+     * Write a checkpoint entry to the log, i.e. a subsequent recovery
+     * starts from this point. A checkpoint should guarantee that all
+     * updates done before are already written to disk.
+     */
     void checkpoint();
 
    /**
-    * Iterators for traversing the log.
+    * Return iterators for traversing the log.
     */
     log_iter log_begin() { rewind(); return log_iter(log_fp_); }
     log_iter log_end() { return log_iter(nullptr); }

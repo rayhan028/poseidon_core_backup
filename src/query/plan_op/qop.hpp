@@ -37,6 +37,7 @@
 #include "properties.hpp"
 #include "profiling.hpp"
 #include "expression.hpp"
+#include "binary_expression.hpp"
 #include "qresult_iterator.hpp"
 #include "qop_visitor.hpp"
 // #include "query_arg.hpp"
@@ -64,21 +65,25 @@ enum class qop_type {
     any,
     scan,
     project,
+    printer,
+    is_property,
     filter,
     foreach_rship,
     expand,
     node_has_label,
+    union_all,
     cross_join,
     left_join,
     hash_join,
     nest_loop_join,
     sort,
     limit,
+    distinct,
     collect,
-    create,
     aggregate,
     order_by,
     group_by,
+    create,
     store,
     end
 };
@@ -259,7 +264,7 @@ protected:
  */
 struct is_property : public qop, public std::enable_shared_from_this<is_property> {
   is_property(const std::string &p, std::function<bool(const p_item &)> pred)
-      : property(p), pcode(0), predicate(pred) {}
+      : property(p), pcode(0), predicate(pred) { type_ = qop_type::is_property; }
   ~is_property() = default;
 
   void dump(std::ostream &os) const override;
@@ -385,7 +390,7 @@ struct get_to_node : public expand {
  * vector v to standard output.
  */
 struct printer : public qop, public std::enable_shared_from_this<printer> {
-  printer() : ntuples_(0), output_width_(0) {}
+  printer() : ntuples_(0), output_width_(0) { type_ = qop_type::printer; }
 
   void dump(std::ostream &os) const override;
 
@@ -448,7 +453,7 @@ extern result_set::sort_spec_list sort_spec_;
  * comparison function or a specificaton of sorting criteria.
  */
 struct order_by : public qop, public std::enable_shared_from_this<order_by> {
-    order_by(const result_set::sort_spec_list &spec) /*: sort_spec_(spec)*/ { type_ = qop_type::order_by; sort_spec_= spec; }
+    order_by(const result_set::sort_spec_list &spec)  { type_ = qop_type::order_by; sort_spec_= spec; }
  
   order_by(std::function<bool(const qr_tuple &, const qr_tuple &)> func)
       //: cmp_func_(func) 
@@ -496,7 +501,7 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
  * result tuples.
  */
 struct distinct_tuples : public qop, public std::enable_shared_from_this<distinct_tuples> {
-  distinct_tuples() = default;
+  distinct_tuples() { type_ = qop_type::distinct; }
   ~distinct_tuples() = default;
 
   void dump(std::ostream &os) const override;
@@ -565,7 +570,7 @@ struct filter_tuple : public qop, public std::enable_shared_from_this<filter_tup
  * pipeline(s).
  */
 struct union_all_op : public qop, public std::enable_shared_from_this<union_all_op> {
-  union_all_op() : init_(true), phases_(0) {}
+  union_all_op() : init_(true), phases_(0) { type_ = qop_type::union_all; }
   ~union_all_op() = default;
 
   void dump(std::ostream &os) const override;
@@ -594,37 +599,6 @@ struct union_all_op : public qop, public std::enable_shared_from_this<union_all_
   bool init_;
   std::size_t phases_;
   std::list<qr_tuple> res_;
-};
-
-/**
- * count_result implements an operator that counts the
- * query tuples of the query pipeline.
- */
-struct count_result : public qop, public std::enable_shared_from_this<count_result> {
-  count_result() : count_(0) {}
-  ~count_result() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process(query_ctx &ctx, const qr_tuple &v);
-
-  void finish(query_ctx &ctx);
-
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
-    if (has_subscriber())
-      subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
-  uint64_t count_;
 };
 
 /**
@@ -835,131 +809,5 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
   std::vector<projection_expr> prexpr_;
   std::vector<int> new_types;
 };
-
-/**
- *  namespace for builtin functions used in project, filter etc.
- */
-namespace builtin {
-
-query_result forward(query_result &res);
-
-
-/**
- * Returns true if the node/relationship has the property specified by
- * the key. Otherwise, return false.
- */	
-bool has_property(query_result &pv, const std::string &key);
-
-/**
- * Returns true if the node/relationship has the given label specified. 
- * Otherwise, return false.
- */	
-bool has_label(query_result &pv, const std::string &l);
-
-/**
- * Return the integer value of the property of a node/relationship stored in
- * projection_result res and identified by the given key.
- */
-query_result int_property(const query_result &res, 
-                 const std::string &key);
-
-/**
- * Return the double value of the property of a node/relationship stored in
- * projection_result res and identified by the given key.
- */
-query_result double_property(const query_result &res, 
-                       const std::string &key);
-
-/**
- * Return the string value of the property of a node/relationship stored in
- * projection_result res and identified by the given key.
- */
-query_result string_property(const query_result &res, 
-                            const std::string &key);
-
-/**
- * Return the unsigned 64-bit integer value of the property of a node/relationship 
- * stored in projection_result res and identified by the given key.
- */
-query_result uint64_property(const query_result &res, 
-                 const std::string &key);
-
-/**
- * Return the ptime value of the property of a node/relationship 
- * stored in projection_result res and identified by the given key.
- */
-query_result ptime_property(const query_result &res, 
-                 const std::string &key);
-
-/**
- * Return the string representation of the date property of a node/relationship 
- * stored in projection_result res and identified by the given key.
- */
-query_result pr_date(const query_result &pv, 
-                 const std::string &key);
-
-/**
- * Return the year of the date property of a node/relationship 
- * stored in projection_result res and identified by the given key.
- */
-query_result pr_year(const query_result &pv, 
-                 const std::string &key);
-
-/**
- * Return the month of the date property of a node/relationship 
- * stored in projection_result res and identified by the given key.
- */
-query_result pr_month(const query_result &pv, 
-                 const std::string &key);
-
-/**
- * Return the string representation of a node/relationship stored in
- * projection_result res.
- */
-std::string string_rep(query_result &res);
-
-/**
- * Convert the given string value into an integer.
- */
-int to_int(const std::string &s);
-
-/**
- * Convert the given date value into its string representation.
- */
-std::string int_to_datestring(int v);
-std::string int_to_datestring(const query_result& v);
-
-/**
- * Convert the given date string (2019-02-12) into an int value (posix time).
- */
-int datestring_to_int(const std::string &d);
-
-/**
- * Convert the given datetime value into its string representation.
- */
-std::string int_to_dtimestring(int v);
-
-std::string int_to_dtimestring(const query_result& v);
-
-/**
- * Convert the given date+time string (2019-01-22T19:59:59.221+0000) into an int
- * value (posix time).
- */
-int dtimestring_to_int(const std::string &d);
-
-/**
- * Return true if the value represented by pv is a null value.
- */
-bool is_null(const query_result& pv);
-
-/*
-CASE:
- return !string_property(res, 0, "content").empty() ?
-    string_property(res, 0, "content") :
-    string_property(res, 0, "imageFile"); },
-
-*/
-
-} // namespace builtin
 
 #endif

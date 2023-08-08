@@ -32,7 +32,7 @@
 #ifdef USE_LLVM
 #include "query_builder.hpp"
 #include "query_proc.hpp"
-#endif
+
 
 std::string test_path = PMDK_PATH("jit_tst");
 
@@ -780,79 +780,9 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 #endif
 }
 
-/*
-TEST_CASE("Test variable Foreach Relatinship operator", "[jit_query_ForeachVariable]") {
-#ifdef USE_PMDK
-  auto pop = prepare_pool();
-  graph_db_ptr graph;
-  nvm::transaction::run(pop, [&] { graph = p_make_ptr<graph_db>(); });
 #else
-  auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_graph");
-#endif
 
-  graph->begin_transaction();
-
-  auto num_towns = 42u;
-  
-  for(auto i = 0u; i < num_towns; i+=3) {
-        auto t1 = graph->add_node("Town",
-                              {{"name", boost::any(std::string("Town_")+std::to_string(i))},
-                               {"population", boost::any(int(42*i))}},
-                              false);
-        auto t2 = graph->add_node("Town",
-                              {{"name", boost::any(std::string("Town_")+std::to_string(i+1))},
-                               {"population", boost::any(int(42*(i+1)))}},
-                              false);
-        auto t3 = graph->add_node("Town",
-                              {{"name", boost::any(std::string("Town_")+std::to_string(i+2))},
-                               {"population", boost::any(int(42*(i+2)))}},
-                              false);
-        if(i>0) {
-          graph->add_relationship(t1-3, t1, ":CONNECTED", {});
-        }
-        graph->add_relationship(t1, t2, ":CONNECTED", {});
-        graph->add_relationship(t2, t1, ":CONNECTED", {});
-        graph->add_relationship(t2, t3, ":CONNECTED", {});
-        graph->add_relationship(t3, t2, ":CONNECTED", {});
-  }
-
-  graph->commit_transaction();
-
-  graph->dump_dot("towns.dot");
-
-	auto chunks = graph->get_nodes()->num_chunks();
-
-	qcompiler queryEngine(graph);
-
-  SECTION("Test the compiled variable foreach relationship operator") {
-        auto fev = Scan("Town", ForeachRship(RSHIP_DIR::FROM, {1, 2}, ":CONNECTED", 
-                       Collect()));
-        arg_builder args;
-        args.arg(1, "Town");
-        args.arg(2, ":CONNECTED");
-
-        result_set rs;
-        queryEngine.generate(fev, false);
-        queryEngine.run(&rs, args);
-        
-        // std::cout << rs << std::endl;
-
-        REQUIRE(rs.data.size() == 191);
-    }
-
-#ifdef USE_PMDK
-	nvm::transaction::run(pop, [&] { nvm::delete_persistent<graph_db>(graph); });
-	pop.close();
-	remove(test_path.c_str());
-#else
-	graph_pool::destroy(pool);
-#endif
-
-}
-
-#else
 TEST_CASE("dummy test") {
   REQUIRE(true);
 }
-#endif*/
+#endif

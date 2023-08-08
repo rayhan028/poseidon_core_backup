@@ -83,26 +83,26 @@ bool equal(const query_result& qr1, const query_result& qr2) {
     // std::cout << "equal: " << qr1.which() << "-" << qr2.which() << std::endl;
     if (qr1.which() == qr2.which()) {
         switch (qr1.which()) {
-            case 0: // node *
+            case node_ptr_type: // node *
                 return boost::get<node*>(qr1) == boost::get<node*>(qr2);
-            case 1: // relationship *
+            case rship_ptr_type: // relationship *
                 return boost::get<relationship*>(qr1) == boost::get<relationship*>(qr2);
                 break;
-            case 2: // int
+            case int_type: // int
                 return boost::get<int>(qr1) == boost::get<int>(qr2);
-            case 3: // double
+            case double_type: // double
                 return boost::get<double>(qr1) == boost::get<double>(qr2);
-            case 4: // std::string
+            case string_type: // std::string
                 return string_equal(qr1, qr2);
-            case 5: // uint64_t
+            case uint64_type: // uint64_t
                 return boost::get<uint64_t>(qr1) == boost::get<uint64_t>(qr2);
             default:
                 break;
         }
     } 
-    else if (qr1.which() == 2 && qr2.which() == 5)
+    else if (qr1.which() == int_type && qr2.which() == uint64_type)
         return (uint64_t)boost::get<int>(qr1) == boost::get<uint64_t>(qr2);
-    else if (qr1.which() == 5 && qr2.which() == 2)
+    else if (qr1.which() == uint64_type && qr2.which() == int_type)
         return boost::get<uint64_t>(qr1) == (uint64_t)boost::get<int>(qr2);
 
     return false;
@@ -111,24 +111,24 @@ bool equal(const query_result& qr1, const query_result& qr2) {
 bool less_than(const query_result& qr1, const query_result& qr2) {
     if (qr1.which() == qr2.which()) {
         switch (qr1.which()) {
-            case 0: // node *
-            case 1: // relationship *
+            case node_ptr_type: // node *
+            case rship_ptr_type: // relationship *
                 break;
-            case 2: // int
+            case int_type: // int
                 return int_less_than(qr1, qr2);
-            case 3: // double
+            case double_type: // double
                 return double_less_than(qr1, qr2);
-            case 4: // std::string
+            case string_type: // std::string
                 return string_less_than(qr1, qr2);
-            case 5: // uint64_t
+            case uint64_type: // uint64_t
                 return uint64_less_than(qr1, qr2);
             default:
                 break;
         }
     } 
-    else if (qr1.which() == 2 && qr2.which() == 5)
+    else if (qr1.which() == int_type && qr2.which() == uint64_type)
         return (uint64_t)boost::get<int>(qr1) < boost::get<uint64_t>(qr2);
-    else if (qr1.which() == 5 && qr2.which() == 2)
+    else if (qr1.which() == uint64_type && qr2.which() ==int_type)
         return boost::get<uint64_t>(qr1) < (uint64_t)boost::get<int>(qr2);
     return false;
 }
@@ -140,24 +140,24 @@ bool less_or_equal(const query_result& qr1, const query_result& qr2) {
 bool greater_than(const query_result& qr1, const query_result& qr2) {
     if (qr1.which() == qr2.which()) {
         switch (qr1.which()) {
-            case 0: // node *
-            case 1: // relationship *
+            case node_ptr_type: // node *
+            case rship_ptr_type: // relationship *
                 break;
-            case 2: // int
+            case int_type: // int
                 return int_greater_than(qr1, qr2);
-            case 3: // double
+            case double_type: // double
                 return double_greater_than(qr1, qr2);
-            case 4: // std::string
+            case string_type: // std::string
                 return string_greater_than(qr1, qr2);
-            case 5: // uint64_t
+            case uint64_type: // uint64_t
                 return uint64_greater_than(qr1, qr2);
             default:
                 break;
         }
     } 
-    else if (qr1.which() == 2 && qr2.which() == 5)
+    else if (qr1.which() == int_type && qr2.which() == uint64_type)
         return (uint64_t)boost::get<int>(qr1) > boost::get<uint64_t>(qr2);
-    else if (qr1.which() == 5 && qr2.which() == 2)
+    else if (qr1.which() == uint64_type && qr2.which() == int_type)
         return boost::get<uint64_t>(qr1) > (uint64_t)boost::get<int>(qr2);
     return false;
 }
@@ -204,7 +204,7 @@ public:
         auto inp = tup_[op->qr_id_];
         p_item res;
         switch (inp.which()) {
-            case 0: // node *
+            case node_ptr_type: // node *
             {
                 auto nptr = boost::get<node *>(inp);
                 // if key_ is empty then the node is requested ($i:node)
@@ -218,7 +218,7 @@ public:
                 }
                 break;
             }
-            case 1: // relationship *
+            case rship_ptr_type: // relationship *
             {
                 auto rptr = boost::get<relationship *>(inp);
                 // if key_ is empty then the relationship is requested

@@ -1,6 +1,8 @@
 #ifndef POSEIDON_CORE_ARG_EXTRACTOR_HPP
 #define POSEIDON_CORE_ARG_EXTRACTOR_HPP
+
 #include "qop_visitor.hpp"
+#include "binary_expression.hpp"
 
 class arg_extractor : public qop_visitor {
     arg_builder ab_;
