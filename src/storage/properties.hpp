@@ -23,8 +23,8 @@
 #include <array>
 #include <map>
 #include <vector>
+#include <any>
 
-#include <boost/any.hpp>
 #include <boost/variant.hpp>
 
 #include "defs.hpp"
@@ -86,18 +86,18 @@ struct p_item {
   p_item(int) : key_(0), flags_(0) { P_SET_VAL(flags_, p_unused); }
   p_item(const p_item &) = default;
 
-  p_item(dcode_t k, p_typecode tc, const boost::any &v);
+  p_item(dcode_t k, p_typecode tc, const std::any &v);
   p_item(dcode_t k, double v);
   p_item(dcode_t k, int v);
   p_item(dcode_t k, dcode_t v);
   p_item(dcode_t k, uint64_t v);
   p_item(dcode_t k, boost::posix_time::ptime v);
 
-  p_item(const boost::any &v, dict_ptr &dct);
-  p_item(const std::string &k, const boost::any &v, dict_ptr &dct);
+  p_item(const std::any &v, dict_ptr &dct);
+  p_item(const std::string &k, const std::any &v, dict_ptr &dct);
   p_item(dcode_t k, p_item::p_typecode tc, const std::string& v, dict_ptr &dict);
 
-  p_item(dcode_t k, const boost::any &v, dict_ptr &dct);
+  p_item(dcode_t k, const std::any &v, dict_ptr &dct);
 
   p_item &operator=(const p_item &p);
 
@@ -161,7 +161,7 @@ bool is_dtime(const std::string &s);
  * A typedef for a list of properties (key-value pairs) where values are
  * either numeric or full strings.
  */
-using properties_t = std::map<std::string, boost::any>;
+using properties_t = std::map<std::string, std::any>;
 
 template <typename T>
 std::optional<T> get_property(const properties_t &p, const std::string &key) {
@@ -170,7 +170,7 @@ std::optional<T> get_property(const properties_t &p, const std::string &key) {
     // spdlog::warn("unknown property: {}", key);
     return std::nullopt;
   }
-  return std::optional<T> { boost::any_cast<T>(it->second) };
+  return std::optional<T> { std::any_cast<T>(it->second) };
 }
 
 /**
@@ -313,7 +313,7 @@ public:
   property_set::id_t append_typed_properties(offset_t nid, 
                               const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist, 
-                              const std::vector<boost::any>& values) {
+                              const std::vector<std::any>& values) {
   property_set::id_t next_id = UNKNOWN;
   property_set::p_item_list pil;
   std::size_t pidx = 0;
@@ -321,7 +321,7 @@ public:
 
   pil.fill(p_item(0));
   for (auto i = 0u; i < keys.size(); i++) {
-    if (values[i].empty()) // we don't add empty properties
+    if (!values[i].has_value()) // we don't add empty properties
       continue;
     // spdlog::info("property @{} <- {}, type={}", pidx, i, typelist[i]);
     pil[pidx++] = p_item(keys[i], typelist[i], values[i]);
@@ -478,7 +478,7 @@ public:
                                        const properties_t &props,
                                        dict_ptr &dct) {
  // first, we build the list of properties to be updated
-  using todo_list_t = std::list<std::pair<dcode_t, boost::any>>;
+  using todo_list_t = std::list<std::pair<dcode_t, std::any>>;
   todo_list_t todo_list;
   property_set::id_t next_id = id;
 

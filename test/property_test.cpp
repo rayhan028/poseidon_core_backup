@@ -87,14 +87,14 @@ TEST_CASE("Testing p_item", "[properties]") {
     REQUIRE(items[0].get<double>() == 66.67);
     REQUIRE(items[0].key() == 22);
 
-    p_item pi6((dcode_t)22, p_item::p_int, boost::any(42));
+    p_item pi6((dcode_t)22, p_item::p_int, std::any(42));
     REQUIRE(pi6.get<int>() == 42);
     REQUIRE(items[0].key() == 22);
 }
 
 TEST_CASE("Testing get_property", "[properties]") {
-  properties_t props = { {"skey", boost::any(std::string("string"))},
-                               {"ikey", boost::any(42)}};
+  properties_t props = { {"skey", std::any(std::string("string"))},
+                               {"ikey", std::any(42)}};
 
   REQUIRE(get_property<int>(props, "ikey").value() == 42);
   REQUIRE(get_property<std::string>(props, "skey").value() == "string");

@@ -33,43 +33,43 @@ const std::string test_path = PMDK_PATH("query_tst");
 void create_data(graph_db_ptr graph) {
   graph->begin_transaction();
 
-      graph->add_node("Node", {{"id", boost::any(7)},
-                               {"name", boost::any(std::string("aaa7"))},
-                               {"other", boost::any(std::string("BBB7"))}});
+      graph->add_node("Node", {{"id", std::any(7)},
+                               {"name", std::any(std::string("aaa7"))},
+                               {"other", std::any(std::string("BBB7"))}});
 
-      graph->add_node("Node", {{"id", boost::any(6)},
-                               {"name", boost::any(std::string("aaa6"))},
-                               {"other", boost::any(std::string("BBB6"))}});
+      graph->add_node("Node", {{"id", std::any(6)},
+                               {"name", std::any(std::string("aaa6"))},
+                               {"other", std::any(std::string("BBB6"))}});
 
-      graph->add_node("Node", {{"id", boost::any(5)},
-                               {"name", boost::any(std::string("aaa5"))},
-                               {"other", boost::any(std::string("BBB5"))}});
+      graph->add_node("Node", {{"id", std::any(5)},
+                               {"name", std::any(std::string("aaa5"))},
+                               {"other", std::any(std::string("BBB5"))}});
 
-      graph->add_node("Node", {{"id", boost::any(4)},
-                               {"name", boost::any(std::string("aaa4"))},
-                               {"other", boost::any(std::string("BBB4"))}});
+      graph->add_node("Node", {{"id", std::any(4)},
+                               {"name", std::any(std::string("aaa4"))},
+                               {"other", std::any(std::string("BBB4"))}});
 
-      graph->add_node("Node", {{"id", boost::any(3)},
-                               {"name", boost::any(std::string("aaa3"))},
-                               {"other", boost::any(std::string("BBB3"))}});
+      graph->add_node("Node", {{"id", std::any(3)},
+                               {"name", std::any(std::string("aaa3"))},
+                               {"other", std::any(std::string("BBB3"))}});
 
-      graph->add_node("Node", {{"id", boost::any(2)},
-                               {"name", boost::any(std::string("aaa2"))},
-                               {"other", boost::any(std::string("BBB2"))}});
+      graph->add_node("Node", {{"id", std::any(2)},
+                               {"name", std::any(std::string("aaa2"))},
+                               {"other", std::any(std::string("BBB2"))}});
 
-      graph->add_node("Node", {{"id", boost::any(1)},
-                               {"name", boost::any(std::string("aaa1"))},
-                               {"other", boost::any(std::string("BBB1"))}});
+      graph->add_node("Node", {{"id", std::any(1)},
+                               {"name", std::any(std::string("aaa1"))},
+                               {"other", std::any(std::string("BBB1"))}});
   graph->commit_transaction();
 }
 
 void create_join_data(graph_db_ptr graph) {
   graph->begin_transaction();
 
-  graph->add_node("Node1", {{"id", boost::any(1)}});
-  graph->add_node("Node1", {{"id", boost::any(2)}});
-  graph->add_node("Node2", {{"id", boost::any(3)}});
-  graph->add_node("Node2", {{"id", boost::any(4)}});
+  graph->add_node("Node1", {{"id", std::any(1)}});
+  graph->add_node("Node1", {{"id", std::any(2)}});
+  graph->add_node("Node2", {{"id", std::any(3)}});
+  graph->add_node("Node2", {{"id", std::any(4)}});
 
   graph->commit_transaction();
 }
@@ -147,10 +147,10 @@ TEST_CASE("Testing query operators", "[qop]") {
   }
 
   SECTION("has label") {
-    graph->add_node("Movie", {{"title", boost::any(std::string("m1"))}});
-    graph->add_node("Movie", {{"title", boost::any(std::string("m2"))}});
-    graph->add_node("Actor", {{"name", boost::any(std::string("p1"))}});
-    graph->add_node("Actor", {{"name", boost::any(std::string("p2"))}});
+    graph->add_node("Movie", {{"title", std::any(std::string("m1"))}});
+    graph->add_node("Movie", {{"title", std::any(std::string("m2"))}});
+    graph->add_node("Actor", {{"name", std::any(std::string("p1"))}});
+    graph->add_node("Actor", {{"name", std::any(std::string("p2"))}});
     // graph->dump();
     // std::cout << "code for Movie: " << graph->get_code("Movie") << std::endl;
 
@@ -272,14 +272,14 @@ TEST_CASE("Projecting node and relationship datetime properties", "[graph_db]") 
   ctx.begin_transaction();
 
   auto a = graph->add_node("Person",
-      {{"id", boost::any(1)},
-      {"creationDate", boost::any(time_from_string(std::string("2011-11-01 00:05:56.000")))}});
+      {{"id", std::any(1)},
+      {"creationDate", std::any(time_from_string(std::string("2011-11-01 00:05:56.000")))}});
   auto b = graph->add_node("Place",
-      {{"id", boost::any(24)},
-      {"creationDate", boost::any(time_from_string(std::string("2010-06-10 11:50:26.000")))}});
+      {{"id", std::any(24)},
+      {"creationDate", std::any(time_from_string(std::string("2010-06-10 11:50:26.000")))}});
 
   graph->add_relationship(a, b, ":isLocatedIn",
-      {{"creationDate", boost::any(time_from_string(std::string("2011-11-02 13:00:00.000")))}});
+      {{"creationDate", std::any(time_from_string(std::string("2011-11-02 13:00:00.000")))}});
 
   ctx.commit_transaction();
   ctx.begin_transaction();
@@ -426,18 +426,18 @@ TEST_CASE("Testing outgoing traversal operators", "[qop]") {
 
   ctx.run_transaction([&]() {
 
-    auto a = graph->add_node("Person", {{"id", boost::any(1)},
-                                        {"firstName", boost::any(std::string("A"))}});
-    auto b = graph->add_node("Person", {{"id", boost::any(2)},
-                                        {"firstName", boost::any(std::string("B"))}});
-    auto c = graph->add_node("Person", {{"id", boost::any(3)},
-                                        {"firstName", boost::any(std::string("C"))}});
-    auto d = graph->add_node("Person", {{"id", boost::any(4)},
-                                        {"firstName", boost::any(std::string("D"))}});
-    auto e = graph->add_node("Person", {{"id", boost::any(5)},
-                                        {"firstName", boost::any(std::string("E"))}});
-    auto f = graph->add_node("Person", {{"id", boost::any(6)},
-                                        {"firstName", boost::any(std::string("F"))}});
+    auto a = graph->add_node("Person", {{"id", std::any(1)},
+                                        {"firstName", std::any(std::string("A"))}});
+    auto b = graph->add_node("Person", {{"id", std::any(2)},
+                                        {"firstName", std::any(std::string("B"))}});
+    auto c = graph->add_node("Person", {{"id", std::any(3)},
+                                        {"firstName", std::any(std::string("C"))}});
+    auto d = graph->add_node("Person", {{"id", std::any(4)},
+                                        {"firstName", std::any(std::string("D"))}});
+    auto e = graph->add_node("Person", {{"id", std::any(5)},
+                                        {"firstName", std::any(std::string("E"))}});
+    auto f = graph->add_node("Person", {{"id", std::any(6)},
+                                        {"firstName", std::any(std::string("F"))}});
 
     graph->add_relationship(a, b, ":knows", {});
     graph->add_relationship(a, c, ":knows", {});
@@ -507,18 +507,18 @@ TEST_CASE("Testing incoming traversal operators", "[qop]") {
 
   ctx.run_transaction([&]() {
 
-    auto a = graph->add_node("Person", {{"id", boost::any(1)},
-                                        {"firstName", boost::any(std::string("A"))}});
-    auto b = graph->add_node("Person", {{"id", boost::any(2)},
-                                        {"firstName", boost::any(std::string("B"))}});
-    auto c = graph->add_node("Person", {{"id", boost::any(3)},
-                                        {"firstName", boost::any(std::string("C"))}});
-    auto d = graph->add_node("Person", {{"id", boost::any(4)},
-                                        {"firstName", boost::any(std::string("D"))}});
-    auto e = graph->add_node("Person", {{"id", boost::any(5)},
-                                        {"firstName", boost::any(std::string("E"))}});
-    auto f = graph->add_node("Person", {{"id", boost::any(6)},
-                                        {"firstName", boost::any(std::string("F"))}});
+    auto a = graph->add_node("Person", {{"id", std::any(1)},
+                                        {"firstName", std::any(std::string("A"))}});
+    auto b = graph->add_node("Person", {{"id", std::any(2)},
+                                        {"firstName", std::any(std::string("B"))}});
+    auto c = graph->add_node("Person", {{"id", std::any(3)},
+                                        {"firstName", std::any(std::string("C"))}});
+    auto d = graph->add_node("Person", {{"id", std::any(4)},
+                                        {"firstName", std::any(std::string("D"))}});
+    auto e = graph->add_node("Person", {{"id", std::any(5)},
+                                        {"firstName", std::any(std::string("E"))}});
+    auto f = graph->add_node("Person", {{"id", std::any(6)},
+                                        {"firstName", std::any(std::string("F"))}});
 
     graph->add_relationship(a, b, ":knows", {});
     graph->add_relationship(a, c, ":knows", {});
@@ -584,18 +584,18 @@ TEST_CASE("Testing other Join operators", "[qop]") {
 
   ctx.run_transaction([&]() {
 
-    auto a = graph->add_node("Person", {{"id", boost::any(1)},
-                                        {"firstName", boost::any(std::string("A"))}});
-    auto b = graph->add_node("Person", {{"id", boost::any(2)},
-                                        {"firstName", boost::any(std::string("B"))}});
-    auto c = graph->add_node("Person", {{"id", boost::any(3)},
-                                        {"firstName", boost::any(std::string("C"))}});
-    auto d = graph->add_node("Person", {{"id", boost::any(4)},
-                                        {"firstName", boost::any(std::string("D"))}});
-    auto e = graph->add_node("Person", {{"id", boost::any(5)},
-                                        {"firstName", boost::any(std::string("E"))}});
-    auto f = graph->add_node("Person", {{"id", boost::any(6)},
-                                        {"firstName", boost::any(std::string("F"))}});
+    auto a = graph->add_node("Person", {{"id", std::any(1)},
+                                        {"firstName", std::any(std::string("A"))}});
+    auto b = graph->add_node("Person", {{"id", std::any(2)},
+                                        {"firstName", std::any(std::string("B"))}});
+    auto c = graph->add_node("Person", {{"id", std::any(3)},
+                                        {"firstName", std::any(std::string("C"))}});
+    auto d = graph->add_node("Person", {{"id", std::any(4)},
+                                        {"firstName", std::any(std::string("D"))}});
+    auto e = graph->add_node("Person", {{"id", std::any(5)},
+                                        {"firstName", std::any(std::string("E"))}});
+    auto f = graph->add_node("Person", {{"id", std::any(6)},
+                                        {"firstName", std::any(std::string("F"))}});
 
     graph->add_relationship(a, b, ":knows", {});
     graph->add_relationship(a, c, ":knows", {});
@@ -766,29 +766,29 @@ TEST_CASE("Testing Groupby operator", "[qop]") {
 
   ctx.run_transaction([&]() {
 
-    graph->add_node("Person", {{"age", boost::any(42)},
-                              {"firstName", boost::any(std::string("John"))},
-                              {"lastName", boost::any(std::string("Doe"))}});
+    graph->add_node("Person", {{"age", std::any(42)},
+                              {"firstName", std::any(std::string("John"))},
+                              {"lastName", std::any(std::string("Doe"))}});
 
-    graph->add_node("Person", {{"age", boost::any(77)},
-                              {"firstName", boost::any(std::string("Michael"))},
-                              {"lastName", boost::any(std::string("Stonebreaker"))}});
+    graph->add_node("Person", {{"age", std::any(77)},
+                              {"firstName", std::any(std::string("Michael"))},
+                              {"lastName", std::any(std::string("Stonebreaker"))}});
 
-    graph->add_node("Person", {{"age", boost::any(48)},
-                              {"firstName", boost::any(std::string("Anastasia"))},
-                              {"lastName", boost::any(std::string("Ailamaki"))}});
+    graph->add_node("Person", {{"age", std::any(48)},
+                              {"firstName", std::any(std::string("Anastasia"))},
+                              {"lastName", std::any(std::string("Ailamaki"))}});
 
-    graph->add_node("Person", {{"age", boost::any(37)},
-                              {"firstName", boost::any(std::string("John"))},
-                              {"lastName", boost::any(std::string("Jones"))}});
+    graph->add_node("Person", {{"age", std::any(37)},
+                              {"firstName", std::any(std::string("John"))},
+                              {"lastName", std::any(std::string("Jones"))}});
 
-    graph->add_node("Person", {{"age", boost::any(20)},
-                              {"firstName", boost::any(std::string("John"))},
-                              {"lastName", boost::any(std::string(""))}});
+    graph->add_node("Person", {{"age", std::any(20)},
+                              {"firstName", std::any(std::string("John"))},
+                              {"lastName", std::any(std::string(""))}});
 
-    graph->add_node("Person", {{"age", boost::any(100)},
-                              {"firstName", boost::any(std::string("Michael"))},
-                              {"lastName", boost::any(std::string("G."))}});
+    graph->add_node("Person", {{"age", std::any(100)},
+                              {"firstName", std::any(std::string("Michael"))},
+                              {"lastName", std::any(std::string("G."))}});
     return true;
   });
   // TODO: works only if we run queries in a separate transaction!
@@ -881,25 +881,25 @@ TEST_CASE("Testing Bi-directional traversal operator", "[qop]") {
 
   ctx.run_transaction([&]() {
 
-    auto A = graph->add_node("Person", {{"age", boost::any(42)},
-                              {"firstName", boost::any(std::string("AAA"))},
-                              {"lastName", boost::any(std::string("aaa"))}});
+    auto A = graph->add_node("Person", {{"age", std::any(42)},
+                              {"firstName", std::any(std::string("AAA"))},
+                              {"lastName", std::any(std::string("aaa"))}});
 
-    auto B = graph->add_node("Person", {{"age", boost::any(77)},
-                              {"firstName", boost::any(std::string("BBB"))},
-                              {"lastName", boost::any(std::string("bbb"))}});
+    auto B = graph->add_node("Person", {{"age", std::any(77)},
+                              {"firstName", std::any(std::string("BBB"))},
+                              {"lastName", std::any(std::string("bbb"))}});
 
-    auto C = graph->add_node("Person", {{"age", boost::any(48)},
-                              {"firstName", boost::any(std::string("CCC"))},
-                              {"lastName", boost::any(std::string("ccc"))}});
+    auto C = graph->add_node("Person", {{"age", std::any(48)},
+                              {"firstName", std::any(std::string("CCC"))},
+                              {"lastName", std::any(std::string("ccc"))}});
 
-    auto D = graph->add_node("Person", {{"age", boost::any(37)},
-                              {"firstName", boost::any(std::string("DDD"))},
-                              {"lastName", boost::any(std::string("ddd"))}});
+    auto D = graph->add_node("Person", {{"age", std::any(37)},
+                              {"firstName", std::any(std::string("DDD"))},
+                              {"lastName", std::any(std::string("ddd"))}});
 
-    auto E = graph->add_node("Person", {{"age", boost::any(20)},
-                              {"firstName", boost::any(std::string("EEE"))},
-                              {"lastName", boost::any(std::string("eee"))}});
+    auto E = graph->add_node("Person", {{"age", std::any(20)},
+                              {"firstName", std::any(std::string("EEE"))},
+                              {"lastName", std::any(std::string("eee"))}});
     
     graph->add_relationship(A, C, ":knows", {});
     graph->add_relationship(B, C, ":knows", {});
@@ -943,11 +943,11 @@ TEST_CASE("Testing distinct operator", "[qop]") {
 
   ctx.run_transaction([&]() {
 
-    auto a = graph->add_node("Person", {{"id", boost::any(3)}});
-    auto b = graph->add_node("Person", {{"id", boost::any(4)}});
-    auto c = graph->add_node("Person", {{"id", boost::any(5)}});
-    auto d = graph->add_node("Person", {{"id", boost::any(6)}});
-    auto p = graph->add_node("Paper", {{"id", boost::any(38)}});
+    auto a = graph->add_node("Person", {{"id", std::any(3)}});
+    auto b = graph->add_node("Person", {{"id", std::any(4)}});
+    auto c = graph->add_node("Person", {{"id", std::any(5)}});
+    auto d = graph->add_node("Person", {{"id", std::any(6)}});
+    auto p = graph->add_node("Paper", {{"id", std::any(38)}});
 
     graph->add_relationship(a, p, ":authored", {});
     graph->add_relationship(b, p, ":authored", {});

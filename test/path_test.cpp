@@ -42,15 +42,15 @@ TEST_CASE("Finding Unweighted Shortest Path", "[shortest_path]") {
   ctx.begin_transaction();
 
   auto a = graph->add_node(":Person", {{"name",
-            boost::any(std::string("John"))}, {"age", boost::any(42)}});
-  auto b = graph->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
-                                {"age", boost::any(36)}});
-  auto c = graph->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
-                                {"age", boost::any(58)}});
-  auto d = graph->add_node(":Person", {{"name", boost::any(std::string("Han"))},
-                                {"age", boost::any(13)}});
-  auto e = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
-                                {"age", boost::any(47)}});
+            std::any(std::string("John"))}, {"age", std::any(42)}});
+  auto b = graph->add_node(":Person", {{"name", std::any(std::string("Ann"))},
+                                {"age", std::any(36)}});
+  auto c = graph->add_node(":Person", {{"name", std::any(std::string("Pete"))},
+                                {"age", std::any(58)}});
+  auto d = graph->add_node(":Person", {{"name", std::any(std::string("Han"))},
+                                {"age", std::any(13)}});
+  auto e = graph->add_node(":Person", {{"name", std::any(std::string("Zaki"))},
+                                {"age", std::any(47)}});
 
   graph->add_relationship(a, b, ":knows", {});
   graph->add_relationship(b, c, ":knows", {});
@@ -94,15 +94,15 @@ TEST_CASE("Weighted Shortest Path", "[shortest_path]") {
   ctx.begin_transaction();
 
   auto a = graph->add_node(":Person", {{"name",
-            boost::any(std::string("John"))}, {"age", boost::any(42)}});
-  auto b = graph->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
-                                {"age", boost::any(36)}});
-  auto c = graph->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
-                                {"age", boost::any(58)}});
-  auto d = graph->add_node(":Person", {{"name", boost::any(std::string("Han"))},
-                                {"age", boost::any(13)}});
-  auto e = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
-                                {"age", boost::any(47)}});
+            std::any(std::string("John"))}, {"age", std::any(42)}});
+  auto b = graph->add_node(":Person", {{"name", std::any(std::string("Ann"))},
+                                {"age", std::any(36)}});
+  auto c = graph->add_node(":Person", {{"name", std::any(std::string("Pete"))},
+                                {"age", std::any(58)}});
+  auto d = graph->add_node(":Person", {{"name", std::any(std::string("Han"))},
+                                {"age", std::any(13)}});
+  auto e = graph->add_node(":Person", {{"name", std::any(std::string("Zaki"))},
+                                {"age", std::any(47)}});
 
   graph->add_relationship(a, b, ":knows", {});
   graph->add_relationship(b, c, ":knows", {});
@@ -144,19 +144,19 @@ TEST_CASE("Top K Weighted Shortest Paths", "[shortest_path]") {
   ctx.begin_transaction();
 
   auto a = graph->add_node(":Person", {{"name",
-            boost::any(std::string("John"))}, {"age", boost::any(42)}});
-  auto b = graph->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
-                                {"age", boost::any(36)}});
-  auto c = graph->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
-                                {"age", boost::any(58)}});
-  auto d = graph->add_node(":Person", {{"name", boost::any(std::string("Han"))},
-                                {"age", boost::any(13)}});
-  auto e = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
-                                {"age", boost::any(47)}});
-  auto f = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
-                                {"age", boost::any(81)}});
-  auto g = graph->add_node(":Person", {{"name", boost::any(std::string("Zaki"))},
-                                {"age", boost::any(23)}});
+            std::any(std::string("John"))}, {"age", std::any(42)}});
+  auto b = graph->add_node(":Person", {{"name", std::any(std::string("Ann"))},
+                                {"age", std::any(36)}});
+  auto c = graph->add_node(":Person", {{"name", std::any(std::string("Pete"))},
+                                {"age", std::any(58)}});
+  auto d = graph->add_node(":Person", {{"name", std::any(std::string("Han"))},
+                                {"age", std::any(13)}});
+  auto e = graph->add_node(":Person", {{"name", std::any(std::string("Zaki"))},
+                                {"age", std::any(47)}});
+  auto f = graph->add_node(":Person", {{"name", std::any(std::string("Zaki"))},
+                                {"age", std::any(81)}});
+  auto g = graph->add_node(":Person", {{"name", std::any(std::string("Zaki"))},
+                                {"age", std::any(23)}});
 
   graph->add_relationship(a, b, ":knows", {});
   graph->add_relationship(b, c, ":knows", {});

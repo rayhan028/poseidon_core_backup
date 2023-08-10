@@ -24,8 +24,7 @@
 #include <map>
 #include <vector>
 #include <utility>
-
-#include <boost/any.hpp>
+#include <any>
 
 #include "vec.hpp"
 #include "defs.hpp"
@@ -154,7 +153,7 @@ std::ostream &operator<<(std::ostream &os, const node_description &ndescr);
 /**
  * Helper function to print an any value.
  */
-std::ostream &operator<<(std::ostream &os, const boost::any &any_value);
+std::ostream &operator<<(std::ostream &os, const std::any &any_value);
 
 /**
  * A class for storing all nodes of a graph. It supports adding and removing

@@ -37,12 +37,12 @@ TEST_CASE("Importing a node", "[graph_db]") {
 
 {
   graph->begin_transaction();
-  graph->add_node("Person", {{"name", boost::any(std::string("Anne"))},
-                                  {"age", boost::any(28)}});
+  graph->add_node("Person", {{"name", std::any(std::string("Anne"))},
+                                  {"age", std::any(28)}});
   graph->commit_transaction();
 }
-  auto nid = graph->import_node("Actor", {{"name", boost::any(std::string("John"))},
-                                  {"age", boost::any(42)}});
+  auto nid = graph->import_node("Actor", {{"name", std::any(std::string("John"))},
+                                  {"age", std::any(42)}});
 
   graph->begin_transaction();
   auto nd = graph->get_node_description(nid);
@@ -63,8 +63,8 @@ TEST_CASE("Importing a typed node", "[graph_db]") {
 
 {
   graph->begin_transaction();
-  graph->add_node("Person", {{"name", boost::any(std::string("Anne"))},
-                                  {"age", boost::any(28)}});
+  graph->add_node("Person", {{"name", std::any(std::string("Anne"))},
+                                  {"age", std::any(28)}});
   graph->commit_transaction();
 }
 
@@ -76,7 +76,7 @@ TEST_CASE("Importing a typed node", "[graph_db]") {
 
   auto nid = graph->import_typed_node(label, { prop1, prop2 },
     { p_item::p_typecode::p_dcode, p_item::p_typecode::p_int}, 
-    { boost::any(val), boost::any(42)});
+    { std::any(val), std::any(42)});
 
   graph->begin_transaction();
   auto nd = graph->get_node_description(nid);

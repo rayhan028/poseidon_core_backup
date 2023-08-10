@@ -20,226 +20,226 @@ void create_data(graph_db_ptr &graph) {
   spdlog::info("create data...");
   graph->run_transaction([&]() {
     auto ravalomanana = graph->add_node(
-        "Person", {{"id", boost::any((uint64_t)65)},
-                   {"firstName", boost::any(std::string("Marc"))},
-                   {"lastName", boost::any(std::string("Ravalomanana"))}});
+        "Person", {{"id", std::any((uint64_t)65)},
+                   {"firstName", std::any(std::string("Marc"))},
+                   {"lastName", std::any(std::string("Ravalomanana"))}});
     auto p1 = graph->add_node(
-        "Person", {{"id", boost::any((uint64_t)1379)},
-                   {"firstName", boost::any(std::string("Muhammad"))},
-                   {"lastName", boost::any(std::string("Iqbal"))}});
+        "Person", {{"id", std::any((uint64_t)1379)},
+                   {"firstName", std::any(std::string("Muhammad"))},
+                   {"lastName", std::any(std::string("Iqbal"))}});
     auto p2 = graph->add_node("Person",
-                              {{"id", boost::any((uint64_t)1291)},
-                               {"firstName", boost::any(std::string("Wei"))},
-                               {"lastName", boost::any(std::string("Li"))}});
+                              {{"id", std::any((uint64_t)1291)},
+                               {"firstName", std::any(std::string("Wei"))},
+                               {"lastName", std::any(std::string("Li"))}});
     auto p3 = graph->add_node("Person",
-                              {{"id", boost::any((uint64_t)1121)},
-                               {"firstName", boost::any(std::string("Karl"))},
-                               {"lastName", boost::any(std::string("Beran"))}});
+                              {{"id", std::any((uint64_t)1121)},
+                               {"firstName", std::any(std::string("Karl"))},
+                               {"lastName", std::any(std::string("Beran"))}});
     auto post1 = graph->add_node(
         "Post",
-        {{"id", boost::any((uint64_t)1863)},
-         {"imageFile", boost::any(std::string(""))},
+        {{"id", std::any((uint64_t)1863)},
+         {"imageFile", std::any(std::string(""))},
          {"creationDate",
-          boost::any(time_from_string(std::string("2011-10-17 05:40:34.561")))},
-         {"content", boost::any(std::string("Content of post1"))}});
+          std::any(time_from_string(std::string("2011-10-17 05:40:34.561")))},
+         {"content", std::any(std::string("Content of post1"))}});
     auto post2 = graph->add_node(
         "Post",
-        {{"id", boost::any((uint64_t)1976)},
-         {"imageFile", boost::any(std::string(""))},
+        {{"id", std::any((uint64_t)1976)},
+         {"imageFile", std::any(std::string(""))},
          {"creationDate",
-          boost::any(time_from_string(std::string("2012-01-14 09:41:00.992")))},
-         {"content", boost::any(std::string("Content of post2"))}});
+          std::any(time_from_string(std::string("2012-01-14 09:41:00.992")))},
+         {"content", std::any(std::string("Content of post2"))}});
     auto post3 = graph->add_node(
         "Post",
-        {{"id", boost::any((uint64_t)137438956)},
-         {"imageFile", boost::any(std::string("photo1374389534791.jpg"))},
+        {{"id", std::any((uint64_t)137438956)},
+         {"imageFile", std::any(std::string("photo1374389534791.jpg"))},
          {"creationDate",
-          boost::any(time_from_string(std::string("2011-10-16 15:05:23.955")))},
-         {"content", boost::any(std::string(""))}});
+          std::any(time_from_string(std::string("2011-10-16 15:05:23.955")))},
+         {"content", std::any(std::string(""))}});
     auto post4 = graph->add_node(
         "Post",
-        {{"id", boost::any((uint64_t)13743895)},
-         {"imageFile", boost::any(std::string("photo1374999534791.jpg"))},
+        {{"id", std::any((uint64_t)13743895)},
+         {"imageFile", std::any(std::string("photo1374999534791.jpg"))},
          {"creationDate",
-          boost::any(time_from_string(std::string("2010-03-16 15:05:23.955")))},
-         {"content", boost::any(std::string(""))}});
+          std::any(time_from_string(std::string("2010-03-16 15:05:23.955")))},
+         {"content", std::any(std::string(""))}});
     auto post5 = graph->add_node(
         "Post",
-        {{"id", boost::any((uint64_t)13743894)},
-         {"imageFile", boost::any(std::string("photo1374991234791.jpg"))},
+        {{"id", std::any((uint64_t)13743894)},
+         {"imageFile", std::any(std::string("photo1374991234791.jpg"))},
          {"creationDate",
-          boost::any(time_from_string(std::string("2010-03-16 15:05:23.955")))},
-         {"content", boost::any(std::string(""))}});
+          std::any(time_from_string(std::string("2010-03-16 15:05:23.955")))},
+         {"content", std::any(std::string(""))}});
     auto cmt1 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1865)},
+        {{"id", std::any((uint64_t)1865)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2013-01-17 09:17:43.567")))},
-         {"content", boost::any(std::string("Content of cmt1"))}});
+          std::any(time_from_string(std::string("2013-01-17 09:17:43.567")))},
+         {"content", std::any(std::string("Content of cmt1"))}});
     auto cmt2 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1877)},
+        {{"id", std::any((uint64_t)1877)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2013-2-17 10:59:33.177")))},
-         {"content", boost::any(std::string("Content of cmt2"))}});
+          std::any(time_from_string(std::string("2013-2-17 10:59:33.177")))},
+         {"content", std::any(std::string("Content of cmt2"))}});
     auto cmt3 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1978)},
+        {{"id", std::any((uint64_t)1978)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2013-03-14 16:57:46.045")))},
-         {"content", boost::any(std::string("Content of cmt3"))}});
+          std::any(time_from_string(std::string("2013-03-14 16:57:46.045")))},
+         {"content", std::any(std::string("Content of cmt3"))}});
     auto cmt4 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1126)},
+        {{"id", std::any((uint64_t)1126)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2013-04-16 21:16:03.354")))},
-         {"content", boost::any(std::string("Content of cmt4"))}});
+          std::any(time_from_string(std::string("2013-04-16 21:16:03.354")))},
+         {"content", std::any(std::string("Content of cmt4"))}});
     auto cmt5 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1171)},
+        {{"id", std::any((uint64_t)1171)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2013-05-17 19:37:26.339")))},
-         {"content", boost::any(std::string("Content of cmt5"))}});
+          std::any(time_from_string(std::string("2013-05-17 19:37:26.339")))},
+         {"content", std::any(std::string("Content of cmt5"))}});
     auto cmt6 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1768)},
+        {{"id", std::any((uint64_t)1768)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2013-06-29 17:57:51.844")))},
-         {"content", boost::any(std::string("Content of cmt6"))}});
+          std::any(time_from_string(std::string("2013-06-29 17:57:51.844")))},
+         {"content", std::any(std::string("Content of cmt6"))}});
     auto cmt7 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1865)},
+        {{"id", std::any((uint64_t)1865)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2013-07-25 07:54:01.976")))},
-         {"content", boost::any(std::string("Content of cmt7"))}});
+          std::any(time_from_string(std::string("2013-07-25 07:54:01.976")))},
+         {"content", std::any(std::string("Content of cmt7"))}});
     auto cmt8 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1878)},
+        {{"id", std::any((uint64_t)1878)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2013-08-25 12:56:57.280")))},
-         {"content", boost::any(std::string("Content of cmt8"))}});
+          std::any(time_from_string(std::string("2013-08-25 12:56:57.280")))},
+         {"content", std::any(std::string("Content of cmt8"))}});
     auto cmt9 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1978)},
+        {{"id", std::any((uint64_t)1978)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2013-09-27 09:41:01.413")))},
-         {"content", boost::any(std::string("Content of cmt9"))}});
+          std::any(time_from_string(std::string("2013-09-27 09:41:01.413")))},
+         {"content", std::any(std::string("Content of cmt9"))}});
     auto cmt10 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1126)},
+        {{"id", std::any((uint64_t)1126)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2013-10-26 23:46:18.580")))},
-         {"content", boost::any(std::string("Content of cmt10"))}});
+          std::any(time_from_string(std::string("2013-10-26 23:46:18.580")))},
+         {"content", std::any(std::string("Content of cmt10"))}});
     auto cmt11 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1171)},
+        {{"id", std::any((uint64_t)1171)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2013-11-26 17:09:07.283")))},
-         {"content", boost::any(std::string("Content of cmt11"))}});
+          std::any(time_from_string(std::string("2013-11-26 17:09:07.283")))},
+         {"content", std::any(std::string("Content of cmt11"))}});
     auto cmt12 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1768)},
+        {{"id", std::any((uint64_t)1768)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2013-12-27 11:32:19.336")))},
-         {"content", boost::any(std::string("Content of cmt12"))}});
+          std::any(time_from_string(std::string("2013-12-27 11:32:19.336")))},
+         {"content", std::any(std::string("Content of cmt12"))}});
 
     auto mahinda = graph->add_node(
         "Person",
-        {{"id", boost::any((uint64_t)933)},
-         {"firstName", boost::any(std::string("Mahinda"))},
-         {"lastName", boost::any(std::string("Perera"))},
-         {"gender", boost::any(std::string("male"))},
-         {"birthday", boost::any(std::string("1989-12-03"))},
+        {{"id", std::any((uint64_t)933)},
+         {"firstName", std::any(std::string("Mahinda"))},
+         {"lastName", std::any(std::string("Perera"))},
+         {"gender", std::any(std::string("male"))},
+         {"birthday", std::any(std::string("1989-12-03"))},
          {"creationDate",
-          boost::any(time_from_string(std::string("2010-02-14 15:32:10.447")))},
-         {"locationIP", boost::any(std::string("119.235.7.103"))},
-         {"browserUsed", boost::any(std::string("Firefox"))}});
+          std::any(time_from_string(std::string("2010-02-14 15:32:10.447")))},
+         {"locationIP", std::any(std::string("119.235.7.103"))},
+         {"browserUsed", std::any(std::string("Firefox"))}});
     auto baruch = graph->add_node(
-        "Person", {{"id", boost::any((uint64_t)4139)},
-                   {"firstName", boost::any(std::string("Baruch"))},
-                   {"lastName", boost::any(std::string("Dego"))}});
+        "Person", {{"id", std::any((uint64_t)4139)},
+                   {"firstName", std::any(std::string("Baruch"))},
+                   {"lastName", std::any(std::string("Dego"))}});
     auto fritz = graph->add_node(
-        "Person", {{"id", boost::any((uint64_t)65970697)},
-                   {"firstName", boost::any(std::string("Fritz"))},
-                   {"lastName", boost::any(std::string("Muller"))}});
+        "Person", {{"id", std::any((uint64_t)65970697)},
+                   {"firstName", std::any(std::string("Fritz"))},
+                   {"lastName", std::any(std::string("Muller"))}});
     auto andrei = graph->add_node(
-        "Person", {{"id", boost::any((uint64_t)10995116)},
-                   {"firstName", boost::any(std::string("Andrei"))},
-                   {"lastName", boost::any(std::string("Condariuc"))}});
+        "Person", {{"id", std::any((uint64_t)10995116)},
+                   {"firstName", std::any(std::string("Andrei"))},
+                   {"lastName", std::any(std::string("Condariuc"))}});
     auto ottoR = graph->add_node(
-        "Person", {{"id", boost::any((uint64_t)838375)},
-                   {"firstName", boost::any(std::string("Otto"))},
-                   {"lastName", boost::any(std::string("Richter"))}});
+        "Person", {{"id", std::any((uint64_t)838375)},
+                   {"firstName", std::any(std::string("Otto"))},
+                   {"lastName", std::any(std::string("Richter"))}});
     auto ottoB = graph->add_node(
-        "Person", {{"id", boost::any((uint64_t)833579)},
-                   {"firstName", boost::any(std::string("Otto"))},
-                   {"lastName", boost::any(std::string("Becker"))}});
+        "Person", {{"id", std::any((uint64_t)833579)},
+                   {"firstName", std::any(std::string("Otto"))},
+                   {"lastName", std::any(std::string("Becker"))}});
     auto hoChi = graph->add_node(
-        "Person", {{"id", boost::any((uint64_t)4194)},
-                   {"firstName", boost::any(std::string("Hồ Chí"))},
-                   {"lastName", boost::any(std::string("Do"))}});
+        "Person", {{"id", std::any((uint64_t)4194)},
+                   {"firstName", std::any(std::string("Hồ Chí"))},
+                   {"lastName", std::any(std::string("Do"))}});
     auto lomana = graph->add_node(
-        "Person", {{"id", boost::any((uint64_t)15393)},
-                   {"firstName", boost::any(std::string("Lomana Trésor"))},
-                   {"lastName", boost::any(std::string("Kanam"))}});
+        "Person", {{"id", std::any((uint64_t)15393)},
+                   {"firstName", std::any(std::string("Lomana Trésor"))},
+                   {"lastName", std::any(std::string("Kanam"))}});
     auto amin = graph->add_node(
-        "Person", {{"id", boost::any((uint64_t)19791)},
-                   {"firstName", boost::any(std::string("Amin"))},
-                   {"lastName", boost::any(std::string("Kamkar"))}});
+        "Person", {{"id", std::any((uint64_t)19791)},
+                   {"firstName", std::any(std::string("Amin"))},
+                   {"lastName", std::any(std::string("Kamkar"))}});
     auto bingbing = graph->add_node(
-        "Person", {{"id", boost::any((uint64_t)90796)},
-                   {"firstName", boost::any(std::string("Bingbing"))},
-                   {"lastName", boost::any(std::string("Xu"))}});
+        "Person", {{"id", std::any((uint64_t)90796)},
+                   {"firstName", std::any(std::string("Bingbing"))},
+                   {"lastName", std::any(std::string("Xu"))}});
     auto Kelaniya =
-        graph->add_node("Place", {{"id", boost::any((uint64_t)1353)}});
-    auto Gobi = graph->add_node("Place", {{"id", boost::any((uint64_t)129)}});
+        graph->add_node("Place", {{"id", std::any((uint64_t)1353)}});
+    auto Gobi = graph->add_node("Place", {{"id", std::any((uint64_t)129)}});
     auto forum_37 = graph->add_node(
-        "Forum", {{"id", boost::any((uint64_t)37)},
-                  {"title", boost::any(std::string("Wall of Hồ Chí Do"))}});
+        "Forum", {{"id", std::any((uint64_t)37)},
+                  {"title", std::any(std::string("Wall of Hồ Chí Do"))}});
     graph->add_node(
         "Post",
-        {{"id", boost::any((uint64_t)1374389595)},
-         {"imageFile", boost::any(std::string("photo1374389534791.jpg"))},
+        {{"id", std::any((uint64_t)1374389595)},
+         {"imageFile", std::any(std::string("photo1374389534791.jpg"))},
          {"creationDate",
-          boost::any(time_from_string(std::string("2011-10-05 14:38:36.019")))},
-         {"content", boost::any(std::string(""))}});
+          std::any(time_from_string(std::string("2011-10-05 14:38:36.019")))},
+         {"content", std::any(std::string(""))}});
     auto post_16492674 = graph->add_node(
         "Post",
-        {{"id", boost::any((uint64_t)16492674)},
-         {"imageFile", boost::any(std::string(""))},
-         {"content", boost::any(std::string("Content of post_16492674"))},
-         {"creationDate", boost::any(time_from_string(
+        {{"id", std::any((uint64_t)16492674)},
+         {"imageFile", std::any(std::string(""))},
+         {"content", std::any(std::string("Content of post_16492674"))},
+         {"creationDate", std::any(time_from_string(
                               std::string("2012-01-09 08:05:28.922")))}});
     auto comment_16492676 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)16492676)},
+        {{"id", std::any((uint64_t)16492676)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2012-01-10 03:24:33.368")))},
-         {"content", boost::any(std::string("Content of comment_16492676"))}});
+          std::any(time_from_string(std::string("2012-01-10 03:24:33.368")))},
+         {"content", std::any(std::string("Content of comment_16492676"))}});
     auto comment_12362343 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)12362343)},
+        {{"id", std::any((uint64_t)12362343)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2011-08-17 14:26:59.961")))},
-         {"content", boost::any(std::string("Content of comment_12362343"))}});
+          std::any(time_from_string(std::string("2011-08-17 14:26:59.961")))},
+         {"content", std::any(std::string("Content of comment_12362343"))}});
     auto comment_16492675 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)16492675)},
+        {{"id", std::any((uint64_t)16492675)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2011-10-05 14:38:36.019")))},
-         {"content", boost::any(std::string("Content of comment_16492675"))}});
+          std::any(time_from_string(std::string("2011-10-05 14:38:36.019")))},
+         {"content", std::any(std::string("Content of comment_16492675"))}});
     auto comment_16492677 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)16492677)},
+        {{"id", std::any((uint64_t)16492677)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2012-01-10 14:57:10.420")))},
-         {"content", boost::any(std::string("Content of comment_16492677"))}});
+          std::any(time_from_string(std::string("2012-01-10 14:57:10.420")))},
+         {"content", std::any(std::string("Content of comment_16492677"))}});
     auto comment_1642217 = graph->add_node(
         "Comment",
-        {{"id", boost::any((uint64_t)1642217)},
+        {{"id", std::any((uint64_t)1642217)},
          {"creationDate",
-          boost::any(time_from_string(std::string("2012-01-10 06:31:18.533")))},
-         {"content", boost::any(std::string("Content of comment_1642217"))}});
+          std::any(time_from_string(std::string("2012-01-10 06:31:18.533")))},
+         {"content", std::any(std::string("Content of comment_1642217"))}});
 
     // IS 1
     graph->add_relationship(mahinda, Kelaniya, ":isLocatedIn", {});
@@ -281,23 +281,23 @@ void create_data(graph_db_ptr &graph) {
     // IS 3
     graph->add_relationship(
         mahinda, baruch, ":knows",
-        {{"creationDate", boost::any(time_from_string(
+        {{"creationDate", std::any(time_from_string(
                               std::string("2010-03-13 07:37:21.718")))}});
     graph->add_relationship(
         mahinda, fritz, ":knows",
-        {{"creationDate", boost::any(time_from_string(
+        {{"creationDate", std::any(time_from_string(
                               std::string("2010-09-20 09:42:43.187")))}});
     graph->add_relationship(
         mahinda, andrei, ":knows",
-        {{"creationDate", boost::any(time_from_string(
+        {{"creationDate", std::any(time_from_string(
                               std::string("2011-01-02 06:43:41.955")))}});
     graph->add_relationship(
         mahinda, ottoB, ":knows",
-        {{"creationDate", boost::any(time_from_string(
+        {{"creationDate", std::any(time_from_string(
                               std::string("2012-09-07 01:11:30.195")))}});
     graph->add_relationship(
         mahinda, ottoR, ":knows",
-        {{"creationDate", boost::any(time_from_string(
+        {{"creationDate", std::any(time_from_string(
                               std::string("2012-09-07 01:11:30.195")))}});
 
     // IS 5
@@ -321,40 +321,40 @@ void create_data(graph_db_ptr &graph) {
     // IU1
     graph->add_node(
         "Organisation",
-        {{"id", boost::any(21)},
-         {"type", boost::any(std::string("company"))},
-         {"name", boost::any(std::string("Aerolíneas_Argentinas"))},
-         {"url", boost::any(std::string(
+        {{"id", std::any(21)},
+         {"type", std::any(std::string("company"))},
+         {"name", std::any(std::string("Aerolíneas_Argentinas"))},
+         {"url", std::any(std::string(
                      "http://dbpedia.org/resource/Aerolíneas_Argentinas"))}},
         true);
     graph->add_node(
         "Organisation",
-        {{"id", boost::any(3985)},
-         {"type", boost::any(std::string("company"))},
-         {"name", boost::any(std::string("Aerolíneas_Argentinas"))},
-         {"url", boost::any(std::string(
+        {{"id", std::any(3985)},
+         {"type", std::any(std::string("company"))},
+         {"name", std::any(std::string("Aerolíneas_Argentinas"))},
+         {"url", std::any(std::string(
                      "http://dbpedia.org/resource/Aerolíneas_Argentinas"))}},
         true);
     graph->add_node(
         "Place",
-        {{"id", boost::any(32)},
-         {"type", boost::any(std::string("country"))},
-         {"name", boost::any(std::string("Norway"))},
-         {"url", boost::any(std::string("http://dbpedia.org/resource/Norwa"))}},
+        {{"id", std::any(32)},
+         {"type", std::any(std::string("country"))},
+         {"name", std::any(std::string("Norway"))},
+         {"url", std::any(std::string("http://dbpedia.org/resource/Norwa"))}},
         true);
     graph->add_node("Tag",
-                    {{"id", boost::any(19)},
-                     {"name", boost::any(std::string("José_Acasus"))},
-                     {"url", boost::any(std::string(
+                    {{"id", std::any(19)},
+                     {"name", std::any(std::string("José_Acasus"))},
+                     {"url", std::any(std::string(
                                  "http://dbpedia.org/resource/José_Acasuso"))}},
                     true);
     // IU 4
     graph->add_node("Tag",
-                    {{"id", boost::any((uint64_t)2)},
-                     {"name", boost::any(std::string("Snowboard"))},
-                     {"url", boost::any(std::string(
+                    {{"id", std::any((uint64_t)2)},
+                     {"name", std::any(std::string("Snowboard"))},
+                     {"url", std::any(std::string(
                                  "http://dbpedia.org/resource/Snowboard"))},
-                     {"hasType", boost::any((uint64_t)3)}});
+                     {"hasType", std::any((uint64_t)3)}});
 
     return true;
   });

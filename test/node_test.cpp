@@ -42,25 +42,25 @@ void delete_dir(const std::string& path) {
 TEST_CASE("Testing output functions", "[nodes]") {
   {
     std::ostringstream os;
-    boost::any v(12);
+    std::any v(12);
     os << v;
     REQUIRE(os.str() == "12");
   }
   {
     std::ostringstream os;
-    boost::any v(12.34);
+    std::any v(12.34);
     os << v;
     REQUIRE(os.str() == "12.34");
   }
   {
     std::ostringstream os;
-    boost::any v(true);
+    std::any v(true);
     os << v;
     REQUIRE(os.str() == "1");
   }
   {
     std::ostringstream os;
-    boost::any v((uint64_t)1234);
+    std::any v((uint64_t)1234);
     os << v;
     REQUIRE(os.str() == "1234");
   }
@@ -68,7 +68,7 @@ TEST_CASE("Testing output functions", "[nodes]") {
     std::ostringstream os;
     boost::posix_time::ptime pt{ boost::gregorian::date{2014, 5, 12}, 
       boost::posix_time::time_duration{12, 0, 0}};
-    boost::any v(pt);
+    std::any v(pt);
     os << v;
     REQUIRE(os.str() == "2014-May-12 12:00:00");
   }

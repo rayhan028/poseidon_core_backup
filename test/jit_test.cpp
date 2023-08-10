@@ -73,21 +73,21 @@ TEST_CASE("Query the graph", "[jit_query_read]") {
 
   for (int i = 0; i < num_persons; i++) {
     graph->add_node("Person",
-                              {{"name", boost::any(std::string("John Doe"))},
-                               {"age", boost::any(42)},
-                               {"group", boost::any(int(i%4))},
-                               {"id", boost::any((int)i)},
-                               {"num", boost::any(uint64_t(1234567890123412))},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}},
+                              {{"name", std::any(std::string("John Doe"))},
+                               {"age", std::any(42)},
+                               {"group", std::any(int(i%4))},
+                               {"id", std::any((int)i)},
+                               {"num", std::any(uint64_t(1234567890123412))},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}},
                               true);
   }
 
   for (int i = 0; i < num_books; i++) {
     auto b = graph->add_node("Book",
-                              {{"title", boost::any(std::string("Book Title"))},
-                               {"year", boost::any(1942)},
-                               {"id", boost::any((int)i)}},
+                              {{"title", std::any(std::string("Book Title"))},
+                               {"year", std::any(1942)},
+                               {"id", std::any((int)i)}},
                               true);
     graph->add_relationship(i, b, ":HAS_READ", {});
   }
@@ -343,20 +343,20 @@ TEST_CASE("Test the Projection operator", "[jit_query_projection]") {
 
   for (int i = 0; i < num_persons; i++) {
     auto p = graph->add_node("Person",
-                              {{"name", boost::any(std::string("John Doe"))},
-                               {"age", boost::any(42)},
-                               {"group", boost::any(int(i%4))},
-                               {"id", boost::any(i)},
-                               {"num", boost::any(uint64_t(1234567890123412))},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}},
+                              {{"name", std::any(std::string("John Doe"))},
+                               {"age", std::any(42)},
+                               {"group", std::any(int(i%4))},
+                               {"id", std::any(i)},
+                               {"num", std::any(uint64_t(1234567890123412))},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}},
                               false);
 
     if (i < (int)num_books) {
       auto b = graph->add_node("Book",
-                                {{"title", boost::any(std::string("Book Title"))},
-                                {"year", boost::any(1942)},
-                                {"id", boost::any(i)}},
+                                {{"title", std::any(std::string("Book Title"))},
+                                {"year", std::any(1942)},
+                                {"id", std::any(i)}},
                                 false);
       graph->add_relationship(p, b, ":HAS_READ", {});
     }

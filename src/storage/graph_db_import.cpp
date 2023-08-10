@@ -30,47 +30,47 @@
 namespace nvm = pmem::obj;
 #endif
 
-boost::any string_to_any(p_item::p_typecode tc, const std::string& s, dict_ptr &dict) {
+std::any string_to_any(p_item::p_typecode tc, const std::string& s, dict_ptr &dict) {
   switch (tc) {
-    case p_item::p_dcode: return boost::any(dict->insert(s));
-    case p_item::p_int: return boost::any((int)std::stoi(s));
-    case p_item::p_uint64: return boost::any((uint64_t)std::stoll(s));
-    case p_item::p_double: return boost::any((double)std::stod(s));
+    case p_item::p_dcode: return std::any(dict->insert(s));
+    case p_item::p_int: return std::any((int)std::stoi(s));
+    case p_item::p_uint64: return std::any((uint64_t)std::stoll(s));
+    case p_item::p_double: return std::any((double)std::stod(s));
     case p_item::p_date:
     {
         boost::gregorian::date dt = boost::gregorian::from_simple_string(s);
-        return boost::any(boost::posix_time::ptime(dt, boost::posix_time::seconds(0)));
+        return std::any(boost::posix_time::ptime(dt, boost::posix_time::seconds(0)));
     }
     case p_item::p_ptime: 
     {
         std::string s2 = s;
         s2[s.find("T")] = ' ';
         auto dts = s2.substr(0, s2.find("+"));
-        return boost::any(boost::posix_time::time_from_string(dts));
+        return std::any(boost::posix_time::time_from_string(dts));
     }
-      default: return boost::any();
+      default: return std::any();
   }
 }
 
-std::pair<p_item::p_typecode, boost::any> 
+std::pair<p_item::p_typecode, std::any> 
 infer_datatype(const std::string& s, dict_ptr &dict) {
   if (is_quoted_string(s))
-    return std::make_pair(p_item::p_dcode, boost::any(dict->insert(s)));
+    return std::make_pair(p_item::p_dcode, std::any(dict->insert(s)));
   else if (is_int(s))
-    return std::make_pair(p_item::p_int, boost::any((int)std::stoi(s)));
+    return std::make_pair(p_item::p_int, std::any((int)std::stoi(s)));
   else if (is_float(s))
-    return std::make_pair(p_item::p_double, boost::any((double)std::stod(s)));
+    return std::make_pair(p_item::p_double, std::any((double)std::stod(s)));
   else if (is_date(s)) {
     boost::gregorian::date dt = boost::gregorian::from_simple_string(s);
-    return std::make_pair(p_item::p_date, boost::any(boost::posix_time::ptime(dt, boost::posix_time::seconds(0))));
+    return std::make_pair(p_item::p_date, std::any(boost::posix_time::ptime(dt, boost::posix_time::seconds(0))));
   }
   else if (is_dtime(s)) {
     std::string s2 = s;
     s2[s2.find("T")] = ' ';
     auto dts = s2.substr(0, s2.find("+"));
-    return std::make_pair(p_item::p_ptime, boost::any(boost::posix_time::time_from_string(dts)));
+    return std::make_pair(p_item::p_ptime, std::any(boost::posix_time::time_from_string(dts)));
   }
-  return std::make_pair(p_item::p_dcode, boost::any(dict->insert(s)));
+  return std::make_pair(p_item::p_dcode, std::any(dict->insert(s)));
 }
 
 p_item::p_typecode
@@ -107,7 +107,7 @@ node::id_t graph_db::import_node(const std::string &label,
 node::id_t graph_db::import_typed_node(dcode_t label, 
                               const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist, 
-                              const std::vector<boost::any>& values) {
+                              const std::vector<std::any>& values) {
   auto node_id = nodes_->append(node(label), 0);
                             
   // we need the node object not only the id
@@ -180,7 +180,7 @@ relationship::id_t graph_db::import_typed_relationship(node::id_t from_id,
                                          dcode_t label, 
                                          const std::vector<dcode_t> &keys,
                                          const std::vector<p_item::p_typecode>& typelist, 
-                                         const std::vector<boost::any>& values) {
+                                         const std::vector<std::any>& values) {
   auto &from_node = nodes_->get(from_id);
   auto &to_node = nodes_->get(to_id);
   auto rid = rships_->append(relationship(label, from_id, to_id), 0);
@@ -464,7 +464,7 @@ std::size_t graph_db::import_typed_n4j_nodes_from_csv(const std::string &label,
 
   std::vector<dcode_t> prop_names;
   std::vector<p_item::p_typecode> prop_types; 
-  std::vector<boost::any> prop_values;
+  std::vector<std::any> prop_values;
   std::vector<bool> inferred;
 
   for (auto &row : parser) {
@@ -507,7 +507,7 @@ std::size_t graph_db::import_typed_n4j_nodes_from_csv(const std::string &label,
         if (!col.empty() && !field.empty()) {
           if (col == "id") {
             prop_types[i] = p_item::p_uint64;
-            prop_values[i] = boost::any((uint64_t)std::stoll(field));
+            prop_values[i] = std::any((uint64_t)std::stoll(field));
           }
           else {
             auto p2 = infer_datatype(field, dict_);
@@ -537,7 +537,7 @@ std::size_t graph_db::import_typed_n4j_nodes_from_csv(const std::string &label,
         auto &col = columns[i];
         if (!col.empty() && !field.empty()) {
           if (col == "id")
-            prop_values[i] = boost::any((uint64_t)std::stoll(field));
+            prop_values[i] = std::any((uint64_t)std::stoll(field));
           else if (inferred[i])
             prop_values[i] = string_to_any(prop_types[i], field, dict_);
           else { // columns whose datatypes we have not yet inferred
@@ -549,7 +549,7 @@ std::size_t graph_db::import_typed_n4j_nodes_from_csv(const std::string &label,
         }
         else {
            // spdlog::info("\t==> empty field #{} at record #{}", i, num-1);
-           prop_values[i] = boost::any();
+           prop_values[i] = std::any();
         }
         i++;
       }
@@ -788,7 +788,7 @@ std::size_t graph_db::import_typed_n4j_relationships_from_csv(const std::string 
 
   std::vector<dcode_t> prop_names;
   std::vector<p_item::p_typecode> prop_types; 
-  std::vector<boost::any> prop_values;
+  std::vector<std::any> prop_values;
 
   for (auto &row : parser) {
     if (num == 0) {

@@ -559,16 +559,16 @@ expr query_planner::property_list_to_expr(properties_t& plist) {
     for (auto& p : plist) {
         auto prop = p;
         auto lhs_expr = Key(0, prop.first);
-        boost::any& val = prop.second;
+        std::any& val = prop.second;
         expr rhs_expr;
         if (val.type() == typeid(int))
-            rhs_expr = Int(boost::any_cast<int>(val));
+            rhs_expr = Int(std::any_cast<int>(val));
         else if (val.type() == typeid(double) || val.type() == typeid(float))
-            rhs_expr = Float(boost::any_cast<double>(val));
+            rhs_expr = Float(std::any_cast<double>(val));
         else if (val.type() == typeid(std::string))
-            rhs_expr = Str(boost::any_cast<std::string>(val)); 
+            rhs_expr = Str(std::any_cast<std::string>(val)); 
         else if (val.type() == typeid(long))
-            rhs_expr = Int(boost::any_cast<long>(val)); 
+            rhs_expr = Int(std::any_cast<long>(val)); 
         else
             spdlog::info("ERROR in property_list_to_expr: rhs not handled {}", val.type().name());
         
@@ -599,8 +599,8 @@ std::any query_planner::visitNode_pattern(poseidonParser::Node_patternContext *c
   
         if (qctx_.gdb_ && qctx_.gdb_->has_index(label, pname)) {
             auto idx_id = qctx_.gdb_->get_index(label, pname);
-            boost::any& val = props.begin()->second;
-            auto key = boost::any_cast<int>(val);
+            std::any& val = props.begin()->second;
+            auto key = std::any_cast<int>(val);
             auto op = std::make_shared<index_scan>(idx_id, key);
             sources_.push_back(op);
             return std::make_any<qop_ptr>(op);
@@ -667,7 +667,7 @@ std::any query_planner::visitProperty_list(poseidonParser::Property_listContext 
     properties_t props;
     for (auto& p : ctx->property()) {
         auto pname = p->Identifier_()->getText();
-        boost::any pval;
+        std::any pval;
         if (p->value()->INTEGER())
             pval = std::stoi(p->value()->INTEGER()->getText());
         else if (p->value()->FLOAT())

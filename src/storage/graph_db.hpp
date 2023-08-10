@@ -20,7 +20,7 @@
 #ifndef graph_db_hpp_
 #define graph_db_hpp_
 
-#include <boost/any.hpp>
+#include <any>
 #include <map>
 #include <mutex>
 #include <string>
@@ -122,7 +122,7 @@ public:
 
   node::id_t import_typed_node(dcode_t label, const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist, 
-                              const std::vector<boost::any>& values);
+                              const std::vector<std::any>& values);
 
   node::id_t import_typed_node(dcode_t label, const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist,
@@ -160,7 +160,7 @@ public:
                                          dcode_t label,
                                          const std::vector<dcode_t> &keys,
                                          const std::vector<p_item::p_typecode>& typelist,
-                                         const std::vector<boost::any>& values);
+                                         const std::vector<std::any>& values);
 
   /* --------------- node/relationship information --------------- */
 

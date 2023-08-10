@@ -38,8 +38,8 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
     {
         graph->begin_transaction();
 
-        nid = graph->add_node("Person", {{"name", boost::any(std::string("Anne"))},
-                                  {"age", boost::any(28)}});
+        nid = graph->add_node("Person", {{"name", std::any(std::string("Anne"))},
+                                  {"age", std::any(28)}});
         graph->commit_transaction();
     }
     // check that the node exists

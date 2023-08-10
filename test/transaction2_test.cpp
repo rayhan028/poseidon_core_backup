@@ -40,15 +40,15 @@ TEST_CASE("Test node update followed by delete"  "[transaction]") {
   node::id_t nid;
   gdb->run_transaction([&]() {
     nid = gdb->add_node("Actor",
- 		                {{"name", boost::any(std::string("Mark Wahlberg"))},
- 		                  {"age", boost::any(48)}});
+ 		                {{"name", std::any(std::string("Mark Wahlberg"))},
+ 		                  {"age", std::any(48)}});
     return true;
   });
 
   gdb->run_transaction([&]() {
     auto &n = gdb->node_by_id(nid);
-    gdb->update_node(n, {{"name", boost::any(std::string("Mark Wahlberg"))},
- 		                  {"age", boost::any(49)}}, "Actor");
+    gdb->update_node(n, {{"name", std::any(std::string("Mark Wahlberg"))},
+ 		                  {"age", std::any(49)}}, "Actor");
     gdb->detach_delete_node(nid);
     return true;
   });
@@ -68,11 +68,11 @@ TEST_CASE("Test relationship update followed by delete"  "[transaction]") {
   relationship::id_t rid;
   gdb->run_transaction([&]() {
     node::id_t a = gdb->add_node("Actor",
- 		                {{"name", boost::any(std::string("Mark"))},
- 		                  {"age", boost::any(48)}});
+ 		                {{"name", std::any(std::string("Mark"))},
+ 		                  {"age", std::any(48)}});
     node::id_t b = gdb->add_node("Actor",
- 		                {{"name", boost::any(std::string("Wahlberg"))},
- 		                  {"age", boost::any(70)}});
+ 		                {{"name", std::any(std::string("Wahlberg"))},
+ 		                  {"age", std::any(70)}});
     rid = gdb->add_relationship(a, b, ":costarred", {});
     return true;
   });

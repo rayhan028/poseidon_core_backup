@@ -37,11 +37,11 @@ TEST_CASE("Creating an index on nodes", "[index]") {
   graph->run_transaction([&]() {
     for (int i = 0; i < 100; i++) {
       auto id = graph->add_node("Person",
-                              {{"name", boost::any(std::string("John Doe"))},
-                               {"age", boost::any(42)},
-                               {"id", boost::any(i)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}},
+                              {{"name", std::any(std::string("John Doe"))},
+                               {"age", std::any(42)},
+                               {"id", std::any(i)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}},
                               true);
     }
     return true;
@@ -79,11 +79,11 @@ TEST_CASE("Creating and restoring an index on nodes", "[index]") {
     graph->run_transaction([&]() {
       for (int i = 0; i < 100; i++) {
         graph->add_node("Person",
-                        {{"name", boost::any(std::string("John Doe"))},
-                         {"age", boost::any(42)},
-                         {"id", boost::any(i)},
-                         {"dummy1", boost::any(std::string("Dummy"))},
-                         {"dummy2", boost::any(1.2345)}},
+                        {{"name", std::any(std::string("John Doe"))},
+                         {"age", std::any(42)},
+                         {"id", std::any(i)},
+                         {"dummy1", std::any(std::string("Dummy"))},
+                         {"dummy2", std::any(1.2345)}},
                         true);
       }
       return true;
@@ -125,11 +125,11 @@ TEST_CASE("Creating and updating an index on nodes", "[index]") {
   graph->run_transaction([&]() {
     for (int i = 0; i < 100; i++) {
       graph->add_node("Person",
-                      {{"name", boost::any(std::string("John Doe"))},
-                       {"age", boost::any(42)},
-                       {"id", boost::any(i)},
-                       {"dummy1", boost::any(std::string("Dummy"))},
-                       {"dummy2", boost::any(1.2345)}},
+                      {{"name", std::any(std::string("John Doe"))},
+                       {"age", std::any(42)},
+                       {"id", std::any(i)},
+                       {"dummy1", std::any(std::string("Dummy"))},
+                       {"dummy2", std::any(1.2345)}},
                       true);
     }
     return true;
@@ -145,11 +145,11 @@ TEST_CASE("Creating and updating an index on nodes", "[index]") {
   // create another person
   graph->run_transaction([&]() {
     graph->add_node("Person",
-                    {{"name", boost::any(std::string("Jane Roe"))},
-                     {"age", boost::any(66)},
-                     {"id", boost::any(1000)},
-                     {"dummy1", boost::any(std::string("Dummy"))},
-                     {"dummy2", boost::any(2.345)}},
+                    {{"name", std::any(std::string("Jane Roe"))},
+                     {"age", std::any(66)},
+                     {"id", std::any(1000)},
+                     {"dummy1", std::any(std::string("Dummy"))},
+                     {"dummy2", std::any(2.345)}},
                     true);
     return true;
   });
@@ -179,7 +179,7 @@ TEST_CASE("Creating and updating an index on nodes", "[index]") {
     auto &n = graph->node_by_id(70);
     graph->update_node(n, // update
                        {
-                           {"id", boost::any(1100)},
+                           {"id", std::any(1100)},
                        },
                        "Person");
     return true;
