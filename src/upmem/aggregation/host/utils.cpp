@@ -2,6 +2,31 @@
 #include "aggregation.hpp"
 
 
+bool get_partition_func(struct sg_block_info* cpu_buffer, uint32_t d, uint32_t p, void* params) {
+    sg_xfer_ctx* sc_params = (sg_xfer_ctx*) params;
+    uint32_t* parts = sc_params->num_partitions;
+    uint32_t** part_sizes = sc_params->partition_sizes;
+    mrnode*** part_ptrs = sc_params->partition_ptrs;
+
+    if (p >= parts[d]) { /* number of partitions on the DPU exceeded */
+        return false;
+    }
+
+    cpu_buffer->addr = (uint8_t*) part_ptrs[d][p];
+    cpu_buffer->length = part_sizes[d][p] * ELEM_SIZE;
+
+    return true;
+}
+
+void* multidim_malloc(uint32_t rows, uint32_t* cols, uint32_t cell_size) {
+    void** matrix = (void**) malloc(rows * sizeof(void*));
+    for (uint32_t i = 0; i < rows; i++) {
+        matrix[i] = malloc(cols[i] * cell_size);
+    }
+
+    return matrix;
+}
+
 void validate_aggr(const std::unordered_map<uint32_t, aggr_res> &lhs, const std::unordered_map<uint32_t, aggr_res> &rhs) {
     assert(lhs.size() == rhs.size());
 

@@ -27,7 +27,7 @@
 #define NR_ELEM_PROPS 4
 #define GROUP_KEY 3
 #define AGGR_KEY 2
-#define GROUP_KEY_CARDINALITY 1048576
+#define GROUP_KEY_CARDINALITY 65536
 
 // #define SF0_1
 #define SF1
@@ -42,6 +42,7 @@ typedef struct mrnode mrnode;
 typedef struct aggr_res aggr_res;
 typedef struct dpu_params dpu_params;
 typedef struct htable_entry htable_entry;
+typedef struct sg_xfer_ctx sg_xfer_ctx;
 typedef uint32_t prop_code_t;
 typedef uint32_t aggr_val_t;
 
@@ -84,6 +85,12 @@ struct aggr_res {
 struct htable_entry {
     prop_code_t key;
     aggr_res val;
+};
+
+struct sg_xfer_ctx {
+    uint32_t* num_partitions;
+    uint32_t** partition_sizes;
+    mrnode*** partition_ptrs;
 };
 
 #define DIVCEIL(n, d) (((n) - 1) / (d) + 1)
@@ -188,11 +195,14 @@ struct dpu_params {
         uint32_t num_elems;
         uint32_t num_partitions;
     };
+    uint32_t max_num_elems;
+    uint32_t max_num_partitions;
     kernel phase;
 };
 
 #define NR_KERNELS 2
-#define NR_PARTITIONS 1024
+#define NR_PARTITIONS 64
+#define DPU_PROFILE "sgXferEnable=true, sgXferMaxBlocksPerDpu=1024"
 #define HASH_AGGR_HI_CARD_V3_BIN "./dpu_bin/dpu_hash_aggr_hi_card_v3"
 
 #define MRAM_INPUT_BUFFER_PARTITION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the partitioned elements */

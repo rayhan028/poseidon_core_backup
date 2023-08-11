@@ -66,11 +66,7 @@ int aggregation() {
 
     /* group and compute aggregation for each partition */
     uint32_t part_offs = 0;
-    uint32_t num_parts_aligned = (dpu_parameters.num_partitions % 2 == 0) ?
-                                 dpu_parameters.num_partitions :
-                                 (dpu_parameters.num_partitions + 1);
-
-    mrnode* mr_elems = (mrnode*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[num_parts_aligned];
+    mrnode* mr_elems = (mrnode*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[dpu_parameters.max_num_partitions];
     mrnode* wr_elems = (mrnode*) mem_alloc(NR_WR_ELEMS_PER_TASKLET_AGGREGATION * ELEM_SIZE);
 
     for (uint32_t partition = 0; partition < dpu_parameters.num_partitions; partition++) {
@@ -222,6 +218,46 @@ int partition() {
             dpu_partition_sizes[partition]++;
             // vmutex_unlock(&part_vmutex, idx);
             mutex_pool_unlock(&part_mutexpl, partition);
+        }
+    }
+    barrier_wait(&aggr_barrier);
+
+    /* compute prefix sums */
+    if (tasklet_id == 0) {
+        prefix_sum[0] = 0;
+    }
+
+    for (uint32_t p = tasklet_id; p < NR_PARTITIONS; p += NR_TASKLETS) {
+        if (tasklet_id != 0) {
+            handshake_wait_for(tasklet_id - 1);
+        }
+        prefix_sum[p + 1] = prefix_sum[p] + dpu_partition_sizes[p];
+        if (tasklet_id < NR_TASKLETS - 1) {
+            handshake_notify();
+        }
+        barrier_wait(&aggr_barrier);
+    }
+
+    /* read elements for the second time from MRAM and copy them to their MRAM partition buffers */
+    for (uint32_t i = tasklet_id * NR_WR_ELEMS_PER_TASKLET_PARTITION; i < dpu_parameters.num_elems; i += NR_WR_ELEMS_PER_TASKLET_PARTITION * NR_TASKLETS) {
+        mram_read((__mram_ptr void const*) &mr_elems[i], wr_elems, NR_WR_ELEMS_PER_TASKLET_PARTITION * ELEM_SIZE);
+
+        uint32_t num_elems = ((i + NR_WR_ELEMS_PER_TASKLET_PARTITION) < dpu_parameters.num_elems) ?
+                             NR_WR_ELEMS_PER_TASKLET_PARTITION :
+                             dpu_parameters.num_elems - i; /* last remaining elements less than NR_WR_ELEMS_PER_TASKLET_PARTITION */
+
+        for (uint32_t j = 0; j < num_elems; j++) {
+            prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
+            // uint32_t partition = glb_partition_hash(grp_key) % NR_PARTITIONS;
+            uint32_t partition = grp_key % NR_PARTITIONS;
+
+            // vmutex_lock(&part_vmutex, idx);
+            mutex_pool_lock(&part_mutexpl, partition);
+            uint32_t mroffs = prefix_sum[partition] + copy_count[partition];
+            copy_count[partition]++;
+            // vmutex_unlock(&part_vmutex, idx);
+            mutex_pool_unlock(&part_mutexpl, partition);
+            mram_write(&wr_elems[j], (__mram_ptr void*) &mr_elems[dpu_parameters.max_num_elems + mroffs], ELEM_SIZE);
         }
     }
     barrier_wait(&aggr_barrier);
