@@ -25,6 +25,7 @@
 #include "graph_db.hpp"
 #include "query_ctx.hpp"
 #include "qop.hpp"
+#include "query_pipeline.hpp"
 #include "qop_aggregates.hpp"
 #include "qop_analytics.hpp"
 
@@ -37,17 +38,19 @@
  *            .project({ PExpr_(0, builtin::int_property(res, "id")),
  *                       PExpr_(2, builtin::int_property(res, "id"))})
  *            .print();
- *   q.start();
+ *   q.get_pipeline().start();
+ * 
+ * query_builder can also construct a query (batch) from multiple query_pipelines.
  */
 class query_builder {
-  friend class query_set;
+  friend class query_batch;
 public:
   /**
    * Constructor for a query on the given graph database.
    */
   query_builder(query_ctx& ctx) : ctx_(ctx) {}
 
-  query_builder(query_ctx& ctx, qop_ptr qop);
+  // query_builder(query_ctx& ctx, qop_ptr qop);
 
   /**
    * Default destructor.
@@ -188,13 +191,6 @@ public:
    * attribute(s) (in the tuple) to be aggregated are given as the vector of 
    * string-int pairs aggrs.
    */
-  /*
-  query_builder &groupby(const std::vector<std::size_t> &pos);
-  query_builder &groupby(const std::vector<std::size_t> &pos,
-    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
-  query_builder &groupby(std::list<qr_tuple> &grps, const std::vector<std::size_t> &pos,
-    const std::vector<std::pair<std::string, std::size_t>> &aggrs);
-  */
   query_builder &groupby(const std::vector<group_by::group>& grps, const std::vector<group_by::expr>& exprs);
 
   query_builder &aggr(const std::vector<aggregate::expr>& exprs);
@@ -214,9 +210,9 @@ public:
    * Add an operator to unions all the query tuples of the left query 
    * pipeline and the right query pipeline(s).
    */
-  query_builder &union_all(query_builder &other);
+  query_builder &union_all(query_pipeline &other);
 
-  query_builder &union_all(std::initializer_list<query_builder *> queries);
+  query_builder &union_all(std::initializer_list<query_pipeline *> queries);
 
   /**
    * Add an operator to count the number of tuples in the pipeline.
@@ -243,7 +239,7 @@ public:
    * Add an operator for constructing the cartesian product of the query tuples 
    * of the left and right query pipelines.
    */
-  query_builder &cross_join(query_builder &other);
+  query_builder &cross_join(query_pipeline &other);
 
   /**
    * Add a nested loop join operator for merging tuples of two
@@ -251,7 +247,7 @@ public:
    * is the same as the node at another given position in the right tuple.
    * The node positions are specified by the pos pair. 
    */
-  query_builder &nested_loop_join(std::pair<int, int> left_right, query_builder &other);
+  query_builder &nested_loop_join(std::pair<int, int> left_right, query_pipeline &other);
 
   /**
    * Add a hash join operator for merging tuples of two
@@ -259,13 +255,13 @@ public:
    * is the same as the node at another given position in the right tuple.
    * The node positions are specified by the pos pair. 
    */
-  query_builder &hash_join(std::pair<int, int> left_right, query_builder &other);
+  query_builder &hash_join(std::pair<int, int> left_right, query_pipeline &other);
 
   /**
    * Add a left outer join operator for merging tuples of two queries based 
    * on the given join condition. Dangling tuples are padded with "null_val" 
    */
-  query_builder &left_outer_join(query_builder &other, std::function<bool(const qr_tuple &, const qr_tuple &)> pred);
+  query_builder &left_outer_join(query_pipeline &other, std::function<bool(const qr_tuple &, const qr_tuple &)> pred);
 
   /**
    * Add an operator to find the unweighted shortest path between the pair 
@@ -387,32 +383,10 @@ public:
 
   /*-------------------------------------------------------------------*/
 
-  /**
-   * Start the execution of the query.
-   */
-  void start(query_ctx& ctx);
-
-  /**
-   * Print the query plan.
-   */
-  void print_plan(std::ostream& os = std::cout);
-
-  static void start(query_ctx& ctx, std::initializer_list<query_builder *> queries);
-  static void print_plans(std::initializer_list<query_builder *> queries, std::ostream& os = std::cout);
-
-  void extract_args();
-  /**
-   * Return the pointer to the graph database.
-   */
-  graph_db_ptr &get_graph_db() { return ctx_.gdb_; }
-
-  qop_ptr &plan_head() { return plan_head_; }
+  query_pipeline& get_pipeline() { return qpipeline_; }
 
 private:
-  query_builder &append_op(qop_ptr op, qop::consume_func cf, qop::finish_func ff);
-  query_builder &append_op(qop_ptr op, qop::consume_func cf);
-
-  qop_ptr plan_head_, plan_tail_;
+  query_pipeline qpipeline_;
   query_ctx& ctx_;
 };
 

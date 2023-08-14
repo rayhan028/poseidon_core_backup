@@ -344,7 +344,7 @@ void compile_task::operator()() {
     }
 }
 
-void qcompiler::execute(query_set &queries) {
+void qcompiler::execute(query_batch &queries) {
     for(int i = 0; i < queries.size(); i++) {
         auto p = queries.at(i).plan_head();
         generate(p, false);

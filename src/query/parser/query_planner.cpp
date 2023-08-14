@@ -40,15 +40,16 @@ std::string query_planner::trim_string(const std::string& s) {
     s2 = s2.substr(1, s2.size()-2);
   return s2;
 }
-query_set query_planner::get_query_plan() {
-    query_set qset;
+
+query_batch query_planner::get_query_plan() {
+    query_batch qbatch;
 
     for (auto qop : sources_) {
-        query_builder q(qctx_, qop);
-        qset.add(q);
+        query_pipeline q(qop);
+        qbatch.add(q);
     }
     
-    return qset;
+    return qbatch;
 } 
 
 std::any query_planner::visitQuery(poseidonParser::QueryContext *ctx) {

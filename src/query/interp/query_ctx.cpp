@@ -17,6 +17,8 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 #include "query_ctx.hpp"
+#include "query_pipeline.hpp"
+#include "query_printer.hpp"
 #include "thread_pool.hpp"
 
 scan_task::scan_task(graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func c, 
@@ -538,4 +540,31 @@ bool query_ctx::is_relationship_property(const relationship &r, dcode_t pcode,
                                         p_item::predicate_func pred) {
   auto val = gdb_->rship_properties_->property_value(r.id(), pcode);
   return val.empty() ? false : pred(val);
+}
+
+void query_ctx::start(query_ctx& qctx, std::initializer_list<query_pipeline *> queries) {
+  for (auto &q : queries) {
+    q->start(qctx);
+  }
+}
+
+void query_ctx::print_plans(std::initializer_list<query_pipeline *> queries, std::ostream& os) {
+    std::vector<qop_node_ptr> trees;
+    for (auto &q : queries) {
+        auto qop_tree = build_qop_tree(q->plan_head_);
+        trees.push_back(qop_tree.first);
+    }
+
+    std::list<qop_node_ptr> bin_ops;
+    for (auto& t : trees) {
+      collect_binary_ops(t, bin_ops);
+    }
+    // merge trees
+    for (auto i = 1u; i < trees.size(); i++) {
+        merge_qop_trees(trees[0], trees[i], bin_ops);
+    }
+    os << ">>---------------------------------------------------------------------->>\n";
+    trees[0]->print(os);
+    print_plan_helper(os, trees[0], "");
+    os << "<<----------------------------------------------------------------------<<\n";
 }

@@ -2,7 +2,7 @@
 #define QEXMODE_HPP
 
 #include <vector>
-#include "query_set.hpp"
+#include "query_batch.hpp"
 
 class base_op;
 /*
@@ -16,7 +16,7 @@ public:
     /*
         The method exec should contain the functionality for the actual execution of the query.
     */
-    virtual void execute(query_set &queries) = 0;
+    virtual void execute(query_batch &queries) = 0;
 
 };
 

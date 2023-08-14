@@ -22,18 +22,27 @@
 #include "defs.hpp"
 #include "graph_db.hpp"
 
+class query_pipeline;
+
 /**
- * query_ctx represents the query context which is passed to query operators and user-defined functions
- * during execution.
+ * query_ctx represents the query context which consists of a pointer to the underlying graph
+ * database (graph_db_ptr) and implementations of the basic query execution functions on the
+ * graph database.
  */
-
 struct query_ctx {
-    query_ctx() = default;
-    query_ctx(query_ctx& ctx) : gdb_(ctx.gdb_) {  }
-    query_ctx(graph_db_ptr& gdb) : gdb_(gdb) {  }
-    ~query_ctx();
+  graph_db_ptr gdb_; /// the pointer to the graph database (storage engine)
 
-    graph_db_ptr gdb_;
+  /**
+   * Constructors.
+   */
+  query_ctx() = default;
+  query_ctx(query_ctx& ctx) : gdb_(ctx.gdb_) {  }
+  query_ctx(graph_db_ptr& gdb) : gdb_(gdb) {  }
+
+  /**
+   * Destructor.
+  */
+  ~query_ctx();
 
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;
@@ -219,6 +228,10 @@ struct query_ctx {
    */
   bool is_relationship_property(const relationship &r, dcode_t pcode,
                                 p_item::predicate_func pred);
+
+
+  static void start(query_ctx& qctx, std::initializer_list<query_pipeline *> queries);
+  static void print_plans(std::initializer_list<query_pipeline *> queries, std::ostream& os = std::cout);
 
 };
 

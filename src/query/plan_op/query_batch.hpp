@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -17,26 +17,28 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef query_set_hpp_
-#define query_set_hpp_
+#ifndef query_batch_hpp_
+#define query_batch_hpp_
 
-#include "query_builder.hpp"
+#include "query_pipeline.hpp"
+#include "qop.hpp"
+#include "qop_visitor.hpp"
 
 namespace ph = std::placeholders;
 
 /**
- * A query set combines multiple queries producing a joint result. This is
+ * A query batch combines multiple queries producing a joint result. This is
  * necessary because we use a push-based approach where each scan is represented
  * by a separate query object.
  */
-class query_set {
+class query_batch {
 public:
-  query_set() = default;
+  query_batch() = default;
 
-  void add(query_builder &q) { queries_.push_back(q); }
+  void add(query_pipeline &q) { queries_.push_back(q); }
   std::size_t size() const { return queries_.size(); }
-  query_builder& front() { return queries_.front(); }
-  query_builder &at(std::size_t i) { return queries_[i];  }
+  query_pipeline& front() { return queries_.front(); }
+  query_pipeline& at(std::size_t i) { return queries_[i];  }
   bool empty() const { return queries_.empty(); }
 
   void accept(qop_visitor& visitor);
@@ -55,7 +57,7 @@ public:
   void print_plan(std::ostream& os = std::cout);
 
 private:
-  std::vector<query_builder> queries_;
+  std::vector<query_pipeline> queries_;
 };
 
 #endif

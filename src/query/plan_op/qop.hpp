@@ -40,8 +40,7 @@
 #include "binary_expression.hpp"
 #include "qresult_iterator.hpp"
 #include "qop_visitor.hpp"
-// #include "query_arg.hpp"
-#include "query_ctx.hpp"
+// #include "query_ctx.hpp"
 
 template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
   std::vector<T> v2;

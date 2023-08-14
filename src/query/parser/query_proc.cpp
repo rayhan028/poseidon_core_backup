@@ -122,7 +122,7 @@ std::size_t query_proc::execute_and_output_query(mode m, const std::string& qstr
     return 0; // qplan.result_size();    
 }
 
-query_set query_proc::prepare_query(const std::string &query) {
+query_batch query_proc::prepare_query(const std::string &query) {
     antlr4::ANTLRInputStream input(query);
     poseidonLexer lexer(&input);
     antlr4::CommonTokenStream tokens(&lexer);
@@ -147,11 +147,11 @@ query_set query_proc::prepare_query(const std::string &query) {
     return visitor.get_query_plan();  
 }
 
-void query_proc::interp_query(query_set& plan) {
+void query_proc::interp_query(query_batch& plan) {
     interp_.execute(qctx_, plan);
 }
 
-void query_proc::compile_query(query_set& plan) {
+void query_proc::compile_query(query_batch& plan) {
 #ifdef USE_LLVM
     compiler_.execute(plan);    
 #else
@@ -216,7 +216,7 @@ public:
 };
 
  
-void query_proc::prepare_plan(query_set& qplan) {
+void query_proc::prepare_plan(query_batch& qplan) {
     prepare_plan_visitor visitor(qctx_, udf_lib_);
     qplan.accept(visitor);
 }

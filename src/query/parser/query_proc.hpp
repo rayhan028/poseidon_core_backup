@@ -25,7 +25,7 @@
 #include <boost/dll/import.hpp>
 
 #include "query_ctx.hpp"
-#include "query_set.hpp"
+#include "query_batch.hpp"
 
 #ifdef USE_LLVM
 #include "qcompiler.hpp"
@@ -47,7 +47,7 @@ public:
 
   bool parse_(const std::string &query);
 
-  query_set prepare_query(const std::string &query);
+  query_batch prepare_query(const std::string &query);
 
   qresult_iterator execute_query(mode m, const std::string &qstr,
                                  bool print_plan = false);
@@ -55,15 +55,15 @@ public:
   std::size_t execute_and_output_query(mode m, const std::string &qstr,
                                        bool print_plan = false);
 
-  void interp_query(query_set &plan);
-  void compile_query(query_set &plan);
+  void interp_query(query_batch &plan);
+  void compile_query(query_batch &plan);
 
   void abort_transaction();
   
   bool load_library(const std::string &lib_path);
 
 private:
-  void prepare_plan(query_set &qplan);
+  void prepare_plan(query_batch &qplan);
 
   query_ctx& qctx_;
   qinterp interp_;

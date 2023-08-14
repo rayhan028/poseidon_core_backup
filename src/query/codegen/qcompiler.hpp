@@ -81,7 +81,7 @@ public:
     /**
      * exec executes compiled queries 
      */
-    void execute(query_set &queries) override;
+    void execute(query_batch &queries) override;
 
     /**
      * generate compiles a query into machine code. 

@@ -19,7 +19,7 @@
 #ifndef query_planner_hpp_
 #define query_planner_hpp_
 
-#include "query_set.hpp"
+#include "query_batch.hpp"
 #include "query_ctx.hpp"
 
 #include <fmt/format.h>
@@ -35,7 +35,7 @@ class query_planner : public poseidonBaseVisitor {
 public:
     query_planner(query_ctx& ctx) : qctx_(ctx) {}
 
-    query_set get_query_plan();
+    query_batch get_query_plan();
 
    void add_udf_library(std::shared_ptr<boost::dll::shared_library> udf_lib) { udf_lib_ = udf_lib; }
 
@@ -104,7 +104,7 @@ private:
     return qop;
   }
   
-    query_set qplan_;
+    query_batch qplan_;
 };
 
 #endif

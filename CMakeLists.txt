@@ -447,14 +447,14 @@ set(src_files
   src/query/plan_op/qop_analytics.cpp
   src/query/plan_op/qop_updates.cpp
   src/query/plan_op/qop_joins.cpp
+  src/query/plan_op/query_batch.cpp
+  src/query/plan_op/query_pipeline.cpp
+  src/query/plan_op/query_builder.cpp
   src/query/expr/binary_expression.cpp
   src/query/expr/expression.cpp
   src/query/interp/expr_interpreter.cpp
   src/query/interp/qinterp.cpp
   src/query/interp/query_ctx.cpp
-
-  src/query/plan_op/query_set.cpp
-  src/query/plan_op/query_builder.cpp
   src/query/utils/query_printer.cpp
   src/query/utils/thread_pool.cpp
   src/query/utils/profiling.cpp

@@ -125,7 +125,7 @@ void graph_db::index_delete(std::pair<index_id, int>& idx, offset_t id, std::lis
     ,[&](nvm_btree_ptr idx) { return idx->erase(p.get_raw()); }
 #endif
   );
-  auto res = boost::apply_visitor(erase_visitor, idx.first);
+  boost::apply_visitor(erase_visitor, idx.first);
 }
 
 void graph_db::index_update(std::pair<index_id, int>& idx, offset_t id, std::list<p_item>& old_props, std::list<p_item>& new_props) {
