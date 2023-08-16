@@ -11,14 +11,18 @@
 #include <dpu_log.h>
 
 
-/* aggregation functions */
+/*-------------------- Aggregation Functions --------------------*/
+
 void hash_aggregation_hi_card_v1(graph_db_ptr &graph);
 void hash_aggregation_hi_card_v2(graph_db_ptr &graph);
 void hash_aggregation_hi_card_v3(graph_db_ptr &graph);
+void hash_aggregation_hi_card_v4(graph_db_ptr &graph);
 void hash_aggregation_low_card(graph_db_ptr &graph);
 void sort_aggregation(graph_db_ptr &graph);
 
-/* utility functions */
+
+/*-------------------- Utility Functions --------------------*/
+
 bool get_partition_func(struct sg_block_info* cpu_buffer, uint32_t d, uint32_t p, void* params);
 void* multidim_malloc(uint32_t rows, uint32_t* cols, uint32_t cell_size);
 void validate_aggr(const std::unordered_map<uint32_t, aggr_res> &lhs, const std::unordered_map<uint32_t, aggr_res> &rhs);
