@@ -24,6 +24,7 @@ void sort_aggregation(graph_db_ptr &graph);
 /*-------------------- Utility Functions --------------------*/
 
 bool get_partition_func(struct sg_block_info* cpu_buffer, uint32_t d, uint32_t p, void* params);
+bool get_hash_table_func(struct sg_block_info* cpu_buffer, uint32_t d, uint32_t h, void* params);
 void* multidim_malloc(uint32_t rows, uint32_t* cols, uint32_t cell_size);
 void validate_aggr(const std::unordered_map<uint32_t, aggr_res> &lhs, const std::unordered_map<uint32_t, aggr_res> &rhs);
 void parallel_cpu_aggr(mrnode* elems_buf, uint32_t num_elems, std::unordered_map<uint32_t, aggr_res>* htables);

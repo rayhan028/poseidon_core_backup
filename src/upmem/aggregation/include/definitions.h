@@ -87,10 +87,16 @@ struct htable_entry {
     aggr_res val;
 };
 
-struct sg_xfer_ctx {
+struct sg_partition_xfer_ctx {
     uint32_t* num_partitions;
     uint32_t** partition_sizes;
     mrnode*** partition_ptrs;
+};
+
+struct sg_hash_table_xfer_ctx {
+    uint32_t* num_hash_tables;
+    uint32_t** hash_table_sizes;
+    htable_entry*** hash_table_ptrs;
 };
 
 #define DIVCEIL(n, d) (((n) - 1) / (d) + 1)
@@ -230,6 +236,7 @@ struct dpu_params {
 };
 
 #define NR_KERNELS 1
+#define DPU_PROFILE "sgXferEnable=true"
 #define HASH_AGGR_HI_CARD_V4_BIN "./dpu_bin/dpu_hash_aggr_hi_card_v4"
 
 #define NR_WR_ELEMS_PER_TASKLET 8

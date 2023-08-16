@@ -3,7 +3,7 @@
 
 
 bool get_partition_func(struct sg_block_info* cpu_buffer, uint32_t d, uint32_t p, void* params) {
-    sg_xfer_ctx* sc_params = (sg_xfer_ctx*) params;
+    sg_partition_xfer_ctx* sc_params = (sg_partition_xfer_ctx*) params;
     uint32_t* parts = sc_params->num_partitions;
     uint32_t** part_sizes = sc_params->partition_sizes;
     mrnode*** part_ptrs = sc_params->partition_ptrs;
@@ -14,6 +14,22 @@ bool get_partition_func(struct sg_block_info* cpu_buffer, uint32_t d, uint32_t p
 
     cpu_buffer->addr = (uint8_t*) part_ptrs[d][p];
     cpu_buffer->length = part_sizes[d][p] * ELEM_SIZE;
+
+    return true;
+}
+
+bool get_hash_table_func(struct sg_block_info* cpu_buffer, uint32_t d, uint32_t h, void* params) {
+    sg_hash_table_xfer_ctx* sc_params = (sg_hash_table_xfer_ctx*) params;
+    uint32_t* htables = sc_params->num_hash_tables;
+    uint32_t** htable_sizes = sc_params->hash_table_sizes;
+    htable_entry*** htable_ptrs = sc_params->hash_table_ptrs;
+
+    if (h >= htables[d]) { /* number of hash tables on the DPU exceeded */
+        return false;
+    }
+
+    cpu_buffer->addr = (uint8_t*) htable_ptrs[d][h];
+    cpu_buffer->length = htable_sizes[d][h] * HASH_TABLE_ENTRY_SIZE;
 
     return true;
 }

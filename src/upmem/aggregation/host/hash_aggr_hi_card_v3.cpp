@@ -167,8 +167,8 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
             /* transfer local partitions from DPUs into global partition buffers on CPU */
             PRINT("Transfer DPU local partitions to CPU global partition buffers...");
             t.start("DPU to CPU xfer (local partitions)");
-            sg_xfer_ctx get_local_partition_params = {.num_partitions = tmp_array, .partition_sizes = tmp_ptr, .partition_ptrs = local_partition_ptrs};
-            get_block_t get_local_partition = {.f = &get_partition_func, .args = &get_local_partition_params, .args_size = sizeof(sg_xfer_ctx)};
+            sg_partition_xfer_ctx get_local_partition_params = {.num_partitions = tmp_array, .partition_sizes = tmp_ptr, .partition_ptrs = local_partition_ptrs};
+            get_block_t get_local_partition = {.f = &get_partition_func, .args = &get_local_partition_params, .args_size = sizeof(sg_partition_xfer_ctx)};
             /* TODO: skip data transpose for byte interleaving */
             DPU_ASSERT(dpu_push_sg_xfer(dpu_set, DPU_XFER_FROM_DPU, DPU_MRAM_HEAP_POINTER_NAME, max_elems_per_dpu_part * ELEM_SIZE,
                                         elems_per_dpu * ELEM_SIZE, &get_local_partition, DPU_SG_XFER_DISABLE_LENGTH_CHECK));
@@ -285,8 +285,8 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
             PRINT("Least loaded DPU: %u (partitions: %u, elements: %u, size: %f MiB)", min_loaded_dpu, num_partitions[min_loaded_dpu], htable_offsets[min_loaded_dpu], (htable_offsets[min_loaded_dpu] * ELEM_SIZE) / (double)MiB);
 
             t.start("CPU to DPU xfer (global partitions)");
-            sg_xfer_ctx get_global_partition_params = {.num_partitions = num_partitions, .partition_sizes = partition_sizes, .partition_ptrs = global_partition_ptrs};
-            get_block_t get_global_partition = {.f = &get_partition_func, .args = &get_global_partition_params, .args_size = sizeof(sg_xfer_ctx)};
+            sg_partition_xfer_ctx get_global_partition_params = {.num_partitions = num_partitions, .partition_sizes = partition_sizes, .partition_ptrs = global_partition_ptrs};
+            get_block_t get_global_partition = {.f = &get_partition_func, .args = &get_global_partition_params, .args_size = sizeof(sg_partition_xfer_ctx)};
             /* TODO: skip data transpose for byte interleaving */
             DPU_ASSERT(dpu_push_sg_xfer(dpu_set, DPU_XFER_TO_DPU, DPU_MRAM_HEAP_POINTER_NAME, max_num_parts_aligned * sizeof(uint32_t),
                                         size_of_max_num_parts * ELEM_SIZE, &get_global_partition, DPU_SG_XFER_DISABLE_LENGTH_CHECK));
