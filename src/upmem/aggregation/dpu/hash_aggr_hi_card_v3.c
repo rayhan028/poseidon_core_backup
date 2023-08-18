@@ -27,7 +27,7 @@ uint32_t* wr_range_partition_sizes;
 
 /* partition parameters */
 __host uint32_t dpu_partition_sizes[NR_PARTITIONS];
-uint32_t mr_htable_offs;
+/* uint32_t mr_htable_offs; */
 uint32_t* wr_partition_sizes;
 uint32_t prefix_sum[NR_PARTITIONS];
 uint32_t copy_count[NR_PARTITIONS];
@@ -53,10 +53,10 @@ int aggregation() {
         wr_partition_sizes = (uint32_t*) mem_alloc(dpu_parameters.num_partitions * sizeof(uint32_t));
         mram_read((__mram_ptr void const*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[0], wr_partition_sizes, dpu_parameters.num_partitions * sizeof(uint32_t)); /* TODO: increase data size for improved bandwidth utilization */
 
-        mr_htable_offs = 0;
+        /* mr_htable_offs = 0;
         for (uint32_t p = 0; p < dpu_parameters.num_partitions; p++) {
             mr_htable_offs += wr_partition_sizes[p];
-        }
+        } */
 
         /* allocate hash table buffer */
         hash_table = (htable_entry*) mem_alloc(NR_HASH_TABLE_ENTRIES * sizeof(htable_entry));
@@ -171,7 +171,8 @@ int aggregation() {
         barrier_wait(&aggr_barrier);
         for (uint32_t ch = tasklet_id; ch < NR_HASH_TABLE_CHUNKS; ch += NR_TASKLETS) {
             htable_entry* src = hash_table + (ch * NR_HASH_TABLE_CHUNK_ENTRIES);
-            htable_entry* dest = (htable_entry*) &mr_elems[mr_htable_offs] + ((partition * NR_HASH_TABLE_CHUNKS + ch) * NR_HASH_TABLE_CHUNK_ENTRIES);
+            /* htable_entry* dest = (htable_entry*) &mr_elems[mr_htable_offs] + ((partition * NR_HASH_TABLE_CHUNKS + ch) * NR_HASH_TABLE_CHUNK_ENTRIES); */
+            htable_entry* dest = (htable_entry*) &mr_elems[dpu_parameters.size_of_max_num_partitions] + ((partition * NR_HASH_TABLE_CHUNKS + ch) * NR_HASH_TABLE_CHUNK_ENTRIES);
             mram_write(src, (__mram_ptr void*) dest, sizeof(htable_entry) * NR_HASH_TABLE_CHUNK_ENTRIES);
         }
         barrier_wait(&aggr_barrier);
@@ -222,6 +223,7 @@ int partition() {
     }
     barrier_wait(&aggr_barrier);
 
+#if 0
     /* compute prefix sums */
     if (tasklet_id == 0) {
         prefix_sum[0] = 0;
@@ -261,6 +263,7 @@ int partition() {
         }
     }
     barrier_wait(&aggr_barrier);
+#endif
 
     return 0;
 }

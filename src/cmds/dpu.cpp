@@ -192,6 +192,10 @@ int main(int argc, char* argv[]) {
   hash_aggregation_hi_card_v1(graph);
 #elif defined HASH_BASED_HIGH_CARDINALITY_V2
   hash_aggregation_hi_card_v2(graph);
+#elif defined HASH_BASED_HIGH_CARDINALITY_V3
+  hash_aggregation_hi_card_v3(graph);
+#elif defined HASH_BASED_HIGH_CARDINALITY_V4
+  hash_aggregation_hi_card_v4(graph);
 #elif defined HASH_BASED_LOW_CARDINALITY
   hash_aggregation_low_card(graph);
 #elif defined SORT_BASED_HIGH_CARDINALITY

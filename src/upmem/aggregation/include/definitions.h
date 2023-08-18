@@ -21,7 +21,7 @@
 #define MiB (KiB << 10)
 
 #define NR_TASKLETS 16
-#define NR_DPUS 510
+#define NR_DPUS 256
 #define NR_CPU_THREADS 32
 
 #define NR_ELEM_PROPS 4
@@ -39,6 +39,7 @@
 #define CSV_FILE "./res/res.csv"
 
 typedef struct mrnode mrnode;
+typedef struct mrnode elem_t;
 typedef struct aggr_res aggr_res;
 typedef struct dpu_params dpu_params;
 typedef struct htable_entry htable_entry;
@@ -113,8 +114,8 @@ struct sg_hash_table_xfer_ctx {
 
 // #define HASH_BASED_HIGH_CARDINALITY_V1
 // #define HASH_BASED_HIGH_CARDINALITY_V2
-// #define HASH_BASED_HIGH_CARDINALITY_V3
-#define HASH_BASED_HIGH_CARDINALITY_V4
+#define HASH_BASED_HIGH_CARDINALITY_V3
+// #define HASH_BASED_HIGH_CARDINALITY_V4
 // #define HASH_BASED_LOW_CARDINALITY
 // #define SORT_BASED_HIGH_CARDINALITY
 
@@ -202,14 +203,17 @@ struct dpu_params {
         uint32_t num_elems;
         uint32_t num_partitions;
     };
-    uint32_t max_num_elems;
-    uint32_t max_num_partitions;
+    union {
+        uint32_t max_num_elems;
+        uint32_t max_num_partitions;
+    };
+    uint32_t size_of_max_num_partitions;
     kernel phase;
 };
 
 #define NR_KERNELS 2
-#define NR_PARTITIONS 64
-#define DPU_PROFILE "sgXferEnable=true, sgXferMaxBlocksPerDpu=1024"
+#define NR_PARTITIONS 1024
+#define DPU_PROFILE "sgXferEnable=true"
 #define HASH_AGGR_HI_CARD_V3_BIN "./dpu_bin/dpu_hash_aggr_hi_card_v3"
 
 #define MRAM_INPUT_BUFFER_PARTITION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the partitioned elements */
@@ -292,7 +296,7 @@ struct dpu_params {
 
 #define NR_KERNELS 2
 #define NR_PARTITIONS 1024
-#define SORT_AGGR_BIN "./dpu_bin/dpu_sort_aggr"
+#define SORT_AGGR_BIN "./dpu_bin/dpu_sort_aggr_hi_card"
 
 #define MRAM_INPUT_BUFFER_SORT MRAM_INPUT_BUFFER /* reserve half the MRAM buffer to flush the sorted */
 

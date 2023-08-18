@@ -783,10 +783,12 @@ add_executable(dpu_host
   src/cmds/dpu.cpp
   # src/upmem/scan/host/dpu_scan.cpp
   src/upmem/aggregation/host/utils.cpp
-  src/upmem/aggregation/host/hash_aggr_hi_card_v1.cpp
-  src/upmem/aggregation/host/hash_aggr_hi_card_v2.cpp
-  src/upmem/aggregation/host/hash_aggr_low_card.cpp
-  src/upmem/aggregation/host/sort_aggr_hi_card.cpp
+  # src/upmem/aggregation/host/hash_aggr_hi_card_v1.cpp
+  # src/upmem/aggregation/host/hash_aggr_hi_card_v2.cpp
+  src/upmem/aggregation/host/hash_aggr_hi_card_v3.cpp
+  # src/upmem/aggregation/host/hash_aggr_hi_card_v4.cpp
+  # src/upmem/aggregation/host/hash_aggr_low_card.cpp
+  # src/upmem/aggregation/host/sort_aggr_hi_card.cpp
   # src/upmem/join/host/dpu_join.cpp
  )
 
