@@ -73,19 +73,22 @@ void hash_aggregation_hi_card_v4(graph_db_ptr &graph) {
         PRINT("Total element size: %u (%f MiB)", total_elem_size, total_elem_size / (double)MiB);
         PRINT("Element Size per DPU: %u (%f MiB)", elems_size_per_dpu, (elems_size_per_dpu / (double)MiB));
         PRINT("Group key cardinality: %u", GROUP_KEY_CARDINALITY);
+        PRINT("Maximum elements per DPU: %u", max_elems_per_dpu);
         PRINT("Offset of hash tables: %u", htable_offs);
-        PRINT("Maximum hash tables: %u", max_htables_per_dpu);
+        PRINT("Hash table size: %u (%f KiB)", HASH_TABLE_SIZE, HASH_TABLE_SIZE / (double)KiB);
+        PRINT("Hash table entries: %lu", NR_HASH_TABLE_ENTRIES);
+        PRINT("Hash table entry size: %lu", HASH_TABLE_ENTRY_SIZE);
 
         dpu_params params[NR_DPUS];
         mrnode* elems_buffer = nullptr;
         htable_entry*** htable_ptrs = nullptr;
         uint32_t num_hash_tables[NR_DPUS];
-        uint32_t rem_num_hash_tables[NR_DPUS];
+        /*uint32_t rem_num_hash_tables[NR_DPUS];
         uint32_t batch_htables[NR_DPUS];
-        uint32_t processed_hash_tables[NR_DPUS] = {0};
+        uint32_t processed_hash_tables[NR_DPUS] = {0};*/
         htable_entry* hash_tables[NR_DPUS];
         mrnode* global_part_buffer = (mrnode*) malloc (ELEM_SIZE * total_elems);
-        uint32_t** batch_htable_entries = (uint32_t**) malloc(NR_DPUS * sizeof(uint32_t*));
+        uint32_t** htable_entries = (uint32_t**) malloc(NR_DPUS * sizeof(uint32_t*));
         std::unordered_map<uint32_t, aggr_res> seq_cpu_res, par_cpu_res, dpu_res;
 
         if (dpu_overflow) {
@@ -138,7 +141,47 @@ void hash_aggregation_hi_card_v4(graph_db_ptr &graph) {
             }
             DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_FROM_DPU, "dpu_num_hash_tables", 0, sizeof(uint32_t), DPU_XFER_DEFAULT));
 
-#if 1
+#if 1 /* coalesce all hash tables as a single SG block */
+
+            uint32_t max_num_hash_tables = 0;
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                uint32_t htables = num_hash_tables[d];
+                if (htables > max_num_hash_tables) {
+                    max_num_hash_tables = htables;
+                }
+
+                /* allocate CPU buffers for hash tables */
+                hash_tables[d] = (htable_entry*) malloc(HASH_TABLE_SIZE * htables);
+            }
+
+            uint32_t coalesced_htables[NR_DPUS];
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                coalesced_htables[d] = 1;
+            }
+
+            htable_ptrs = (htable_entry***) multidim_malloc(NR_DPUS, coalesced_htables, sizeof(htable_entry*));
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                htable_ptrs[d][0] = hash_tables[d];
+            }
+
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                htable_entries[d] = (uint32_t*) malloc(sizeof(uint32_t));
+                htable_entries[d][0] = num_hash_tables[d] * NR_HASH_TABLE_ENTRIES;
+            }
+
+            /* transfer hash tables from DPUs into buffers on CPU */
+            PRINT("Transfer hash tables to CPU...");
+            PRINT("Maximum hash tables: %u", max_num_hash_tables);
+            t.start("DPU to CPU transfer (hash tables)");
+            sg_hash_table_xfer_ctx get_hash_table_params = {.num_hash_tables = coalesced_htables, .hash_table_sizes = htable_entries, .hash_table_ptrs = htable_ptrs};
+            get_block_t get_hash_table = {.f = &get_hash_table_func, .args = &get_hash_table_params, .args_size = sizeof(sg_hash_table_xfer_ctx)};
+            /* TODO: skip data transpose for byte interleaving */
+            DPU_ASSERT(dpu_push_sg_xfer(dpu_set, DPU_XFER_FROM_DPU, DPU_MRAM_HEAP_POINTER_NAME, htable_offs * ELEM_SIZE,
+                                        max_num_hash_tables * HASH_TABLE_SIZE, &get_hash_table, DPU_SG_XFER_DISABLE_LENGTH_CHECK));
+            t.stop();
+
+#elif 1 /* transfer each hash table as a separate SG block */
+
             uint32_t max_num_hash_tables = 0;
             for (uint32_t d = 0; d < NR_DPUS; d++) {
                 uint32_t htables = num_hash_tables[d];
@@ -219,7 +262,7 @@ void hash_aggregation_hi_card_v4(graph_db_ptr &graph) {
             }
             t.stop();
 
-#else /* #if 1 */
+#else /* no scatter gather transfer */
 
             /* retrieve hash tables from DPUs */
             PRINT("Transfer hash tables to CPU...");
@@ -398,7 +441,10 @@ void hash_aggregation_hi_card_v4(graph_db_ptr &graph) {
         PRINT("Free CPU buffers...");
         free(elems_buffer);
         free(global_part_buffer);
-        free(batch_htable_entries);
+        for (uint32_t d = 0; d < NR_DPUS; d++) {
+            free(htable_entries[d]);
+        }
+        free(htable_entries);
         for (uint32_t d = 0; d < NR_DPUS; d++) {
             free(hash_tables[d]);
         }
