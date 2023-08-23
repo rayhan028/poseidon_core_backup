@@ -56,28 +56,41 @@ void validate_aggr(const std::unordered_map<uint32_t, aggr_res> &lhs, const std:
         else {
             auto rhs_res = iter->second;
 
+            #if defined(COUNT) || defined(AVERAGE)
             if (lhs_res.cnt != rhs_res.cnt) {
                 equal = false;
                 PRINT_ERROR("\"cnt\" of group with key %u is not equal", lhs_key);
             }
+            #endif
+
+            #if defined(SUM) || defined(AVERAGE)
             if (lhs_res.sum != rhs_res.sum) {
                 equal = false;
                 PRINT_ERROR("\"sum\" of group with key %u is not equal", lhs_key);
             }
+            #endif
+
+            #ifdef AVERAGE
             if (lhs_res.avg != rhs_res.avg) {
                 equal = false;
                 PRINT_ERROR("\"avg\" of group with key %u is not equal", lhs_key);
             }
+            #endif
+
+            #ifdef MINIMUM
             if (lhs_res.min != rhs_res.min) {
                 equal = false;
                 PRINT_ERROR("\"min\" of group with key %u is not equal", lhs_key);
             }
+            #endif
+
+            #ifdef MAXIMUM
             if (lhs_res.max != rhs_res.max) {
                 equal = false;
                 PRINT_ERROR("\"max\" of group with key %u is not equal", lhs_key);
             }
+            #endif
         }
-
     }
 
     if (equal) {
@@ -146,27 +159,24 @@ void sequential_cpu_aggr(mrnode* elems_buf, uint32_t num_elems, std::unordered_m
         }
         else {
             aggr_res aggr;
-            aggr.cnt = 0;
-            aggr.sum = 0;
-            aggr.avg = 0.0;
-            aggr.min = UNKNOWN_CODE;
-            aggr.max = 0;
 
             #if defined(COUNT) || defined(AVERAGE)
-            aggr.cnt++;
+            aggr.cnt = 1;
             #endif
 
             #if defined(SUM) || defined(AVERAGE)
-            aggr.sum += elem.properties[SUM_KEY];
+            aggr.sum = elem.properties[SUM_KEY];
             #endif
 
             #ifdef MINIMUM
+            aggr.min = (uint32_t)(-1);
             if (elem.properties[MIN_KEY] < aggr.min) {
                 aggr.min = elem.properties[MIN_KEY];
             }
             #endif
 
             #ifdef MAXIMUM
+            aggr.max = 0;
             if (elem.properties[MAX_KEY] > aggr.max) {
                 aggr.max = elem.properties[MAX_KEY];
             }

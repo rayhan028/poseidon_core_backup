@@ -71,27 +71,24 @@ struct aggr_task {
             }
             else {
                 aggr_res aggr;
-                aggr.cnt = 0;
-                aggr.sum = 0;
-                aggr.avg = 0.0;
-                aggr.min = UNKNOWN_CODE;
-                aggr.max = 0;
 
                 #if defined(COUNT) || defined(AVERAGE)
-                aggr.cnt++;
+                aggr.cnt = 1;
                 #endif
 
                 #if defined(SUM) || defined(AVERAGE)
-                aggr.sum += elem.properties[SUM_KEY];
+                aggr.sum = elem.properties[SUM_KEY];
                 #endif
 
                 #ifdef MINIMUM
+                aggr.min = (uint32_t)(-1);
                 if (elem.properties[MIN_KEY] < aggr.min) {
                     aggr.min = elem.properties[MIN_KEY];
                 }
                 #endif
 
                 #ifdef MAXIMUM
+                aggr.max = 0;
                 if (elem.properties[MAX_KEY] > aggr.max) {
                     aggr.max = elem.properties[MAX_KEY];
                 }
