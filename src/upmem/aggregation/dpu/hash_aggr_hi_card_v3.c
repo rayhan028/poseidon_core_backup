@@ -66,8 +66,8 @@ int aggregation() {
 
     /* group and compute aggregation for each partition */
     uint32_t part_offs = 0;
-    mrnode* mr_elems = (mrnode*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[dpu_parameters.max_num_partitions];
-    mrnode* wr_elems = (mrnode*) mem_alloc(NR_WR_ELEMS_PER_TASKLET_AGGREGATION * ELEM_SIZE);
+    elem_t* mr_elems = (elem_t*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[dpu_parameters.max_num_partitions];
+    elem_t* wr_elems = (elem_t*) mem_alloc(NR_WR_ELEMS_PER_TASKLET_AGGREGATION * ELEM_SIZE);
 
     for (uint32_t partition = 0; partition < dpu_parameters.num_partitions; partition++) {
         /* reset all hash table entries */
@@ -198,8 +198,8 @@ int partition() {
     }
     barrier_wait(&aggr_barrier);
 
-    mrnode* mr_elems = (mrnode*) DPU_MRAM_HEAP_POINTER;
-    mrnode* wr_elems = (mrnode*) mem_alloc(NR_WR_ELEMS_PER_TASKLET_PARTITION * ELEM_SIZE);
+    elem_t* mr_elems = (elem_t*) DPU_MRAM_HEAP_POINTER;
+    elem_t* wr_elems = (elem_t*) mem_alloc(NR_WR_ELEMS_PER_TASKLET_PARTITION * ELEM_SIZE);
 
     /* read elements from MRAM and compute histogram */
     for (uint32_t i = tasklet_id * NR_WR_ELEMS_PER_TASKLET_PARTITION; i < dpu_parameters.num_elems; i += NR_WR_ELEMS_PER_TASKLET_PARTITION * NR_TASKLETS) {
@@ -223,7 +223,8 @@ int partition() {
     }
     barrier_wait(&aggr_barrier);
 
-#if 0
+#if 1 /* partition the data in MRAM */
+
     /* compute prefix sums */
     if (tasklet_id == 0) {
         prefix_sum[0] = 0;
