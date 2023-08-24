@@ -227,6 +227,15 @@ int partition() {
 
     /* compute prefix sums */
     if (tasklet_id == 0) {
+        uint32_t prefix = 0;
+        for (uint32_t p = 0; p < NR_PARTITIONS; p++) {   
+            prefix_sum[p] = prefix;
+            prefix += dpu_partition_sizes[p];
+        }
+    }
+    barrier_wait(&aggr_barrier);
+
+    /* if (tasklet_id == 0) {
         prefix_sum[0] = 0;
     }
 
@@ -239,7 +248,7 @@ int partition() {
             handshake_notify();
         }
         barrier_wait(&aggr_barrier);
-    }
+    } */
 
     /* read elements for the second time from MRAM and copy them to their MRAM partition buffers */
     for (uint32_t i = tasklet_id * NR_WR_ELEMS_PER_TASKLET_PARTITION; i < dpu_parameters.num_elems; i += NR_WR_ELEMS_PER_TASKLET_PARTITION * NR_TASKLETS) {
