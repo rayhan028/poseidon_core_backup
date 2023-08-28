@@ -87,8 +87,8 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
         elem_t*** local_partition_ptrs = nullptr;
         elem_t*** global_partition_ptrs = nullptr;
         htable_entry*** htable_ptrs = nullptr;
-        elem_t* tmp_global_part_buffer = (elem_t*) malloc (ELEM_SIZE * total_elems);
-        uint32_t** total_local_part_sizes = (uint32_t**) malloc(NR_DPUS * sizeof(uint32_t*));
+        elem_t* tmp_global_part_buffer = nullptr;
+        uint32_t** total_local_part_sizes = nullptr;
         uint32_t** htable_entries = (uint32_t**) malloc(NR_DPUS * sizeof(uint32_t*));
 
         if (dpu_overflow) {
@@ -151,7 +151,9 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
             for (uint32_t d = 0; d < NR_DPUS; d++) {
                 coalesced_local_parts[d] = 1;
             }
+
             uint32_t max_total_local_part_sizes = 0;
+            total_local_part_sizes = (uint32_t**) malloc(NR_DPUS * sizeof(uint32_t*));
             for (uint32_t d = 0; d < NR_DPUS; d++) {
                 uint32_t total_sizes = 0;
                 for (auto p = 0; p < NR_PARTITIONS; p++) {
@@ -172,6 +174,7 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
             }
 
             local_partition_ptrs = (elem_t***) multidim_malloc(NR_DPUS, coalesced_local_parts, sizeof(elem_t*));
+            tmp_global_part_buffer = (elem_t*) malloc (ELEM_SIZE * total_elems);
             for (uint32_t d = 0; d < NR_DPUS; d++) {
                 local_partition_ptrs[d][0] = &tmp_global_part_buffer[tmp_global_prefix_sum[d]];
             }
@@ -602,9 +605,48 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
         free(global_part_buffer);
         for (uint32_t d = 0; d < NR_DPUS; d++) {
             free(hash_tables[d]);
-            free(global_partition_ptrs[d]);
         }
-        free(global_partition_ptrs);
+        if (local_partition_ptrs) {
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                if (local_partition_ptrs[d]) {
+                    free(local_partition_ptrs[d]);
+                }
+            }
+            free(local_partition_ptrs);
+        }
+        if (total_local_part_sizes) {
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                if (total_local_part_sizes[d]) {
+                    free(total_local_part_sizes[d]);
+                }
+            }
+            free(total_local_part_sizes);
+        }
+        if (global_partition_ptrs) {
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                if (global_partition_ptrs[d]) {
+                    free(global_partition_ptrs[d]);
+                }
+            }
+            free(global_partition_ptrs);
+        }
+        if (tmp_global_part_buffer) {
+            free(tmp_global_part_buffer);
+        }
+        if (htable_ptrs) {
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                if (htable_ptrs[d]) {
+                    free(htable_ptrs[d]);
+                }
+            }
+            free(htable_ptrs);
+        }
+        for (uint32_t d = 0; d < NR_DPUS; d++) {
+            if (htable_entries[d]) {
+                free(htable_entries[d]);
+            }
+        }
+        free(htable_entries);
 
         PRINT_TOP_RULE;
         t.print();

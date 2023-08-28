@@ -606,33 +606,34 @@ void hash_aggregation_hi_card_v5(graph_db_ptr &graph) {
         for (uint32_t d = 0; d < NR_DPUS; d++) {
             free(hash_tables[d]);
         }
+        if (local_partition_ptrs) {
         for (uint32_t d = 0; d < NR_DPUS; d++) {
             if (local_partition_ptrs[d]) {
                 free(local_partition_ptrs[d]);
             }
         }
-        if (local_partition_ptrs) {
             free(local_partition_ptrs);
         }
+        if (total_local_part_sizes) {
         for (uint32_t d = 0; d < NR_DPUS; d++) {
             if (total_local_part_sizes[d]) {
                 free(total_local_part_sizes[d]);
             }
         }
-        if (total_local_part_sizes) {
             free(total_local_part_sizes);
         }
+        if (global_partition_ptrs) {
         for (uint32_t d = 0; d < NR_DPUS; d++) {
             if (global_partition_ptrs[d]) {
                 free(global_partition_ptrs[d]);
             }
         }
-        if (global_partition_ptrs) {
             free(global_partition_ptrs);
         }
         if (tmp_global_part_buffer) {
             free(tmp_global_part_buffer);
         }
+        if (htable_ptrs) {
         for (uint32_t d = 0; d < NR_DPUS; d++) {
             if (htable_ptrs[d]) {
                 free(htable_ptrs[d]);
