@@ -114,8 +114,9 @@ struct sg_hash_table_xfer_ctx {
 
 // #define HASH_BASED_HIGH_CARDINALITY_V1
 // #define HASH_BASED_HIGH_CARDINALITY_V2
-#define HASH_BASED_HIGH_CARDINALITY_V3
+// #define HASH_BASED_HIGH_CARDINALITY_V3
 // #define HASH_BASED_HIGH_CARDINALITY_V4
+#define HASH_BASED_HIGH_CARDINALITY_V5
 // #define HASH_BASED_LOW_CARDINALITY
 // #define SORT_BASED_HIGH_CARDINALITY
 
@@ -251,6 +252,60 @@ struct dpu_params {
 #define NR_HASH_TABLE_CHUNKS (HASH_TABLE_SIZE / MAX_MRAM_WRAM_XFER_SIZE)
 #define NR_HASH_TABLE_CHUNK_ENTRIES (NR_HASH_TABLE_ENTRIES / NR_HASH_TABLE_CHUNKS)
 #define MR_HASH_TABLES_SIZE HASH_TABLE_SIZE
+
+#elif defined HASH_BASED_HIGH_CARDINALITY_V5
+
+typedef enum kernel {
+    partition_phase = 0,
+    aggregation_phase = 1,
+} kernel;
+
+struct dpu_params {
+    union {
+        uint32_t num_elems;
+        uint32_t num_partitions;
+    };
+    union {
+        uint32_t max_num_elems;
+        uint32_t max_num_partitions;
+    };
+    uint32_t size_of_max_num_partitions;
+    kernel phase;
+};
+
+#define NR_KERNELS 2
+#define NR_PARTITIONS 3840 /* 1920, 4096 */
+#define DPU_PROFILE "sgXferEnable=true"
+#define HASH_AGGR_HI_CARD_V5_BIN "./dpu_bin/dpu_hash_aggr_hi_card_v5"
+
+#define MRAM_INPUT_BUFFER_PARTITION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the partitioned elements */
+
+// #define HISTOGRAM_SIZE (7834) /* 7858 */
+#define HISTOGRAM_SIZE (16 * KiB)
+#define NR_PARTITIONS_PER_HISTOGRAM (HISTOGRAM_SIZE / sizeof(uint32_t))
+
+#define HISTOGRAM_CHUNK_SIZE MAX_MRAM_WRAM_XFER_SIZE
+#define NR_HISTOGRAM_CHUNKS DIVCEIL(HISTOGRAM_SIZE, HISTOGRAM_CHUNK_SIZE)
+#define NR_PARTITIONS_PER_HISTOGRAM_CHUNK (HISTOGRAM_CHUNK_SIZE / sizeof(uint32_t))
+
+#define WRAM_PARTITION_CACHE_SIZE_PER_TASKLET (990)
+// #define WRAM_PARTITION_CACHE_SIZE_PER_TASKLET (2 * KiB)
+#define NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET (WRAM_PARTITION_CACHE_SIZE_PER_TASKLET / ELEM_SIZE)
+#define NR_WR_ELEMS_PER_TASKLET_PARTITION NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET
+
+#define NR_WR_ELEMS_PARTITION (((2 * KiB) / ELEM_SIZE) * 16) /* TODO: tune */
+// #define NR_WR_ELEMS_PER_TASKLET_PARTITION (NR_WR_ELEMS_PARTITION / NR_TASKLETS)
+
+#define MRAM_INPUT_BUFFER_AGGREGATION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the hash table results */
+
+#define NR_WR_ELEMS_AGGREGATION ((2 * KiB) / ELEM_SIZE / 16) /* TODO: tune */
+// #define NR_WR_ELEMS_PER_TASKLET_AGGREGATION (NR_WR_ELEMS_AGGREGATION / NR_TASKLETS)
+#define NR_WR_ELEMS_PER_TASKLET_AGGREGATION 5
+
+#define HASH_TABLE_SIZE (32 * KiB)
+#define NR_HASH_TABLE_ENTRIES (HASH_TABLE_SIZE / HASH_TABLE_ENTRY_SIZE)
+#define NR_HASH_TABLE_CHUNKS (HASH_TABLE_SIZE / MAX_MRAM_WRAM_XFER_SIZE)
+#define NR_HASH_TABLE_CHUNK_ENTRIES (NR_HASH_TABLE_ENTRIES / NR_HASH_TABLE_CHUNKS)
 
 #elif defined HASH_BASED_LOW_CARDINALITY
 // #define PER_TASKLET_HASH_TABLE

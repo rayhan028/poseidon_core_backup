@@ -17,6 +17,7 @@ void hash_aggregation_hi_card_v1(graph_db_ptr &graph);
 void hash_aggregation_hi_card_v2(graph_db_ptr &graph);
 void hash_aggregation_hi_card_v3(graph_db_ptr &graph);
 void hash_aggregation_hi_card_v4(graph_db_ptr &graph);
+void hash_aggregation_hi_card_v5(graph_db_ptr &graph);
 void hash_aggregation_low_card(graph_db_ptr &graph);
 void sort_aggregation(graph_db_ptr &graph);
 

@@ -26,11 +26,10 @@ uint32_t mr_sorted_elems_offs;
 uint32_t* wr_range_partition_sizes;
 
 /* partition parameters */
-__host uint32_t dpu_partition_sizes[NR_PARTITIONS];
 /* uint32_t mr_htable_offs; */
 uint32_t* wr_partition_sizes;
-uint32_t prefix_sum[NR_PARTITIONS];
-uint32_t copy_count[NR_PARTITIONS];
+uint32_t* prefix_sum;
+uint32_t* copy_count;
 // VMUTEX_INIT(part_vmutex, NR_PARTITIONS, 64);
 MUTEX_POOL_INIT(part_mutexpl, 8);
 // MUTEX_INIT(part_mutex);
@@ -50,8 +49,12 @@ int aggregation() {
         mem_reset();
 
         /* get partition sizes from MRAM */
-        wr_partition_sizes = (uint32_t*) mem_alloc(dpu_parameters.num_partitions * sizeof(uint32_t));
-        mram_read((__mram_ptr void const*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[0], wr_partition_sizes, dpu_parameters.num_partitions * sizeof(uint32_t)); /* TODO: increase data size for improved bandwidth utilization */
+        uint32_t num_parts_aligned = (dpu_parameters.num_partitions % 2 == 0) ?
+                                     dpu_parameters.num_partitions :
+                                     (dpu_parameters.num_partitions + 1);
+
+        wr_partition_sizes = (uint32_t*) mem_alloc(num_parts_aligned * sizeof(uint32_t));
+        mram_read((__mram_ptr void const*) DPU_MRAM_HEAP_POINTER, wr_partition_sizes, num_parts_aligned * sizeof(uint32_t));
 
         /* mr_htable_offs = 0;
         for (uint32_t p = 0; p < dpu_parameters.num_partitions; p++) {
@@ -69,14 +72,14 @@ int aggregation() {
     elem_t* mr_elems = (elem_t*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[dpu_parameters.max_num_partitions];
     elem_t* wr_elems = (elem_t*) mem_alloc(NR_WR_ELEMS_PER_TASKLET_AGGREGATION * ELEM_SIZE);
 
-    for (uint32_t partition = 0; partition < dpu_parameters.num_partitions; partition++) {
+    for (uint32_t part = 0; part < dpu_parameters.num_partitions; part++) {
         /* reset all hash table entries */
         for (uint32_t idx = tasklet_id; idx < NR_HASH_TABLE_ENTRIES; idx += NR_TASKLETS) {
             hash_table[idx].key = (-1);
         }
         barrier_wait(&aggr_barrier);
 
-        uint32_t part_size = wr_partition_sizes[partition];
+        uint32_t part_size = wr_partition_sizes[part];
         for (uint32_t i = tasklet_id * NR_WR_ELEMS_PER_TASKLET_AGGREGATION; i < part_size; i += NR_WR_ELEMS_PER_TASKLET_AGGREGATION * NR_TASKLETS) {
             mram_read((__mram_ptr void const*) &mr_elems[part_offs + i], wr_elems, NR_WR_ELEMS_PER_TASKLET_AGGREGATION * ELEM_SIZE);
 
@@ -171,8 +174,8 @@ int aggregation() {
         barrier_wait(&aggr_barrier);
         for (uint32_t ch = tasklet_id; ch < NR_HASH_TABLE_CHUNKS; ch += NR_TASKLETS) {
             htable_entry* src = hash_table + (ch * NR_HASH_TABLE_CHUNK_ENTRIES);
-            /* htable_entry* dest = (htable_entry*) &mr_elems[mr_htable_offs] + ((partition * NR_HASH_TABLE_CHUNKS + ch) * NR_HASH_TABLE_CHUNK_ENTRIES); */
-            htable_entry* dest = (htable_entry*) &mr_elems[dpu_parameters.size_of_max_num_partitions] + ((partition * NR_HASH_TABLE_CHUNKS + ch) * NR_HASH_TABLE_CHUNK_ENTRIES);
+            /* htable_entry* dest = (htable_entry*) &mr_elems[mr_htable_offs] + ((part * NR_HASH_TABLE_CHUNKS + ch) * NR_HASH_TABLE_CHUNK_ENTRIES); */
+            htable_entry* dest = (htable_entry*) &mr_elems[dpu_parameters.size_of_max_num_partitions] + ((part * NR_HASH_TABLE_CHUNKS + ch) * NR_HASH_TABLE_CHUNK_ENTRIES);
             mram_write(src, (__mram_ptr void*) dest, sizeof(htable_entry) * NR_HASH_TABLE_CHUNK_ENTRIES);
         }
         barrier_wait(&aggr_barrier);
@@ -187,11 +190,16 @@ int partition() {
     if (tasklet_id == 0) {
         printf("Tasklet: %u\n", tasklet_id);
         mem_reset();
+
+        /* allocate histogram */
+        /* TODO: first check if NR_PARTITIONS_PER_HISTOGRAM > NR_PARTITIONS */
+        prefix_sum = (uint32_t*) mem_alloc(NR_PARTITIONS_PER_HISTOGRAM * sizeof(uint32_t));
+        copy_count = (uint32_t*) mem_alloc(NR_PARTITIONS_PER_HISTOGRAM * sizeof(uint32_t));
     }
     barrier_wait(&aggr_barrier);
 
     for (uint32_t i = tasklet_id; i < NR_PARTITIONS; i += NR_TASKLETS) {
-        dpu_partition_sizes[i] = 0;
+        prefix_sum[i] = 0;
     }
     for (uint32_t i = tasklet_id; i < NR_PARTITIONS; i += NR_TASKLETS) {
         copy_count[i] = 0;
@@ -211,14 +219,14 @@ int partition() {
 
         for (uint32_t j = 0; j < num_elems; j++) {
             prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
-            // uint32_t partition = global_partition_hash(grp_key) % NR_PARTITIONS;
-            uint32_t partition = grp_key % NR_PARTITIONS;
+            // uint32_t part = global_partition_hash(grp_key) % NR_PARTITIONS;
+            uint32_t part = grp_key % NR_PARTITIONS;
 
             // vmutex_lock(&part_vmutex, idx);
-            mutex_pool_lock(&part_mutexpl, partition);
-            dpu_partition_sizes[partition]++;
+            mutex_pool_lock(&part_mutexpl, part);
+            prefix_sum[part]++;
             // vmutex_unlock(&part_vmutex, idx);
-            mutex_pool_unlock(&part_mutexpl, partition);
+            mutex_pool_unlock(&part_mutexpl, part);
         }
     }
     barrier_wait(&aggr_barrier);
@@ -227,10 +235,12 @@ int partition() {
 
     /* compute prefix sums */
     if (tasklet_id == 0) {
+        uint32_t tmp;
         uint32_t prefix = 0;
         for (uint32_t p = 0; p < NR_PARTITIONS; p++) {   
+            tmp = prefix_sum[p];
             prefix_sum[p] = prefix;
-            prefix += dpu_partition_sizes[p];
+            prefix += tmp;
         }
     }
     barrier_wait(&aggr_barrier);
@@ -245,19 +255,27 @@ int partition() {
 
         for (uint32_t j = 0; j < num_elems; j++) {
             prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
-            // uint32_t partition = glb_partition_hash(grp_key) % NR_PARTITIONS;
-            uint32_t partition = grp_key % NR_PARTITIONS;
+            // uint32_t part = glb_partition_hash(grp_key) % NR_PARTITIONS;
+            uint32_t part = grp_key % NR_PARTITIONS;
 
             // vmutex_lock(&part_vmutex, idx);
-            mutex_pool_lock(&part_mutexpl, partition);
-            uint32_t mroffs = prefix_sum[partition] + copy_count[partition];
-            copy_count[partition]++;
+            mutex_pool_lock(&part_mutexpl, part);
+            uint32_t mroffs = prefix_sum[part] + copy_count[part];
+            copy_count[part]++;
             // vmutex_unlock(&part_vmutex, idx);
-            mutex_pool_unlock(&part_mutexpl, partition);
+            mutex_pool_unlock(&part_mutexpl, part);
             mram_write(&wr_elems[j], (__mram_ptr void*) &mr_elems[dpu_parameters.max_num_elems + mroffs], ELEM_SIZE);
         }
     }
     barrier_wait(&aggr_barrier);
+
+    /* copy histogram to MRAM */
+    uint32_t* mr_hist = (uint32_t*) DPU_MRAM_HEAP_POINTER; /* reuse the beginning of MRAM since partitioning is complete */
+    for (uint32_t ch = tasklet_id; ch < NR_HISTOGRAM_CHUNKS; ch += NR_TASKLETS) {
+        uint32_t offs = ch * NR_PARTITIONS_PER_HISTOGRAM_CHUNK;
+        mram_write(&prefix_sum[offs], (__mram_ptr void*) &mr_hist[offs], NR_PARTITIONS_PER_HISTOGRAM_CHUNK * sizeof(uint32_t));
+    }
+
 #endif
 
     return 0;
