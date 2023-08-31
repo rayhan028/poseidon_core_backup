@@ -323,11 +323,11 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
             DPU_FOREACH(dpu_set, dpu, dpuid) {
                 uint32_t i = 0;
                 uint32_t part_offs = 0;
-                uint32_t num_parts = num_partitions[d];
+                uint32_t num_parts = num_partitions[dpuid];
                 uint32_t num_parts_aligned = (num_parts % 2 == 0) ? num_parts : (num_parts + 1);
 
                 auto &partitions = dpu_to_assigned_parts[dpuid];
-                partition_sizes[dpuid] = (uint32_t*) malloc(sizeof(uint32_t) * num_parts);
+                partition_sizes[dpuid] = (uint32_t*) malloc(sizeof(uint32_t) * num_parts_aligned);
                 for (uint32_t j = 0; j < partitions.size(); j += 2) { /* for each partition, we store the partition's index and size consecutively */
                     uint32_t p = partitions[j];
                     uint32_t part_size = partitions[j + 1];

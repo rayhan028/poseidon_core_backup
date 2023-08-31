@@ -50,8 +50,12 @@ int aggregation() {
         mem_reset();
 
         /* get partition sizes from MRAM */
-        wr_partition_sizes = (uint32_t*) mem_alloc(dpu_parameters.num_partitions * sizeof(uint32_t));
-        mram_read((__mram_ptr void const*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[0], wr_partition_sizes, dpu_parameters.num_partitions * sizeof(uint32_t)); /* TODO: increase data size for improved bandwidth utilization */
+        uint32_t num_parts_aligned = (dpu_parameters.num_partitions % 2 == 0) ?
+                                     dpu_parameters.num_partitions :
+                                     (dpu_parameters.num_partitions + 1);
+
+        wr_partition_sizes = (uint32_t*) mem_alloc(num_parts_aligned * sizeof(uint32_t));
+        mram_read((__mram_ptr void const*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[0], wr_partition_sizes, num_parts_aligned * sizeof(uint32_t)); /* TODO: increase data size for improved bandwidth utilization */
 
         /* mr_htable_offs = 0;
         for (uint32_t p = 0; p < dpu_parameters.num_partitions; p++) {

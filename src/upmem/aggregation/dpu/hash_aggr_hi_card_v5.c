@@ -30,6 +30,7 @@ uint32_t* wr_range_partition_sizes;
 uint32_t* wr_partition_sizes;
 uint32_t* prefix_sum;
 uint32_t* copy_count;
+uint32_t prefix;
 // VMUTEX_INIT(part_vmutex, NR_PARTITIONS, 64);
 MUTEX_POOL_INIT(part_mutexpl, 8);
 // MUTEX_INIT(part_mutex);
@@ -192,91 +193,108 @@ int partition() {
         mem_reset();
 
         /* allocate histogram */
-        /* TODO: first check if NR_PARTITIONS_PER_HISTOGRAM > NR_PARTITIONS */
-        prefix_sum = (uint32_t*) mem_alloc(NR_PARTITIONS_PER_HISTOGRAM * sizeof(uint32_t));
-        copy_count = (uint32_t*) mem_alloc(NR_PARTITIONS_PER_HISTOGRAM * sizeof(uint32_t));
-    }
-    barrier_wait(&aggr_barrier);
-
-    for (uint32_t i = tasklet_id; i < NR_PARTITIONS; i += NR_TASKLETS) {
-        prefix_sum[i] = 0;
-    }
-    for (uint32_t i = tasklet_id; i < NR_PARTITIONS; i += NR_TASKLETS) {
-        copy_count[i] = 0;
+        prefix = 0;
+        prefix_sum = (uint32_t*) mem_alloc(NR_HISTOGRAM_ENTRIES * sizeof(uint32_t));
+        copy_count = (uint32_t*) mem_alloc(NR_HISTOGRAM_ENTRIES * sizeof(uint32_t));
     }
     barrier_wait(&aggr_barrier);
 
     elem_t* mr_elems = (elem_t*) DPU_MRAM_HEAP_POINTER;
-    elem_t* wr_elems = (elem_t*) mem_alloc(NR_WR_ELEMS_PER_TASKLET_PARTITION * ELEM_SIZE);
+    elem_t* wr_elems = (elem_t*) mem_alloc(NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET * ELEM_SIZE);
 
-    /* read elements from MRAM and compute histogram */
-    for (uint32_t i = tasklet_id * NR_WR_ELEMS_PER_TASKLET_PARTITION; i < dpu_parameters.num_elems; i += NR_WR_ELEMS_PER_TASKLET_PARTITION * NR_TASKLETS) {
-        mram_read((__mram_ptr void const*) &mr_elems[i], wr_elems, NR_WR_ELEMS_PER_TASKLET_PARTITION * ELEM_SIZE);
-
-        uint32_t num_elems = ((i + NR_WR_ELEMS_PER_TASKLET_PARTITION) < dpu_parameters.num_elems) ?
-                             NR_WR_ELEMS_PER_TASKLET_PARTITION :
-                             dpu_parameters.num_elems - i; /* last remaining elements less than NR_WR_ELEMS_PER_TASKLET_PARTITION */
-
-        for (uint32_t j = 0; j < num_elems; j++) {
-            prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
-            // uint32_t part = global_partition_hash(grp_key) % NR_PARTITIONS;
-            uint32_t part = grp_key % NR_PARTITIONS;
-
-            // vmutex_lock(&part_vmutex, idx);
-            mutex_pool_lock(&part_mutexpl, part);
-            prefix_sum[part]++;
-            // vmutex_unlock(&part_vmutex, idx);
-            mutex_pool_unlock(&part_mutexpl, part);
+    for (uint32_t batch = 0; batch < NR_HISTOGRAM_BATCHES; batch++) {
+        /* reset histogram */
+        for (uint32_t i = tasklet_id; i < NR_HISTOGRAM_ENTRIES; i += NR_TASKLETS) {
+            prefix_sum[i] = 0;
         }
-    }
-    barrier_wait(&aggr_barrier);
+        for (uint32_t i = tasklet_id; i < NR_HISTOGRAM_ENTRIES; i += NR_TASKLETS) {
+            copy_count[i] = 0;
+        }
+        barrier_wait(&aggr_barrier);
+
+        /* read elements from MRAM and compute histogram for current batch */
+        for (uint32_t i = tasklet_id * NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET; i < dpu_parameters.num_elems; i += NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET * NR_TASKLETS) {
+            mram_read((__mram_ptr void const*) &mr_elems[i], wr_elems, NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET * ELEM_SIZE);
+
+            uint32_t num_elems = ((i + NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET) < dpu_parameters.num_elems) ?
+                                 NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET :
+                                 dpu_parameters.num_elems - i; /* last remaining elements less than NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET */
+
+            for (uint32_t j = 0; j < num_elems; j++) {
+                prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
+                // uint32_t part = global_partition_hash(grp_key) % NR_PARTITIONS;
+                uint32_t part = grp_key % NR_PARTITIONS;
+
+                uint32_t quot = part / NR_HISTOGRAM_ENTRIES;
+                uint32_t rem = part % NR_HISTOGRAM_ENTRIES;
+
+                if (quot == batch) { /* the partition belongs to the current batch */
+                    // vmutex_lock(&part_vmutex, idx);
+                    mutex_pool_lock(&part_mutexpl, rem);
+                    prefix_sum[rem]++;
+                    // vmutex_unlock(&part_vmutex, idx);
+                    mutex_pool_unlock(&part_mutexpl, rem);
+                }
+            }
+        }
+        barrier_wait(&aggr_barrier);
+
+        /* compute prefix sums */
+        if (tasklet_id == 0) {
+            uint32_t tmp;
+            for (uint32_t p = 0; p < NR_HISTOGRAM_ENTRIES; p++) {   
+                tmp = prefix_sum[p];
+                prefix_sum[p] = prefix;
+                prefix += tmp;
+            }
+        }
+        barrier_wait(&aggr_barrier);
 
 #if 1 /* partition the data in MRAM */
 
-    /* compute prefix sums */
-    if (tasklet_id == 0) {
-        uint32_t tmp;
-        uint32_t prefix = 0;
-        for (uint32_t p = 0; p < NR_PARTITIONS; p++) {   
-            tmp = prefix_sum[p];
-            prefix_sum[p] = prefix;
-            prefix += tmp;
+        /* read elements again from MRAM and copy the elements belonging to the current to their MRAM partition buffers */
+        for (uint32_t i = tasklet_id * NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET; i < dpu_parameters.num_elems; i += NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET * NR_TASKLETS) {
+            mram_read((__mram_ptr void const*) &mr_elems[i], wr_elems, NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET * ELEM_SIZE);
+
+            uint32_t num_elems = ((i + NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET) < dpu_parameters.num_elems) ?
+                                 NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET :
+                                 dpu_parameters.num_elems - i; /* last remaining elements less than NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET */
+
+            for (uint32_t j = 0; j < num_elems; j++) {
+                prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
+                // uint32_t part = glb_partition_hash(grp_key) % NR_PARTITIONS;
+                uint32_t part = grp_key % NR_PARTITIONS;
+
+                uint32_t quot = part / NR_HISTOGRAM_ENTRIES;
+                uint32_t rem = part % NR_HISTOGRAM_ENTRIES;
+
+                if (quot == batch) { /* the partition belongs to the current batch */
+                    // vmutex_lock(&part_vmutex, idx);
+                    mutex_pool_lock(&part_mutexpl, rem);
+                    uint32_t mroffs = prefix_sum[rem] + copy_count[rem];
+                    copy_count[rem]++;
+                    // vmutex_unlock(&part_vmutex, idx);
+                    mutex_pool_unlock(&part_mutexpl, rem);
+                    mram_write(&wr_elems[j], (__mram_ptr void*) &mr_elems[dpu_parameters.max_num_elems + mroffs], ELEM_SIZE);
+                }
+            }
         }
-    }
-    barrier_wait(&aggr_barrier);
 
-    /* read elements for the second time from MRAM and copy them to their MRAM partition buffers */
-    for (uint32_t i = tasklet_id * NR_WR_ELEMS_PER_TASKLET_PARTITION; i < dpu_parameters.num_elems; i += NR_WR_ELEMS_PER_TASKLET_PARTITION * NR_TASKLETS) {
-        mram_read((__mram_ptr void const*) &mr_elems[i], wr_elems, NR_WR_ELEMS_PER_TASKLET_PARTITION * ELEM_SIZE);
+        /* copy histogram of current batch to MRAM */
+        uint32_t* mr_hist = (uint32_t*) &mr_elems[2 * dpu_parameters.max_num_elems];
+        for (uint32_t ch = tasklet_id; ch < NR_HISTOGRAM_CHUNKS; ch += NR_TASKLETS) {
+            uint32_t choffs = ch * NR_HISTOGRAM_CHUNK_ENTRIES;
+            uint32_t mroffs = batch * NR_HISTOGRAM_ENTRIES + choffs;
+            uint32_t num_entries = (ch == (NR_HISTOGRAM_CHUNKS - 1)) ?
+                                   (NR_HISTOGRAM_ENTRIES - (ch * NR_HISTOGRAM_CHUNK_ENTRIES)) : /* remaining entries of the last chunk */
+                                   NR_HISTOGRAM_CHUNK_ENTRIES;
 
-        uint32_t num_elems = ((i + NR_WR_ELEMS_PER_TASKLET_PARTITION) < dpu_parameters.num_elems) ?
-                             NR_WR_ELEMS_PER_TASKLET_PARTITION :
-                             dpu_parameters.num_elems - i; /* last remaining elements less than NR_WR_ELEMS_PER_TASKLET_PARTITION */
-
-        for (uint32_t j = 0; j < num_elems; j++) {
-            prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
-            // uint32_t part = glb_partition_hash(grp_key) % NR_PARTITIONS;
-            uint32_t part = grp_key % NR_PARTITIONS;
-
-            // vmutex_lock(&part_vmutex, idx);
-            mutex_pool_lock(&part_mutexpl, part);
-            uint32_t mroffs = prefix_sum[part] + copy_count[part];
-            copy_count[part]++;
-            // vmutex_unlock(&part_vmutex, idx);
-            mutex_pool_unlock(&part_mutexpl, part);
-            mram_write(&wr_elems[j], (__mram_ptr void*) &mr_elems[dpu_parameters.max_num_elems + mroffs], ELEM_SIZE);
+            mram_write(&prefix_sum[choffs], (__mram_ptr void*) &mr_hist[mroffs], num_entries * sizeof(uint32_t));
         }
-    }
-    barrier_wait(&aggr_barrier);
-
-    /* copy histogram to MRAM */
-    uint32_t* mr_hist = (uint32_t*) DPU_MRAM_HEAP_POINTER; /* reuse the beginning of MRAM since partitioning is complete */
-    for (uint32_t ch = tasklet_id; ch < NR_HISTOGRAM_CHUNKS; ch += NR_TASKLETS) {
-        uint32_t offs = ch * NR_PARTITIONS_PER_HISTOGRAM_CHUNK;
-        mram_write(&prefix_sum[offs], (__mram_ptr void*) &mr_hist[offs], NR_PARTITIONS_PER_HISTOGRAM_CHUNK * sizeof(uint32_t));
-    }
+        barrier_wait(&aggr_barrier);
 
 #endif
+    }
 
     return 0;
 }

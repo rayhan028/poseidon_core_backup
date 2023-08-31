@@ -73,7 +73,8 @@ void hash_aggregation_hi_card_v5(graph_db_ptr &graph) {
         PRINT("Group key cardinality: %u", GROUP_KEY_CARDINALITY);
         PRINT("Partitions: %u", NR_PARTITIONS);
         PRINT("Histogram size: %u (%f KiB)", HISTOGRAM_SIZE, HISTOGRAM_SIZE / (double)KiB);
-        PRINT("Partitions per histogram: %lu", NR_PARTITIONS_PER_HISTOGRAM);
+        PRINT("Histogram entries: %lu", NR_HISTOGRAM_ENTRIES);
+        PRINT("Histogram batches: %lu", NR_HISTOGRAM_BATCHES);
         PRINT("Hash table size: %u (%f KiB)", HASH_TABLE_SIZE, HASH_TABLE_SIZE / (double)KiB);
         PRINT("Hash table entries: %lu", NR_HASH_TABLE_ENTRIES);
         PRINT("Hash table entry size: %lu", HASH_TABLE_ENTRY_SIZE);
@@ -145,18 +146,19 @@ void hash_aggregation_hi_card_v5(graph_db_ptr &graph) {
             PRINT("Transfer histograms of local partitions to CPU...");
             local_prefix_sum = (uint32_t**) malloc(NR_DPUS * sizeof(uint32_t*));
             for (uint32_t d = 0; d < NR_DPUS; d++) {
-                local_prefix_sum[d] = (uint32_t*) malloc(NR_PARTITIONS * sizeof(uint32_t));
+                local_prefix_sum[d] = (uint32_t*) malloc(NR_HISTOGRAM_BATCHES * NR_HISTOGRAM_ENTRIES * sizeof(uint32_t));
             }
             t.start("DPU to CPU transfer (local histograms)");
             DPU_FOREACH(dpu_set, dpu, dpuid) {
                 DPU_ASSERT(dpu_prepare_xfer(dpu, local_prefix_sum[dpuid]));
             }
-            DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_FROM_DPU, DPU_MRAM_HEAP_POINTER_NAME, 0, sizeof(uint32_t) * NR_PARTITIONS, DPU_XFER_DEFAULT));
+            DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_FROM_DPU, DPU_MRAM_HEAP_POINTER_NAME, 2 * max_elems_per_dpu_part * ELEM_SIZE,
+                                     NR_HISTOGRAM_BATCHES * NR_HISTOGRAM_ENTRIES * sizeof(uint32_t), DPU_XFER_DEFAULT));
             t.stop();
 
             local_part_sizes = (uint32_t**) malloc(NR_DPUS * sizeof(uint32_t*));
             for (uint32_t d = 0; d < NR_DPUS; d++) {
-                local_part_sizes[d] = (uint32_t*) malloc(NR_PARTITIONS * sizeof(uint32_t));
+                local_part_sizes[d] = (uint32_t*) malloc(NR_HISTOGRAM_BATCHES * NR_HISTOGRAM_ENTRIES * sizeof(uint32_t));
             }
             for (uint32_t d = 0; d < NR_DPUS; d++) {
                 for (auto p = 0; p < (NR_PARTITIONS - 1); p++) {
@@ -172,18 +174,14 @@ void hash_aggregation_hi_card_v5(graph_db_ptr &graph) {
                 coalesced_local_parts[d] = 1;
             }
 
-            uint32_t max_total_local_part_sizes = 0;
             total_local_part_sizes = (uint32_t**) malloc(NR_DPUS * sizeof(uint32_t*));
             for (uint32_t d = 0; d < NR_DPUS; d++) {
-                uint32_t total_sizes = 0;
-                for (auto p = 0; p < NR_PARTITIONS; p++) {
-                    total_sizes += local_part_sizes[d][p];
-                }
-                if (total_sizes > max_total_local_part_sizes) {
-                    max_total_local_part_sizes = total_sizes;
-                }
+                uint32_t elems = (d == (NR_DPUS - 1)) ?
+                                 (total_elems - d * elems_per_dpu) :
+                                 elems_per_dpu;
+
                 total_local_part_sizes[d] = (uint32_t*) malloc(sizeof(uint32_t));
-                total_local_part_sizes[d][0] = total_sizes;
+                total_local_part_sizes[d][0] = elems;
             }
 
             uint32_t tmp_prefix = 0;
@@ -206,7 +204,7 @@ void hash_aggregation_hi_card_v5(graph_db_ptr &graph) {
             get_block_t get_local_partition = {.f = &get_partition_func, .args = &get_local_partition_params, .args_size = sizeof(sg_partition_xfer_ctx)};
             /* TODO: skip data transpose for byte interleaving */
             DPU_ASSERT(dpu_push_sg_xfer(dpu_set, DPU_XFER_FROM_DPU, DPU_MRAM_HEAP_POINTER_NAME, max_elems_per_dpu_part * ELEM_SIZE,
-                                        max_total_local_part_sizes * ELEM_SIZE, &get_local_partition, DPU_SG_XFER_DISABLE_LENGTH_CHECK));
+                                        elems_per_dpu * ELEM_SIZE, &get_local_partition, DPU_SG_XFER_DISABLE_LENGTH_CHECK));
             t.stop();
 
             /* compute prefix sum for CPU partition buffers */
