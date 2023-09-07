@@ -254,34 +254,41 @@ struct dpu_params {
 #define MR_HASH_TABLES_SIZE HASH_TABLE_SIZE
 
 #elif defined HASH_BASED_HIGH_CARDINALITY_V5
+#define SINGLE_HASH_TABLE
+// #define PER_TASKLET_HASH_TABLE
 
 typedef enum kernel {
     partition_phase = 0,
     aggregation_phase = 1,
+    sg_batch_xfer_phase = 2,
 } kernel;
 
 struct dpu_params {
     union {
         uint32_t num_elems;
         uint32_t num_partitions;
+        uint32_t sg_batch_beg_offs;
     };
     union {
         uint32_t max_num_elems;
         uint32_t max_num_partitions;
+        uint32_t sg_batch_end_offs;
     };
+    union {
     uint32_t size_of_max_num_partitions;
+        uint32_t sg_offset;
+    };
     kernel phase;
 };
 
-#define NR_KERNELS 2
+#define NR_KERNELS 3
 #define NR_PARTITIONS 3840 /* 1920, 4096 */
 #define DPU_PROFILE "sgXferEnable=true"
 #define HASH_AGGR_HI_CARD_V5_BIN "./dpu_bin/dpu_hash_aggr_hi_card_v5"
 
 #define MRAM_INPUT_BUFFER_PARTITION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the partitioned elements */
 
-#define HISTOGRAM_SIZE (7834) /* 7858 */
-// #define HISTOGRAM_SIZE (16 * KiB)
+#define HISTOGRAM_SIZE (21 * KiB) /* (7834) (16 * KiB) */
 #define NR_HISTOGRAM_ENTRIES (HISTOGRAM_SIZE / sizeof(uint32_t))
 #define NR_HISTOGRAM_BATCHES DIVCEIL(NR_PARTITIONS, NR_HISTOGRAM_ENTRIES)
 
@@ -289,8 +296,7 @@ struct dpu_params {
 #define NR_HISTOGRAM_CHUNKS DIVCEIL(HISTOGRAM_SIZE, HISTOGRAM_CHUNK_SIZE)
 #define NR_HISTOGRAM_CHUNK_ENTRIES (HISTOGRAM_CHUNK_SIZE / sizeof(uint32_t))
 
-// #define WRAM_PARTITION_CACHE_SIZE_PER_TASKLET (990)
-#define WRAM_PARTITION_CACHE_SIZE_PER_TASKLET (2 * KiB)
+#define WRAM_PARTITION_CACHE_SIZE_PER_TASKLET (256) /* (990), (2 * KiB) */
 #define NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET (WRAM_PARTITION_CACHE_SIZE_PER_TASKLET / ELEM_SIZE)
 
 #define MRAM_INPUT_BUFFER_AGGREGATION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the hash table results */
