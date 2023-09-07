@@ -27,7 +27,6 @@ uint32_t* wr_range_partition_sizes;
 
 /* partition parameters */
 /* uint32_t mr_htable_offs; */
-uint32_t* wr_partition_sizes;
 uint32_t* prefix_sum;
 uint32_t* copy_count;
 uint32_t prefix;
@@ -36,12 +35,21 @@ MUTEX_POOL_INIT(part_mutexpl, 8);
 // MUTEX_INIT(part_mutex);
 
 /* aggregation parameters */
+
+#ifdef SINGLE_HASH_TABLE
+uint32_t* wr_partition_sizes;
 htable_entry* hash_table;
+#elif defined PER_TASKLET_HASH_TABLE
+uint32_t total_part_sizes;
+uint32_t* partition_offsets;
+#endif
 BARRIER_INIT(aggr_barrier, NR_TASKLETS);
 // VMUTEX_INIT(aggr_vmutex, NR_HASH_TABLE_ENTRIES, 16);
 MUTEX_POOL_INIT(aggr_mutexpl, 8);
 // MUTEX_INIT(aggr_mutex);
 
+
+#ifdef SINGLE_HASH_TABLE
 
 int aggregation() {
     unsigned int tasklet_id = me();
@@ -184,6 +192,145 @@ int aggregation() {
 
     return 0;
 }
+
+#elif defined PER_TASKLET_HASH_TABLE
+
+int aggregation() {
+    unsigned int tasklet_id = me();
+    if (tasklet_id == 0) {
+        printf("Tasklet: %u\n", tasklet_id);
+        mem_reset();
+
+        /* compute offsets of partitions in MRAM */
+        uint32_t tmp;
+        uint32_t offs = 0;
+        uint32_t num_parts_aligned = (dpu_parameters.num_partitions % 2 == 0) ?
+                                     (dpu_parameters.num_partitions) :
+                                     (dpu_parameters.num_partitions + 1);
+
+        partition_offsets = (uint32_t*) mem_alloc(num_parts_aligned * sizeof(uint32_t));
+        mram_read((__mram_ptr void const*) DPU_MRAM_HEAP_POINTER, partition_offsets, num_parts_aligned * sizeof(uint32_t));
+        for (uint32_t p = 0; p < dpu_parameters.num_partitions; p++) {   
+            tmp = partition_offsets[p];
+            partition_offsets[p] = offs;
+            offs += tmp;
+        }
+        total_part_sizes = offs;
+    }
+    barrier_wait(&aggr_barrier);
+
+    /* allocate hash table buffer */
+    htable_entry* hash_table = (htable_entry*) mem_alloc(MAX_MRAM_WRAM_XFER_SIZE); /* 64 hash table entries per tasklet */
+
+    /* group and compute aggregation for each partition */
+    elem_t* mr_elems = (elem_t*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[dpu_parameters.max_num_partitions];
+    elem_t* wr_elems = (elem_t*) mem_alloc(NR_WR_ELEMS_PER_TASKLET_AGGREGATION * ELEM_SIZE);
+
+    for (uint32_t part = tasklet_id; part < dpu_parameters.num_partitions; part += NR_TASKLETS) {
+        /* reset all hash table entries */
+        for (uint32_t idx = 0; idx < NR_HASH_TABLE_ENTRIES; idx++) {
+            hash_table[idx].key = (-1);
+        }
+
+        uint32_t part_offs = partition_offsets[part];
+        uint32_t part_size = (part == (dpu_parameters.num_partitions - 1)) ?
+                             (total_part_sizes - part_offs) :
+                             (partition_offsets[part + 1] - part_offs);
+
+        for (uint32_t i = 0; i < part_size; i += NR_WR_ELEMS_PER_TASKLET_AGGREGATION) {
+            mram_read((__mram_ptr void const*) &mr_elems[part_offs + i], wr_elems, NR_WR_ELEMS_PER_TASKLET_AGGREGATION * ELEM_SIZE);
+
+            uint32_t num_elems = ((i + NR_WR_ELEMS_PER_TASKLET_AGGREGATION) < part_size) ?
+                                 NR_WR_ELEMS_PER_TASKLET_AGGREGATION :
+                                 part_size - i;
+
+            for (uint32_t j = 0; j < num_elems; j++) {
+                uint32_t grp_key = wr_elems[j].properties[GROUP_KEY];
+                // uint32_t idx = aggr_hash(grp_key) % NR_HASH_TABLE_ENTRIES;
+                uint32_t idx = grp_key % NR_HASH_TABLE_ENTRIES;
+
+                uint32_t probe = 0;
+                while (1) {
+
+                    if (hash_table[idx].key == grp_key) { /* hash table entry hit */
+                        #if defined(COUNT) || defined(AVERAGE)
+                        hash_table[idx].val.cnt++;
+                        #endif
+
+                        #if defined(SUM) || defined(AVERAGE)
+                        hash_table[idx].val.sum += wr_elems[j].properties[SUM_KEY];
+                        #endif
+
+                        #ifdef MINIMUM
+                        if (wr_elems[j].properties[MIN_KEY] < hash_table[idx].val.min) {
+                            hash_table[idx].val.min = wr_elems[j].properties[MIN_KEY];
+                        }
+                        #endif
+
+                        #ifdef MAXIMUM
+                        if (wr_elems[j].properties[MAX_KEY] > hash_table[idx].val.max) {
+                            hash_table[idx].val.max = wr_elems[j].properties[MAX_KEY];
+                        }
+                        #endif
+
+                        break;
+                    }
+                    else if (hash_table[idx].key == (uint32_t)(-1)) { /* unused hash table entry */
+                        hash_table[idx].key = grp_key;
+
+                        #if defined(COUNT) || defined(AVERAGE)
+                        hash_table[idx].val.cnt = 1;
+                        #endif
+
+                        #if defined(SUM) || defined(AVERAGE)
+                        hash_table[idx].val.sum = wr_elems[j].properties[SUM_KEY];
+                        #endif
+
+                        #ifdef MINIMUM
+                        hash_table[idx].val.min = (uint32_t)(-1);
+                        if (wr_elems[j].properties[MIN_KEY] < hash_table[idx].val.min) {
+                            hash_table[idx].val.min = wr_elems[j].properties[MIN_KEY];
+                        }
+                        #endif
+
+                        #ifdef MAXIMUM
+                        hash_table[idx].val.max = 0;
+                        if (wr_elems[j].properties[MAX_KEY] > hash_table[idx].val.max) {
+                            hash_table[idx].val.max = wr_elems[j].properties[MAX_KEY];
+                        }
+                        #endif
+
+                        break;
+                    }
+                    else { /* hash table entry collision */
+
+                        /* linear probing */
+                        if (++probe > NR_HASH_TABLE_ENTRIES) {
+                            printf("Hash table size exceeded\n");
+                            return -1;
+                        }
+
+                        if (++idx >= NR_HASH_TABLE_ENTRIES) {
+                            idx = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        /* copy hash table result for the current partition to MRAM */
+        for (uint32_t ch = 0; ch < NR_HASH_TABLE_CHUNKS; ch++) {
+            htable_entry* src = hash_table + (ch * NR_HASH_TABLE_CHUNK_ENTRIES);
+            /* htable_entry* dest = (htable_entry*) &mr_elems[mr_htable_offs] + ((part * NR_HASH_TABLE_CHUNKS + ch) * NR_HASH_TABLE_CHUNK_ENTRIES); */
+            htable_entry* dest = (htable_entry*) &mr_elems[dpu_parameters.size_of_max_num_partitions] + ((part * NR_HASH_TABLE_CHUNKS + ch) * NR_HASH_TABLE_CHUNK_ENTRIES);
+            mram_write(src, (__mram_ptr void*) dest, sizeof(htable_entry) * NR_HASH_TABLE_CHUNK_ENTRIES);
+        }
+    }
+
+    return 0;
+}
+
+#endif /* #ifdef SINGLE_HASH_TABLE */
 
 int partition() {
     unsigned int tasklet_id = me();
