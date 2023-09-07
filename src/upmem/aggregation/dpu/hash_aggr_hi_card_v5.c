@@ -299,6 +299,35 @@ int partition() {
     return 0;
 }
 
+int sg_batch_xfer() {
+    unsigned int tasklet_id = me();
+
+    if (tasklet_id == 0) {
+        printf("Tasklet: %u\n", tasklet_id);
+        mem_reset();
+    }
+    barrier_wait(&aggr_barrier);
+
+    elem_t* mr_elems_out = (elem_t*) DPU_MRAM_HEAP_POINTER;
+    elem_t* mr_elems_in = &((elem_t*) DPU_MRAM_HEAP_POINTER)[dpu_parameters.sg_offset];
+    elem_t* wr_elems = (elem_t*) mem_alloc(NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET * ELEM_SIZE);
+
+    for (uint32_t i = (dpu_parameters.sg_batch_beg_offs + tasklet_id * NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET);
+                  i < dpu_parameters.sg_batch_end_offs;
+                  i += NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET * NR_TASKLETS) {
+
+        mram_read((__mram_ptr void const*) &mr_elems_in[i], wr_elems, NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET * ELEM_SIZE);
+
+        uint32_t num_elems = ((i + NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET) < dpu_parameters.sg_batch_end_offs) ?
+                             (NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET) :
+                             dpu_parameters.sg_batch_end_offs - i; /* last remaining elements less than NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET */
+
+        mram_write(wr_elems, (__mram_ptr void*) &mr_elems_out[i - dpu_parameters.sg_batch_beg_offs], num_elems * ELEM_SIZE);
+    }
+
+    return 0;
+}
+
 int split_aggregation() {
     unsigned int tasklet_id = me();
     if (tasklet_id == 0) {
@@ -1291,6 +1320,7 @@ int split_aggregation() {
     return 0;
 }
 
+int (*kernels[NR_KERNELS])() = {partition, aggregation, sg_batch_xfer};
 
 int main() {
     return kernels[dpu_parameters.phase]();

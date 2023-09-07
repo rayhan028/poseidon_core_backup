@@ -167,7 +167,157 @@ void hash_aggregation_hi_card_v5(graph_db_ptr &graph) {
                 local_part_sizes[d][NR_PARTITIONS - 1] = params[d].num_elems - local_prefix_sum[d][NR_PARTITIONS - 1];
             }
 
-#if 1 /* coalesce all local partitions as a single SG block */
+#if 1 /* transfer local partitions in SG batches */
+
+            /* compute prefix sum for CPU partition buffers */
+            uint32_t prefix = 0;
+            global_prefix_sum = (uint32_t**) malloc(NR_PARTITIONS * sizeof(uint32_t*));
+            for (auto p = 0; p < NR_PARTITIONS; p++) {
+                global_prefix_sum[p] = (uint32_t*) malloc(NR_DPUS * sizeof(uint32_t));
+            }
+            for (auto p = 0; p < NR_PARTITIONS; p++) {
+                for (auto d = 0; d < NR_DPUS; d++) {
+                    global_prefix_sum[p][d] = prefix;
+                    prefix += local_part_sizes[d][p];
+                }
+            }
+
+            uint32_t num_local_partitions[NR_DPUS];
+            if (NR_PARTITIONS > NR_DPUS) {
+                uint32_t num_local_parts_per_batch = NR_DPUS;
+                uint32_t num_local_part_batches = DIVCEIL(NR_PARTITIONS, num_local_parts_per_batch);
+                PRINT("Transfer DPU local partitions to CPU global partition buffers in SG batches...");
+                PRINT("SG batches of local partitions: %u", num_local_part_batches);
+
+                /* transfer the first SG batch */
+                /* PRINT("Local partitions SG batch: 0 with %u partitions [0, %u)", num_local_parts_per_batch, num_local_parts_per_batch); */
+                for (uint32_t d = 0; d < NR_DPUS; d++) {
+                    num_local_partitions[d] = num_local_parts_per_batch;
+                }
+
+                local_partition_ptrs = (elem_t***) multidim_malloc(NR_DPUS, num_local_partitions, sizeof(elem_t*));
+                for (uint32_t d = 0; d < NR_DPUS; d++) {
+                    for (uint32_t p = 0; p < num_local_parts_per_batch; p++) {
+                        local_partition_ptrs[d][p] = &global_part_buffer[global_prefix_sum[p][d]];
+                    }
+                }
+
+                uint32_t max_total_local_part_size = 0;
+                for (uint32_t d = 0; d < NR_DPUS; d++) {
+                    uint32_t total_size = 0;
+                    for (uint32_t p = 0; p < num_local_parts_per_batch; p++) {
+                        total_size += local_part_sizes[d][p];
+                    }
+                    if (total_size > max_total_local_part_size) {
+                        max_total_local_part_size = total_size;
+                    }
+                }
+
+                /* transfer local partitions of the first batch from DPUs into global partition buffers on CPU */
+                t.start("DPU to CPU xfer (local partitions)");
+                /* t.start("DPU to CPU xfer (local partitions SG batch: 0)"); */
+                sg_partition_xfer_ctx get_local_partition_params = {.num_partitions = num_local_partitions, .partition_sizes = local_part_sizes, .partition_ptrs = local_partition_ptrs};
+                get_block_t get_local_partition = {.f = &get_partition_func, .args = &get_local_partition_params, .args_size = sizeof(sg_partition_xfer_ctx)};
+                /* TODO: skip data transpose for byte interleaving */
+                DPU_ASSERT(dpu_push_sg_xfer(dpu_set, DPU_XFER_FROM_DPU, DPU_MRAM_HEAP_POINTER_NAME, max_elems_per_dpu_part * ELEM_SIZE,
+                                            max_total_local_part_size * ELEM_SIZE, &get_local_partition, DPU_SG_XFER_DISABLE_LENGTH_CHECK));
+                /* t.stop(); */
+
+                uint32_t* local_part_sizes_ptrs[NR_DPUS];
+                uint32_t local_part_batch_beg = num_local_parts_per_batch;
+                uint32_t local_part_batch_end = num_local_parts_per_batch;
+
+                /* transfer the remaining SG batches */
+                for (uint32_t batch = 1; batch < num_local_part_batches; batch++) {
+                    uint32_t parts = (batch == (num_local_part_batches - 1)) ?
+                                     (NR_PARTITIONS - batch * num_local_parts_per_batch) :
+                                     (num_local_parts_per_batch);
+
+                    local_part_batch_end += parts;
+                    /* PRINT("Local partitions SG batch: %u with %u partitions [%u, %u)", batch, parts, local_part_batch_beg, local_part_batch_end); */
+
+                    /* transfer SG batch parameters to DPU */
+                    DPU_FOREACH(dpu_set, dpu, dpuid) {
+                        params[dpuid].sg_batch_beg_offs = local_prefix_sum[dpuid][local_part_batch_beg];
+                        params[dpuid].sg_batch_end_offs = (batch == (num_local_part_batches - 1)) ? /* for the last batch, the end offset is the number of elements sent to the DPU */
+                                                          (dpuid == (NR_DPUS - 1)) ?
+                                                          (total_elems - dpuid * elems_per_dpu):
+                                                          (elems_per_dpu) :
+                                                          (local_prefix_sum[dpuid][local_part_batch_end]);
+                        params[dpuid].sg_offset = max_elems_per_dpu_part;
+                        params[dpuid].phase = sg_batch_xfer_phase;
+                        DPU_ASSERT(dpu_prepare_xfer(dpu, &params[dpuid]));
+                    }
+                    DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_TO_DPU, "dpu_parameters", 0, sizeof(dpu_params), DPU_XFER_DEFAULT));
+
+
+                    /* launch the SG batch kernel */
+                    /* t.start("DPU exec (local partitions SG batch: " + std::to_string(batch) + ")"); */
+                    DPU_ASSERT(dpu_launch(dpu_set, DPU_SYNCHRONOUS));
+                    /* t.stop(); */
+
+                    for (uint32_t d = 0; d < NR_DPUS; d++) {
+                        num_local_partitions[d] = parts;
+                    }
+
+                    for (uint32_t d = 0; d < NR_DPUS; d++) {
+                        for (uint32_t p = 0; p < parts; p++) {
+                            local_partition_ptrs[d][p] = &global_part_buffer[global_prefix_sum[local_part_batch_beg + p][d]];
+                        }
+                    }
+
+                    for (uint32_t d = 0; d < NR_DPUS; d++) {
+                        local_part_sizes_ptrs[d] = &local_part_sizes[d][local_part_batch_beg];
+                    }
+                    uint32_t** ptr_local_part_sizes_ptrs = local_part_sizes_ptrs;
+                    max_total_local_part_size = 0;
+                    for (uint32_t d = 0; d < NR_DPUS; d++) {
+                        uint32_t total_size = 0;
+                        for (uint32_t p = 0; p < parts; p++) {
+                            total_size += local_part_sizes[d][local_part_batch_beg + p];
+                        }
+                        if (total_size > max_total_local_part_size) {
+                            max_total_local_part_size = total_size;
+                        }
+                    }
+
+                    /* transfer local partitions of the current batch from DPUs into global partition buffers on CPU */
+                    /* t.start("DPU to CPU xfer (local partitions SG batch: " + std::to_string(batch) + ")"); */
+                    sg_partition_xfer_ctx get_local_partition_params = {.num_partitions = num_local_partitions, .partition_sizes = ptr_local_part_sizes_ptrs, .partition_ptrs = local_partition_ptrs};
+                    get_block_t get_local_partition = {.f = &get_partition_func, .args = &get_local_partition_params, .args_size = sizeof(sg_partition_xfer_ctx)};
+                    /* TODO: skip data transpose for byte interleaving */
+                    DPU_ASSERT(dpu_push_sg_xfer(dpu_set, DPU_XFER_FROM_DPU, DPU_MRAM_HEAP_POINTER_NAME, 0,
+                                                max_total_local_part_size * ELEM_SIZE, &get_local_partition, DPU_SG_XFER_DISABLE_LENGTH_CHECK));
+                    /* t.stop(); */
+
+                    local_part_batch_beg += parts;
+                }
+                t.stop();
+            }
+            else {
+                for (uint32_t d = 0; d < NR_DPUS; d++) {
+                    num_local_partitions[d] = NR_PARTITIONS;
+                }
+
+                local_partition_ptrs = (elem_t***) multidim_malloc(NR_DPUS, num_local_partitions, sizeof(elem_t*));
+                for (uint32_t d = 0; d < NR_DPUS; d++) {
+                    for (uint32_t p = 0; p < NR_PARTITIONS; p++) {
+                        local_partition_ptrs[d][p] = &global_part_buffer[global_prefix_sum[p][d]];
+                    }
+                }
+
+                /* transfer local partitions from DPUs into global partition buffers on CPU */
+                PRINT("Transfer DPU local partitions to CPU global partition buffers...");
+                t.start("DPU to CPU xfer (local partitions)");
+                sg_partition_xfer_ctx get_local_partition_params = {.num_partitions = num_local_partitions, .partition_sizes = local_part_sizes, .partition_ptrs = local_partition_ptrs};
+                get_block_t get_local_partition = {.f = &get_partition_func, .args = &get_local_partition_params, .args_size = sizeof(sg_partition_xfer_ctx)};
+                /* TODO: skip data transpose for byte interleaving */
+                DPU_ASSERT(dpu_push_sg_xfer(dpu_set, DPU_XFER_FROM_DPU, DPU_MRAM_HEAP_POINTER_NAME, max_elems_per_dpu_part * ELEM_SIZE,
+                                            elems_per_dpu * ELEM_SIZE, &get_local_partition, DPU_SG_XFER_DISABLE_LENGTH_CHECK));
+                t.stop();
+            }
+
+#elif 1 /* coalesce all local partitions as a single SG block */
 
             uint32_t coalesced_local_parts[NR_DPUS];
             for (uint32_t d = 0; d < NR_DPUS; d++) {
