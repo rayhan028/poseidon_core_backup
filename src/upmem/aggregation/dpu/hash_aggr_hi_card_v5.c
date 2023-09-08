@@ -22,15 +22,10 @@ int main() {
 
 __host dpu_params dpu_parameters;
 
-/* partition parameters */
+uint32_t prefix;
 uint32_t* prefix_sum;
 uint32_t* copy_count;
-uint32_t prefix;
-// VMUTEX_INIT(part_vmutex, NR_PARTITIONS, 64);
-MUTEX_POOL_INIT(part_mutexpl, 8);
-// MUTEX_INIT(part_mutex);
 
-/* aggregation parameters */
 #ifdef SINGLE_HASH_TABLE
 uint32_t* partition_sizes;
 htable_entry* hash_table;
@@ -38,9 +33,10 @@ htable_entry* hash_table;
 uint32_t total_part_sizes;
 uint32_t* partition_offsets;
 #endif
+
 BARRIER_INIT(aggr_barrier, NR_TASKLETS);
 // VMUTEX_INIT(aggr_vmutex, NR_HASH_TABLE_ENTRIES, 16);
-MUTEX_POOL_INIT(aggr_mutexpl, 8);
+MUTEX_POOL_INIT(aggr_mutexpl, 32);
 // MUTEX_INIT(aggr_mutex);
 
 
@@ -48,13 +44,14 @@ MUTEX_POOL_INIT(aggr_mutexpl, 8);
 
 int aggregation() {
     unsigned int tasklet_id = me();
+
     if (tasklet_id == 0) {
         printf("Tasklet: %u\n", tasklet_id);
         mem_reset();
 
         /* get partition sizes from MRAM */
         uint32_t num_parts_aligned = (dpu_parameters.num_partitions % 2 == 0) ?
-                                     dpu_parameters.num_partitions :
+                                     (dpu_parameters.num_partitions) :
                                      (dpu_parameters.num_partitions + 1);
 
         partition_sizes = (uint32_t*) mem_alloc(num_parts_aligned * sizeof(uint32_t));
@@ -69,7 +66,8 @@ int aggregation() {
     /* group and compute aggregation for each partition */
     uint32_t part_offs = 0;
     elem_t* mr_elems = (elem_t*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[dpu_parameters.max_num_partitions];
-    elem_t* wr_elems = (elem_t*) mem_alloc(NR_WR_ELEMS_PER_TASKLET_AGGREGATION * ELEM_SIZE);
+    elem_t* wr_elems = (elem_t*) mem_alloc(NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET * ELEM_SIZE);
+    htable_entry* mr_htables = (htable_entry*) &mr_elems[dpu_parameters.size_of_max_num_partitions];
 
     for (uint32_t part = 0; part < dpu_parameters.num_partitions; part++) {
         /* reset all hash table entries */
@@ -79,12 +77,12 @@ int aggregation() {
         barrier_wait(&aggr_barrier);
 
         uint32_t part_size = partition_sizes[part];
-        for (uint32_t i = tasklet_id * NR_WR_ELEMS_PER_TASKLET_AGGREGATION; i < part_size; i += NR_WR_ELEMS_PER_TASKLET_AGGREGATION * NR_TASKLETS) {
-            mram_read((__mram_ptr void const*) &mr_elems[part_offs + i], wr_elems, NR_WR_ELEMS_PER_TASKLET_AGGREGATION * ELEM_SIZE);
+        for (uint32_t i = tasklet_id * NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET; i < part_size; i += NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET * NR_TASKLETS) {
+            mram_read((__mram_ptr void const*) &mr_elems[part_offs + i], wr_elems, NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET * ELEM_SIZE);
 
-            uint32_t num_elems = ((i + NR_WR_ELEMS_PER_TASKLET_AGGREGATION) < part_size) ?
-                                 NR_WR_ELEMS_PER_TASKLET_AGGREGATION :
-                                 part_size - i;
+            uint32_t num_elems = ((i + NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET) < part_size) ?
+                                 (NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET) :
+                                 (part_size - i); /* last remaining elements less than NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET */
 
             for (uint32_t j = 0; j < num_elems; j++) {
                 uint32_t grp_key = wr_elems[j].properties[GROUP_KEY];
@@ -172,9 +170,9 @@ int aggregation() {
         /* copy hash table result for the current partition to MRAM */
         barrier_wait(&aggr_barrier);
         for (uint32_t ch = tasklet_id; ch < NR_HASH_TABLE_CHUNKS; ch += NR_TASKLETS) {
-            htable_entry* src = hash_table + (ch * NR_HASH_TABLE_CHUNK_ENTRIES);
-            htable_entry* dest = (htable_entry*) &mr_elems[dpu_parameters.size_of_max_num_partitions] + ((part * NR_HASH_TABLE_CHUNKS + ch) * NR_HASH_TABLE_CHUNK_ENTRIES);
-            mram_write(src, (__mram_ptr void*) dest, sizeof(htable_entry) * NR_HASH_TABLE_CHUNK_ENTRIES);
+            uint32_t choffs = ch * NR_HASH_TABLE_CHUNK_ENTRIES;
+            uint32_t mroffs = part * NR_HASH_TABLE_CHUNKS * NR_HASH_TABLE_CHUNK_ENTRIES + choffs;
+            mram_write(&hash_table[choffs], (__mram_ptr void*) &mr_htables[mroffs], sizeof(htable_entry) * NR_HASH_TABLE_CHUNK_ENTRIES);
         }
         barrier_wait(&aggr_barrier);
     }
@@ -186,6 +184,7 @@ int aggregation() {
 
 int aggregation() {
     unsigned int tasklet_id = me();
+
     if (tasklet_id == 0) {
         printf("Tasklet: %u\n", tasklet_id);
         mem_reset();
@@ -209,11 +208,12 @@ int aggregation() {
     barrier_wait(&aggr_barrier);
 
     /* allocate hash table buffer */
-    htable_entry* hash_table = (htable_entry*) mem_alloc(MAX_MRAM_WRAM_XFER_SIZE); /* 64 hash table entries per tasklet */
+    htable_entry* hash_table = (htable_entry*) mem_alloc(NR_HASH_TABLE_ENTRIES * sizeof(htable_entry)); /* 64 hash table entries per tasklet */
 
     /* group and compute aggregation for each partition */
     elem_t* mr_elems = (elem_t*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[dpu_parameters.max_num_partitions];
-    elem_t* wr_elems = (elem_t*) mem_alloc(NR_WR_ELEMS_PER_TASKLET_AGGREGATION * ELEM_SIZE);
+    elem_t* wr_elems = (elem_t*) mem_alloc(NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET * ELEM_SIZE);
+    htable_entry* mr_htables = (htable_entry*) &mr_elems[dpu_parameters.size_of_max_num_partitions];
 
     for (uint32_t part = tasklet_id; part < dpu_parameters.num_partitions; part += NR_TASKLETS) {
         /* reset all hash table entries */
@@ -226,11 +226,11 @@ int aggregation() {
                              (total_part_sizes - part_offs) :
                              (partition_offsets[part + 1] - part_offs);
 
-        for (uint32_t i = 0; i < part_size; i += NR_WR_ELEMS_PER_TASKLET_AGGREGATION) {
-            mram_read((__mram_ptr void const*) &mr_elems[part_offs + i], wr_elems, NR_WR_ELEMS_PER_TASKLET_AGGREGATION * ELEM_SIZE);
+        for (uint32_t i = 0; i < part_size; i += NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET) {
+            mram_read((__mram_ptr void const*) &mr_elems[part_offs + i], wr_elems, NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET * ELEM_SIZE);
 
-            uint32_t num_elems = ((i + NR_WR_ELEMS_PER_TASKLET_AGGREGATION) < part_size) ?
-                                 NR_WR_ELEMS_PER_TASKLET_AGGREGATION :
+            uint32_t num_elems = ((i + NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET) < part_size) ?
+                                 NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET :
                                  part_size - i;
 
             for (uint32_t j = 0; j < num_elems; j++) {
@@ -309,9 +309,9 @@ int aggregation() {
 
         /* copy hash table result for the current partition to MRAM */
         for (uint32_t ch = 0; ch < NR_HASH_TABLE_CHUNKS; ch++) {
-            htable_entry* src = hash_table + (ch * NR_HASH_TABLE_CHUNK_ENTRIES);
-            htable_entry* dest = (htable_entry*) &mr_elems[dpu_parameters.size_of_max_num_partitions] + ((part * NR_HASH_TABLE_CHUNKS + ch) * NR_HASH_TABLE_CHUNK_ENTRIES);
-            mram_write(src, (__mram_ptr void*) dest, sizeof(htable_entry) * NR_HASH_TABLE_CHUNK_ENTRIES);
+            uint32_t choffs = ch * NR_HASH_TABLE_CHUNK_ENTRIES;
+            uint32_t mroffs = part * NR_HASH_TABLE_CHUNKS * NR_HASH_TABLE_CHUNK_ENTRIES + choffs;
+            mram_write(&hash_table[choffs], (__mram_ptr void*) &mr_htables[mroffs], sizeof(htable_entry) * NR_HASH_TABLE_CHUNK_ENTRIES);
         }
     }
 
@@ -336,6 +336,7 @@ int partition() {
 
     elem_t* mr_elems = (elem_t*) DPU_MRAM_HEAP_POINTER;
     elem_t* wr_elems = (elem_t*) mem_alloc(NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET * ELEM_SIZE);
+    uint32_t* mr_hist = (uint32_t*) &mr_elems[2 * dpu_parameters.max_num_elems];
 
     for (uint32_t batch = 0; batch < NR_HISTOGRAM_BATCHES; batch++) {
         /* reset histogram */
@@ -364,11 +365,11 @@ int partition() {
                 uint32_t rem = part % NR_HISTOGRAM_ENTRIES;
 
                 if (quot == batch) { /* the partition belongs to the current batch */
-                    // vmutex_lock(&part_vmutex, idx);
-                    mutex_pool_lock(&part_mutexpl, rem);
+                    // vmutex_lock(&aggr_vmutex, idx);
+                    mutex_pool_lock(&aggr_mutexpl, rem);
                     prefix_sum[rem]++;
-                    // vmutex_unlock(&part_vmutex, idx);
-                    mutex_pool_unlock(&part_mutexpl, rem);
+                    // vmutex_unlock(&aggr_vmutex, idx);
+                    mutex_pool_unlock(&aggr_mutexpl, rem);
                 }
             }
         }
@@ -404,25 +405,24 @@ int partition() {
                 uint32_t rem = part % NR_HISTOGRAM_ENTRIES;
 
                 if (quot == batch) { /* the partition belongs to the current batch */
-                    // vmutex_lock(&part_vmutex, idx);
-                    mutex_pool_lock(&part_mutexpl, rem);
+                    // vmutex_lock(&aggr_vmutex, idx);
+                    mutex_pool_lock(&aggr_mutexpl, rem);
                     uint32_t mroffs = prefix_sum[rem] + copy_count[rem];
                     copy_count[rem]++;
-                    // vmutex_unlock(&part_vmutex, idx);
-                    mutex_pool_unlock(&part_mutexpl, rem);
+                    // vmutex_unlock(&aggr_vmutex, idx);
+                    mutex_pool_unlock(&aggr_mutexpl, rem);
                     mram_write(&wr_elems[j], (__mram_ptr void*) &mr_elems[dpu_parameters.max_num_elems + mroffs], ELEM_SIZE);
                 }
             }
         }
 
         /* copy histogram of current batch to MRAM */
-        uint32_t* mr_hist = (uint32_t*) &mr_elems[2 * dpu_parameters.max_num_elems];
         for (uint32_t ch = tasklet_id; ch < NR_HISTOGRAM_CHUNKS; ch += NR_TASKLETS) {
             uint32_t choffs = ch * NR_HISTOGRAM_CHUNK_ENTRIES;
             uint32_t mroffs = batch * NR_HISTOGRAM_ENTRIES + choffs;
             uint32_t num_entries = (ch == (NR_HISTOGRAM_CHUNKS - 1)) ?
                                    (NR_HISTOGRAM_ENTRIES - (ch * NR_HISTOGRAM_CHUNK_ENTRIES)) : /* remaining entries of the last chunk */
-                                   NR_HISTOGRAM_CHUNK_ENTRIES;
+                                   (NR_HISTOGRAM_CHUNK_ENTRIES);
 
             mram_write(&prefix_sum[choffs], (__mram_ptr void*) &mr_hist[mroffs], num_entries * sizeof(uint32_t));
         }
@@ -443,10 +443,11 @@ int sg_batch_xfer() {
     }
     barrier_wait(&aggr_barrier);
 
-    elem_t* mr_elems_out = (elem_t*) DPU_MRAM_HEAP_POINTER;
+    elem_t* mr_elems_out = (elem_t*) DPU_MRAM_HEAP_POINTER; /* we use the beginning of MRAM as a cache */
     elem_t* mr_elems_in = &((elem_t*) DPU_MRAM_HEAP_POINTER)[dpu_parameters.sg_offset];
     elem_t* wr_elems = (elem_t*) mem_alloc(NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET * ELEM_SIZE);
 
+    /* copy partitions of the current SG transfer batch to the beginning of MRAM */
     for (uint32_t i = (dpu_parameters.sg_batch_beg_offs + tasklet_id * NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET);
                   i < dpu_parameters.sg_batch_end_offs;
                   i += NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET * NR_TASKLETS) {

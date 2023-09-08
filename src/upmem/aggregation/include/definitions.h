@@ -275,7 +275,7 @@ struct dpu_params {
         uint32_t sg_batch_end_offs;
     };
     union {
-    uint32_t size_of_max_num_partitions;
+        uint32_t size_of_max_num_partitions;
         uint32_t sg_offset;
     };
     kernel phase;
@@ -301,11 +301,10 @@ struct dpu_params {
 
 #define MRAM_INPUT_BUFFER_AGGREGATION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the hash table results */
 
-#define NR_WR_ELEMS_AGGREGATION ((2 * KiB) / ELEM_SIZE / 16) /* TODO: tune */
-// #define NR_WR_ELEMS_PER_TASKLET_AGGREGATION (NR_WR_ELEMS_AGGREGATION / NR_TASKLETS)
-#define NR_WR_ELEMS_PER_TASKLET_AGGREGATION 5
+#define WRAM_AGGREGATION_CACHE_SIZE_PER_TASKLET (256)
+#define NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET (WRAM_AGGREGATION_CACHE_SIZE_PER_TASKLET / ELEM_SIZE)
 
-#define HASH_TABLE_SIZE (32 * KiB)
+#define HASH_TABLE_SIZE (42 * KiB)
 #define NR_HASH_TABLE_ENTRIES (HASH_TABLE_SIZE / HASH_TABLE_ENTRY_SIZE)
 #define NR_HASH_TABLE_CHUNKS (HASH_TABLE_SIZE / MAX_MRAM_WRAM_XFER_SIZE)
 #define NR_HASH_TABLE_CHUNK_ENTRIES (NR_HASH_TABLE_ENTRIES / NR_HASH_TABLE_CHUNKS)
