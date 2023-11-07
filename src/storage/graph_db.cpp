@@ -1186,7 +1186,8 @@ void graph_db::delete_node(node::id_t id) {
   if (n.from_rship_list != UNKNOWN || n.to_rship_list != UNKNOWN) {
     if (has_valid_from_rships(n, txid) || has_valid_to_rships(n, txid)) {
       // in this case we have to abort
-      // spdlog::info("abort delete of node #{}", n.id());
+      spdlog::info("abort delete of node #{}", n.id());
+      n.unlock();
       throw orphaned_relationship();
     }
   }
@@ -1500,7 +1501,7 @@ void graph_db::copy_properties(relationship &r, const dirty_rship_ptr& dr) {
 bool graph_db::has_valid_from_rships(node &n, xid_t xid) {
   auto relship_id = n.from_rship_list;
   while (relship_id != UNKNOWN) {
-    spdlog::info("node #{}, try to get from rship {}", n.id(), relship_id);
+    spdlog::debug("node #{}, try to get from rship {}", n.id(), relship_id);
     auto &relship = rships_->get(relship_id);
     if (relship.is_locked_by(xid)) {
       // because the relationship is locked we know that it was already updated
@@ -1520,7 +1521,7 @@ bool graph_db::has_valid_from_rships(node &n, xid_t xid) {
 bool graph_db::has_valid_to_rships(node &n, xid_t xid) {
   auto relship_id = n.to_rship_list;
   while (relship_id != UNKNOWN) {
-    spdlog::info("node #{}, try to get to rship {}", n.id(), relship_id);
+    spdlog::debug("node #{}, try to get to rship {}", n.id(), relship_id);
     auto &relship = rships_->get(relship_id);
     if (relship.is_locked_by(xid)) {
       // because the relationship is locked we know that it was already updated

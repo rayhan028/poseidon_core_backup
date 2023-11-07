@@ -1,4 +1,21 @@
-
+/*
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
+ *
+ * This file is part of the Poseidon package.
+ *
+ * Poseidon is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Poseidon is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
+ */
 #include <chrono>
 #include <iostream>
 #include <filesystem>
@@ -42,7 +59,7 @@ std::unique_ptr<query_proc> qproc_ptr;
  * not only the files names but also nodes/relationships as well as
  * the labels.
  */
-bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
+bool import_csv_files(graph_db_ptr &gdb, std::string import_path, const std::vector<std::string> &files,
                       char delimiter, std::string format, bool strict) {
   graph_db::mapping_t id_mapping;
 
@@ -57,15 +74,19 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
       }
 
       std::size_t num = 0;
+      auto file_name = import_path;
+      if (!file_name.empty()) file_name += "/";
+      file_name += result[2];
+
       auto start = std::chrono::steady_clock::now();
       if (format == "n4j") {
-        num = gdb->import_typed_n4j_nodes_from_csv(result[1], result[2],
+        num = gdb->import_typed_n4j_nodes_from_csv(result[1], file_name,
                                                    delimiter, id_mapping);
       }
       else {
         num = strict
-          ? gdb->import_typed_nodes_from_csv(result[1], result[2], delimiter, id_mapping)
-          : gdb->import_nodes_from_csv(result[1], result[2], delimiter, id_mapping);
+          ? gdb->import_typed_nodes_from_csv(result[1], file_name, delimiter, id_mapping)
+          : gdb->import_nodes_from_csv(result[1], file_name, delimiter, id_mapping);
       }
       auto end = std::chrono::steady_clock::now();
 
@@ -90,15 +111,20 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
       }
 
       std::size_t num = 0;
+      auto file_name = import_path;
+      if (!file_name.empty()) file_name += "/";
+
       auto start = std::chrono::steady_clock::now();
       if (format == "n4j") {
+        file_name += result.back();
         auto rship_type = result.size() == 3 ? result[1] : "";
-        num = gdb->import_typed_n4j_relationships_from_csv(result.back(), delimiter, id_mapping, rship_type);
+        num = gdb->import_typed_n4j_relationships_from_csv(file_name, delimiter, id_mapping, rship_type);
       }
       else {
+        file_name += result[2];
         num = strict
-         ? gdb->import_typed_relationships_from_csv(result[2], delimiter, id_mapping)
-         : gdb->import_relationships_from_csv(result[2], delimiter, id_mapping);
+         ? gdb->import_typed_relationships_from_csv(file_name, delimiter, id_mapping)
+         : gdb->import_relationships_from_csv(file_name, delimiter, id_mapping);
       }
       auto end = std::chrono::steady_clock::now();
 
@@ -344,6 +370,7 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
               ctx.gdb_->create_index(s[0], s[1]);
             return true;
           });
+          gdb->flush();
         }
         else
           std::cerr << "ERROR: invalid command" << std::endl;
@@ -400,10 +427,10 @@ std::string check_config_files(const std::string& fname) {
 }
 
 int main(int argc, char* argv[]) {
-  std::string db_name, pool_path, query_file, dot_file, qmode_str, format = "ldbc";
+  std::string db_name, pool_path, query_file, import_path, dot_file, qmode_str, format = "ldbc";
   std::vector<std::string> import_files;
   bool start_shell = false;
-  query_proc::mode qmode = query_proc::Compile; 
+  query_proc::mode qmode = query_proc::Interpret; 
   char delim_character = ',';
   bool strict = false;
   cmd_mode mode = undefined_mode;
@@ -423,6 +450,7 @@ int main(int argc, char* argv[]) {
         ("strict", bool_switch()->default_value(true), "Strict mode - assumes that all columns contain values of the same type")
         ("delimiter", value<char>(&delim_character)->default_value('|'), "Character delimiter")
         ("format,f", value<std::string>(&format), "CSV format: n4j | gtpc | ldbc")
+        ("import-path", value<std::string>(&import_path), "Directory containing import files")
         ("import", value<std::vector<std::string>>()->composing(),
         "Import files in CSV format (either nodes:<node type>:<filename> or "
         "relationships:<rship type>:<filename>")
@@ -454,6 +482,9 @@ int main(int argc, char* argv[]) {
     }
 
     notify(vm);
+
+    if (vm.count("import_path"))
+      import_path = vm["import_path"].as<std::string>();
 
     if (vm.count("import")) {
       import_files = vm["import"].as<std::vector<std::string>>();
@@ -519,7 +550,7 @@ int main(int argc, char* argv[]) {
 
   if (!import_files.empty()) {
     spdlog::info("--------- Importing files ...");
-    import_csv_files(graph, import_files, delim_character, format, strict);
+    import_csv_files(graph, import_path, import_files, delim_character, format, strict);
     graph->print_stats();
   }
 

@@ -1,5 +1,5 @@
 
-// Generated from src/query/parser/poseidon.g4 by ANTLR 4.13.0
+// Generated from src/query/parser/poseidon.g4 by ANTLR 4.13.1
 
 #pragma once
 
@@ -276,6 +276,18 @@ public:
   }
 
   virtual std::any visitNode_var(poseidonParser::Node_varContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitRemove_node_op(poseidonParser::Remove_node_opContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitRemove_relationship_op(poseidonParser::Remove_relationship_opContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitDetach_node_op(poseidonParser::Detach_node_opContext *ctx) override {
     return visitChildren(ctx);
   }
 
