@@ -29,7 +29,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 # Don't try to contact github everytime.
-set (FETCHCONTENT_FULLY_DISCONNECTED "OFF")
+set (FETCHCONTENT_FULLY_DISCONNECTED "ON")
 
 # Set the searching location for cmake 'include' locations
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")

@@ -485,5 +485,40 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
     REQUIRE(res.result() == expected);
   }
 
+  SECTION("Testing removing a node") {
+    qp.execute_query(query_proc::Interpret,
+                    "RemoveNode(Filter($0.id == 12345, NodeScan('Person')))");
+    auto res = qp.execute_query(query_proc::Interpret,
+                    "Aggregate([count($0.id:uint64)], Filter($0.id == 12345, NodeScan('Person')))");
+
+    result_set expected;
+    expected.append({qv_("0")});
+    REQUIRE(res.result() == expected);
+  }
+
+   SECTION("Testing trying to remove a node with relationships") {
+    REQUIRE_THROWS_AS(qp.execute_query(query_proc::Interpret,
+                    "RemoveNode(Filter($0.id == 933, NodeScan('Person')))"), orphaned_relationship);
+    qp.abort_transaction();
+
+    auto res = qp.execute_query(query_proc::Interpret,
+                    "Aggregate([count($0.id:uint64)], Filter($0.id == 933, NodeScan('Person')))");
+
+    result_set expected;
+    expected.append({qv_("1")});
+    REQUIRE(res.result() == expected);
+  }
+
+  SECTION("Testing detaching a node") {
+    qp.execute_query(query_proc::Interpret,
+                    "DetachNode(Filter($0.id == 933, NodeScan('Person')))");
+
+    auto res = qp.execute_query(query_proc::Interpret,
+                    "Aggregate([count($0.id:uint64)], Filter($0.id == 933, NodeScan('Person')))");
+
+    result_set expected;
+    expected.append({qv_("0")});
+    REQUIRE(res.result() == expected);
+  }
   graph_pool::destroy(pool);
 }

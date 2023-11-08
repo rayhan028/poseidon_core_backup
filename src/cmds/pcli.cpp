@@ -182,14 +182,14 @@ void exec_query(const std::string &qstr, query_proc::mode qmode, bool print_plan
   }
 }
 
-
 std::string read_from_file(const std::string& qfile) {
   std::string qstr, line;
 
   std::ifstream myfile(qfile);
   if (myfile.is_open()) {
-    while (getline(myfile, line))
+    while (getline(myfile, line))    
       qstr.append(line);
+ 
     myfile.close();
   } else {
     std::cerr << "File not found" << std::endl;
@@ -197,6 +197,32 @@ std::string read_from_file(const std::string& qfile) {
   
   // spdlog::info("execute query {}", qstr);
   return qstr;
+}
+
+std::vector<std::string> read_script_from_file(const std::string& qfile) {
+  std::vector<std::string> result;
+  std::string qstr, line;
+
+  std::ifstream myfile(qfile);
+  if (myfile.is_open()) {
+    while (getline(myfile, line)) {
+      trim(line);
+      if (line.empty()) {
+        result.push_back(qstr);
+        qstr = "";
+      }
+      else
+        qstr.append(line);
+    }
+    result.push_back(qstr);
+
+    myfile.close();
+  } else {
+    std::cerr << "File not found" << std::endl;
+  }
+  
+  // spdlog::info("execute query {}", qstr);
+  return result;
 }
 
 /**
@@ -266,6 +292,64 @@ void show_help() {
             << "\tprint node|rship <id>            " << "print the raw data of the node/relationship with given id" << std::endl;
 }
 
+void create_index(graph_db_ptr gdb, const std::string& line) {
+  if (line.length() > 12) {
+    auto str = line.substr(12);
+    trim(str);        
+    std::vector<std::string> s;
+    boost::split(s, str, boost::is_any_of(" "));
+    if (s.size() == 2) {
+      spdlog::info("create index {}-{}", s[0], s[1]);
+      query_ctx ctx(gdb);
+      ctx.run_transaction([&]() {
+        if (!ctx.gdb_->has_index(s[0], s[1]))
+              ctx.gdb_->create_index(s[0], s[1]);
+        return true;
+      });
+      gdb->flush();
+    }
+    else
+      std::cerr << "ERROR: invalid command" << std::endl;
+  }
+}
+
+void drop_index(graph_db_ptr gdb, const std::string& line) {
+  if (line.length() > 10) {
+    auto str = line.substr(10);
+    trim(str);        
+    std::vector<std::string> s;
+    boost::split(s, str, boost::is_any_of(" "));
+    if (s.size() == 2) {
+      spdlog::info("drop index {}-{}", s[0], s[1]);
+      query_ctx ctx(gdb);
+      ctx.run_transaction([&]() {
+        if (ctx.gdb_->has_index(s[0], s[1]))
+              ctx.gdb_->drop_index(s[0], s[1]);
+        return true;
+      });
+    }
+    else
+      std::cout << "ERROR: invalid command" << std::endl;
+  }    
+}
+
+void load_library(graph_db_ptr gdb, const std::string& line) {
+  if (line.length() > 4) {
+    auto lib_path = line.substr(4);
+    trim(lib_path);
+    spdlog::info("trying to load shared library '{}'", lib_path);
+    try {
+      if (qproc_ptr->load_library(lib_path)) {
+        std::cout << "library '" << lib_path << "' loaded successfully." << std::endl;
+      }
+      else 
+        std::cerr << "ERROR: cannot load library '" << lib_path << "'" << std::endl;
+    } catch (std::exception& exc) {
+        std::cerr << "ERROR: cannot load library '" << lib_path << "'" << std::endl;
+    }
+  }
+}
+
 /**
  * Run an interactive shell for entering and executing queries.
  */
@@ -322,20 +406,7 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
       }
     }
     else if (line.rfind("load", 0) == 0) {
-      if (line.length() > 4) {
-        auto lib_path = line.substr(4);
-        trim(lib_path);
-        spdlog::info("trying to load shared library '{}'", lib_path);
-        try {
-          if (qproc_ptr->load_library(lib_path)) {
-            std::cout << "library '" << lib_path << "' loaded successfully." << std::endl;
-          }
-          else 
-            std::cerr << "ERROR: cannot load library '" << lib_path << "'" << std::endl;
-        } catch (std::exception& exc) {
-            std::cerr << "ERROR: cannot load library '" << lib_path << "'" << std::endl;
-        }
-      }
+      //load_library(graph, line);
     }
     else if (line.rfind("sync", 0) == 0) {
       sync_db(gdb);
@@ -357,44 +428,10 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
       }
     }
     else if (line.rfind("create index", 0) == 0) {
-      if (line.length() > 12) {
-        auto str = line.substr(12);
-        trim(str);        
-        std::vector<std::string> s;
-        boost::split(s, str, boost::is_any_of(" "));
-        if (s.size() == 2) {
-          spdlog::info("create index {}-{}", s[0], s[1]);
-          query_ctx ctx(gdb);
-          ctx.run_transaction([&]() {
-            if (!ctx.gdb_->has_index(s[0], s[1]))
-              ctx.gdb_->create_index(s[0], s[1]);
-            return true;
-          });
-          gdb->flush();
-        }
-        else
-          std::cerr << "ERROR: invalid command" << std::endl;
-      }
-
+      create_index(gdb, line);
     }
     else if (line.rfind("drop index", 0) == 0) {
-      if (line.length() > 10) {
-        auto str = line.substr(10);
-        trim(str);        
-        std::vector<std::string> s;
-        boost::split(s, str, boost::is_any_of(" "));
-        if (s.size() == 2) {
-          spdlog::info("drop index {}-{}", s[0], s[1]);
-          query_ctx ctx(gdb);
-          ctx.run_transaction([&]() {
-            if (ctx.gdb_->has_index(s[0], s[1]))
-              ctx.gdb_->drop_index(s[0], s[1]);
-            return true;
-          });
-        }
-        else
-          std::cout << "ERROR: invalid command" << std::endl;
-      }      
+      drop_index(gdb, line);     
     }
     else if (line.rfind("explain ", 0) == 0) {
       auto qstr = line.substr(8);
@@ -426,6 +463,21 @@ std::string check_config_files(const std::string& fname) {
   return "";
 }
 
+bool is_command(const std::string& cmd) {
+  return (cmd.starts_with("load") ||
+    cmd.starts_with("create") ||
+    cmd.starts_with("drop"));
+}
+
+void exec_command(const std::string& cmd) {
+  if (cmd.rfind("create index", 0) == 0)
+    create_index(graph, cmd);
+  else if (cmd.rfind("drop index", 0) == 0)
+    drop_index(graph, cmd);
+  else if (cmd.rfind("load", 0) == 0)
+    load_library(graph, cmd);
+}
+
 int main(int argc, char* argv[]) {
   std::string db_name, pool_path, query_file, import_path, dot_file, qmode_str, format = "ldbc";
   std::vector<std::string> import_files;
@@ -454,14 +506,13 @@ int main(int argc, char* argv[]) {
         ("import", value<std::vector<std::string>>()->composing(),
         "Import files in CSV format (either nodes:<node type>:<filename> or "
         "relationships:<rship type>:<filename>")
-        ("query,q", value<std::string>(&query_file), "Execute the query from the given file")
-        ("shell,s", bool_switch()->default_value(false), "Start the interactive shell")
+        ("query,q", value<std::string>(&query_file), "Execute the queries from the given file")
+        ("shell,s", bool_switch()->default_value(false), "Start the interactive shell (default)")
         ("qmode", value<std::string>(&qmode_str), "Query compile mode: llvm | interp (default) | adapt");
 
     variables_map vm;
     store(parse_command_line(argc, argv, desc), vm);
     auto config_name = check_config_files("poseidon.ini");
-    // std::filesystem::path config_file(getenv("HOME") + std::string("/poseidon.ini"));
     if (! config_name.empty()) {
       spdlog::info("loading config from '{}'", config_name);
       std::ifstream ifs(config_name);
@@ -562,9 +613,14 @@ int main(int argc, char* argv[]) {
 
   if (!query_file.empty()) {
     mode = script_mode;
-    // load the query from the file
-    auto query_string = read_from_file(query_file);
-    exec_query(query_string, qmode, false);
+    // load the script from the file
+    auto query_strings = read_script_from_file(query_file);
+    for (auto& qs : query_strings) {
+      if (is_command(qs))
+        exec_command(qs);
+      else
+        exec_query(qs, qmode, false);
+    }
   }
 
   if (start_shell || mode == undefined_mode) {
