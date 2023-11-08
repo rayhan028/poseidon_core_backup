@@ -87,7 +87,6 @@ infer_datatype(const std::string& s, dict_ptr &dict) {
 
 p_item::p_typecode
 get_datatype(const std::string& s) {
-
     if (is_quoted_string(s))  return p_item::p_dcode;
     else if (is_int(s))       return p_item::p_int;
     else if (is_float(s))     return p_item::p_double;
@@ -517,15 +516,13 @@ std::size_t graph_db::import_typed_n4j_nodes_from_csv(const std::string &label,
 
         auto &col = columns[i];
         if (!col.empty() && !field.empty()) {
-          if (i == id_column) {
+          auto p2 = infer_datatype(field, dict_);
+          prop_types[i] = p2.first;
+          prop_values[i] = p2.second;
+          inferred[i] = true;
+          if (i == id_column && p2.first == p_item::p_int) {
             prop_types[i] = p_item::p_uint64;
             prop_values[i] = std::any((uint64_t)std::stoll(field));
-          }
-          else {
-            auto p2 = infer_datatype(field, dict_);
-            prop_types[i] = p2.first;
-            prop_values[i] = p2.second;
-            inferred[i] = true;
           }
         }  
         else {
