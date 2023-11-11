@@ -32,7 +32,7 @@ void create_data(graph_db_ptr &graph) {
                                {"firstName", std::any(std::string("Wei"))},
                                {"lastName", std::any(std::string("Li"))}});
     auto p3 = graph->add_node("Person",
-                              {{"id", std::any((uint64_t)1121)},
+                              {{"id", std::any((uint64_t)1477066812357595144)},
                                {"firstName", std::any(std::string("Karl"))},
                                {"lastName", std::any(std::string("Beran"))}});
     auto post1 = graph->add_node(
@@ -407,6 +407,16 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
     }
 
     {
+      auto res = qp.execute_query(
+          query_proc::Interpret,
+          "Project([$0.id:uint64, $0.lastName:string], "
+          "Filter($0.id == 1477066812357595144, NodeScan('Person')))");
+      result_set expected;
+      expected.append({qv_("1477066812357595144"), qv_("Beran")});
+      REQUIRE(res.result() == expected);
+    }
+
+    {
       auto res =
           qp.execute_query(query_proc::Interpret,
                            "Project([$0.firstName:string, $0.lastName:string], "
@@ -453,7 +463,7 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
           "Aggregate([count($0.lastName:string), min($0.id:uint64), "
           "max($0.id:uint64)], NodeScan('Person'))");
       result_set expected;
-      expected.append({qv_("14"), qv_("65"), qv_("65970697")});
+      expected.append({qv_("14"), qv_("65"), qv_("1477066812357595144")});
 
       REQUIRE(res.result() == expected);
     }
@@ -520,5 +530,6 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
     expected.append({qv_("0")});
     REQUIRE(res.result() == expected);
   }
+
   graph_pool::destroy(pool);
 }
