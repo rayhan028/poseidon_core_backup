@@ -157,6 +157,14 @@ public:
 
     virtual std::any visitDetach_node_op(poseidonParser::Detach_node_opContext *context) = 0;
 
+    virtual std::any visitAlgorithm_op(poseidonParser::Algorithm_opContext *context) = 0;
+
+    virtual std::any visitCall_mode(poseidonParser::Call_modeContext *context) = 0;
+
+    virtual std::any visitAlgo_param_list(poseidonParser::Algo_param_listContext *context) = 0;
+
+    virtual std::any visitAlgo_param(poseidonParser::Algo_paramContext *context) = 0;
+
 
 };
 

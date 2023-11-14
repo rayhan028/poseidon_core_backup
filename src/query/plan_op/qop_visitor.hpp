@@ -60,6 +60,7 @@ struct update_node;
 struct detach_node;
 struct remove_node;
 struct remove_relationship;
+struct algorithm_op;
 
 class qop_visitor {
 public:
@@ -96,6 +97,7 @@ public:
     virtual void visit(std::shared_ptr<detach_node> op) {}
     virtual void visit(std::shared_ptr<remove_node> op) {}
     virtual void visit(std::shared_ptr<remove_relationship> op) {}
+    virtual void visit(std::shared_ptr<algorithm_op> op) {}
 };
 
 #endif

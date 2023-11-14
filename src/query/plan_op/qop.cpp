@@ -150,10 +150,6 @@ std::string get_property_value<std::string>(query_ctx &ctx, const qr_tuple& v, s
 
 /* ------------------------------------------------------------------------ */
 
-/* ------------------------------------------------------------------------ */
-
-/* ------------------------------------------------------------------------ */
-
 void is_property::dump(std::ostream &os) const {
   os << "is_property([" << property << "]) - " << PROF_DUMP;
 }
@@ -548,7 +544,7 @@ void projection::process(query_ctx &ctx, const qr_tuple &v) {
       pv[num_accessed_vars + i] = ctx.gdb_->get_rship_description(r->id());
     }
     else {
-      pv[num_accessed_vars + i]  = null_val;
+      pv[num_accessed_vars + i]  = v[index]; // null_val;
     }
     var_map_[index] = num_accessed_vars + i; // we update mapping table
     i++;
@@ -560,8 +556,9 @@ void projection::process(query_ctx &ctx, const qr_tuple &v) {
     auto &ex = exprs_[i];
     // spdlog::info("projection::process: pv={}, i={}, vidx={} --> {}", pv.size(), i, ex.vidx, var_map_[ex.vidx]);
     try {
-      if (ex.func != nullptr)
+      if (ex.func != nullptr) {
         res[i] = ex.func(ctx, pv[var_map_[ex.vidx]]);
+      }
       else {
         query_result fwd = v[ex.vidx];
         res[i] = builtin::forward(fwd);

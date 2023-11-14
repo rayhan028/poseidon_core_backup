@@ -17,15 +17,16 @@ public:
     Limit_ = 13, CrossJoin_ = 14, HashJoin_ = 15, LeftOuterJoin_ = 16, Expand_ = 17, 
     ForeachRelationship_ = 18, Aggregate_ = 19, GroupBy_ = 20, Sort_ = 21, 
     Create_ = 22, Union_ = 23, RemoveNode_ = 24, RemoveRelationship_ = 25, 
-    DetachNode_ = 26, IntType_ = 27, Uint64Type_ = 28, DoubleType_ = 29, 
-    StringType_ = 30, DateType_ = 31, ResultType_ = 32, Count_ = 33, Sum_ = 34, 
-    Avg_ = 35, Min_ = 36, Max_ = 37, UDF_ = 38, InExpandDir_ = 39, OutExpandDir_ = 40, 
-    FromDir_ = 41, ToDir_ = 42, AllDir_ = 43, DescOrder_ = 44, AscOrder_ = 45, 
-    INTEGER = 46, FLOAT = 47, Identifier_ = 48, Var = 49, NAME_ = 50, STRING_ = 51, 
-    COLON_ = 52, DOUBLE_COLON = 53, COMMA_ = 54, LPAREN = 55, RPAREN = 56, 
-    LBRACKET = 57, RBRACKET = 58, OR = 59, AND = 60, EQUALS = 61, NOTEQUALS = 62, 
-    LT = 63, LTEQ = 64, GT = 65, GTEQ = 66, PLUS_ = 67, MULT = 68, DIV = 69, 
-    MOD = 70, NOT = 71, WHITESPACE = 72
+    DetachNode_ = 26, Algorithm_ = 27, IntType_ = 28, Uint64Type_ = 29, 
+    DoubleType_ = 30, StringType_ = 31, DateType_ = 32, ResultType_ = 33, 
+    Count_ = 34, Sum_ = 35, Avg_ = 36, Min_ = 37, Max_ = 38, UDF_ = 39, 
+    InExpandDir_ = 40, OutExpandDir_ = 41, TupleMode_ = 42, ResultSetMode_ = 43, 
+    FromDir_ = 44, ToDir_ = 45, AllDir_ = 46, DescOrder_ = 47, AscOrder_ = 48, 
+    INTEGER = 49, FLOAT = 50, Identifier_ = 51, Var = 52, NAME_ = 53, STRING_ = 54, 
+    COLON_ = 55, DOUBLE_COLON = 56, COMMA_ = 57, LPAREN = 58, RPAREN = 59, 
+    LBRACKET = 60, RBRACKET = 61, OR = 62, AND = 63, EQUALS = 64, NOTEQUALS = 65, 
+    LT = 66, LTEQ = 67, GT = 68, GTEQ = 69, PLUS_ = 70, MULT = 71, DIV = 72, 
+    MOD = 73, NOT = 74, WHITESPACE = 75
   };
 
   explicit poseidonLexer(antlr4::CharStream *input);

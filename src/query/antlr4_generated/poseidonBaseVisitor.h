@@ -291,6 +291,22 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitAlgorithm_op(poseidonParser::Algorithm_opContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitCall_mode(poseidonParser::Call_modeContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitAlgo_param_list(poseidonParser::Algo_param_listContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitAlgo_param(poseidonParser::Algo_paramContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
 
 };
 

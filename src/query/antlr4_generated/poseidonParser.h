@@ -17,15 +17,16 @@ public:
     Limit_ = 13, CrossJoin_ = 14, HashJoin_ = 15, LeftOuterJoin_ = 16, Expand_ = 17, 
     ForeachRelationship_ = 18, Aggregate_ = 19, GroupBy_ = 20, Sort_ = 21, 
     Create_ = 22, Union_ = 23, RemoveNode_ = 24, RemoveRelationship_ = 25, 
-    DetachNode_ = 26, IntType_ = 27, Uint64Type_ = 28, DoubleType_ = 29, 
-    StringType_ = 30, DateType_ = 31, ResultType_ = 32, Count_ = 33, Sum_ = 34, 
-    Avg_ = 35, Min_ = 36, Max_ = 37, UDF_ = 38, InExpandDir_ = 39, OutExpandDir_ = 40, 
-    FromDir_ = 41, ToDir_ = 42, AllDir_ = 43, DescOrder_ = 44, AscOrder_ = 45, 
-    INTEGER = 46, FLOAT = 47, Identifier_ = 48, Var = 49, NAME_ = 50, STRING_ = 51, 
-    COLON_ = 52, DOUBLE_COLON = 53, COMMA_ = 54, LPAREN = 55, RPAREN = 56, 
-    LBRACKET = 57, RBRACKET = 58, OR = 59, AND = 60, EQUALS = 61, NOTEQUALS = 62, 
-    LT = 63, LTEQ = 64, GT = 65, GTEQ = 66, PLUS_ = 67, MULT = 68, DIV = 69, 
-    MOD = 70, NOT = 71, WHITESPACE = 72
+    DetachNode_ = 26, Algorithm_ = 27, IntType_ = 28, Uint64Type_ = 29, 
+    DoubleType_ = 30, StringType_ = 31, DateType_ = 32, ResultType_ = 33, 
+    Count_ = 34, Sum_ = 35, Avg_ = 36, Min_ = 37, Max_ = 38, UDF_ = 39, 
+    InExpandDir_ = 40, OutExpandDir_ = 41, TupleMode_ = 42, ResultSetMode_ = 43, 
+    FromDir_ = 44, ToDir_ = 45, AllDir_ = 46, DescOrder_ = 47, AscOrder_ = 48, 
+    INTEGER = 49, FLOAT = 50, Identifier_ = 51, Var = 52, NAME_ = 53, STRING_ = 54, 
+    COLON_ = 55, DOUBLE_COLON = 56, COMMA_ = 57, LPAREN = 58, RPAREN = 59, 
+    LBRACKET = 60, RBRACKET = 61, OR = 62, AND = 63, EQUALS = 64, NOTEQUALS = 65, 
+    LT = 66, LTEQ = 67, GT = 68, GTEQ = 69, PLUS_ = 70, MULT = 71, DIV = 72, 
+    MOD = 73, NOT = 74, WHITESPACE = 75
   };
 
   enum {
@@ -47,7 +48,9 @@ public:
     RuleParam_list = 54, RuleParam = 55, RuleSort_op = 56, RuleSort_list = 57, 
     RuleSort_expr = 58, RuleSort_spec = 59, RuleCreate_op = 60, RuleCreate_node = 61, 
     RuleProperty_list = 62, RuleProperty = 63, RuleCreate_rship = 64, RuleNode_var = 65, 
-    RuleRemove_node_op = 66, RuleRemove_relationship_op = 67, RuleDetach_node_op = 68
+    RuleRemove_node_op = 66, RuleRemove_relationship_op = 67, RuleDetach_node_op = 68, 
+    RuleAlgorithm_op = 69, RuleCall_mode = 70, RuleAlgo_param_list = 71, 
+    RuleAlgo_param = 72
   };
 
   explicit poseidonParser(antlr4::TokenStream *input);
@@ -135,7 +138,11 @@ public:
   class Node_varContext;
   class Remove_node_opContext;
   class Remove_relationship_opContext;
-  class Detach_node_opContext; 
+  class Detach_node_opContext;
+  class Algorithm_opContext;
+  class Call_modeContext;
+  class Algo_param_listContext;
+  class Algo_paramContext; 
 
   class  QueryContext : public antlr4::ParserRuleContext {
   public:
@@ -174,6 +181,7 @@ public:
     Remove_node_opContext *remove_node_op();
     Detach_node_opContext *detach_node_op();
     Remove_relationship_opContext *remove_relationship_op();
+    Algorithm_opContext *algorithm_op();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -1292,6 +1300,72 @@ public:
   };
 
   Detach_node_opContext* detach_node_op();
+
+  class  Algorithm_opContext : public antlr4::ParserRuleContext {
+  public:
+    Algorithm_opContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *Algorithm_();
+    antlr4::tree::TerminalNode *LPAREN();
+    antlr4::tree::TerminalNode *LBRACKET();
+    antlr4::tree::TerminalNode *Identifier_();
+    std::vector<antlr4::tree::TerminalNode *> COMMA_();
+    antlr4::tree::TerminalNode* COMMA_(size_t i);
+    Call_modeContext *call_mode();
+    antlr4::tree::TerminalNode *RBRACKET();
+    Query_operatorContext *query_operator();
+    antlr4::tree::TerminalNode *RPAREN();
+    Algo_param_listContext *algo_param_list();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Algorithm_opContext* algorithm_op();
+
+  class  Call_modeContext : public antlr4::ParserRuleContext {
+  public:
+    Call_modeContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *TupleMode_();
+    antlr4::tree::TerminalNode *ResultSetMode_();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Call_modeContext* call_mode();
+
+  class  Algo_param_listContext : public antlr4::ParserRuleContext {
+  public:
+    Algo_param_listContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    std::vector<Algo_paramContext *> algo_param();
+    Algo_paramContext* algo_param(size_t i);
+    std::vector<antlr4::tree::TerminalNode *> COMMA_();
+    antlr4::tree::TerminalNode* COMMA_(size_t i);
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Algo_param_listContext* algo_param_list();
+
+  class  Algo_paramContext : public antlr4::ParserRuleContext {
+  public:
+    Algo_paramContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    ValueContext *value();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Algo_paramContext* algo_param();
 
 
   // By default the static state used to implement the parser is lazily initialized during the first

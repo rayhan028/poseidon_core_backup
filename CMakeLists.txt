@@ -29,7 +29,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 # Don't try to contact github everytime.
-set (FETCHCONTENT_FULLY_DISCONNECTED "ON")
+set (FETCHCONTENT_FULLY_DISCONNECTED "OFF")
 
 # Set the searching location for cmake 'include' locations
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -209,7 +209,7 @@ endif()
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v3.0.1
+  GIT_TAG        v3.4.0
 )
 
 FetchContent_MakeAvailable(Catch2)
@@ -227,7 +227,7 @@ FetchContent_MakeAvailable(CSV)
  FetchContent_Declare(
   spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog.git
-   GIT_TAG        v1.11.0
+   GIT_TAG        v1.12.0
 )
 
 FetchContent_MakeAvailable(spdlog)
@@ -442,6 +442,8 @@ set(src_files
   src/query/plan_op/qop_relationships.cpp
   src/query/plan_op/qop_aggregates.cpp
   src/query/plan_op/qop_analytics.cpp
+  src/query/plan_op/qop_algorithm.cpp
+  src/query/plan_op/algorithms.cpp
   src/query/plan_op/qop_updates.cpp
   src/query/plan_op/qop_joins.cpp
   src/query/plan_op/query_batch.cpp
