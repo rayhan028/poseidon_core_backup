@@ -39,6 +39,14 @@ struct algorithm_op : public qop, public std::enable_shared_from_this<algorithm_
     // function pointer type to a algorithm called in set mode
     using set_algorithm_func = std::function<qr_tuple(query_ctx&, result_set&, param_list&)>;
 
+    static void register_algorithm(const std::string& name, tuple_algorithm_func fptr) {
+      tuple_algorithms_.insert({ name, fptr });
+    }
+
+    static void register_algorithm(const std::string& name, set_algorithm_func fptr) {
+      set_algorithms_.insert({ name, fptr });
+    }
+   
     /**
      * Constructor for algorithm operator.
      */
@@ -74,6 +82,9 @@ struct algorithm_op : public qop, public std::enable_shared_from_this<algorithm_
     tuple_algorithm_func tuple_func_ptr_; // function pointer to a algorithm called in tuple mode (only one of both is used)
     set_algorithm_func set_func_ptr_;     // function pointer to a algorithm called in set mode
     result_set input_;                    // input data for algorithm (only for set mode)
+
+    static std::map<std::string, tuple_algorithm_func> tuple_algorithms_;
+    static std::map<std::string, set_algorithm_func> set_algorithms_;
 };
 
 #endif

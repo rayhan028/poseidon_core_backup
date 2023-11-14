@@ -9,6 +9,9 @@
 #include "graph_pool.hpp"
 #include "qop.hpp"
 #include "query_proc.hpp"
+#include "algorithms.hpp"
+#include "qop_algorithm.hpp"
+
 #include <catch2/catch_test_macros.hpp>
 
 using namespace boost::posix_time;
@@ -532,6 +535,8 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
   }
 
   SECTION("Testing algorithm op") {
+    algorithm_op::register_algorithm("NumLink", num_links);
+
     auto res = qp.execute_query(query_proc::Interpret, 
     "Project([$0.id:uint64, $1:int, $2:int], Algorithm([NumLinks, TUPLE], Filter($0.id < 100000, NodeScan('Person'))))", true);
     result_set expected;
