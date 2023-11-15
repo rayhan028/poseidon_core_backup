@@ -58,7 +58,7 @@ TEST_CASE("Recovery of aborted inserts", "[graph_db]") {
     	REQUIRE(num_nodes == 1);
 
     	// but also that the slots are not occupied
-    	auto nid = graph->add_node(":Person", {{"number", boost::any(56)}});
+    	auto nid = graph->add_node(":Person", {{"number", std::any(56)}});
     	REQUIRE(nid == 1);
 	return false;
     });
