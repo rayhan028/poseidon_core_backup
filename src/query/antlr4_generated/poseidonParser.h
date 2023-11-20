@@ -16,17 +16,17 @@ public:
     Filter_ = 8, Nodescan_ = 9, Indexscan_ = 10, Match_ = 11, Project_ = 12, 
     Limit_ = 13, CrossJoin_ = 14, HashJoin_ = 15, LeftOuterJoin_ = 16, Expand_ = 17, 
     ForeachRelationship_ = 18, Aggregate_ = 19, GroupBy_ = 20, Sort_ = 21, 
-    Create_ = 22, Union_ = 23, RemoveNode_ = 24, RemoveRelationship_ = 25, 
-    DetachNode_ = 26, Algorithm_ = 27, IntType_ = 28, Uint64Type_ = 29, 
-    DoubleType_ = 30, StringType_ = 31, DateType_ = 32, ResultType_ = 33, 
-    Count_ = 34, Sum_ = 35, Avg_ = 36, Min_ = 37, Max_ = 38, UDF_ = 39, 
-    InExpandDir_ = 40, OutExpandDir_ = 41, TupleMode_ = 42, ResultSetMode_ = 43, 
-    FromDir_ = 44, ToDir_ = 45, AllDir_ = 46, DescOrder_ = 47, AscOrder_ = 48, 
-    INTEGER = 49, FLOAT = 50, Identifier_ = 51, Var = 52, NAME_ = 53, STRING_ = 54, 
-    COLON_ = 55, DOUBLE_COLON = 56, COMMA_ = 57, LPAREN = 58, RPAREN = 59, 
-    LBRACKET = 60, RBRACKET = 61, OR = 62, AND = 63, EQUALS = 64, NOTEQUALS = 65, 
-    LT = 66, LTEQ = 67, GT = 68, GTEQ = 69, PLUS_ = 70, MULT = 71, DIV = 72, 
-    MOD = 73, NOT = 74, WHITESPACE = 75
+    Distinct_ = 22, Create_ = 23, Union_ = 24, RemoveNode_ = 25, RemoveRelationship_ = 26, 
+    DetachNode_ = 27, Algorithm_ = 28, IntType_ = 29, Uint64Type_ = 30, 
+    DoubleType_ = 31, StringType_ = 32, DateType_ = 33, ResultType_ = 34, 
+    Count_ = 35, Sum_ = 36, Avg_ = 37, Min_ = 38, Max_ = 39, UDF_ = 40, 
+    BUILTIN_ = 41, InExpandDir_ = 42, OutExpandDir_ = 43, TupleMode_ = 44, 
+    ResultSetMode_ = 45, FromDir_ = 46, ToDir_ = 47, AllDir_ = 48, DescOrder_ = 49, 
+    AscOrder_ = 50, INTEGER = 51, FLOAT = 52, Identifier_ = 53, Var = 54, 
+    NAME_ = 55, STRING_ = 56, COLON_ = 57, DOUBLE_COLON = 58, COMMA_ = 59, 
+    LPAREN = 60, RPAREN = 61, LBRACKET = 62, RBRACKET = 63, OR = 64, AND = 65, 
+    EQUALS = 66, NOTEQUALS = 67, LT = 68, LTEQ = 69, GT = 70, GTEQ = 71, 
+    PLUS_ = 72, MULT = 73, DIV = 74, MOD = 75, NOT = 76, WHITESPACE = 77
   };
 
   enum {
@@ -41,16 +41,16 @@ public:
     RuleMax_cardinality = 28, RuleDir_spec = 29, RuleLeft_dir = 30, RuleRight_dir = 31, 
     RuleNo_dir = 32, RuleAggregate_op = 33, RuleAggregate_list = 34, RuleAggr_expr = 35, 
     RuleAggr_func = 36, RuleUnion_op = 37, RuleGroup_by_op = 38, RuleGrouping_list = 39, 
-    RuleGrouping_expr = 40, RuleFilter_op = 41, RuleLogical_expr = 42, RuleBoolean_expr = 43, 
-    RuleEquality_expr = 44, RuleRelational_expr = 45, RuleAdditive_expr = 46, 
-    RuleMultiplicative_expr = 47, RuleUnary_expr = 48, RulePrimary_expr = 49, 
-    RuleVariable = 50, RuleValue = 51, RuleFunction_call = 52, RuleUdf_prefix = 53, 
-    RuleParam_list = 54, RuleParam = 55, RuleSort_op = 56, RuleSort_list = 57, 
-    RuleSort_expr = 58, RuleSort_spec = 59, RuleCreate_op = 60, RuleCreate_node = 61, 
-    RuleProperty_list = 62, RuleProperty = 63, RuleCreate_rship = 64, RuleNode_var = 65, 
-    RuleRemove_node_op = 66, RuleRemove_relationship_op = 67, RuleDetach_node_op = 68, 
-    RuleAlgorithm_op = 69, RuleCall_mode = 70, RuleAlgo_param_list = 71, 
-    RuleAlgo_param = 72
+    RuleGrouping_expr = 40, RuleDistinct_op = 41, RuleFilter_op = 42, RuleLogical_expr = 43, 
+    RuleBoolean_expr = 44, RuleEquality_expr = 45, RuleRelational_expr = 46, 
+    RuleAdditive_expr = 47, RuleMultiplicative_expr = 48, RuleUnary_expr = 49, 
+    RulePrimary_expr = 50, RuleVariable = 51, RuleValue = 52, RuleFunction_call = 53, 
+    RulePrefix = 54, RuleParam_list = 55, RuleParam = 56, RuleSort_op = 57, 
+    RuleSort_list = 58, RuleSort_expr = 59, RuleSort_spec = 60, RuleCreate_op = 61, 
+    RuleCreate_node = 62, RuleProperty_list = 63, RuleProperty = 64, RuleCreate_rship = 65, 
+    RuleNode_var = 66, RuleRemove_node_op = 67, RuleRemove_relationship_op = 68, 
+    RuleDetach_node_op = 69, RuleAlgorithm_op = 70, RuleCall_mode = 71, 
+    RuleAlgo_param_list = 72, RuleAlgo_param = 73
   };
 
   explicit poseidonParser(antlr4::TokenStream *input);
@@ -111,6 +111,7 @@ public:
   class Group_by_opContext;
   class Grouping_listContext;
   class Grouping_exprContext;
+  class Distinct_opContext;
   class Filter_opContext;
   class Logical_exprContext;
   class Boolean_exprContext;
@@ -123,7 +124,7 @@ public:
   class VariableContext;
   class ValueContext;
   class Function_callContext;
-  class Udf_prefixContext;
+  class PrefixContext;
   class Param_listContext;
   class ParamContext;
   class Sort_opContext;
@@ -177,6 +178,7 @@ public:
     Group_by_opContext *group_by_op();
     Union_opContext *union_op();
     Sort_opContext *sort_op();
+    Distinct_opContext *distinct_op();
     Create_opContext *create_op();
     Remove_node_opContext *remove_node_op();
     Detach_node_opContext *detach_node_op();
@@ -833,6 +835,22 @@ public:
 
   Grouping_exprContext* grouping_expr();
 
+  class  Distinct_opContext : public antlr4::ParserRuleContext {
+  public:
+    Distinct_opContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *Distinct_();
+    antlr4::tree::TerminalNode *LPAREN();
+    Query_operatorContext *query_operator();
+    antlr4::tree::TerminalNode *RPAREN();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Distinct_opContext* distinct_op();
+
   class  Filter_opContext : public antlr4::ParserRuleContext {
   public:
     Filter_opContext(antlr4::ParserRuleContext *parent, size_t invokingState);
@@ -1024,7 +1042,8 @@ public:
   public:
     Function_callContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    Udf_prefixContext *udf_prefix();
+    PrefixContext *prefix();
+    antlr4::tree::TerminalNode *DOUBLE_COLON();
     antlr4::tree::TerminalNode *Identifier_();
     antlr4::tree::TerminalNode *LPAREN();
     antlr4::tree::TerminalNode *RPAREN();
@@ -1037,19 +1056,19 @@ public:
 
   Function_callContext* function_call();
 
-  class  Udf_prefixContext : public antlr4::ParserRuleContext {
+  class  PrefixContext : public antlr4::ParserRuleContext {
   public:
-    Udf_prefixContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    PrefixContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *BUILTIN_();
     antlr4::tree::TerminalNode *UDF_();
-    antlr4::tree::TerminalNode *DOUBLE_COLON();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
    
   };
 
-  Udf_prefixContext* udf_prefix();
+  PrefixContext* prefix();
 
   class  Param_listContext : public antlr4::ParserRuleContext {
   public:

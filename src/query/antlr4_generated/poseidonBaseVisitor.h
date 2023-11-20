@@ -179,6 +179,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitDistinct_op(poseidonParser::Distinct_opContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitFilter_op(poseidonParser::Filter_opContext *ctx) override {
     return visitChildren(ctx);
   }
@@ -227,7 +231,7 @@ public:
     return visitChildren(ctx);
   }
 
-  virtual std::any visitUdf_prefix(poseidonParser::Udf_prefixContext *ctx) override {
+  virtual std::any visitPrefix(poseidonParser::PrefixContext *ctx) override {
     return visitChildren(ctx);
   }
 

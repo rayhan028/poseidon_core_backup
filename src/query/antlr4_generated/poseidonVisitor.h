@@ -101,6 +101,8 @@ public:
 
     virtual std::any visitGrouping_expr(poseidonParser::Grouping_exprContext *context) = 0;
 
+    virtual std::any visitDistinct_op(poseidonParser::Distinct_opContext *context) = 0;
+
     virtual std::any visitFilter_op(poseidonParser::Filter_opContext *context) = 0;
 
     virtual std::any visitLogical_expr(poseidonParser::Logical_exprContext *context) = 0;
@@ -125,7 +127,7 @@ public:
 
     virtual std::any visitFunction_call(poseidonParser::Function_callContext *context) = 0;
 
-    virtual std::any visitUdf_prefix(poseidonParser::Udf_prefixContext *context) = 0;
+    virtual std::any visitPrefix(poseidonParser::PrefixContext *context) = 0;
 
     virtual std::any visitParam_list(poseidonParser::Param_listContext *context) = 0;
 

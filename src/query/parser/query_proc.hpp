@@ -57,6 +57,8 @@ public:
 
   void interp_query(query_batch &plan);
   void compile_query(query_batch &plan);
+  
+  void abort_query();
 
   void abort_transaction();
   

@@ -163,6 +163,11 @@ void query_proc::abort_transaction() {
     qctx_.abort_transaction();
 }
 
+void query_proc::abort_query() {
+    spdlog::info("abort running query...");
+    // TODO
+}
+
 bool query_proc::load_library(const std::string& lib_path) {
     udf_lib_ = std::make_shared<boost::dll::shared_library>(lib_path);
     if (udf_lib_->is_loaded()) {

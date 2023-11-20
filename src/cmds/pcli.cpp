@@ -353,7 +353,12 @@ void load_library(graph_db_ptr gdb, const std::string& line) {
 /**
  * Run an interactive shell for entering and executing queries.
  */
+void my_handler (int sig) {
+  qproc_ptr->abort_query();
+}
+
 void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
+  // signal(SIGINT, my_handler);
   const auto path = "history.txt";
   // Enable the multi-line mode
   linenoise::SetMultiLine(true);
