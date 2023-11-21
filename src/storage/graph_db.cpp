@@ -165,7 +165,7 @@ void graph_db::close_files() {
 
 
 void graph_db::runtime_initialize() {
-  spdlog::info("graph_db::runtime_initialize()");
+  spdlog::debug("graph_db::runtime_initialize()");
   nodes_->runtime_initialize();
   rships_->runtime_initialize();
   // make sure the dictionary is initialized
