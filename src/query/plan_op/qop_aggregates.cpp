@@ -116,6 +116,7 @@ void aggregate::dump(std::ostream &os) const {
 void aggregate::process(query_ctx &ctx, const qr_tuple &v) {
   // spdlog::info("aggregate::process");
   PROF_PRE;
+  std::unique_lock lock(m_);
   for (auto i = 0u; i < aggr_exprs_.size(); i++) {
     auto& ex = aggr_exprs_[i];
     switch (ex.func) {
@@ -166,6 +167,7 @@ void aggregate::process(query_ctx &ctx, const qr_tuple &v) {
 void aggregate::finish(query_ctx &ctx) {
   // spdlog::info("aggregate::finish");
   PROF_PRE0;
+  std::unique_lock lock(m_);
   qr_tuple v(aggr_exprs_.size());
   for (auto i = 0u; i < aggr_exprs_.size(); i++) {
     auto& ex = aggr_exprs_[i];
@@ -290,6 +292,7 @@ uint64_t group_by::hasher(query_ctx &ctx, const qr_tuple& v) {
 void group_by::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   aggr_vals_t aval;
+  std::unique_lock lock(m_);
 
   // find corresponding group
   auto key = hasher(ctx, v);
@@ -316,6 +319,7 @@ void group_by::finish(query_ctx &ctx) {
   PROF_PRE0;
   int num = 0;
 
+  std::unique_lock lock(m_);
   for (auto it = aggr_vals_.begin(); it != aggr_vals_.end(); it++) {
     qr_tuple v;
     

@@ -338,7 +338,7 @@ void order_by::finish(query_ctx &ctx) {
 /* ------------------------------------------------------------------------ */
 
 void distinct_tuples::dump(std::ostream &os) const {
-  os << "distinct_tuples() - " << PROF_DUMP;
+  os << "distinct() - " << PROF_DUMP;
 }
 
 void distinct_tuples::process(query_ctx &ctx, const qr_tuple &v) {
@@ -381,7 +381,7 @@ void distinct_tuples::process(query_ctx &ctx, const qr_tuple &v) {
 /* ------------------------------------------------------------------------ */
 
 void filter_tuple::dump(std::ostream &os) const {
-  os << "filter_tuple([";
+  os << "filter([";
   if (ex_) 
     os << ex_->dump();
   os << "]) - " << PROF_DUMP;
