@@ -108,7 +108,7 @@ std::size_t query_proc::execute_and_output_query(mode m, const std::string& qstr
     prepare_plan(qplan);
 
     if (m == Interpret) {
-        // qplan.print_plan();
+        qplan.print_plan();
         interp_query(qplan);
         if (print_plan)
             qplan.print_plan();
