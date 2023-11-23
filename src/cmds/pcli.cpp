@@ -411,7 +411,7 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
       }
     }
     else if (line.rfind("load", 0) == 0) {
-      //load_library(graph, line);
+      load_library(graph, line);
     }
     else if (line.rfind("sync", 0) == 0) {
       sync_db(gdb);
