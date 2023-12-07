@@ -790,7 +790,6 @@ add_executable(dpu_host
   src/upmem/aggregation/host/hash_aggr_hi_card_v5.cpp
   # src/upmem/aggregation/host/hash_aggr_low_card.cpp
   # src/upmem/aggregation/host/sort_aggr_hi_card.cpp
-  # src/upmem/join/host/dpu_join.cpp
  )
 
  target_link_libraries(dpu_host
