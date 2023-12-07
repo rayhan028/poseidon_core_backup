@@ -29,7 +29,7 @@ uint32_t local_min = (-1);
 
 BARRIER_INIT(aggr_barrier, NR_TASKLETS);
 // VMUTEX_INIT(aggr_vmutex, NR_HASH_TABLE_ENTRIES, 16);
-MUTEX_POOL_INIT(aggr_mutexpl, 32);
+MUTEX_POOL_INIT(aggr_mutexpl, 8);
 // MUTEX_INIT(aggr_mutex);
 
 int aggregation() {
@@ -112,7 +112,11 @@ int aggregation() {
                 uint32_t b = (grp_key - local_min) / NR_HASH_TABLE_ENTRIES;
 
                 if (b == batch) { /* compute aggregation for element if the grouping key belongs to the current batch */
+#ifdef SIMPLE_HASH
                     uint32_t idx = grp_key % NR_HASH_TABLE_ENTRIES;
+#elif defined(TABULATION_HASH)
+                    uint32_t idx = ((NR_HASH_TABLE_ENTRIES - 1) & join_hash(grp_key));
+#endif
 
                     uint32_t probe = 0;
                     while (1) {

@@ -35,9 +35,13 @@ uint32_t* partition_offsets;
 #endif
 
 BARRIER_INIT(aggr_barrier, NR_TASKLETS);
-// VMUTEX_INIT(aggr_vmutex, NR_HASH_TABLE_ENTRIES, 16);
+#ifdef MUTEX_POOL
 MUTEX_POOL_INIT(aggr_mutexpl, 32);
 // MUTEX_INIT(aggr_mutex);
+#elif defined(VIRTUAL_MUTEX)
+VMUTEX_INIT(aggr_vmutex, NR_HASH_TABLE_ENTRIES, 16);
+VMUTEX_INIT(part_vmutex, NR_HISTOGRAM_ENTRIES, 16);
+#endif
 
 
 #ifdef SINGLE_HASH_TABLE
@@ -85,14 +89,29 @@ int aggregation() {
                                  (part_size - i); /* last remaining elements less than NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET */
 
             for (uint32_t j = 0; j < num_elems; j++) {
+
+#ifdef MULTIVAL_DATA
                 uint32_t grp_key = wr_elems[j].properties[GROUP_KEY];
-                // uint32_t idx = aggr_hash(grp_key) % NR_HASH_TABLE_ENTRIES;
+#elif defined(KV_DATA)
+                uint32_t grp_key = wr_elems[j].key;
+                uint32_t aggr_value = wr_elems[j].val;
+#endif
+
+#ifdef SIMPLE_HASH
                 uint32_t idx = grp_key % NR_HASH_TABLE_ENTRIES;
+#elif defined(TABULATION_HASH)
+                uint32_t idx = ((NR_HASH_TABLE_ENTRIES - 1) & join_hash(grp_key));
+#endif
 
                 uint32_t probe = 0;
+#ifdef MULTIVAL_DATA
+
                 while (1) {
-                    // vmutex_lock(&aggr_vmutex, idx);
+#ifdef MUTEX_POOL
                     mutex_pool_lock(&aggr_mutexpl, idx);
+#elif defined(VIRTUAL_MUTEX)
+                    vmutex_lock(&aggr_vmutex, idx);
+#endif
 
                     if (hash_table[idx].key == grp_key) { /* hash table entry hit */
                         #if defined(COUNT) || defined(AVERAGE)
@@ -115,8 +134,11 @@ int aggregation() {
                         }
                         #endif
 
-                        // vmutex_unlock(&aggr_vmutex, idx);
+#ifdef MUTEX_POOL
                         mutex_pool_unlock(&aggr_mutexpl, idx);
+#elif defined(VIRTUAL_MUTEX)
+                        vmutex_unlock(&aggr_vmutex, idx);
+#endif
                         break;
                     }
                     else if (hash_table[idx].key == (uint32_t)(-1)) { /* unused hash table entry */
@@ -144,13 +166,19 @@ int aggregation() {
                         }
                         #endif
 
-                        // vmutex_unlock(&aggr_vmutex, idx);
+#ifdef MUTEX_POOL
                         mutex_pool_unlock(&aggr_mutexpl, idx);
+#elif defined(VIRTUAL_MUTEX)
+                        vmutex_unlock(&aggr_vmutex, idx);
+#endif
                         break;
                     }
                     else { /* hash table entry collision */
-                        // vmutex_unlock(&aggr_vmutex, idx);
+#ifdef MUTEX_POOL
                         mutex_pool_unlock(&aggr_mutexpl, idx);
+#elif defined(VIRTUAL_MUTEX)
+                        vmutex_unlock(&aggr_vmutex, idx);
+#endif
 
                         /* linear probing */
                         if (++probe > NR_HASH_TABLE_ENTRIES) {
@@ -163,6 +191,96 @@ int aggregation() {
                         }
                     }
                 }
+
+#elif defined(KV_DATA)
+
+                while (1) {
+#ifdef MUTEX_POOL
+                    mutex_pool_lock(&aggr_mutexpl, idx);
+#elif defined(VIRTUAL_MUTEX)
+                    vmutex_lock(&aggr_vmutex, idx);
+#endif
+
+                    if (hash_table[idx].key == grp_key) { /* hash table entry hit */
+                        #if defined(COUNT) || defined(AVERAGE)
+                        hash_table[idx].val.cnt++;
+                        #endif
+
+                        #if defined(SUM) || defined(AVERAGE)
+                        hash_table[idx].val.sum += aggr_value;
+                        #endif
+
+                        #ifdef MINIMUM
+                        if (aggr_value < hash_table[idx].val.min) {
+                            hash_table[idx].val.min = aggr_value;
+                        }
+                        #endif
+
+                        #ifdef MAXIMUM
+                        if (aggr_value > hash_table[idx].val.max) {
+                            hash_table[idx].val.max = aggr_value;
+                        }
+                        #endif
+
+#ifdef MUTEX_POOL
+                        mutex_pool_unlock(&aggr_mutexpl, idx);
+#elif defined(VIRTUAL_MUTEX)
+                        vmutex_unlock(&aggr_vmutex, idx);
+#endif
+                        break;
+                    }
+                    else if (hash_table[idx].key == (uint32_t)(-1)) { /* unused hash table entry */
+                        hash_table[idx].key = grp_key;
+
+                        #if defined(COUNT) || defined(AVERAGE)
+                        hash_table[idx].val.cnt = 1;
+                        #endif
+
+                        #if defined(SUM) || defined(AVERAGE)
+                        hash_table[idx].val.sum = aggr_value;
+                        #endif
+
+                        #ifdef MINIMUM
+                        hash_table[idx].val.min = (uint32_t)(-1);
+                        if (aggr_value < hash_table[idx].val.min) {
+                            hash_table[idx].val.min = aggr_value;
+                        }
+                        #endif
+
+                        #ifdef MAXIMUM
+                        hash_table[idx].val.max = 0;
+                        if (aggr_value > hash_table[idx].val.max) {
+                            hash_table[idx].val.max = aggr_value;
+                        }
+                        #endif
+
+#ifdef MUTEX_POOL
+                        mutex_pool_unlock(&aggr_mutexpl, idx);
+#elif defined(VIRTUAL_MUTEX)
+                        vmutex_unlock(&aggr_vmutex, idx);
+#endif
+                        break;
+                    }
+                    else { /* hash table entry collision */
+#ifdef MUTEX_POOL
+                        mutex_pool_unlock(&aggr_mutexpl, idx);
+#elif defined(VIRTUAL_MUTEX)
+                        vmutex_unlock(&aggr_vmutex, idx);
+#endif
+
+                        /* linear probing */
+                        if (++probe > NR_HASH_TABLE_ENTRIES) {
+                            printf("Hash table size exceeded\n");
+                            return -1;
+                        }
+
+                        if (++idx >= NR_HASH_TABLE_ENTRIES) {
+                            idx = 0;
+                        }
+                    }
+                }
+#endif /* #ifdef MULTIVAL_DATA */
+
             }
         }
         part_offs += part_size;
@@ -198,7 +316,7 @@ int aggregation() {
 
         partition_offsets = (uint32_t*) mem_alloc(num_parts_aligned * sizeof(uint32_t));
         mram_read((__mram_ptr void const*) DPU_MRAM_HEAP_POINTER, partition_offsets, num_parts_aligned * sizeof(uint32_t));
-        for (uint32_t p = 0; p < dpu_parameters.num_partitions; p++) {   
+        for (uint32_t p = 0; p < dpu_parameters.num_partitions; p++) {
             tmp = partition_offsets[p];
             partition_offsets[p] = offs;
             offs += tmp;
@@ -235,8 +353,11 @@ int aggregation() {
 
             for (uint32_t j = 0; j < num_elems; j++) {
                 uint32_t grp_key = wr_elems[j].properties[GROUP_KEY];
-                // uint32_t idx = aggr_hash(grp_key) % NR_HASH_TABLE_ENTRIES;
+#ifdef SIMPLE_HASH
                 uint32_t idx = grp_key % NR_HASH_TABLE_ENTRIES;
+#elif defined(TABULATION_HASH)
+                uint32_t idx = ((NR_HASH_TABLE_ENTRIES - 1) & join_hash(grp_key));
+#endif
 
                 uint32_t probe = 0;
                 while (1) {
@@ -357,19 +478,34 @@ int partition() {
                                  dpu_parameters.num_elems - i; /* last remaining elements less than NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET */
 
             for (uint32_t j = 0; j < num_elems; j++) {
+
+#ifdef MULTIVAL_DATA
                 prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
-                // uint32_t part = global_partition_hash(grp_key) % NR_PARTITIONS;
+#elif defined(KV_DATA)
+                prop_code_t grp_key = wr_elems[j].key;
+#endif
+
+#ifdef SIMPLE_HASH
                 uint32_t part = grp_key % NR_PARTITIONS;
+#elif defined(TABULATION_HASH)
+                uint32_t part = ((NR_PARTITIONS - 1) & glb_partition_hash(grp_key));
+#endif
 
                 uint32_t quot = part / NR_HISTOGRAM_ENTRIES;
                 uint32_t rem = part % NR_HISTOGRAM_ENTRIES;
 
                 if (quot == batch) { /* the partition belongs to the current batch */
-                    // vmutex_lock(&aggr_vmutex, idx);
+#ifdef MUTEX_POOL
                     mutex_pool_lock(&aggr_mutexpl, rem);
+#elif defined(VIRTUAL_MUTEX)
+                    vmutex_lock(&part_vmutex, rem);
+#endif
                     prefix_sum[rem]++;
-                    // vmutex_unlock(&aggr_vmutex, idx);
+#ifdef MUTEX_POOL
                     mutex_pool_unlock(&aggr_mutexpl, rem);
+#elif defined(VIRTUAL_MUTEX)
+                    vmutex_unlock(&part_vmutex, rem);
+#endif
                 }
             }
         }
@@ -378,7 +514,7 @@ int partition() {
         /* compute prefix sums */
         if (tasklet_id == 0) {
             uint32_t tmp;
-            for (uint32_t p = 0; p < NR_HISTOGRAM_ENTRIES; p++) {   
+            for (uint32_t p = 0; p < NR_HISTOGRAM_ENTRIES; p++) {
                 tmp = prefix_sum[p];
                 prefix_sum[p] = prefix;
                 prefix += tmp;
@@ -397,20 +533,35 @@ int partition() {
                                  dpu_parameters.num_elems - i; /* last remaining elements less than NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET */
 
             for (uint32_t j = 0; j < num_elems; j++) {
+
+#ifdef MULTIVAL_DATA
                 prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
-                // uint32_t part = glb_partition_hash(grp_key) % NR_PARTITIONS;
+#elif defined(KV_DATA)
+                prop_code_t grp_key = wr_elems[j].key;
+#endif
+
+#ifdef SIMPLE_HASH
                 uint32_t part = grp_key % NR_PARTITIONS;
+#elif defined(TABULATION_HASH)
+                uint32_t part = ((NR_PARTITIONS - 1) & glb_partition_hash(grp_key));
+#endif
 
                 uint32_t quot = part / NR_HISTOGRAM_ENTRIES;
                 uint32_t rem = part % NR_HISTOGRAM_ENTRIES;
 
                 if (quot == batch) { /* the partition belongs to the current batch */
-                    // vmutex_lock(&aggr_vmutex, idx);
+#ifdef MUTEX_POOL
                     mutex_pool_lock(&aggr_mutexpl, rem);
+#elif defined(VIRTUAL_MUTEX)
+                    vmutex_lock(&part_vmutex, rem);
+#endif
                     uint32_t mroffs = prefix_sum[rem] + copy_count[rem];
                     copy_count[rem]++;
-                    // vmutex_unlock(&aggr_vmutex, idx);
+#ifdef MUTEX_POOL
                     mutex_pool_unlock(&aggr_mutexpl, rem);
+#elif defined(VIRTUAL_MUTEX)
+                    vmutex_unlock(&part_vmutex, rem);
+#endif
                     mram_write(&wr_elems[j], (__mram_ptr void*) &mr_elems[dpu_parameters.max_num_elems + mroffs], ELEM_SIZE);
                 }
             }

@@ -40,8 +40,6 @@ void hash_aggregation_low_card(graph_db_ptr &graph) {
         uint32_t num_ranks, num_dpus;
         uint32_t dpuid = 0;
 
-        std::cout << "start\n";
-
         DPU_ASSERT(dpu_alloc(NR_DPUS, NULL, &dpu_set));
         DPU_ASSERT(dpu_get_nr_dpus(dpu_set, &num_dpus));
         DPU_ASSERT(dpu_get_nr_ranks(dpu_set, &num_ranks));
@@ -55,6 +53,11 @@ void hash_aggregation_low_card(graph_db_ptr &graph) {
         #elif defined SF10
         uint32_t total_elems = (21865475 /* Comment */ + 7435696 /* Post */); /* SF 10 */
         #endif
+
+        assert((ELEM_MULTIPLIER != 0) && ((ELEM_MULTIPLIER & (ELEM_MULTIPLIER - 1)) == 0));
+
+        uint32_t elems_factor = total_elems;
+        total_elems *= ELEM_MULTIPLIER;
         uint32_t elems_per_dpu = DIVCEIL(total_elems, NR_DPUS);
         uint32_t elems_size_per_dpu = ELEM_SIZE * elems_per_dpu;
         uint32_t htable_offs = elems_per_dpu; /* TODO: tune */
@@ -69,23 +72,24 @@ void hash_aggregation_low_card(graph_db_ptr &graph) {
         PRINT("DPUs: %u", NR_DPUS);
         PRINT("Ranks: %u", num_ranks);
         PRINT("Elements: %u", total_elems);
+        PRINT("Element multiplier: %u", ELEM_MULTIPLIER);
         PRINT("Elements per DPU: %u", elems_per_dpu);
         PRINT("Element Size: %lu", ELEM_SIZE);
-        PRINT("Element Size per DPU: %u (%f MB)", elems_size_per_dpu, (elems_size_per_dpu / (double)MB));
+        PRINT("Element Size per DPU: %u (%f MiB)", elems_size_per_dpu, (elems_size_per_dpu / (double)MiB));
 
         mrnode* elems_buffer = nullptr;
-        htable_entry* hash_tables[NR_DPUS];
+        htable_entry** hash_tables = (htable_entry**) malloc(sizeof(htable_entry*) * NR_DPUS);
         std::unordered_map<uint32_t, aggr_res> seq_cpu_res, par_cpu_res, dpu_res;
 
         if (dpu_overflow) {
-            PRINT_INFO(true, "Max. %d (%f MB) MRAM input buffer exceeded. Adjusting...", MRAM_INPUT_BUFFER_SIZE, (MRAM_INPUT_BUFFER_SIZE / (double)MB));
+            PRINT_INFO(true, "Max. %d (%f MiB) MRAM input buffer exceeded. Adjusting...", MRAM_INPUT_BUFFER_SIZE, (MRAM_INPUT_BUFFER_SIZE / (double)MiB));
             elems_per_dpu = (MRAM_INPUT_BUFFER_SIZE / 2) / ELEM_SIZE;
             elems_size_per_dpu = ELEM_SIZE * elems_per_dpu;
             uint32_t dpu_exec_rounds = DIVCEIL(total_elems, (elems_per_dpu * NR_DPUS));
 
             PRINT("DPU execution rounds: %u", dpu_exec_rounds);
             PRINT("Elements per DPU: %u", elems_per_dpu);
-            PRINT("Element Size per DPU: %u (%f MB)", elems_size_per_dpu, (elems_size_per_dpu / (double)MB));
+            PRINT("Element Size per DPU: %u (%f MiB)", elems_size_per_dpu, (elems_size_per_dpu / (double)MiB));
 
             /* initialize elements */
             elems_buffer = (mrnode*) malloc (ELEM_SIZE * elems_per_dpu * NR_DPUS * dpu_exec_rounds);
@@ -266,6 +270,13 @@ void hash_aggregation_low_card(graph_db_ptr &graph) {
             elems_buffer = (mrnode*) malloc (elems_size_per_dpu * NR_DPUS);
             initialize_props(graph, elems_buffer);
 
+            if (ELEM_MULTIPLIER > 1) {
+                while (elems_factor < total_elems) {
+                    memcpy(&elems_buffer[elems_factor], elems_buffer, elems_factor * ELEM_SIZE);
+                    elems_factor *= 2;
+                }
+            }
+
             /* transfer data to DPU */
             PRINT("Transfer input data to DPUs...");
             t.start("CPU to DPU xfer (input data)");
@@ -277,7 +288,7 @@ void hash_aggregation_low_card(graph_db_ptr &graph) {
 
             /* transfer parameters to DPU */
             PRINT("Transfer input parameters to DPUs...");
-            dpu_params params[NR_DPUS];
+            dpu_params* params = (dpu_params*) malloc (sizeof(dpu_params) * NR_DPUS);
             DPU_FOREACH(dpu_set, dpu, dpuid) {
                 uint32_t elems = (dpuid == (NR_DPUS - 1)) ?
                                  (total_elems - dpuid * elems_per_dpu) :

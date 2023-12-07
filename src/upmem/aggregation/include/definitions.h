@@ -20,18 +20,32 @@
 #define KiB (1 << 10)
 #define MiB (KiB << 10)
 
-#define NR_TASKLETS 16
-#define NR_DPUS 256
+#define NR_TASKLETS 11
+#define NR_DPUS 64
+#define DPUS_PER_RANK 64
+#define NR_RANKS (NR_DPUS / DPUS_PER_RANK)
+#define MAX_NR_RANKS 64
 #define NR_CPU_THREADS 32
 
 #define NR_ELEM_PROPS 4
 #define GROUP_KEY 3
 #define AGGR_KEY 2
+#define NR_PARTITIONS 1024 /* 1920, 3840, 4096, 4608, 5376 */
 #define GROUP_KEY_CARDINALITY 1048576
+#define ELEM_MULTIPLIER 4
 
 // #define SF0_1
 // #define SF1
 #define SF10
+
+// #define SIMPLE_HASH
+#define TABULATION_HASH
+
+// #define UNIFORM_DISTRIBUTION
+// #define ZIPFIAN_DISTRIBUTION
+
+#define MULTIVAL_DATA
+// #define KV_DATA
 
 #define REP 1
 #define ELEMS_PER_CHUNK 817
@@ -47,11 +61,18 @@ typedef struct sg_xfer_ctx sg_xfer_ctx;
 typedef uint32_t prop_code_t;
 typedef uint32_t aggr_val_t;
 
+#ifdef MULTIVAL_DATA
 struct mrnode {
     uint64_t id_;
     prop_code_t properties[NR_ELEM_PROPS];
     uint32_t node_label;
 };
+#elif defined(KV_DATA)
+struct mrnode {
+    uint32_t key;
+    uint32_t val;
+};
+#endif /* #ifdef MULTIVAL_DATA */
 
 struct mrchunk {
     struct mrnode data[ELEMS_PER_CHUNK];
@@ -138,10 +159,12 @@ struct dpu_params {
 };
 
 #define NR_KERNELS 2
-#define NR_PARTITIONS 64
 #define HASH_AGGR_HI_CARD_V1_BIN "./dpu_bin/dpu_hash_aggr_hi_card_v1"
 
 #define MRAM_INPUT_BUFFER_PARTITION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the partitioned elements */
+
+#define NR_HISTOGRAM_ENTRIES NR_PARTITIONS
+#define HISTOGRAM_SIZE (NR_HISTOGRAM_ENTRIES * sizeof(uint32_t))
 
 #define NR_WR_ELEMS_PARTITION (((2 * KiB) / ELEM_SIZE) * 16) /* TODO: tune */
 #define NR_WR_ELEMS_PER_TASKLET_PARTITION (NR_WR_ELEMS_PARTITION / NR_TASKLETS)
@@ -173,10 +196,12 @@ struct dpu_params {
 };
 
 #define NR_KERNELS 2
-#define NR_PARTITIONS 1024
 #define HASH_AGGR_HI_CARD_V2_BIN "./dpu_bin/dpu_hash_aggr_hi_card_v2"
 
 #define MRAM_INPUT_BUFFER_PARTITION MRAM_INPUT_BUFFER /* reserve half the MRAM buffer to flush the partitioned elements */
+
+#define NR_HISTOGRAM_ENTRIES NR_PARTITIONS
+#define HISTOGRAM_SIZE (NR_HISTOGRAM_ENTRIES * sizeof(uint32_t))
 
 #define NR_WR_ELEMS_PARTITION (((2 * KiB) / sizeof(prop_code_t)) * 16) /* TODO: tune */
 #define NR_WR_ELEMS_PER_TASKLET_PARTITION (NR_WR_ELEMS_PARTITION / NR_TASKLETS)
@@ -213,11 +238,13 @@ struct dpu_params {
 };
 
 #define NR_KERNELS 2
-#define NR_PARTITIONS 1024
 #define DPU_PROFILE "sgXferEnable=true"
 #define HASH_AGGR_HI_CARD_V3_BIN "./dpu_bin/dpu_hash_aggr_hi_card_v3"
 
 #define MRAM_INPUT_BUFFER_PARTITION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the partitioned elements */
+
+#define NR_HISTOGRAM_ENTRIES NR_PARTITIONS
+#define HISTOGRAM_SIZE (NR_HISTOGRAM_ENTRIES * sizeof(uint32_t))
 
 #define NR_WR_ELEMS_PARTITION (((2 * KiB) / ELEM_SIZE) * 16) /* TODO: tune */
 #define NR_WR_ELEMS_PER_TASKLET_PARTITION (NR_WR_ELEMS_PARTITION / NR_TASKLETS)
@@ -244,7 +271,10 @@ struct dpu_params {
 #define DPU_PROFILE "sgXferEnable=true"
 #define HASH_AGGR_HI_CARD_V4_BIN "./dpu_bin/dpu_hash_aggr_hi_card_v4"
 
-#define NR_WR_ELEMS_PER_TASKLET 8
+#define NR_HISTOGRAM_ENTRIES NR_PARTITIONS
+#define HISTOGRAM_SIZE (NR_HISTOGRAM_ENTRIES * sizeof(uint32_t))
+
+#define NR_WR_ELEMS_PER_TASKLET 5
 #define MRAM_INPUT_BUFFER_SIZE (MRAM_INPUT_BUFFER - MR_HASH_TABLES_SIZE)
 
 #define HASH_TABLE_SIZE (32 * KiB)
@@ -256,6 +286,8 @@ struct dpu_params {
 #elif defined HASH_BASED_HIGH_CARDINALITY_V5
 #define SINGLE_HASH_TABLE
 // #define PER_TASKLET_HASH_TABLE
+#define MUTEX_POOL
+// #define VIRTUAL_MUTEX
 
 typedef enum kernel {
     partition_phase = 0,
@@ -282,13 +314,13 @@ struct dpu_params {
 };
 
 #define NR_KERNELS 3
-#define NR_PARTITIONS 3840 /* 1920, 4096 */
 #define DPU_PROFILE "sgXferEnable=true"
 #define HASH_AGGR_HI_CARD_V5_BIN "./dpu_bin/dpu_hash_aggr_hi_card_v5"
 
 #define MRAM_INPUT_BUFFER_PARTITION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the partitioned elements */
+// #define MRAM_INPUT_BUFFER_PARTITION (30 * MiB)
 
-#define HISTOGRAM_SIZE (21 * KiB) /* (7834) (16 * KiB) */
+#define HISTOGRAM_SIZE (21 * KiB) /* (7834) (16 * KiB) (21 * KiB) */
 #define NR_HISTOGRAM_ENTRIES (HISTOGRAM_SIZE / sizeof(uint32_t))
 #define NR_HISTOGRAM_BATCHES DIVCEIL(NR_PARTITIONS, NR_HISTOGRAM_ENTRIES)
 
@@ -296,12 +328,13 @@ struct dpu_params {
 #define NR_HISTOGRAM_CHUNKS DIVCEIL(HISTOGRAM_SIZE, HISTOGRAM_CHUNK_SIZE)
 #define NR_HISTOGRAM_CHUNK_ENTRIES (HISTOGRAM_CHUNK_SIZE / sizeof(uint32_t))
 
-#define WRAM_PARTITION_CACHE_SIZE_PER_TASKLET (256) /* (990), (2 * KiB) */
+#define WRAM_PARTITION_CACHE_SIZE_PER_TASKLET (256) /* (256), (990), (2 * KiB) */
 #define NR_WRAM_PARTITION_CACHE_ELEMS_PER_TASKLET (WRAM_PARTITION_CACHE_SIZE_PER_TASKLET / ELEM_SIZE)
 
 #define MRAM_INPUT_BUFFER_AGGREGATION (MRAM_INPUT_BUFFER / 2) /* reserve half the MRAM buffer to flush the hash table results */
+// #define MRAM_INPUT_BUFFER_AGGREGATION (30 * MiB)
 
-#define WRAM_AGGREGATION_CACHE_SIZE_PER_TASKLET (256)
+#define WRAM_AGGREGATION_CACHE_SIZE_PER_TASKLET (256) /* (256), (990), (2 * KiB) */
 #define NR_WRAM_AGGREGATION_CACHE_ELEMS_PER_TASKLET (WRAM_AGGREGATION_CACHE_SIZE_PER_TASKLET / ELEM_SIZE)
 
 #define HASH_TABLE_SIZE (42 * KiB)
@@ -321,7 +354,8 @@ struct dpu_params {
 #define NR_KERNELS 1
 #define HASH_AGGR_LOW_CARD_BIN "./dpu_bin/dpu_hash_aggr_low_card"
 
-#define NR_WR_ELEMS_PER_TASKLET 16
+// #define NR_WR_ELEMS_PER_TASKLET 16
+#define NR_WR_ELEMS_PER_TASKLET (256 / ELEM_SIZE)
 #define MRAM_INPUT_BUFFER_SIZE (MRAM_INPUT_BUFFER - MR_HASH_TABLES_SIZE)
 
 #ifdef PER_TASKLET_HASH_TABLE
@@ -329,7 +363,7 @@ struct dpu_params {
 #define NR_HASH_TABLE_ENTRIES (HASH_TABLE_SIZE / HASH_TABLE_ENTRY_SIZE)
 #define MR_HASH_TABLES_SIZE (NR_TASKLETS * HASH_TABLE_SIZE)
 #elif defined SINGLE_HASH_TABLE
-#define HASH_TABLE_SIZE (32 * KiB)
+#define HASH_TABLE_SIZE (42 * KiB)
 #define NR_HASH_TABLE_ENTRIES (HASH_TABLE_SIZE / HASH_TABLE_ENTRY_SIZE)
 #define NR_HASH_TABLE_CHUNKS (HASH_TABLE_SIZE / MAX_MRAM_WRAM_XFER_SIZE)
 #define NR_HASH_TABLE_CHUNK_ENTRIES (NR_HASH_TABLE_ENTRIES / NR_HASH_TABLE_CHUNKS)
@@ -352,7 +386,6 @@ struct dpu_params {
 };
 
 #define NR_KERNELS 2
-#define NR_PARTITIONS 1024
 #define SORT_AGGR_BIN "./dpu_bin/dpu_sort_aggr_hi_card"
 
 #define MRAM_INPUT_BUFFER_SORT MRAM_INPUT_BUFFER /* reserve half the MRAM buffer to flush the sorted */

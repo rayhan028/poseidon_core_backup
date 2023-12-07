@@ -72,15 +72,22 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
         PRINT("Element Size per DPU: %u (%f MiB)", elems_size_per_dpu, (elems_size_per_dpu / (double)MiB));
         PRINT("Group key cardinality: %u", GROUP_KEY_CARDINALITY);
         PRINT("Partitions: %u", NR_PARTITIONS);
+        PRINT("Histogram size: %lu (%f KiB)", HISTOGRAM_SIZE, (HISTOGRAM_SIZE / (double)KiB));
+        PRINT("Histogram entries: %u", NR_HISTOGRAM_ENTRIES);
         PRINT("Hash table size: %u (%f KiB)", HASH_TABLE_SIZE, HASH_TABLE_SIZE / (double)KiB);
         PRINT("Hash table entries: %lu", NR_HASH_TABLE_ENTRIES);
         PRINT("Hash table entry size: %lu", HASH_TABLE_ENTRY_SIZE);
+        #ifdef SIMPLE_HASH
+        PRINT("Hash function: Simple");
+        #elif defined(TABULATION_HASH)
+        PRINT("Hash function: Tabulation");
+        #endif
 
-        dpu_params params[NR_DPUS];
+        dpu_params* params = (dpu_params*) malloc (sizeof(dpu_params) * NR_DPUS);
         elem_t* elems_buffer = nullptr;
-        uint32_t num_partitions[NR_DPUS];
-        uint32_t* partition_sizes[NR_DPUS];
-        htable_entry* hash_tables[NR_DPUS];
+        uint32_t* num_partitions = (uint32_t*) malloc(NR_DPUS * sizeof(uint32_t));
+        uint32_t** partition_sizes = (uint32_t**) malloc(sizeof(uint32_t*) * NR_DPUS);
+        htable_entry** hash_tables = (htable_entry**) malloc(sizeof(htable_entry*) * NR_DPUS);
         elem_t* global_part_buffer = (elem_t*) malloc (ELEM_SIZE * total_elems);
         std::unordered_map<uint32_t, aggr_res> seq_cpu_res, par_cpu_res, dpu_res;
 
@@ -137,17 +144,21 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
 
             /* retrieve local histograms from DPUs */
             PRINT("Transfer histograms of local partitions to CPU...");
-            uint32_t local_part_sizes[NR_DPUS][NR_PARTITIONS];
+            uint32_t** local_part_sizes = (uint32_t**) malloc(NR_DPUS * sizeof(uint32_t*));
+            for (uint32_t d = 0; d <  NR_DPUS; d++) {
+                local_part_sizes[d] = (uint32_t*) malloc(NR_PARTITIONS * sizeof(uint32_t));
+            }
+
             t.start("DPU to CPU transfer (local histograms)");
             DPU_FOREACH(dpu_set, dpu, dpuid) {
-                DPU_ASSERT(dpu_prepare_xfer(dpu, &local_part_sizes[dpuid]));
+                DPU_ASSERT(dpu_prepare_xfer(dpu, local_part_sizes[dpuid]));
             }
             DPU_ASSERT(dpu_push_xfer(dpu_set, DPU_XFER_FROM_DPU, "dpu_partition_sizes", 0, sizeof(uint32_t) * NR_PARTITIONS, DPU_XFER_DEFAULT));
             t.stop();
 
 #if 1 /* coalesce all local partitions as a single SG block */
 
-            uint32_t coalesced_local_parts[NR_DPUS];
+            uint32_t* coalesced_local_parts = (uint32_t*) malloc(NR_DPUS * sizeof(uint32_t));
             for (uint32_t d = 0; d < NR_DPUS; d++) {
                 coalesced_local_parts[d] = 1;
             }
@@ -167,7 +178,7 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
             }
 
             uint32_t tmp_prefix = 0;
-            uint32_t tmp_global_prefix_sum[NR_DPUS];
+            uint32_t* tmp_global_prefix_sum = (uint32_t*) malloc(NR_DPUS * sizeof(uint32_t));
             for (auto d = 0; d < NR_DPUS; d++) {
                 tmp_global_prefix_sum[d] = tmp_prefix;
                 tmp_prefix += total_local_part_sizes[d][0];
@@ -191,7 +202,11 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
 
             /* compute prefix sum for CPU partition buffers */
             uint32_t prefix = 0;
-            uint32_t global_prefix_sum[NR_PARTITIONS][NR_DPUS];
+            uint32_t** global_prefix_sum = (uint32_t**) malloc(NR_PARTITIONS * sizeof(uint32_t*));
+            for (uint32_t d = 0; d < NR_PARTITIONS; d++) {
+                global_prefix_sum[d] = (uint32_t*) malloc(NR_DPUS * sizeof(uint32_t));
+            }
+
             for (auto p = 0; p < NR_PARTITIONS; p++) {
                 for (auto d = 0; d < NR_DPUS; d++) {
                     global_prefix_sum[p][d] = prefix;
@@ -199,9 +214,11 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
                 }
             }
 
+            #if 0 /* sequential GP copy */
+
             /* copy local partitions to global partition buffers */
-            PRINT("Copy local partitions to CPU global partition buffers...");
-            t.start("CPU exec (copy to global partitions)");
+            PRINT("Copy local partitions to CPU global partition buffers sequentially...");
+            t.start("CPU exec (sequential copy to global partitions)");
             for (auto d = 0; d < NR_DPUS; d++) {
                 elem_t* local_partitions = &tmp_global_part_buffer[tmp_global_prefix_sum[d]];
 
@@ -214,7 +231,17 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
             }
             t.stop();
 
-#elif 1 /* transfer each local partition as a separate SG block */
+            #else /* parallel GP copy */
+
+            /* copy local partitions to global partition buffers */
+            PRINT("Copy local partitions to CPU global partition buffers in parallel...");
+            t.start("CPU exec (parallel copy to global partitions)");
+            parallel_gpartition_cpy(global_part_buffer, tmp_global_part_buffer, local_part_sizes, global_prefix_sum, tmp_global_prefix_sum);
+            t.stop();
+
+            #endif /* #if 1 */
+
+#elif 0 /* transfer each local partition as a separate SG block */
 
             /* compute prefix sum for CPU partition buffers */
             uint32_t prefix = 0;
@@ -251,7 +278,7 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
                                         elems_per_dpu * ELEM_SIZE, &get_local_partition, DPU_SG_XFER_DISABLE_LENGTH_CHECK));
             t.stop();
 
-#else /* no scatter gather transfer */
+#elif 0 /* sequential element-wise copy */
 
             /* compute prefix sum for CPU partition buffers */
             uint32_t prefix = 0;
@@ -264,9 +291,9 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
             }
 
             /* copy elements into global partition buffers on CPU */
-            PRINT("Copy elements to CPU global partition buffers...");
+            PRINT("Copy elements to CPU global partition buffers sequentially...");
             uint32_t copy_count[NR_PARTITIONS] = {0};
-            t.start("CPU exec (copy to global partitions)");
+            t.start("CPU exec (sequential copy to global partitions)");
             for (uint32_t e = 0; e < total_elems; e++) {
                 prop_code_t grp_key = elems_buffer[e].properties[GROUP_KEY];
                 // uint32_t partition = global_partition_hash(grp_key) % NR_PARTITIONS;
@@ -278,12 +305,34 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
             }
             t.stop();
 
+#else /* parallel element-wise copy */
+
+            /* compute prefix sum for CPU partition buffers */
+            uint32_t prefix = 0;
+            uint32_t global_prefix_sum[NR_PARTITIONS];
+            for (auto p = 0; p < NR_PARTITIONS; p++) {
+                global_prefix_sum[p] = prefix;
+                for (auto d = 0; d < NR_DPUS; d++) {
+                    prefix += local_part_sizes[d][p];
+                }
+            }
+
+            /* copy elements into global partition buffers on CPU */
+            PRINT("Copy elements to CPU global partition buffers in parallel...");
+            uint32_t copy_count[NR_PARTITIONS] = {0};
+            t.start("CPU exec (parallel copy to global partitions)");
+            parallel_elem_cpy(elems_buffer, total_elems, global_part_buffer, global_prefix_sum, copy_count);
+            t.stop();
+
 #endif /* #if 1 */
 
             /* send global partitions to DPUs */
             PRINT("Transfer global partitions to DPUs...");
             uint32_t d = 0;
-            uint32_t assigned_part_sizes[NR_DPUS] = {0};
+            uint32_t* assigned_part_sizes = (uint32_t*) malloc(NR_DPUS * sizeof(uint32_t));
+            for (auto d = 0; d < NR_DPUS; d++) {
+                assigned_part_sizes[d] = 0;
+            }
             std::unordered_map<uint32_t, std::vector<uint32_t>> dpu_to_assigned_parts;
             for (uint32_t p = 0; p < NR_PARTITIONS; p++) {
                 uint32_t global_part_size = (p == (NR_PARTITIONS - 1)) ?
@@ -316,7 +365,7 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
                 }
             }
 
-            uint32_t htable_offsets[NR_DPUS];
+            uint32_t* htable_offsets = (uint32_t*) malloc(NR_DPUS * sizeof(uint32_t));
             uint32_t max_num_parts_aligned = (max_num_parts % 2 == 0) ? max_num_parts : (max_num_parts + 1);
             global_partition_ptrs = (elem_t***) multidim_malloc(NR_DPUS, num_partitions, sizeof(elem_t*));
 
@@ -400,7 +449,7 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
                 hash_tables[d] = (htable_entry*) malloc(HASH_TABLE_SIZE * num_partitions[d]);
             }
 
-            uint32_t coalesced_htables[NR_DPUS];
+            uint32_t* coalesced_htables = (uint32_t*) malloc(NR_DPUS * sizeof(uint32_t));
             for (uint32_t d = 0; d < NR_DPUS; d++) {
                 coalesced_htables[d] = 1;
             }
@@ -464,8 +513,8 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
             t.start("DPU to CPU transfer (hash tables of global partitions)");
             DPU_FOREACH(dpu_set, dpu, dpuid) {
                 hash_tables[dpuid] = (htable_entry*) malloc(HASH_TABLE_SIZE * num_partitions[dpuid]);
-                DPU_ASSERT(dpu_copy_from(dpu, DPU_MRAM_HEAP_POINTER_NAME, sizeof(uint32_t) * max_num_parts_aligned + ELEM_SIZE * htable_offsets[dpuid],
-                                         hash_tables[dpuid], sizeof(htable_entry) * num_partitions[dpuid] * NR_HASH_TABLE_ENTRIES));
+                DPU_ASSERT(dpu_copy_from(dpu, DPU_MRAM_HEAP_POINTER_NAME, sizeof(uint32_t) * max_num_parts_aligned + size_of_max_num_parts * ELEM_SIZE,
+                                         hash_tables[dpuid], num_partitions[dpuid] * HASH_TABLE_SIZE));
             }
             t.stop();
 
@@ -603,8 +652,11 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
         PRINT("Free CPU buffers...");
         free(elems_buffer);
         free(global_part_buffer);
-        for (uint32_t d = 0; d < NR_DPUS; d++) {
-            free(hash_tables[d]);
+        if (hash_tables) {
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                free(hash_tables[d]);
+            }
+            free(hash_tables);
         }
         if (local_partition_ptrs) {
             for (uint32_t d = 0; d < NR_DPUS; d++) {
@@ -647,6 +699,37 @@ void hash_aggregation_hi_card_v3(graph_db_ptr &graph) {
             }
         }
         free(htable_entries);
+        if (params) {
+            free(params);
+        }
+        if (num_partitions) {
+            free(num_partitions);
+        }
+        if (partition_sizes) {
+            free(partition_sizes);
+        }
+        if (local_part_sizes) {
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                if (local_part_sizes[d]) {
+                    free(local_part_sizes[d]);
+                }
+            }
+            free(local_part_sizes);
+        }
+        if (coalesced_local_parts) {
+            free(coalesced_local_parts);
+        }
+        if (tmp_global_prefix_sum) {
+            free(tmp_global_prefix_sum);
+        }
+        if (global_prefix_sum) {
+            for (uint32_t d = 0; d < NR_PARTITIONS; d++) {
+                if (global_prefix_sum[d]) {
+                    free(global_prefix_sum[d]);
+                }
+            }
+            free(global_prefix_sum);
+        }
 
         PRINT_TOP_RULE;
         t.print();

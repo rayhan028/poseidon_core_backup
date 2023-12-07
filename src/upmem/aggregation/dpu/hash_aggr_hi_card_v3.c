@@ -5,7 +5,7 @@
 #include <alloc.h>
 #include <handshake.h>
 #include <barrier.h>
-#include <vmutex.h>
+// #include <vmutex.h>
 #include <mutex_pool.h>
 
 #include "definitions.h"
@@ -55,7 +55,7 @@ int aggregation() {
                                      (dpu_parameters.num_partitions + 1);
 
         wr_partition_sizes = (uint32_t*) mem_alloc(num_parts_aligned * sizeof(uint32_t));
-        mram_read((__mram_ptr void const*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[0], wr_partition_sizes, num_parts_aligned * sizeof(uint32_t)); /* TODO: increase data size for improved bandwidth utilization */
+        mram_read((__mram_ptr void const*) &((uint32_t*) DPU_MRAM_HEAP_POINTER)[0], wr_partition_sizes, num_parts_aligned * sizeof(uint32_t));
 
         /* mr_htable_offs = 0;
         for (uint32_t p = 0; p < dpu_parameters.num_partitions; p++) {
@@ -90,8 +90,11 @@ int aggregation() {
 
             for (uint32_t j = 0; j < num_elems; j++) {
                 uint32_t grp_key = wr_elems[j].properties[GROUP_KEY];
-                // uint32_t idx = aggr_hash(grp_key) % NR_HASH_TABLE_ENTRIES;
+#ifdef SIMPLE_HASH
                 uint32_t idx = grp_key % NR_HASH_TABLE_ENTRIES;
+#elif defined(TABULATION_HASH)
+                uint32_t idx = ((NR_HASH_TABLE_ENTRIES - 1) & join_hash(grp_key));
+#endif
 
                 uint32_t probe = 0;
                 while (1) {
@@ -215,8 +218,11 @@ int partition() {
 
         for (uint32_t j = 0; j < num_elems; j++) {
             prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
-            // uint32_t partition = global_partition_hash(grp_key) % NR_PARTITIONS;
+#ifdef SIMPLE_HASH
             uint32_t partition = grp_key % NR_PARTITIONS;
+#elif defined(TABULATION_HASH)
+            uint32_t partition = ((NR_PARTITIONS - 1) & glb_partition_hash(grp_key));
+#endif
 
             // vmutex_lock(&part_vmutex, idx);
             mutex_pool_lock(&part_mutexpl, partition);
@@ -264,8 +270,11 @@ int partition() {
 
         for (uint32_t j = 0; j < num_elems; j++) {
             prop_code_t grp_key = wr_elems[j].properties[GROUP_KEY];
-            // uint32_t partition = glb_partition_hash(grp_key) % NR_PARTITIONS;
+#ifdef SIMPLE_HASH
             uint32_t partition = grp_key % NR_PARTITIONS;
+#elif defined(TABULATION_HASH)
+            uint32_t partition = ((NR_PARTITIONS - 1) & glb_partition_hash(grp_key));
+#endif
 
             // vmutex_lock(&part_vmutex, idx);
             mutex_pool_lock(&part_mutexpl, partition);

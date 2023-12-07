@@ -74,20 +74,30 @@ void hash_aggregation_hi_card_v4(graph_db_ptr &graph) {
         PRINT("Element Size per DPU: %u (%f MiB)", elems_size_per_dpu, (elems_size_per_dpu / (double)MiB));
         PRINT("Group key cardinality: %u", GROUP_KEY_CARDINALITY);
         PRINT("Maximum elements per DPU: %u", max_elems_per_dpu);
+        PRINT("Histogram entries: %u", NR_HISTOGRAM_ENTRIES);
+        PRINT("Histogram size: %lu (%f KiB)", HISTOGRAM_SIZE, (HISTOGRAM_SIZE / (double)KiB));
         PRINT("Offset of hash tables: %u", htable_offs);
         PRINT("Hash table size: %u (%f KiB)", HASH_TABLE_SIZE, HASH_TABLE_SIZE / (double)KiB);
         PRINT("Hash table entries: %lu", NR_HASH_TABLE_ENTRIES);
         PRINT("Hash table entry size: %lu", HASH_TABLE_ENTRY_SIZE);
+        #ifdef SIMPLE_HASH
+        PRINT("Hash function: Simple");
+        #elif defined(TABULATION_HASH)
+        PRINT("Hash function: Tabulation");
+        #endif
 
-        dpu_params params[NR_DPUS];
+        dpu_params* params = (dpu_params*) malloc (sizeof(dpu_params) * NR_DPUS);
         mrnode* elems_buffer = nullptr;
         htable_entry*** htable_ptrs = nullptr;
-        uint32_t num_hash_tables[NR_DPUS];
-        /*uint32_t rem_num_hash_tables[NR_DPUS];
-        uint32_t batch_htables[NR_DPUS];
-        uint32_t processed_hash_tables[NR_DPUS] = {0};*/
-        htable_entry* hash_tables[NR_DPUS];
-        mrnode* global_part_buffer = (mrnode*) malloc (ELEM_SIZE * total_elems);
+        uint32_t* num_hash_tables = (uint32_t*) malloc(NR_DPUS * sizeof(uint32_t));
+        uint32_t* rem_num_hash_tables = (uint32_t*) malloc(NR_DPUS * sizeof(uint32_t));
+        uint32_t* batch_htables = (uint32_t*) malloc(NR_DPUS * sizeof(uint32_t));
+        uint32_t* processed_hash_tables = (uint32_t*) malloc(NR_DPUS * sizeof(uint32_t));
+        for (uint32_t d = 0; d < NR_DPUS; d++) {
+            processed_hash_tables[d] = 0;
+        }
+        uint32_t** batch_htable_entries = (uint32_t**) malloc(NR_DPUS * sizeof(uint32_t*));
+        htable_entry** hash_tables = (htable_entry**) malloc(sizeof(htable_entry*) * NR_DPUS);
         uint32_t** htable_entries = (uint32_t**) malloc(NR_DPUS * sizeof(uint32_t*));
         std::unordered_map<uint32_t, aggr_res> seq_cpu_res, par_cpu_res, dpu_res;
 
@@ -440,13 +450,50 @@ void hash_aggregation_hi_card_v4(graph_db_ptr &graph) {
         /* free CPU buffers */
         PRINT("Free CPU buffers...");
         free(elems_buffer);
-        free(global_part_buffer);
-        for (uint32_t d = 0; d < NR_DPUS; d++) {
-            free(htable_entries[d]);
+        if (htable_entries) {
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                if (htable_entries[d]) {
+                    free(htable_entries[d]);
+                }
+            }
+            free(htable_entries);
         }
-        free(htable_entries);
         for (uint32_t d = 0; d < NR_DPUS; d++) {
-            free(hash_tables[d]);
+            if (hash_tables) {
+                free(hash_tables[d]);
+            }
+            free(hash_tables);
+        }
+        if (params) {
+            free(params);
+        }
+        if (htable_ptrs) {
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                if (htable_ptrs[d]) {
+                    free(htable_ptrs[d]);
+                }
+            }
+            free(htable_ptrs);
+        }
+        if (num_hash_tables) {
+            free(num_hash_tables);
+        }
+        if (rem_num_hash_tables) {
+            free(rem_num_hash_tables);
+        }
+        if (batch_htables) {
+            free(batch_htables);
+        }
+        if (processed_hash_tables) {
+            free(processed_hash_tables);
+        }
+        if (batch_htable_entries) {
+            for (uint32_t d = 0; d < NR_DPUS; d++) {
+                if (batch_htable_entries[d]) {
+                    free(batch_htable_entries[d]);
+                }
+            }
+            free(batch_htable_entries);
         }
 
         PRINT_TOP_RULE;
