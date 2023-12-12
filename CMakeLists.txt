@@ -11,16 +11,11 @@ if(NOT PMEM_MNT_PATH)
   set(PMEM_MNT_PATH "/mnt/pmem0/poseidon")
 endif()
 
-option(USE_PMDK         "Use Intel PMDK"                         OFF)
-option(USE_TX           "Provide Transaction Support"            ON)
-option(USE_LOGGING      "Use undo logging for failure atomicity" ON)
+option(USE_PMDK         "Use Intel PMDK"                         ON)
 option(USE_LLVM         "Use LLVM for query compilation"         ON)
-option(USE_IN_MEMORY    "Use only in-memory storage"             ON)
+option(USE_IN_MEMORY    "Use only in-memory storage"             OFF)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
-option(QOP_RECOVERY     "Enable query recovery on failure"       OFF)
-option(BUILD_LDBC       "Build code for LDBC benchmark"          OFF)
-option(BUILD_GTPC       "Build code for GTPC benchmark"          OFF)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
 option(CSR_DELTA        "Use delta store for updating CSR"       OFF)
 option(USE_UPMEM        "Use UPMEM SDK for PIM"                  ON)
@@ -30,6 +25,7 @@ endif()
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(USE_PMDK OFF)
   set(LLVM_DIR "/opt/homebrew/opt/llvm@12/lib/cmake/llvm")
+  set(ANTLR_EXECUTABLE "/opt/homebrew/Cellar/antlr/4.13.1/antlr-4.13.1-complete.jar")
 endif()
 
 # Don't try to contact github everytime.
@@ -49,9 +45,58 @@ set(CMAKE_MACOSX_RPATH 1)
 # include(code-coverage)
 # add_code_coverage()
 
-# Require C++20
-include(c++-standards)
-cxx_20()
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+include(FetchContent REQUIRED)
+
+#-------------------------------------------------------------------------------
+# ANTLR4 Parser generator
+#
+
+find_package(ANTLR)
+
+if(ANTLR_FOUND)
+# add macros to generate ANTLR Cpp code from grammar
+message("ANTLR found")
+  antlr_target(grammar src/query/parser/poseidon.g4 
+    COMPILE_FLAGS -Xexact-output-dir -visitor
+    OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/src/query/antlr4_generated
+  )
+else()
+  set(ANTLR_grammar_CXX_OUTPUTS 
+    src/query/antlr4_generated/poseidonLexer.h
+    src/query/antlr4_generated/poseidonLexer.cpp
+    src/query/antlr4_generated/poseidonParser.h
+    src/query/antlr4_generated/poseidonParser.cpp)
+endif()
+
+# message("grammar: ${ANTLR_grammar_CXX_OUTPUTS}")
+
+#-------------------------------------------------------------------------------
+# Storage system: PMEM, IN_MEMORY or PFILES
+
+if(USE_PMDK MATCHES ON AND USE_IN_MEMORY MATCHES ON)
+  message(FATAL_ERROR "Cannot use PMDK and IN_MEMORY at the same time.")
+endif()
+
+if(USE_PMDK MATCHES ON AND USE_IN_MEMORY MATCHES OFF)
+  message(STATUS "looking for PMDK")
+  add_definitions( "-DUSE_PMDK" )
+# Include the PMDK module
+include(pmdk)
+endif()
+
+
+if(USE_IN_MEMORY MATCHES ON)
+  add_definitions( "-DUSE_IN_MEMORY" )
+endif()
+
+if(USE_PMDK MATCHES OFF AND USE_IN_MEMORY MATCHES OFF)
+  add_definitions( "-DUSE_PFILES" )
+endif()
+
+#-------------------------------------------------------------------------------
 
 if(USE_UPMEM MATCHES ON)
   add_definitions( "-DUSE_UPMEM" )
@@ -62,21 +107,6 @@ if(USE_UPMEM MATCHES ON)
   set(DPU_LIB "-ldpu")
 endif()
 
-# Include the PMDK module
-if(USE_PMDK MATCHES ON AND USE_IN_MEMORY MATCHES OFF)
-  message(STATUS "looking for PMDK")
-  include(pmdk)
-endif()
-
-# Transaction support
-if(USE_TX MATCHES ON)
-  add_definitions( "-DUSE_TX" )
-endif()
-
-if(USE_LOGGING MATCHES ON)
-  add_definitions( "-DUSE_LOGGING" )
-endif()
-
 if(QOP_PROFILING MATCHES ON)
   add_definitions( "-DQOP_PROFILING" )
 endif()
@@ -85,13 +115,6 @@ if(USE_LLVM MATCHES ON)
   add_definitions( "-DUSE_LLVM" )
 endif()
 
-if(USE_IN_MEMORY MATCHES ON)
-  add_definitions( "-DUSE_IN_MEMORY" )
-endif()
-
-if(QOP_RECOVERY MATCHES ON)
-  add_definitions( "-DQOP_RECOVERY" )
-endif()
 
 if(CSR_DELTA MATCHES ON)
   add_definitions( "-DCSR_DELTA" )
@@ -117,36 +140,30 @@ configure_file(
   ${PROJECT_BINARY_DIR}/generated/config.h
 )
 
-
-
-
 #---------------------------------------------------------------------------
 
 include_directories(${PROJECT_BINARY_DIR}/generated)
 include_directories(${PROJECT_SOURCE_DIR}/src/vec)
 include_directories(${PROJECT_SOURCE_DIR}/src/storage)
 include_directories(${PROJECT_SOURCE_DIR}/src/bp_file)
-include_directories(${PROJECT_SOURCE_DIR}/src/query/ast)
+include_directories(${PROJECT_SOURCE_DIR}/src/query)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/parser)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/codegen)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/utils)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/plan_op)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/interp)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/expr)
-include_directories(${PROJECT_SOURCE_DIR}/src/query/qmain)
-include_directories(${PROJECT_SOURCE_DIR}/src/qop)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
-include_directories(${PROJECT_SOURCE_DIR}/src/ldbc)
-include_directories(${PROJECT_SOURCE_DIR}/src/gtpc)
 include_directories(${PROJECT_SOURCE_DIR}/src/btree)
 include_directories(${PROJECT_SOURCE_DIR}/src/pool)
 include_directories(${PROJECT_SOURCE_DIR}/src/log)
-include_directories(${PROJECT_SOURCE_DIR}/src/qcomp)
-include_directories(${PROJECT_SOURCE_DIR}/src/ql)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics/gunrock)
 include_directories(${PROJECT_SOURCE_DIR}/src/analytics/util)
 include_directories(${PROJECT_SOURCE_DIR}/src/upmem/aggregation/include)
+include_directories(${PROJECT_SOURCE_DIR}/src/antlr4_cpp_runtime/src)
+include_directories(${PROJECT_BINARY_DIR}/antlr4cpp_generated_src)
 if (USE_GUNROCK MATCHES ON)
   include_directories(${CUDA_INCLUDE_DIRS})
 endif()
@@ -189,79 +206,32 @@ set_property(TARGET gunrock PROPERTY IMPORTED_LOCATION "/usr/lib/libgunrock.so")
 message(STATUS "Include library gunrock. Make sure /usr/lib/libgunrock.so exists!")
 endif()
 
-# Catch =================================================================== #
-include(FetchContent REQUIRED)
+# Catch2 =================================================================== #
 FetchContent_Declare(
-  catch
+  Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v2.13.7
+  GIT_TAG        v3.4.0
 )
-# FetchContent_GetProperties(catch)
-if(NOT catch_POPULATED)
-  message(STATUS "Populating catch")
-  FetchContent_Populate(catch)
-  set(CATCH_INCLUDE_DIR ${catch_SOURCE_DIR}/single_include/catch2)
-  add_library(Catch2::Catch IMPORTED INTERFACE)
-  add_library(Catch2 INTERFACE)
-  add_library(Catch2::Test ALIAS Catch2)
-  target_include_directories(Catch2 INTERFACE ${CATCH_INCLUDE_DIR})
-  set_property(TARGET Catch2::Catch PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CATCH_INCLUDE_DIR}")
-endif()
+
+FetchContent_MakeAvailable(Catch2)
 
 # CSVParser =================================================================== #
-include(FetchContent REQUIRED)
  FetchContent_Declare(
   CSV
   GIT_REPOSITORY https://github.com/AriaFallah/csv-parser.git
 #  GIT_TAG        1.2.1
-  )
-FetchContent_GetProperties(CSV)
+)
 
-if(NOT CSV_POPULATED)
-  message(STATUS "Populating CSV")
-  FetchContent_Populate(CSV)
-  set(CSV_INCLUDE_DIR ${csv_SOURCE_DIR})
-  add_library(CSV IMPORTED INTERFACE)
-  set_property(TARGET CSV PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CSV_INCLUDE_DIR}")
-  set(CSV_CXX_STANDARD 11)
-endif()
+FetchContent_MakeAvailable(CSV)
 
 # spdlog =================================================================== #
-
-include(FetchContent REQUIRED)
  FetchContent_Declare(
   spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog.git
-   GIT_TAG        v1.11.0
-  )
-FetchContent_GetProperties(spdlog)
-
-if(NOT spdlog_POPULATED)
-  message(STATUS "Populating spdlog")
-  FetchContent_Populate(spdlog)
-  # find_package(spdlog REQUIRED)
-  set(SPDLOG_BUILD_TESTS OFF CACHE INTERNAL "")
-  add_subdirectory(${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR} EXCLUDE_FROM_ALL)
-  set(SPDLOG_INCLUDE_DIR ${spdlog_SOURCE_DIR}/include)
-endif()
-
-# Google Benchmark ============================================================== #
-
-FetchContent_Declare(
-  benchmark
-  GIT_REPOSITORY https://github.com/google/benchmark.git
-  GIT_TAG        v1.6.1
-  GIT_SHALLOW    TRUE
+   GIT_TAG        v1.12.0
 )
-FetchContent_GetProperties(benchmark)
-if(NOT benchmark_POPULATED)
-  message(STATUS "Populating benchmark (google)")
-  set(BENCHMARK_ENABLE_TESTING OFF CACHE INTERNAL "")
-  set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE INTERNAL "")
-  FetchContent_Populate(benchmark)
-  add_subdirectory(${benchmark_SOURCE_DIR} ${benchmark_BINARY_DIR} EXCLUDE_FROM_ALL)
-  set(BENCHMARK_INCLUDE_DIR ${benchmark_SOURCE_DIR}/include)
-endif()
+
+FetchContent_MakeAvailable(spdlog)
 
 if(USE_LLVM MATCHES ON)
 # LLVM ============================================================== #
@@ -278,40 +248,35 @@ execute_process(COMMAND llvm-config --libs all
 endif() 
 
 # PEGTL =================================================================== #
-include(FetchContent REQUIRED)
- FetchContent_Declare(
-  pegtl
-  GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
-  GIT_TAG       3.2.2
-  )
-FetchContent_GetProperties(pegtl)
-if(NOT pegtl_POPULATED)
-  message(STATUS "Populating PEGTL")
-  FetchContent_Populate(pegtl)
-  set(PEGTL_INCLUDE_DIR ${pegtl_SOURCE_DIR}/include)
-  add_library(PEGTL IMPORTED INTERFACE)
-  set_property(TARGET PEGTL PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${PEGTL_INCLUDE_DIR}")
-endif()
+# FetchContent_Declare(
+#  pegtl
+#  GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
+#  GIT_TAG       3.2.2
+#  )
+#
+#FetchContent_MakeAvailable(pegtl)
+
 
 # linenoise =================================================================== #
-include(FetchContent REQUIRED)
  FetchContent_Declare(
   linenoise
   GIT_REPOSITORY https://github.com/yhirose/cpp-linenoise.git
  #  GIT_TAG        1.2.1
   )
-FetchContent_GetProperties(linenoise)
 
-if(NOT linenoise_POPULATED)
-  message(STATUS "Populating linenoise")
-  FetchContent_Populate(linenoise)
-  set(LINENOISE_INCLUDE_DIR ${linenoise_SOURCE_DIR})
-  add_library(LINENOISE IMPORTED INTERFACE)
-  set_property(TARGET LINENOISE PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${LINENOISE_INCLUDE_DIR}")
-endif()
+FetchContent_MakeAvailable(linenoise)
+
+# fmt =================================================================== #
+set (BUILD_SHARED_LIBS ON)
+FetchContent_Declare(
+  fmt
+  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+  GIT_TAG        9.1.0
+)
+
+FetchContent_MakeAvailable(fmt)
 
 # pybind11 =================================================================== #
-include(FetchContent REQUIRED)
  FetchContent_Declare(
   pybind11
   GIT_REPOSITORY https://github.com/pybind/pybind11.git
@@ -337,38 +302,9 @@ else()
   set(DYLIB_LIBRARY "")
 endif()
 
-###########################
-# Python Interface
-###########################
-#
-find_package(Python3 COMPONENTS Interpreter)
-
 #---------------------------------------------------------------------------
 
-if (BUILD_PYTHON)
-message(STATUS "PYTHON")
-find_package (Python3 COMPONENTS Interpreter Development)
-#  find_package(PythonInterp)
-#  find_package(PythonLibs)
-  if (Python3_Development_FOUND)
-    message(STATUS "Python Version ${PYTHON_VERSION_MAJOR} found - building the Python API.")
-    message("PythonInclude ${Python3_INCLUDE_DIRS}")
-    message("PythonLibs ${Python3_LIBRARY_DIRS}")
 
-    include_directories(${Python3_INCLUDE_DIRS})
-    include_directories(${pybind11_INCLUDE_DIR})
-    link_directories(${PYTHON_LIBDIR})
-
-    set(PYTHON_SOURCES
-      src/py/py_poseidon.cpp
-    )
-  else()
-    set (PYTHON_SOURCES "")
-  endif(Python3_Development_FOUND)
-else ()
-        message(STATUS "Don't build python interface")
-        set (PYTHON_SOURCES "")
-endif()
 
 ######################
 # Boost C++ library
@@ -395,11 +331,41 @@ endif()
 
 #-----------------------------------------------------------------------------------------
 
-include_directories("${PEGTL_INCLUDE_DIR}")
-include_directories("${CSV_INCLUDE_DIR}")
-include_directories("${SPDLOG_INCLUDE_DIR}")
+# include_directories("${pegtl_SOURCE_DIR}/include")
+include_directories("${csv_SOURCE_DIR}")
+include_directories("${spdlog_SOURCE_DIR}/include")
 include_directories("${PROJECT_SOURCE_DIR}/src")
-include_directories("${LINENOISE_INCLUDE_DIR}")
+include_directories("${linenoise_SOURCE_DIR}")
+include_directories("${fmt_SOURCE_DIR}/include")
+
+###########################
+# Python Interface
+###########################
+#
+find_package(Python3 COMPONENTS Interpreter)
+
+if (BUILD_PYTHON)
+message(STATUS "PYTHON")
+find_package (Python3 COMPONENTS Interpreter Development)
+  if (Python3_Development_FOUND)
+    message(STATUS "Python Version ${PYTHON_VERSION_MAJOR} found - building the Python API.")
+    message("PythonInclude ${Python3_INCLUDE_DIRS}")
+    message("PythonLibs ${Python3_LIBRARY_DIRS}")
+
+    include_directories(${Python3_INCLUDE_DIRS})
+    include_directories(${pybind11_INCLUDE_DIR})
+    link_directories(${PYTHON_LIBDIR})
+
+    set(PYTHON_SOURCES
+      src/py/py_poseidon.cpp
+    )
+  else()
+    set (PYTHON_SOURCES "")
+  endif(Python3_Development_FOUND)
+else ()
+        message(STATUS "Don't build python interface")
+        set (PYTHON_SOURCES "")
+endif()
 
 #-----------------------------------------------------------------------------------------
 
@@ -415,10 +381,8 @@ endif()
 
 if(USE_LLVM MATCHES ON)
   set(codegen_operators_src
-    src/query/codegen/operators/append.cpp
     src/query/codegen/operators/aggregation.cpp
     src/query/codegen/operators/collect.cpp
-    src/query/codegen/operators/connected.cpp
     src/query/codegen/operators/create.cpp
     src/query/codegen/operators/expand.cpp
     src/query/codegen/operators/filter.cpp
@@ -453,12 +417,6 @@ else()
   set(llvm_src "")
 endif()
 
-if(QOP_RECOVERY MATCHES ON)
-  set(qoprec_src src/storage/recovery.cpp)
-else()
-  set(qoprec_src "")
-endif()
-
 if(CSR_DELTA MATCHES ON)
   set(csr_delta_src src/storage/csr_delta.cpp)
 else()
@@ -468,12 +426,11 @@ endif()
 set(src_files 
   src/dict/string_pool.cpp 
   src/dict/paged_string_pool.cpp 
-  src/dict/h2table.cpp
+  src/dict/code_table.cpp
   src/dict/dict.cpp
   src/storage/nodes.cpp
   src/storage/relationships.cpp
   src/storage/properties.cpp
-  ${qoprec_src}
   src/storage/graph_db.cpp
   src/storage/graph_db_import.cpp
   src/storage/graph_db_index.cpp
@@ -483,34 +440,39 @@ set(src_files
   src/bp_file/bufferpool.cpp
   src/btree/index_map.cpp
   src/query/plan_op/qop.cpp
+  src/query/plan_op/qop_builtins.cpp
+  src/query/plan_op/qop_scans.cpp
+  src/query/plan_op/qop_relationships.cpp
+  src/query/plan_op/qop_aggregates.cpp
+  src/query/plan_op/qop_analytics.cpp
+  src/query/plan_op/qop_algorithm.cpp
+  src/query/plan_op/qop_updates.cpp
+  src/query/plan_op/qop_joins.cpp
+  src/query/plan_op/query_batch.cpp
+  src/query/plan_op/query_pipeline.cpp
+  src/query/plan_op/query_builder.cpp
+  src/query/expr/binary_expression.cpp
   src/query/expr/expression.cpp
   src/query/interp/expr_interpreter.cpp
   src/query/interp/qinterp.cpp
   src/query/interp/query_ctx.cpp
-  src/query/plan_op/update.cpp
-  src/query/plan_op/join.cpp
-  src/query/plan_op/query_set.cpp
-  src/query/qmain/qparser.cpp
-  src/query/qmain/qplanner.cpp
-  src/query/qmain/qproc.cpp
-  src/qop/query.cpp
   src/query/utils/query_printer.cpp
   src/query/utils/thread_pool.cpp
   src/query/utils/profiling.cpp
   src/query/utils/qresult_iterator.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
-  src/log/pmlog.cpp
+  src/log/pm_ulog.cpp
+  src/log/walog.cpp
   ${llvm_src}
-#  src/ql/queryc_qcomp.cpp
-#  src/ql/queryc_qex.cpp
-#  src/ql/queryc.cpp
-  src/query/ast/ast.cpp
+  src/query/parser/query_planner.cpp
+  src/query/parser/query_proc.cpp
   ${csr_delta_src}
   ${gunrock_analysis}
   src/analytics/bfs.cpp
   src/analytics/shortest_path.cpp
   src/analytics/graph_db_analytics.cpp
+  ${ANTLR_grammar_CXX_OUTPUTS}
 )
 
 if(USE_GUNROCK MATCHES ON)
@@ -551,93 +513,28 @@ endif()
 
 target_link_libraries(poseidon_core
   ${LLVM_LIB}
+  antlr4_cpp_runtime
+#  antlr4_shared
   Boost::filesystem
   Boost::date_time
   Boost::thread
   spdlog::spdlog_header_only
+  fmt::fmt
   ${gunrock_linkLib}
   ${CUDA_LIB}
 )
 
+
+#add_custom_command(TARGET poseidon_core
+#                   POST_BUILD
+#                   COMMAND ${CMAKE_COMMAND}
+#                           -E copy ${ANTLR4_RUNTIME_LIBRARIES} .
+#                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+
 target_include_directories( ${PROJECT_NAME}
     PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
-
-#-------------------------------------------------------------------
-# Build library for LDBC benchmark
-#
-if(BUILD_LDBC MATCHES ON)
-
-set(ldbc_files
-  src/ldbc/ldbc_graphalytics.cpp
-  src/ldbc/ldbc_bi.cpp
-  src/ldbc/ldbc_is.cpp
-  src/ldbc/ldbc_updates.cpp
-  src/ldbc/ldbc_loader.cpp
-  src/ldbc/ldbc_deletes.cpp
-  src/ldbc/qps/ldbc_is_qp2.cpp
-  src/ldbc/qps/ldbc_is_qp3.cpp
-  src/ldbc/qps/ldbc_is_qp4.cpp
-  src/ldbc/qps/ldbc_is_qp5.cpp
-)
-
-# Using OBJECT to avoid to build object files multiple times due to inclusion
-# in different libraries.
-# macOS doesn't like SHARED, Linux needs it
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-add_library(poseidon_ldbc_obj OBJECT ${ldbc_files})
-else()
-add_library(poseidon_ldbc_obj OBJECT SHARED ${ldbc_files})
-endif()
-
-# Poseidon LDBC library for building C++ applications
-add_library(poseidon_ldbc SHARED
-  $<TARGET_OBJECTS:poseidon_ldbc_obj>
-)
-
-target_link_libraries(poseidon_ldbc
-  poseidon_core
-)
-
-set(POSEIDON_LDBC "poseidon_ldbc")
-else()
-set(POSEIDON_LDBC "")
-
-endif()
-
-#-------------------------------------------------------------------
-# Build library for GTPC benchmark
-#
-if(BUILD_GTPC MATCHES ON)
-
-set(gtpc_files
-  src/gtpc/gtpc_loader.cpp
-  src/gtpc/gtpc_olap.cpp
-  src/gtpc/gtpc_oltp.cpp
-)
-
-# Using OBJECT to avoid to build object files multiple times due to inclusion
-# in different libraries.
-# macOS doesn't like SHARED, Linux needs it
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-add_library(poseidon_gtpc_obj OBJECT ${gtpc_files})
-else()
-add_library(poseidon_gtpc_obj OBJECT SHARED ${gtpc_files})
-endif()
-
-# Poseidon GTPC library for building C++ applications
-add_library(poseidon_gtpc SHARED
-  $<TARGET_OBJECTS:poseidon_gtpc_obj>
-)
-
-target_link_libraries(poseidon_gtpc
-  poseidon_core
-)
-set(POSEIDON_GTPC "poseidon_gtpc")
-else()
-set(POSEIDON_GTPC "")
-endif()
-
 
 if (BUILD_PYTHON)
 message("Build python ${PYTHON_SOURCES}")
@@ -649,129 +546,49 @@ add_library(poseidon SHARED
 
 target_link_libraries(poseidon
   ${LLVM_LIB}
+  antlr4_cpp_runtime
+  # antlr4_shared
   Boost::filesystem
   Boost::date_time
   Boost::thread
   ${Python3_LIBRARIES}
   ${PMDK_LIBRARIES}
   spdlog::spdlog_header_only
+  fmt::fmt
 )
 
 set_target_properties(poseidon PROPERTIES PREFIX "" SUFFIX ".so")
 endif()
 
 #-----------------------------------------------------------------------------------------
-#
-# Some programs for LDBC benchmarking.
-#
 
-if(BUILD_LDBC MATCHES ON)
-# The program for executing BI queries.
-#
-add_executable(run_ldbc_bi
-  src/cmds/ldbc/run_ldbc_bi.cpp
-)
-
-target_link_libraries(run_ldbc_bi
-  ${POSEIDON_LDBC}
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-
-# The program for executing short read queries.
-#
-add_executable(run_ldbc_is
-  src/cmds/ldbc/run_ldbc_is.cpp
- )
-
-target_link_libraries(run_ldbc_is
-  ${POSEIDON_LDBC}
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-
-# The program for executing interactive update queries.
-#
-add_executable(run_ldbc_updates
-  src/cmds/ldbc/run_ldbc_updates.cpp
- )
-
-target_link_libraries(run_ldbc_updates
-  ${POSEIDON_LDBC}
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-
-if(USE_LLVM MATCHES ON)
-# The program for executing jitted short read queries.
-#
-add_executable(run_ldbc_jit_reads
-  src/ldbc/ldbc_jit_reads.cpp
- )
-
-target_link_libraries(run_ldbc_jit_reads
-  ${POSEIDON_LDBC}
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-
-# The program for executing jitted bi queries.
-#
-add_executable(run_ldbc_jit_bi
-  src/ldbc/ldbc_jit_bi.cpp
- )
-
-target_link_libraries(run_ldbc_jit_bi
-  ${POSEIDON_LDBC}
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-
-endif()
-
-endif()
-#-----------------------------------------------------------------------------------------
-#
-# Some programs for GTPC benchmarking.
-#
-
-if(BUILD_GTPC MATCHES ON)
-# The program for executing gtpc queries.
-#
-add_executable(run_gtpc
-  src/cmds/gtpc/run_gtpc.cpp
- )
-
-target_link_libraries(run_gtpc
-  ${POSEIDON_GTPC}
-  poseidon_core
-  ${PMDK_LIBRARIES}
-  Boost::program_options
-)
-endif()
-
+add_subdirectory(src/antlr4_cpp_runtime)
 
 #-----------------------------------------------------------------------------------------
 
-add_executable(qlc
-  src/cmds/qlc.cpp
+add_executable(pcli
+  src/cmds/pcli.cpp
  )
 
- target_link_libraries(qlc
- poseidon_core
- ${PMDK_LIBRARIES}
- Boost::program_options
+ target_link_libraries(pcli
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+)
+
+add_executable(wal_dump
+  src/cmds/wal_dump.cpp
+)
+
+target_link_libraries(wal_dump
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
 )
 
 add_executable(csv_loader
   src/cmds/csv_loader.cpp
  )
-
  target_link_libraries(csv_loader
  poseidon_core
  ${PMDK_LIBRARIES}
@@ -799,20 +616,6 @@ add_executable(dpu_host
  ${DPU_LIB}
 )
 endif()
-#-----------------------------------------------------------------------------------------
-
-add_library(ldbc_udf SHARED
-  queries/ldbc/is/is_udf.cpp
-)
-
-target_link_libraries(ldbc_udf
-  ${LLVM_LIB}
-  Boost::filesystem
-  Boost::date_time
-  Boost::thread
-  poseidon_core
-  ${PMDK_LIBRARIES}
-)
 
 #-----------------------------------------------------------------------------------------
 #
@@ -820,12 +623,6 @@ target_link_libraries(ldbc_udf
 #
 enable_testing()
 add_subdirectory(test)
-
-#-----------------------------------------------------------------------------------------
-#
-# Micro-benchmarking using Google Benchmark
-#
-add_subdirectory(bench)
 
 #-----------------------------------------------------------------------------------------
 

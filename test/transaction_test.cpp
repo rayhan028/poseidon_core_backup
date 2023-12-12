@@ -24,7 +24,7 @@
 #include <iostream>
 #include <thread>
 
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include "config.h"
 #include "defs.hpp"
 #include "graph_db.hpp"
@@ -71,8 +71,8 @@ TEST_CASE("Test transaction execution"  "[transaction]") {
 
   gdb->run_transaction([&]() {
     gdb->add_node("Actor",
-		                {{"name", boost::any(std::string("Mark Wahlberg"))},
-		                  {"age", boost::any(48)}});
+		                {{"name", std::any(std::string("Mark Wahlberg"))},
+		                  {"age", std::any(48)}});
     return true;
   });
 
@@ -89,8 +89,8 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 	  // Just create a node
 		gdb->begin_transaction();
 		nid = gdb->add_node("Actor",
-		                        {{"name", boost::any(std::string("Mark Wahlberg"))},
-		                         {"age", boost::any(48)}});
+		                        {{"name", std::any(std::string("Mark Wahlberg"))},
+		                         {"age", std::any(48)}});
 		gdb->commit_transaction();
 
 	/*
@@ -123,7 +123,7 @@ TEST_CASE("Test concurrency: update during read"  "[transaction]") {
 			auto &n = gdb->node_by_id(nid);
 			gdb->update_node(n,  //update
 				   {
-				 { "age", boost::any(52)},
+				 { "age", std::any(52)},
 				  },
 				   "Updated Actor");
 
@@ -151,8 +151,8 @@ TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {
 	  // Just create a node
 		gdb->begin_transaction();
 		nid = gdb->add_node("Actor",
-		                        {{"name", boost::any(std::string("Mark Wahlberg"))},
-		                         {"age", boost::any(48)}});
+		                        {{"name", std::any(std::string("Mark Wahlberg"))},
+		                         {"age", std::any(48)}});
 		gdb->commit_transaction();
 
 	/*
@@ -183,7 +183,7 @@ TEST_CASE("Test concurrency: update + commit during read"  "[transaction]") {
 			auto &n = gdb->node_by_id(nid);
 			gdb->update_node(n,  //update
 				   {
-				 { "age", boost::any(52)},
+				 { "age", std::any(52)},
 				  },
 				   "Updated Actor");
 			gdb->commit_transaction();
@@ -213,8 +213,8 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
   // Just create a node
 	gdb->begin_transaction(); 
 	nid = gdb->add_node("Actor",
-	                        {{"name", boost::any(std::string("Mark Wahlberg"))},
-	                         {"age", boost::any(48)}});
+	                        {{"name", std::any(std::string("Mark Wahlberg"))},
+	                         {"age", std::any(48)}});
   gdb->commit_transaction();
 
  /*
@@ -245,7 +245,7 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
 		gdb->begin_transaction();
 		auto &n = gdb->node_by_id(nid);
 		gdb->update_node(n,  
-			   {{ "age", boost::any(52)}}, "Updated Actor");
+			   {{ "age", std::any(52)}}, "Updated Actor");
 
 		b2.notify(); // Inform txn-2 that update is done but not yet committed or aborted
 	  b3.wait(); // wait until Txn-2 has accessed a dirty version
@@ -276,8 +276,8 @@ TEST_CASE("Test two concurrent transactions trying to create nodes"  "[transacti
   auto t1 = std::thread([&]() {
 	    gdb->begin_transaction();
 	    nid1 = gdb->add_node("New Actor",
-	                        {{"name", boost::any(std::string("Mark Wahlberg"))},
-	                         {"age", boost::any(48)}});
+	                        {{"name", std::any(std::string("Mark Wahlberg"))},
+	                         {"age", std::any(48)}});
 	                         
 	    gdb->commit_transaction();
 
@@ -290,8 +290,8 @@ TEST_CASE("Test two concurrent transactions trying to create nodes"  "[transacti
 	  auto t2 = std::thread([&]() {
 		    gdb->begin_transaction();
 		    nid2 = gdb->add_node("Actor",
-		                        {{"name", boost::any(std::string("Peter"))},
-		                         {"age", boost::any(22)}});
+		                        {{"name", std::any(std::string("Peter"))},
+		                         {"age", std::any(22)}});
 		    gdb->commit_transaction();
 
  });
@@ -364,8 +364,8 @@ TEST_CASE("Checking that a node update is undone after abort", "[transaction]") 
     // create node
     gdb->begin_transaction();
     nid = gdb->add_node("Actor",
-                        {{"name", boost::any(std::string("Mark Wahlberg"))},
-                         {"age", boost::any(48)}});
+                        {{"name", std::any(std::string("Mark Wahlberg"))},
+                         {"age", std::any(48)}});
     gdb->commit_transaction();
   }
 
@@ -376,7 +376,7 @@ TEST_CASE("Checking that a node update is undone after abort", "[transaction]") 
     gdb->update_node(n,
                      {{
                          "age",
-                         boost::any(52),
+                         std::any(52),
                      }},
                      "Updated Actor");
     // but abort
@@ -408,7 +408,7 @@ TEST_CASE("Checking that a relationship update is undone after abort", "[transac
     gdb->begin_transaction();
     auto m = gdb->add_node("Movie", {});
     auto a = gdb->add_node("Actor", {});
-    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
+    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", std::any(std::string("Killer"))}});
 
     gdb->commit_transaction();
   }
@@ -420,7 +420,7 @@ TEST_CASE("Checking that a relationship update is undone after abort", "[transac
     gdb->update_relationship(r,
                      {{
                          "role",
-                         boost::any(std::string("Cop")),
+                         std::any(std::string("Cop")),
                      }},
                      ":PLAYED_AS");
     // but abort
@@ -479,7 +479,7 @@ TEST_CASE("Checking that a relationship insert is undone after abort", "[transac
   });
 
   ctx.run_transaction([&]() {
-    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
+    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", std::any(std::string("Killer"))}});
     return false;
   });
 
@@ -579,7 +579,7 @@ TEST_CASE("Checking that a newly inserted relationship is not visible in another
    */
   auto t1 = std::thread([&]() {
     gdb->begin_transaction();
-    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
+    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", std::any(std::string("Killer"))}});
 
     // inform thread #2 that we have created a new node
     b1.notify();
@@ -658,7 +658,7 @@ TEST_CASE("Checking that a newly inserted relationship becomes visible after com
   relationship::id_t rid = 0;
   {
     gdb->begin_transaction();
-    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", boost::any(std::string("Killer"))}});
+    rid = gdb->add_relationship(a, m, ":PLAYED_IN", {{"role", std::any(std::string("Killer"))}});
     gdb->commit_transaction();
   }
 
@@ -691,8 +691,8 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
   {
     gdb->begin_transaction();
     nid = gdb->add_node("Actor",
-                        {{"name", boost::any(std::string("Mark Wahlberg"))},
-                         {"age", boost::any(48)}});
+                        {{"name", std::any(std::string("Mark Wahlberg"))},
+                         {"age", std::any(48)}});
     gdb->commit_transaction();
   }
   /*
@@ -729,10 +729,10 @@ TEST_CASE("Checking that a read transaction reads the correct version of a "
     auto &n = gdb->node_by_id(nid);
     gdb->update_node(
         n,
-        {{"name", boost::any(std::string("Mark Wahlberg updated"))},
+        {{"name", std::any(std::string("Mark Wahlberg updated"))},
          {
              "age",
-             boost::any(49),
+             std::any(49),
          }},
         "Updated Actor");
 
@@ -775,8 +775,8 @@ barrier b1, b2, b3;
 		gdb->begin_transaction();
 		// spdlog::info("BOT #1: {}", short_ts(tx->xid()));
     nid = gdb->add_node("Actor",
-                        {{"name", boost::any(std::string("Mark Wahlberg"))},
-                         {"age", boost::any(48)}});
+                        {{"name", std::any(std::string("Mark Wahlberg"))},
+                         {"age", std::any(48)}});
    //  spdlog::info("updated #1");
 		gdb->commit_transaction();
 	}
@@ -792,7 +792,7 @@ barrier b1, b2, b3;
     	gdb->update_node(n,
                      {{
                          "age",
-                         boost::any(52),
+                         std::any(52),
                      }},
                      "Updated Actor");
 		b2.notify();
@@ -812,7 +812,7 @@ barrier b1, b2, b3;
     	REQUIRE_THROWS_AS(gdb->update_node(n,
                      {{
                          "age",
-                         boost::any(55),
+                         std::any(55),
                      }}), transaction_abort);
 		b3.notify();
 		gdb->abort_transaction();
@@ -835,8 +835,8 @@ TEST_CASE("Checking basic transaction level GC", "[transaction][gc]") {
   // create a new node
 		gdb->begin_transaction();
     	nid = gdb->add_node("Actor",
-                        {{"name", boost::any(std::string("Mark Wahlberg"))},
-                         {"age", boost::any(48)}});
+                        {{"name", std::any(std::string("Mark Wahlberg"))},
+                         {"age", std::any(48)}});
 
 		gdb->commit_transaction();
 	}
@@ -863,8 +863,8 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
   // create a new node
 		gdb->begin_transaction();
     	nid = gdb->add_node("Actor",
-                        {{"name", boost::any(std::string("Mark Wahlberg"))},
-                         {"age", boost::any(48)}});
+                        {{"name", std::any(std::string("Mark Wahlberg"))},
+                         {"age", std::any(48)}});
 
 		gdb->commit_transaction();
 	}
@@ -883,7 +883,7 @@ TEST_CASE("Checking GC for concurrent transactions", "[transaction][gc]") {
 		gdb->update_node(n,
                      {{
                          "age",
-                         boost::any(55),
+                         std::any(55),
                      }}, "Updated Actor");
     // inform tx #2 that we have updated the object
 		b2.notify();
@@ -956,12 +956,12 @@ TEST_CASE("Checking that deleting a node works", "[transaction]") {
   {
     // add a few nodes
     gdb->begin_transaction();
-      gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
-                                  {"age", boost::any(42)}});
-     nid = gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
-                                  {"age", boost::any(36)}});
-      gdb->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
-                                  {"age", boost::any(58)}});
+      gdb->add_node(":Person", {{"name", std::any(std::string("John"))},
+                                  {"age", std::any(42)}});
+     nid = gdb->add_node(":Person", {{"name", std::any(std::string("Ann"))},
+                                  {"age", std::any(36)}});
+      gdb->add_node(":Person", {{"name", std::any(std::string("Pete"))},
+                                  {"age", std::any(58)}});
 
     gdb->commit_transaction();
   }
@@ -991,13 +991,13 @@ TEST_CASE("Checking that deleting a node works also within a transaction", "[tra
   {
     // add a few nodes
     gdb->begin_transaction();
-    gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
-                                  {"age", boost::any(42)}});
+    gdb->add_node(":Person", {{"name", std::any(std::string("John"))},
+                                  {"age", std::any(42)}});
     nid =
-      gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
-                                  {"age", boost::any(36)}});
-    gdb->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
-                                  {"age", boost::any(58)}});
+      gdb->add_node(":Person", {{"name", std::any(std::string("Ann"))},
+                                  {"age", std::any(36)}});
+    gdb->add_node(":Person", {{"name", std::any(std::string("Pete"))},
+                                  {"age", std::any(58)}});
 
     gdb->commit_transaction();
   }
@@ -1022,12 +1022,12 @@ TEST_CASE("Checking that detach delete a node works", "[transaction]") {
   {
     // add a few nodes
     gdb->begin_transaction();
-      a = gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
-                                  {"age", boost::any(42)}});
-      b = gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
-                                  {"age", boost::any(36)}});
-      c = gdb->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
-                                  {"age", boost::any(58)}});
+      a = gdb->add_node(":Person", {{"name", std::any(std::string("John"))},
+                                  {"age", std::any(42)}});
+      b = gdb->add_node(":Person", {{"name", std::any(std::string("Ann"))},
+                                  {"age", std::any(36)}});
+      c = gdb->add_node(":Person", {{"name", std::any(std::string("Pete"))},
+                                  {"age", std::any(58)}});
       d = gdb->add_relationship(a, b, ":knows", {});
       e = gdb->add_relationship(a, c, ":knows", {});
 
@@ -1061,12 +1061,12 @@ TEST_CASE("Checking that detach delete also works within a transaction", "[trans
   {
     // add a few nodes
     gdb->begin_transaction();
-      a = gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
-                                  {"age", boost::any(42)}});
-      b = gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
-                                  {"age", boost::any(36)}});
-      c = gdb->add_node(":Person", {{"name", boost::any(std::string("Pete"))},
-                                  {"age", boost::any(58)}});
+      a = gdb->add_node(":Person", {{"name", std::any(std::string("John"))},
+                                  {"age", std::any(42)}});
+      b = gdb->add_node(":Person", {{"name", std::any(std::string("Ann"))},
+                                  {"age", std::any(36)}});
+      c = gdb->add_node(":Person", {{"name", std::any(std::string("Pete"))},
+                                  {"age", std::any(58)}});
       d = gdb->add_relationship(a, b, ":knows", {});
       e = gdb->add_relationship(a, c, ":knows", {});
 
@@ -1093,11 +1093,11 @@ TEST_CASE("Checking that aborting a delete transaction works", "[transaction]") 
   node::id_t nid;
   {
     gdb->begin_transaction();
-    gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
-                                  {"age", boost::any(42)}});
+    gdb->add_node(":Person", {{"name", std::any(std::string("John"))},
+                                  {"age", std::any(42)}});
     nid =
-      gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
-                                  {"age", boost::any(36)}});
+      gdb->add_node(":Person", {{"name", std::any(std::string("Ann"))},
+                                  {"age", std::any(36)}});
     gdb->commit_transaction();
   }
   {
@@ -1125,11 +1125,11 @@ TEST_CASE("Checking that a delete transaction does not interfer with another tra
 
  {
     gdb->begin_transaction();
-    gdb->add_node(":Person", {{"name", boost::any(std::string("John"))},
-                                  {"age", boost::any(42)}});
+    gdb->add_node(":Person", {{"name", std::any(std::string("John"))},
+                                  {"age", std::any(42)}});
     nid =
-      gdb->add_node(":Person", {{"name", boost::any(std::string("Ann"))},
-                                  {"age", boost::any(36)}});
+      gdb->add_node(":Person", {{"name", std::any(std::string("Ann"))},
+                                  {"age", std::any(36)}});
     gdb->commit_transaction();
   }
 
@@ -1185,8 +1185,8 @@ TEST_CASE("Checking two concurrent transactions trying to create node", "[transa
     gdb->begin_transaction();
 
     nid1 = gdb->add_node("New Actor",
-                        {{"name", boost::any(std::string("Mark Wahlberg"))},
-                         {"age", boost::any(48)}});
+                        {{"name", std::any(std::string("Mark Wahlberg"))},
+                         {"age", std::any(48)}});
 
     gdb->commit_transaction();
   });
@@ -1195,8 +1195,8 @@ TEST_CASE("Checking two concurrent transactions trying to create node", "[transa
     gdb->begin_transaction();
 
 	  nid2 = gdb->add_node("Actor",
-	                        {{"name", boost::any(std::string("Peter"))},
-	                         {"age", boost::any(22)}});
+	                        {{"name", std::any(std::string("Peter"))},
+	                         {"age", std::any(22)}});
 
 	  gdb->commit_transaction();
   });

@@ -20,7 +20,7 @@
 #ifndef graph_db_hpp_
 #define graph_db_hpp_
 
-#include <boost/any.hpp>
+#include <any>
 #include <map>
 #include <mutex>
 #include <string>
@@ -30,21 +30,22 @@
 #include "nodes.hpp"
 #include "properties.hpp"
 #include "relationships.hpp"
-#ifdef QOP_RECOVERY
-#include <libpmemobj++/container/concurrent_hash_map.hpp>
-#include "recovery.hpp"
-#endif
+#include "vec.hpp"
 #include "transaction.hpp"
 #include "btree.hpp"
 #include "index_map.hpp"
-#include "pmlog.hpp"
+#ifdef USE_PMDK
+#include "pm_ulog.hpp"
+#elif defined(USE_PFILES)
+#include "walog.hpp"
+#endif
 #include "gc.hpp"
 #include "robin_hood.h"
 #include "bufferpool.hpp"
 
 #include "analytics.hpp"
 
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
 #include "csr_delta.hpp"
 #endif
 
@@ -64,12 +65,6 @@ public:
 
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;
-
-#ifdef QOP_RECOVERY
-  using tuple_consumer_func = std::function<void(const qr_tuple &, int)>;
-
-  using rec_map_t = pmem::obj::concurrent_hash_map<p<int>, p<int>>;
-#endif
 
   static void destroy(p_ptr<graph_db> gp);
 
@@ -127,7 +122,7 @@ public:
 
   node::id_t import_typed_node(dcode_t label, const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist, 
-                              const std::vector<boost::any>& values);
+                              const std::vector<std::any>& values);
 
   node::id_t import_typed_node(dcode_t label, const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist,
@@ -165,7 +160,7 @@ public:
                                          dcode_t label,
                                          const std::vector<dcode_t> &keys,
                                          const std::vector<p_item::p_typecode>& typelist,
-                                         const std::vector<boost::any>& values);
+                                         const std::vector<std::any>& values);
 
   /* --------------- node/relationship information --------------- */
 
@@ -341,7 +336,7 @@ public:
   /**
    * Perform recovery using the undo log.
    */ 
-  void apply_undo_log();
+  void apply_log();
 
   /* ---------------- index management ---------------- */
   
@@ -376,43 +371,6 @@ public:
 
   void index_lookup(std::list<index_id> &idxs, uint64_t key, node_consumer_func consumer);
 
-#ifdef QOP_RECOVERY
-  /**
-   * Return the checkpoints for each touched chunked from the last query
-   */
-  const p_ptr<rec_map_t>& get_query_checkpoints() { return recovery_res_; }
-
-  /**
-   * Stores the tuple of a query into intermediate storage
-   */
-  std::vector<std::size_t> store_query_result(qr_tuple &qr, std::size_t chunk);
-
-  /**
-   * Stores the checkpoint of a chunk into intermediate storage
-   */
-  void store_iter(std::pair<std::size_t, std::size_t> iter_pos);
-
-  /**
-   * Recovers the stored intermediate results into a given list
-   */
-  void restore_results(std::list<qr_tuple> &result_list);
-
-  /**
-   * Returns the checkpoint positions to continue a failed query
-   */
-  std::map<std::size_t, std::size_t> restore_positions();
-
-  const p_ptr<recovery_list>& get_recovery_results() { return recovery_results_; } 
-
-  intermediate_result &ir_by_id(offset_t id);
-  void tuple_by_ids(std::vector<offset_t> ids, qr_tuple &fwd_tpl);
-  int get_stored_results();
-
-  void clear_result_storage();
-  void recover_scan_parallel(tuple_consumer_func consumer);
-  const p_ptr<recovery_list>& get_rec_list() { return recovery_results_; }
-#endif
-
 /* ---------------- Analytics support ---------------- */
 
   /**
@@ -437,7 +395,7 @@ public:
    */
   void parallel_host_csr_build(csr_arrays &csr, rship_weight weight_func, bool bidirectional = false);
 
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
   /**
    * Updates the existing CSR using the appropriate deltas in the CSR delta store, such that it 
    * represents the latest snapshot of the graph data.
@@ -446,7 +404,7 @@ public:
 #endif
 #endif
 
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
   /**
    * Returns a reference to the CSR delta store.
    */
@@ -462,7 +420,7 @@ public:
   void poseidon_to_coo(edge_coords* edge_coordinates, float* edge_values, rship_weight weight_func, bool bidirectional = false);
 
   /**
-   * 
+   * Writes all modified pages from the bufferpool back to disk.
    */
   void flush();
 
@@ -555,6 +513,12 @@ private:
    */
   void restore_indexes(const std::string &pool_path, const std::string &prefix);
 
+#ifdef USE_PFILES
+  void apply_redo(wa_log& log, wa_log::log_iter& li);
+
+  void apply_undo(wa_log& log, xid_t txid, offset_t pos);
+#endif
+
   std::string database_name_; //
   bufferpool bpool_; //
   std::shared_ptr<paged_file> node_file_, rship_file_, nprops_file_, rprops_file_; //
@@ -568,6 +532,7 @@ private:
       node_properties_;   // the list of all properties of nodes 
   p_ptr<property_list<nvm_chunked_vec> >
       rship_properties_;   // the list of all properties of relationships
+  p_ptr<pm_ulog> ulog_; // the undo log 
 #elif defined(USE_IN_MEMORY)
   p_ptr<node_list<mem_chunked_vec> > nodes_; // the list of all nodes of the graph
   p_ptr<relationship_list<mem_chunked_vec> > rships_; // the list of all relationships of the graph
@@ -575,24 +540,20 @@ private:
       node_properties_;   // the list of all properties of nodes 
   p_ptr<property_list<mem_chunked_vec> >
       rship_properties_;   // the list of all properties of relationships
-#else
+#else // USE_PFILES
   p_ptr<node_list<buffered_vec> > nodes_; // the list of all nodes of the graph
   p_ptr<relationship_list<buffered_vec> > rships_; // the list of all relationships of the graph
   p_ptr<property_list<buffered_vec> >
       node_properties_;   // the list of all properties of nodes 
   p_ptr<property_list<buffered_vec> >
       rship_properties_;   // the list of all properties of relationships
+  p_ptr<wa_log> walog_;
 #endif
   p_ptr<dict> dict_; // the dictionary used for string compression
 
   p_ptr<index_map> index_map_; // the list of all exisiting indexes
-  p_ptr<pmlog> ulog_; // the undo log 
 
-#ifdef QOP_RECOVERY
-  p_ptr<recovery_list> recovery_results_; // stored intermediate tuples of a query
-  p_ptr<rec_map_t> recovery_res_; // stored checkpoints of the chunks 
-#endif
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
   p_ptr<delta_store> delta_store_; // the CSR delta store
 #endif
   /**

@@ -31,7 +31,7 @@ paged_string_pool::paged_string_pool(bufferpool& bp, uint64_t fid) :
     }
 }
 
-void paged_string_pool::scan(std::function<void(const char *s, dcode_t c)> cb) {
+bool paged_string_pool::scan(std::function<void(const char *s, dcode_t c)> cb) {
     uint32_t npage = 0u; // number of page processed
 
     bpool_.scan_file(file_id_, [&](auto pg) {
@@ -49,7 +49,11 @@ void paged_string_pool::scan(std::function<void(const char *s, dcode_t c)> cb) {
         }
         npage++;
     });  
-    assert(npage == npages_);
+    if (npage != npages_) {
+        spdlog::info("ERROR: string dictionary corrupted - only {} of {} pages processed.", npage, npages_);
+        return false; 
+    }
+    return true;
 }
 
 const char *paged_string_pool::extract(dcode_t pos) const {

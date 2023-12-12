@@ -18,16 +18,19 @@
  */
 
 #include <chrono>
+#include <fmt/chrono.h>
 #include "profiling.hpp"
 
 #ifdef QOP_PROFILING
 
 void prof_metrics::pre_hook(bool in) {
+    std::lock_guard<std::mutex> guard(m_);
     in_records_ += (in ? 1 : 0);
     start_ = std::chrono::steady_clock::now();
 }
 
 void prof_metrics::post_hook(uint64_t n) {
+    std::lock_guard<std::mutex> guard(m_);
     out_records_ += n;
     auto end = std::chrono::steady_clock::now();
     proc_time_ += end - start_;
@@ -36,7 +39,7 @@ void prof_metrics::post_hook(uint64_t n) {
 std::ostream& prof_metrics::dump(std::ostream& os) const {   
     os << "{ in=" << in_records_ 
        << " | out=" << out_records_ 
-       << " | time=" << (double)(std::chrono::duration_cast<std::chrono::microseconds>(proc_time_).count()) << " µsecs"
+       << " | time=" << fmt::format("{}", proc_time_) // (double)(std::chrono::duration_cast<std::chrono::microseconds>(proc_time_).count()) << " µsecs"
        << " }";
     return os;
 }

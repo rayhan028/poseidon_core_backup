@@ -20,7 +20,7 @@
 #define CATCH_CONFIG_MAIN // This tells Catch to provide a main() - only do
                           // this in one cpp file
 
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include "config.h"
 #include "graph_pool.hpp"
 
@@ -38,8 +38,8 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
     {
         graph->begin_transaction();
 
-        nid = graph->add_node(":Person", {{"name", boost::any(std::string("Anne"))},
-                                  {"age", boost::any(28)}});
+        nid = graph->add_node("Person", {{"name", std::any(std::string("Anne"))},
+                                  {"age", std::any(28)}});
         graph->commit_transaction();
     }
     // check that the node exists
@@ -49,13 +49,13 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
         graph->node_by_id(nid);
         auto nd = graph->get_node_description(nid);
         REQUIRE(nd.id == nid);
-        REQUIRE(nd.label == ":Person");
+        REQUIRE(nd.label == "Person");
 
         graph->commit_transaction();
     }
     pool->close();
 #if !defined(USE_IN_MEMORY)
-    spdlog::info("try to reopen graph_pool ...");
+    spdlog::info("------ try to reopen graph_pool ... ------");
     pool = graph_pool::open(test_path);
     auto graph2 = pool->open_graph("my_pool_graph1");
 
@@ -66,7 +66,7 @@ TEST_CASE("Creating a pool", "[graph_pool]") {
         graph2->node_by_id(nid);
         auto nd = graph2->get_node_description(nid);
         REQUIRE(nd.id == nid);
-        REQUIRE(nd.label == ":Person");
+        REQUIRE(nd.label == "Person");
 
         graph2->commit_transaction();
     }

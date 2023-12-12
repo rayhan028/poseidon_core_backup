@@ -5,7 +5,7 @@
 #include <map>
 #include <vector>
 #include <functional>
-#include <boost/any.hpp>
+#include <any>
 #if USE_PMDK
 #include <libpmemobj++/experimental/radix_tree.hpp>
 #endif

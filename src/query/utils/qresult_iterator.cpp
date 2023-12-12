@@ -74,7 +74,7 @@ bool result_set::qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple 
     query_result v2 = q2[sp.vidx];
     if (sp.pcode > 0) {
       // sort criteria are properties of nodes or relationships
-      if (v1.which() == 0) {
+      if (v1.which() == node_ptr_type) {
         // node*
         auto n1 = boost::get<node *>(v1);
         auto pv1 = ctx.gdb_->get_property_value(*n1, sp.pcode);
@@ -83,13 +83,13 @@ bool result_set::qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple 
         auto pv2 = ctx.gdb_->get_property_value(*n2, sp.pcode);
         v2 = qv_from_pitem(pv2);
       } 
-      else if (v1.which() == 1) {
+      else if (v1.which() == rship_ptr_type) {
         // relationship*
       }
     }
     try {
     switch (sp.cmp_type) {
-      case 5: // uint64_t
+      case uint64_type: // uint64_t
         {
           auto i1 = boost::get<uint64_t>(v1);
           auto i2 = boost::get<uint64_t>(v2);
@@ -101,7 +101,7 @@ bool result_set::qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple 
             return 1;
         }
         break;
-      case 4: // string
+      case string_type: // string
         {
           auto& i1 = boost::get<std::string>(v1);
           auto& i2 = boost::get<std::string>(v2);
@@ -113,7 +113,7 @@ bool result_set::qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple 
             return 1;
         }
         break; 
-      case 2: // int
+      case int_type: // int
         {
           auto i1 = boost::get<int>(v1);
           auto i2 = boost::get<int>(v2);
@@ -125,7 +125,7 @@ bool result_set::qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple 
             return 1;
         }
         break;
-      case 3: // double
+      case double_type: // double
         {
           auto i1 = boost::get<double>(v1);
           auto i2 = boost::get<double>(v2);
@@ -137,7 +137,7 @@ bool result_set::qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple 
             return 1;
         }
         break;
-      case 6: // datetime
+      case ptime_type: // datetime
         {
           auto i1 = boost::get<boost::posix_time::ptime>(v1);
           auto i2 = boost::get<boost::posix_time::ptime>(v2);
@@ -153,7 +153,7 @@ bool result_set::qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple 
         break;
     }
     } catch (std::exception& exc) {
-      std::cout << "exception in boost::get at #" << sp.vidx << std::endl;
+      std::cout << "qr_compare - exception in boost::get at #" << sp.vidx << " for " << sp.cmp_type << " : " << exc.what() << std::endl;
     }
     return true;
   };
@@ -190,8 +190,10 @@ std::ostream &operator<<(std::ostream &os, const result_set &rs) {
       [&](const rship_description& r) { os << r; },
       [&](node *n) { /*os << gdb->get_node_description(*n); */ },
       [&](relationship *r) { /* os << gdb->get_relationship_label(*r); */ },
-      [&](int i) { os << i; }, [&](double d) { os << d; },
-      [&](const std::string &s) { os << s; }, [&](uint64_t ll) { os << ll; },
+      [&](int i) { os << i; }, 
+      [&](double d) { os << d; },
+      [&](const std::string &s) { os << s; }, 
+      [&](uint64_t ll) { os << ll; },
       [&](null_t n) { os << "NULL"; },
       [&](array_t arr) {
         os << "[ ";

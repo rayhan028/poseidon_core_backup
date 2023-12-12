@@ -28,7 +28,8 @@
 #include <boost/dynamic_bitset.hpp>
 #include "paged_file.hpp"
 
-#define DEFAULT_BUFFER_SIZE 1000
+#define DEFAULT_BUFFER_SIZE 5000 // 1000
+#define MAX_PFILES          15 // 4 bits
 
 /**
  * bufferpool implements a page cache for accessing paged_files. For a single
@@ -108,6 +109,11 @@ public:
      */
     void purge();
     
+    /**
+     * Calculate and return the bufferpool hit ratio.
+     */
+    double hit_ratio() const;
+    
 private:
     void dump();
     
@@ -128,7 +134,9 @@ private:
     std::unordered_map<uint64_t, buf_slot> ptable_; // a hashtable to map page_id to pages
     boost::dynamic_bitset<> slots_; // a bitset indicating which slot in buffer_ is occupied
 
-    std::array<paged_file_ptr, 10> files_; // the registered paged_files
+    std::array<paged_file_ptr, MAX_PFILES> files_; // the registered paged_files
+
+    std::size_t p_reads_, l_reads_; // number of physical and logical reads
 
     mutable std::recursive_mutex mutex_;
 };

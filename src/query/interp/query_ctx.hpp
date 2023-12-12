@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -22,17 +22,27 @@
 #include "defs.hpp"
 #include "graph_db.hpp"
 
+class query_pipeline;
+
 /**
- * query_ctx represents the query context which is passed to query operators and user-defined functions
- * during execution.
+ * query_ctx represents the query context which consists of a pointer to the underlying graph
+ * database (graph_db_ptr) and implementations of the basic query execution functions on the
+ * graph database.
  */
-
 struct query_ctx {
-    query_ctx() = default;
-    query_ctx(graph_db_ptr& gdb) : gdb_(gdb) {}
+  graph_db_ptr gdb_; /// the pointer to the graph database (storage engine)
 
-    graph_db_ptr gdb_;
+  /**
+   * Constructors.
+   */
+  query_ctx() = default;
+  query_ctx(query_ctx& ctx) : gdb_(ctx.gdb_) {  }
+  query_ctx(graph_db_ptr& gdb) : gdb_(gdb) {  }
 
+  /**
+   * Destructor.
+  */
+  ~query_ctx();
 
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;
@@ -91,13 +101,8 @@ struct query_ctx {
    */
   void parallel_nodes(node_consumer_func consumer);
 
-#ifdef QOP_RECOVERY
-  /**
-   * Continues the scan from the given positions (checkpoints) and invokes the given consumer function for each node.
-   */
-  void parallel_nodes(node_consumer_func consumer, std::map<std::size_t, std::vector<std::size_t>> &range_map);
-  void continue_parallel_nodes(std::map<std::size_t, std::size_t> &check_points, node_consumer_func consumer);
-#endif
+  void parallel_nodes(const std::string &label, node_consumer_func consumer);
+
   /**
    * Scans all nodes which satisfy the given predicate on the property with
    * label pkey and invokes for each of these nodes the consumer function.
@@ -224,6 +229,10 @@ struct query_ctx {
   bool is_relationship_property(const relationship &r, dcode_t pcode,
                                 p_item::predicate_func pred);
 
+
+  static void start(query_ctx& qctx, std::initializer_list<query_pipeline *> queries);
+  static void print_plans(std::initializer_list<query_pipeline *> queries, std::ostream& os = std::cout);
+
 };
 
 
@@ -236,10 +245,32 @@ struct scan_task {
 
   static void scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func consumer);
 
-  static std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func consumer)> callee_;
+  static std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, 
+    query_ctx::node_consumer_func consumer)> callee_;
 
   graph_db_ptr graph_db_;
   range range_;
+  query_ctx::node_consumer_func consumer_;
+  transaction_ptr tx_;
+  std::size_t start_pos_;
+};
+
+struct scan_task_with_label {
+  using range = std::pair<std::size_t, std::size_t>;
+  scan_task_with_label(graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+	    query_ctx::node_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0);
+
+  void operator()();
+
+  static void scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+    query_ctx::node_consumer_func consumer);
+
+  static std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+    query_ctx::node_consumer_func consumer)> callee_;
+
+  graph_db_ptr graph_db_;
+  range range_;
+  dcode_t label_;
   query_ctx::node_consumer_func consumer_;
   transaction_ptr tx_;
   std::size_t start_pos_;

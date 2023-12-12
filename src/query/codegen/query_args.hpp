@@ -1,6 +1,8 @@
 #ifndef POSEIDON_CORE_ARG_EXTRACTOR_HPP
 #define POSEIDON_CORE_ARG_EXTRACTOR_HPP
+
 #include "qop_visitor.hpp"
+#include "binary_expression.hpp"
 
 class arg_extractor : public qop_visitor {
     arg_builder ab_;
@@ -81,7 +83,7 @@ public:
         ab_.arg(arg_cnt_++, j);
     }
 
-    virtual void visit(std::shared_ptr<cross_join> op) override {
+    virtual void visit(std::shared_ptr<cross_join_op> op) override {
         auto last_joiner = joiner_list_.back();
         ab_.arg(arg_cnt_++, last_joiner);
     }

@@ -97,6 +97,7 @@ public:
 
   /**
    * Store the id of the log associated with this transaction.
+   * NOTE: Used only for PMDK.
    */
   void set_logid(std::size_t lid) { logid_ = lid; }
 
@@ -105,7 +106,7 @@ public:
    */
   std::size_t logid() const { return logid_; }
 
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
 #ifdef DIFF_DELTA
   /**
    * A struct for storing ids of nodes and relationships updated
@@ -197,7 +198,7 @@ private:
       dirty_nodes_; // the vector of ids of nodes which were modified by this transaction
   std::vector<offset_t> dirty_rships_; // the vector of ids of relationships which
                                        // were modified by this transaction
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
   delta_ids delta_ids_; // ids of nodes and relationships which were modified
                         // by this transaction (for storing delta records)
 #endif

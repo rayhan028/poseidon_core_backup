@@ -26,38 +26,38 @@
 #define PARALLEL_INIT
 
 template <class T>
-bool output_any(std::ostream &os, const boost::any &any_value) {
+bool output_any(std::ostream &os, const std::any &any_value) {
   try {
-    T v = boost::any_cast<T>(any_value);
+    T v = std::any_cast<T>(any_value);
     os << v;
     return true;
-  } catch (boost::bad_any_cast &e) {
+  } catch (std::bad_any_cast &e) {
     return false;
   }
 }
 
 template <>
-bool output_any<std::string>(std::ostream &os, const boost::any &any_value) {
+bool output_any<std::string>(std::ostream &os, const std::any &any_value) {
   try {
-    auto v = boost::any_cast<std::string>(any_value);
+    auto v = std::any_cast<std::string>(any_value);
     os << '"' << v << '"';
     return true;
-  } catch (boost::bad_any_cast &e) {
+  } catch (std::bad_any_cast &e) {
     return false;
   }
 }
 
 template <>
-bool output_any<const char *>(std::ostream &os, const boost::any &any_value) {
+bool output_any<const char *>(std::ostream &os, const std::any &any_value) {
   try {
-    auto v = boost::any_cast<const char *>(any_value);
+    auto v = std::any_cast<const char *>(any_value);
     os << '"' << v << '"';
     return true;
-  } catch (boost::bad_any_cast &e) {
+  } catch (std::bad_any_cast &e) {
     return false;
   }
 }
-std::ostream &operator<<(std::ostream &os, const boost::any &any_value) {
+std::ostream &operator<<(std::ostream &os, const std::any &any_value) {
   // list all types you want to try
   if (!output_any<int>(os, any_value))
     if (!output_any<double>(os, any_value))

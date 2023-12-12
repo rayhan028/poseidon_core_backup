@@ -10,6 +10,7 @@ macro( build_executable arg )
       ${POSEIDON_GTPC}
       ${POSEIDON_LDBC}
       poseidon_core
+      Catch2::Catch2WithMain
       ${BENCHMARK_LIB}
       ${PMDK_LIBRARIES}
       ${MALLOC_LIB}

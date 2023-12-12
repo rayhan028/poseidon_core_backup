@@ -27,7 +27,6 @@
 #include <iterator>
 #include <condition_variable>
 #include "defs.hpp"
-#include "ast.hpp"
 #include "query_ctx.hpp"
 
 struct node;
@@ -56,6 +55,27 @@ using query_result =
                     uint64_t, boost::posix_time::ptime, array_t, null_t, node_description, rship_description>;
 
 #define qv_ query_result
+
+inline node * qv_get_node(const query_result& v) { return boost::get<node*>(v); }
+inline relationship * qv_get_relationship(const query_result& v) { return boost::get<relationship*>(v); }
+inline int qv_get_int(const query_result& v) { return boost::get<int>(v); }
+inline uint64_t qv_get_uint64(const query_result& v) { return boost::get<uint64_t>(v); }
+inline double qv_get_double(const query_result& v) { return boost::get<double>(v); }
+inline std::string qv_get_string(const query_result& v) { return boost::get<std::string>(v); }
+
+enum qr_type {
+  node_ptr_type = 0,
+  rship_ptr_type = 1,
+  int_type = 2,
+  double_type = 3,
+  string_type = 4,
+  uint64_type = 5,
+  ptime_type = 6,
+  array_type = 7,
+  null_type = 8,
+  node_descr_type = 9,
+  rship_descr_type = 10
+};
 
 /**
  * Typedef for a list of result elements which are passed to the next query

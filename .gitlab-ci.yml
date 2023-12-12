@@ -17,7 +17,7 @@ build:
     - make -j 3
     # clean up unnecessary files and strip binaries
     - rm -rf _deps 
-    - strip bench/*_bench test/*_test
+    - strip test/*_test
   artifacts:
     paths:
       - build/
@@ -31,7 +31,7 @@ test:
     - pip install pytest --user
     - echo pass | sudo -S mkdir -m 777 -p /mnt/pmem0/poseidon
     - cd build
-    - ctest
+    - ctest --output-on-failure
   dependencies:
     - build
 
@@ -48,6 +48,6 @@ coverage:
     - cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_PMDK=ON -DLLVM_DIR=/usr/lib64/cmake/llvm -DCMAKE_CXX_FLAGS="-g -O0 -fprofile-arcs -ftest-coverage" ..
     - make -j 3
     - echo pass | sudo -S mkdir -m 777 -p /mnt/pmem0/poseidon
-    - ctest --verbose
+    - ctest --verbose --output-on-failure
     - ~/.local/bin/gcovr -r .. --exclude _deps --exclude "../bench/*"
   coverage: '/^TOTAL.*\s+(\d+\%)$/'

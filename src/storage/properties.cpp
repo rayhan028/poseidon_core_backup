@@ -111,14 +111,14 @@ template <> void p_item::set<ptime>(ptime v) {
   memcpy(&value_, &v, sizeof(ptime));
 }
 
-p_item::p_item(dcode_t k, p_item::p_typecode tc, const boost::any &v) : key_(k), flags_(0) {
+p_item::p_item(dcode_t k, p_item::p_typecode tc, const std::any &v) : key_(k), flags_(0) {
   switch(tc) {
-    case p_int: set<int>(boost::any_cast<int>(v)); break;
-    case p_double: set<double>(boost::any_cast<double>(v)); break;
-    case p_dcode: set<dcode_t>(boost::any_cast<dcode_t>(v)); break;
-    case p_uint64: set<uint64_t>(boost::any_cast<uint64_t>(v)); break;
+    case p_int: set<int>(std::any_cast<int>(v)); break;
+    case p_double: set<double>(std::any_cast<double>(v)); break;
+    case p_dcode: set<dcode_t>(std::any_cast<dcode_t>(v)); break;
+    case p_uint64: set<uint64_t>(std::any_cast<uint64_t>(v)); break;
     case p_ptime: 
-    case p_date: set<ptime>(boost::any_cast<ptime>(v)); break;
+    case p_date: set<ptime>(std::any_cast<ptime>(v)); break;
     default: break;
   }  
 }
@@ -146,24 +146,24 @@ p_item::p_item(dcode_t k, dcode_t v) : key_(k), flags_(0) { set<dcode_t>(v); }
 p_item::p_item(dcode_t k, uint64_t v) : key_(k), flags_(0) { set<uint64_t>(v); }
 p_item::p_item(dcode_t k, boost::posix_time::ptime v) : key_(k), flags_(0) { set<ptime>(v); }
 
-p_item::p_item(const std::string &k, const boost::any &v, dict_ptr &dct)
+p_item::p_item(const std::string &k, const std::any &v, dict_ptr &dct)
     : p_item(v, dct) {
   key_ = dct->insert(k);
 }
 
-p_item::p_item(dcode_t k, const boost::any &v, dict_ptr &dct) : p_item(v, dct) {
+p_item::p_item(dcode_t k, const std::any &v, dict_ptr &dct) : p_item(v, dct) {
   key_ = k;
 }
 
-p_item::p_item(const boost::any &v, dict_ptr &dct) : key_(0), flags_(0) {
+p_item::p_item(const std::any &v, dict_ptr &dct) : key_(0), flags_(0) {
   P_SET_VAL(flags_, p_unused);
 
   if (v.type() == typeid(uint64_t)){
-    set<uint64_t>(boost::any_cast<uint64_t>(v));
+    set<uint64_t>(std::any_cast<uint64_t>(v));
     return;
   }
   try {
-    std::string s = boost::any_cast<std::string>(v);
+    std::string s = std::any_cast<std::string>(v);
     if (is_quoted_string(s))
       set<dcode_t>(dct->insert(s));
     else if (is_int(s))
@@ -182,26 +182,26 @@ p_item::p_item(const boost::any &v, dict_ptr &dct) : key_(0), flags_(0) {
     else 
       set<dcode_t>(dct->insert(s));
     return;
-  } catch (boost::bad_any_cast &e) {
+  } catch (std::bad_any_cast &e) {
     // do nothing, just continue
   }
   try {
-    ptime dt = boost::any_cast<ptime>(v);
+    ptime dt = std::any_cast<ptime>(v);
     set<ptime>(dt);
     return;
-  } catch (boost::bad_any_cast &e) {
+  } catch (std::bad_any_cast &e) {
     // do nothing, just continue
   }
   try {
-    double d = boost::any_cast<double>(v);
+    double d = std::any_cast<double>(v);
     set<double>(d);
     return;
-  } catch (boost::bad_any_cast &e) {
+  } catch (std::bad_any_cast &e) {
     // do nothing, just continue
   }
   try {
-    set<int>(boost::any_cast<int>(v));
-  } catch (boost::bad_any_cast &e) {
+    set<int>(std::any_cast<int>(v));
+  } catch (std::bad_any_cast &e) {
     spdlog::info("ERROR: Cannot get or set int value.");
   }
 }
@@ -373,7 +373,7 @@ property_list::append_properties(offset_t nid, const properties_t &props,
 property_set::id_t property_list::append_typed_properties(offset_t nid, 
                               const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist, 
-                              const std::vector<boost::any>& values) {
+                              const std::vector<std::any>& values) {
   property_set::id_t next_id = UNKNOWN;
   property_set::p_item_list pil;
   std::size_t pidx = 0;
@@ -514,7 +514,7 @@ property_set::id_t property_list::update_properties(offset_t nid, offset_t id,
                                                     const properties_t &props,
                                                     dict_ptr &dct) {
   // first, we build the list of properties to be updated
-  using todo_list_t = std::list<std::pair<dcode_t, boost::any>>;
+  using todo_list_t = std::list<std::pair<dcode_t, std::any>>;
   todo_list_t todo_list;
   property_set::id_t next_id = id;
 

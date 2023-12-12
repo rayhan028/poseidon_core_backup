@@ -22,13 +22,12 @@
 
 #include <set>
 
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include "config.h"
 #include "exceptions.hpp"
 #include "graph_pool.hpp"
 #include "graph_db.hpp"
 #include "qop.hpp"
-#include "../src/ldbc/ldbc.hpp"
 #include <boost/algorithm/string.hpp>
 
 
@@ -42,11 +41,11 @@ TEST_CASE("Creating nodes", "[graph_db]") {
 
   for (int i = 0; i < 100; i++) {
     graph->add_node("Person",
-                              {{"name", boost::any(std::string("John Doe"))},
-                               {"age", boost::any(42)},
-                               {"number", boost::any(i)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}},
+                              {{"name", std::any(std::string("John Doe"))},
+                               {"age", std::any(42)},
+                               {"number", std::any(i)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}},
                               true);
   }
   graph->commit_transaction();
@@ -95,27 +94,27 @@ TEST_CASE("Create nodes and relationships using a LDBC IU Query and verify the c
       graph->begin_transaction();
 
     graph->add_node("Organisation",
-                              {{"id", boost::any(21)},
-                               {"type", boost::any(std::string("company"))},
-                               {"name", boost::any(std::string("Aerolíneas_Argentinas"))},
-                               {"url", boost::any(std::string("http://dbpedia.org/resource/Aerolíneas_Argentinas"))}},
+                              {{"id", std::any(21)},
+                               {"type", std::any(std::string("company"))},
+                               {"name", std::any(std::string("Aerolíneas_Argentinas"))},
+                               {"url", std::any(std::string("http://dbpedia.org/resource/Aerolíneas_Argentinas"))}},
                               true);
       graph->add_node("Organisation",
-                              {{"id", boost::any(3985)},
-                               {"type", boost::any(std::string("company"))},
-                               {"name", boost::any(std::string("Aerolíneas_Argentinas"))},
-                               {"url", boost::any(std::string("http://dbpedia.org/resource/Aerolíneas_Argentinas"))}},
+                              {{"id", std::any(3985)},
+                               {"type", std::any(std::string("company"))},
+                               {"name", std::any(std::string("Aerolíneas_Argentinas"))},
+                               {"url", std::any(std::string("http://dbpedia.org/resource/Aerolíneas_Argentinas"))}},
                               true);
         graph->add_node("Place",
-                              {{"id", boost::any(32)},
-                               {"type", boost::any(std::string("country"))},
-                               {"name", boost::any(std::string("Norway"))},
-                               {"url", boost::any(std::string("http://dbpedia.org/resource/Norwa"))}},
+                              {{"id", std::any(32)},
+                               {"type", std::any(std::string("country"))},
+                               {"name", std::any(std::string("Norway"))},
+                               {"url", std::any(std::string("http://dbpedia.org/resource/Norwa"))}},
                               true);
          graph->add_node("Tag",
-                              {{"id", boost::any(19)},
-                               {"name", boost::any(std::string("José_Acasus"))},
-                               {"url", boost::any(std::string("http://dbpedia.org/resource/José_Acasuso"))}},
+                              {{"id", std::any(19)},
+                               {"name", std::any(std::string("José_Acasus"))},
+                               {"url", std::any(std::string("http://dbpedia.org/resource/José_Acasuso"))}},
                               true);
        graph->commit_transaction();
   
@@ -407,8 +406,8 @@ TEST_CASE("Checking adding a node with properties", "[graph_db]") {
   graph->begin_transaction();
 
   auto p1 =
-      graph->add_node(":Person", {{"name", boost::any(std::string("John"))},
-                                  {"age", boost::any(42)}});
+      graph->add_node(":Person", {{"name", std::any(std::string("John"))},
+                                  {"age", std::any(42)}});
 
   auto &n = graph->node_by_id(p1);
   REQUIRE(n.id() == p1);
@@ -434,8 +433,8 @@ TEST_CASE("Checking node with properties", "[graph_db]") {
   graph->begin_transaction();
 
   auto p1 =
-      graph->add_node(":Person", {{"name", boost::any(std::string("John"))},
-                                  {"age", boost::any(42)}});
+      graph->add_node(":Person", {{"name", std::any(std::string("John"))},
+                                  {"age", std::any(42)}});
 
   graph->commit_transaction();
   graph->begin_transaction();
@@ -463,8 +462,8 @@ TEST_CASE("Checking a dirty node with properties", "[graph_db]") {
   graph->begin_transaction();
 
   auto p1 =
-      graph->add_node(":Person", {{"name", boost::any(std::string("John"))},
-                                  {"age", boost::any(42)}});
+      graph->add_node(":Person", {{"name", std::any(std::string("John"))},
+                                  {"age", std::any(42)}});
 
   auto &n = graph->node_by_id(p1);
   REQUIRE(n.id() == p1);
@@ -490,33 +489,29 @@ TEST_CASE("Checking a node update", "[graph_db]") {
 
   node::id_t p1;
 
-#ifdef USE_TX
   {
     // add a new node
     graph->begin_transaction();
-#endif
 
     p1 = graph->add_node(":Person",
-                         {{"name", boost::any(std::string("John"))},
-                          {"age", boost::any(42)},
-                          {"dummy1", boost::any(10)},
-                          {"dummy2", boost::any(11)},
-                          {"dummy3", boost::any(12)},
-                          {"city", boost::any(std::string("Berlin"))}});
-#ifdef USE_TX
+                         {{"name", std::any(std::string("John"))},
+                          {"age", std::any(42)},
+                          {"dummy1", std::any(10)},
+                          {"dummy2", std::any(11)},
+                          {"dummy3", std::any(12)},
+                          {"city", std::any(std::string("Berlin"))}});
     graph->commit_transaction();
   }
   {
     REQUIRE_THROWS(check_tx_context());
     // perform an update
     graph->begin_transaction();
-#endif
 
     auto &n1 = graph->node_by_id(p1);
-    graph->update_node(n1, {{"name", boost::any(std::string("Anne"))},
-                            {"age", boost::any(43)},
-                            {"city", boost::any(std::string("Munich"))},
-                            {"zipcode", boost::any(12345)}});
+    graph->update_node(n1, {{"name", std::any(std::string("Anne"))},
+                            {"age", std::any(43)},
+                            {"city", std::any(std::string("Munich"))},
+                            {"zipcode", std::any(12345)}});
     // and check whether the updates are available within the transaction
     auto ndescr = graph->get_node_description(p1);
 
@@ -530,7 +525,6 @@ TEST_CASE("Checking a node update", "[graph_db]") {
             get_property<const std::string>(ndescr.properties, "city").value());
     REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
     REQUIRE(get_property<int>(ndescr.properties, "zipcode").value() == 12345);
-#ifdef USE_TX
     graph->commit_transaction();
   }
   {
@@ -554,7 +548,6 @@ TEST_CASE("Checking a node update", "[graph_db]") {
 
     graph->commit_transaction();
   }
-#endif
 
   graph_pool::destroy(pool);
 }
@@ -565,33 +558,29 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
 
   node::id_t p1;
 
-#ifdef USE_TX
   {
     // add a new node
     graph->begin_transaction();
-#endif
 
     p1 = graph->add_node(":Person",
-                         {{"name", boost::any(std::string("John"))},
-                          {"age", boost::any(42)},
-                          {"dummy1", boost::any(10)},
-                          {"dummy2", boost::any(11)},
-                          {"dummy3", boost::any(12)},
-                          {"city", boost::any(std::string("Berlin"))}});
-#ifdef USE_TX
+                         {{"name", std::any(std::string("John"))},
+                          {"age", std::any(42)},
+                          {"dummy1", std::any(10)},
+                          {"dummy2", std::any(11)},
+                          {"dummy3", std::any(12)},
+                          {"city", std::any(std::string("Berlin"))}});
     graph->commit_transaction();
   }
   {
     REQUIRE_THROWS(check_tx_context());
     // perform an update
     graph->begin_transaction();
-#endif
 
     auto &n1 = graph->node_by_id(p1);
-    graph->update_node(n1, {{"name", boost::any(std::string("Anne"))},
-                            {"age", boost::any(43)},
-                            {"city", boost::any(std::string("Munich"))},
-                            {"zipcode", boost::any(12345)}});
+    graph->update_node(n1, {{"name", std::any(std::string("Anne"))},
+                            {"age", std::any(43)},
+                            {"city", std::any(std::string("Munich"))},
+                            {"zipcode", std::any(12345)}});
     // and check whether the updates are available within the transaction
     {
     auto ndescr = graph->get_node_description(p1);
@@ -609,9 +598,9 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
     }
 
     // second update
-    graph->update_node(n1, {{"age", boost::any(46)},
-                            {"city", boost::any(std::string("Munich"))},
-                            {"zipcode", boost::any(12346)}}, ":Actor");
+    graph->update_node(n1, {{"age", std::any(46)},
+                            {"city", std::any(std::string("Munich"))},
+                            {"zipcode", std::any(12346)}}, ":Actor");
     // and check whether the updates are available within the transaction
     {
     auto ndescr = graph->get_node_description(p1);
@@ -627,7 +616,6 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
     REQUIRE(ndescr.properties.find("zipcode") != ndescr.properties.end());
     REQUIRE(get_property<int>(ndescr.properties, "zipcode").value() == 12346);
     }
-#ifdef USE_TX
     graph->commit_transaction();
   }
   {
@@ -651,7 +639,6 @@ TEST_CASE("Checking multiple node updates", "[graph_db]") {
 
     graph->commit_transaction();
   }
-#endif
 
   graph_pool::destroy(pool);
 }
@@ -663,34 +650,30 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
 
   node::id_t p1;
   relationship::id_t r;
-#ifdef USE_TX
   {
     ctx.begin_transaction();
-#endif
 
     // add two nodes and one relationship
     p1 = graph->add_node("Person", {});
     auto p2 = graph->add_node("Person", {});
     r = graph->add_relationship(
         p1, p2, "KNOWS",
-        {{"p1", boost::any(std::string("val"))}, {"p2", boost::any(10)}});
+        {{"p1", std::any(std::string("val"))}, {"p2", std::any(10)}});
 
-#ifdef USE_TX
     ctx.commit_transaction();
   }
   {
     REQUIRE_THROWS(check_tx_context());
     // perform an update
     ctx.begin_transaction();
-#endif
 
     auto &n1 = graph->node_by_id(p1);
     ctx.foreach_from_relationship_of_node(n1, [&](relationship &rel) {
       // std::cout << "update relationship: " << graph->get_relationship_label(rel)
       //          << std::endl;
-      graph->update_relationship(rel, {{"p1", boost::any(std::string("val2"))},
-                                       {"p2", boost::any(20)},
-                                       {"p3", boost::any(30)}});
+      graph->update_relationship(rel, {{"p1", std::any(std::string("val2"))},
+                                       {"p2", std::any(20)},
+                                       {"p3", std::any(30)}});
     });
 
     // and check whether the updates are available within the transaction
@@ -708,7 +691,6 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
       REQUIRE(get_property<int>(reldesc.properties, "p3").value() == 30);
     });
 
-#ifdef USE_TX
     ctx.commit_transaction();
   }
   {
@@ -733,7 +715,6 @@ TEST_CASE("Checking a relationship update", "[graph_db]") {
 
     ctx.commit_transaction();
   }
-#endif
 
   graph_pool::destroy(pool);
 }
@@ -745,11 +726,11 @@ TEST_CASE("Adding a larger number of nodes", "[graph_db]") {
   graph->begin_transaction();
   for (int i = 0u; i < 10000; i++) {
     graph->add_node("Person",
-                              {{"name", boost::any(std::string("John Doe"))},
-                               {"age", boost::any(42)},
-                               {"number", boost::any(i)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}},
+                              {{"name", std::any(std::string("John Doe"))},
+                               {"age", std::any(42)},
+                               {"number", std::any(i)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}},
                               true);
   }
   graph->commit_transaction();
@@ -767,43 +748,43 @@ TEST_CASE("Deleting all inserted nodes and relationships in separate transaction
   auto i = 1;
   
   auto p1 = graph->add_node(":Person", 
-                              {{"name", boost::any(std::string("John"))},
-                               {"age", boost::any(42)},
-                               {"number", boost::any(i++)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}}, true);
+                              {{"name", std::any(std::string("John"))},
+                               {"age", std::any(42)},
+                               {"number", std::any(i++)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}}, true);
 
   auto p2 = graph->add_node(":Person", 
-                              {{"name", boost::any(std::string("Doe"))},
-                               {"age", boost::any(42)},
-                               {"number", boost::any(i++)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}}, true);
+                              {{"name", std::any(std::string("Doe"))},
+                               {"age", std::any(42)},
+                               {"number", std::any(i++)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}}, true);
 
   auto b1 = graph->add_node(":Book", 
-                              {{"name", boost::any(std::string("Text Book"))},
-                               {"ISBN", boost::any(i++)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}}, true);
+                              {{"name", std::any(std::string("Text Book"))},
+                               {"ISBN", std::any(i++)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}}, true);
 
   auto b2 = graph->add_node(":Book", 
-                              {{"name", boost::any(std::string("e-Book"))},
-                               {"age", boost::any(42)},
-                               {"ISBN", boost::any(i++)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}}, true);
+                              {{"name", std::any(std::string("e-Book"))},
+                               {"age", std::any(42)},
+                               {"ISBN", std::any(i++)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}}, true);
 
   auto b3 = graph->add_node(":Book", 
-                              {{"name", boost::any(std::string("Manuscript"))},
-                               {"ISBN", boost::any(i++)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}}, true);
+                              {{"name", std::any(std::string("Manuscript"))},
+                               {"ISBN", std::any(i++)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}}, true);
 
-  graph->add_relationship(p1, b1, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
-  graph->add_relationship(p1, b2, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
-  graph->add_relationship(p1, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
-  graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
-  graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b1, ":HAS_READ", {{"dummy1", std::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b2, ":HAS_READ", {{"dummy1", std::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b3, ":HAS_READ", {{"dummy1", std::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", std::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", std::any(std::string("Dummy"))}}, true);
   
   ctx.commit_transaction();
   ctx.begin_transaction();
@@ -859,43 +840,43 @@ TEST_CASE("Deleting all inserted nodes and relationships", "[graph_db]") {
   auto i = 1;
   
   auto p1 = graph->add_node(":Person", 
-                              {{"name", boost::any(std::string("John"))},
-                               {"age", boost::any(42)},
-                               {"number", boost::any(i++)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}}, true);
+                              {{"name", std::any(std::string("John"))},
+                               {"age", std::any(42)},
+                               {"number", std::any(i++)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}}, true);
 
   auto p2 = graph->add_node(":Person", 
-                              {{"name", boost::any(std::string("Doe"))},
-                               {"age", boost::any(42)},
-                               {"number", boost::any(i++)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}}, true);
+                              {{"name", std::any(std::string("Doe"))},
+                               {"age", std::any(42)},
+                               {"number", std::any(i++)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}}, true);
 
   auto b1 = graph->add_node(":Book", 
-                              {{"name", boost::any(std::string("Text Book"))},
-                               {"ISBN", boost::any(i++)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}}, true);
+                              {{"name", std::any(std::string("Text Book"))},
+                               {"ISBN", std::any(i++)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}}, true);
 
   auto b2 = graph->add_node(":Book", 
-                              {{"name", boost::any(std::string("e-Book"))},
-                               {"age", boost::any(42)},
-                               {"ISBN", boost::any(i++)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}}, true);
+                              {{"name", std::any(std::string("e-Book"))},
+                               {"age", std::any(42)},
+                               {"ISBN", std::any(i++)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}}, true);
 
   auto b3 = graph->add_node(":Book", 
-                              {{"name", boost::any(std::string("Manuscript"))},
-                               {"ISBN", boost::any(i++)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}}, true);
+                              {{"name", std::any(std::string("Manuscript"))},
+                               {"ISBN", std::any(i++)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}}, true);
 
-  graph->add_relationship(p1, b1, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
-  graph->add_relationship(p1, b2, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
-  graph->add_relationship(p1, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
-  graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
-  graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b1, ":HAS_READ", {{"dummy1", std::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b2, ":HAS_READ", {{"dummy1", std::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b3, ":HAS_READ", {{"dummy1", std::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", std::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", std::any(std::string("Dummy"))}}, true);
   
   ctx.commit_transaction();
   ctx.begin_transaction();
@@ -951,17 +932,17 @@ TEST_CASE("Deleting some nodes and relationships", "[graph_db]") {
   ctx.begin_transaction();  
   auto i = 1;
   
-  auto p1 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
-  auto b1 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
-  auto p2 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
-  auto b2 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
-  auto b3 = graph->add_node(":Person", {{"number", boost::any(i++)}}, true);
+  auto p1 = graph->add_node(":Person", {{"number", std::any(i++)}}, true);
+  auto b1 = graph->add_node(":Person", {{"number", std::any(i++)}}, true);
+  auto p2 = graph->add_node(":Person", {{"number", std::any(i++)}}, true);
+  auto b2 = graph->add_node(":Person", {{"number", std::any(i++)}}, true);
+  auto b3 = graph->add_node(":Person", {{"number", std::any(i++)}}, true);
 
-  graph->add_relationship(p1, b1, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
-  graph->add_relationship(p1, b2, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
-  graph->add_relationship(p1, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
-  graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
-  graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", boost::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b1, ":HAS_READ", {{"dummy1", std::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b2, ":HAS_READ", {{"dummy1", std::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, b3, ":HAS_READ", {{"dummy1", std::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p2, b3, ":HAS_READ", {{"dummy1", std::any(std::string("Dummy"))}}, true);
+  graph->add_relationship(p1, p2, ":IS_FRIENDS_WITH", {{"dummy1", std::any(std::string("Dummy"))}}, true);
   
   ctx.commit_transaction();
   

@@ -104,7 +104,7 @@ std::map<int, std::function<std::string(graph_db_ptr*, int*)>> con_map;
         throw unknown_property();
     }
     auto prop_heap = new std::string;
-    *prop_heap = boost::any_cast<std::string>(it->second);
+    *prop_heap = std::any_cast<std::string>(it->second);
     auto ret = const_cast<char*>(reinterpret_cast<const char*>(prop_heap->c_str()));
     return ret;
 }
@@ -130,7 +130,7 @@ void apply_pexpr_node(query_ctx *ctx, const char *key, result_type val_type, int
             break;
         }
         case result_type::string: { // store the string in thread local memory and return the result id to the caller
-            str_result[str_res_ctr] = boost::any_cast<std::string>(nd.properties[std::string(key)]);
+            str_result[str_res_ctr] = std::any_cast<std::string>(nd.properties[std::string(key)]);
             *ret = str_res_ctr++;
             break;
         }
@@ -165,7 +165,7 @@ void apply_pexpr_rship(query_ctx *ctx, const char *key, result_type val_type, in
             break;
         }
         case result_type::string: { // store the string in thread local memory and return the result id to the caller
-            str_result[str_res_ctr] = boost::any_cast<std::string>(rd.properties[std::string(key)]);;
+            str_result[str_res_ctr] = std::any_cast<std::string>(rd.properties[std::string(key)]);;
             *ret = str_res_ctr++;
             break;
         }
@@ -289,14 +289,6 @@ auto & tp = tp_m[std::this_thread::get_id()];
     tp.clear();
 }
 }
-#ifdef QOP_RECOVERY
-void persist_tuple(query_ctx *ctx, qr_tuple *qr) {
-#ifdef USE_PMDK
-    ctx->gdb_->store_query_result(*qr, 0);
-#endif
-    qr->clear();
-}
-#endif
 
 qr_tuple *obtain_mat_tuple() {
     //auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());

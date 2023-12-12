@@ -36,7 +36,8 @@ struct prof_metrics {
     uint64_t out_records_; // number of records produced by this operator
     std::chrono::duration<double> proc_time_; // the total processing time (currently, it includes the time of the subscribers, too)
     std::chrono::time_point<std::chrono::steady_clock> start_; //
-
+    std::mutex m_;
+    
     /**
      * Constructor for initializing the structure.
      */

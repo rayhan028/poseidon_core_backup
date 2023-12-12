@@ -46,19 +46,6 @@ public:
         qid += "G";
     }
 
-
-    virtual void visit(std::shared_ptr<nodes_connected> op) override {
-        qid += "-";
-    }
-
-    virtual void visit(std::shared_ptr<qr_tuple_append> op) override {
-        qid += "+";
-    }
-    
-    virtual void visit(std::shared_ptr<left_outerjoin_on_node> op) {
-        qid += "JN";
-    }
-
     /*virtual void visit(std::shared_ptr<store_op> op) {
         qid += "$";
     }*/

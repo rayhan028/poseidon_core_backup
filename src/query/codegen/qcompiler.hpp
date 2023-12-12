@@ -75,13 +75,13 @@ class qcompiler : public qexmode {
     friend struct compile_task;
 
 public: 
-    qcompiler(query_ctx ctx);
+    qcompiler(query_ctx& ctx);
     ~qcompiler();
 
     /**
      * exec executes compiled queries 
      */
-    void execute(query_set &queries) override;
+    void execute(query_batch &queries) override;
 
     /**
      * generate compiles a query into machine code. 

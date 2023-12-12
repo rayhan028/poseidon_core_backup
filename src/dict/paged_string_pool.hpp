@@ -33,7 +33,7 @@ public:
     
     dcode_t add(const std::string& str);
     
-    void scan(std::function<void(const char *s, dcode_t c)> cb);
+    bool scan(std::function<void(const char *s, dcode_t c)> cb);
     void print() const;
     
 private:

@@ -52,7 +52,7 @@ int64_t gunrock_weighted_sssp_csr(graph_db_ptr gdb, node::id_t start, bool bidir
 
   if(!quiet){ // For performance analysis
     std::cout << "Executed SSSP using Gunrock with CSR graph representation (SSSP_gunrock_CSR). \n";
-#if defined CSR_DELTA && defined USE_TX
+#if defined CSR_DELTA
     std::cout << "CSR update using Delta:         " << std::chrono::duration_cast<std::chrono::milliseconds>(end_conversion - start_conversion).count() << "[ms]" << "\n";
 #else
     std::cout << "poseidonToCSR:                  " << std::chrono::duration_cast<std::chrono::milliseconds>(end_conversion - start_conversion).count() << "[ms]" << "\n";

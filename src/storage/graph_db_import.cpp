@@ -30,52 +30,63 @@
 namespace nvm = pmem::obj;
 #endif
 
-boost::any string_to_any(p_item::p_typecode tc, const std::string& s, dict_ptr &dict) {
+std::any string_to_any(p_item::p_typecode tc, const std::string& s, dict_ptr &dict) {
   switch (tc) {
-    case p_item::p_dcode: return boost::any(dict->insert(s));
-    case p_item::p_int: return boost::any((int)std::stoi(s));
-    case p_item::p_uint64: return boost::any((uint64_t)std::stoll(s));
-    case p_item::p_double: return boost::any((double)std::stod(s));
+    case p_item::p_dcode: return std::any(dict->insert(s));
+    case p_item::p_int: return std::any((int)std::stoi(s));
+    case p_item::p_uint64: return std::any((uint64_t)std::stoull(s));
+    case p_item::p_double: return std::any((double)std::stod(s));
     case p_item::p_date:
     {
         boost::gregorian::date dt = boost::gregorian::from_simple_string(s);
-        return boost::any(boost::posix_time::ptime(dt, boost::posix_time::seconds(0)));
+        return std::any(boost::posix_time::ptime(dt, boost::posix_time::seconds(0)));
     }
     case p_item::p_ptime: 
     {
         std::string s2 = s;
         s2[s.find("T")] = ' ';
         auto dts = s2.substr(0, s2.find("+"));
-        return boost::any(boost::posix_time::time_from_string(dts));
+        return std::any(boost::posix_time::time_from_string(dts));
     }
-      default: return boost::any();
+      default: return std::any();
   }
 }
 
-std::pair<p_item::p_typecode, boost::any> 
+std::pair<p_item::p_typecode, std::any> 
 infer_datatype(const std::string& s, dict_ptr &dict) {
   if (is_quoted_string(s))
-    return std::make_pair(p_item::p_dcode, boost::any(dict->insert(s)));
-  else if (is_int(s))
-    return std::make_pair(p_item::p_int, boost::any((int)std::stoi(s)));
+    return std::make_pair(p_item::p_dcode, std::any(dict->insert(s)));
+  else if (is_int(s)) {
+    int ival = 0;
+    try {
+      ival = std::stoi(s);
+    }
+    catch (std::out_of_range& exc) {
+      try {
+        return std::make_pair(p_item::p_uint64, std::any((u_int64_t)std::stoull(s)));
+      } catch (std::exception& exc) {
+        spdlog::info("ERROR: cannot parse '{}': {}", s, exc.what());
+      }
+    }
+    return std::make_pair(p_item::p_int, std::any(ival));
+  }
   else if (is_float(s))
-    return std::make_pair(p_item::p_double, boost::any((double)std::stod(s)));
+    return std::make_pair(p_item::p_double, std::any((double)std::stod(s)));
   else if (is_date(s)) {
     boost::gregorian::date dt = boost::gregorian::from_simple_string(s);
-    return std::make_pair(p_item::p_date, boost::any(boost::posix_time::ptime(dt, boost::posix_time::seconds(0))));
+    return std::make_pair(p_item::p_date, std::any(boost::posix_time::ptime(dt, boost::posix_time::seconds(0))));
   }
   else if (is_dtime(s)) {
     std::string s2 = s;
     s2[s2.find("T")] = ' ';
     auto dts = s2.substr(0, s2.find("+"));
-    return std::make_pair(p_item::p_ptime, boost::any(boost::posix_time::time_from_string(dts)));
+    return std::make_pair(p_item::p_ptime, std::any(boost::posix_time::time_from_string(dts)));
   }
-  return std::make_pair(p_item::p_dcode, boost::any(dict->insert(s)));
+  return std::make_pair(p_item::p_dcode, std::any(dict->insert(s)));
 }
 
 p_item::p_typecode
 get_datatype(const std::string& s) {
-
     if (is_quoted_string(s))  return p_item::p_dcode;
     else if (is_int(s))       return p_item::p_int;
     else if (is_float(s))     return p_item::p_double;
@@ -107,7 +118,7 @@ node::id_t graph_db::import_node(const std::string &label,
 node::id_t graph_db::import_typed_node(dcode_t label, 
                               const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist, 
-                              const std::vector<boost::any>& values) {
+                              const std::vector<std::any>& values) {
   auto node_id = nodes_->append(node(label), 0);
                             
   // we need the node object not only the id
@@ -180,7 +191,7 @@ relationship::id_t graph_db::import_typed_relationship(node::id_t from_id,
                                          dcode_t label, 
                                          const std::vector<dcode_t> &keys,
                                          const std::vector<p_item::p_typecode>& typelist, 
-                                         const std::vector<boost::any>& values) {
+                                         const std::vector<std::any>& values) {
   auto &from_node = nodes_->get(from_id);
   auto &to_node = nodes_->get(to_id);
   auto rid = rships_->append(relationship(label, from_id, to_id), 0);
@@ -464,7 +475,7 @@ std::size_t graph_db::import_typed_n4j_nodes_from_csv(const std::string &label,
 
   std::vector<dcode_t> prop_names;
   std::vector<p_item::p_typecode> prop_types; 
-  std::vector<boost::any> prop_values;
+  std::vector<std::any> prop_values;
   std::vector<bool> inferred;
 
   for (auto &row : parser) {
@@ -505,15 +516,14 @@ std::size_t graph_db::import_typed_n4j_nodes_from_csv(const std::string &label,
 
         auto &col = columns[i];
         if (!col.empty() && !field.empty()) {
-          if (col == "id") {
+          auto p2 = infer_datatype(field, dict_);
+          prop_types[i] = p2.first;
+          prop_values[i] = p2.second;
+          inferred[i] = true;
+          if (i == id_column && p2.first == p_item::p_int) {
+            // if we are on a ID field AND the inferred type is int we assume uint64_t 
             prop_types[i] = p_item::p_uint64;
-            prop_values[i] = boost::any((uint64_t)std::stoll(field));
-          }
-          else {
-            auto p2 = infer_datatype(field, dict_);
-            prop_types[i] = p2.first;
-            prop_values[i] = p2.second;
-            inferred[i] = true;
+            prop_values[i] = std::any((uint64_t)std::stoull(field));
           }
         }  
         else {
@@ -533,12 +543,10 @@ std::size_t graph_db::import_typed_n4j_nodes_from_csv(const std::string &label,
         if (i == id_column)
           id_label = field;
 
-        // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
+        // spdlog::info("record #{}: field #{} = '{}', inferred = {}", num-1, i, field, prop_types[i]);
         auto &col = columns[i];
         if (!col.empty() && !field.empty()) {
-          if (col == "id")
-            prop_values[i] = boost::any((uint64_t)std::stoll(field));
-          else if (inferred[i])
+          if (inferred[i])
             prop_values[i] = string_to_any(prop_types[i], field, dict_);
           else { // columns whose datatypes we have not yet inferred
             auto p2 = infer_datatype(field, dict_);
@@ -549,7 +557,7 @@ std::size_t graph_db::import_typed_n4j_nodes_from_csv(const std::string &label,
         }
         else {
            // spdlog::info("\t==> empty field #{} at record #{}", i, num-1);
-           prop_values[i] = boost::any();
+           prop_values[i] = std::any();
         }
         i++;
       }
@@ -588,7 +596,7 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
   assert(fp.back().find(".csv", filename.size()-4) != std::string::npos);
   std::vector<std::string> fn;
   boost::split(fn, fp.back(), boost::is_any_of("_"));
-  auto label = ":" + fn[1];
+  auto label = /*":" + */ fn[1];
   auto src_node = fn[0];
   auto des_node = fn[2];
 
@@ -598,7 +606,6 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
 
   for (auto &row : parser) {
     if (num == 0) {
-      auto i = 0;
       // process header
       for (auto &field : row) {
         columns.push_back(field);
@@ -608,20 +615,20 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
           end_col = i;
         else if (field == ":TYPE")
           type_col = i;*/
-        i++;
       }
-      /*assert(start_col >= 0); // neo4j
-      assert(end_col >= 0);
-      assert(type_col >= 0);*/
     } else {     
       mapping_t::const_iterator it = node_id_from_field(m, src_node, row[start_col]);
-      if (it == m.end())
+      if (it == m.end()) {
+        spdlog::info("mapping not found for node id #{}-{}", src_node, row[start_col]);
         continue;
+      }
       node::id_t from_node = it->second;
       
       it = node_id_from_field(m, des_node, row[end_col]);
-      if (it == m.end())
+      if (it == m.end()) {
+        spdlog::info("mapping not found for node id #{}-{}", des_node, row[end_col]);
         continue;
+      }
       node::id_t to_node = it->second;      
       //auto &label = row[type_col]; // neo4j
 
@@ -661,13 +668,13 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
   CsvParser parser = CsvParser(f).delimiter(delim);
   std::size_t num = 0;
 
-  // std::vector<std::string> fp;
-  // boost::split(fp, filename, boost::is_any_of(":"));
+  std::vector<std::string> fp;
+  boost::split(fp, filename, boost::is_any_of("/"));
   // spdlog::info("fp = {} : {}", fp.back(), fp.size());
   // assert(fp.back().find(".csv", fp.size()-4) != std::string::npos);
   std::vector<std::string> fn;
-  boost::split(fn, filename, boost::is_any_of("_"));
-  auto label = ":" + fn[1];
+  boost::split(fn, fp.back(), boost::is_any_of("_"));
+  auto label = /*":" + */fn[1];
   auto label_code = dict_->insert(label);
   auto src_node = fn[0];
   auto des_node = fn[2];
@@ -784,7 +791,7 @@ std::size_t graph_db::import_typed_n4j_relationships_from_csv(const std::string 
 
   std::vector<dcode_t> prop_names;
   std::vector<p_item::p_typecode> prop_types; 
-  std::vector<boost::any> prop_values;
+  std::vector<std::any> prop_values;
 
   for (auto &row : parser) {
     if (num == 0) {

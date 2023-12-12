@@ -20,9 +20,9 @@
 #define CATCH_CONFIG_MAIN // This tells Catch to provide a main() - only do
                           // this in one cpp file
 
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include "config.h"
-#include "query.hpp"
+#include "query_builder.hpp"
 #include "graph_pool.hpp"
 #include "bfs.hpp"
 
@@ -43,11 +43,11 @@ void create_data(graph_db_ptr graph) {
 
   for (int i = 0; i < 7; i++) {
     graph->add_node("Person",
-                                  {{"name", boost::any(std::string("John Doe"))},
-                                  {"age", boost::any(42)},
-                                  {"id", boost::any(i)},
-                                  {"dummy1", boost::any(std::string("Dummy"))},
-                                  {"dummy2", boost::any(1.2345)}},
+                                  {{"name", std::any(std::string("John Doe"))},
+                                  {"age", std::any(42)},
+                                  {"id", std::any(i)},
+                                  {"dummy1", std::any(std::string("Dummy"))},
+                                  {"dummy2", std::any(1.2345)}},
                                   true);
   }
   graph->add_relationship(0, 1, ":knows", {});

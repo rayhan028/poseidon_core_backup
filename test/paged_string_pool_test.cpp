@@ -24,21 +24,21 @@
 #include <vector>
 #include <iostream>
 #include <strstream>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include "paged_string_pool.hpp"
 
 void create_dir(const std::string& path) {
-    boost::filesystem::path path_obj(path);
+    std::filesystem::path path_obj(path);
     // check if path exists and is of a regular file
-    if (! boost::filesystem::exists(path_obj))
-        boost::filesystem::create_directory(path_obj);
+    if (! std::filesystem::exists(path_obj))
+        std::filesystem::create_directory(path_obj);
 }
 
 void delete_dir(const std::string& path) {
-    boost::filesystem::path path_obj(path);
-    boost::filesystem::remove_all(path_obj);
+    std::filesystem::path path_obj(path);
+    std::filesystem::remove_all(path_obj);
 }
 
 TEST_CASE("Adding some strings", "[paged_string_pool]") {

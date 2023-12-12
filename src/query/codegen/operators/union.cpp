@@ -1,6 +1,6 @@
 #include "codegen.hpp"
 
-void codegen_inline_visitor::visit(std::shared_ptr<union_all_qres> op) {
+void codegen_inline_visitor::visit(std::shared_ptr<union_all_op> op) {
     pipelined = true;
     jids.push_back(query_id_inline);
     

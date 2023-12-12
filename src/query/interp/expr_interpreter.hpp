@@ -22,7 +22,7 @@
 
 #include <iostream>
 #include "qop.hpp"
-#include "query.hpp"
+#include "query_builder.hpp"
 #include "query_ctx.hpp"
 #include "expression.hpp"
 

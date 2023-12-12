@@ -17,9 +17,11 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <filesystem>
 #include "graph_db.hpp"
 #include "spdlog/spdlog.h"
 #include "thread_pool.hpp"
+#include "common_log.hpp"
 
 using namespace boost::posix_time;
 
@@ -27,8 +29,8 @@ using namespace boost::posix_time;
 namespace nvm = pmem::obj;
 #endif
 
-void graph_db::apply_undo_log() {
-#if defined USE_PMDK && defined USE_LOGGING
+#ifdef USE_PMDK
+void graph_db::apply_log() {
   spdlog::info("checking undo log...");
   ulog_->dump();
   auto pop = pmem::obj::pool_by_vptr(this);
@@ -42,34 +44,34 @@ void graph_db::apply_undo_log() {
       if (!l.valid())
 	      continue;
 
-      if (l.log_type() == pmem_log::log_insert) {
-        auto rec = l.get<log_ins_record>();
-        if (rec->obj_type == pmem_log::log_node) {
+      if (l.log_type() == log_insert) {
+        auto rec = l.get<pmlog::log_ins_record>();
+        if (rec->obj_type == log_node) {
           // delete the node from the nodes_ list
           spdlog::info("recovery: undo insert node {}", rec->oid);
           nvm::transaction::run(pop, [&] { nodes_->remove(rec->oid); });
-        } else if (rec->obj_type == pmem_log::log_rship) {
+        } else if (rec->obj_type == log_rship) {
           // delete the relationship from the rships_ list
           spdlog::info("recovery: undo insert rship {}", rec->oid);
           nvm::transaction::run(pop, [&] { rships_->remove(rec->oid); });
-        } else if (rec->obj_type == pmem_log::log_property) {
+        } else if (rec->obj_type == log_property) {
           // TODO
           spdlog::info("recovery: undo insert property {}", rec->oid);
         }
         // mark the log entry as done
         nvm::transaction::run(pop, [&] { l.set_invalid(); });
-      } else if (l.log_type() == pmem_log::log_update) {
-        if (l.obj_type() == pmem_log::log_node) {
-          auto rec = l.get<log_node_record>();
+      } else if (l.log_type() == log_update) {
+        if (l.obj_type() == log_node) {
+          auto rec = l.get<pmlog::log_node_record>();
           // TODO
-        } else if (l.obj_type() == pmem_log::log_rship) {
-          auto rec = l.get<log_rship_record>();
+        } else if (l.obj_type() == log_rship) {
+          auto rec = l.get<pmlog::log_rship_record>();
           // TODO
-        } else if (l.obj_type() == pmem_log::log_property) {
-          auto rec = l.get<log_property_record>();
+        } else if (l.obj_type() == log_property) {
+          auto rec = l.get<pmlog::log_property_record>();
           // TODO
         }
-      } else if (l.log_type() == pmem_log::log_delete) {
+      } else if (l.log_type() == log_delete) {
       }
     }
     spdlog::info("recovery finished for {}", li.txid());
@@ -77,254 +79,141 @@ void graph_db::apply_undo_log() {
     li.set_invalid();
   }
   // TODO: cleanup ulog_
-#endif
 }
 
-#ifdef QOP_RECOVERY
+#elif defined(USE_PFILES)
 
-std::vector<std::size_t> graph_db::store_query_result(qr_tuple &qr, std::size_t chunk) {
-  return recovery_results_->add(std::move(qr), *dict_, chunk);
+void graph_db::apply_redo(wa_log& log, wa_log::log_iter& li) {
+  switch (li.log_type()) {
+  case log_tx:
+    // do nothing
+    break;
+  case log_insert:
+  case log_update:
+    if (li.obj_type() == log_node) {
+      // insert or update node
+      auto rec = li.get<wal::log_node_record>();
+      spdlog::info("REDO: insert node #{}", rec->oid);
+      node n(rec->after.label);
+      n.id_ = rec->oid;
+      n.from_rship_list = rec->after.from_rship_list;
+      n.to_rship_list = rec->after.to_rship_list;
+      n.property_list = rec->after.property_list;
+      try {
+        nodes_->as_vec().store_at(rec->oid, std::move(n));
+      } catch (index_out_of_range& exc) {
+        spdlog::info("WARNING: page for node @{} doesn't exist - last={}, is_used={}", rec->oid, nodes_->as_vec().last_used(), nodes_->as_vec().is_used(rec->oid));
+        nodes_->as_vec().store_at(rec->oid, std::move(n));
+      }
+
+    }
+    else if (li.obj_type() == log_rship) {
+      // insert or update relationship
+      auto rec = li.get<wal::log_rship_record>();
+      spdlog::info("REDO: insert rship #{}", rec->oid);
+      relationship r;
+      r.rship_label = rec->after.label;
+      r.src_node = rec->after.src_node;
+      r.dest_node = rec->after.dest_node;
+      r.next_src_rship = rec->after.next_src_rship;
+      r.next_dest_rship = rec->after.next_dest_rship;
+      rships_->as_vec().store_at(rec->oid, std::move(r));
+    }
+    else if (li.obj_type() == log_property) {
+      // insert or update properties
+    }
+    else if (li.obj_type() == log_dict) {
+      // insert string in dictionary
+      auto rec = li.get<wal::log_dict_record>();
+      auto new_code = dict_->insert(std::string(rec->str));
+      spdlog::info("REDO: insert dictionary key {}({})->{}", rec->code, new_code, rec->str);
+    }
+    break;
+  case log_delete:
+    if (li.obj_type() == log_node) {
+      // delete node
+      auto rec = li.get<wal::log_node_record>();
+      spdlog::info("REDO: delete node #{}", rec->oid);
+      nodes_->remove(rec->oid);
+    }
+    else if (li.obj_type() == log_rship) {
+      // delete relationship
+      auto rec = li.get<wal::log_rship_record>();
+      spdlog::info("REDO: delete rship #{}", rec->oid);
+      rships_->remove(rec->oid);
+    }
+    else if (li.obj_type() == log_property) {
+        // delete properties
+    }
+    break;
+  default:
+    // we ignore checkpoints 
+    break;
+  }
 }
 
-intermediate_result &graph_db::ir_by_id(offset_t id) {
-  return recovery_results_->get(id);
+void graph_db::apply_undo(wa_log& log, xid_t txid, offset_t pos) {
+
 }
 
-void graph_db::tuple_by_ids(std::vector<offset_t> ids, qr_tuple &fwd_tpl) {
-  for(auto id : ids) {
-    auto & res = recovery_results_->get(id);
-      if(res.type_ == 0) {
-      auto & n = node_by_id(res.res_);
-      fwd_tpl.push_back(&n);
-    } else if(res.type_ == 1) {
-      auto & r = rship_by_id(res.res_);
-      fwd_tpl.push_back(&r);
-    } else if(res.type_ == 2) {
-      fwd_tpl.push_back((int)res.res_);
-    } else if(res.type_ == 3) {
-      std::string str = dict_->lookup_code(res.res_);
-      fwd_tpl.push_back(str);
-    } else if(res.type_ == 4) {
-      double d;
-      std::memcpy(&d, &res.res_, sizeof(d));
-      fwd_tpl.push_back(d);
-    } else if(res.type_ == 5) {
-      fwd_tpl.push_back(res.res_);
+void graph_db::apply_log() {
+  // map of transaction id, offset of the last log entry for this transaction
+  std::map<xid_t, offset_t> loser_tx;
+  uint64_t max_lsn = 0;
+  bool redo_performed = false;
+  
+  std::filesystem::path path_obj(pool_path_);
+  path_obj /= database_name_;
+  std::string prefix = path_obj.string() + "/";
+
+  spdlog::info("processing log file...");
+  wa_log log(prefix + "poseidon.wal");
+
+  // 1. analyze log: find winners and losers
+  for(auto li = log.log_begin(); li != log.log_end(); ++li) {
+    if (li.log_type() == log_tx) {
+      auto tx_log = li.get<wal::log_tx_record>();
+      switch (tx_log->tx_cmd) {
+        case log_bot:
+          loser_tx.emplace(li.transaction_id(), li.log_position()); break;
+        case log_commit:
+          loser_tx.erase(li.transaction_id()); break;
+        case log_abort:
+          loser_tx[li.transaction_id()] = li.log_position(); break;
+      }
+    }
+    else if (li.log_type() == log_chkpt) {
+      // we found a checkpoint, i.e. all redo log entries 
+      // before this LSN can be ignored
+      max_lsn = li.lsn();
+    }
+    else {
+      loser_tx[li.transaction_id()] = li.log_position();
     }
   }
-  
-}
+  spdlog::info("recovery from log: {} losers, starting at LSN #{}", loser_tx.size(), max_lsn);
 
-void graph_db::restore_results(std::list<qr_tuple> &result_list) {
-  std::map<int, qr_tuple> result_map;
-
-  for(auto & res : recovery_results_->as_vec()) {
-    if(res.type_ == 0) {
-      auto & n = node_by_id(res.res_);
-      result_map[res.tuple_id_].push_back(&n);
-    } else if(res.type_ == 1) {
-      auto & r = rship_by_id(res.res_);
-      result_map[res.tuple_id_].push_back(&r);
-    } else if(res.type_ == 2) {
-      result_map[res.tuple_id_].push_back((int)res.res_);
-    } else if(res.type_ == 3) {
-      std::string str = dict_->lookup_code(res.res_);
-      result_map[res.tuple_id_].push_back(str);
-    } else if(res.type_ == 4) {
-      double d;
-      std::memcpy(&d, &res.res_, sizeof(d));
-      result_map[res.tuple_id_].push_back((double)d);
-    } else if(res.type_ == 5) {
-      result_map[res.tuple_id_].push_back(res.res_);
+  // 2. apply redo
+  for(auto li = log.log_begin(); li != log.log_end(); ++li) {
+    if (li.lsn() > max_lsn && li.obj_type() != log_none) {
+      redo_performed = true;
+      apply_redo(log, li);
     }
   }
-
-  for(auto & res : result_map) {
-    result_list.push_back(res.second);
-  }
-}
-
-void graph_db::store_iter(std::pair<std::size_t, std::size_t> iter_pos) {
-  rec_map_t::accessor acc;
-  recovery_res_->insert(acc, (int)(iter_pos.first));
-  acc->second.get_rw() = iter_pos.second;
-  acc.release();
-}
-
-std::map<std::size_t, std::size_t> graph_db::restore_positions() {
-  std::map<std::size_t, std::size_t> cp;
-  for(auto & x : *recovery_res_) {
-    //std::cout << x.first << " " << x.second << std::endl;
-    cp[x.first] = x.second;
-  }
-  return cp;
-}
-
-/**
- * A task structure to continue a failed query with from stored checkpoints
- */
-struct continue_query_task {
-  using range = std::pair<std::size_t, std::size_t>;
-  continue_query_task(graph_db *gdb, node_list &n, std::size_t first, std::size_t last,
-	    graph_db::node_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0) 
-      : graph_db_(gdb), nodes_(n), range_(first, last), consumer_(c), tx_(tp), start_pos_(start_pos) {}
-
-  void operator()() {
-    xid_t xid = 0;
-    if (tx_) { // we need the transaction pointer in thread-local storage
-    current_transaction_ = tx_;
-    xid = tx_->xid();				    
-      }
-      auto iter = graph_db_->get_nodes()->range(range_.first, range_.second, start_pos_);
-      
-      while (iter) {
-  #ifdef USE_TX
-    auto &n = *iter;
-    if (n.is_valid()) {
-      auto &nv = graph_db_->get_valid_node_version(n, xid);
-      consumer_(nv);
-      graph_db_->store_iter({iter.get_cur_chunk(), iter.get_cur_pos()});
-    }
-  #else
-    consumer_(*iter);
-  #endif
-    ++iter;
-      }
+  if (redo_performed) {
+    flush();
+    log.checkpoint();
   }
   
-  graph_db *graph_db_;
-  node_list &nodes_;
-  range range_;
-  graph_db::node_consumer_func consumer_;
-  transaction_ptr tx_;
-  std::size_t start_pos_;
-};
+  // 3. apply undo 
+  for (auto it = loser_tx.begin(); it != loser_tx.end(); it++) {
+    apply_undo(log, it->first, it->second);
+  }
+}
 
-void graph_db::continue_parallel_nodes(std::map<std::size_t, std::size_t> &check_points, node_consumer_func consumer) {
-#ifdef USE_TX
-  check_tx_context();
+#else // USE_IN_MEMORY
+void graph_db::apply_log() {
+  // do nothing
+}
 #endif
-  auto remaining_chunks = check_points.size();
 
-  spdlog::info("Start parallel query with {} threads",
-                remaining_chunks);
-
-  std::vector<std::future<void>> res;
-  res.reserve(remaining_chunks);
-  thread_pool pool;
-  
-  for(auto & cp : check_points) {
-    if(cp.second == NODE_CHUNK_SIZE) { //TODO: check
-      continue;
-    }
-    res.push_back(
-      pool.submit(
-        continue_query_task(this, *nodes_, cp.first, cp.first, consumer, current_transaction_, cp.second)
-      )
-    );
-  }
-
-  for(auto &f : res) {
-    f.get();
-  }
-}
-
-void graph_db::clear_result_storage() {
-  recovery_results_->clear();
-  recovery_res_->clear();
-}
-
-ptime secondsToPtime(uint64_t secs) {
-  auto epoch = from_time_t(0);
-  ptime accum = epoch;
-  accum += seconds(secs);
-  return accum;
-}
-
-struct recover_scan {
-  using range = std::pair<std::size_t, std::size_t>;
-  recover_scan(graph_db *gdb, recovery_list &r, std::size_t first, std::size_t last,
-	    graph_db::tuple_consumer_func c, transaction_ptr tp = nullptr)
-      : graph_db_(gdb), rec_(r), range_(first, last), consumer_(c), tx_(tp) {}
-
-  using rl_iter = recovery_list::range_iterator;
-
-  void operator()() {
-    xid_t xid = 0;
-    if (tx_) { // we need the transaction pointer in thread-local storage
-    current_transaction_ = tx_;
-    xid = tx_->xid();				    
-      }
-      auto iter = rec_.range(range_.first, range_.second);
-      
-      while (iter) {
-  #ifdef USE_TX
-        auto & q = *iter;
-        //handle transaction processing according to result type
-        if(q.type_ == 0) {
-          auto & n = graph_db_->node_by_id(q.res_);
-          auto &nv = graph_db_->get_valid_node_version(n, xid);
-          consumer_({&nv}, q.tuple_id_);
-        } else if(q.type_ == 1) {
-          auto & r = graph_db_->rship_by_id(q.res_);
-          auto &rv = graph_db_->get_valid_rship_version(r, xid);
-          consumer_({&rv}, q.tuple_id_);
-        } else if(q.type_ == 2){
-          consumer_({(int)q.res_}, q.tuple_id_);
-        } else if(q.type_ == 3) {
-          std::string str = graph_db_->get_dictionary()->lookup_code(q.res_);
-          consumer_({str}, q.tuple_id_);
-        } else if(q.type_ == 4){
-          double d;
-          std::memcpy(&d, &q.res_, sizeof(double));
-          consumer_({d}, q.tuple_id_);
-        } else if(q.type_ == 5){
-          consumer_({q.res_}, q.tuple_id_);
-        } else if(q.type_ == 6){
-          ptime pt = secondsToPtime(q.res_);
-          consumer_({pt}, q.tuple_id_);
-        } 
-  #else
-    //consumer_(*iter); TODO: !
-  #endif
-    ++iter;
-      }
-  }
-  
-  graph_db *graph_db_;
-  recovery_list &rec_;
-  range range_;
-  graph_db::tuple_consumer_func consumer_;
-  transaction_ptr tx_;
-};
-
-void graph_db::recover_scan_parallel(tuple_consumer_func consumer) {
-#ifdef USE_TX
-  check_tx_context();
-#endif
-  const int nchunks = 25;
-  spdlog::debug("Start parallel recover with {} threads",
-                recovery_results_->num_chunks() / nchunks + 1);
-
-  std::vector<std::future<void>> res;
-  res.reserve(recovery_results_->num_chunks() / nchunks + 1);
-  thread_pool pool;
-  std::size_t start = 0, end = nchunks - 1;
-  while (start < recovery_results_->num_chunks()) {
-    res.push_back(pool.submit(
-        recover_scan(this, *recovery_results_, start, end, consumer, current_transaction_)));
-    start = end + 1;
-    end += nchunks;
-  }
-  
-  // std::cout << "waiting ..." << std::endl;
-  for (auto &f : res) {
-    f.get();
-  }
-}
-
-int graph_db::get_stored_results() {
-  return recovery_results_->get_stored_tuples();
-}
-
-#endif

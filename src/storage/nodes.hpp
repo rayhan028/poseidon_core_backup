@@ -24,10 +24,7 @@
 #include <map>
 #include <vector>
 #include <utility>
-
-#include <boost/any.hpp>
-
-#include "spdlog/spdlog.h"
+#include <any>
 
 #include "vec.hpp"
 #include "defs.hpp"
@@ -47,6 +44,8 @@ using dirty_node_ptr = std::unique_ptr<dirty_node>;
  * dictionary, only the code value is stored as part of the node.
  */
 struct node : public txn<dirty_node_ptr> {
+  friend class graph_db;
+  
   template <template <typename I> typename V> friend class node_list;
 
   using id_t =
@@ -154,7 +153,7 @@ std::ostream &operator<<(std::ostream &os, const node_description &ndescr);
 /**
  * Helper function to print an any value.
  */
-std::ostream &operator<<(std::ostream &os, const boost::any &any_value);
+std::ostream &operator<<(std::ostream &os, const std::any &any_value);
 
 /**
  * A class for storing all nodes of a graph. It supports adding and removing

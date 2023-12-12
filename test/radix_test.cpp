@@ -1,7 +1,7 @@
 #define CATCH_CONFIG_MAIN // This tells Catch to provide a main() - only do
                           // this in one cpp file
 
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 #include <set>
 #include <iostream>
@@ -73,5 +73,9 @@ TEST_CASE("Insert queries into radix indexx", "[radix_index]") {
 	pop.close();
 	remove(test_path.c_str());
 #endif
+}
+
+#else
+TEST_CASE("Dummy test", "[radix_tst]") {
 }
 #endif

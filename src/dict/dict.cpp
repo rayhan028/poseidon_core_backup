@@ -20,18 +20,18 @@
 #include "spdlog/spdlog.h"
 #include "dict.hpp"
 
-#if defined(USE_PMDK) || defined(USE_IN_MEMORY)
-dict::dict(const std::string& prefix, uint32_t init_pool_size) {
-    pool_ = p_make_ptr<string_pool>(init_pool_size);
-    initialize();
-    spdlog::info("dictionary initialized: {} strings", count_string_pool_size());
-}
-#else
+#ifdef USE_PFILES
 dict::dict(bufferpool& bpool, const std::string& prefix, uint32_t init_pool_size) : bpool_(bpool) {
     dict_file_ = std::make_shared<paged_file>();
     dict_file_->open(prefix == "" ? "dict.db" : prefix + "/dict.db", DICT_FILE_ID);
     bpool_.register_file(DICT_FILE_ID, dict_file_);
     pool_ = std::make_shared<paged_string_pool>(bpool_, DICT_FILE_ID);
+    initialize();
+    spdlog::debug("dictionary initialized: {} strings", table_->size());
+}
+#else
+dict::dict(const std::string& prefix, uint32_t init_pool_size) {
+    pool_ = p_make_ptr<string_pool>(init_pool_size);
     initialize();
     spdlog::info("dictionary initialized: {} strings", count_string_pool_size());
 }
@@ -43,7 +43,7 @@ dict::~dict() {
   pmem::obj::transaction::run(pop, [&] {
     pmem::obj::delete_persistent<string_pool>(pool_);
   });
-#elif !defined(USE_IN_MEMORY)
+#elif defined(USE_PFILES)
     bpool_.flush_all();
     dict_file_->close();
 #endif
@@ -51,8 +51,9 @@ dict::~dict() {
 }
 
 void dict::initialize() {
+    spdlog::debug("initialize string dictionary...");
     std::unique_lock lock(m_);
-    table_ = new h2table(pool_/*, 2920000*/);
+    table_ = new code_table(pool_/*, 2920000*/);
     table_->rebuild();
 }
 
@@ -97,6 +98,7 @@ void dict::resize() {
 }
 
 std::size_t dict::count_string_pool_size() {
+    spdlog::info("dict::count_string_pool_size");
     std::size_t num = 0;
     pool_->scan([&num](const char *s, dcode_t c) {
         num++;

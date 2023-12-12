@@ -2,8 +2,12 @@
 #define POSEIDON_CORE_CODEGEN_INLINE_HPP
 
 #include "qop.hpp"
-#include "join.hpp"
+#include "qop_scans.hpp"
+#include "qop_relationships.hpp"
+#include "qop_joins.hpp"
+#include "qop_aggregates.hpp"
 #include "qop_visitor.hpp"
+#include "jit/p_context.hpp"
 
 void get_rhs_type(qop_ptr  &qop, std::vector<int> &typv);
 
@@ -37,8 +41,6 @@ public:
 
     void visit(std::shared_ptr<limit_result> op);
 
-    void visit(std::shared_ptr<nodes_connected> op);
-
     void visit(std::shared_ptr<collect_result> op);
 
     void visit(std::shared_ptr<group_by> op);
@@ -49,23 +51,15 @@ public:
 
     void visit(std::shared_ptr<projection> op);
 
-    void visit(std::shared_ptr<qr_tuple_append> op);
-
     void visit(std::shared_ptr<node_has_label> op);
     
-    void visit(std::shared_ptr<cross_join> op);
+    void visit(std::shared_ptr<cross_join_op> op);
 
-    void visit(std::shared_ptr<nested_loop_join> op); 
+    void visit(std::shared_ptr<nested_loop_join_op> op); 
 
-    void visit(std::shared_ptr<hash_join> op);
+    void visit(std::shared_ptr<hash_join_op> op);
 
-    void visit(std::shared_ptr<left_outerjoin> op); 
-
-    void visit(std::shared_ptr<left_outerjoin_on_node> op); 
-
-    void visit(std::shared_ptr<rship_join> op);
-
-
+    void visit(std::shared_ptr<left_outer_join_op> op); 
 
     void visit(std::shared_ptr<is_property> op) { } 
 
@@ -73,11 +67,9 @@ public:
 
     void visit(std::shared_ptr<distinct_tuples> op) { } 
 
-    void visit(std::shared_ptr<union_all_qres> op) { } 
+    void visit(std::shared_ptr<union_all_op> op) { } 
 
-    void visit(std::shared_ptr<count_result> op) { } 
-
-    void visit(std::shared_ptr<shortest_path_opr> op) { } 
+     void visit(std::shared_ptr<shortest_path_opr> op) { } 
 
     void visit(std::shared_ptr<weighted_shortest_path_opr> op) { } 
 
@@ -85,13 +77,9 @@ public:
 
     void visit(std::shared_ptr<csr_data> op) { } 
 
-    void visit(std::shared_ptr<left_outerjoin_on_rship> op); 
-
     void visit(std::shared_ptr<create_node> op) { } 
 
     void visit(std::shared_ptr<create_relationship> op) { } 
-
-    void visit(std::shared_ptr<create_rship_on_join> op) { } 
 
     void visit(std::shared_ptr<update_node> op) { } 
 
@@ -99,7 +87,7 @@ public:
 
     void visit(std::shared_ptr<remove_node> op) { } 
 
-    void visit(std::shared_ptr<remove_rship> op) { } 
+    void visit(std::shared_ptr<remove_relationship> op) { } 
 
     /*
      * Initializer for the main function

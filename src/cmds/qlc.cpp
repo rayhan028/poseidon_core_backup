@@ -1,33 +1,42 @@
 
 #include <chrono>
 #include <iostream>
+#include <filesystem>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/program_options.hpp>
 
 #include "linenoise.hpp"
-#include "qproc.hpp"
+#include "fmt/chrono.h"
+#include "query_proc.hpp"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
 
 #include "spdlog/sinks/basic_file_sink.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
-graph_pool_ptr pool;
+
+enum cmd_mode {
+  undefined_mode,
+  import_mode,
+  script_mode,
+  shell_mode
+};
 
 #ifdef USE_PMDK
-
 #define POOL_SIZE ((unsigned long long)(1024 * 1024 * 40000ull)) // 4000 MiB
-
 #define PMEM_PATH "/mnt/pmem0/poseidon/"
-
 #endif
-graph_db_ptr graph;
+
 
 using namespace boost::program_options;
 
-std::unique_ptr<qproc> qproc_ptr;
+graph_pool_ptr pool;
+graph_db_ptr graph;
+std::unique_ptr<query_proc> qproc_ptr;
+
 /**
  * Import data from the given list of CSV files. The list contains
  * not only the files names but also nodes/relationships as well as
@@ -105,6 +114,7 @@ bool import_csv_files(graph_db_ptr &gdb, const std::vector<std::string> &files,
       return false;
     }
   }
+  gdb->flush();
   return true;
 }
 
@@ -132,20 +142,17 @@ void print_result(qresult_iterator& qres) {
  * Execute the query given as string. If qex_cc is set to true then the
  * query is compiled using LLVM, otherwise the query interpreter is used.
  */
-void exec_query(const std::string &qstr, qproc::mode qmode) {
+void exec_query(const std::string &qstr, query_proc::mode qmode, bool print_plan) {
   try {
-  auto start_qp = std::chrono::steady_clock::now();
-  auto res = qproc_ptr->execute_query(qmode, qstr, true);
-  auto end_qp = std::chrono::steady_clock::now();
+    auto start_qp = std::chrono::steady_clock::now();
+    qproc_ptr->execute_and_output_query(qmode, qstr, print_plan);
+    auto end_qp = std::chrono::steady_clock::now();
 
-  print_result(res);
-
-  std::chrono::duration<double> diff = end_qp - start_qp;
-  std::cout << "Query executed in " 
-            << diff.count()
-            << " secs" << std::endl;
+    std::chrono::duration<double> diff = end_qp - start_qp;
+    fmt::print("Query executed in {}\n", diff); 
   } catch (std::exception& exc) {
     std::cerr << "Error in query execution: " << exc.what() << std::endl;
+    qproc_ptr->abort_transaction();
   }
 }
 
@@ -159,10 +166,10 @@ std::string read_from_file(const std::string& qfile) {
       qstr.append(line);
     myfile.close();
   } else {
-    std::cout << "File not found" << std::endl;
+    std::cerr << "File not found" << std::endl;
   }
   
-  spdlog::info("execute query {}", qstr);
+  // spdlog::info("execute query {}", qstr);
   return qstr;
 }
 
@@ -187,27 +194,62 @@ void sync_db(graph_db_ptr &gdb) {
   gdb->flush();
 }
 
+void print_object(graph_db_ptr &gdb, const std::string &cmd) {
+  if (cmd.starts_with("node") && cmd.length() > 5) {
+    auto s = cmd.substr(5);
+    auto id = std::stoul(s);
+
+    gdb->run_transaction([&]() {
+      auto& n = gdb->node_by_id(id);
+      std::cout << std::dec << "#" << n.id() 
+                << ", label=" << gdb->get_dictionary()->lookup_code(n.node_label) << ", from="
+                << uint64_to_string(n.from_rship_list) << ", to=" << uint64_to_string(n.to_rship_list) 
+                << ", props=" << uint64_to_string(n.property_list) << std::endl;
+      return true;
+    });
+  }
+  else if (cmd.starts_with("rship")) {
+    auto s = cmd.substr(6);
+    auto id = std::stoul(s);
+    gdb->run_transaction([&]() {
+      auto& r = gdb->rship_by_id(id);
+      std::cout << "#" << r.id() 
+              << ", label = " << gdb->get_dictionary()->lookup_code(r.rship_label) << ", " << r.src_node
+              << "->" << r.dest_node << ", next_src=" << uint64_to_string(r.next_src_rship) << ", next_dest="
+              << uint64_to_string(r.next_dest_rship) << std::endl;
+      return true;
+    });
+  }
+  else
+    std::cerr << "ERROR: invalid print command" << std::endl;
+}
+
 void show_help() {
   std::cout << "Available commands:\n"
-            << "\thelp          " << "show this help" << "\n"
-            << "\tstring s      " << "display the dictionary code of the string s" << "\n"
-            << "\tcode c        " << "display the string of the dictionary code c" << "\n"
-            << "\tstats         " << "print database statistics" << "\n"
-            << "\tsync          " << "ensure that all pages are written to disk" << "\n"
-            << "\t@file         " << "execute the query stored in the given file" << "\n"
-            << "\t<query-expr>  " << "execute the given query" << std::endl;
+            << "\thelp                             " << "show this help" << "\n"
+            << "\tstring s                         " << "display the dictionary code of the string s" << "\n"
+            << "\tcode c                           " << "display the string of the dictionary code c" << "\n"
+            << "\tload <library>                   " << "load the given shared library" << "\n"
+            << "\tstats                            " << "print database statistics" << "\n"
+            << "\tsync                             " << "ensure that all pages are written to disk" << "\n"
+            << "\tcreate index <label> <property>  " << "create an index for the given label/property" << "\n"
+            << "\tdrop index <label> <property>    " << "delete the index for the given label/property" << "\n"
+            << "\t@file                            " << "execute the query stored in the given file" << "\n"
+            << "\texplain <query-expr>             " << "execute the given query and print the plan" << "\n"
+            << "\t<query-expr>                     " << "execute the given query" << "\n"
+            << "\tprint node|rship <id>            " << "print the raw data of the node/relationship with given id" << std::endl;
 }
 
 /**
  * Run an interactive shell for entering and executing queries.
  */
-void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
+void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
   const auto path = "history.txt";
   // Enable the multi-line mode
   linenoise::SetMultiLine(true);
 
   // Set max length of the history
-  linenoise::SetHistoryMaxLen(4);
+  linenoise::SetHistoryMaxLen(1000);
   // Load history
   linenoise::LoadHistory(path);
   linenoise::SetCompletionCallback(query_completion);
@@ -228,7 +270,7 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
 
     if (line.rfind("@", 0) == 0) {
       auto query_string = read_from_file(line.substr(1));
-      exec_query(query_string, qmode);
+      exec_query(query_string, qmode, false);
     } 
 #if USE_LLVM    
     else if(line.rfind("set", 0) == 0) { // save sub-query: > q1:End(NodeScan("Person"))
@@ -237,7 +279,7 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
     } else if(line.rfind("run", 0) == 0) { // run saved query plan -> run:q1
       spdlog::info("Execute query: {} ", line.substr(line.find(":") + 1));
       //qlc.exec_plan(line.substr(line.find(":") + 1), gdb);
-      exec_query(line.substr(line.find(":") + 1), qmode);
+      exec_query(line.substr(line.find(":") + 1), qmode, false);
     }
 #endif
     else if (line.rfind("help", 0) == 0) {
@@ -245,6 +287,29 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
     }
     else if (line.rfind("stats", 0) == 0) {
       print_stats(gdb);
+    }
+    else if (line.rfind("print", 0) == 0) {
+      if (line.length() > 6) {
+        auto s = line.substr(6);
+        trim(s);
+        print_object(gdb, s);
+      }
+    }
+    else if (line.rfind("load", 0) == 0) {
+      if (line.length() > 4) {
+        auto lib_path = line.substr(4);
+        trim(lib_path);
+        spdlog::info("trying to load shared library '{}'", lib_path);
+        try {
+          if (qproc_ptr->load_library(lib_path)) {
+            std::cout << "library '" << lib_path << "' loaded successfully." << std::endl;
+          }
+          else 
+            std::cerr << "ERROR: cannot load library '" << lib_path << "'" << std::endl;
+        } catch (std::exception& exc) {
+            std::cerr << "ERROR: cannot load library '" << lib_path << "'" << std::endl;
+        }
+      }
     }
     else if (line.rfind("sync", 0) == 0) {
       sync_db(gdb);
@@ -265,8 +330,51 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
         std::cout << "dict string for '" << s << "': " << gdb->get_dictionary()->lookup_code(std::stoi(s)) << std::endl;
       }
     }
+    else if (line.rfind("create index", 0) == 0) {
+      if (line.length() > 12) {
+        auto str = line.substr(12);
+        trim(str);        
+        std::vector<std::string> s;
+        boost::split(s, str, boost::is_any_of(" "));
+        if (s.size() == 2) {
+          spdlog::info("create index {}-{}", s[0], s[1]);
+          query_ctx ctx(gdb);
+          ctx.run_transaction([&]() {
+            if (!ctx.gdb_->has_index(s[0], s[1]))
+              ctx.gdb_->create_index(s[0], s[1]);
+            return true;
+          });
+        }
+        else
+          std::cerr << "ERROR: invalid command" << std::endl;
+      }
+
+    }
+    else if (line.rfind("drop index", 0) == 0) {
+      if (line.length() > 10) {
+        auto str = line.substr(10);
+        trim(str);        
+        std::vector<std::string> s;
+        boost::split(s, str, boost::is_any_of(" "));
+        if (s.size() == 2) {
+          spdlog::info("drop index {}-{}", s[0], s[1]);
+          query_ctx ctx(gdb);
+          ctx.run_transaction([&]() {
+            if (ctx.gdb_->has_index(s[0], s[1]))
+              ctx.gdb_->drop_index(s[0], s[1]);
+            return true;
+          });
+        }
+        else
+          std::cout << "ERROR: invalid command" << std::endl;
+      }      
+    }
+    else if (line.rfind("explain ", 0) == 0) {
+      auto qstr = line.substr(8);
+      exec_query(qstr, qmode, true);
+    }
     else
-      exec_query(line, qmode);
+      exec_query(line, qmode, false);
 
     // Add line to history
     linenoise::AddHistory(line.c_str());
@@ -274,19 +382,35 @@ void run_shell(graph_db_ptr &gdb, qproc::mode qmode) {
     // Save history
     linenoise::SaveHistory(path);
   }
+  gdb->flush();
+  gdb->close_files();
+}
 
+std::string check_config_files(const std::string& fname) {
+  std::filesystem::path cwd_config_file(fname);
+  if (std::filesystem::exists(cwd_config_file))
+    return cwd_config_file.string();
+  
+  std::string full_name = getenv("HOME") + std::string("/") + fname;
+  std::filesystem::path home_config_file(full_name);
+  if (std::filesystem::exists(home_config_file))
+    return home_config_file.string();
+
+  return "";
 }
 
 int main(int argc, char* argv[]) {
   std::string db_name, pool_path, query_file, dot_file, qmode_str, format = "ldbc";
   std::vector<std::string> import_files;
   bool start_shell = false;
-  bool n4j_mode = false;
-  qproc::mode qmode = qproc::Compile; 
+  query_proc::mode qmode = query_proc::Compile; 
   char delim_character = ',';
   bool strict = false;
+  cmd_mode mode = undefined_mode;
 
-  spdlog::info("Starting poseidon_cli, Version {}", POSEIDON_VERSION);
+  auto console = spdlog::stdout_color_mt("poseidon");
+  spdlog::set_default_logger(console);
+  spdlog::info("Starting poseidon qlc, Version {}", POSEIDON_VERSION);
 
   try {
     options_description desc{"Options"};
@@ -308,6 +432,13 @@ int main(int argc, char* argv[]) {
 
     variables_map vm;
     store(parse_command_line(argc, argv, desc), vm);
+    auto config_name = check_config_files("poseidon.ini");
+    // std::filesystem::path config_file(getenv("HOME") + std::string("/poseidon.ini"));
+    if (! config_name.empty()) {
+      spdlog::info("loading config from '{}'", config_name);
+      std::ifstream ifs(config_name);
+      store(parse_config_file(ifs, desc), vm);
+    }
 
     if (vm.count("help")) {
       std::cout << "Poseidon Graph Database Version " << POSEIDON_VERSION << " ("
@@ -324,10 +455,11 @@ int main(int argc, char* argv[]) {
 
     notify(vm);
 
-    if (vm.count("import"))
+    if (vm.count("import")) {
       import_files = vm["import"].as<std::vector<std::string>>();
-
-   if (vm.count("pool"))
+      mode = import_mode;
+    }
+    if (vm.count("pool"))
       pool_path = vm["pool"].as<std::string>();
 
     if (vm.count("delimiter"))
@@ -340,7 +472,7 @@ int main(int argc, char* argv[]) {
       format = vm["format"].as<std::string>();
 
     if (format != "n4j" && format != "gtpc" && format != "ldbc") {
-      std::cout
+      std::cerr
           << "ERROR: choose format --n4j or --gtpc or --ldbc.\n";
       return -1;
     }
@@ -353,21 +485,20 @@ int main(int argc, char* argv[]) {
       start_shell = vm["shell"].as<bool>();
 
     if (vm.count("qmode")) {
-      std::cout << "qmode = " << qmode_str << std::endl;
       if (qmode_str != "llvm" && qmode_str != "interp" && qmode_str != "adapt") {
         std::cout << "ERROR: unknown query mode value: 'llvm' or 'interp' or 'adapt' expected.\n";
         return -1;
       }
       if (qmode_str == "llvm")
-        qmode = qproc::Compile;
+        qmode = query_proc::Compile;
       else if (qmode_str == "interp")
-        qmode = qproc::Interpret;
+        qmode = query_proc::Interpret;
       else
-        qmode = qproc::Adaptive;
+        qmode = query_proc::Adaptive;
     }
 
     if (start_shell && !query_file.empty()) {
-      std::cout
+      std::cerr
           << "ERROR: options --shell and --query cannot be used together.\n";
       return -1;
     }
@@ -397,6 +528,7 @@ int main(int argc, char* argv[]) {
 
   // graph->dump();
 
+    /*
     {
         auto& nodes = graph->get_nodes();
         node n;
@@ -405,21 +537,26 @@ int main(int argc, char* argv[]) {
                   << "offset of id_       : " << n._offset() << " bytes\n"
                   << "offset of node_label: " << ((uint64_t)((uint8_t *)&n.node_label) - (uint64_t)((uint8_t *)&n)) << " bytes"<< std::endl; 
     }
+    */
 
   query_ctx ctx(graph);
-  qproc_ptr = std::make_unique<qproc>(ctx);
+  qproc_ptr = std::make_unique<query_proc>(ctx);
 
-  if (start_shell) {
+  if (!query_file.empty()) {
+    mode = script_mode;
+    // load the query from the file
+    auto query_string = read_from_file(query_file);
+    exec_query(query_string, qmode, false);
+  }
+
+  if (start_shell || mode == undefined_mode) {
     run_shell(graph, qmode);
   }
 
   //exec_query(graph, "Filter($0.customerId == 42, NodeScan())", false);
   //exec_query(graph, "Create(($1)-[r:Label { name1: 'Val1', name2: 42 }]->($2)), NodeScan('Person'))");
 
-  if (!query_file.empty()) {
-    // load the query from the file
-    auto query_string = read_from_file(query_file);
-    exec_query(query_string, qmode);
-  }
+  graph->flush();
+  graph->close_files();
 }
  

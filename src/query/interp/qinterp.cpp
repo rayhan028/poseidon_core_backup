@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -18,9 +18,9 @@
  */
 #include "qinterp.hpp"
 
-void qinterp::execute(query_ctx& ctx, query_set& qset) {
+void qinterp::execute(query_ctx& ctx, query_batch& qbatch) {
   ctx.run_transaction([&]() {
-    qset.start(); 
+    qbatch.start(ctx); 
     return true;
   });    
 }

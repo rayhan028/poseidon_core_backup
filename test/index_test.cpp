@@ -22,11 +22,11 @@
 
 #include <set>
 
-#include "catch.hpp"
 #include "config.h"
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
 #include "qop.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 const std::string test_path = PMDK_PATH("index_tst");
 #if 0
@@ -37,11 +37,11 @@ TEST_CASE("Creating an index on nodes", "[index]") {
   graph->run_transaction([&]() {
     for (int i = 0; i < 100; i++) {
       auto id = graph->add_node("Person",
-                              {{"name", boost::any(std::string("John Doe"))},
-                               {"age", boost::any(42)},
-                               {"id", boost::any(i)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}},
+                              {{"name", std::any(std::string("John Doe"))},
+                               {"age", std::any(42)},
+                               {"id", std::any(i)},
+                               {"dummy1", std::any(std::string("Dummy"))},
+                               {"dummy2", std::any(1.2345)}},
                               true);
     }
     return true;
@@ -73,96 +73,95 @@ TEST_CASE("Creating an index on nodes", "[index]") {
 #if !defined(USE_IN_MEMORY)
 TEST_CASE("Creating and restoring an index on nodes", "[index]") {
   {
-  auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_idx_graph2");
+    auto pool = graph_pool::create(test_path);
+    auto graph = pool->create_graph("my_idx_graph2");
 
-  graph->run_transaction([&]() {
-    for (int i = 0; i < 100; i++) {
-      auto id = graph->add_node("Person",
-                              {{"name", boost::any(std::string("John Doe"))},
-                               {"age", boost::any(42)},
-                               {"id", boost::any(i)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}},
-                              true);
-    }
-    return true;
-  });
+    graph->run_transaction([&]() {
+      for (int i = 0; i < 100; i++) {
+        graph->add_node("Person",
+                        {{"name", std::any(std::string("John Doe"))},
+                         {"age", std::any(42)},
+                         {"id", std::any(i)},
+                         {"dummy1", std::any(std::string("Dummy"))},
+                         {"dummy2", std::any(1.2345)}},
+                        true);
+      }
+      return true;
+    });
 
-  index_id idx; 
-  graph->run_transaction([&]() {
-    idx = graph->create_index("Person", "id");
-    return true;
-  });
-  pool->close();
+    index_id idx;
+    graph->run_transaction([&]() {
+      spdlog::info("create index Person.id");
+      idx = graph->create_index("Person", "id");
+      return true;
+    });
+    pool->close();
   }
   {
-  auto pool = graph_pool::open(test_path);
-  auto graph = pool->open_graph("my_idx_graph2");
+    spdlog::info("----------- reopen graph pool -----------");
+    auto pool = graph_pool::open(test_path);
+    auto graph = pool->open_graph("my_idx_graph2");
 
-  graph->begin_transaction();
+    graph->begin_transaction();
 
-  index_id idx;
-  REQUIRE_NOTHROW(idx = graph->get_index("Person", "id")); 
-  CHECK_THROWS_AS(graph->get_index("Actor", "id"), unknown_index);
+    index_id idx;
+    REQUIRE_NOTHROW(idx = graph->get_index("Person", "id"));
+    CHECK_THROWS_AS(graph->get_index("Actor", "id"), unknown_index);
 
-  bool found = false;
-  graph->index_lookup(idx, 55u, [&found](auto& n) {
-    found = true;
-  });
-  REQUIRE(found);
+    bool found = false;
+    graph->index_lookup(idx, 55u, [&found](auto &n) { found = true; });
+    REQUIRE(found);
 
-  graph->commit_transaction();
-  graph_pool::destroy(pool);
+    graph->commit_transaction();
+    graph_pool::destroy(pool);
   }
 }
 #endif
 
 TEST_CASE("Creating and updating an index on nodes", "[index]") {
- auto pool = graph_pool::create(test_path);
-  auto graph = pool->create_graph("my_idx_graph");
+  auto pool = graph_pool::create(test_path);
+  auto graph = pool->create_graph("my_idx_graph3");
 
   graph->run_transaction([&]() {
     for (int i = 0; i < 100; i++) {
-      auto id = graph->add_node("Person",
-                              {{"name", boost::any(std::string("John Doe"))},
-                               {"age", boost::any(42)},
-                               {"id", boost::any(i)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(1.2345)}},
-                              true);
+      graph->add_node("Person",
+                      {{"name", std::any(std::string("John Doe"))},
+                       {"age", std::any(42)},
+                       {"id", std::any(i)},
+                       {"dummy1", std::any(std::string("Dummy"))},
+                       {"dummy2", std::any(1.2345)}},
+                      true);
     }
     return true;
   });
 
-  index_id idx; 
+  index_id idx;
   graph->run_transaction([&]() {
+    spdlog::info("create index Person.id");
     idx = graph->create_index("Person", "id");
     return true;
   });
 
-  // create another person 
+  // create another person
   graph->run_transaction([&]() {
-    auto id = graph->add_node("Person",
-                              {{"name", boost::any(std::string("Jane Roe"))},
-                               {"age", boost::any(66)},
-                               {"id", boost::any(1000)},
-                               {"dummy1", boost::any(std::string("Dummy"))},
-                               {"dummy2", boost::any(2.345)}},
-                              true);
+    graph->add_node("Person",
+                    {{"name", std::any(std::string("Jane Roe"))},
+                     {"age", std::any(66)},
+                     {"id", std::any(1000)},
+                     {"dummy1", std::any(std::string("Dummy"))},
+                     {"dummy2", std::any(2.345)}},
+                    true);
     return true;
   });
 
   graph->run_transaction([&]() {
     bool found = false;
-    graph->index_lookup(idx, 1000, [&](auto& n) {
-        found = true;
-    });
+    graph->index_lookup(idx, 1000, [&](auto &n) { found = true; });
     REQUIRE(found);
     return true;
   });
 
-  // delete a person 
+  // delete a person
   graph->run_transaction([&]() {
     graph->delete_node(55);
     return true;
@@ -170,35 +169,35 @@ TEST_CASE("Creating and updating an index on nodes", "[index]") {
 
   graph->run_transaction([&]() {
     bool found = false;
-    graph->index_lookup(idx, 55, [&](auto& n) { found = true; });
+    graph->index_lookup(idx, 55, [&](auto &n) { found = true; });
     REQUIRE(!found);
     return false;
   });
 
   // update a person
   graph->run_transaction([&]() {
-    auto& n = graph->node_by_id(70);
-    graph->update_node(n,  //update
-				  {
-				    { "id", boost::any(1100) },
-				  },
-				   "Person");
+    auto &n = graph->node_by_id(70);
+    graph->update_node(n, // update
+                       {
+                           {"id", std::any(1100)},
+                       },
+                       "Person");
     return true;
   });
 
   graph->run_transaction([&]() {
     bool found = false;
-    graph->index_lookup(idx, 1100, [&](auto& n) { found = true; });
+    graph->index_lookup(idx, 1100, [&](auto &n) { found = true; });
     REQUIRE(found);
     return true;
   });
 
   graph->run_transaction([&]() {
     bool found = false;
-    graph->index_lookup(idx, 70, [&](auto& n) { found = true; });
+    graph->index_lookup(idx, 70, [&](auto &n) { found = true; });
     REQUIRE(!found);
     return false;
-  });  
+  });
 
   graph_pool::destroy(pool);
 }

@@ -38,13 +38,14 @@
 #include <thrust/device_ptr.h>
 #endif
 
-#define POSEIDON_VERSION "0.0.6"
+#define POSEIDON_VERSION "0.0.8"
 
 #define DICT_FILE_ID   0
 #define NODE_FILE_ID   1
 #define RSHIP_FILE_ID  2
 #define NPROPS_FILE_ID 3
 #define RPROPS_FILE_ID 4
+#define INDEX_FILE_ID  5
 
 /**
  * Typedef used for codes in string dictionaries and type tables.
@@ -72,7 +73,6 @@ constexpr uint32_t UNKNOWN_CODE = std::numeric_limits<uint32_t>::max();
 inline std::string uint64_to_string(uint64_t v) {
   return v == UNKNOWN ? std::string("<null>") : std::to_string(v);
 }
-
 
 #ifdef USE_PMDK
 

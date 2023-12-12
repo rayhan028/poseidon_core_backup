@@ -8,6 +8,7 @@
 #include "filter_visitor.hpp"
 #include "jit/p_context.hpp"
 #include "expression.hpp"
+#include "binary_expression.hpp"
 #include "codegen.hpp"
 
 /**

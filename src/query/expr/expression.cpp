@@ -31,10 +31,16 @@ number_token::number_token(int value) : ivalue_(value) {
     rtype_ = ftype_ = FOP_TYPE::INT;
 }
 
+number_token::number_token(uint64_t value) : lvalue_(value) {
+    name_ = "UINT64";
+    rtype_ = ftype_ = FOP_TYPE::UINT64;
+}
+
 number_token::number_token(double value) : dvalue_(value) {
     name_ = "DOUBLE";
     rtype_ = ftype_ = FOP_TYPE::DOUBLE;
 }
+
 std::string number_token::dump() const {
     return ftype_ == FOP_TYPE::INT ? std::to_string(ivalue_) : std::to_string(dvalue_);
 }
@@ -130,127 +136,4 @@ void func_call::accept(int rank, expression_visitor &fep) {
     for (auto& p : param_list_)    
         p->accept(rank+1, fep);
     fep.visit(rank, shared_from_this());
-}
-
-binary_predicate::binary_predicate(FOP fop, const expr left, const expr right, bool prec, bool is_bool)
-        : left_(left), right_(right), fop_(fop), is_bool_(is_bool), prec_(prec) {}
-
-std::string binary_predicate::dump() const {
-    auto lhs = (*left_).dump();
-    auto rhs = (*right_).dump();
-    auto op = fop_str(fop_);
-    auto pro = prec_ ? "(" : "";
-    auto epi = prec_ ? ")" : "";
-    return pro + lhs + op + rhs + epi;
-}
-
-eq_predicate::eq_predicate(const expr left, const expr right, bool prec, bool not_)
-        : binary_predicate(FOP::EQ, left, right, prec) {
-    name_ = "EQ";
-    ftype_ = FOP_TYPE::OP;
-    rtype_ = FOP_TYPE::BOOL_OP;
-    if (not_) fop_ = FOP::NEQ;
-}
-
-void eq_predicate::accept(int rank, expression_visitor &fep) {
-    left_->accept(rank+1, fep);
-    right_->accept(rank+1, fep);
-    fep.visit(rank, shared_from_this());
-    // TODO: do binary stuff here
-}
-
-gt_predicate::gt_predicate(const expr left, const expr right, bool prec, bool not_)
-        : binary_predicate(FOP::GT, left, right, prec) {
-    name_ = "GT";
-    ftype_ = FOP_TYPE::OP;
-    rtype_ = FOP_TYPE::BOOL_OP;
-}
-
-void gt_predicate::accept(int rank, expression_visitor &fep) {
-    left_->accept(rank+1, fep);
-    right_->accept(rank+1, fep);
-    fep.visit(rank, shared_from_this());
-    // TODO: do binary stuff here
-}
-
-ge_predicate::ge_predicate(const expr left, const expr right, bool prec, bool not_)
-        : binary_predicate(FOP::GE, left, right, prec) {
-    name_ = "GE";
-    ftype_ = FOP_TYPE::OP;
-    rtype_ = FOP_TYPE::BOOL_OP;
-}
-
-void ge_predicate::accept(int rank, expression_visitor &fep) {
-    left_->accept(rank+1, fep);
-    right_->accept(rank+1, fep);
-    fep.visit(rank, shared_from_this());
-    // TODO: do binary stuff here
-}
-
-lt_predicate::lt_predicate(const expr left, const expr right, bool prec, bool not_)
-        : binary_predicate(FOP::LT, left, right, prec) {
-    name_ = "LT";
-    ftype_ = FOP_TYPE::OP;
-    rtype_ = FOP_TYPE::BOOL_OP;
-}
-
-void lt_predicate::accept(int rank, expression_visitor &fep) {
-    left_->accept(rank+1, fep);
-    right_->accept(rank+1, fep);
-    fep.visit(rank, shared_from_this());
-    // TODO: do binary stuff here
-}
-
-le_predicate::le_predicate(const expr left, const expr right, bool prec, bool not_)
-        : binary_predicate(FOP::LE, left, right, prec) {
-    name_ = "LE";
-    ftype_ = FOP_TYPE::OP;
-    rtype_ = FOP_TYPE::BOOL_OP;
-}
-
-void le_predicate::accept(int rank, expression_visitor &fep) {
-    left_->accept(rank+1, fep);
-    right_->accept(rank+1, fep);
-    fep.visit(rank, shared_from_this());
-    // TODO: do binary stuff here
-}
-
-call_predicate::call_predicate(const expr left, const expr right, bool prec, bool not_)
-        : binary_predicate(FOP::EQ, left, right, prec) {
-    name_ = "CALL";
-    ftype_ = FOP_TYPE::OP;
-    if (not_) fop_ = FOP::NEQ;
-}
-
-void call_predicate::accept(int rank, expression_visitor &fep) {
-    left_->accept(rank+1, fep);
-    right_->accept(rank+1, fep);
-    fep.visit(rank, shared_from_this());
-    // TODO: do binary stuff here
-}
-
-and_predicate::and_predicate(const expr left, const expr right, bool prec)
-        : binary_predicate(FOP::AND, left, right, prec, true) {
-    rtype_ = ftype_ = FOP_TYPE::BOOL_OP;
-    name_ = "AND";
-}
-
-void and_predicate::accept(int rank, expression_visitor &fep) {
-    left_->accept(rank+1, fep);
-    right_->accept(rank+1, fep);
-    fep.visit(rank, shared_from_this());
-    // TODO: do binary stuff here
-}
-
-or_predicate::or_predicate(const expr left, const expr right, bool prec)
-        : binary_predicate(FOP::OR, left, right, prec, true) {
-    rtype_ = ftype_ = FOP_TYPE::BOOL_OP;
-    name_ = "OR";
-}
-
-void or_predicate::accept(int rank, expression_visitor &fep) {
-    left_->accept(rank+1, fep);
-    right_->accept(rank+1, fep);
-    fep.visit(rank, shared_from_this());
-    // TODO: do binary stuff here
 }

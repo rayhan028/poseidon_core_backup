@@ -1,9 +1,10 @@
 #include "codegen.hpp"
 
-void codegen_inline_visitor::visit(std::shared_ptr<left_outerjoin> op) {
+void codegen_inline_visitor::visit(std::shared_ptr<left_outer_join_op> op) {
 
 }
 
+#if 0
 void codegen_inline_visitor::visit(std::shared_ptr<left_outerjoin_on_node> op) {
     pipelined = true;
     jids.push_back(query_id_inline);
@@ -182,11 +183,5 @@ void codegen_inline_visitor::visit(std::shared_ptr<left_outerjoin_on_node> op) {
     main_return = return_handle;
     prev_bb = consume;
 }
+#endif
 
-void codegen_inline_visitor::visit(std::shared_ptr<rship_join> op) {
-
-}
-
-void codegen_inline_visitor::visit(std::shared_ptr<left_outerjoin_on_rship> op) {
-
-}

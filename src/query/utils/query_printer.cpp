@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
-#include "query.hpp"
+#include "query_builder.hpp"
 #include "query_printer.hpp"
 
 std::pair<qop_node_ptr, qop_node_ptr> build_qop_tree(qop_ptr root) {

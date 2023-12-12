@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -20,7 +20,7 @@
 #include "bufferpool.hpp"
 #include "spdlog/spdlog.h"
 
-bufferpool::bufferpool(std::size_t bsize) : bsize_(bsize), slots_(bsize_) {
+bufferpool::bufferpool(std::size_t bsize) : bsize_(bsize), slots_(bsize_), p_reads_(0), l_reads_(0) {
     spdlog::debug("bufferpool()");
     buffer_ = new page[bsize_];
     slots_.set(); // set everything to 1 == unused
@@ -32,17 +32,17 @@ bufferpool::~bufferpool() {
 }
 
 void bufferpool::register_file(uint8_t file_id, paged_file_ptr pf) {
-    assert(file_id < 10);
+    assert(file_id < MAX_PFILES);
     files_[file_id] = pf;
 }
 
 paged_file_ptr bufferpool::get_file(uint8_t file_id) {
-    assert(file_id < 10 && files_[file_id]);
+    assert(file_id < MAX_PFILES && files_[file_id]);
     return files_[file_id];
 }
 
 void bufferpool::scan_file(uint8_t file_id, std::function<void(page *p)> cb) {
-    assert(file_id < 10 && files_[file_id]);
+    assert(file_id < MAX_PFILES && files_[file_id]);
     auto pos = slots_.find_first();
     if (pos == boost::dynamic_bitset<>::npos) {
         evict_page();
@@ -51,21 +51,25 @@ void bufferpool::scan_file(uint8_t file_id, std::function<void(page *p)> cb) {
     slots_.flip(pos);
 
     files_[file_id]->scan_pages(buffer_[pos], [&](page& pg, paged_file::page_id pid) {
+        l_reads_++;
+        p_reads_++;
         cb(&pg);
     });
     slots_.flip(pos);
 }
  
 std::pair<page*, paged_file::page_id> bufferpool::last_valid_page(uint8_t file_id) {
-    assert(file_id < 10 && files_[file_id]);
+    assert(file_id < MAX_PFILES && files_[file_id]);
     auto pid = files_[file_id]->last_valid_page();
+    // spdlog::info("last_valid_page: {}", pid);
     return std::make_pair(fetch_page(pid | (static_cast<uint64_t>(file_id) << 60)), pid);
 }
 
 page *bufferpool::fetch_page(paged_file::page_id pid) {
     std::unique_lock lock(mutex_);
+    l_reads_++;
     auto iter = ptable_.find(pid);
-    spdlog::debug("bufferpool::fetch_page {}", pid & 0xFFFFFFFFFFFFFFF);
+    // spdlog::info("bufferpool::fetch_page {}", pid & 0xFFFFFFFFFFFFFFF);
     if (iter != ptable_.end()) {
         // move pid in lru_list_
         auto iter2 = std::find(lru_list_.begin(), lru_list_.end(), pid);
@@ -88,7 +92,7 @@ page *bufferpool::fetch_page(paged_file::page_id pid) {
 }
     
 std::pair<page*, paged_file::page_id> bufferpool::allocate_page(uint8_t file_id) {
-    assert(file_id < 10 && files_[file_id]);
+    assert(file_id < MAX_PFILES && files_[file_id]);
     paged_file::page_id pid = files_[file_id]->allocate_page();
     spdlog::debug("bufferpool::allocate_page -> {} in file {} -> {}", pid, file_id, (pid | (static_cast<uint64_t>(file_id) << 60)));
     return std::make_pair(fetch_page(pid | (static_cast<uint64_t>(file_id) << 60)), pid);
@@ -101,7 +105,7 @@ void bufferpool::free_page(paged_file::page_id pid) {
     if (iter != ptable_.end()) {
         auto raw_pid = pid & 0xFFFFFFFFFFFFFFF;
         auto file_id = (pid & 0xF000000000000000) >> 60;
-        assert(file_id < 10 && files_[file_id]);
+        assert(file_id < MAX_PFILES && files_[file_id]);
         spdlog::debug("free_page: #{}(raw:{}|file_id:{})", pid, raw_pid, file_id);
         memset(iter->second.p_, 0, sizeof(PAGE_SIZE));
         ptable_.erase(pid);
@@ -175,7 +179,8 @@ bool bufferpool::evict_page() {
         auto it2 = ptable_.find(pid);
         if (it2 != ptable_.end()) {
             if (it2->second.dirty_) {
-                // TODO: write UNDO log!
+                spdlog::info("bufferpool::evict dirty page {}", pid & 0xFFFFFFFFFFFFFFF);
+                // TODO: write WAL log record for UNDO
                 write_page_to_file(pid, it2->second.p_);
             }
             slots_.set(it2->second.pos_);
@@ -198,17 +203,17 @@ std::pair<page *, std::size_t> bufferpool::load_page_from_file(paged_file::page_
 
     // select file
     auto file_id = (pid & 0xF000000000000000) >> 60;
-    assert(file_id < 10 && files_[file_id]);
+    assert(file_id < MAX_PFILES && files_[file_id]);
+    // spdlog::info("read page {}|{} from file {}", pid, raw_pid, file_id);
     files_[file_id]->read_page(raw_pid, buffer_[pos]);
-    spdlog::debug("read page {}|{} from file {}", pid, raw_pid, file_id);
+    p_reads_++;
     return std::make_pair(&(buffer_[pos]), pos);
 }
 
 void bufferpool::write_page_to_file(paged_file::page_id pid, page *pg) {
     auto raw_pid = pid & 0xFFFFFFFFFFFFFFF;
     auto file_id = (pid & 0xF000000000000000) >> 60;
-    assert(file_id < 10 && files_[file_id]);
-    spdlog::debug("write page {}|{} to file {}", pid, raw_pid, file_id);
+    assert(file_id < MAX_PFILES && files_[file_id]);
     files_[file_id]->write_page(raw_pid, *pg);
 }
 
@@ -220,4 +225,9 @@ void bufferpool::dump() {
 
         std::cout << "page #" << pid << ", file=" << file_id << ", dirty=" << iter->second.dirty_ << std::endl;
     }
+}
+
+double bufferpool::hit_ratio() const {
+    // spdlog::info("bufferpool: logical reads={}, physical reads={}", l_reads_, p_reads_);
+    return (double) (l_reads_ - p_reads_) / (double) l_reads_;
 }

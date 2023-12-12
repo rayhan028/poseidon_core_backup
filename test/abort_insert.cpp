@@ -17,15 +17,15 @@ int main(int argc, char **argv) {
     spdlog::info("create pool '{}' with graph '{}'", path, graph_name);
     {
         graph->begin_transaction();
-        auto n = graph->add_node(":Person", {{"number", boost::any(2)}});
+        auto n = graph->add_node("Person", {{"number", std::any(2)}});
         spdlog::info("node #{} inserted", n);
         graph->commit_transaction();
     }
     {
         graph->begin_transaction();
-        graph->add_node(":Person", {{"number", boost::any(42)}});
-        graph->add_node(":Person", {{"number", boost::any(43)}});
-        graph->add_node(":Person", {{"number", boost::any(44)}});
+        graph->add_node("Person", {{"number", std::any(42)}});
+        graph->add_node("Person", {{"number", std::any(43)}});
+        graph->add_node("Person", {{"number", std::any(44)}});
     } 
     exit(0);
 }

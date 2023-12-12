@@ -38,10 +38,10 @@ properties_t dict_to_props(const py::dict& props) {
       node_props[std::string(py::str(item.first))] = std::string(py::str(item.second)); 
     }
     else if (py::isinstance<py::int_>(item.second)) {
-      node_props[std::string(py::str(item.first))] = boost::any(item.second.cast<int>());
+      node_props[std::string(py::str(item.first))] = std::any(item.second.cast<int>());
     }
     else if (py::isinstance<py::float_>(item.second)) {
-      node_props[std::string(py::str(item.first))] = boost::any(item.second.cast<double>());
+      node_props[std::string(py::str(item.first))] = std::any(item.second.cast<double>());
     }
   }
   return node_props;

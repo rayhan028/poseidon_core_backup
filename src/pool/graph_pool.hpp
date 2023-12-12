@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -22,7 +22,6 @@
 
 #include "defs.hpp"
 #include "graph_db.hpp"
-#include "config.h"
 
 #include <unordered_map>
 

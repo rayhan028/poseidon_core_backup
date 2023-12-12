@@ -40,6 +40,14 @@ inline bool int_less_than(const query_result& r1, const query_result& r2) {
     return boost::get<int>(r1) < boost::get<int>(r2);
 }
 
+inline bool uint64_less_than(const query_result& r1, const query_result& r2) {
+    return boost::get<uint64_t>(r1) < boost::get<uint64_t>(r2);
+}
+
+inline bool uint64_greater_than(const query_result& r1, const query_result& r2) {
+    return boost::get<uint64_t>(r1) > boost::get<uint64_t>(r2);
+}
+
 // ----------- query_result::double -----------
 inline bool double_not_equal(const query_result& r1, const query_result& r2) {
     return boost::get<double>(r1) != boost::get<double>(r2);
@@ -75,26 +83,26 @@ bool equal(const query_result& qr1, const query_result& qr2) {
     // std::cout << "equal: " << qr1.which() << "-" << qr2.which() << std::endl;
     if (qr1.which() == qr2.which()) {
         switch (qr1.which()) {
-            case 0: // node *
+            case node_ptr_type: // node *
                 return boost::get<node*>(qr1) == boost::get<node*>(qr2);
-            case 1: // relationship *
+            case rship_ptr_type: // relationship *
                 return boost::get<relationship*>(qr1) == boost::get<relationship*>(qr2);
                 break;
-            case 2: // int
+            case int_type: // int
                 return boost::get<int>(qr1) == boost::get<int>(qr2);
-            case 3: // double
+            case double_type: // double
                 return boost::get<double>(qr1) == boost::get<double>(qr2);
-            case 4: // std::string
+            case string_type: // std::string
                 return string_equal(qr1, qr2);
-            case 5: // uint64_t
+            case uint64_type: // uint64_t
                 return boost::get<uint64_t>(qr1) == boost::get<uint64_t>(qr2);
             default:
                 break;
         }
     } 
-    else if (qr1.which() == 2 && qr2.which() == 5)
+    else if (qr1.which() == int_type && qr2.which() == uint64_type)
         return (uint64_t)boost::get<int>(qr1) == boost::get<uint64_t>(qr2);
-    else if (qr1.which() == 5 && qr2.which() == 2)
+    else if (qr1.which() == uint64_type && qr2.which() == int_type)
         return boost::get<uint64_t>(qr1) == (uint64_t)boost::get<int>(qr2);
 
     return false;
@@ -103,19 +111,25 @@ bool equal(const query_result& qr1, const query_result& qr2) {
 bool less_than(const query_result& qr1, const query_result& qr2) {
     if (qr1.which() == qr2.which()) {
         switch (qr1.which()) {
-            case 0: // node *
-            case 1: // relationship *
+            case node_ptr_type: // node *
+            case rship_ptr_type: // relationship *
                 break;
-            case 2: // int
+            case int_type: // int
                 return int_less_than(qr1, qr2);
-            case 3: // double
+            case double_type: // double
                 return double_less_than(qr1, qr2);
-            case 4: // std::string
+            case string_type: // std::string
                 return string_less_than(qr1, qr2);
+            case uint64_type: // uint64_t
+                return uint64_less_than(qr1, qr2);
             default:
                 break;
         }
     } 
+    else if (qr1.which() == int_type && qr2.which() == uint64_type)
+        return (uint64_t)boost::get<int>(qr1) < boost::get<uint64_t>(qr2);
+    else if (qr1.which() == uint64_type && qr2.which() ==int_type)
+        return boost::get<uint64_t>(qr1) < (uint64_t)boost::get<int>(qr2);
     return false;
 }
 
@@ -126,19 +140,25 @@ bool less_or_equal(const query_result& qr1, const query_result& qr2) {
 bool greater_than(const query_result& qr1, const query_result& qr2) {
     if (qr1.which() == qr2.which()) {
         switch (qr1.which()) {
-            case 0: // node *
-            case 1: // relationship *
+            case node_ptr_type: // node *
+            case rship_ptr_type: // relationship *
                 break;
-            case 2: // int
+            case int_type: // int
                 return int_greater_than(qr1, qr2);
-            case 3: // double
+            case double_type: // double
                 return double_greater_than(qr1, qr2);
-            case 4: // std::string
+            case string_type: // std::string
                 return string_greater_than(qr1, qr2);
+            case uint64_type: // uint64_t
+                return uint64_greater_than(qr1, qr2);
             default:
                 break;
         }
     } 
+    else if (qr1.which() == int_type && qr2.which() == uint64_type)
+        return (uint64_t)boost::get<int>(qr1) > boost::get<uint64_t>(qr2);
+    else if (qr1.which() == uint64_type && qr2.which() == int_type)
+        return boost::get<uint64_t>(qr1) > (uint64_t)boost::get<int>(qr2);
     return false;
 }
 
@@ -175,16 +195,21 @@ public:
 
     virtual void visit(int rank, std::shared_ptr<number_token> op) override {
         // std::cout << "visit number_token: " << op->dump() << std::endl;
-        stack_.push(op->ftype_ == FOP_TYPE::INT ? query_result(op->ivalue_) : query_result(op->dvalue_));
+        if (op->ftype_ == FOP_TYPE::INT)
+            stack_.push(query_result(op->ivalue_));
+        else if (op->ftype_ == FOP_TYPE::UINT64)
+            stack_.push(query_result(op->lvalue_));
+        else
+            stack_.push(query_result(op->dvalue_));
     }
 
     virtual void visit(int rank, std::shared_ptr<key_token> op) override {
-        // std::cout << "visit key_token: " << op->qr_id_ << ", " << op->key_ << std::endl;
+        // std::cout << "visit key_token: " << op->qr_id_ << ", " << op->key_ << " : " << tup_.size() << std::endl;
         // TODO: we should replace string key_ by its dcode_t in prepare_expr_visitor
         auto inp = tup_[op->qr_id_];
         p_item res;
         switch (inp.which()) {
-            case 0: // node *
+            case node_ptr_type: // node *
             {
                 auto nptr = boost::get<node *>(inp);
                 // if key_ is empty then the node is requested ($i:node)
@@ -198,7 +223,7 @@ public:
                 }
                 break;
             }
-            case 1: // relationship *
+            case rship_ptr_type: // relationship *
             {
                 auto rptr = boost::get<relationship *>(inp);
                 // if key_ is empty then the relationship is requested
@@ -210,6 +235,7 @@ public:
                 break;
             }
             default:
+                // std::cout << "visit key_token ==> " << inp.which() << std::endl;
                 // Ooops!!
                 break;
         }
@@ -233,7 +259,7 @@ public:
                 // node* or relationship*
                 break;
             default:
-                std::cout << "cannot push: " << res.typecode() << std::endl;
+                // spdlog::info("cannot push for #{} : inp={}, res={}", op->qr_id_, inp.which(), res.typecode());
                 break;
         }            
         // std::cout << "PUSH: " << res << std::endl;
@@ -278,7 +304,7 @@ public:
     }
     
     virtual void visit(int rank, std::shared_ptr<le_predicate> op) override {
-        std::cout << "visit le_predicate: <=" << std::endl;       
+        // std::cout << "visit le_predicate: <=" << std::endl;       
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
@@ -288,17 +314,17 @@ public:
     }
 
     virtual void visit(int rank, std::shared_ptr<lt_predicate> op) override {
-        std::cout << "visit lt_predicate: <" << std::endl;       
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
+            // std::cout << "visit lt_predicate: <" << v1 << ", " << v2 << std::endl;       
             bool res = less_than(v1, v2);
             stack_.push(query_result(res ? 1 : 0));
         }    
     }
 
     virtual void visit(int rank, std::shared_ptr<ge_predicate> op) override {
-        std::cout << "visit ge_predicate: >=" << std::endl;              
+        // std::cout << "visit ge_predicate: >=" << std::endl;              
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
@@ -317,9 +343,23 @@ public:
         }
     }
 
-    virtual void visit(int rank, std::shared_ptr<and_predicate> op) override {}
+    virtual void visit(int rank, std::shared_ptr<and_predicate> op) override {
+        if (valid_operands()) {
+            auto v2 = pop(stack_);
+            auto v1 = pop(stack_);
+            bool res = boost::get<int>(v1) && boost::get<int>(v2);
+            stack_.push(query_result(res ? 1 : 0));
+        }
+    }
 
-    virtual void visit(int rank, std::shared_ptr<or_predicate> op) override {}
+    virtual void visit(int rank, std::shared_ptr<or_predicate> op) override {
+         if (valid_operands()) {
+            auto v2 = pop(stack_);
+            auto v1 = pop(stack_);
+            bool res = boost::get<int>(v1) || boost::get<int>(v2);
+            stack_.push(query_result(res ? 1 : 0));
+        }       
+    }
 
     virtual void visit(int rank, std::shared_ptr<call_predicate> op) override {}
 

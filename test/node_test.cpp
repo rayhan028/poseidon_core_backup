@@ -20,47 +20,47 @@
 #define CATCH_CONFIG_MAIN // This tells Catch to provide a main() - only do
                           // this in one cpp file
 
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include "config.h"
 #include "nodes.hpp"
 
 #include <sstream>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 void create_dir(const std::string& path) {
-    boost::filesystem::path path_obj(path);
+    std::filesystem::path path_obj(path);
     // check if path exists and is of a regular file
-    if (! boost::filesystem::exists(path_obj))
-        boost::filesystem::create_directory(path_obj);
+    if (! std::filesystem::exists(path_obj))
+        std::filesystem::create_directory(path_obj);
 }
 
 void delete_dir(const std::string& path) {
-    boost::filesystem::path path_obj(path);
-    boost::filesystem::remove_all(path_obj);
+    std::filesystem::path path_obj(path);
+    std::filesystem::remove_all(path_obj);
 }
 
 TEST_CASE("Testing output functions", "[nodes]") {
   {
     std::ostringstream os;
-    boost::any v(12);
+    std::any v(12);
     os << v;
     REQUIRE(os.str() == "12");
   }
   {
     std::ostringstream os;
-    boost::any v(12.34);
+    std::any v(12.34);
     os << v;
     REQUIRE(os.str() == "12.34");
   }
   {
     std::ostringstream os;
-    boost::any v(true);
+    std::any v(true);
     os << v;
     REQUIRE(os.str() == "1");
   }
   {
     std::ostringstream os;
-    boost::any v((uint64_t)1234);
+    std::any v((uint64_t)1234);
     os << v;
     REQUIRE(os.str() == "1234");
   }
@@ -68,7 +68,7 @@ TEST_CASE("Testing output functions", "[nodes]") {
     std::ostringstream os;
     boost::posix_time::ptime pt{ boost::gregorian::date{2014, 5, 12}, 
       boost::posix_time::time_duration{12, 0, 0}};
-    boost::any v(pt);
+    std::any v(pt);
     os << v;
     REQUIRE(os.str() == "2014-May-12 12:00:00");
   }
@@ -251,6 +251,7 @@ TEST_CASE("Checking reuse of space in a nvm_node_list", "[nvm_node_list]") {
 //       node_list with mem_chunked_vec
 // ----------------------------------------------------------------------------
 
+#ifdef USE_IN_MEMORY
 TEST_CASE("Creating a few nodes in the mem_node_list", "[mem_node_list]") {
 
   SECTION("Creating nodes") {
@@ -321,11 +322,12 @@ TEST_CASE("Appending a node to a mem_node_list", "[mem_node_list]") {
 TEST_CASE("Checking reuse of space in a mem_node_list", "[mem_node_list]") {
   // TODO
 }
+#endif
 
 // ----------------------------------------------------------------------------
 //       node_list with buffered_vec
 // ----------------------------------------------------------------------------
-
+#ifdef USE_PFILES
 TEST_CASE("Creating a few nodes in the pfile_node_list", "[pfile_node_list]") {
   create_dir("my_ntest1");
 
@@ -467,6 +469,7 @@ TEST_CASE("Appending a node to a pfile_node_list", "[pfile_node_list]") {
   delete_dir("my_ntest4");
 }
 
+#endif
 TEST_CASE("Checking reuse of space in a pfile_node_list", "[pfile_node_list]") {
   // TODO
 }
