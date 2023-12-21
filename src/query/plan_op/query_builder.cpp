@@ -255,14 +255,14 @@ query_builder &query_builder::orderby(std::function<bool(const qr_tuple &, const
 }
 
 query_builder &query_builder::groupby(const std::vector<group_by::group>& grps, const std::vector<group_by::expr>& exprs) {
-  auto op = std::make_shared<group_by>(grps, exprs);
+  auto op = std::make_shared<group_by>(grps, exprs, ctx_.get_dictionary());
   qpipeline_.append_op(op, std::bind(&group_by::process, op.get(), ph::_1, ph::_2),
                    std::bind(&group_by::finish, op.get(), ph::_1));
   return *this;                               
 }
 
 query_builder &query_builder::aggr(const std::vector<aggregate::expr>& exprs) {
-  auto op = std::make_shared<aggregate>(exprs);
+  auto op = std::make_shared<aggregate>(exprs, ctx_.get_dictionary());
   qpipeline_.append_op(op, std::bind(&aggregate::process, op.get(), ph::_1, ph::_2),
                    std::bind(&aggregate::finish, op.get(), ph::_1));
 
@@ -309,7 +309,7 @@ query_builder &query_builder::union_all(std::initializer_list<query_pipeline *> 
 query_builder &query_builder::count() {
   std::vector<aggregate::expr> exprs;
   exprs.push_back(aggregate::expr(aggregate::expr::f_count, 0, "", int_type));
-  auto op = std::make_shared<aggregate>(exprs);
+  auto op = std::make_shared<aggregate>(exprs, ctx_.get_dictionary());
   qpipeline_.append_op(op,
                    std::bind(&aggregate::process, op.get(), ph::_1, ph::_2),
                    std::bind(&aggregate::finish, op.get(), ph::_1));

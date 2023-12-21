@@ -412,7 +412,7 @@ std::any query_planner::visitAggregate_op(poseidonParser::Aggregate_opContext *c
         aggrs.push_back(aggregate::expr{ aggr_func, v_id, v_name, aggr_type });
     }
 
-    auto qp = std::make_shared<aggregate>(aggrs);
+    auto qp = std::make_shared<aggregate>(aggrs, qctx_.get_dictionary());
     auto qop = qop_append2(child, qp); 
     return std::make_any<qop_ptr>(qop);
 }
@@ -489,7 +489,7 @@ std::any query_planner::visitGroup_by_op(poseidonParser::Group_by_opContext *ctx
         aggrs.push_back(aggregate::expr{ aggr_func, v_id, v_name, aggr_type });
     }
 
-    auto qp = std::make_shared<group_by>(grps, aggrs);
+    auto qp = std::make_shared<group_by>(grps, aggrs, qctx_.get_dictionary());
     auto qop = qop_append2(child, qp); 
     return std::make_any<qop_ptr>(qop);    
 }

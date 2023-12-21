@@ -63,6 +63,32 @@ p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, co
   return res;
 }
 
+p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
+  auto qv = v[var];
+  p_item res;
+  switch (qv.which()) {
+  case node_ptr_type: // node *
+      {
+        auto nptr = boost::get<node *>(qv);
+        res = ctx.gdb_->get_property_value(*nptr, pkey);
+      }
+      break;
+    case rship_ptr_type: // relationship *
+      {
+        auto rptr = boost::get<relationship *>(qv);
+        res = ctx.gdb_->get_property_value(*rptr, pkey);
+      }
+      break;
+    default:
+      // return null
+      break;
+  }
+  return res;
+}
+
+/* ------------------------------------------------------------------------ */
+
+
 template <>
 int get_property_value<int>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
   int res = 0;
@@ -127,6 +153,93 @@ template <>
 std::string get_property_value<std::string>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
   std::string res;
   auto qv = get_property_value(ctx, v, var, prop);
+  switch (qv.typecode()) {
+    case p_item::p_dcode:
+      res = ctx.gdb_->get_string(qv.get<dcode_t>());
+      break;
+    case p_item::p_int:
+      res = std::to_string(qv.get<int>());
+      break;
+    case p_item::p_double:
+      res = std::to_string(qv.get<double>());
+      break;
+    case p_item::p_uint64:
+      res = std::to_string(qv.get<uint64_t>());
+      break;
+    case p_item::p_ptime:
+    case p_item::p_unused:
+    // TODO
+      break;
+  }
+  return res;
+}
+
+/* ------------------------------------------------------------------------ */
+
+template <>
+int get_property_value<int>(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
+  int res = 0;
+  auto qv = get_property_value(ctx, v, var, pkey);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = (int)qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = (int)qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
+uint64_t get_property_value<uint64_t>(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
+  uint64_t res = 0;
+  auto qv = get_property_value(ctx, v, var, pkey);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = (uint64_t)qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
+double get_property_value<double>(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
+  double res = 0;
+  auto qv = get_property_value(ctx, v, var, pkey);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = (double)qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = (double)qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
+std::string get_property_value<std::string>(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
+  std::string res;
+  auto qv = get_property_value(ctx, v, var, pkey);
   switch (qv.typecode()) {
     case p_item::p_dcode:
       res = ctx.gdb_->get_string(qv.get<dcode_t>());

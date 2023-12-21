@@ -126,9 +126,12 @@ enum class EXPAND {
  * Functions to get a property value (defined by var=pos and property name) from a qr_tuple.
  */
 p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop);
+p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey);
 
 template <typename T>
 T get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop);
+template <typename T>
+T get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey);
 
 
 struct qop;
