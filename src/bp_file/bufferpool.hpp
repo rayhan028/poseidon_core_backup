@@ -27,6 +27,7 @@
 #include <functional>
 #include <boost/dynamic_bitset.hpp>
 #include "paged_file.hpp"
+#include "lru_list.hpp"
 
 #define DEFAULT_BUFFER_SIZE 5000 // 1000
 #define MAX_PFILES          15 // 4 bits
@@ -114,6 +115,11 @@ public:
      */
     double hit_ratio() const;
     
+    void pin_page(paged_file::page_id pid);
+    void unpin_page(paged_file::page_id pid);
+
+    bool has_page(paged_file::page_id pid);
+    
 private:
     void dump();
     
@@ -127,10 +133,13 @@ private:
     struct buf_slot {
         page *p_;           // a pointer to a page in buffer_
         bool dirty_;        // a flag indicating that the page is marked as dirty
+        bool pinned_;       // a flag indicating that the page is pinned in the bufferpool
         std::size_t pos_;   // position of the slot in buffer_
+        lru_list::node *lru_node_;
     };
 
-    std::list<uint64_t> lru_list_; // the LRU list
+    lru_list lru_list_;
+    // std::list<uint64_t> lru_list_; // the LRU list
     std::unordered_map<uint64_t, buf_slot> ptable_; // a hashtable to map page_id to pages
     boost::dynamic_bitset<> slots_; // a bitset indicating which slot in buffer_ is occupied
 

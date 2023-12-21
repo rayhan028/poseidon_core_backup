@@ -78,9 +78,11 @@ void graph_db::prepare_files(const std::string &pool_path, const std::string &pf
 #endif
 }
 
-graph_db::graph_db(const std::string &db_name, const std::string& pool_path) : database_name_(db_name)
+graph_db::graph_db(const std::string &db_name, const std::string& pool_path, std::size_t bpool_size) : database_name_(db_name),
 #ifndef USE_PFILES
-, bpool_(0)
+bpool_(0)
+#else
+  bpool_(bpool_size == 0 ? DEFAULT_BUFFER_SIZE : bpool_size)
 #endif
  {
 #ifdef USE_PMDK
@@ -166,8 +168,10 @@ void graph_db::close_files() {
 
 void graph_db::runtime_initialize() {
   spdlog::debug("graph_db::runtime_initialize()");
+#ifdef USE_PMDK
   nodes_->runtime_initialize();
   rships_->runtime_initialize();
+#endif
   // make sure the dictionary is initialized
   // dict_->initialize();
 
@@ -654,6 +658,7 @@ bool graph_db::abort_transaction() {
 void graph_db::print_stats() {
   std::cout << "nodes: " << nodes_->num_chunks() << " chunks, "
             << "chunk_size = " << nodes_->as_vec().real_chunk_size() << " Bytes, "
+            << "elems_per_chunk = " << nodes_->as_vec().elements_per_chunk() << ", "
             << "node_size = " << sizeof(node) << " Bytes, "
             << "capacity = " << nodes_->as_vec().capacity() << std::endl;
   std::cout << "relationships: " << rships_->num_chunks() << " chunks, "

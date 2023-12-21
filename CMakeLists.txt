@@ -12,13 +12,13 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         ON)
-option(USE_LLVM         "Use LLVM for query compilation"         ON)
+option(USE_LLVM         "Use LLVM for query compilation"         OFF)
 option(USE_IN_MEMORY    "Use only in-memory storage"             OFF)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
 option(CSR_DELTA        "Use delta store for updating CSR"       OFF)
-option(USE_UPMEM        "Use UPMEM SDK for PIM"                  ON)
+option(USE_UPMEM        "Use UPMEM SDK for PIM"                  OFF)
 #-------------------------------------------------------------------------------
 endif()
 
@@ -438,6 +438,7 @@ set(src_files
   src/storage/graph_db_recovery.cpp
   src/bp_file/paged_file.cpp
   src/bp_file/bufferpool.cpp
+  src/bp_file/lru_list.cpp
   src/btree/index_map.cpp
   src/query/plan_op/qop.cpp
   src/query/plan_op/qop_builtins.cpp
@@ -584,15 +585,6 @@ target_link_libraries(wal_dump
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
-)
-
-add_executable(csv_loader
-  src/cmds/csv_loader.cpp
- )
- target_link_libraries(csv_loader
- poseidon_core
- ${PMDK_LIBRARIES}
- Boost::program_options
 )
 
 if(USE_UPMEM MATCHES ON)

@@ -68,7 +68,7 @@ graph_pool::graph_pool() {
 graph_pool::~graph_pool() {
 }
 
-graph_db_ptr graph_pool::create_graph(const std::string& name) {
+graph_db_ptr graph_pool::create_graph(const std::string& name, std::size_t bpool_size) {
     graph_db_ptr graph;
     nvm::transaction::run(pop_, [&] { graph = p_make_ptr<graph_db>(); });
     graph->runtime_initialize();
@@ -81,7 +81,7 @@ graph_db_ptr graph_pool::create_graph(const std::string& name) {
     return graph;
 }
 
-graph_db_ptr graph_pool::open_graph(const std::string& name) {
+graph_db_ptr graph_pool::open_graph(const std::string& name, std::size_t bpool_size) {
    hashmap::const_accessor ac;
     if (pop_.root()->graphs_->find(ac, string_t(name))) {
         auto gdb = ac->second;
@@ -140,13 +140,13 @@ graph_pool::graph_pool() {
 
 graph_pool::~graph_pool() {}
 
-graph_db_ptr graph_pool::create_graph(const std::string& name) {
-    auto gptr = p_make_ptr<graph_db>(name, path_);
+graph_db_ptr graph_pool::create_graph(const std::string& name, std::size_t bpool_size) {
+    auto gptr = p_make_ptr<graph_db>(name, path_, bpool_size);
     graphs_.insert({ name, gptr});
     return gptr;
 }
 
-graph_db_ptr graph_pool::open_graph(const std::string& name) {
+graph_db_ptr graph_pool::open_graph(const std::string& name, std::size_t bpool_size) {
     // TODO: check whether graph directory exists
 #ifdef USE_PFILES
     std::filesystem::path path_obj(path_);
@@ -157,7 +157,7 @@ graph_db_ptr graph_pool::open_graph(const std::string& name) {
         throw unknown_db();
     }
 #endif   
-    auto gptr = p_make_ptr<graph_db>(name, path_);
+    auto gptr = p_make_ptr<graph_db>(name, path_, bpool_size);
 #ifdef USE_PMDK
     gptr->runtime_initialize();
 #endif

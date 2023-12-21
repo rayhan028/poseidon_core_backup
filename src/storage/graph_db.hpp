@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -71,7 +71,7 @@ public:
   /**
    * Constructor for a new empty graph database.
    */
-  graph_db(const std::string &db_name = "", const std::string &pool_path = "");
+  graph_db(const std::string &db_name = "", const std::string &pool_path = "", std::size_t bpool_size = DEFAULT_BUFFER_SIZE);
 
   /**
    * Destructor.
@@ -433,6 +433,8 @@ public:
    * 
    */
   void close_files();
+
+bool has_page(paged_file::page_id pid) { return bpool_.has_page(pid); }
 
 private:
   friend struct scan_task;

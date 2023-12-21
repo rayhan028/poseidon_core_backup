@@ -24,13 +24,6 @@
 #include "defs.hpp"
 #include <iostream>
 
-
-#ifdef USE_PMDK
-#include <libpmemobj++/persistent_ptr.hpp>
-
-PYBIND11_DECLARE_HOLDER_TYPE(T, pmem::obj::persistent_ptr<T>, true);
-#endif
-
 properties_t dict_to_props(const py::dict& props) {
   properties_t node_props;
   for (auto item : props) {
@@ -56,16 +49,12 @@ PYBIND11_MODULE(poseidon, m) {
       "Creates a new graph pool of the given size.");
   
     py::class_<graph_pool>(m, "GraphPool")
-      .def("open_graph", &graph_pool::open_graph, py::arg("name"), "Opens the graph with the given name.")
-      .def("create_graph", &graph_pool::create_graph, py::arg("name"), "Creates a new graph with the given name.")
+      .def("open_graph", &graph_pool::open_graph, py::arg("name"), py::arg("buffersize"), "Opens the graph with the given name.")
+      .def("create_graph", &graph_pool::create_graph, py::arg("name"), py::arg("buffersize"), "Creates a new graph with the given name.")
       .def("drop_graph", &graph_pool::drop_graph, py::arg("name"), "Deletes the given graph.")
       .def("close", &graph_pool::close, "Closes the graph pool.");
 
-#ifdef USE_PMDK
-    py::class_<graph_db, pmem::obj::persistent_ptr<graph_db> >(m, "Graph")
-#else
     py::class_<graph_db, std::shared_ptr<graph_db> >(m, "Graph")
-#endif
       .def("begin", &graph_db::begin_transaction, "Begins the transaction.")
       .def("commit", &graph_db::commit_transaction, "Commits the transaction.")
       .def("abort", &graph_db::abort_transaction, "Aborts the transaction.")
