@@ -222,7 +222,10 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
   */
   auto t1 = std::thread([&]() { 
 		// read the node
-		gdb->begin_transaction();
+		gdb->run_transaction([&](){
+      using namespace std::chrono_literals;
+
+      std::this_thread::sleep_for(500ms);
 		b1.notify(); // Inform thread #2 to start
 		b2.wait(); // wait until thread #2 has performed the update
 		
@@ -233,7 +236,8 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
 
 		REQUIRE(nd.label == "Actor"); 
 		REQUIRE(get_property<int>(nd.properties, "age") == 48); 
-		gdb->commit_transaction();
+		return true;
+    });
   });
 
   /*
@@ -242,15 +246,15 @@ TEST_CASE("Test concurrency between update abort and read"  "[transaction]") {
   auto t2 = std::thread([&]() { 
 		// update the node
 		b1.wait(); // ensure that update starts after the read transaction (thread #1)
-		gdb->begin_transaction();
+		gdb->run_transaction([&](){
 		auto &n = gdb->node_by_id(nid);
 		gdb->update_node(n,  
 			   {{ "age", std::any(52)}}, "Updated Actor");
 
 		b2.notify(); // Inform txn-2 that update is done but not yet committed or aborted
 	  b3.wait(); // wait until Txn-2 has accessed a dirty version
-
-		gdb->abort_transaction();  // abort the update
+return false; // abort the update
+}); 
   });
 
   t1.join();
