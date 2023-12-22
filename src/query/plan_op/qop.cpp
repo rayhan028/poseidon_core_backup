@@ -361,27 +361,27 @@ void printer::process(query_ctx &ctx, const qr_tuple &v) {
   if (ntuples_ == 0) {
     std::cout << "+";
     for (auto i = 0u; i < v.size(); i++)
-      std::cout << fmt::format("{0:-^{1}}+", "", 20);
+      std::cout << fmt::format("{0:-^{1}}+", "", 22);
     std::cout << "\n";
-    output_width_ = 21 * v.size() + 1;
+    output_width_ = 23 * v.size() + 1;
   }
   ntuples_++;
   auto my_visitor = boost::hana::overload(
-      [&](const node_description& n) { std::cout << fmt::format(" {:<18} |", n); },
-      [&](const rship_description& r) { std::cout << fmt::format(" {:<18} |", r); },
-      [&](node *n) { std::cout << fmt::format(" {:<18} |", ctx.gdb_->get_node_description(n->id())); },
-      [&](relationship *r) { std::cout << fmt::format(" {:<18} |", ctx.gdb_->get_relationship_label(*r)); },
-      [&](int i) { std::cout << fmt::format(" {:>18} |", i); }, 
-      [&](double d) { std::cout << fmt::format(" {:>18f} |", d); },
-      [&](const std::string &s) { std::cout << fmt::format(" {:<18.18} |", s); },
-      [&](uint64_t ll) { std::cout << fmt::format(" {:>18} |", ll); },
-      [&](null_t n) { std::cout << fmt::format(" {:>18} |", "NULL"); },
+      [&](const node_description& n) { std::cout << fmt::format(" {:<20} |", n); },
+      [&](const rship_description& r) { std::cout << fmt::format(" {:<20} |", r); },
+      [&](node *n) { std::cout << fmt::format(" {:<20} |", ctx.gdb_->get_node_description(n->id())); },
+      [&](relationship *r) { std::cout << fmt::format(" {:<20} |", ctx.gdb_->get_relationship_label(*r)); },
+      [&](int i) { std::cout << fmt::format(" {:>20} |", i); }, 
+      [&](double d) { std::cout << fmt::format(" {:>20f} |", d); },
+      [&](const std::string &s) { std::cout << fmt::format(" {:<20.20} |", s); },
+      [&](uint64_t ll) { std::cout << fmt::format(" {:>20} |", ll); },
+      [&](null_t n) { std::cout << fmt::format(" {:>20} |", "NULL"); },
       [&](array_t arr) {
         std::cout << "[ ";
         for (auto elem : arr.elems)
           std::cout << elem << " ";
         std::cout << " ]"; },
-      [&](ptime dt) { std::cout << fmt::format(" {:<18.18} |", dt); });
+      [&](ptime dt) { std::cout << fmt::format(" {:<20.20} |", dt); });
   std::cout << "|";
   for (auto &ge : v) {
     boost::apply_visitor(my_visitor, ge);
