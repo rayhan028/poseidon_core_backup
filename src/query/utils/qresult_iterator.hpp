@@ -171,6 +171,8 @@ public:
     const result_set& result() const { return rset_; }
     std::size_t result_size() const { return rset_.data.size(); }
 
+    std::string to_string() const;
+
 private:
     result_set rset_;
 };

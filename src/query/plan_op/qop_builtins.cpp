@@ -83,6 +83,7 @@ query_result get_label(query_result& pv) {
     auto rd = boost::get<rship_description &>(pv);
     return query_result(rd.label);
   }
+  return null_val;
 }
 
 query_result int_property(const query_result &pv, const std::string &key) {

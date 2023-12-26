@@ -215,3 +215,10 @@ std::ostream &operator<<(std::ostream &os, const result_set &rs) {
   }
   return os;
 }
+
+// ----------------------------------------------------
+
+
+std::string qresult_iterator::to_string() const {
+  return fmt::format("ResultIterator[{}]", result_size());
+}

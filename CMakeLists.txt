@@ -271,7 +271,7 @@ set (BUILD_SHARED_LIBS ON)
 FetchContent_Declare(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-  GIT_TAG        9.1.0
+  GIT_TAG        10.1.1
 )
 
 FetchContent_MakeAvailable(fmt)
@@ -312,12 +312,11 @@ endif()
 #
 SET(BOOST_MIN_VERSION "1.70.0")
 
-find_package(Boost ${BOOST_MIN_VERSION} COMPONENTS
+find_package(Boost ${BOOST_MIN_VERSION} REQUIRED COMPONENTS
     program_options
     filesystem
     date_time
-    thread
-    REQUIRED)
+    thread)
 
 if (NOT Boost_FOUND)
      message(FATAL_ERROR "Fatal error: Boost (version >= ${BOOST_MIN_VERSION}) required.\n"
