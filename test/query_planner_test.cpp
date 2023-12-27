@@ -58,7 +58,7 @@ TEST_CASE("Testing the poseidon query processor", "[query_proc]") {
         auto plan = qp.prepare_query("Project([$1.attr:datetime, $0.attr:string, $0.attr:int], NodeScan('Person'))");
         plan.print_plan(os);
         os << std::ends;
-        REQUIRE(std::string(os.str()) == "project([ $1.func $0.func $0.func ]) - { in=0 | out=0 | time=0s }\n└── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n");
+        REQUIRE(std::string(os.str()) == "project([ $1.attr:datetime $0.attr:string $0.attr:int ]) - { in=0 | out=0 | time=0s }\n└── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n");
     }
 
     SECTION("Expand") {

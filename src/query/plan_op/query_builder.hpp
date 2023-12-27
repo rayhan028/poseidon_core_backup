@@ -25,6 +25,7 @@
 #include "graph_db.hpp"
 #include "query_ctx.hpp"
 #include "qop.hpp"
+#include "qop_projection.hpp"
 #include "query_pipeline.hpp"
 #include "qop_aggregates.hpp"
 #include "qop_analytics.hpp"
@@ -176,8 +177,6 @@ public:
    * functions to the query result.
    */
   query_builder &project(const projection::expr_list &exprs);
-
-  query_builder &project(std::vector<projection_expr> prexpr);
 
   /**
    * Add an operator for sorting the results.

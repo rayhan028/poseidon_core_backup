@@ -75,7 +75,7 @@ bool has_label(query_result &pv, const std::string &l) {
   return false;
 }
 
-query_result get_label(query_result& pv) {
+query_result get_label(const query_result& pv) {
   if (pv.type() == typeid(node_description &)) {
     auto nd = boost::get<node_description &>(pv);
     return query_result(nd.label);

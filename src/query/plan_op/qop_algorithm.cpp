@@ -56,13 +56,13 @@ void algorithm_op::process(query_ctx &ctx, const qr_tuple &v) {
       std::size_t n = 0;
       for (auto& tup : res) {
       auto v2 = concat(v, tup);
-    consume_(ctx, v2);
-    n++;
-      }
+      consume_(ctx, v2);
+      n++;
+    }
       PROF_POST(n);
   }
   else {
-PROF_POST(0);
+      PROF_POST(0);
       return;
     }
   }

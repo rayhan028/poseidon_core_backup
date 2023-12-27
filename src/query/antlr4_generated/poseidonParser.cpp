@@ -98,7 +98,7 @@ void poseidonParserInitialize() {
     }
   );
   static const int32_t serializedATNSegment[] = {
-  	4,1,77,657,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,
+  	4,1,77,658,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,
   	7,7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,
   	14,2,15,7,15,2,16,7,16,2,17,7,17,2,18,7,18,2,19,7,19,2,20,7,20,2,21,7,
   	21,2,22,7,22,2,23,7,23,2,24,7,24,2,25,7,25,2,26,7,26,2,27,7,27,2,28,7,
@@ -135,24 +135,24 @@ void poseidonParserInitialize() {
   	10,46,12,46,468,9,46,1,47,1,47,1,47,5,47,473,8,47,10,47,12,47,476,9,47,
   	1,48,1,48,1,48,5,48,481,8,48,10,48,12,48,484,9,48,1,49,3,49,487,8,49,
   	1,49,1,49,1,50,1,50,1,50,1,50,1,50,1,50,1,50,3,50,498,8,50,1,51,1,51,
-  	1,51,1,51,1,52,1,52,1,53,1,53,1,53,1,53,1,53,3,53,511,8,53,1,53,1,53,
-  	1,54,1,54,1,55,1,55,1,55,5,55,520,8,55,10,55,12,55,523,9,55,1,56,1,56,
-  	1,56,1,56,3,56,529,8,56,1,56,1,56,3,56,533,8,56,1,57,1,57,1,57,1,57,1,
-  	57,1,57,1,57,1,58,1,58,1,58,1,58,5,58,546,8,58,10,58,12,58,549,9,58,1,
-  	58,1,58,1,59,1,59,1,59,1,59,1,59,1,60,1,60,1,61,1,61,1,61,1,61,3,61,564,
-  	8,61,1,61,1,61,3,61,568,8,61,1,61,1,61,1,62,1,62,1,62,1,62,1,62,3,62,
-  	577,8,62,1,62,1,62,1,63,1,63,1,63,1,63,5,63,585,8,63,10,63,12,63,588,
-  	9,63,1,63,1,63,1,64,1,64,1,64,1,64,1,65,1,65,1,65,1,65,3,65,600,8,65,
-  	1,65,1,65,1,65,3,65,605,8,65,1,65,1,65,1,65,1,65,1,66,1,66,1,66,1,66,
-  	1,67,1,67,1,67,1,67,1,67,1,68,1,68,1,68,1,68,1,68,1,69,1,69,1,69,1,69,
-  	1,69,1,70,1,70,1,70,1,70,1,70,1,70,1,70,1,70,3,70,638,8,70,1,70,1,70,
-  	1,70,1,70,1,70,1,71,1,71,1,72,1,72,1,72,5,72,650,8,72,10,72,12,72,653,
-  	9,72,1,73,1,73,1,73,0,0,74,0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,
-  	32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,
-  	78,80,82,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,
+  	1,51,3,51,503,8,51,1,52,1,52,1,53,1,53,1,53,1,53,1,53,3,53,512,8,53,1,
+  	53,1,53,1,54,1,54,1,55,1,55,1,55,5,55,521,8,55,10,55,12,55,524,9,55,1,
+  	56,1,56,1,56,1,56,3,56,530,8,56,1,56,1,56,3,56,534,8,56,1,57,1,57,1,57,
+  	1,57,1,57,1,57,1,57,1,58,1,58,1,58,1,58,5,58,547,8,58,10,58,12,58,550,
+  	9,58,1,58,1,58,1,59,1,59,1,59,1,59,1,59,1,60,1,60,1,61,1,61,1,61,1,61,
+  	3,61,565,8,61,1,61,1,61,3,61,569,8,61,1,61,1,61,1,62,1,62,1,62,1,62,1,
+  	62,3,62,578,8,62,1,62,1,62,1,63,1,63,1,63,1,63,5,63,586,8,63,10,63,12,
+  	63,589,9,63,1,63,1,63,1,64,1,64,1,64,1,64,1,65,1,65,1,65,1,65,3,65,601,
+  	8,65,1,65,1,65,1,65,3,65,606,8,65,1,65,1,65,1,65,1,65,1,66,1,66,1,66,
+  	1,66,1,67,1,67,1,67,1,67,1,67,1,68,1,68,1,68,1,68,1,68,1,69,1,69,1,69,
+  	1,69,1,69,1,70,1,70,1,70,1,70,1,70,1,70,1,70,1,70,3,70,639,8,70,1,70,
+  	1,70,1,70,1,70,1,70,1,71,1,71,1,72,1,72,1,72,5,72,651,8,72,10,72,12,72,
+  	654,9,72,1,73,1,73,1,73,0,0,74,0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,
+  	30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,
+  	76,78,80,82,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,
   	118,120,122,124,126,128,130,132,134,136,138,140,142,144,146,0,12,1,0,
   	29,34,1,0,46,48,1,0,42,43,1,0,35,39,1,0,66,67,1,0,68,71,2,0,5,5,72,72,
-  	1,0,73,75,2,0,51,52,56,56,1,0,40,41,1,0,49,50,1,0,44,45,644,0,148,1,0,
+  	1,0,73,75,2,0,51,52,56,56,1,0,40,41,1,0,49,50,1,0,44,45,646,0,148,1,0,
   	0,0,2,172,1,0,0,0,4,174,1,0,0,0,6,183,1,0,0,0,8,185,1,0,0,0,10,196,1,
   	0,0,0,12,201,1,0,0,0,14,207,1,0,0,0,16,214,1,0,0,0,18,233,1,0,0,0,20,
   	235,1,0,0,0,22,237,1,0,0,0,24,244,1,0,0,0,26,251,1,0,0,0,28,260,1,0,0,
@@ -164,11 +164,11 @@ void poseidonParserInitialize() {
   	397,1,0,0,0,78,406,1,0,0,0,80,417,1,0,0,0,82,425,1,0,0,0,84,430,1,0,0,
   	0,86,437,1,0,0,0,88,445,1,0,0,0,90,453,1,0,0,0,92,461,1,0,0,0,94,469,
   	1,0,0,0,96,477,1,0,0,0,98,486,1,0,0,0,100,497,1,0,0,0,102,499,1,0,0,0,
-  	104,503,1,0,0,0,106,505,1,0,0,0,108,514,1,0,0,0,110,516,1,0,0,0,112,532,
-  	1,0,0,0,114,534,1,0,0,0,116,541,1,0,0,0,118,552,1,0,0,0,120,557,1,0,0,
-  	0,122,559,1,0,0,0,124,571,1,0,0,0,126,580,1,0,0,0,128,591,1,0,0,0,130,
-  	595,1,0,0,0,132,610,1,0,0,0,134,614,1,0,0,0,136,619,1,0,0,0,138,624,1,
-  	0,0,0,140,629,1,0,0,0,142,644,1,0,0,0,144,646,1,0,0,0,146,654,1,0,0,0,
+  	104,504,1,0,0,0,106,506,1,0,0,0,108,515,1,0,0,0,110,517,1,0,0,0,112,533,
+  	1,0,0,0,114,535,1,0,0,0,116,542,1,0,0,0,118,553,1,0,0,0,120,558,1,0,0,
+  	0,122,560,1,0,0,0,124,572,1,0,0,0,126,581,1,0,0,0,128,592,1,0,0,0,130,
+  	596,1,0,0,0,132,611,1,0,0,0,134,615,1,0,0,0,136,620,1,0,0,0,138,625,1,
+  	0,0,0,140,630,1,0,0,0,142,645,1,0,0,0,144,647,1,0,0,0,146,655,1,0,0,0,
   	148,149,3,2,1,0,149,150,5,0,0,1,150,1,1,0,0,0,151,173,3,84,42,0,152,173,
   	3,4,2,0,153,173,3,10,5,0,154,173,3,42,21,0,155,173,3,14,7,0,156,173,3,
   	22,11,0,157,173,3,24,12,0,158,173,3,26,13,0,159,173,3,28,14,0,160,173,
@@ -263,50 +263,50 @@ void poseidonParserInitialize() {
   	3,100,50,0,489,99,1,0,0,0,490,491,5,60,0,0,491,492,3,86,43,0,492,493,
   	5,61,0,0,493,498,1,0,0,0,494,498,3,106,53,0,495,498,3,104,52,0,496,498,
   	3,102,51,0,497,490,1,0,0,0,497,494,1,0,0,0,497,495,1,0,0,0,497,496,1,
-  	0,0,0,498,101,1,0,0,0,499,500,5,54,0,0,500,501,5,1,0,0,501,502,5,53,0,
-  	0,502,103,1,0,0,0,503,504,7,8,0,0,504,105,1,0,0,0,505,506,3,108,54,0,
-  	506,507,5,58,0,0,507,508,5,53,0,0,508,510,5,60,0,0,509,511,3,110,55,0,
-  	510,509,1,0,0,0,510,511,1,0,0,0,511,512,1,0,0,0,512,513,5,61,0,0,513,
-  	107,1,0,0,0,514,515,7,9,0,0,515,109,1,0,0,0,516,521,3,112,56,0,517,518,
-  	5,59,0,0,518,520,3,112,56,0,519,517,1,0,0,0,520,523,1,0,0,0,521,519,1,
-  	0,0,0,521,522,1,0,0,0,522,111,1,0,0,0,523,521,1,0,0,0,524,533,3,104,52,
-  	0,525,528,5,54,0,0,526,527,5,1,0,0,527,529,5,53,0,0,528,526,1,0,0,0,528,
-  	529,1,0,0,0,529,530,1,0,0,0,530,531,5,57,0,0,531,533,3,20,10,0,532,524,
-  	1,0,0,0,532,525,1,0,0,0,533,113,1,0,0,0,534,535,5,21,0,0,535,536,5,60,
-  	0,0,536,537,3,116,58,0,537,538,5,59,0,0,538,539,3,2,1,0,539,540,5,61,
-  	0,0,540,115,1,0,0,0,541,542,5,62,0,0,542,547,3,118,59,0,543,544,5,59,
-  	0,0,544,546,3,118,59,0,545,543,1,0,0,0,546,549,1,0,0,0,547,545,1,0,0,
-  	0,547,548,1,0,0,0,548,550,1,0,0,0,549,547,1,0,0,0,550,551,5,63,0,0,551,
-  	117,1,0,0,0,552,553,5,54,0,0,553,554,5,57,0,0,554,555,3,20,10,0,555,556,
-  	3,120,60,0,556,119,1,0,0,0,557,558,7,10,0,0,558,121,1,0,0,0,559,560,5,
-  	23,0,0,560,563,5,60,0,0,561,564,3,130,65,0,562,564,3,124,62,0,563,561,
-  	1,0,0,0,563,562,1,0,0,0,564,567,1,0,0,0,565,566,5,59,0,0,566,568,3,2,
-  	1,0,567,565,1,0,0,0,567,568,1,0,0,0,568,569,1,0,0,0,569,570,5,61,0,0,
-  	570,123,1,0,0,0,571,572,5,60,0,0,572,573,5,53,0,0,573,574,5,57,0,0,574,
-  	576,5,53,0,0,575,577,3,126,63,0,576,575,1,0,0,0,576,577,1,0,0,0,577,578,
-  	1,0,0,0,578,579,5,61,0,0,579,125,1,0,0,0,580,581,5,6,0,0,581,586,3,128,
-  	64,0,582,583,5,59,0,0,583,585,3,128,64,0,584,582,1,0,0,0,585,588,1,0,
-  	0,0,586,584,1,0,0,0,586,587,1,0,0,0,587,589,1,0,0,0,588,586,1,0,0,0,589,
-  	590,5,7,0,0,590,127,1,0,0,0,591,592,5,53,0,0,592,593,5,57,0,0,593,594,
-  	3,104,52,0,594,129,1,0,0,0,595,596,3,132,66,0,596,597,5,5,0,0,597,599,
-  	5,62,0,0,598,600,5,53,0,0,599,598,1,0,0,0,599,600,1,0,0,0,600,601,1,0,
-  	0,0,601,602,5,57,0,0,602,604,5,53,0,0,603,605,3,126,63,0,604,603,1,0,
-  	0,0,604,605,1,0,0,0,605,606,1,0,0,0,606,607,5,63,0,0,607,608,5,4,0,0,
-  	608,609,3,132,66,0,609,131,1,0,0,0,610,611,5,60,0,0,611,612,5,54,0,0,
-  	612,613,5,61,0,0,613,133,1,0,0,0,614,615,5,25,0,0,615,616,5,60,0,0,616,
-  	617,3,2,1,0,617,618,5,61,0,0,618,135,1,0,0,0,619,620,5,26,0,0,620,621,
-  	5,60,0,0,621,622,3,2,1,0,622,623,5,61,0,0,623,137,1,0,0,0,624,625,5,27,
-  	0,0,625,626,5,60,0,0,626,627,3,2,1,0,627,628,5,61,0,0,628,139,1,0,0,0,
-  	629,630,5,28,0,0,630,631,5,60,0,0,631,632,5,62,0,0,632,633,5,53,0,0,633,
-  	634,5,59,0,0,634,637,3,142,71,0,635,636,5,59,0,0,636,638,3,144,72,0,637,
-  	635,1,0,0,0,637,638,1,0,0,0,638,639,1,0,0,0,639,640,5,63,0,0,640,641,
-  	5,59,0,0,641,642,3,2,1,0,642,643,5,61,0,0,643,141,1,0,0,0,644,645,7,11,
-  	0,0,645,143,1,0,0,0,646,651,3,146,73,0,647,648,5,59,0,0,648,650,3,146,
-  	73,0,649,647,1,0,0,0,650,653,1,0,0,0,651,649,1,0,0,0,651,652,1,0,0,0,
-  	652,145,1,0,0,0,653,651,1,0,0,0,654,655,3,104,52,0,655,147,1,0,0,0,40,
-  	172,177,183,191,220,229,233,276,280,314,322,327,334,339,348,357,378,412,
-  	420,442,450,458,466,474,482,486,497,510,521,528,532,547,563,567,576,586,
-  	599,604,637,651
+  	0,0,0,498,101,1,0,0,0,499,502,5,54,0,0,500,501,5,1,0,0,501,503,5,53,0,
+  	0,502,500,1,0,0,0,502,503,1,0,0,0,503,103,1,0,0,0,504,505,7,8,0,0,505,
+  	105,1,0,0,0,506,507,3,108,54,0,507,508,5,58,0,0,508,509,5,53,0,0,509,
+  	511,5,60,0,0,510,512,3,110,55,0,511,510,1,0,0,0,511,512,1,0,0,0,512,513,
+  	1,0,0,0,513,514,5,61,0,0,514,107,1,0,0,0,515,516,7,9,0,0,516,109,1,0,
+  	0,0,517,522,3,112,56,0,518,519,5,59,0,0,519,521,3,112,56,0,520,518,1,
+  	0,0,0,521,524,1,0,0,0,522,520,1,0,0,0,522,523,1,0,0,0,523,111,1,0,0,0,
+  	524,522,1,0,0,0,525,534,3,104,52,0,526,529,5,54,0,0,527,528,5,1,0,0,528,
+  	530,5,53,0,0,529,527,1,0,0,0,529,530,1,0,0,0,530,531,1,0,0,0,531,532,
+  	5,57,0,0,532,534,3,20,10,0,533,525,1,0,0,0,533,526,1,0,0,0,534,113,1,
+  	0,0,0,535,536,5,21,0,0,536,537,5,60,0,0,537,538,3,116,58,0,538,539,5,
+  	59,0,0,539,540,3,2,1,0,540,541,5,61,0,0,541,115,1,0,0,0,542,543,5,62,
+  	0,0,543,548,3,118,59,0,544,545,5,59,0,0,545,547,3,118,59,0,546,544,1,
+  	0,0,0,547,550,1,0,0,0,548,546,1,0,0,0,548,549,1,0,0,0,549,551,1,0,0,0,
+  	550,548,1,0,0,0,551,552,5,63,0,0,552,117,1,0,0,0,553,554,5,54,0,0,554,
+  	555,5,57,0,0,555,556,3,20,10,0,556,557,3,120,60,0,557,119,1,0,0,0,558,
+  	559,7,10,0,0,559,121,1,0,0,0,560,561,5,23,0,0,561,564,5,60,0,0,562,565,
+  	3,130,65,0,563,565,3,124,62,0,564,562,1,0,0,0,564,563,1,0,0,0,565,568,
+  	1,0,0,0,566,567,5,59,0,0,567,569,3,2,1,0,568,566,1,0,0,0,568,569,1,0,
+  	0,0,569,570,1,0,0,0,570,571,5,61,0,0,571,123,1,0,0,0,572,573,5,60,0,0,
+  	573,574,5,53,0,0,574,575,5,57,0,0,575,577,5,53,0,0,576,578,3,126,63,0,
+  	577,576,1,0,0,0,577,578,1,0,0,0,578,579,1,0,0,0,579,580,5,61,0,0,580,
+  	125,1,0,0,0,581,582,5,6,0,0,582,587,3,128,64,0,583,584,5,59,0,0,584,586,
+  	3,128,64,0,585,583,1,0,0,0,586,589,1,0,0,0,587,585,1,0,0,0,587,588,1,
+  	0,0,0,588,590,1,0,0,0,589,587,1,0,0,0,590,591,5,7,0,0,591,127,1,0,0,0,
+  	592,593,5,53,0,0,593,594,5,57,0,0,594,595,3,104,52,0,595,129,1,0,0,0,
+  	596,597,3,132,66,0,597,598,5,5,0,0,598,600,5,62,0,0,599,601,5,53,0,0,
+  	600,599,1,0,0,0,600,601,1,0,0,0,601,602,1,0,0,0,602,603,5,57,0,0,603,
+  	605,5,53,0,0,604,606,3,126,63,0,605,604,1,0,0,0,605,606,1,0,0,0,606,607,
+  	1,0,0,0,607,608,5,63,0,0,608,609,5,4,0,0,609,610,3,132,66,0,610,131,1,
+  	0,0,0,611,612,5,60,0,0,612,613,5,54,0,0,613,614,5,61,0,0,614,133,1,0,
+  	0,0,615,616,5,25,0,0,616,617,5,60,0,0,617,618,3,2,1,0,618,619,5,61,0,
+  	0,619,135,1,0,0,0,620,621,5,26,0,0,621,622,5,60,0,0,622,623,3,2,1,0,623,
+  	624,5,61,0,0,624,137,1,0,0,0,625,626,5,27,0,0,626,627,5,60,0,0,627,628,
+  	3,2,1,0,628,629,5,61,0,0,629,139,1,0,0,0,630,631,5,28,0,0,631,632,5,60,
+  	0,0,632,633,5,62,0,0,633,634,5,53,0,0,634,635,5,59,0,0,635,638,3,142,
+  	71,0,636,637,5,59,0,0,637,639,3,144,72,0,638,636,1,0,0,0,638,639,1,0,
+  	0,0,639,640,1,0,0,0,640,641,5,63,0,0,641,642,5,59,0,0,642,643,3,2,1,0,
+  	643,644,5,61,0,0,644,141,1,0,0,0,645,646,7,11,0,0,646,143,1,0,0,0,647,
+  	652,3,146,73,0,648,649,5,59,0,0,649,651,3,146,73,0,650,648,1,0,0,0,651,
+  	654,1,0,0,0,652,650,1,0,0,0,652,653,1,0,0,0,653,145,1,0,0,0,654,652,1,
+  	0,0,0,655,656,3,104,52,0,656,147,1,0,0,0,41,172,177,183,191,220,229,233,
+  	276,280,314,322,327,334,339,348,357,378,412,420,442,450,458,466,474,482,
+  	486,497,502,511,522,529,533,548,564,568,577,587,600,605,638,652
   };
   staticData->serializedATN = antlr4::atn::SerializedATNView(serializedATNSegment, sizeof(serializedATNSegment) / sizeof(serializedATNSegment[0]));
 
@@ -4483,6 +4483,7 @@ std::any poseidonParser::VariableContext::accept(tree::ParseTreeVisitor *visitor
 poseidonParser::VariableContext* poseidonParser::variable() {
   VariableContext *_localctx = _tracker.createInstance<VariableContext>(_ctx, getState());
   enterRule(_localctx, 102, poseidonParser::RuleVariable);
+  size_t _la = 0;
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -4495,10 +4496,16 @@ poseidonParser::VariableContext* poseidonParser::variable() {
     enterOuterAlt(_localctx, 1);
     setState(499);
     match(poseidonParser::Var);
-    setState(500);
-    match(poseidonParser::T__0);
-    setState(501);
-    match(poseidonParser::Identifier_);
+    setState(502);
+    _errHandler->sync(this);
+
+    _la = _input->LA(1);
+    if (_la == poseidonParser::T__0) {
+      setState(500);
+      match(poseidonParser::T__0);
+      setState(501);
+      match(poseidonParser::Identifier_);
+    }
    
   }
   catch (RecognitionException &e) {
@@ -4555,7 +4562,7 @@ poseidonParser::ValueContext* poseidonParser::value() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(503);
+    setState(504);
     _la = _input->LA(1);
     if (!((((_la & ~ 0x3fULL) == 0) &&
       ((1ULL << _la) & 78812993478983680) != 0))) {
@@ -4633,24 +4640,24 @@ poseidonParser::Function_callContext* poseidonParser::function_call() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(505);
-    prefix();
     setState(506);
-    match(poseidonParser::DOUBLE_COLON);
+    prefix();
     setState(507);
-    match(poseidonParser::Identifier_);
+    match(poseidonParser::DOUBLE_COLON);
     setState(508);
+    match(poseidonParser::Identifier_);
+    setState(509);
     match(poseidonParser::LPAREN);
-    setState(510);
+    setState(511);
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if ((((_la & ~ 0x3fULL) == 0) &&
       ((1ULL << _la) & 96827391988465664) != 0)) {
-      setState(509);
+      setState(510);
       param_list();
     }
-    setState(512);
+    setState(513);
     match(poseidonParser::RPAREN);
    
   }
@@ -4704,7 +4711,7 @@ poseidonParser::PrefixContext* poseidonParser::prefix() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(514);
+    setState(515);
     _la = _input->LA(1);
     if (!(_la == poseidonParser::UDF_
 
@@ -4775,17 +4782,17 @@ poseidonParser::Param_listContext* poseidonParser::param_list() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(516);
+    setState(517);
     param();
-    setState(521);
+    setState(522);
     _errHandler->sync(this);
     _la = _input->LA(1);
     while (_la == poseidonParser::COMMA_) {
-      setState(517);
-      match(poseidonParser::COMMA_);
       setState(518);
+      match(poseidonParser::COMMA_);
+      setState(519);
       param();
-      setState(523);
+      setState(524);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
@@ -4852,35 +4859,35 @@ poseidonParser::ParamContext* poseidonParser::param() {
     exitRule();
   });
   try {
-    setState(532);
+    setState(533);
     _errHandler->sync(this);
     switch (_input->LA(1)) {
       case poseidonParser::INTEGER:
       case poseidonParser::FLOAT:
       case poseidonParser::STRING_: {
         enterOuterAlt(_localctx, 1);
-        setState(524);
+        setState(525);
         value();
         break;
       }
 
       case poseidonParser::Var: {
         enterOuterAlt(_localctx, 2);
-        setState(525);
+        setState(526);
         match(poseidonParser::Var);
-        setState(528);
+        setState(529);
         _errHandler->sync(this);
 
         _la = _input->LA(1);
         if (_la == poseidonParser::T__0) {
-          setState(526);
-          match(poseidonParser::T__0);
           setState(527);
+          match(poseidonParser::T__0);
+          setState(528);
           match(poseidonParser::Identifier_);
         }
-        setState(530);
-        match(poseidonParser::COLON_);
         setState(531);
+        match(poseidonParser::COLON_);
+        setState(532);
         type_spec();
         break;
       }
@@ -4955,17 +4962,17 @@ poseidonParser::Sort_opContext* poseidonParser::sort_op() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(534);
-    match(poseidonParser::Sort_);
     setState(535);
-    match(poseidonParser::LPAREN);
+    match(poseidonParser::Sort_);
     setState(536);
-    sort_list();
+    match(poseidonParser::LPAREN);
     setState(537);
-    match(poseidonParser::COMMA_);
+    sort_list();
     setState(538);
-    query_operator();
+    match(poseidonParser::COMMA_);
     setState(539);
+    query_operator();
+    setState(540);
     match(poseidonParser::RPAREN);
    
   }
@@ -5035,23 +5042,23 @@ poseidonParser::Sort_listContext* poseidonParser::sort_list() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(541);
-    match(poseidonParser::LBRACKET);
     setState(542);
+    match(poseidonParser::LBRACKET);
+    setState(543);
     sort_expr();
-    setState(547);
+    setState(548);
     _errHandler->sync(this);
     _la = _input->LA(1);
     while (_la == poseidonParser::COMMA_) {
-      setState(543);
-      match(poseidonParser::COMMA_);
       setState(544);
+      match(poseidonParser::COMMA_);
+      setState(545);
       sort_expr();
-      setState(549);
+      setState(550);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
-    setState(550);
+    setState(551);
     match(poseidonParser::RBRACKET);
    
   }
@@ -5112,13 +5119,13 @@ poseidonParser::Sort_exprContext* poseidonParser::sort_expr() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(552);
-    match(poseidonParser::Var);
     setState(553);
-    match(poseidonParser::COLON_);
+    match(poseidonParser::Var);
     setState(554);
-    type_spec();
+    match(poseidonParser::COLON_);
     setState(555);
+    type_spec();
+    setState(556);
     sort_spec();
    
   }
@@ -5172,7 +5179,7 @@ poseidonParser::Sort_specContext* poseidonParser::sort_spec() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(557);
+    setState(558);
     _la = _input->LA(1);
     if (!(_la == poseidonParser::DescOrder_
 
@@ -5255,21 +5262,21 @@ poseidonParser::Create_opContext* poseidonParser::create_op() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(559);
-    match(poseidonParser::Create_);
     setState(560);
+    match(poseidonParser::Create_);
+    setState(561);
     match(poseidonParser::LPAREN);
-    setState(563);
+    setState(564);
     _errHandler->sync(this);
-    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 32, _ctx)) {
+    switch (getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 33, _ctx)) {
     case 1: {
-      setState(561);
+      setState(562);
       create_rship();
       break;
     }
 
     case 2: {
-      setState(562);
+      setState(563);
       create_node();
       break;
     }
@@ -5277,17 +5284,17 @@ poseidonParser::Create_opContext* poseidonParser::create_op() {
     default:
       break;
     }
-    setState(567);
+    setState(568);
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == poseidonParser::COMMA_) {
-      setState(565);
-      match(poseidonParser::COMMA_);
       setState(566);
+      match(poseidonParser::COMMA_);
+      setState(567);
       query_operator();
     }
-    setState(569);
+    setState(570);
     match(poseidonParser::RPAREN);
    
   }
@@ -5357,23 +5364,23 @@ poseidonParser::Create_nodeContext* poseidonParser::create_node() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(571);
-    match(poseidonParser::LPAREN);
     setState(572);
-    match(poseidonParser::Identifier_);
+    match(poseidonParser::LPAREN);
     setState(573);
-    match(poseidonParser::COLON_);
-    setState(574);
     match(poseidonParser::Identifier_);
-    setState(576);
+    setState(574);
+    match(poseidonParser::COLON_);
+    setState(575);
+    match(poseidonParser::Identifier_);
+    setState(577);
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == poseidonParser::T__5) {
-      setState(575);
+      setState(576);
       property_list();
     }
-    setState(578);
+    setState(579);
     match(poseidonParser::RPAREN);
    
   }
@@ -5435,23 +5442,23 @@ poseidonParser::Property_listContext* poseidonParser::property_list() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(580);
-    match(poseidonParser::T__5);
     setState(581);
+    match(poseidonParser::T__5);
+    setState(582);
     property();
-    setState(586);
+    setState(587);
     _errHandler->sync(this);
     _la = _input->LA(1);
     while (_la == poseidonParser::COMMA_) {
-      setState(582);
-      match(poseidonParser::COMMA_);
       setState(583);
+      match(poseidonParser::COMMA_);
+      setState(584);
       property();
-      setState(588);
+      setState(589);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
-    setState(589);
+    setState(590);
     match(poseidonParser::T__6);
    
   }
@@ -5508,11 +5515,11 @@ poseidonParser::PropertyContext* poseidonParser::property() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(591);
-    match(poseidonParser::Identifier_);
     setState(592);
-    match(poseidonParser::COLON_);
+    match(poseidonParser::Identifier_);
     setState(593);
+    match(poseidonParser::COLON_);
+    setState(594);
     value();
    
   }
@@ -5590,37 +5597,37 @@ poseidonParser::Create_rshipContext* poseidonParser::create_rship() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(595);
-    node_var();
     setState(596);
-    match(poseidonParser::T__4);
+    node_var();
     setState(597);
+    match(poseidonParser::T__4);
+    setState(598);
     match(poseidonParser::LBRACKET);
-    setState(599);
+    setState(600);
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == poseidonParser::Identifier_) {
-      setState(598);
+      setState(599);
       match(poseidonParser::Identifier_);
     }
-    setState(601);
-    match(poseidonParser::COLON_);
     setState(602);
+    match(poseidonParser::COLON_);
+    setState(603);
     match(poseidonParser::Identifier_);
-    setState(604);
+    setState(605);
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == poseidonParser::T__5) {
-      setState(603);
+      setState(604);
       property_list();
     }
-    setState(606);
-    match(poseidonParser::RBRACKET);
     setState(607);
-    match(poseidonParser::T__3);
+    match(poseidonParser::RBRACKET);
     setState(608);
+    match(poseidonParser::T__3);
+    setState(609);
     node_var();
    
   }
@@ -5677,11 +5684,11 @@ poseidonParser::Node_varContext* poseidonParser::node_var() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(610);
-    match(poseidonParser::LPAREN);
     setState(611);
-    match(poseidonParser::Var);
+    match(poseidonParser::LPAREN);
     setState(612);
+    match(poseidonParser::Var);
+    setState(613);
     match(poseidonParser::RPAREN);
    
   }
@@ -5742,13 +5749,13 @@ poseidonParser::Remove_node_opContext* poseidonParser::remove_node_op() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(614);
-    match(poseidonParser::RemoveNode_);
     setState(615);
-    match(poseidonParser::LPAREN);
+    match(poseidonParser::RemoveNode_);
     setState(616);
-    query_operator();
+    match(poseidonParser::LPAREN);
     setState(617);
+    query_operator();
+    setState(618);
     match(poseidonParser::RPAREN);
    
   }
@@ -5809,13 +5816,13 @@ poseidonParser::Remove_relationship_opContext* poseidonParser::remove_relationsh
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(619);
-    match(poseidonParser::RemoveRelationship_);
     setState(620);
-    match(poseidonParser::LPAREN);
+    match(poseidonParser::RemoveRelationship_);
     setState(621);
-    query_operator();
+    match(poseidonParser::LPAREN);
     setState(622);
+    query_operator();
+    setState(623);
     match(poseidonParser::RPAREN);
    
   }
@@ -5876,13 +5883,13 @@ poseidonParser::Detach_node_opContext* poseidonParser::detach_node_op() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(624);
-    match(poseidonParser::DetachNode_);
     setState(625);
-    match(poseidonParser::LPAREN);
+    match(poseidonParser::DetachNode_);
     setState(626);
-    query_operator();
+    match(poseidonParser::LPAREN);
     setState(627);
+    query_operator();
+    setState(628);
     match(poseidonParser::RPAREN);
    
   }
@@ -5972,35 +5979,35 @@ poseidonParser::Algorithm_opContext* poseidonParser::algorithm_op() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(629);
-    match(poseidonParser::Algorithm_);
     setState(630);
-    match(poseidonParser::LPAREN);
+    match(poseidonParser::Algorithm_);
     setState(631);
-    match(poseidonParser::LBRACKET);
+    match(poseidonParser::LPAREN);
     setState(632);
-    match(poseidonParser::Identifier_);
+    match(poseidonParser::LBRACKET);
     setState(633);
-    match(poseidonParser::COMMA_);
+    match(poseidonParser::Identifier_);
     setState(634);
+    match(poseidonParser::COMMA_);
+    setState(635);
     call_mode();
-    setState(637);
+    setState(638);
     _errHandler->sync(this);
 
     _la = _input->LA(1);
     if (_la == poseidonParser::COMMA_) {
-      setState(635);
-      match(poseidonParser::COMMA_);
       setState(636);
+      match(poseidonParser::COMMA_);
+      setState(637);
       algo_param_list();
     }
-    setState(639);
-    match(poseidonParser::RBRACKET);
     setState(640);
-    match(poseidonParser::COMMA_);
+    match(poseidonParser::RBRACKET);
     setState(641);
-    query_operator();
+    match(poseidonParser::COMMA_);
     setState(642);
+    query_operator();
+    setState(643);
     match(poseidonParser::RPAREN);
    
   }
@@ -6054,7 +6061,7 @@ poseidonParser::Call_modeContext* poseidonParser::call_mode() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(644);
+    setState(645);
     _la = _input->LA(1);
     if (!(_la == poseidonParser::TupleMode_
 
@@ -6125,17 +6132,17 @@ poseidonParser::Algo_param_listContext* poseidonParser::algo_param_list() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(646);
+    setState(647);
     algo_param();
-    setState(651);
+    setState(652);
     _errHandler->sync(this);
     _la = _input->LA(1);
     while (_la == poseidonParser::COMMA_) {
-      setState(647);
-      match(poseidonParser::COMMA_);
       setState(648);
+      match(poseidonParser::COMMA_);
+      setState(649);
       algo_param();
-      setState(653);
+      setState(654);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
@@ -6186,7 +6193,7 @@ poseidonParser::Algo_paramContext* poseidonParser::algo_param() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(654);
+    setState(655);
     value();
    
   }

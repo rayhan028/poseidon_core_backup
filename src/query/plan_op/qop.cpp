@@ -592,6 +592,8 @@ void end_pipeline::process() { return; }
 
 /* ------------------------------------------------------------------------ */
 
+#if 0
+
 projection::projection(const expr_list &exprs, std::vector<projection_expr>& prexpr) : exprs_(exprs), prexpr_(prexpr) {
   type_ = qop_type::project;
   init_expr_vars();
@@ -688,4 +690,5 @@ void projection::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_POST(1);
 }
 
+#endif
 /* --------------------------------------------------------------------- */

@@ -23,6 +23,7 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
     }
 
     SECTION("Filter") {
+        REQUIRE(qp.parse_("Filter($0 == 42, Project([$0.id:uint64], NodeScan('Person')))"));
         REQUIRE(qp.parse_("Filter($0.id == 42, NodeScan('Person'))"));
         REQUIRE(qp.parse_("Filter($0.num > 1.0, NodeScan('Person'))"));
         REQUIRE(qp.parse_("Filter($0.num > 1.0 && $1.id == 13, NodeScan('Person'))"));

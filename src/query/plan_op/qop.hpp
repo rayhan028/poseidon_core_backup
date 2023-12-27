@@ -684,6 +684,7 @@ struct end_pipeline : public qop, public std::enable_shared_from_this<end_pipeli
   std::size_t other_idx_;
 };
 
+#if 0
 /**
  * Macro to simplify definition of arguments in project etc.
  * Usage: Instead of requiring to define a lambda expression
@@ -813,5 +814,7 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
   std::vector<projection_expr> prexpr_;
   std::vector<int> new_types;
 };
+
+#endif
 
 #endif

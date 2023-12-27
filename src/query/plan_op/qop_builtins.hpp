@@ -54,7 +54,7 @@ bool has_label(query_result &pv, const std::string &l);
 /**
  * Returnd the label of the node/relationship.
  */
-query_result get_label(query_result &pv);
+query_result get_label(const query_result &pv);
 
 /**
  * Return the integer value of the property of a node/relationship stored in

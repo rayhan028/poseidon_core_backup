@@ -236,13 +236,6 @@ query_builder &query_builder::finish() {
 query_builder &query_builder::project(const projection::expr_list &exprs) {
   auto op = std::make_shared<projection>(exprs);
   qpipeline_.append_op(op,
-                   std::bind(&projection::process, op.get(), ph::_1, ph::_2));
-  return *this;                               
-}
-
-query_builder &query_builder::project(std::vector<projection_expr> prexpr) {
-  auto op = std::make_shared<projection>(prexpr);
-  qpipeline_.append_op(op,
                    std::bind(&projection::process, op.get(), ph::_1, ph::_2));  
   return *this;                               
 }

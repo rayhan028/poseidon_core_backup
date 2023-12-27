@@ -137,16 +137,15 @@ auto q = query(gdb)
           .nodes_where("Person", "id", [&](auto &p) { return p.equal(933); })
           .from_relationships(":isLocatedIn")
           .to_node("Place")
-          .project(
-              {PExpr_(0, pj::string_property(res, "firstName")),
-               PExpr_(0, pj::string_property(res, "lastName")),
-               PExpr_(0, pj::int_to_datestring(pj::int_property(res, "birthday"))),
-               PExpr_(0, pj::string_property(res, "locationIP")),
-               PExpr_(0, pj::string_property(res, "browser")),
-               PExpr_(2, pj::int_property(res, "id")),
-               PExpr_(0, pj::string_property(res, "gender")),
-               PExpr_(0, pj::int_to_datetimestring(
-                   pj::int_property(res, "creationDate"))) })
+          .project({
+              {0, "firstName", prj::string_property},
+              {0, "lastName", prj::string_property},
+              {0, "birthday", prj::int_property_as_datestring},
+              {0, "locationIP", prj::string_property},
+              {0, "browser", prj::string_property},
+              {2, "id", prj::int_property(},
+              {0, "gender", prj::string_property},
+              {0, "creationDate", prj::int_property_as_datetimestring} })
           .print();
   q.start();
 ```

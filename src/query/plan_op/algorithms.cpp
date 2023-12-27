@@ -162,10 +162,10 @@ algorithm_op::tuple_list oldest_tweet(query_ctx& ctx, const qr_tuple& v, algorit
             }
         }
     });
-if (oldest_tweet != nullptr) {
-    qr_tuple res(1);
-    res[0] = oldest_tweet;
-    return algorithm_op::tuple_list({res});
+    if (oldest_tweet != nullptr) {
+        qr_tuple res(1);
+        res[0] = oldest_tweet;
+        return algorithm_op::tuple_list({res});
     }
     else {
         return algorithm_op::tuple_list();
