@@ -1,0 +1,3 @@
+{"argv":["python3.12","-m","poseidonkernel", "-f", "{connection_file}"],
+ "display_name":"Poseidon"
+}

@@ -52,9 +52,16 @@ dict::~dict() {
 
 void dict::initialize() {
     spdlog::debug("initialize string dictionary...");
-    std::unique_lock lock(m_);
+    // std::unique_lock lock(m_);
     table_ = new code_table(pool_/*, 2920000*/);
-    table_->rebuild();
+    
+    init_ = std::async(std::launch::async, [this]() { 
+        std::unique_lock lock(m_); 
+        table_->rebuild(); 
+        spdlog::info("string dictionary initalized.");
+    });
+ 
+    // table_->rebuild();
 }
 
 std::size_t dict::size() const {

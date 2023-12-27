@@ -6,6 +6,7 @@ import pathlib
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.history import FileHistory
+from tabulate import tabulate
 
 lib_path = pathlib.Path(__file__).parent.parent.parent.resolve() / 'build'
 if os.path.isdir(lib_path):
@@ -36,8 +37,9 @@ def main(pool, db, buffersize):
                                   multiline=True, prompt_continuation=prompt_continuation)
             res = g.query(qstr)
 
-            for tup in res:
-                print(tup)
+            print(tabulate(res, tablefmt="simple_grid", maxcolwidths=20))
+#            for tup in res:
+#                print(tup)
 
         except KeyboardInterrupt:
             continue
@@ -54,7 +56,7 @@ def main(pool, db, buffersize):
 
 
 def bottom_toolbar():
-    return HTML('Poseidon Graph Database')
+    return HTML('Poseidon Graph Database: Press ESC+Enter to execute query. | CTRL-D to exit.')
 
 def prompt_continuation(width, line_number, is_soft_wrap):
     return '.' * width
