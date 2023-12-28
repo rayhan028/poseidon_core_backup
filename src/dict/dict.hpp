@@ -123,7 +123,7 @@ private:
 #endif
     code_table *table_;  		             // the hash table for mapping codes to strings
     mutable std::shared_mutex m_;        // a mutex for synchronizing access to the dictionary
-    std::future<void> init_;
+    // std::future<void> init_;
 };
 
 using dict_ptr = p_ptr<dict>;

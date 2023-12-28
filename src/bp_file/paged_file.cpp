@@ -170,11 +170,13 @@ paged_file::page_id paged_file::find_first_slot() {
 void paged_file::scan_pages(page& pg, std::function<void(page&, paged_file::page_id)> cb) {
     paged_file::page_id pid = 1;
     file_.seekg(sizeof(file_header));
-    while (!file_.eof()) {
+    while (!file_.eof() &&!file_.fail()) {
+        try {
         file_.read((char *) pg.payload, PAGE_SIZE);   
         if (header_.slots_.test(pid-1))  
             cb(pg, pid);
         pid++;
+        } catch (std::exception& exc) { return; }
     }
     // reset the eof flag, otherwise tellp will fail
     file_.clear();

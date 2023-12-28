@@ -25,12 +25,10 @@ projection::projection(const expr_list &exprs) : exprs_(exprs) {
   init_expressions();
 }
 
-/*
-projection::projection(const expr_list &exprs, dict_ptr dct, udf_list& ul) : exprs_(exprs), udfs_(ul) {
+projection::projection(const expr_list &exprs, udf_list& ul) : exprs_(exprs), udfs_(ul) {
   type_ = qop_type::project;
-  init_expressions(dct);
+  init_expressions();
 }
-*/
 
 void projection::init_expressions() {
     if (exprs_.empty())
@@ -78,18 +76,20 @@ void projection::init_expressions() {
                     return builtin::string_property(qr, pname); }};
                 break;
             case prj::ptime_property:
+            case prj::date_property:
                 pfuncs_[i] = prj_func { ex.idx, [pname](query_ctx&, const query_result& qr) { 
                     return builtin::ptime_property(qr, pname); }};
                 break;
+            /*
             case prj::date_property:
                 pfuncs_[i] = prj_func { ex.idx, [pname](query_ctx&, const query_result& qr) { 
                     return builtin::pr_date(qr, pname); }};
                 break;
+            */
             case prj::label:
                 pfuncs_[i] = prj_func { ex.idx, [](query_ctx&, const query_result& qr) { 
                     return builtin::get_label(qr); }};
                 break;
-                /* TODO
             case prj::function:
                 {
                     auto fv = udfs_[udf_idx];
@@ -103,7 +103,6 @@ void projection::init_expressions() {
                     udf_idx++;
                     break;
                 }
-                */
             default:
                 // TODO
                 break;

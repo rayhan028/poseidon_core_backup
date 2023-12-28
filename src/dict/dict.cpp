@@ -52,16 +52,17 @@ dict::~dict() {
 
 void dict::initialize() {
     spdlog::debug("initialize string dictionary...");
-    // std::unique_lock lock(m_);
+    std::unique_lock lock(m_);
     table_ = new code_table(pool_/*, 2920000*/);
     
-    init_ = std::async(std::launch::async, [this]() { 
+    /* TODO: actually works fine, but "SIGSEGV - Segmentation violation signal" in dict_test
+    init_ = std::async(std::launch::async | std::launch::deferred, [this]() { 
         std::unique_lock lock(m_); 
         table_->rebuild(); 
         spdlog::info("string dictionary initalized.");
     });
- 
-    // table_->rebuild();
+    */
+    table_->rebuild();
 }
 
 std::size_t dict::size() const {
@@ -70,7 +71,7 @@ std::size_t dict::size() const {
 }
 
 dcode_t dict::insert(const std::string& s) {
-    std::unique_lock loc(m_);
+    std::unique_lock lock(m_);
     auto pos = table_->find(s);
     if (pos != UNKNOWN_CODE) {
         return table_->get(pos);

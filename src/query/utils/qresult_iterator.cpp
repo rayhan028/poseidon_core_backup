@@ -154,7 +154,7 @@ bool result_set::qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple 
         break;
     }
     } catch (std::exception& exc) {
-      std::cout << "qr_compare - exception in boost::get at #" << sp.vidx << " for " << sp.cmp_type << " : " << exc.what() << std::endl;
+      spdlog::info("qr_compare failed boost::get at #{} expected {} but got {}|{}", sp.vidx, sp.cmp_type, v1.which(), v2.which());
       throw query_processing_error(exc.what());
     }
     return true;

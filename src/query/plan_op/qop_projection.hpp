@@ -40,6 +40,10 @@ enum class prj {
 
 
 using builtin_func = std::function<query_result(query_ctx&, const query_result&)>;
+using user_defined_func1 = std::function<query_result(query_ctx&, const query_result&)>;
+using user_defined_func2 = std::function<query_result(query_ctx&, const query_result&, const query_result&)>;
+
+using user_defined_func = boost::variant<user_defined_func1, user_defined_func2>;
 
 /**
  * projection implements a project operator.
@@ -60,10 +64,10 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
 
   using prj_func_list = std::vector<prj_func>;
 
-  // using udf_list = std::vector<user_defined_func>;
+  using udf_list = std::vector<user_defined_func>;
 
   projection(const expr_list &exprs);
-  //projection(const expr_list &exprs, dict_ptr dct, udf_list &ul);
+  projection(const expr_list &exprs, udf_list &ul);
 
   void dump(std::ostream &os) const override;
 
@@ -86,7 +90,7 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
   void init_expressions();
 
   expr_list exprs_; // the list of defined projection expressions
-  // udf_list udfs_;
+  udf_list udfs_;
 
   prj_func_list pfuncs_;
   std::set<std::size_t> accessed_; // a set of variables referenced in the projection expression, e.g. 0, 1, 3....

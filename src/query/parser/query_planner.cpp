@@ -115,7 +115,7 @@ std::any query_planner::visitFilter_op(poseidonParser::Filter_opContext *ctx) {
 
 std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) {
     projection::expr_list pexpr_list;
-    //projection::udf_list prj_udf_list;
+    projection::udf_list prj_udf_list;
 
     for (auto& pexpr : ctx->proj_list()->proj_expr()) {
         if (pexpr->Var() != nullptr) {
@@ -151,20 +151,10 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
             auto fc_params = fc->param_list()->param();
             assert(fc_params.size() == 1);
             // TODO: handle UDFs with more than one parameter
-#if 0
             if (prefix == "pb") {
-                // TODO handle builtin functions!
-                auto bfunc = get_builtin_function(fc_name, fc_params.size());
-                switch (fc_params.size()) {
-                    case 1: 
-                    {
-                        auto p_idx = extract_tuple_id(fc_params[0]->Var()->getText());
-                        pexpr_list.push_back(projection::expr{ p_idx, "", bfunc});
-                        break;
-                    }
-                    default:
-                        // TODO
-                        break;
+                if (fc_name == "label") {
+                    auto p_idx = extract_tuple_id(fc_params[0]->Var()->getText());
+                    pexpr_list.push_back(projection::expr{ p_idx, "", prj::label});
                 }
             }
             else if (prefix == "udf") {
@@ -190,10 +180,9 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
                 // TODO: throw undefined prefix
                 throw query_processing_error("invalid function prefix");
             }
-#endif
         }
     }
-    auto qp = std::make_shared<projection>(pexpr_list);
+    auto qp = std::make_shared<projection>(pexpr_list, prj_udf_list);
 
     auto ch = visit(ctx->query_operator());
     auto child_op = std::any_cast<qop_ptr>(ch);

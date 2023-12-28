@@ -22,12 +22,13 @@
 #include "spdlog/spdlog.h"
 
 paged_string_pool::paged_string_pool(bufferpool& bp, uint64_t fid) : 
-    bpool_(bp), file_id_(fid), file_mask_(fid << 60) {
+    bpool_(bp), file_id_(fid), file_mask_(fid << 60), npages_(0) {
     npages_ = bpool_.get_file(file_id_)->num_pages();
     if (npages_ == 0) {
         // we have a new file
         bpool_.allocate_page(file_id_);
         npages_ = 1;
+        spdlog::info("new string_pool page created");
     }
 }
 
