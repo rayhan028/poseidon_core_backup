@@ -193,17 +193,18 @@ public:
         return boost::get<int>(v) != 0; 
     }
 
-    virtual void visit(int rank, std::shared_ptr<number_token> op) override {
+    virtual void* visit(std::shared_ptr<number_token> op) override {
         // std::cout << "visit number_token: " << op->dump() << std::endl;
-        if (op->ftype_ == FOP_TYPE::INT)
+        if (op->ftype_ == expr_type::INT)
             stack_.push(query_result(op->ivalue_));
-        else if (op->ftype_ == FOP_TYPE::UINT64)
+        else if (op->ftype_ == expr_type::UINT64)
             stack_.push(query_result(op->lvalue_));
         else
             stack_.push(query_result(op->dvalue_));
+        return nullptr;
     }
 
-    virtual void visit(int rank, std::shared_ptr<key_token> op) override {
+    virtual void* visit(std::shared_ptr<key_token> op) override {
         // std::cout << "visit key_token: " << op->qr_id_ << ", " << op->key_ << " : " << tup_.size() << std::endl;
         // TODO: we should replace string key_ by its dcode_t in prepare_expr_visitor
         auto inp = tup_[op->qr_id_];
@@ -269,21 +270,94 @@ public:
                 break;
         }            
         // std::cout << "PUSH: " << res << std::endl;
+        return nullptr;
     }
 
-    virtual void visit(int rank, std::shared_ptr<str_token> op) override {
+    virtual void* visit(std::shared_ptr<variable> op) override {
+        // std::cout << "visit key_token: " << op->qr_id_ << ", " << op->key_ << " : " << tup_.size() << std::endl;
+        // TODO: we should replace string key_ by its dcode_t in prepare_expr_visitor
+        auto inp = tup_[op->id_];
+        p_item res;
+        switch (inp.which()) {
+            case node_ptr_type: // node *
+            {
+                auto nptr = qv_get_node(inp);
+                // if key_ is empty then the node is requested ($i:node)
+                if (op->pcode_ == UNKNOWN_CODE) {
+                    // std::cout << "id = " << nptr->id() << std::endl;
+                    stack_.push(query_result(nptr));
+                }
+                else {
+                    // otherwise the property value ($i.prop:dtype) which is handled later
+                    res = ctx_.gdb_->get_property_value(*nptr, op->pcode_);
+                }
+                break;
+            }
+            case rship_ptr_type: // relationship *
+            {
+                auto rptr = qv_get_relationship(inp);
+                // if key_ is empty then the relationship is requested
+                if (op->pcode_ == UNKNOWN_CODE)
+                    stack_.push(query_result(rptr));
+                else
+                    // otherwise the property value ($i.prop:dtype) which is handled later
+                    res = ctx_.gdb_->get_property_value(*rptr, op->pcode_);
+                break;
+            }
+            case uint64_type:
+            case int_type:
+            case double_type:
+            case string_type:
+                stack_.push(inp);
+                break;
+            default:
+                // std::cout << "visit key_token ==> " << inp.which() << std::endl;
+                // Ooops!!
+                break;
+        }
+        switch (res.typecode()) {
+            case p_item::p_int:
+                stack_.push(query_result(res.get<int>()));
+                break;
+            case p_item::p_double:
+                stack_.push(query_result(res.get<double>()));
+                break;
+            case p_item::p_uint64:
+                stack_.push(query_result(res.get<uint64_t>()));
+                break;
+            case p_item::p_dcode:
+                {
+                    auto str = ctx_.gdb_->get_dictionary()->lookup_code(res.get<dcode_t>());
+                    stack_.push(query_result(std::string(str)));
+                }
+                break;
+            case p_item::p_unused:
+                // node* or relationship*
+                break;
+            default:
+                // spdlog::info("cannot push for #{} : inp={}, res={}", op->qr_id_, inp.which(), res.typecode());
+                break;
+        }            
+        // std::cout << "PUSH: " << res << std::endl;
+        return nullptr;
+    }
+
+    virtual void* visit(std::shared_ptr<str_token> op) override {
         stack_.push(query_result(op->str_));
+        return nullptr;
     }
 
-    virtual void visit(int rank, std::shared_ptr<time_token> op) override {
+    virtual void* visit(std::shared_ptr<time_token> op) override {
         std::cout << "visit time_token" << std::endl;        
+        return nullptr;
     }
 
-    virtual void visit(int rank, std::shared_ptr<fct_call> op) override {
+    virtual void* visit(std::shared_ptr<fct_call> op) override {
         std::cout << "visit fct_call" << std::endl;         
+        return nullptr;
     }
 
-    virtual void visit(int rank, std::shared_ptr<func_call> op) override {
+    virtual void* visit( std::shared_ptr<func_call> op) override {
         // std::cout << "visit func_call: " << op->func_name_ << " : " << op->param_list_.size() << std::endl;
         if (op->param_list_.size() == 1) {
             auto arg = pop(stack_);
@@ -296,10 +370,14 @@ public:
             auto res = op->func2_ptr_(ctx_, arg1, arg2);
             stack_.push(res);
         }      
+        return nullptr;
     }
 
-    virtual void visit(int rank, std::shared_ptr<eq_predicate> op) override {
-        // std::cout << "visit eq_predicate: ==" << std::endl;       
+    virtual void* visit(std::shared_ptr<eq_predicate> op) override {
+        // std::cout << "visit eq_predicate: ==" << std::endl;  
+        op->left_->accept(*this);     
+        op->right_->accept(*this); 
+
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
@@ -307,19 +385,27 @@ public:
             // std::cout << "visit eq_predicate: ->" << res << std::endl;       
             stack_.push(query_result(res ? 1 : 0));
         }
+        return nullptr;
     }
     
-    virtual void visit(int rank, std::shared_ptr<le_predicate> op) override {
+    virtual void* visit(std::shared_ptr<le_predicate> op) override {
         // std::cout << "visit le_predicate: <=" << std::endl;       
+        op->left_->accept( *this);     
+        op->right_->accept(*this); 
+
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
             bool res = less_or_equal(v1, v2);
             stack_.push(query_result(res ? 1 : 0));
         }    
+        return nullptr;
     }
 
-    virtual void visit(int rank, std::shared_ptr<lt_predicate> op) override {
+    virtual void* visit(std::shared_ptr<lt_predicate> op) override {
+        op->left_->accept(*this);     
+        op->right_->accept(*this); 
+
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
@@ -327,9 +413,13 @@ public:
             bool res = less_than(v1, v2);
             stack_.push(query_result(res ? 1 : 0));
         }    
+        return nullptr;
     }
 
-    virtual void visit(int rank, std::shared_ptr<ge_predicate> op) override {
+    virtual void* visit(std::shared_ptr<ge_predicate> op) override {
+        op->left_->accept(*this);     
+        op->right_->accept(*this); 
+
         // std::cout << "visit ge_predicate: >=" << std::endl;              
         if (valid_operands()) {
             auto v2 = pop(stack_);
@@ -337,9 +427,13 @@ public:
             bool res = greater_or_equal(v1, v2);
             stack_.push(query_result(res ? 1 : 0));
         }    
+        return nullptr;
     }
 
-    virtual void visit(int rank, std::shared_ptr<gt_predicate> op) override {
+    virtual void* visit(std::shared_ptr<gt_predicate> op) override {
+        op->left_->accept(*this);     
+        op->right_->accept( *this); 
+
         // std::cout << "visit gt_predicate: >" << std::endl; 
         if (valid_operands()) {
             auto v2 = pop(stack_);
@@ -347,27 +441,38 @@ public:
             bool res = greater_than(v1, v2);
             stack_.push(query_result(res ? 1 : 0));
         }
+        return nullptr;
     }
 
-    virtual void visit(int rank, std::shared_ptr<and_predicate> op) override {
+    virtual void* visit(std::shared_ptr<and_predicate> op) override {
+        op->left_->accept(*this);     
+        op->right_->accept(*this); 
+
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
             bool res = boost::get<int>(v1) && boost::get<int>(v2);
             stack_.push(query_result(res ? 1 : 0));
         }
+        return nullptr;
     }
 
-    virtual void visit(int rank, std::shared_ptr<or_predicate> op) override {
+    virtual void* visit(std::shared_ptr<or_predicate> op) override {
+        op->left_->accept(*this);     
+        op->right_->accept(*this); 
+
          if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
             bool res = boost::get<int>(v1) || boost::get<int>(v2);
             stack_.push(query_result(res ? 1 : 0));
         }       
+        return nullptr;
     }
 
-    virtual void visit(int rank, std::shared_ptr<call_predicate> op) override {}
+    virtual void* visit(std::shared_ptr<call_predicate> op) override {
+        return nullptr;
+    }
 
 private:
     bool valid_operands() {
@@ -388,6 +493,6 @@ private:
 bool interpret_expression(query_ctx& ctx, expr& ex, const qr_tuple& tup) {
     filter_visitor vis(ctx, tup);
     // std::cout << "interpret_expression: " << ex->dump() << std::endl;
-    ex->accept(0, vis);
+    ex->accept(vis);
     return vis.result();
 }

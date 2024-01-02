@@ -27,10 +27,13 @@
 #include "query_ctx.hpp"
 #include "query_batch.hpp"
 
-#ifdef USE_LLVM
-#include "qcompiler.hpp"
-#endif
 #include "qinterp.hpp"
+
+#ifdef USE_LLVM
+#include "jit_engine.hpp"
+#include "ir_generator.hpp"
+#endif
+
 #include "qresult_iterator.hpp"
 
 /**
@@ -55,8 +58,7 @@ public:
   std::size_t execute_and_output_query(mode m, const std::string &qstr,
                                        bool print_plan = false);
 
-  void interp_query(query_batch &plan);
-  void compile_query(query_batch &plan);
+  void run_query(query_batch &plan);
   
   void abort_query();
 
@@ -65,12 +67,14 @@ public:
   bool load_library(const std::string &lib_path);
 
 private:
-  void prepare_plan(query_batch &qplan);
+  void prepare_plan(query_batch &qplan, mode m);
 
   query_ctx& qctx_;
-  qinterp interp_;
+  std::unique_ptr<qinterp> interp_;
 #ifdef USE_LLVM
-  qcompiler compiler_;
+  std::unique_ptr<jit_engine> jit_;
+  std::unique_ptr<ir_generator> codegen_;
+
 #endif
   std::shared_ptr<boost::dll::shared_library> udf_lib_;
 };

@@ -16,28 +16,22 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef func_call_expr_hpp_
-#define func_call_expr_hpp_
+#ifndef jit_funcs_hpp_
+#define jit_funcs_hpp_
 
-#include "expression.hpp"
-#include "qresult_iterator.hpp"
+#include "defs.hpp"
 #include "query_ctx.hpp"
+#include "qresult_iterator.hpp"
+#include "nodes.hpp"
 
-struct func_call : public expression, std::enable_shared_from_this<func_call> {
-    std::string func_name_;
-    std::vector<expr> param_list_;
-    std::function<query_result(query_ctx&, query_result&)> func1_ptr_;
-    std::function<query_result(query_ctx&, query_result&, query_result&)> func2_ptr_;
+void print_node(query_ctx *ctx, node *n);
 
-    func_call(const std::string& fn, const std::vector<expr>& pl) : func_name_(fn), param_list_(pl), func1_ptr_(nullptr), func2_ptr_(nullptr) {}
+int get_node_property_int_value(query_ctx *ctx, node *n, dcode_t label);
 
-    std::string dump() const override;
+uint64_t get_node_property_uint64_value(query_ctx *ctx, node *n, dcode_t label);
 
-    void* accept(expression_visitor &fep) override;
-};
+dcode_t get_node_property_string_value(query_ctx *ctx, node *n, dcode_t label);
 
-inline expr Fct(const std::string& fname, const std::vector<expr>& params) { 
-    return std::make_shared<func_call>(fname, params); 
-}
+node* qr_get_node(qr_tuple* v, std::size_t i);
 
 #endif

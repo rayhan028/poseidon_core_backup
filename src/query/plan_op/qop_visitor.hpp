@@ -41,7 +41,7 @@ struct order_by;
 struct aggregate;
 struct group_by;
 struct distinct_tuples;
-struct filter_tuple;
+struct filter_op;
 struct union_all_op;
 struct shortest_path_opr;
 struct weighted_shortest_path_opr;
@@ -78,7 +78,7 @@ public:
     virtual void visit(std::shared_ptr<aggregate> op) {}
     virtual void visit(std::shared_ptr<group_by> op) {}
     virtual void visit(std::shared_ptr<distinct_tuples> op) {}
-    virtual void visit(std::shared_ptr<filter_tuple> op) {}
+    virtual void visit(std::shared_ptr<filter_op> op) {}
     virtual void visit(std::shared_ptr<union_all_op> op) {}
     virtual void visit(std::shared_ptr<shortest_path_opr> op) {}
     virtual void visit(std::shared_ptr<weighted_shortest_path_opr> op) {}

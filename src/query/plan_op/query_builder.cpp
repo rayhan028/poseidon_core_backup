@@ -146,9 +146,9 @@ query_builder &query_builder::property(const std::string &key,
 }
 
 query_builder &query_builder::filter(const expr &ex) {
-  auto op = std::make_shared<filter_tuple>(ex);
+  auto op = std::make_shared<filter_op>(ex);
   qpipeline_.append_op(op,
-                   std::bind(&filter_tuple::process, op.get(), ph::_1, ph::_2));
+                   std::bind(&filter_op::process, op.get(), ph::_1, ph::_2));
   return *this;                               
 }
 
@@ -271,9 +271,9 @@ query_builder::distinct() {
 
 query_builder &
 query_builder::where_qr_tuple(std::function<bool(const qr_tuple &)> pred) {
-  auto op = std::make_shared<filter_tuple>(pred);
+  auto op = std::make_shared<filter_op>(pred);
   qpipeline_.append_op(op,
-                   std::bind(&filter_tuple::process, op.get(), ph::_1, ph::_2));
+                   std::bind(&filter_op::process, op.get(), ph::_1, ph::_2));
   return *this;                               
 }
 

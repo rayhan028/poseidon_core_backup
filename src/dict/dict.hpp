@@ -23,7 +23,7 @@
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
-#include <future>
+#include <condition_variable>
 #include "defs.hpp"
 
 #ifdef USE_PFILES
@@ -107,11 +107,7 @@ public:
 
     std::size_t count_string_pool_size();
     
-    void close_file() { 
-#ifdef USE_PFILES
-	dict_file_->close();
-#endif
-    }
+    void close_file();
 
 private:
 #ifdef USE_PFILES
@@ -123,7 +119,8 @@ private:
 #endif
     code_table *table_;  		             // the hash table for mapping codes to strings
     mutable std::shared_mutex m_;        // a mutex for synchronizing access to the dictionary
-    // std::future<void> init_;
+    //std::future<void> init_;
+    std::condition_variable built_cv_;
 };
 
 using dict_ptr = p_ptr<dict>;

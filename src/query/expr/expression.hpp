@@ -22,12 +22,13 @@
 #include <string>
 #include <memory>
 #include <iostream>
+#include "defs.hpp"
 #include "filter_visitor.hpp"
 
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-enum class FOP {
+enum class expr_op {
     EQ = 0,
     NEQ = 1,
     LE = 2,
@@ -44,7 +45,7 @@ enum class FOP {
     MOD = 13
 };
 
-enum class FOP_TYPE {
+enum class expr_type {
     INT = 0,
     DOUBLE = 1,
     STRING = 2,
@@ -61,6 +62,7 @@ struct binary_expression;
 struct binary_predicate;
 struct fep_visitor;
 struct number_token;
+struct variable;
 struct key_token;
 struct str_token;
 struct qparam_token;
@@ -85,37 +87,38 @@ protected:
 public:
     virtual ~expression_visitor() = default;
 
-    virtual void visit(int rank, std::shared_ptr<number_token> op) {}
-    virtual void visit(int rank, std::shared_ptr<key_token> op) {}
-    virtual void visit(int rank, std::shared_ptr<str_token> op) {}
-    virtual void visit(int rank, std::shared_ptr<time_token> op) {}
-    virtual void visit(int rank, std::shared_ptr<fct_call> op) {}
-    virtual void visit(int rank, std::shared_ptr<func_call> op) {}
-    virtual void visit(int rank, std::shared_ptr<eq_predicate> op) {}   
-    virtual void visit(int rank, std::shared_ptr<le_predicate> op) {}
-    virtual void visit(int rank, std::shared_ptr<lt_predicate> op) {}
-    virtual void visit(int rank, std::shared_ptr<ge_predicate> op) {}
-    virtual void visit(int rank, std::shared_ptr<gt_predicate> op) {}
-    virtual void visit(int rank, std::shared_ptr<and_predicate> op) {}
-    virtual void visit(int rank, std::shared_ptr<or_predicate> op) {}
-    virtual void visit(int rank, std::shared_ptr<call_predicate> op) {}
+    virtual void* visit(std::shared_ptr<number_token> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<variable> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<key_token> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<str_token> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<time_token> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<fct_call> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<func_call> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<eq_predicate> op) { return nullptr; }   
+    virtual void* visit(std::shared_ptr<le_predicate> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<lt_predicate> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<ge_predicate> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<gt_predicate> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<and_predicate> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<or_predicate> op) { return nullptr; }
+    virtual void* visit(std::shared_ptr<call_predicate> op) { return nullptr; }
 };
 
 struct expression {
     int opd_num;
     std::string name_;
-    FOP_TYPE ftype_;
-    FOP_TYPE rtype_; // result type - deduced from the operands and the operator
+    expr_type ftype_;
+    expr_type rtype_; // result type - deduced from the operands and the operator
 
     virtual ~expression() {};
 
     virtual std::string dump() const = 0;
 
-    virtual void accept(int rank, expression_visitor &vis) = 0;
+    virtual void* accept(expression_visitor& vis) = 0;
 
-    std::string fop_str(FOP fop) const;
+    std::string op_as_string(expr_op fop) const;
 
-    FOP_TYPE result_type() const { return rtype_; }
+    expr_type result_type() const { return rtype_; }
 };
 
 struct number_token : public expression, public std::enable_shared_from_this<number_token> {
@@ -129,12 +132,27 @@ struct number_token : public expression, public std::enable_shared_from_this<num
 
     std::string dump() const override;
 
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor& fep) override;
 };
 
 inline expr Int(int value = 0) { return std::make_shared<number_token>(value); }
 inline expr UInt64(uint64_t value) { return std::make_shared<number_token>(value); }
 inline expr Float(double value) { return std::make_shared<number_token>(value); }
+
+struct variable : public expression, std::enable_shared_from_this<variable> {
+    unsigned int id_;
+    std::string pname_;
+    dcode_t pcode_;
+
+    variable(unsigned int id, const std::string& p = "");
+    variable(unsigned int id, const std::string& p, dcode_t pc);
+
+    std::string dump() const override;
+    void* accept(expression_visitor& fep) override;
+};
+
+inline expr Variable(unsigned int id, const std::string& p = "") { return std::make_shared<variable>(id, p); }
+inline expr Variable(unsigned int id, const std::string& p, dcode_t pc) { return std::make_shared<variable>(id, p, pc); }
 
 struct key_token : public expression, std::enable_shared_from_this<key_token> {
     std::string key_;
@@ -144,7 +162,7 @@ struct key_token : public expression, std::enable_shared_from_this<key_token> {
 
     std::string dump() const override;
 
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor& fep) override;
 };
 
 inline expr Key(unsigned qr_id, std::string value = "") { return std::make_shared<key_token>(qr_id, value); }
@@ -156,7 +174,7 @@ struct str_token : public expression, std::enable_shared_from_this<str_token> {
 
     std::string dump() const override;
 
-    void accept(int rank, expression_visitor &fep) override;
+    void *accept(expression_visitor& fep) override;
 };
 
 inline expr Str(std::string value = 0) { return std::make_shared<str_token>(value); }
@@ -168,7 +186,7 @@ struct qparam_token : public expression, std::enable_shared_from_this<qparam_tok
 
     std::string dump() const override;
 
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor& fep) override;
 };
 
 inline expr QParam(std::string value = 0) { return std::make_shared<qparam_token>(value); }
@@ -180,7 +198,7 @@ struct time_token : public expression, std::enable_shared_from_this<time_token> 
 
     std::string dump() const override;
 
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor& fep) override;
 };
 
 inline expr Time(boost::posix_time::ptime time) { return std::make_shared<time_token>(time); }
@@ -192,7 +210,7 @@ struct fct_call : public expression, std::enable_shared_from_this<fct_call> {
     fct_int_t fct_int_;
     fct_uint_t fct_uint_;
     fct_str_t fct_str_;
-    FOP_TYPE fct_type_;
+    expr_type fct_type_;
 
     fct_call(fct_int_t fct);
     fct_call(fct_uint_t fct);
@@ -200,7 +218,7 @@ struct fct_call : public expression, std::enable_shared_from_this<fct_call> {
 
     std::string dump() const override;
 
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor& fep) override;
 };
 
 

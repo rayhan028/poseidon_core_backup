@@ -22,7 +22,7 @@ public:
         qid += "E";
     }
 
-    virtual void visit(std::shared_ptr<filter_tuple> op) override {
+    virtual void visit(std::shared_ptr<filter_op> op) override {
         qid += "F";
     }
 

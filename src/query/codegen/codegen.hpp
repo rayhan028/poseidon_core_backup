@@ -37,7 +37,7 @@ public:
 
     void visit(std::shared_ptr<expand> op);
 
-    void visit(std::shared_ptr<filter_tuple> op);
+    void visit(std::shared_ptr<filter_op> op);
 
     void visit(std::shared_ptr<limit_result> op);
 

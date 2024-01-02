@@ -105,6 +105,8 @@ public:
      */
     void flush_page(paged_file::page_id pid, bool evict = true);
 
+    void flush_pages(uint8_t file_id);
+    
     /**
      * Removes all pages from the cache without writing them to disk.
      */

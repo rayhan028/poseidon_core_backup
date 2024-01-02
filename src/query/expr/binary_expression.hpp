@@ -23,65 +23,65 @@
 #include "expression.hpp"
 
 struct binary_expression : public expression {
-    FOP fop_;
+    expr_op fop_;
     expr left_;
     expr right_;
 
-    binary_expression(FOP fop, expr lhs, expr rhs) : fop_(fop), left_(lhs), right_(rhs) {}
+    binary_expression(expr_op fop, expr lhs, expr rhs) : fop_(fop), left_(lhs), right_(rhs) {}
 };
 
 struct math_expression : public binary_expression, std::enable_shared_from_this<math_expression> {
-    math_expression(FOP fp, expr const left, expr const right) : binary_expression(fp, left, right) {}
-    void accept(int rank, expression_visitor &fep) override;
+    math_expression(expr_op fp, expr const left, expr const right) : binary_expression(fp, left, right) {}
+    void* accept(expression_visitor &fep) override;
     std::string dump() const override;
 };
 
-inline bin_expr PLUS(expr lhs, expr rhs) { return std::make_shared<math_expression>(FOP::PLUS, lhs, rhs); }
-inline bin_expr MINUS(expr lhs, expr rhs) { return std::make_shared<math_expression>(FOP::MINUS, lhs, rhs); }
-inline bin_expr MULT(expr lhs, expr rhs) { return std::make_shared<math_expression>(FOP::MULT, lhs, rhs); }
-inline bin_expr DIV(expr lhs, expr rhs) { return std::make_shared<math_expression>(FOP::DIV, lhs, rhs); }
-inline bin_expr MOD(expr lhs, expr rhs) { return std::make_shared<math_expression>(FOP::MOD, lhs, rhs); }
+inline bin_expr PLUS(expr lhs, expr rhs) { return std::make_shared<math_expression>(expr_op::PLUS, lhs, rhs); }
+inline bin_expr MINUS(expr lhs, expr rhs) { return std::make_shared<math_expression>(expr_op::MINUS, lhs, rhs); }
+inline bin_expr MULT(expr lhs, expr rhs) { return std::make_shared<math_expression>(expr_op::MULT, lhs, rhs); }
+inline bin_expr DIV(expr lhs, expr rhs) { return std::make_shared<math_expression>(expr_op::DIV, lhs, rhs); }
+inline bin_expr MOD(expr lhs, expr rhs) { return std::make_shared<math_expression>(expr_op::MOD, lhs, rhs); }
 
 struct binary_predicate : public binary_expression {
     bool is_bool_;
     bool prec_;
 
-    binary_predicate(FOP fop, expr const left = 0, expr const right = 0, bool prec = 0, bool is_bool = 0);
+    binary_predicate(expr_op fop, expr const left = 0, expr const right = 0, bool prec = 0, bool is_bool = 0);
 
     std::string dump() const override;
 };
 
 struct eq_predicate : public binary_predicate, std::enable_shared_from_this<eq_predicate> {
     eq_predicate(expr const left, expr const right, bool prec, bool not_ = false);
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor &fep) override;
 };
 
 struct le_predicate : public binary_predicate, std::enable_shared_from_this<le_predicate> {
     le_predicate(expr const left, expr const right, bool prec, bool not_ = false);
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor &fep) override;
 };
 
 struct lt_predicate : public binary_predicate, std::enable_shared_from_this<lt_predicate> {
     lt_predicate(expr const left, expr const right, bool prec, bool not_ = false);
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor &fep) override;
 };
 
 struct ge_predicate : public binary_predicate, std::enable_shared_from_this<ge_predicate> {
     ge_predicate(expr const left, expr const right, bool prec, bool not_ = false);
 
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor &fep) override;
 };
 
 struct gt_predicate : public binary_predicate, std::enable_shared_from_this<gt_predicate> {
     gt_predicate(expr const left, expr const right, bool prec, bool not_ = false);
 
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor &fep) override;
 };
 
 struct call_predicate : public binary_predicate, std::enable_shared_from_this<call_predicate> {
     call_predicate(expr const left, expr const right, bool prec, bool not_ = false);
 
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor &fep) override;
 };
 
 inline bin_expr Call(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<call_predicate>(lhs, rhs, prec); }
@@ -101,7 +101,7 @@ inline bin_expr GT(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<
 struct and_predicate : public binary_predicate, std::enable_shared_from_this<and_predicate> {
     and_predicate(expr const left, expr const right, bool prec);
 
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor &fep) override;
 };
 
 inline bin_expr AND(expr lhs, expr rhs, bool prec = 0) {
@@ -112,7 +112,7 @@ inline bin_expr AND(expr lhs, expr rhs, bool prec = 0) {
 struct or_predicate : public binary_predicate, std::enable_shared_from_this<or_predicate> {
     or_predicate(expr const left, expr const right, bool prec);
 
-    void accept(int rank, expression_visitor &fep) override;
+    void* accept(expression_visitor &fep) override;
 };
 
 inline bin_expr OR(expr lhs, expr rhs, bool prec = 0) { return std::make_shared<or_predicate>(lhs, rhs, prec); }

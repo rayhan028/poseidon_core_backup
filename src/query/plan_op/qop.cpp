@@ -493,16 +493,20 @@ void distinct_tuples::process(query_ctx &ctx, const qr_tuple &v) {
 
 /* ------------------------------------------------------------------------ */
 
-void filter_tuple::dump(std::ostream &os) const {
+void filter_op::dump(std::ostream &os) const {
   os << "filter([";
   if (ex_) 
     os << ex_->dump();
   os << "]) - " << PROF_DUMP;
 }
 
-void filter_tuple::process(query_ctx &ctx, const qr_tuple &v) {
+void filter_op::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
+#ifdef USE_LLVM
+  bool tp = pred_func_ != nullptr ? pred_func_(&ctx, &v) : (ex_ ? interpret_expression(ctx, ex_, v) : pred_func1_(v));
+#else
   bool tp = ex_ ? interpret_expression(ctx, ex_, v) : pred_func1_(v);
+#endif
   if (tp) {
     consume_(ctx, v);
     PROF_POST(1);

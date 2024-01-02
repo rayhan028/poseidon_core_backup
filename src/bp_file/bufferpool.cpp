@@ -161,6 +161,20 @@ void bufferpool::flush_all() {
         spdlog::info("bufferpool: {} pages flushed", num);
 }
 
+void bufferpool::flush_pages(uint8_t file_id) {
+    std::unique_lock lock(mutex_);
+    for (auto iter = ptable_.begin(); iter != ptable_.end(); iter++) {
+        if (iter->second.dirty_) {
+            auto pid = iter->first;
+            auto page_file_id = (pid & 0xF000000000000000) >> 60;
+            if (file_id == page_file_id) {
+                write_page_to_file(pid, iter->second.p_);
+                iter->second.dirty_ = false;
+            }
+        }
+    }
+}
+
 void bufferpool::flush_page(paged_file::page_id pid, bool evict) {
     std::unique_lock lock(mutex_);
     auto iter = ptable_.find(pid);

@@ -387,7 +387,7 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
       auto query_string = read_from_file(line.substr(1));
       exec_query(query_string, qmode, false);
     } 
-#if USE_LLVM    
+#if USE_LLVM2    
     else if(line.rfind("set", 0) == 0) { // save sub-query: > q1:End(NodeScan("Person"))
       spdlog::info("Save query: {} as {}", line.substr(line.find(":") + 1), line.substr(0, line.find(":")).substr(4));
       // TODO: qlc.parse_and_save_plan(line.substr(0, line.find(":")).substr(4), line.substr(line.find(":") + 1));

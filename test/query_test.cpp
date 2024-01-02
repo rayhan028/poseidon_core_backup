@@ -31,6 +31,7 @@ using namespace boost::posix_time;
 const std::string test_path = PMDK_PATH("query_tst");
 
 void create_data(graph_db_ptr graph) {
+  spdlog::info("create data...");
   graph->begin_transaction();
 
       graph->add_node("Node", {{"id", std::any(7)},
@@ -103,10 +104,9 @@ TEST_CASE("Testing query operators", "[qop]") {
     q.start(ctx);
 
     rs.wait();
-    expected.data.push_back({query_result("7")});
-
-    REQUIRE(rs == expected);
     q.print_plan();
+    expected.data.push_back({query_result("7")});
+    REQUIRE(rs == expected);
   }
 
   SECTION("order by") {
@@ -121,11 +121,11 @@ TEST_CASE("Testing query operators", "[qop]") {
     q.start(ctx);
 
     rs.wait();
+    q.print_plan();
     for (int i = 1; i <= 7; i++) {
       expected.data.push_back({query_result(std::to_string(i))});
     }
     REQUIRE(rs == expected);
-    q.print_plan();
   }
 
   SECTION("has string property") {
@@ -141,9 +141,9 @@ TEST_CASE("Testing query operators", "[qop]") {
     q.start(ctx);
 
     rs.wait();
+    q.print_plan();
     expected.append({query_result(std::to_string(4)), query_result("aaa4")});
     REQUIRE(rs == expected);
-    q.print_plan();
   }
 
   SECTION("has label") {

@@ -56,14 +56,15 @@ using query_result =
 
 #define qv_ query_result
 
-inline node * qv_get_node(const query_result& v) { return boost::get<node*>(v); }
-inline relationship * qv_get_relationship(const query_result& v) { return boost::get<relationship*>(v); }
+inline node* qv_get_node(const query_result& v) { return boost::get<node*>(v); }
+inline relationship* qv_get_relationship(const query_result& v) { return boost::get<relationship*>(v); }
 inline int qv_get_int(const query_result& v) { return boost::get<int>(v); }
 inline uint64_t qv_get_uint64(const query_result& v) { return boost::get<uint64_t>(v); }
 inline double qv_get_double(const query_result& v) { return boost::get<double>(v); }
 inline std::string qv_get_string(const query_result& v) { return boost::get<std::string>(v); }
 inline const node_description& qv_get_node_descr(const query_result& v) { return boost::get<const node_description&>(v); }
 inline const rship_description& qv_get_rship_descr(const query_result& v) { return boost::get<const rship_description&>(v); }
+
 
 enum qr_type {
   node_ptr_type = 0,

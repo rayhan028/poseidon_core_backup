@@ -48,11 +48,11 @@
 #define STRCPY(sFilePath, nLength, sPath) strcpy_s(sFilePath, nLength, sPath)
 #endif
 
-#ifndef FOPEN
-#define FOPEN(fHandle, filename, mode) fopen_s(&fHandle, filename, mode)
+#ifndef expr_opEN
+#define expr_opEN(fHandle, filename, mode) fopen_s(&fHandle, filename, mode)
 #endif
-#ifndef FOPEN_FAIL
-#define FOPEN_FAIL(result) (result != 0)
+#ifndef expr_opEN_FAIL
+#define expr_opEN_FAIL(result) (result != 0)
 #endif
 #ifndef SSCANF
 #define SSCANF sscanf_s
@@ -74,11 +74,11 @@
 #define STRCPY(sFilePath, nLength, sPath) strcpy(sFilePath, sPath)
 #endif
 
-#ifndef FOPEN
-#define FOPEN(fHandle, filename, mode) (fHandle = fopen(filename, mode))
+#ifndef expr_opEN
+#define expr_opEN(fHandle, filename, mode) (fHandle = fopen(filename, mode))
 #endif
-#ifndef FOPEN_FAIL
-#define FOPEN_FAIL(result) (result == NULL)
+#ifndef expr_opEN_FAIL
+#define expr_opEN_FAIL(result) (result == NULL)
 #endif
 #ifndef SSCANF
 #define SSCANF sscanf
@@ -404,7 +404,7 @@ inline char *sdkFindFilePath(const char *filename,
     // Test if the file exists
     path.append(filename);
     FILE *fp;
-    FOPEN(fp, path.c_str(), "rb");
+    expr_opEN(fp, path.c_str(), "rb");
 
     if (fp != NULL) {
       fclose(fp);

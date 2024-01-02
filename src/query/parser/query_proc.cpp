@@ -22,6 +22,7 @@
 #include "query_proc.hpp"
 #include "query_planner.hpp"
 
+
 #include "antlr4-runtime.h"
 #include "antlr4_generated/poseidonLexer.h"
 #include "antlr4_generated/poseidonParser.h"
@@ -30,6 +31,9 @@
 #include "qop.hpp"
 #include "qop_joins.hpp"
 #include "func_call_expr.hpp"
+
+#include "plan_visitors/prepare_plan_visitor.hpp"
+#include "plan_visitors/compile_code_visitor.hpp"
 
 class LexerErrorListener : public antlr4::BaseErrorListener {
 public:
@@ -58,11 +62,13 @@ void ParserErrorListener::syntaxError(antlr4::Recognizer *recognizer, antlr4::To
     throw query_processing_error(mstr);
 }
 
-query_proc::query_proc(query_ctx &ctx) : qctx_(ctx)
+query_proc::query_proc(query_ctx &ctx) : qctx_(ctx) {
+    interp_ = std::make_unique<qinterp>();
 #ifdef USE_LLVM
-, compiler_(ctx) 
+    jit_ = std::make_unique<jit_engine>(qctx_.gdb_);
+    codegen_ = std::make_unique<ir_generator>(jit_->get_context());
 #endif
-{}
+}
 
 bool query_proc::parse_(const std::string &query) {
     antlr4::ANTLRInputStream input(query);
@@ -83,42 +89,23 @@ qresult_iterator query_proc::execute_query(query_proc::mode m, const std::string
     auto qplan = prepare_query(qstr);
     result_set result;
     qplan.append_collect(result);
-    prepare_plan(qplan);
+    prepare_plan(qplan, m);
 
-    if (m == Interpret) {
-        //if (print_plan)
-        //    qplan.print_plan();
-        interp_query(qplan);
-        if (print_plan)
-            qplan.print_plan();
-    }
-    else {
-        // TODO: compile & execute query
-        // qplan.print_plan();
-        compile_query(qplan);
-        if (print_plan)
-            qplan.print_plan();
-    }
+    run_query(qplan);
+    if (print_plan)
+        qplan.print_plan();
+
     return qresult_iterator(std::move(result));
 }
 
-std::size_t query_proc::execute_and_output_query(mode m, const std::string& qstr, bool print_plan) {
+std::size_t query_proc::execute_and_output_query(query_proc::mode m, const std::string& qstr, bool print_plan) {
     auto qplan = prepare_query(qstr);
     qplan.append_printer(); 
-    prepare_plan(qplan);
+    prepare_plan(qplan, m);
 
-    if (m == Interpret) {
-        // qplan.print_plan();
-        interp_query(qplan);
-        if (print_plan)
-            qplan.print_plan();
-    }
-    else {
-        // TODO: compile & execute query
-        compile_query(qplan);
-        if (print_plan)
-            qplan.print_plan();
-    }
+    run_query(qplan);
+    if (print_plan)
+        qplan.print_plan();
     return 0; // qplan.result_size();    
 }
 
@@ -147,16 +134,8 @@ query_batch query_proc::prepare_query(const std::string &query) {
     return visitor.get_query_plan();  
 }
 
-void query_proc::interp_query(query_batch& plan) {
-    interp_.execute(qctx_, plan);
-}
-
-void query_proc::compile_query(query_batch& plan) {
-#ifdef USE_LLVM
-    compiler_.execute(plan);    
-#else
-    abort();
-#endif
+void query_proc::run_query(query_batch& plan) {
+    interp_->execute(qctx_, plan);
 }
 
 void query_proc::abort_transaction() {
@@ -176,52 +155,13 @@ bool query_proc::load_library(const std::string& lib_path) {
     return false;
 }
 
-class prepare_expr_visitor : public expression_visitor {
-public:
-    prepare_expr_visitor(query_ctx& ctx, std::shared_ptr<boost::dll::shared_library> udf_lib) : 
-        udf_lib_(udf_lib) {}
-    ~prepare_expr_visitor() = default;
-
-    void visit(int rank, std::shared_ptr<func_call> op) override {
-        // std::cout << "prepare func_call: " << op->func_name_ << " : " << op->param_list_.size() << std::endl;     
-        if (op->param_list_.size() == 1) {          
-            op->func1_ptr_ = udf_lib_->get<query_result(query_ctx&, query_result&)>(op->func_name_);
-        } 
-        else if (op->param_list_.size() == 2) {
-            op->func2_ptr_ = udf_lib_->get<query_result(query_ctx&, query_result&, query_result&)>(op->func_name_);
-        }
+void query_proc::prepare_plan(query_batch& qplan, mode m) {
+    prepare_plan_visitor pp_visitor(qctx_, udf_lib_);
+    qplan.accept(pp_visitor);
+#if USE_LLVM
+    if (m == Compile) {
+        compile_code_visitor cc_visitor(qctx_, jit_, codegen_);
+        qplan.accept(cc_visitor);
     }
-private:
-    std::shared_ptr<boost::dll::shared_library> udf_lib_;
-};
-
-class prepare_plan_visitor : public qop_visitor {
-public:
-    prepare_plan_visitor(query_ctx& ctx, std::shared_ptr<boost::dll::shared_library> udf_lib) : 
-        expr_visitor_(ctx, udf_lib) {}
-
-    ~prepare_plan_visitor() = default;
-
-    void visit(std::shared_ptr<filter_tuple> op) override {
-        auto ex = op->get_expression();
-        if (ex) {
-            ex->accept(0, expr_visitor_);
-        }
-    }
-
-    void visit(std::shared_ptr<left_outer_join_op> op) override { 
-        auto ex = op->get_expression();
-        if (ex) {
-            ex->accept(0, expr_visitor_);
-        }
-    }
-
-   private:
-        prepare_expr_visitor expr_visitor_;
-};
-
- 
-void query_proc::prepare_plan(query_batch& qplan) {
-    prepare_plan_visitor visitor(qctx_, udf_lib_);
-    qplan.accept(visitor);
+#endif 
 }

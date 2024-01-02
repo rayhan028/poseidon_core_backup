@@ -28,7 +28,6 @@ paged_string_pool::paged_string_pool(bufferpool& bp, uint64_t fid) :
         // we have a new file
         bpool_.allocate_page(file_id_);
         npages_ = 1;
-        spdlog::info("new string_pool page created");
     }
 }
 

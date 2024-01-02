@@ -95,7 +95,7 @@ private:
 
   static std::string trim_string(const std::string& s);
 
-  static expr property_list_to_expr(properties_t& plist);
+  expr property_list_to_expr(properties_t& plist);
 
   template <typename T>
   qop_ptr qop_append(qop_ptr parent, std::shared_ptr<T> qop) { 

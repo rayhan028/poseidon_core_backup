@@ -21,6 +21,7 @@
                           // this in one cpp file
 
 #include <filesystem>
+#include "spdlog/spdlog.h"
 #include "fmt/format.h"
 #include <catch2/catch_test_macros.hpp>
 #include "config.h"
@@ -64,8 +65,9 @@ TEST_CASE("Inserting some strings", "[dict]") {
   dict d;
 #else
   create_dir("dict1");
-  bufferpool bpool;
-  dict d(bpool, "dict1");
+  {
+    bufferpool bpool;
+    dict d(bpool, "dict1");
 #endif
 
   REQUIRE(d.size() == 0);
@@ -82,6 +84,7 @@ TEST_CASE("Inserting some strings", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 #else
+  }
   delete_dir("dict1");
 #endif
 }
@@ -100,8 +103,9 @@ TEST_CASE("Inserting duplicate strings", "[dict]") {
   dict d;
 #else
   create_dir("dict2");
-  bufferpool bpool;
-  dict d(bpool, "dict2");
+  {
+    bufferpool bpool;
+    dict d(bpool, "dict2");
 #endif
 
   REQUIRE(d.size() == 0);
@@ -116,6 +120,7 @@ TEST_CASE("Inserting duplicate strings", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 #else
+  }
   delete_dir("dict2");  
 #endif
 }
@@ -134,8 +139,9 @@ TEST_CASE("Looking up some strings", "[dict]") {
   dict d;
 #else
   create_dir("dict3");
-  bufferpool bpool;
-  dict d(bpool, "dict3");
+  {
+    bufferpool bpool;
+    dict d(bpool, "dict3");
 #endif
 
   REQUIRE(d.size() == 0);
@@ -152,6 +158,7 @@ TEST_CASE("Looking up some strings", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 #else
+  }
   delete_dir("dict3"); 
 #endif
 }
@@ -169,9 +176,10 @@ TEST_CASE("Looking up some codes", "[dict]") {
 #elif defined(USE_IN_MEMORY)
   dict d;
 #else
-create_dir("dict4");
-  bufferpool bpool;
-  dict d(bpool, "dict4");
+  create_dir("dict4");
+  {
+    bufferpool bpool;
+    dict d(bpool, "dict4");
 #endif
 
   REQUIRE(d.size() == 0);
@@ -188,6 +196,7 @@ create_dir("dict4");
   pop.close();
   remove(test_path.c_str());
 #else
+  }
   delete_dir("dict4"); 
 #endif
 }
@@ -206,8 +215,9 @@ TEST_CASE("Looking up some non-existing strings", "[dict]") {
   dict d;
 #else
   create_dir("dict5");
-  bufferpool bpool;
-  dict d(bpool, "dict5");
+  {
+    bufferpool bpool;
+    dict d(bpool, "dict5");
 #endif
 
   d.insert("String #1");
@@ -221,6 +231,7 @@ TEST_CASE("Looking up some non-existing strings", "[dict]") {
   pop.close();
   remove(test_path.c_str());
 #else
+  }
   delete_dir("dict5"); 
 #endif
 }

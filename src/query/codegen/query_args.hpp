@@ -46,10 +46,10 @@ public:
         ab_.arg(arg_cnt_++, &cop->results_);
     }
 
-    virtual void visit(std::shared_ptr<filter_tuple> op) override {
-        auto ft = std::dynamic_pointer_cast<filter_tuple>(op);
+    virtual void visit(std::shared_ptr<filter_op> op) override {
+        auto ft = std::dynamic_pointer_cast<filter_op>(op);
         
-        if(ft->ex_->ftype_ == FOP_TYPE::OP) {
+        if(ft->ex_->ftype_ == expr_type::OP) {
             auto bexpr = std::dynamic_pointer_cast<eq_predicate>(ft->ex_);
             
             auto iexpr = std::dynamic_pointer_cast<number_token>(bexpr->right_);

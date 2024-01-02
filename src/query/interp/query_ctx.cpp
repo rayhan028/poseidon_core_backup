@@ -70,11 +70,13 @@ void scan_task_with_label::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_
 	    auto &n = *iter;
 	    if (n.is_valid()) {
 	      auto &nv = gdb->get_valid_node_version(n, xid);
+          spdlog::info("scan: {}", nv.id());
+
         if (nv.node_label == label)
   		    consumer(nv);
-	  }
-	  ++iter;
-  }
+	    }
+	    ++iter;
+    }
 }
 
 std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,

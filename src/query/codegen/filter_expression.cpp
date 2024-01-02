@@ -203,23 +203,23 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<fct_call> fct) {
     FunctionType* fct_callee_type = nullptr;
 
     switch(fct->fct_type_) {
-        case FOP_TYPE::INT:
+        case expr_type::INT:
             fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int64PtrTy}, false);
             fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_int_);
             break;
-        case FOP_TYPE::STRING:
+        case expr_type::STRING:
             fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int8PtrTy}, false);
             fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_str_);
             break;
-        case FOP_TYPE::UINT64:
+        case expr_type::UINT64:
             fct_callee_type = FunctionType::get(ctx_->boolTy, {ctx_->int64PtrTy}, false);
             fct_raw = ConstantInt::get(ctx_->int64Ty, (int64_t )fct->fct_uint_);
-        case FOP_TYPE::BOOL_OP:
-        case FOP_TYPE::DATE:
-        case FOP_TYPE::DOUBLE:
-        case FOP_TYPE::KEY:
-        case FOP_TYPE::OP:
-        case FOP_TYPE::TIME:
+        case expr_type::BOOL_OP:
+        case expr_type::DATE:
+        case expr_type::DOUBLE:
+        case expr_type::KEY:
+        case expr_type::OP:
+        case expr_type::TIME:
             break;
     } 
 
@@ -262,7 +262,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<eq_predicate> eq)  {
 
     // convert it to the appropriate type and compare the two values
     switch ((*rhs_it)->ftype_) {
-        case FOP_TYPE::INT: {
+        case expr_type::INT: {
             auto val_rhs = rhs_alloc;
             auto int_value = ctx_->getBuilder().CreateLoad(
                     ctx_->getBuilder().CreateBitCast(value_arr, ctx_->int64PtrTy));
@@ -271,20 +271,20 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<eq_predicate> eq)  {
             expr_register[opd_cnt] = cmp_pitem;
             break;
         }
-        case FOP_TYPE::DOUBLE: {
+        case expr_type::DOUBLE: {
             auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
             auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
             auto cmp_pitem = ctx_->getBuilder().CreateFCmpOEQ(int_value, val_rhs);
             gen_vals_[opd_cnt] = alloc("cmp_eq_res_" + std::to_string(eq->opd_num), ctx_->boolTy, cmp_pitem);
             break;
         }
-        case FOP_TYPE::DATE:
-        case FOP_TYPE::STRING:
-        case FOP_TYPE::TIME:
-        case FOP_TYPE::UINT64:
-        case FOP_TYPE::BOOL_OP:
-        case FOP_TYPE::OP:
-        case FOP_TYPE::KEY:
+        case expr_type::DATE:
+        case expr_type::STRING:
+        case expr_type::TIME:
+        case expr_type::UINT64:
+        case expr_type::BOOL_OP:
+        case expr_type::OP:
+        case expr_type::KEY:
             break;
     }
 
@@ -326,7 +326,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<le_predicate> le)  {
 
     // convert it to the appropriate type and compare the two values
     switch ((*rhs_it)->ftype_) {
-        case FOP_TYPE::INT: {
+        case expr_type::INT: {
             auto val_rhs = rhs_alloc;
             auto int_value = ctx_->getBuilder().CreateLoad(
                     ctx_->getBuilder().CreateBitCast(value_arr, ctx_->int64PtrTy));
@@ -335,20 +335,20 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<le_predicate> le)  {
             expr_register[opd_cnt] = cmp_pitem;
             break;
         }
-        case FOP_TYPE::DOUBLE: {
+        case expr_type::DOUBLE: {
             auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
             auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
             auto cmp_pitem = ctx_->getBuilder().CreateFCmpOLE(int_value, val_rhs);
             gen_vals_[opd_cnt] = alloc("cmp_le_res_" + std::to_string(le->opd_num), ctx_->boolTy, cmp_pitem);
             break;
         }
-        case FOP_TYPE::DATE:
-        case FOP_TYPE::STRING:
-        case FOP_TYPE::TIME:
-        case FOP_TYPE::UINT64:
-        case FOP_TYPE::BOOL_OP:
-        case FOP_TYPE::OP:
-        case FOP_TYPE::KEY:
+        case expr_type::DATE:
+        case expr_type::STRING:
+        case expr_type::TIME:
+        case expr_type::UINT64:
+        case expr_type::BOOL_OP:
+        case expr_type::OP:
+        case expr_type::KEY:
             break;
     }
 
@@ -390,7 +390,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<lt_predicate> op)  {
 
     // convert it to the appropriate type and compare the two values
     switch ((*rhs_it)->ftype_) {
-        case FOP_TYPE::INT: {
+        case expr_type::INT: {
             auto val_rhs = rhs_alloc;
             auto int_value = ctx_->getBuilder().CreateLoad(
                     ctx_->getBuilder().CreateBitCast(value_arr, ctx_->int64PtrTy));
@@ -399,20 +399,20 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<lt_predicate> op)  {
             expr_register[opd_cnt] = cmp_pitem;
             break;
         }
-        case FOP_TYPE::DOUBLE: {
+        case expr_type::DOUBLE: {
             auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
             auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
             auto cmp_pitem = ctx_->getBuilder().CreateFCmpOLT(int_value, val_rhs);
             gen_vals_[opd_cnt] = alloc("cmp_lt_res_" + std::to_string(op->opd_num), ctx_->boolTy, cmp_pitem);
             break;
         }
-        case FOP_TYPE::DATE:
-        case FOP_TYPE::STRING:
-        case FOP_TYPE::TIME:
-        case FOP_TYPE::UINT64:
-        case FOP_TYPE::BOOL_OP:
-        case FOP_TYPE::OP:
-        case FOP_TYPE::KEY:
+        case expr_type::DATE:
+        case expr_type::STRING:
+        case expr_type::TIME:
+        case expr_type::UINT64:
+        case expr_type::BOOL_OP:
+        case expr_type::OP:
+        case expr_type::KEY:
             break;
     }
 
@@ -454,7 +454,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<ge_predicate> op)  {
 
     // convert it to the appropriate type and compare the two values
     switch ((*rhs_it)->ftype_) {
-        case FOP_TYPE::INT: {
+        case expr_type::INT: {
             auto val_rhs = rhs_alloc;
             auto int_value = ctx_->getBuilder().CreateLoad(
                     ctx_->getBuilder().CreateBitCast(value_arr, ctx_->int64PtrTy));
@@ -463,20 +463,20 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<ge_predicate> op)  {
             expr_register[opd_cnt] = cmp_pitem;
             break;
         }
-        case FOP_TYPE::DOUBLE: {
+        case expr_type::DOUBLE: {
             auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
             auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
             auto cmp_pitem = ctx_->getBuilder().CreateFCmpOGE(int_value, val_rhs);
             gen_vals_[opd_cnt] = alloc("cmp_ge_res_" + std::to_string(op->opd_num), ctx_->boolTy, cmp_pitem);
             break;
         }
-        case FOP_TYPE::DATE:
-        case FOP_TYPE::STRING:
-        case FOP_TYPE::TIME:
-        case FOP_TYPE::UINT64:
-        case FOP_TYPE::BOOL_OP:
-        case FOP_TYPE::OP:
-        case FOP_TYPE::KEY:
+        case expr_type::DATE:
+        case expr_type::STRING:
+        case expr_type::TIME:
+        case expr_type::UINT64:
+        case expr_type::BOOL_OP:
+        case expr_type::OP:
+        case expr_type::KEY:
             break;
     }
 
@@ -518,7 +518,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<gt_predicate> op)  {
 
     // convert it to the appropriate type and compare the two values
     switch ((*rhs_it)->ftype_) {
-        case FOP_TYPE::INT: {
+        case expr_type::INT: {
             auto val_rhs = rhs_alloc;
             auto int_value = ctx_->getBuilder().CreateLoad(
                     ctx_->getBuilder().CreateBitCast(value_arr, ctx_->int64PtrTy));
@@ -527,20 +527,20 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<gt_predicate> op)  {
             expr_register[opd_cnt] = cmp_pitem;
             break;
         }
-        case FOP_TYPE::DOUBLE: {
+        case expr_type::DOUBLE: {
             auto val_rhs = ctx_->getBuilder().CreateLoad(rhs_alloc);
             auto int_value = ctx_->getBuilder().CreateLoad(ctx_->getBuilder().CreateBitCast(value_arr, ctx_->doubleTy));
             auto cmp_pitem = ctx_->getBuilder().CreateFCmpOGT(int_value, val_rhs);
             gen_vals_[opd_cnt] = alloc("cmp_gt_res_" + std::to_string(op->opd_num), ctx_->boolTy, cmp_pitem);
             break;
         }
-        case FOP_TYPE::DATE:
-        case FOP_TYPE::STRING:
-        case FOP_TYPE::TIME:
-        case FOP_TYPE::UINT64:
-        case FOP_TYPE::BOOL_OP:
-        case FOP_TYPE::OP:
-        case FOP_TYPE::KEY:
+        case expr_type::DATE:
+        case expr_type::STRING:
+        case expr_type::TIME:
+        case expr_type::UINT64:
+        case expr_type::BOOL_OP:
+        case expr_type::OP:
+        case expr_type::KEY:
             break;
     }
 
@@ -565,7 +565,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<and_predicate> andpr) {
     auto cit = expr_stack.begin() + 1;
     auto offset = 0;
 
-    while ((*cit)->ftype_ == FOP_TYPE::BOOL_OP) {
+    while ((*cit)->ftype_ == expr_type::BOOL_OP) {
         offset++;
         cit--;
     }
@@ -604,7 +604,7 @@ void fep_visitor_inline::visit(int rank, std::shared_ptr<or_predicate> orpr) {
     auto cit = expr_stack.begin() + 1;
     auto offset = 0;
 
-    while ((*cit)->ftype_ == FOP_TYPE::BOOL_OP) {
+    while ((*cit)->ftype_ == expr_type::BOOL_OP) {
         offset++;
         cit--;
     }

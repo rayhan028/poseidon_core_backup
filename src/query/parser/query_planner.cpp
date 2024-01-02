@@ -107,7 +107,7 @@ std::any query_planner::visitFilter_op(poseidonParser::Filter_opContext *ctx) {
     auto child_op = std::any_cast<qop_ptr>(ch);
 
     auto ex = visit(ctx->logical_expr());
-    auto qp = std::make_shared<filter_tuple>(std::any_cast<expr>(ex));
+    auto qp = std::make_shared<filter_op>(std::any_cast<expr>(ex));
     auto qop = qop_append(child_op, qp);
 
     return std::make_any<qop_ptr>(qop);
@@ -585,7 +585,8 @@ expr query_planner::property_list_to_expr(properties_t& plist) {
     expr ex;
     for (auto& p : plist) {
         auto prop = p;
-        auto lhs_expr = Key(0, prop.first);
+        auto pcode = qctx_.get_code(prop.first);
+        auto lhs_expr = Variable(0, prop.first, pcode);
         std::any& val = prop.second;
         expr rhs_expr;
         if (val.type() == typeid(int))
@@ -638,7 +639,7 @@ std::any query_planner::visitNode_pattern(poseidonParser::Node_patternContext *c
     
     // build a filter if a property list is given and an index couldn't be used
     auto ex = property_list_to_expr(props);
-    auto qop = std::make_shared<filter_tuple>(ex);
+    auto qop = std::make_shared<filter_op>(ex);
     auto op2 = qop_append(op, qop); 
     return std::make_any<qop_ptr>(op2);  
 }
@@ -908,10 +909,11 @@ std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *c
         // Identifier_ could be empty
         if (ctx->variable()->Identifier_() != nullptr) {
             auto attr = ctx->variable()->Identifier_()->getText();
-            res = std::make_any<expr>(Key(var_id, attr));
+            auto pcode = qctx_.get_code(attr);
+            res = std::make_any<expr>(Variable(var_id, attr, pcode));
         }
         else
-            res = std::make_any<expr>(Key(var_id));
+            res = std::make_any<expr>(Variable(var_id));
     }
     else if (ctx->function_call() != nullptr) {
         // handle UDFs - TODO: should be combined with code in visitProject_op

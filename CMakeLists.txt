@@ -12,7 +12,7 @@ if(NOT PMEM_MNT_PATH)
 endif()
 
 option(USE_PMDK         "Use Intel PMDK"                         ON)
-option(USE_LLVM         "Use LLVM for query compilation"         OFF)
+option(USE_LLVM         "Use LLVM for query compilation"         ON)
 option(USE_IN_MEMORY    "Use only in-memory storage"             OFF)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
 option(QOP_PROFILING    "Enable query profiling"                 ON)
@@ -153,6 +153,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/query/utils)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/plan_op)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/interp)
 include_directories(${PROJECT_SOURCE_DIR}/src/query/expr)
+include_directories(${PROJECT_SOURCE_DIR}/src/query/compile)
 include_directories(${PROJECT_SOURCE_DIR}/src/tx)
 include_directories(${PROJECT_SOURCE_DIR}/src/dict)
 include_directories(${PROJECT_SOURCE_DIR}/src/btree)
@@ -399,18 +400,18 @@ if(USE_LLVM MATCHES ON)
     src/query/codegen/operators/join/outer_join.cpp
   )
 
-  set(llvm_src
-    ${codegen_operators_src}
-    src/query/codegen/codegen.cpp
-    src/query/codegen/filter_expression.cpp
-    src/query/codegen/global_definitions.cpp
-    src/query/codegen/jit/jit_cache.cpp
-    src/query/codegen/jit/p_jit.cpp
-    src/query/codegen/jit/p_context.cpp
-    src/query/codegen/qcompiler.cpp
-    src/query/codegen/proc/joiner.cpp
-    src/query/codegen/proc/grouper.cpp
-    src/query/codegen/interprete_filter_visitor.cpp
+  set(llvm_src ""
+ #   ${codegen_operators_src}
+ #   src/query/codegen/codegen.cpp
+ #   src/query/codegen/filter_expression.cpp
+ #   src/query/codegen/global_definitions.cpp
+ #   src/query/codegen/jit/jit_cache.cpp
+ #   src/query/codegen/jit/p_jit.cpp
+ #   src/query/codegen/jit/p_context.cpp
+ #   src/query/codegen/qcompiler.cpp
+ #   src/query/codegen/proc/joiner.cpp
+ #   src/query/codegen/proc/grouper.cpp
+ #   src/query/codegen/interprete_filter_visitor.cpp
   )
 else()
   set(llvm_src "")
@@ -461,6 +462,13 @@ set(src_files
   src/query/utils/thread_pool.cpp
   src/query/utils/profiling.cpp
   src/query/utils/qresult_iterator.cpp
+  src/query/plan_visitors/prepare_plan_visitor.cpp
+  src/query/plan_visitors/compile_code_visitor.cpp
+  src/query/compile/jit_compiler.cpp
+  src/query/compile/jit_funcs.cpp
+  src/query/compile/jit_engine.cpp
+  src/query/compile/ir_generator.cpp
+  src/query/compile/expr_codegen.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
   src/log/pm_ulog.cpp

@@ -531,15 +531,15 @@ struct distinct_tuples : public qop, public std::enable_shared_from_this<distinc
 };
 
 /**
- * filter_tuple implements an operator that filters a tuple
+ * filter_op implements an operator that filters a tuple
  * based on a predicate function.
  */
-struct filter_tuple : public qop, public std::enable_shared_from_this<filter_tuple> {
-  filter_tuple(std::function<bool(const qr_tuple &)> func)
-      : pred_func1_(func) { type_ = qop_type::filter;  }
-  filter_tuple(const expr &ex): ex_(ex) { type_ = qop_type::filter;  }
+struct filter_op : public qop, public std::enable_shared_from_this<filter_op> {
+  filter_op(std::function<bool(const qr_tuple &)> func)
+      : pred_func1_(func), pred_func_(nullptr) { type_ = qop_type::filter;  }
+  filter_op(const expr &ex): ex_(ex), pred_func_(nullptr) { type_ = qop_type::filter;  }
 
-  ~filter_tuple() = default;
+  ~filter_op() = default;
 
   void dump(std::ostream &os) const override;
 
@@ -566,6 +566,9 @@ struct filter_tuple : public qop, public std::enable_shared_from_this<filter_tup
   std::function<bool(const qr_tuple &)> pred_func1_;
   std::function<bool(const qr_tuple &, expr&)> pred_func2_;
   expr ex_;
+
+  using predicate_fptr = bool(*)(const query_ctx*, const qr_tuple*);
+  predicate_fptr pred_func_;
 };
 
 /**

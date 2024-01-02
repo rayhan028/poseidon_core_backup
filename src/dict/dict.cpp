@@ -44,25 +44,39 @@ dict::~dict() {
     pmem::obj::delete_persistent<string_pool>(pool_);
   });
 #elif defined(USE_PFILES)
-    bpool_.flush_all();
-    dict_file_->close();
+    close_file();
 #endif
   delete table_;
 }
 
+void dict::close_file() { 
+#ifdef USE_PFILES
+    bpool_.flush_pages(DICT_FILE_ID);
+	dict_file_->close();
+#endif
+}
+
 void dict::initialize() {
-    spdlog::debug("initialize string dictionary...");
-    std::unique_lock lock(m_);
-    table_ = new code_table(pool_/*, 2920000*/);
+    bool built = false;
+    std::mutex built_mtx;
     
-    /* TODO: actually works fine, but "SIGSEGV - Segmentation violation signal" in dict_test
-    init_ = std::async(std::launch::async | std::launch::deferred, [this]() { 
-        std::unique_lock lock(m_); 
+    table_ = new code_table(pool_/*, 2920000*/);
+ 
+    std::unique_lock<std::mutex> b_lock(built_mtx);
+    auto t = std::thread([&]() {
+        std::unique_lock lock(m_);
         table_->rebuild(); 
-        spdlog::info("string dictionary initalized.");
+        
+        std::lock_guard<std::mutex> b_lock(built_mtx);
+        built = true;
+        built_cv_.notify_one();
+
+        spdlog::debug("string dictionary initalized.");
     });
-    */
-    table_->rebuild();
+    t.detach();
+
+    //table_->rebuild();
+    built_cv_.wait(b_lock, [&]() { return built; });
 }
 
 std::size_t dict::size() const {

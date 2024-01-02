@@ -16,7 +16,7 @@
 #include "graph_db.hpp"
 #include "graph_pool.hpp"
 
-#ifdef USE_LLVM
+#ifdef USE_LLVM2
 #include "query_proc.hpp"
 
 const std::string test_path = PMDK_PATH("qcomp_tst");
@@ -140,19 +140,19 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
         auto filter = op->subscriber();
         REQUIRE(filter->type_ == qop_type::filter);
 
-        auto fil_op = std::dynamic_pointer_cast<filter_tuple>(filter);
+        auto fil_op = std::dynamic_pointer_cast<filter_op>(filter);
         auto fexp = fil_op->ex_;
 
         REQUIRE(fexp->name_ == "EQ");
 
         auto bin_expr = std::dynamic_pointer_cast<binary_predicate>(fexp);
-        REQUIRE(bin_expr->fop_ == FOP::EQ);
+        REQUIRE(bin_expr->fop_ == expr_op::EQ);
 
         auto lhs = bin_expr->left_;
-        REQUIRE(lhs->ftype_ == FOP_TYPE::KEY);
+        REQUIRE(lhs->ftype_ == expr_type::KEY);
 
         auto rhs = bin_expr->right_;
-        REQUIRE(rhs->ftype_ == FOP_TYPE::INT);
+        REQUIRE(rhs->ftype_ == expr_type::INT);
     }
 
 
@@ -190,19 +190,19 @@ TEST_CASE("Transform a given query into graph algebra", "[qcomp]") {
         auto filter = op->subscriber();
         REQUIRE(filter->type_ == qop_type::filter);
 
-        auto fil_op = std::dynamic_pointer_cast<filter_tuple>(filter);
+        auto fil_op = std::dynamic_pointer_cast<filter_op>(filter);
         auto fexp = fil_op->ex_;
 
         REQUIRE(fexp->name_ == "EQ");
 
         auto bin_expr = std::dynamic_pointer_cast<binary_predicate>(fexp);
-        REQUIRE(bin_expr->fop_ == FOP::EQ);
+        REQUIRE(bin_expr->fop_ == expr_op::EQ);
 
         auto lhs = bin_expr->left_;
-        REQUIRE(lhs->ftype_ == FOP_TYPE::KEY);
+        REQUIRE(lhs->ftype_ == expr_type::KEY);
 
         auto rhs = bin_expr->right_;
-        REQUIRE(rhs->ftype_ == FOP_TYPE::INT);
+        REQUIRE(rhs->ftype_ == expr_type::INT);
 
         auto prj = filter->subscriber();
         REQUIRE(prj->type_ == qop_type::project);

@@ -29,7 +29,7 @@
 #include <iostream>
 #include <boost/variant.hpp>
 
-#ifdef USE_LLVM
+#ifdef USE_LLVM2
 #include "query_builder.hpp"
 #include "query_proc.hpp"
 

@@ -4,7 +4,7 @@
 /**
  * Generates code for the filter operator
  */ 
-void codegen_inline_visitor::visit(std::shared_ptr<filter_tuple> op) {
+void codegen_inline_visitor::visit(std::shared_ptr<filter_op> op) {
     // create all relevant basic blocks for the operator processing
     BasicBlock *entry = BasicBlock::Create(ctx.getContext(), "filter_entry", main_function);
     BasicBlock *consume = BasicBlock::Create(ctx.getContext(), "filter_consume", main_function);
