@@ -35,6 +35,7 @@ public:
     ~compile_code_visitor() = default;
 
     void visit(std::shared_ptr<filter_op> op) override;
+    void visit(std::shared_ptr<aggregate> op) override;
 
 private:
     uint32_t f_cnt_;

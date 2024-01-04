@@ -380,38 +380,13 @@ else()
 endif()
 
 if(USE_LLVM MATCHES ON)
-  set(codegen_operators_src
-    src/query/codegen/operators/aggregation.cpp
-    src/query/codegen/operators/collect.cpp
-    src/query/codegen/operators/create.cpp
-    src/query/codegen/operators/expand.cpp
-    src/query/codegen/operators/filter.cpp
-    src/query/codegen/operators/foreach_rship.cpp
-    src/query/codegen/operators/groupby.cpp
-    src/query/codegen/operators/has_label.cpp
-    src/query/codegen/operators/join.cpp
-    src/query/codegen/operators/limit.cpp
-    src/query/codegen/operators/project.cpp
-    src/query/codegen/operators/scan.cpp
-    src/query/codegen/operators/sort.cpp
-    src/query/codegen/operators/join/cross_join.cpp
-    src/query/codegen/operators/join/hash_join.cpp
-    src/query/codegen/operators/join/nested_loop_join.cpp
-    src/query/codegen/operators/join/outer_join.cpp
-  )
-
-  set(llvm_src ""
- #   ${codegen_operators_src}
- #   src/query/codegen/codegen.cpp
- #   src/query/codegen/filter_expression.cpp
- #   src/query/codegen/global_definitions.cpp
- #   src/query/codegen/jit/jit_cache.cpp
- #   src/query/codegen/jit/p_jit.cpp
- #   src/query/codegen/jit/p_context.cpp
- #   src/query/codegen/qcompiler.cpp
- #   src/query/codegen/proc/joiner.cpp
- #   src/query/codegen/proc/grouper.cpp
- #   src/query/codegen/interprete_filter_visitor.cpp
+  set(llvm_src 
+  src/query/plan_visitors/compile_code_visitor.cpp
+  src/query/compile/jit_compiler.cpp
+  src/query/compile/jit_funcs.cpp
+  src/query/compile/jit_engine.cpp
+  src/query/compile/ir_generator.cpp
+  src/query/compile/expr_codegen.cpp
   )
 else()
   set(llvm_src "")
@@ -463,12 +438,6 @@ set(src_files
   src/query/utils/profiling.cpp
   src/query/utils/qresult_iterator.cpp
   src/query/plan_visitors/prepare_plan_visitor.cpp
-  src/query/plan_visitors/compile_code_visitor.cpp
-  src/query/compile/jit_compiler.cpp
-  src/query/compile/jit_funcs.cpp
-  src/query/compile/jit_engine.cpp
-  src/query/compile/ir_generator.cpp
-  src/query/compile/expr_codegen.cpp
   src/tx/transaction.cpp
   src/pool/graph_pool.cpp
   src/log/pm_ulog.cpp

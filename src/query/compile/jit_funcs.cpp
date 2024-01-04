@@ -16,16 +16,30 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
+#include "exceptions.hpp"
 #include "jit_funcs.hpp"
 
 void print_node(query_ctx *ctx, node *n) {
     std::cout << "node @" << n->id() << ":" << ctx->gdb_->get_string(n->node_label) << std::endl;
 }
 
-
 int get_node_property_int_value(query_ctx *ctx, node *n, dcode_t label) {
     auto item = ctx->gdb_->get_node_properties()->property_value(n->property_list, label);
     return item.get<int>();
+}
+
+int get_int_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label) {
+    if (v->at(i).which() == node_ptr_type) {
+        auto n = boost::get<node *>(v->at(i));
+        auto item = ctx->gdb_->get_node_properties()->property_value(n->property_list, label);
+        return item.get<int>();     
+    }
+    else if (v->at(i).which() == rship_ptr_type) {
+        auto r = boost::get<relationship *>(v->at(i));
+        auto item = ctx->gdb_->get_rship_properties()->property_value(r->property_list, label);
+        return item.get<int>(); 
+    }
+    throw invalid_typecast();
 }
 
 
@@ -39,6 +53,3 @@ dcode_t get_node_property_string_value(query_ctx *ctx, node *n, dcode_t label) {
     std::cout << "item: " << item << std::endl;
     return item.get<dcode_t>();
 }
-
-node* qr_get_node(qr_tuple* v, std::size_t i) { return boost::get<node*>(v->at(i)); }
-

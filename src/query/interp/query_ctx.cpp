@@ -37,6 +37,8 @@ void scan_task::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, st
 	    auto &n = *iter;
 	    if (n.is_valid()) {
 	      auto &nv = gdb->get_valid_node_version(n, xid);
+        // spdlog::info("scan: {} -> {}", nv.id(), nv.property_list);
+
 		    consumer(nv);
 	    }
 	    ++iter;
@@ -70,7 +72,6 @@ void scan_task_with_label::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_
 	    auto &n = *iter;
 	    if (n.is_valid()) {
 	      auto &nv = gdb->get_valid_node_version(n, xid);
-          spdlog::info("scan: {}", nv.id());
 
         if (nv.node_label == label)
   		    consumer(nv);

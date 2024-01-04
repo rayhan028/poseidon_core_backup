@@ -1,4 +1,4 @@
-; ModuleID = 'S'
+; ModuleID = 'filter'
 source_filename = "simple_filter"
 target datalayout = "e-m:o-i64:64-i128:128-n32:64-S128"
 

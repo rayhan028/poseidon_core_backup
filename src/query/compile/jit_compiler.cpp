@@ -119,6 +119,14 @@ jit_compiler::jit_compiler(ExitOnError ExitOnErr) : ctx_(std::make_unique<LLVMCo
                 pointerToJITTargetAddress(&print_node), JITSymbolFlags::Exported);
     s_map[mangle("qr_get_node")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&qr_get_node), JITSymbolFlags::Exported);
+    s_map[mangle("qr_get_int")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&qr_get_int), JITSymbolFlags::Exported);
+    s_map[mangle("qr_get_uint64")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&qr_get_uint64), JITSymbolFlags::Exported);
+    s_map[mangle("qr_get_double")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&qr_get_double), JITSymbolFlags::Exported);
+    s_map[mangle("get_int_property_value")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_int_property_value), JITSymbolFlags::Exported);
     s_map[mangle("get_node_property_int_value")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_node_property_int_value), JITSymbolFlags::Exported);
     s_map[mangle("get_node_property_uint64_value")] = JITEvaluatedSymbol(
@@ -150,6 +158,10 @@ std::unique_ptr<TargetMachine> jit_compiler::create_target_machine(llvm::ExitOnE
         tm->get()->setFastISel(true);
 	}
     return ExitOnErr(std::move(tm));
+}
+
+llvm::Error jit_compiler::clear() {
+    return mainJD_.clear();
 }
 
 using GetMemoryManagerFunction_T = RTDyldObjectLinkingLayer::GetMemoryManagerFunction;

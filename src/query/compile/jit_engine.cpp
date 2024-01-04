@@ -76,3 +76,14 @@ jit_engine::predicate_fptr jit_engine::get_predicate_function(const std::string&
   auto fptr = jit_->get_function_raw<predicate_fptr>(fname);
   return fptr ? *fptr: nullptr;
 }
+
+std::tuple<jit_engine::aggr_init_fptr, jit_engine::aggr_iterate_fptr, jit_engine::aggr_finish_fptr> jit_engine::get_aggregate_functions(const std::string& fname) {
+    auto f1 = jit_->get_function_raw<aggr_init_fptr>(fname + "_init");
+    auto f2 = jit_->get_function_raw<aggr_iterate_fptr>(fname + "_iterate");
+    auto f3 = jit_->get_function_raw<aggr_finish_fptr>(fname + "_finish");
+    auto fptr1 = f1 ? *f1 : nullptr;
+    auto fptr2 = f2 ? *f2 : nullptr;
+    auto fptr3 = f3 ? *f3 : nullptr;
+
+    return std::make_tuple(fptr1, fptr2, fptr3);    
+}

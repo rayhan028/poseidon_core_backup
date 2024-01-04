@@ -27,13 +27,16 @@
 
 #include "jit_engine.hpp"
 #include "expression.hpp"
+#include "qop.hpp"
+#include "qop_aggregates.hpp"
 
 class ir_generator {
 public:
     ir_generator(llvm::LLVMContext& ctx);
     ~ir_generator() = default;
 
-    std::unique_ptr<llvm::Module> generate(expr ex, const std::string& fct_name);
+    std::unique_ptr<llvm::Module> generate(std::shared_ptr<filter_op> fop, const std::string& fct_name);
+    std::unique_ptr<llvm::Module> generate(std::shared_ptr<aggregate> aggr, const std::string& fct_name);
 
     void dump(std::unique_ptr<llvm::Module>& module);
 
@@ -42,11 +45,18 @@ public:
 
     llvm::FunctionCallee extern_func(std::unique_ptr<llvm::Module>& module, const std::string& fct_name);
 
-    llvm::Type *qctx_ptr_type;
-    llvm::Type *qr_tuple_ptr_type;
-    llvm::Type *node_ptr_type;
+    llvm::Type *qctx_ptr_ty;
+    llvm::Type *qr_tuple_ptr_ty;
+    llvm::Type *node_ptr_ty;
 
 private:
+    void generate_count_iterate(aggregate::expr& ex, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx);
+    void generate_sum_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
+        llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx);
+    void generate_avg_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
+        llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx);
+    llvm::Value *generate_get_value(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, llvm::Function *start);
+
     llvm::LLVMContext& ctx_;
     std::shared_ptr<llvm::IRBuilder<>> builder_;
     std::map<std::string, llvm::FunctionType *> func_types_;

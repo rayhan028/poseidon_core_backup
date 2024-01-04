@@ -38,6 +38,10 @@ public:
      */
     using predicate_fptr = bool(*)(const query_ctx*, const qr_tuple*);
 
+    using aggr_init_fptr = void(*)(uint8_t*, uint32_t);
+    using aggr_iterate_fptr = void(*)(const query_ctx*, uint8_t*, uint32_t, const qr_tuple*);
+    using aggr_finish_fptr = void(*)(const query_ctx*, uint8_t*, uint32_t);
+
     jit_engine(graph_db_ptr gdb);
     ~jit_engine() = default;
 
@@ -62,6 +66,10 @@ public:
      */
     predicate_fptr get_predicate_function(const std::string& fname);
 
+    std::tuple<aggr_init_fptr, aggr_iterate_fptr, aggr_finish_fptr> get_aggregate_functions(const std::string& fname);
+
+    void clear() { /*auto res = jit_->clear();*/ }
+    
 private:
     graph_db_ptr gdb_;
     llvm::LLVMContext ctx_;

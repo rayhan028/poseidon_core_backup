@@ -28,10 +28,18 @@ void print_node(query_ctx *ctx, node *n);
 
 int get_node_property_int_value(query_ctx *ctx, node *n, dcode_t label);
 
+int get_int_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label);
+
 uint64_t get_node_property_uint64_value(query_ctx *ctx, node *n, dcode_t label);
 
 dcode_t get_node_property_string_value(query_ctx *ctx, node *n, dcode_t label);
 
-node* qr_get_node(qr_tuple* v, std::size_t i);
+inline node* qr_get_node(qr_tuple* v, std::size_t i) { return boost::get<node*>(v->at(i)); }
+
+inline int qr_get_int(qr_tuple* v, std::size_t i) { return boost::get<int>(v->at(i)); }
+
+inline uint64_t qr_get_uint64(qr_tuple* v, std::size_t i) { return boost::get<uint64_t>(v->at(i)); }
+
+inline double qr_get_double(qr_tuple* v, std::size_t i) { return boost::get<double>(v->at(i)); }
 
 #endif

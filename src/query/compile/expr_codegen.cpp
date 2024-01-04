@@ -33,14 +33,13 @@ void* expr_codegen::visit(std::shared_ptr<number_token> op) {
 }
 
 void* expr_codegen::visit(std::shared_ptr<variable> op) {
-    spdlog::info("expr_codegen: variable");    
-    llvm::FunctionCallee qr_get_node_func = gen_.extern_func(module_, "qr_get_node");
+    spdlog::info("expr_codegen: variable");   
+    // variable refers to node* or relationship*
+    // TODO: handle type
+    llvm::FunctionCallee get_int_property_value_func = gen_.extern_func(module_, "get_int_property_value");
     llvm::Value *val1 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, op->id_, true));
-    auto node_ptr = gen_.get_builder()->CreateCall(qr_get_node_func, { start_->getArg(1), val1});
-
-    llvm::FunctionCallee get_node_property_int_value_func = gen_.extern_func(module_, "get_node_property_int_value");
     llvm::Value *val2 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, op->pcode_, true));
-    return gen_.get_builder()->CreateCall(get_node_property_int_value_func, { start_->getArg(0), node_ptr, val2 });
+    return gen_.get_builder()->CreateCall(get_int_property_value_func, { start_->getArg(0), start_->getArg(1), val1, val2 });
 }
 
 void* expr_codegen::visit(std::shared_ptr<str_token> op) {}

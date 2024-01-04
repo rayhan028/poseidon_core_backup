@@ -85,13 +85,71 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
         });
     }
 
+    SECTION("Testing loading and executing IR aggregate functions") {
+        query_ctx ctx(graph);    
+        jit_engine jit(graph);
+
+        std::string home(".");
+        auto h = getenv("TEST_HOME");
+        if (h != nullptr)
+            home = h;
+
+        REQUIRE(jit.load_code(home + "/test/simple_aggregate.ll") == true);
+
+        auto [fun1, fun2, fun3] = jit.get_aggregate_functions("aggr_1");
+        REQUIRE(fun1 != nullptr);
+        REQUIRE(fun2 != nullptr);
+        REQUIRE(fun3 != nullptr);
+
+        uint8_t* buf = (uint8_t *)malloc(100);
+        // aggr[0]: sum(id), aggr[1] = count(id), aggr2[0] = avg(id)
+        uint64_t *aggr = reinterpret_cast<uint64_t *>(buf);
+        double *aggr2 = reinterpret_cast<double *>(buf + 32);
+
+        fun1(buf, 100);
+        REQUIRE(aggr[0] == 0);
+        REQUIRE(aggr[1] == 0);
+        REQUIRE(aggr[2] == 0);
+        REQUIRE(aggr[3] == 0);
+        REQUIRE(aggr2[0] == 0.0);
+
+        graph->run_transaction([&]() {
+            qr_tuple v(1);
+            auto& node1 = graph->node_by_id(n1);
+            v[0] = &node1;
+            fun2(&ctx, buf, 100, &v);
+            REQUIRE(aggr[0] == 42);
+            REQUIRE(aggr[1] == 1);
+            REQUIRE(aggr[2] == 42);
+            REQUIRE(aggr[3] == 1);
+
+            auto& node2 = graph->node_by_id(n2);
+            v[0] = &node2;
+            fun2(&ctx, buf, 100, &v);
+            REQUIRE(aggr[0] == 86);
+            REQUIRE(aggr[1] == 2);
+            REQUIRE(aggr[2] == 86);
+            REQUIRE(aggr[3] == 2);
+
+            return true;
+        });
+
+        fun3(&ctx, buf, 100);
+        REQUIRE(aggr[0] == 86);
+        REQUIRE(aggr[1] == 2);
+        REQUIRE(aggr2[0] == 43.0);
+
+        free(buf);
+    }
+
     SECTION("Testing compiling and executing expression") {
         query_ctx ctx(graph);    
         jit_engine jit(graph);
         ir_generator codegen(jit.get_context());
 
         auto ex = EQ(Variable(0, "id", 25), UInt64(42));
-        auto module = codegen.generate(ex, "simple_filter_2");
+        auto fop = std::make_shared<filter_op>(ex);
+        auto module = codegen.generate(fop, "simple_filter_2");
         // codegen.dump(module);
 
         auto res = jit.add_module(std::move(module));
@@ -131,5 +189,64 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
         expected.append({qv_("Person[1]{firstName: \"Andrei\", id: 44, lastName: \"Sator\"}")});
         REQUIRE(res.result() == expected);
     }
+
+    SECTION("Testing compiling aggregation functions") {
+        query_ctx ctx(graph);    
+        jit_engine jit(graph);
+        ir_generator codegen(jit.get_context());
+
+        std::vector<aggregate::expr> ex { { aggregate::expr::f_sum, 0u, "id", 25, int_type }, 
+                                          { aggregate::expr::f_count, 0u, "id", 25, int_type }, 
+                                          { aggregate::expr::f_avg, 0u, "id", 25, int_type } };      
+        auto agg = std::make_shared<aggregate>(ex, ctx.get_dictionary());
+        auto module = codegen.generate(agg, "aggr_1");
+        // codegen.dump(module);
+
+        auto res = jit.add_module(std::move(module));
+        REQUIRE(res == true);
+
+        auto [fun1, fun2, fun3] = jit.get_aggregate_functions("aggr_1");
+        REQUIRE(fun1 != nullptr);
+        REQUIRE(fun2 != nullptr);
+        REQUIRE(fun3 != nullptr);
+
+        uint8_t *buf = new uint8_t[1024];
+        fun1(buf, 1024);
+
+        graph->run_transaction([&]() {
+            qr_tuple v(1);
+            auto& node1 = graph->node_by_id(n1);
+            v[0] = &node1;
+            fun2(&ctx, buf, 1024, &v);
+
+            auto& node2 = graph->node_by_id(n2);
+            v[0] = &node2;
+            fun2(&ctx, buf, 1024, &v);
+
+            return true;
+        });
+        
+        fun3(&ctx, buf, 1023);
+        // aggr[0]: sum(id), aggr[1] = count(id), aggr2[0] = avg(id)
+        uint64_t *aggr1 = reinterpret_cast<uint64_t *>(buf);
+        double *aggr2 = reinterpret_cast<double *>(buf + 32);
+        
+        REQUIRE(aggr1[0] == 86);
+        REQUIRE(aggr1[1] == 2);
+        REQUIRE(aggr2[0] == 43.0);
+        
+        delete [] buf;
+    }
+
+    SECTION("Testing compiling and executing aggregation") {
+        query_ctx ctx(graph);    
+        query_proc qp(ctx);    
+        auto res = qp.execute_query(query_proc::Compile, "Aggregate([sum($0.id:int), count($0.id:int), avg($0.id:int)], NodeScan())");
+    
+        result_set expected;
+        expected.append({qv_("86"), qv_("2"), qv_("43.000000")});
+        REQUIRE(res.result() == expected);
+    }
+
     graph_pool::destroy(pool);
 }

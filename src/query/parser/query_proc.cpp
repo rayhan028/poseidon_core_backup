@@ -33,7 +33,9 @@
 #include "func_call_expr.hpp"
 
 #include "plan_visitors/prepare_plan_visitor.hpp"
+#ifdef USE_LLVM
 #include "plan_visitors/compile_code_visitor.hpp"
+#endif
 
 class LexerErrorListener : public antlr4::BaseErrorListener {
 public:
@@ -136,6 +138,9 @@ query_batch query_proc::prepare_query(const std::string &query) {
 
 void query_proc::run_query(query_batch& plan) {
     interp_->execute(qctx_, plan);
+#ifdef USE_LLVM
+    jit_->clear();
+#endif
 }
 
 void query_proc::abort_transaction() {

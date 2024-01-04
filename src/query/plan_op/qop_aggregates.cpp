@@ -47,9 +47,14 @@ uint64_t aggregate::get_uint64_value(query_ctx &ctx, const qr_tuple& v, const ex
 
 
 void aggregate::init_aggregates(dict_ptr dct) {
+  if (buf_) {
+    init_func_(buf_, 1024);
+    return;
+  }
+
   for (auto i = 0u; i < aggr_exprs_.size(); i++) {
     auto& ex = aggr_exprs_[i];
-ex.pkey = ex.property.empty() ? UNKNOWN_CODE : dct->lookup_string(ex.property);
+    ex.pkey = ex.property.empty() ? UNKNOWN_CODE : dct->lookup_string(ex.property);
     
     switch (ex.func) {
       case expr::f_count:
@@ -59,7 +64,12 @@ ex.pkey = ex.property.empty() ? UNKNOWN_CODE : dct->lookup_string(ex.property);
         aggr_vals_[i] = std::make_pair<double,int>(0, 0);
         break;
       case expr::f_sum:
-        aggr_vals_[i] = (ex.aggr_type == 2 ? 0 : 0.0);
+        if (ex.aggr_type == int_type)
+          aggr_vals_[i] = 0;
+        else if (ex.aggr_type == double_type)
+          aggr_vals_[i] = 0.0;
+        else if (ex.aggr_type == uint64_type)
+          aggr_vals_[i] = (uint64_t)0;
         break;
       case expr::f_min:
         if (ex.aggr_type == int_type)
@@ -116,9 +126,14 @@ void aggregate::dump(std::ostream &os) const {
 }
 
 void aggregate::process(query_ctx &ctx, const qr_tuple &v) {
-  // spdlog::info("aggregate::process");
   PROF_PRE;
   std::unique_lock lock(m_);
+  if (buf_) {
+    iterate_func_(&ctx, buf_, 1024, &v);
+    PROF_POST(0);
+    return;
+  }
+
   for (auto i = 0u; i < aggr_exprs_.size(); i++) {
     auto& ex = aggr_exprs_[i];
     switch (ex.func) {
@@ -167,44 +182,78 @@ void aggregate::process(query_ctx &ctx, const qr_tuple &v) {
 }
 
 void aggregate::finish(query_ctx &ctx) {
-  // spdlog::info("aggregate::finish");
   PROF_PRE0;
   std::unique_lock lock(m_);
   qr_tuple v(aggr_exprs_.size());
-  for (auto i = 0u; i < aggr_exprs_.size(); i++) {
-    auto& ex = aggr_exprs_[i];
-    switch (ex.func) {
-      case expr::f_count:
-        v[i] = boost::get<int>(aggr_vals_[i]);
-        break;
-      case expr::f_sum:
-        if (ex.aggr_type == int_type)
-          v[i] = boost::get<int>(aggr_vals_[i]);
-        else if (ex.aggr_type == double_type)
-          v[i] = boost::get<double>(aggr_vals_[i]);
-        break;
-      case expr::f_avg:
-        {
-          auto& p = boost::get<std::pair<double, int>>(aggr_vals_[i]);
-          v[i] = p.first / p.second;
+
+  if (buf_) {
+    finish_func_(&ctx, buf_, 1024);
+    spdlog::info("aggregate: finished");
+    // fill v
+    auto idx = 0u;
+    for (auto i = 0u; i < aggr_exprs_.size(); i++) {
+      auto& ex = aggr_exprs_[i];
+      if (ex.func == expr::f_avg) {
+        idx += 2 * sizeof(uint64_t);
+        v[i] = *(reinterpret_cast<double *>(buf_ + idx));
+        idx += sizeof(double);
+      }
+      else {
+        if (ex.aggr_type == int_type) {         
+          v[i] = *(reinterpret_cast<int *>(buf_ + idx));
+          idx += sizeof(uint64_t);
         }
-        break;
-      case expr::f_min:
-      case expr::f_max:
-        if (ex.aggr_type == int_type)
-          v[i] = boost::get<int>(aggr_vals_[i]);
-        else if (ex.aggr_type == double_type)
-          v[i] = boost::get<double>(aggr_vals_[i]);
-        else if (ex.aggr_type == string_type)
-          v[i] = boost::get<std::string>(aggr_vals_[i]);
-        else if (ex.aggr_type == uint64_type)
-          v[i] = boost::get<uint64_t>(aggr_vals_[i]);
-        break;
-      // TODO
-      default:
-        v[i] = 0;
+        else if (ex.aggr_type == double_type) {
+          v[i] = *(reinterpret_cast<double *>(buf_ + idx));
+          idx += sizeof(double);
+        }
+        else if (ex.aggr_type == string_type) {
+          v[i] = ctx.get_string(*(reinterpret_cast<dcode_t *>(buf_ + idx)));
+          idx += sizeof(dcode_t);
+        }
+        else if (ex.aggr_type == uint64_type) {
+          v[i] = *(reinterpret_cast<uint64_t *>(buf_ + idx));   
+          idx += sizeof(uint64_t);
+        }     
+      }
     }
   }  
+  else {
+    for (auto i = 0u; i < aggr_exprs_.size(); i++) {
+      auto& ex = aggr_exprs_[i];
+      switch (ex.func) {
+        case expr::f_count:
+          v[i] = boost::get<int>(aggr_vals_[i]);
+          break;
+        case expr::f_sum:
+          if (ex.aggr_type == int_type)
+            v[i] = boost::get<int>(aggr_vals_[i]);
+          else if (ex.aggr_type == double_type)
+            v[i] = boost::get<double>(aggr_vals_[i]);
+          break;
+        case expr::f_avg:
+          {
+            auto& p = boost::get<std::pair<double, int>>(aggr_vals_[i]);
+            v[i] = p.first / p.second;
+          }
+          break;
+        case expr::f_min:
+        case expr::f_max:
+          if (ex.aggr_type == int_type)
+            v[i] = boost::get<int>(aggr_vals_[i]);
+          else if (ex.aggr_type == double_type)
+            v[i] = boost::get<double>(aggr_vals_[i]);
+          else if (ex.aggr_type == string_type)
+            v[i] = boost::get<std::string>(aggr_vals_[i]);
+          else if (ex.aggr_type == uint64_type)
+            v[i] = boost::get<uint64_t>(aggr_vals_[i]);
+          break;
+        // TODO
+        default:
+          v[i] = 0;
+      }
+    }  
+  }
   consume_(ctx, v);
   finish_(ctx);
   PROF_POST(1);

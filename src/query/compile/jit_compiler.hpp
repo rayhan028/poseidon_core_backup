@@ -116,6 +116,8 @@ public:
      */
     llvm::Expected<llvm::JITTargetAddress> get_function_addr(llvm::StringRef name);
 
+    llvm::Error clear();
+
 private:
     /*
     * Target machine initialisation methods

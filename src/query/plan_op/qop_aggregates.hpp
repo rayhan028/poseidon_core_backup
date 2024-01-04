@@ -36,10 +36,11 @@ struct aggregate : public qop, public std::enable_shared_from_this<aggregate> {
     enum func_t { f_count, f_sum, f_min, f_max, f_avg, f_pcount } func; // agggregate function
     uint32_t var; // result variable (0, 1, ...)
     std::string property; // property name if result variable refers to a node or relationship, otherwise empty
-dcode_t pkey;
+    dcode_t pkey;         // dictionary code for property name
     qr_type aggr_type; // typecode of aggregation - corresponds to query_result.which()
 
     // expression constructors
+    expr(func_t f, uint32_t v, const std::string& p, dcode_t k, qr_type t) : func(f), var(v), property(p), pkey(k), aggr_type(t) {}
     expr(func_t f, uint32_t v, const std::string& p, qr_type t) : func(f), var(v), property(p), pkey(UNKNOWN_CODE), aggr_type(t) {}
     expr(uint32_t v, const std::string& p) : var(v), property(p), pkey(UNKNOWN_CODE) {}
     expr(uint32_t v, dcode_t pk) : var(v), pkey(pk) {}
@@ -48,12 +49,13 @@ dcode_t pkey;
   /**
    * Constructor for aggregate operator.
   */
-  aggregate(const std::vector<expr>& exp, dict_ptr dct) : aggr_exprs_ (exp), aggr_vals_(exp.size()) { init_aggregates(dct); }
+  aggregate(const std::vector<expr>& exp, dict_ptr dct) : aggr_exprs_ (exp), aggr_vals_(exp.size()), 
+    buf_(nullptr), init_func_(nullptr), iterate_func_(nullptr), finish_func_(nullptr) { init_aggregates(dct); }
 
   /**
    * Destructor.
    */
-  ~aggregate() = default;
+  ~aggregate() { if (buf_) delete [] buf_; }
 
   void dump(std::ostream &os) const override;
 
@@ -66,6 +68,8 @@ dcode_t pkey;
     if (has_subscriber())
       subscriber_->accept(vis);
   }
+
+  void init_buffer() { buf_ = new uint8_t[1024]();}
 
   virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
     operator_id_ = op_id;
@@ -93,6 +97,17 @@ dcode_t pkey;
   // list of aggregate values computed using aggr_exprs_ from the input tuples
   std::vector<val_t> aggr_vals_;
   mutable std::mutex m_;  
+
+  // for LLVM compiled code
+  uint8_t *buf_;
+  using init_fptr = void(*)(uint8_t*, uint32_t);
+  using iterate_fptr = void(*)(const query_ctx*, uint8_t*, uint32_t, const qr_tuple*);
+  using finish_fptr = void(*)(const query_ctx*, uint8_t*, uint32_t);
+  
+  init_fptr init_func_;
+  iterate_fptr iterate_func_;
+  finish_fptr finish_func_;
+
   /**
    * Helper functions for getting values or property values from the input tuples.
    */
@@ -110,7 +125,7 @@ struct group_by : public qop, public std::enable_shared_from_this<group_by> {
   struct group {
     uint32_t var;
     std::string property;
-dcode_t pkey;
+    dcode_t pkey;
     qr_type grp_type; // typecode of grouping - corresponds to query_result.which()
 
     group(uint32_t v, const std::string& p, qr_type gt) : var(v), property(p), pkey(UNKNOWN_CODE), grp_type(gt) {}
