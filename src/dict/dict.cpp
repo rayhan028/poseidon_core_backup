@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2024 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -57,30 +57,15 @@ void dict::close_file() {
 }
 
 void dict::initialize() {
-    bool built = false;
-    std::mutex built_mtx;
-    
+    std::unique_lock lock(m_);
     table_ = new code_table(pool_/*, 2920000*/);
- 
-    std::unique_lock<std::mutex> b_lock(built_mtx);
-    auto t = std::thread([&]() {
-        std::unique_lock lock(m_);
-        table_->rebuild(); 
-        
-        std::lock_guard<std::mutex> b_lock(built_mtx);
-        built = true;
-        built_cv_.notify_one();
-
-        spdlog::debug("string dictionary initalized.");
-    });
-    t.detach();
-
-    //table_->rebuild();
-    built_cv_.wait(b_lock, [&]() { return built; });
+    table_->rebuild();
 }
 
 std::size_t dict::size() const {
+    spdlog::info("size(): lock...");
     std::shared_lock lock(m_);
+    spdlog::info("size(): got lock!");
     return table_->size();    
 }
 

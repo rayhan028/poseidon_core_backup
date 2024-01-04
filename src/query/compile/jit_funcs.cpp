@@ -42,6 +42,33 @@ int get_int_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t l
     throw invalid_typecast();
 }
 
+uint64_t get_uint64_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label) {
+    if (v->at(i).which() == node_ptr_type) {
+        auto n = boost::get<node *>(v->at(i));
+        auto item = ctx->gdb_->get_node_properties()->property_value(n->property_list, label);
+        return item.get<uint64_t>();     
+    }
+    else if (v->at(i).which() == rship_ptr_type) {
+        auto r = boost::get<relationship *>(v->at(i));
+        auto item = ctx->gdb_->get_rship_properties()->property_value(r->property_list, label);
+        return item.get<uint64_t>(); 
+    }
+    throw invalid_typecast();
+}
+
+double get_double_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label) {
+    if (v->at(i).which() == node_ptr_type) {
+        auto n = boost::get<node *>(v->at(i));
+        auto item = ctx->gdb_->get_node_properties()->property_value(n->property_list, label);
+        return item.get<double>();     
+    }
+    else if (v->at(i).which() == rship_ptr_type) {
+        auto r = boost::get<relationship *>(v->at(i));
+        auto item = ctx->gdb_->get_rship_properties()->property_value(r->property_list, label);
+        return item.get<double>(); 
+    }
+    throw invalid_typecast();
+}
 
 uint64_t get_node_property_uint64_value(query_ctx *ctx, node *n, dcode_t label) {
     auto item = ctx->gdb_->get_node_properties()->property_value(n->property_list, label);

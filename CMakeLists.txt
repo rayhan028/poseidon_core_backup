@@ -381,7 +381,7 @@ endif()
 
 if(USE_LLVM MATCHES ON)
   set(llvm_src 
-  src/query/plan_visitors/compile_code_visitor.cpp
+  src/query/compile/compile_code_visitor.cpp
   src/query/compile/jit_compiler.cpp
   src/query/compile/jit_funcs.cpp
   src/query/compile/jit_engine.cpp

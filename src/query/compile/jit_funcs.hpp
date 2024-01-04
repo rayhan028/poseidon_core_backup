@@ -26,9 +26,13 @@
 
 void print_node(query_ctx *ctx, node *n);
 
-int get_node_property_int_value(query_ctx *ctx, node *n, dcode_t label);
-
 int get_int_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label);
+
+double get_double_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label);
+
+uint64_t get_uint64_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label);
+
+int get_node_property_int_value(query_ctx *ctx, node *n, dcode_t label);
 
 uint64_t get_node_property_uint64_value(query_ctx *ctx, node *n, dcode_t label);
 

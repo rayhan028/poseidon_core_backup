@@ -29,7 +29,7 @@
 #include "spdlog/spdlog.h"
 
 void code_table::rebuild() {
-    spdlog::debug("rebuild dictionary...");
+    spdlog::debug("rebuild table...");
     auto res = pool_->scan([this](const char *s, dcode_t c) {
         insert(std::string(s), c);
     });

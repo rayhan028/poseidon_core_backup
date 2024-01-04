@@ -34,7 +34,7 @@
 
 #include "plan_visitors/prepare_plan_visitor.hpp"
 #ifdef USE_LLVM
-#include "plan_visitors/compile_code_visitor.hpp"
+#include "compile_code_visitor.hpp"
 #endif
 
 class LexerErrorListener : public antlr4::BaseErrorListener {

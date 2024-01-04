@@ -36,6 +36,7 @@ ir_generator::ir_generator(llvm::LLVMContext& ctx) : ctx_(ctx) {
 
     auto i32_ty = llvm::Type::getInt32Ty(ctx_);
     auto i64_ty = llvm::Type::getInt64Ty(ctx_);
+    auto double_ty = llvm::Type::getDoubleTy(ctx_);
 
     // node* qr_get_node(qr_tuple*, std::size_t)
     auto qr_get_node_func_ty = llvm::FunctionType::get(node_ptr_ty, {qr_tuple_ptr_ty, i32_ty}, false);
@@ -48,6 +49,14 @@ ir_generator::ir_generator(llvm::LLVMContext& ctx) : ctx_(ctx) {
     // int get_int_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label)
     auto get_int_property_value_func_ty = llvm::FunctionType::get(i64_ty, { qctx_ptr_ty, qr_tuple_ptr_ty, i32_ty, i32_ty}, false);
     func_types_["get_int_property_value"] = get_int_property_value_func_ty;
+
+    // uint64_t get_uint64_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label)
+    auto get_uint64_property_value_func_ty = llvm::FunctionType::get(i64_ty, { qctx_ptr_ty, qr_tuple_ptr_ty, i32_ty, i32_ty}, false);
+    func_types_["get_uint64_property_value"] = get_uint64_property_value_func_ty;
+
+   // doouble get_double_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label)
+    auto get_double_property_value_func_ty = llvm::FunctionType::get(double_ty, { qctx_ptr_ty, qr_tuple_ptr_ty, i32_ty, i32_ty}, false);
+    func_types_["get_double_property_value"] = get_double_property_value_func_ty;
 }
 
 llvm::FunctionCallee ir_generator::extern_func(std::unique_ptr<llvm::Module>& module, const std::string& fct_name) {
@@ -55,7 +64,7 @@ llvm::FunctionCallee ir_generator::extern_func(std::unique_ptr<llvm::Module>& mo
 }
 
 std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<filter_op> fop, const std::string& fct_name) {
-    auto module = std::make_unique<llvm::Module>(llvm::StringRef("MyModule2"), ctx_);
+    auto module = std::make_unique<llvm::Module>("MyModule2", ctx_);
 
     auto target_triple = LLVMGetDefaultTargetTriple();
     module->setTargetTriple(target_triple);
@@ -90,7 +99,7 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
     auto i8_ty = llvm::Type::getInt8Ty(ctx_);
     auto i32_ty = llvm::Type::getInt32Ty(ctx_);
     auto i64_ty = llvm::Type::getInt64Ty(ctx_);
-    auto dbl_ty = llvm::Type::getDoubleTy(ctx_);
+    auto double_ty = llvm::Type::getDoubleTy(ctx_);
     auto i8_ptr_ty = llvm::PointerType::get(i8_ty, 0);
 
     std::vector<llvm::Type*> elements;
@@ -103,7 +112,7 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
             case rship_ptr_type:
                 elements.push_back(i64_ty); break;
             case double_type:
-                elements.push_back(dbl_ty); break;
+                elements.push_back(double_ty); break;
             default:
                 break;
             }
@@ -118,7 +127,7 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
                 elements.push_back(i64_ty);
                 break;
             case double_type:
-                elements.push_back(dbl_ty);
+                elements.push_back(double_ty);
                 break;
             default:
                 break;
@@ -126,14 +135,14 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
             // 2. count   
             elements.push_back(i64_ty);
             // 3. avg     
-            elements.push_back(dbl_ty);
+            elements.push_back(double_ty);
         }
     }
     auto aggr_ty = llvm::StructType::create(llvm::ArrayRef<llvm::Type *>(elements), "Agg");
     auto aggr_ptr_ty = llvm::PointerType::get(aggr_ty, 0);
 
 
-    auto module = std::make_unique<llvm::Module>(llvm::StringRef("MyModule3"), ctx_);
+    auto module = std::make_unique<llvm::Module>("MyModule3", ctx_);
     auto target_triple = LLVMGetDefaultTargetTriple();
     module->setTargetTriple(target_triple);
 
@@ -261,11 +270,11 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
             };
             auto ptr2 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices2); // GEP
             auto val2 = builder_->CreateLoad(ptr2);
-            auto fval2 = builder_->CreateSIToFP(val2, dbl_ty);
+            auto fval2 = builder_->CreateSIToFP(val2, double_ty);
 
             llvm::Value *res = nullptr;
             if (ex.aggr_type != double_type) {
-                auto fval1 = builder_->CreateSIToFP(val1, dbl_ty);
+                auto fval1 = builder_->CreateSIToFP(val1, double_ty);
                 res = builder_->CreateFDiv(fval1, fval2);
             }
             else 
@@ -286,12 +295,9 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
 }
 
 void ir_generator::generate_count_iterate(aggregate::expr& ex, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx) {
-    llvm::ArrayRef<llvm::Value*> indices {
+    auto ptr = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, {
         llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
-        llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx, true)), 
-    };
-    
-    auto ptr = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices); // GEP
+        llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx, true))}); // GEP
     auto aggr_val = builder_->CreateLoad(ptr);
     auto res = builder_->CreateAdd(llvm::ConstantInt::get(ctx_, llvm::APInt(64, 1, true)), aggr_val);
     builder_->CreateStore(res, ptr); // store
@@ -301,12 +307,9 @@ void ir_generator::generate_sum_iterate(std::unique_ptr<llvm::Module>& module, a
     llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx) {
     llvm::Value *pval = generate_get_value(module, ex, start);
 
-    llvm::ArrayRef<llvm::Value*> indices {
+    auto ptr = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, {
         llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
-        llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx, true)), 
-    };
-    
-    auto ptr = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices); // GEP
+        llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx, true))}); // GEP
     auto aggr_val = builder_->CreateLoad(ptr);
     auto res = builder_->CreateAdd(pval, aggr_val);
     builder_->CreateStore(res, ptr); // store
@@ -316,21 +319,16 @@ void ir_generator::generate_avg_iterate(std::unique_ptr<llvm::Module>& module, a
     llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx) {
     llvm::Value *pval = generate_get_value(module, ex, start);
 
-    llvm::ArrayRef<llvm::Value*> indices1 {
+    auto ptr1 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, {
         llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
-        llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx, true)), 
-    };
-    
-    auto ptr1 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices1); // GEP
+        llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx, true))}); // GEP
     auto aggr_val1 = builder_->CreateLoad(ptr1);
     auto res1 = builder_->CreateAdd(pval, aggr_val1);
     builder_->CreateStore(res1, ptr1); // store
 
-    llvm::ArrayRef<llvm::Value*> indices2 {
+    auto ptr2 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, {
         llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
-        llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx+1, true)), 
-    };
-    auto ptr2 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices2); // GEP
+        llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx+1, true))}); // GEP
     auto aggr_val2 = builder_->CreateLoad(ptr2);
     auto res2 = builder_->CreateAdd(llvm::ConstantInt::get(ctx_, llvm::APInt(64, 1, true)), aggr_val2);
     builder_->CreateStore(res2, ptr2); // store
@@ -370,10 +368,24 @@ llvm::Value *ir_generator::generate_get_value(std::unique_ptr<llvm::Module>& mod
     else {
         // $i.property: $i refers to node* or relationship*
         // TODO: handle other types
-        llvm::FunctionCallee get_int_property_value_func = extern_func(module, "get_int_property_value");
         llvm::Value *val1 = llvm::ConstantInt::get(ctx_, llvm::APInt(32, ex.var, true));
         llvm::Value *val2 = llvm::ConstantInt::get(ctx_, llvm::APInt(32,ex.pkey, true));
-        res = builder_->CreateCall(get_int_property_value_func, { start->getArg(0), start->getArg(3), val1, val2 });
+        llvm::FunctionCallee callee;
+        
+        switch(ex.aggr_type) {
+        case double_type:
+            callee = extern_func(module, "get_double_property_value");
+            break;
+        case uint64_type:
+            callee = extern_func(module, "get_uint64_property_value");
+            break;
+        case int_type:
+            callee = extern_func(module, "get_int_property_value");
+            break;
+        default:
+            break;
+        }        
+        res = builder_->CreateCall(callee, { start->getArg(0), start->getArg(3), val1, val2 });
     }
     return res;
 }
