@@ -20,62 +20,56 @@
 
 #include "properties.hpp"
 #include "expr_interpreter.hpp"
-#include "func_call_expr.hpp"
-
-std::ostream& operator<<(std::ostream& os, const query_result& qr) {
-    os << "[" << qr.which() << "]";
-    return os;
-}
 
 // ----------- query_result::int -----------
 inline bool int_not_equal(const query_result& r1, const query_result& r2) {
-    return boost::get<int>(r1) != boost::get<int>(r2);
+    return qv_get_int(r1) != qv_get_int(r2);
 }
 
 inline bool int_greater_than(const query_result& r1, const query_result& r2) {
-    return boost::get<int>(r1) > boost::get<int>(r2);
+    return qv_get_int(r1) > qv_get_int(r2);
 }
 
 inline bool int_less_than(const query_result& r1, const query_result& r2) {
-    return boost::get<int>(r1) < boost::get<int>(r2);
+    return qv_get_int(r1) < qv_get_int(r2);
 }
 
 inline bool uint64_less_than(const query_result& r1, const query_result& r2) {
-    return boost::get<uint64_t>(r1) < boost::get<uint64_t>(r2);
+    return qv_get_uint64(r1) < qv_get_uint64(r2);
 }
 
 inline bool uint64_greater_than(const query_result& r1, const query_result& r2) {
-    return boost::get<uint64_t>(r1) > boost::get<uint64_t>(r2);
+    return qv_get_uint64(r1) > qv_get_uint64(r2);
 }
 
 // ----------- query_result::double -----------
 inline bool double_not_equal(const query_result& r1, const query_result& r2) {
-    return boost::get<double>(r1) != boost::get<double>(r2);
+    return qv_get_double(r1) != qv_get_double(r2);
 }
 
 inline bool double_greater_than(const query_result& r1, const query_result& r2) {
-    return boost::get<double>(r1) > boost::get<double>(r2);
+    return qv_get_double(r1) > qv_get_double(r2);
 }
 
 inline bool double_less_than(const query_result& r1, const query_result& r2) {
-    return boost::get<double>(r1) < boost::get<double>(r2);
+    return qv_get_double(r1) < qv_get_double(r2);
 }
 
 // ----------- query_result::string -----------
 inline bool string_not_equal(const query_result& r1, const query_result& r2) {
-    return boost::get<std::string>(r1) != boost::get<std::string>(r2);
+    return qv_get_string(r1) != qv_get_string(r2);
 }
 
 inline bool string_equal(const query_result& r1, const query_result& r2) {
-    return boost::get<std::string>(r1) == boost::get<std::string>(r2);
+    return qv_get_string(r1) == qv_get_string(r2);
 }
 
 inline bool string_greater_than(const query_result& r1, const query_result& r2) {
-    return boost::get<std::string>(r1) > boost::get<std::string>(r2);
+    return qv_get_string(r1) > qv_get_string(r2);
 }
 
 inline bool string_less_than(const query_result& r1, const query_result& r2) {
-    return boost::get<std::string>(r1) < boost::get<std::string>(r2);
+    return qv_get_string(r1) < qv_get_string(r2);
 }
 
 // ----------- query_result -----------
@@ -84,26 +78,28 @@ bool equal(const query_result& qr1, const query_result& qr2) {
     if (qr1.which() == qr2.which()) {
         switch (qr1.which()) {
             case node_ptr_type: // node *
-                return boost::get<node*>(qr1) == boost::get<node*>(qr2);
+                return qv_get_node(qr1) == qv_get_node(qr2);
             case rship_ptr_type: // relationship *
-                return boost::get<relationship*>(qr1) == boost::get<relationship*>(qr2);
+                return qv_get_relationship(qr1) == qv_get_relationship(qr2);
                 break;
             case int_type: // int
-                return boost::get<int>(qr1) == boost::get<int>(qr2);
+                return qv_get_int(qr1) == qv_get_int(qr2);
             case double_type: // double
-                return boost::get<double>(qr1) == boost::get<double>(qr2);
+                return qv_get_double(qr1) == qv_get_double(qr2);
             case string_type: // std::string
                 return string_equal(qr1, qr2);
             case uint64_type: // uint64_t
-                return boost::get<uint64_t>(qr1) == boost::get<uint64_t>(qr2);
+                return qv_get_uint64(qr1) == qv_get_uint64(qr2);
+            case ptime_type: 
+                return qv_get_ptime(qr1) == qv_get_ptime(qr2);
             default:
                 break;
         }
     } 
     else if (qr1.which() == int_type && qr2.which() == uint64_type)
-        return (uint64_t)boost::get<int>(qr1) == boost::get<uint64_t>(qr2);
+        return (uint64_t)qv_get_int(qr1) == qv_get_uint64(qr2);
     else if (qr1.which() == uint64_type && qr2.which() == int_type)
-        return boost::get<uint64_t>(qr1) == (uint64_t)boost::get<int>(qr2);
+        return qv_get_uint64(qr1) == (uint64_t)qv_get_int(qr2);
 
     return false;
 }
@@ -127,9 +123,9 @@ bool less_than(const query_result& qr1, const query_result& qr2) {
         }
     } 
     else if (qr1.which() == int_type && qr2.which() == uint64_type)
-        return (uint64_t)boost::get<int>(qr1) < boost::get<uint64_t>(qr2);
+        return (uint64_t)qv_get_int(qr1) <qv_get_uint64(qr2);
     else if (qr1.which() == uint64_type && qr2.which() ==int_type)
-        return boost::get<uint64_t>(qr1) < (uint64_t)boost::get<int>(qr2);
+        return qv_get_uint64(qr1) < (uint64_t)qv_get_int(qr2);
     return false;
 }
 
@@ -156,9 +152,9 @@ bool greater_than(const query_result& qr1, const query_result& qr2) {
         }
     } 
     else if (qr1.which() == int_type && qr2.which() == uint64_type)
-        return (uint64_t)boost::get<int>(qr1) > boost::get<uint64_t>(qr2);
+        return (uint64_t)qv_get_int(qr1) > qv_get_uint64(qr2);
     else if (qr1.which() == uint64_type && qr2.which() == int_type)
-        return boost::get<uint64_t>(qr1) > (uint64_t)boost::get<int>(qr2);
+        return qv_get_uint64(qr1) > (uint64_t)qv_get_int(qr2);
     return false;
 }
 
@@ -174,27 +170,16 @@ query_result pop(std::stack<query_result>& st) {
 
 struct filter_visitor : public expression_visitor {
 public:
-    filter_visitor(query_ctx& ctx, const qr_tuple& tup) : ctx_(ctx), tup_(tup) {
-        /* 
-        auto n = boost::get<node *>(tup[0]);
-        std::cout << "visitor:node_id = " << n->id() << std::endl;
-        */
-     }
+    filter_visitor(query_ctx& ctx, const qr_tuple& tup) : ctx_(ctx), tup_(tup) {}
     ~filter_visitor() = default;
 
     bool result() {  
         auto v = pop(stack_); 
-        /*
-        if (boost::get<int>(v)) {
-        auto n = boost::get<node *>(tup_[0]);
-            std::cout << "filter_visitor satisfied for = " << n->id() << std::endl;
-        }
-        */
         return boost::get<int>(v) != 0; 
     }
 
-    virtual void* visit(std::shared_ptr<number_token> op) override {
-        // std::cout << "visit number_token: " << op->dump() << std::endl;
+    virtual void* visit(std::shared_ptr<number_literal> op) override {
+        // std::cout << "visit number_literal: " << op->dump() << std::endl;
         if (op->ftype_ == expr_type::INT)
             stack_.push(query_result(op->ivalue_));
         else if (op->ftype_ == expr_type::UINT64)
@@ -204,78 +189,8 @@ public:
         return nullptr;
     }
 
-    virtual void* visit(std::shared_ptr<key_token> op) override {
-        // std::cout << "visit key_token: " << op->qr_id_ << ", " << op->key_ << " : " << tup_.size() << std::endl;
-        // TODO: we should replace string key_ by its dcode_t in prepare_expr_visitor
-        auto inp = tup_[op->qr_id_];
-        p_item res;
-        switch (inp.which()) {
-            case node_ptr_type: // node *
-            {
-                auto nptr = boost::get<node *>(inp);
-                // if key_ is empty then the node is requested ($i:node)
-                if (op->key_.empty()) {
-                    // std::cout << "id = " << nptr->id() << std::endl;
-                    stack_.push(query_result(nptr));
-                }
-                else {
-                    // otherwise the property value ($i.prop:dtype) which is handled later
-                    res = ctx_.gdb_->get_property_value(*nptr, op->key_);
-                }
-                break;
-            }
-            case rship_ptr_type: // relationship *
-            {
-                auto rptr = boost::get<relationship *>(inp);
-                // if key_ is empty then the relationship is requested
-                if (op->key_.empty())
-                    stack_.push(query_result(rptr));
-                else
-                    // otherwise the property value ($i.prop:dtype) which is handled later
-                    res = ctx_.gdb_->get_property_value(*rptr, op->key_);
-                break;
-            }
-            case uint64_type:
-            case int_type:
-            case double_type:
-            case string_type:
-                stack_.push(inp);
-                break;
-            default:
-                // std::cout << "visit key_token ==> " << inp.which() << std::endl;
-                // Ooops!!
-                break;
-        }
-        switch (res.typecode()) {
-            case p_item::p_int:
-                stack_.push(query_result(res.get<int>()));
-                break;
-            case p_item::p_double:
-                stack_.push(query_result(res.get<double>()));
-                break;
-            case p_item::p_uint64:
-                stack_.push(query_result(res.get<uint64_t>()));
-                break;
-            case p_item::p_dcode:
-                {
-                    auto str = ctx_.gdb_->get_dictionary()->lookup_code(res.get<dcode_t>());
-                    stack_.push(query_result(std::string(str)));
-                }
-                break;
-            case p_item::p_unused:
-                // node* or relationship*
-                break;
-            default:
-                // spdlog::info("cannot push for #{} : inp={}, res={}", op->qr_id_, inp.which(), res.typecode());
-                break;
-        }            
-        // std::cout << "PUSH: " << res << std::endl;
-        return nullptr;
-    }
-
     virtual void* visit(std::shared_ptr<variable> op) override {
         // std::cout << "visit key_token: " << op->qr_id_ << ", " << op->key_ << " : " << tup_.size() << std::endl;
-        // TODO: we should replace string key_ by its dcode_t in prepare_expr_visitor
         auto inp = tup_[op->id_];
         p_item res;
         switch (inp.which()) {
@@ -342,31 +257,30 @@ public:
         return nullptr;
     }
 
-    virtual void* visit(std::shared_ptr<str_token> op) override {
+    virtual void* visit(std::shared_ptr<string_literal> op) override {
         stack_.push(query_result(op->str_));
         return nullptr;
     }
 
-    virtual void* visit(std::shared_ptr<time_token> op) override {
-        std::cout << "visit time_token" << std::endl;        
+    virtual void* visit(std::shared_ptr<time_literal> op) override {
+        stack_.push(query_result(op->time_));       
         return nullptr;
     }
 
-    virtual void* visit(std::shared_ptr<fct_call> op) override {
-        std::cout << "visit fct_call" << std::endl;         
-        return nullptr;
-    }
-
-    virtual void* visit( std::shared_ptr<func_call> op) override {
+    virtual void* visit(std::shared_ptr<func_call> op) override {
         // std::cout << "visit func_call: " << op->func_name_ << " : " << op->param_list_.size() << std::endl;
+
         if (op->param_list_.size() == 1) {
             auto arg = pop(stack_);
+            assert(op->func1_ptr_ != nullptr);
             auto res = op->func1_ptr_(ctx_, arg);
+            // std::cout << "func_call: result = " << res << std::endl;
             stack_.push(res);
         }
         else if (op->param_list_.size() == 2) {
             auto arg2 = pop(stack_);
             auto arg1 = pop(stack_);
+            assert(op->func2_ptr_ != nullptr);
             auto res = op->func2_ptr_(ctx_, arg1, arg2);
             stack_.push(res);
         }      
@@ -374,7 +288,7 @@ public:
     }
 
     virtual void* visit(std::shared_ptr<eq_predicate> op) override {
-        // std::cout << "visit eq_predicate: ==" << std::endl;  
+        // std::cout << "visit eq_predicate: ==..." << std::endl;  
         op->left_->accept(*this);     
         op->right_->accept(*this); 
 
@@ -382,6 +296,21 @@ public:
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
             bool res = equal(v1, v2);
+            // std::cout << "visit eq_predicate: ->" << v1 << " == " << v2 << std::endl;       
+            stack_.push(query_result(res ? 1 : 0));
+        }
+        return nullptr;
+    }
+    
+    virtual void* visit(std::shared_ptr<neq_predicate> op) override {
+        // std::cout << "visit neq_predicate: ==" << std::endl;  
+        op->left_->accept(*this);     
+        op->right_->accept(*this); 
+
+        if (valid_operands()) {
+            auto v2 = pop(stack_);
+            auto v1 = pop(stack_);
+            bool res = ! equal(v1, v2);
             // std::cout << "visit eq_predicate: ->" << res << std::endl;       
             stack_.push(query_result(res ? 1 : 0));
         }
@@ -470,9 +399,6 @@ public:
         return nullptr;
     }
 
-    virtual void* visit(std::shared_ptr<call_predicate> op) override {
-        return nullptr;
-    }
 
 private:
     bool valid_operands() {
@@ -490,7 +416,7 @@ private:
     std::stack<query_result> stack_;
 };
 
-bool interpret_expression(query_ctx& ctx, expr& ex, const qr_tuple& tup) {
+bool interpret_expression(query_ctx& ctx, const expr& ex, const qr_tuple& tup) {
     filter_visitor vis(ctx, tup);
     // std::cout << "interpret_expression: " << ex->dump() << std::endl;
     ex->accept(vis);

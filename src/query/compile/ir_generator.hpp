@@ -30,21 +30,47 @@
 #include "qop.hpp"
 #include "qop_aggregates.hpp"
 
+/**
+ * ir_generator encapsulates the IR code generation for query operators.
+ */
 class ir_generator {
 public:
     ir_generator(llvm::LLVMContext& ctx);
     ~ir_generator() = default;
 
+    /**
+     * Generates a LLVM module providing a function for evaluating the expression of the given filter operator.
+     */
     std::unique_ptr<llvm::Module> generate(std::shared_ptr<filter_op> fop, const std::string& fct_name);
+
+    /**
+     * Generates a LLVM module providing the functions (init, iterate, finish) for the given aggregate operator.
+     */
     std::unique_ptr<llvm::Module> generate(std::shared_ptr<aggregate> aggr, const std::string& fct_name);
 
+    /**
+     * Prints the IR text of the given module.
+     */
     void dump(std::unique_ptr<llvm::Module>& module);
 
+    /**
+     * Returns the LLVM context.
+     */
     llvm::LLVMContext& get_context() { return ctx_; }
+
+    /**
+     * Returns the IR builder for code generation.
+     */
     std::shared_ptr<llvm::IRBuilder<>> get_builder() { return builder_; }
 
+    /**
+     * Returns a handle to the external function given by fct_name.
+     */
     llvm::FunctionCallee extern_func(std::unique_ptr<llvm::Module>& module, const std::string& fct_name);
 
+    /**
+     * Predefined (opaque) IR types for query_ctx*, qr_tuple*, and node*.
+     */
     llvm::Type *qctx_ptr_ty;
     llvm::Type *qr_tuple_ptr_ty;
     llvm::Type *node_ptr_ty;
@@ -54,6 +80,10 @@ private:
     void generate_sum_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
         llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx);
     void generate_avg_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
+        llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx);
+    void generate_min_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
+        llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx);
+    void generate_max_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
         llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx);
     llvm::Value *generate_get_value(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, llvm::Function *start);
 

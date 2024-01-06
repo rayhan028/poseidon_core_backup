@@ -63,9 +63,7 @@ void dict::initialize() {
 }
 
 std::size_t dict::size() const {
-    spdlog::info("size(): lock...");
     std::shared_lock lock(m_);
-    spdlog::info("size(): got lock!");
     return table_->size();    
 }
 

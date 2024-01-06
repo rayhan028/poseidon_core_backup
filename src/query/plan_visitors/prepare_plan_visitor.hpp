@@ -25,18 +25,7 @@
 #include "query_ctx.hpp"
 #include "expression.hpp"
 #include "qop.hpp"
-
-class prepare_expr_visitor : public expression_visitor {
-public:
-    prepare_expr_visitor(query_ctx& ctx, std::shared_ptr<boost::dll::shared_library> udf_lib) : 
-        udf_lib_(udf_lib) {}
-    ~prepare_expr_visitor() = default;
-
-    void* visit(std::shared_ptr<func_call> op) override; 
-
-private:
-    std::shared_ptr<boost::dll::shared_library> udf_lib_;
-};
+#include "prepare_expr_visitor.hpp"
 
 class prepare_plan_visitor : public qop_visitor {
 public:

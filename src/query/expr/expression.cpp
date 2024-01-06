@@ -1,5 +1,70 @@
+/*
+ * Copyright (C) 2019-2024 DBIS Group - TU Ilmenau, All Rights Reserved.
+ *
+ * This file is part of the Poseidon package.
+ *
+ * Poseidon is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Poseidon is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "expression.hpp"
-#include "func_call_expr.hpp"
+#include "binary_expression.hpp"
+
+void* expression_visitor::visit(std::shared_ptr<eq_predicate> op) { 
+    if (op->left_) op->left_->accept(*this);
+    if (op->right_) op->right_->accept(*this);
+    return nullptr; 
+} 
+
+void* expression_visitor::visit(std::shared_ptr<neq_predicate> op) { 
+    if (op->left_) op->left_->accept(*this);
+    if (op->right_) op->right_->accept(*this);
+    return nullptr; 
+} 
+
+void* expression_visitor::visit(std::shared_ptr<le_predicate> op) { 
+    if (op->left_) op->left_->accept(*this);
+    if (op->right_) op->right_->accept(*this);
+    return nullptr; 
+} 
+
+void* expression_visitor::visit(std::shared_ptr<lt_predicate> op) {     
+    if (op->left_) op->left_->accept(*this);
+    if (op->right_) op->right_->accept(*this);
+    return nullptr; 
+} 
+
+void* expression_visitor::visit(std::shared_ptr<ge_predicate> op) { 
+    if (op->left_) op->left_->accept(*this);
+    if (op->right_) op->right_->accept(*this);
+    return nullptr; 
+} 
+void* expression_visitor::visit(std::shared_ptr<gt_predicate> op) { 
+    if (op->left_) op->left_->accept(*this);
+    if (op->right_) op->right_->accept(*this);
+    return nullptr; 
+} 
+
+void* expression_visitor::visit(std::shared_ptr<and_predicate> op) {
+    if (op->left_) op->left_->accept(*this);
+    if (op->right_) op->right_->accept(*this);
+    return nullptr; 
+} 
+void* expression_visitor::visit(std::shared_ptr<or_predicate> op) {
+    if (op->left_) op->left_->accept(*this);
+    if (op->right_) op->right_->accept(*this);
+    return nullptr; 
+} 
 
 std::string expression::op_as_string(expr_op fop) const {
     switch (fop) {
@@ -26,26 +91,26 @@ std::string expression::op_as_string(expr_op fop) const {
     }
 }
 
-number_token::number_token(int value) : ivalue_(value) {
+number_literal::number_literal(int value) : ivalue_(value) {
     name_ = "INT";
     rtype_ = ftype_ = expr_type::INT;
 }
 
-number_token::number_token(uint64_t value) : lvalue_(value) {
+number_literal::number_literal(uint64_t value) : lvalue_(value) {
     name_ = "UINT64";
     rtype_ = ftype_ = expr_type::UINT64;
 }
 
-number_token::number_token(double value) : dvalue_(value) {
+number_literal::number_literal(double value) : dvalue_(value) {
     name_ = "DOUBLE";
     rtype_ = ftype_ = expr_type::DOUBLE;
 }
 
-std::string number_token::dump() const {
+std::string number_literal::dump() const {
     return ftype_ == expr_type::INT ? std::to_string(ivalue_) : std::to_string(dvalue_);
 }
 
-void* number_token::accept(expression_visitor &fep) {
+void* number_literal::accept(expression_visitor &fep) {
     return fep.visit(shared_from_this());
 }
 
@@ -66,43 +131,29 @@ void* variable::accept(expression_visitor& fep) {
     return fep.visit(shared_from_this());
 }
 
-key_token::key_token(unsigned qr_id, std::string key) : key_(key), qr_id_(qr_id) {
-    name_ = "KEY";
-    ftype_ = expr_type::KEY;
-}
-
-std::string key_token::dump() const {
-    auto suffix = key_.empty() ? "" : (std::string(".") + key_);
-    return std::string("$") + std::to_string(qr_id_) + suffix;
-}
-
-void* key_token::accept(expression_visitor &fep) {
-    return fep.visit(shared_from_this());
-}
-
-time_token::time_token(boost::posix_time::ptime time) : time_(time) {
+time_literal::time_literal(boost::posix_time::ptime time) : time_(time) {
     name_ = "TIME";
     rtype_ = ftype_ = expr_type::TIME;
 }
 
-void* time_token::accept(expression_visitor &fep) {
+void* time_literal::accept(expression_visitor &fep) {
     return fep.visit(shared_from_this());
 }
 
-std::string time_token::dump() const {
+std::string time_literal::dump() const {
     return boost::posix_time::to_simple_string(time_);
 }
 
-str_token::str_token(std::string str) : str_(str) {
+string_literal::string_literal(std::string str) : str_(str) {
     name_ = "STR";
     rtype_ = ftype_ = expr_type::STRING;
 }
 
-std::string str_token::dump() const {
+std::string string_literal::dump() const {
     return str_;
 }
 
-void* str_token::accept(expression_visitor &fep) {
+void* string_literal::accept(expression_visitor &fep) {
     return fep.visit(shared_from_this());
 }
 
@@ -118,26 +169,6 @@ std::string qparam_token::dump() const {
 void* qparam_token::accept(expression_visitor &fep) {
     // TODO - should not happen, but replaced before
     return nullptr;
-}
-
-fct_call::fct_call(fct_int_t fct) : fct_int_(fct), fct_type_(expr_type::INT) {
-    name_ = "FCT";
-}
-
-fct_call::fct_call(fct_str_t fct) : fct_str_(fct), fct_type_(expr_type::STRING) {
-    name_ = "FCT";
-}
-
-fct_call::fct_call(fct_uint_t fct) : fct_uint_(fct), fct_type_(expr_type::UINT64) {
-    name_ = "FCT";
-}
-
-void* fct_call::accept(expression_visitor &fep) {
-    return fep.visit(shared_from_this());
-}
-
-std::string fct_call::dump() const {
-    return "";
 }
 
 std::string func_call::dump() const {

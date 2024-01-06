@@ -27,15 +27,17 @@
 #include "binary_expression.hpp"
 #include "ir_generator.hpp"
 
+/**
+ * expr_codegen encapsulates the IR code generation for expressions. It implements an expression visitor.
+ */
 class expr_codegen : public expression_visitor, public std::enable_shared_from_this<expr_codegen> {
 public:
     expr_codegen(ir_generator& gen, std::unique_ptr<llvm::Module>& module, llvm::Function *start);
 
-    void* visit(std::shared_ptr<number_token> op) override;
+    void* visit(std::shared_ptr<number_literal> op) override;
     void* visit(std::shared_ptr<variable> op) override;
-    void* visit(std::shared_ptr<str_token> op) override;
-    void* visit(std::shared_ptr<time_token> op) override;
-    void* visit(std::shared_ptr<fct_call> op) override;
+    void* visit(std::shared_ptr<string_literal> op) override;
+    void* visit(std::shared_ptr<time_literal> op) override;
     void* visit(std::shared_ptr<func_call> op) override;
     void* visit(std::shared_ptr<eq_predicate> op) override;  
     void* visit(std::shared_ptr<le_predicate> op) override;
@@ -44,12 +46,11 @@ public:
     void* visit(std::shared_ptr<gt_predicate> op) override;
     void* visit(std::shared_ptr<and_predicate> op) override;
     void* visit(std::shared_ptr<or_predicate> op) override;
-    void* visit(std::shared_ptr<call_predicate> op) override;
 
 private:
-    ir_generator& gen_;
-    std::unique_ptr<llvm::Module>& module_;
-    llvm::Function *start_;
+    ir_generator& gen_; // the actual code generator
+    std::unique_ptr<llvm::Module>& module_; // the LLVM module to which the generated code belongs
+    llvm::Function *start_; // the function to which the generated code belongs
 };
 
 #endif

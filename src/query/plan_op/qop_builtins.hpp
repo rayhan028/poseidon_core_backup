@@ -47,6 +47,8 @@ bool has_label(query_result &pv, const std::string &l);
  */
 query_result get_label(const query_result &pv);
 
+query_result get_label(query_ctx& qctx, const query_result &pv);
+
 /**
  * Return the integer value of the property of a node/relationship stored in
  * projection_result res and identified by the given key.
@@ -142,6 +144,20 @@ int dtimestring_to_int(const std::string &d);
  * Return true if the value represented by pv is a null value.
  */
 bool is_null(const query_result& pv);
+
+/**
+ * Convert the given delimited ISO 8601 form string into an ptime
+ * value (posix time).
+ */
+boost::posix_time::ptime iso_dtimestring_to_ptime(const std::string& d);
+
+/**
+ * Convert the given delimited form string into an ptime
+ * value (posix time).
+ */
+boost::posix_time::ptime dtimestring_to_ptime(const std::string& d);
+
+std::string ptime_to_dtimestring(boost::posix_time::ptime t);
 
 /*
 CASE:

@@ -34,10 +34,13 @@
 class jit_engine {
 public:
     /**
-     * Function type for predicates in filter operator
+     * Function type for predicates in filter operator.
      */
     using predicate_fptr = bool(*)(const query_ctx*, const qr_tuple*);
 
+    /**
+     * Function types for init, iterate, finish functions in aggregate operator.
+    */
     using aggr_init_fptr = void(*)(uint8_t*, uint32_t);
     using aggr_iterate_fptr = void(*)(const query_ctx*, uint8_t*, uint32_t, const qr_tuple*);
     using aggr_finish_fptr = void(*)(const query_ctx*, uint8_t*, uint32_t);
@@ -66,14 +69,23 @@ public:
      */
     predicate_fptr get_predicate_function(const std::string& fname);
 
-    std::tuple<aggr_init_fptr, aggr_iterate_fptr, aggr_finish_fptr> get_aggregate_functions(const std::string& fname);
+    /**
+     * Return the triple of functions implementing the aggregate functions. 
+     * The name is the prefix of the functions where _init, _iterate, and _finish
+     * is added.
+     */
+    std::tuple<aggr_init_fptr, aggr_iterate_fptr, aggr_finish_fptr> 
+        get_aggregate_functions(const std::string& fname);
 
+    /**
+     * Remove all generated modules from the JIT - used after the query was finished.
+     */
     void clear() { /*auto res = jit_->clear();*/ }
     
 private:
-    graph_db_ptr gdb_;
-    llvm::LLVMContext ctx_;
-    std::unique_ptr<jit_compiler> jit_;
+    graph_db_ptr gdb_; // the graph database
+    llvm::LLVMContext ctx_; // the LLVM context
+    std::unique_ptr<jit_compiler> jit_; // the actual LLVM JIT compiler
 };
 
 #endif

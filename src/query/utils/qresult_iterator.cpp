@@ -28,30 +28,6 @@
 
 using namespace boost::posix_time;
 
-query_result qv_from_pitem(const p_item& p) {
-  query_result qr;
-  switch(p.typecode()) {
-    case p_item::p_int: 
-      qr = p.get<int>();
-      break;
-    case p_item::p_double:
-      qr = p.get<double>();
-      break;
-    case p_item::p_dcode:
-      qr = (int)p.get<dcode_t>();
-      break;
-    case p_item::p_uint64:
-      qr = p.get<uint64_t>();
-      break;
-    case p_item::p_ptime:
-      qr = p.get<boost::posix_time::ptime>();
-      break;
-    default:
-      break;
-  }
-  return qr;
-}
-
 void result_set::wait() {
   std::unique_lock<std::mutex> lock(m);
   cond_var.wait(lock, [&] { return ready.load(); });

@@ -146,6 +146,14 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
     auto target_triple = LLVMGetDefaultTargetTriple();
     module->setTargetTriple(target_triple);
 
+    auto int_0 = llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true));
+    auto long_0 = llvm::ConstantInt::get(ctx_, llvm::APInt(64, 0, true));
+    auto long_min = llvm::ConstantInt::get(ctx_, llvm::APInt(64, std::numeric_limits<int64_t>::min(), true));
+    auto long_max = llvm::ConstantInt::get(ctx_, llvm::APInt(64, std::numeric_limits<int64_t>::max(), true));
+    auto double_0 = llvm::ConstantFP::get(ctx_, llvm::APFloat(0.0));
+    auto double_min = llvm::ConstantFP::get(ctx_, llvm::APFloat(std::numeric_limits<double>::min()));
+    auto double_max = llvm::ConstantFP::get(ctx_, llvm::APFloat(std::numeric_limits<double>::max()));
+
     // init function
     {
         std::vector<llvm::Type*> params {i8_ptr_ty, i32_ty};
@@ -156,47 +164,66 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
         builder_->SetInsertPoint(bb);
         auto base_ptr = builder_->CreateBitCast(start->getArg(0), aggr_ptr_ty); // bitcast -> base_ptr
 
-        auto int0 = llvm::ConstantInt::get(ctx_, llvm::APInt(64, 0, true));
-        auto double0 = llvm::ConstantFP::get(ctx_, llvm::APFloat(0.0));
         int idx = 0;
         for (auto& ex : aggr->aggr_exprs_) {
             switch(ex.func) {
             case aggregate::expr::f_sum:
             case aggregate::expr::f_count:
+            {
+                llvm::ArrayRef<llvm::Value*> indices {
+                    int_0, llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
+                };
+                auto ptr = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices);
+                if (ex.aggr_type == double_type && ex.func == aggregate::expr::f_sum)
+                    builder_->CreateStore(double_0, ptr); 
+                else
+                    builder_->CreateStore(long_0, ptr);
+                break;
+            }
             case aggregate::expr::f_min:
+            {
+                llvm::ArrayRef<llvm::Value*> indices {
+                    int_0, llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
+                };
+                auto ptr = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices);
+                if (ex.aggr_type == double_type)
+                    builder_->CreateStore(double_max, ptr); 
+                else
+                    builder_->CreateStore(long_max, ptr); 
+                break;
+            }
             case aggregate::expr::f_max:
             {
                 llvm::ArrayRef<llvm::Value*> indices {
-                    llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
-                    llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
+                    int_0, llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
                 };
-                auto ptr = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices); // GEP
-                builder_->CreateStore(int0, ptr); // store
+                auto ptr = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices);
+                if (ex.aggr_type == double_type)
+                    builder_->CreateStore(double_min, ptr); 
+                else
+                    builder_->CreateStore(long_min, ptr); 
                 break;
             }
             case aggregate::expr::f_avg:
             {
                 llvm::ArrayRef<llvm::Value*> indices1 {
-                    llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
-                    llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
+                    int_0, llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
                 };              
-                auto ptr1 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices1); // GEP
-                builder_->CreateStore(int0, ptr1); // store
+                auto ptr1 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices1); 
+                builder_->CreateStore(long_0, ptr1); 
                
                 llvm::ArrayRef<llvm::Value*> indices2 {
-                    llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
-                    llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
+                    int_0, llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
                 };                
-                auto ptr2 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices2); // GEP
-                builder_->CreateStore(int0, ptr2); // store
+                auto ptr2 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices2); 
+                builder_->CreateStore(long_0, ptr2); 
 
                llvm::ArrayRef<llvm::Value*> indices3 {
-                    llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
-                    llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
+                    int_0, llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
                 };
-                auto ptr3 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices3); // GEP
-                builder_->CreateStore(double0, ptr3); // store
-                
+                auto ptr3 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices3); 
+                builder_->CreateStore(double_0, ptr3); 
+               
                 break;
             }
             default:
@@ -225,6 +252,13 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
             case aggregate::expr::f_count:
                 generate_count_iterate(ex, aggr_ty, base_ptr, idx++);
                 break;
+            case aggregate::expr::f_min:
+                generate_min_iterate(module, ex, start, aggr_ty, base_ptr, idx++);
+                break;
+            case aggregate::expr::f_max:
+                generate_max_iterate(module, ex, start, aggr_ty, base_ptr, idx++);
+                break;
+
             case aggregate::expr::f_sum:
                 generate_sum_iterate(module, ex, start, aggr_ty, base_ptr, idx++);
                 break;
@@ -258,15 +292,13 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
                 continue;
             }
             llvm::ArrayRef<llvm::Value*> indices1 {
-                llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
-                llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
+                int_0, llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
             };
             auto ptr1 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices1); // GEP
             auto val1 = builder_->CreateLoad(ptr1);
 
             llvm::ArrayRef<llvm::Value*> indices2 {
-                llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
-                llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
+                int_0, llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
             };
             auto ptr2 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices2); // GEP
             auto val2 = builder_->CreateLoad(ptr2);
@@ -281,8 +313,7 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
                 res = builder_->CreateFDiv(val1, fval2);
 
             llvm::ArrayRef<llvm::Value*> indices3 {
-                llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
-                llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
+                int_0, llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
             };
             auto ptr3 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices3); // GEP
             builder_->CreateStore(res, ptr3); // store
@@ -315,6 +346,32 @@ void ir_generator::generate_sum_iterate(std::unique_ptr<llvm::Module>& module, a
     builder_->CreateStore(res, ptr); // store
 }
 
+void ir_generator::generate_min_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
+    llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx) {
+    llvm::Value *pval = generate_get_value(module, ex, start);
+
+    auto ptr = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, {
+        llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
+        llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx, true))}); // GEP
+    auto aggr_val = builder_->CreateLoad(ptr);
+    // TODO: compare!!
+    auto res = builder_->CreateAdd(pval, aggr_val);
+    builder_->CreateStore(res, ptr); // store
+}
+
+void ir_generator::generate_max_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
+    llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx) {
+    llvm::Value *pval = generate_get_value(module, ex, start);
+
+    auto ptr = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, {
+        llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
+        llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx, true))}); // GEP
+    auto aggr_val = builder_->CreateLoad(ptr);
+    // TODO: compare!!
+    auto res = builder_->CreateAdd(pval, aggr_val);
+    builder_->CreateStore(res, ptr); // store
+}
+
 void ir_generator::generate_avg_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
     llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx) {
     llvm::Value *pval = generate_get_value(module, ex, start);
@@ -339,37 +396,28 @@ llvm::Value *ir_generator::generate_get_value(std::unique_ptr<llvm::Module>& mod
     llvm::Value *res = nullptr;
     if (ex.pkey == UNKNOWN_CODE) {
         //$i refers to a primitive value
+        llvm::FunctionCallee callee;
         switch(ex.aggr_type) {
-            case int_type:
-            {
-                llvm::FunctionCallee qr_get_int_func = extern_func(module, "qr_get_int");
-                llvm::Value *val = llvm::ConstantInt::get(ctx_, llvm::APInt(32, ex.var, true));
-                res = builder_->CreateCall(qr_get_int_func, { start->getArg(3), val});
-                break;
-            }
-            case uint64_type:
-            {
-                llvm::FunctionCallee qr_get_uint64_func = extern_func(module, "qr_get_uint64");
-                llvm::Value *val = llvm::ConstantInt::get(ctx_, llvm::APInt(32, ex.var, true));
-                res = builder_->CreateCall(qr_get_uint64_func, { start->getArg(3), val});
-                break;
-            }
-            case double_type:
-            {
-                llvm::FunctionCallee qr_get_double_func = extern_func(module, "qr_get_double");
-                llvm::Value *val = llvm::ConstantInt::get(ctx_, llvm::APInt(32, ex.var, true));
-                res = builder_->CreateCall(qr_get_double_func, { start->getArg(3), val});
-                break;
-            } 
-            default:
-                break;
+        case int_type:
+            callee = extern_func(module, "qr_get_int");
+            break;
+        case uint64_type:
+            callee = extern_func(module, "qr_get_uint64");
+            break;
+        case double_type:
+            callee = extern_func(module, "qr_get_double");
+            break;
+        default:
+            break;
         }
+        llvm::Value *val = llvm::ConstantInt::get(ctx_, llvm::APInt(32, ex.var, true));
+        res = builder_->CreateCall(callee, { start->getArg(3), val});
     }
     else {
         // $i.property: $i refers to node* or relationship*
         // TODO: handle other types
         llvm::Value *val1 = llvm::ConstantInt::get(ctx_, llvm::APInt(32, ex.var, true));
-        llvm::Value *val2 = llvm::ConstantInt::get(ctx_, llvm::APInt(32,ex.pkey, true));
+        llvm::Value *val2 = llvm::ConstantInt::get(ctx_, llvm::APInt(32, ex.pkey, true));
         llvm::FunctionCallee callee;
         
         switch(ex.aggr_type) {

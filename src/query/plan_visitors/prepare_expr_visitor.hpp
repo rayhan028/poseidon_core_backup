@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -17,17 +17,25 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef expr_interpreter_hpp_
-#define expr_interpreter_hpp_
+#ifndef prepare_expr_visitor_hpp_
+#define prepare_expr_visitor_hpp_
 
-#include <iostream>
-#include "qop.hpp"
-#include "query_builder.hpp"
+#include <boost/dll/import.hpp> 
+
 #include "query_ctx.hpp"
 #include "expression.hpp"
+#include "qop.hpp"
 
-std::ostream& operator<<(std::ostream& os, const query_result& qr);
+class prepare_expr_visitor : public expression_visitor {
+public:
+    prepare_expr_visitor(query_ctx& ctx, std::shared_ptr<boost::dll::shared_library> udf_lib) : 
+        udf_lib_(udf_lib) {}
+    ~prepare_expr_visitor() = default;
 
-bool interpret_expression(query_ctx& ctx, const expr& ex, const qr_tuple& tup);
+    void* visit(std::shared_ptr<func_call> op) override; 
+
+private:
+    std::shared_ptr<boost::dll::shared_library> udf_lib_;
+};
 
 #endif

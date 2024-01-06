@@ -22,8 +22,10 @@ expr_codegen::expr_codegen(ir_generator& ir, std::unique_ptr<llvm::Module>& modu
     gen_(ir), module_(module), start_(start) {
 }
 
-void* expr_codegen::visit(std::shared_ptr<number_token> op) {
-    spdlog::info("expr_codegen: number_token: lvalue={}, ivalue={} (type={})", op->lvalue_, op->ivalue_, (int)op->ftype_);
+/**
+ * Generates the code for a numeric constant in an expression.
+ */
+void* expr_codegen::visit(std::shared_ptr<number_literal> op) {
     if (op->ftype_ == expr_type::INT)
         return llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(64, op->ivalue_, true));
     else if (op->ftype_ == expr_type::UINT64)
@@ -32,56 +34,71 @@ void* expr_codegen::visit(std::shared_ptr<number_token> op) {
         return llvm::ConstantFP::get(gen_.get_context(), llvm::APFloat(op->dvalue_));
 }
 
-void* expr_codegen::visit(std::shared_ptr<variable> op) {
-    spdlog::info("expr_codegen: variable");   
-    // variable refers to node* or relationship*
-    // TODO: handle type
+/**
+ * Generates the code for a variable in an expression like $0 or $1.name.
+ */
+void* expr_codegen::visit(std::shared_ptr<variable> op) { 
+    // TODO: handle other types than int
+    // TODO: handle variables of other types than node* or relationship*
     llvm::FunctionCallee get_int_property_value_func = gen_.extern_func(module_, "get_int_property_value");
     llvm::Value *val1 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, op->id_, true));
     llvm::Value *val2 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, op->pcode_, true));
     return gen_.get_builder()->CreateCall(get_int_property_value_func, { start_->getArg(0), start_->getArg(1), val1, val2 });
 }
 
-void* expr_codegen::visit(std::shared_ptr<str_token> op) {}
+void* expr_codegen::visit(std::shared_ptr<string_literal> op) {}
 
-void* expr_codegen::visit(std::shared_ptr<time_token> op) {}
+void* expr_codegen::visit(std::shared_ptr<time_literal> op) {}
     
-void* expr_codegen::visit(std::shared_ptr<fct_call> op) {}
-
 void* expr_codegen::visit(std::shared_ptr<func_call> op) {}
 
+/**
+ * Generates the code for a == predicate.
+ */
 void* expr_codegen::visit(std::shared_ptr<eq_predicate> op) {
-    spdlog::info("expr_codegen: eq_predicate");
-    auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
+   // TODO: handle other types than int
+     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
     return gen_.get_builder()->CreateICmpEQ(lhs, rhs);
 }  
 
+/**
+ * Generates the code for a <= predicate.
+ */
 void* expr_codegen::visit(std::shared_ptr<le_predicate> op) {
-    spdlog::info("expr_codegen: le_predicate");
+   // TODO: handle other types than int
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
     return gen_.get_builder()->CreateICmpSLE(lhs, rhs);
 }
-    
+
+/**
+ * Generates the code for a < predicate.
+ */ 
 void* expr_codegen::visit(std::shared_ptr<lt_predicate> op) {
-    spdlog::info("expr_codegen: lt_predicate");
+   // TODO: handle other types than int
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
     return gen_.get_builder()->CreateICmpSLT(lhs, rhs);
 
 }
 
+/**
+ * Generates the code for a >= predicate.
+ */
 void* expr_codegen::visit(std::shared_ptr<ge_predicate> op) {
-    spdlog::info("expr_codegen: ge_predicate");
+   // TODO: handle other types than int
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
     return gen_.get_builder()->CreateICmpSGE(lhs, rhs);
 
 }
 
+/**
+ * Generates the code for a > predicate.
+ */
 void* expr_codegen::visit(std::shared_ptr<gt_predicate> op) {
-    spdlog::info("expr_codegen: gt_predicate");
+   // TODO: handle other types than int
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
     return gen_.get_builder()->CreateICmpSGT(lhs, rhs);
@@ -90,5 +107,3 @@ void* expr_codegen::visit(std::shared_ptr<gt_predicate> op) {
 void* expr_codegen::visit(std::shared_ptr<and_predicate> op) {}
 
 void* expr_codegen::visit(std::shared_ptr<or_predicate> op) {}
-
-void* expr_codegen::visit(std::shared_ptr<call_predicate> op) {}

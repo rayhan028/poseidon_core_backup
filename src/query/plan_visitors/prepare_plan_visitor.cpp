@@ -19,19 +19,8 @@
 #include "prepare_plan_visitor.hpp"
 #include "expression.hpp"
 #include "binary_expression.hpp"
-#include "func_call_expr.hpp"
 #include "qop.hpp"
 #include "qop_joins.hpp"
-
-void* prepare_expr_visitor::visit(std::shared_ptr<func_call> op) {
-    // std::cout << "prepare func_call: " << op->func_name_ << " : " << op->param_list_.size() << std::endl;     
-    if (op->param_list_.size() == 1) {          
-        op->func1_ptr_ = udf_lib_->get<query_result(query_ctx&, query_result&)>(op->func_name_);
-    } 
-    else if (op->param_list_.size() == 2) {
-        op->func2_ptr_ = udf_lib_->get<query_result(query_ctx&, query_result&, query_result&)>(op->func_name_);
-    }
-}
 
 void prepare_plan_visitor::visit(std::shared_ptr<filter_op> op) {
     auto ex = op->get_expression();

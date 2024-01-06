@@ -51,13 +51,33 @@ query_result get_label(const query_result& pv) {
   if (pv.which() == node_descr_type) {
     auto nd = qv_get_node_descr(pv);
     return query_result(nd.label);
-  } else if (pv.which() == rship_descr_type) {
+  } 
+  else if (pv.which() == rship_descr_type) {
     auto rd = qv_get_rship_descr(pv);
     return query_result(rd.label);
   }
   return null_val;
 }
 
+query_result get_label(query_ctx& qctx, const query_result& pv) {
+  if (pv.which() == node_descr_type) {
+    auto nd = qv_get_node_descr(pv);
+    return query_result(nd.label);
+  } 
+  else if (pv.which() == rship_descr_type) {
+    auto rd = qv_get_rship_descr(pv);
+    return query_result(rd.label);
+  }
+  else if (pv.which() == node_ptr_type) {
+    auto n = qv_get_node(pv);
+    return query_result(qctx.get_string(n->node_label));
+  }
+  else if (pv.which() == rship_ptr_type) {
+    auto r = qv_get_relationship(pv);
+    return query_result(qctx.get_string(r->rship_label));
+  }
+  return null_val;
+}
 query_result int_property(const query_result &pv, const std::string &key) {
   if (pv.which() == node_descr_type) {
     auto nd = qv_get_node_descr(pv);
@@ -265,6 +285,19 @@ int dtimestring_to_int(const std::string &dt) {
   time_duration::sec_type secs = (pdt - epoch).total_seconds();
   return time_t(secs);
 }
+
+boost::posix_time::ptime dtimestring_to_ptime(const std::string& d) {
+  return time_from_string(d);
+}
+
+boost::posix_time::ptime iso_dtimestring_to_ptime(const std::string& d) {
+  return from_iso_extended_string(d);
+}
+
+std::string ptime_to_dtimestring(boost::posix_time::ptime t) {
+  return to_iso_extended_string(t);
+}
+
 
 bool is_null(const query_result& pv) { return pv.type() == typeid(null_t); }
 

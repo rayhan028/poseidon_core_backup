@@ -30,7 +30,6 @@
 
 #include "qop.hpp"
 #include "qop_joins.hpp"
-#include "func_call_expr.hpp"
 
 #include "plan_visitors/prepare_plan_visitor.hpp"
 #ifdef USE_LLVM

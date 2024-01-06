@@ -29,7 +29,6 @@
 #include "properties.hpp"
 #include "expression.hpp"
 #include "binary_expression.hpp"
-#include "func_call_expr.hpp"
 
 uint32_t query_planner::extract_tuple_id(const std::string& var_name) {
   auto dot_pos = var_name.find(".");
@@ -918,6 +917,7 @@ std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *c
     else if (ctx->function_call() != nullptr) {
         // handle UDFs - TODO: should be combined with code in visitProject_op
         auto fc = ctx->function_call();
+        auto prefix =  fc->prefix()->getText();
         auto fc_name = fc->Identifier_()->getText();
         auto fc_params = fc->param_list()->param();
         std::vector<expr> param_list;
@@ -933,10 +933,13 @@ std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *c
                 auto p_attr = pm->Identifier_();
                 // auto p_type = pm->type_spec();
                 // add parameter variable
-                param_list.push_back(Key(p_idx, p_attr != nullptr ? p_attr->getText() : ""));
+                param_list.push_back(Variable(p_idx, p_attr != nullptr ? p_attr->getText() : ""));
             }
         }
-        res = std::make_any<expr>(Fct(fc_name, param_list));
+        if (prefix != "")
+            res = std::make_any<expr>(Fct(prefix, fc_name, param_list));
+        else 
+            res = std::make_any<expr>(Fct(fc_name, param_list));
 
     }
     return res;

@@ -27,6 +27,10 @@
 #include "jit_engine.hpp"
 #include "ir_generator.hpp"
 
+/**
+ * This class implements a qop visitor for IR code generation. Only filters, aggregation, and groupby
+ * are covered here.
+ */
 class compile_code_visitor : public qop_visitor {
 public:
     compile_code_visitor(query_ctx& ctx, std::unique_ptr<jit_engine>& jit, std::unique_ptr<ir_generator>& gen) : 
@@ -38,9 +42,9 @@ public:
     void visit(std::shared_ptr<aggregate> op) override;
 
 private:
-    uint32_t f_cnt_;
-    std::unique_ptr<jit_engine>& jit_;
-    std::unique_ptr<ir_generator>& gen_;
+    uint32_t f_cnt_; // a counter for creating unique function names
+    std::unique_ptr<jit_engine>& jit_; // the JIT engine
+    std::unique_ptr<ir_generator>& gen_; // the actual IR code generator
 };
 
 #endif 
