@@ -41,7 +41,7 @@ public:
     /**
      * Generates a LLVM module providing a function for evaluating the expression of the given filter operator.
      */
-    std::unique_ptr<llvm::Module> generate(std::shared_ptr<filter_op> fop, const std::string& fct_name);
+    std::unique_ptr<llvm::Module> generate(expr ex, const std::string& fct_name);
 
     /**
      * Generates a LLVM module providing the functions (init, iterate, finish) for the given aggregate operator.

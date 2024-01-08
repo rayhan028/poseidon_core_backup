@@ -190,7 +190,7 @@ public:
     }
 
     virtual void* visit(std::shared_ptr<variable> op) override {
-        // std::cout << "visit key_token: " << op->qr_id_ << ", " << op->key_ << " : " << tup_.size() << std::endl;
+        // std::cout << "visit variable: " << op->id_ << ", " << op->pcode_ << " : " << tup_.size() << std::endl;
         auto inp = tup_[op->id_];
         p_item res;
         switch (inp.which()) {

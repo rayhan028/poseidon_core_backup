@@ -22,7 +22,7 @@
 void compile_code_visitor::visit(std::shared_ptr<filter_op> op) {
     // TODO: generate unique name by including query id
     auto fname = fmt::format("filter_{}", f_cnt_++);
-    auto module = gen_->generate(op, fname);
+    auto module = gen_->generate(op->ex_, fname);
     // gen_->dump(module);
     jit_->add_module(std::move(module));
     op->pred_func_ = jit_->get_predicate_function(fname);  

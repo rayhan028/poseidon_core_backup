@@ -38,10 +38,47 @@
 
 const std::string test_path = PMDK_PATH("expr_tst");
 
+std::unique_ptr<ir_generator> gen;
+std::unique_ptr<jit_engine> jit;
+
+static int f_cnt = 1;
+
+bool compile_expression(query_ctx& ctx, const expr& ex, const qr_tuple& tup, bool print = false) {
+    auto fname = fmt::format("filter_{}", f_cnt++);
+    auto module = gen->generate(ex, fname);
+    if (print)
+        gen->dump(module);
+    jit->add_module(std::move(module));
+    auto func = jit->get_predicate_function(fname);  
+    return func(&ctx, &tup);
+}
+
+bool load_compiled_expression(query_ctx& ctx, const expr& ex, const qr_tuple& tup, int fn) {
+    auto fname = fmt::format("filter_{}", fn);
+    
+    std::string home(".");
+    auto h = getenv("TEST_HOME");
+    if (h != nullptr)
+        home = h;
+
+    auto path = fmt::format("{}/test/{}.ll", home, fname);
+    spdlog::info("IR file: {}", path);
+    if (!jit->load_code(path))
+        spdlog::info("IR code not loaded");
+    auto func = jit->get_predicate_function(fname);  
+    if (!func)
+        spdlog::info("IR function {} not found", fname);
+    return func(&ctx, &tup);
+}
+
 TEST_CASE("Creating and interpreting expressions", "[expression]") {
-   auto pool = graph_pool::create(test_path);
+    auto pool = graph_pool::create(test_path);
     auto graph = pool->create_graph("my_jit_graph");
     
+    query_ctx ctx(graph);    
+    jit = std::make_unique<jit_engine>(graph);
+    gen = std::make_unique<ir_generator>(jit->get_context());
+
     node::id_t n1, n2;
 
     graph->run_transaction([&]() {
@@ -59,90 +96,119 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
         qr_tuple tup;
         auto ex1 = EQ(Int(42), Int(42));
         REQUIRE(interpret_expression(qctx, ex1, tup) == true);
+        REQUIRE(compile_expression(qctx, ex1, tup) == true);
 
         auto ex2 = EQ(Int(42), Int(15));
         REQUIRE(interpret_expression(qctx, ex2, tup) == false);
+        REQUIRE(compile_expression(qctx, ex2, tup) == false);
 
         auto ex3 = LT(Int(42), Int(15));
         REQUIRE(interpret_expression(qctx, ex3, tup) == false);
+        REQUIRE(compile_expression(qctx, ex3, tup) == false);
 
         auto ex4 = LT(Int(15), Int(16));
         REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+        REQUIRE(compile_expression(qctx, ex4, tup) == true);
 
         auto ex5 = LE(Int(15), Int(16));
         REQUIRE(interpret_expression(qctx, ex5, tup) == true);
+        REQUIRE(compile_expression(qctx, ex5, tup) == true);
 
         auto ex6 = LE(Int(15), Int(15));
         REQUIRE(interpret_expression(qctx, ex6, tup) == true);
+        REQUIRE(compile_expression(qctx, ex6, tup) == true);
 
         auto ex7 = LE(Int(15), Int(14));
         REQUIRE(interpret_expression(qctx, ex7, tup) == false);
+        REQUIRE(compile_expression(qctx, ex7, tup) == false);
 
         auto ex8 = GT(Int(42), Int(15));
         REQUIRE(interpret_expression(qctx, ex8, tup) == true);
+        REQUIRE(compile_expression(qctx, ex8, tup) == true);
 
         auto ex9 = GT(Int(15), Int(16));
         REQUIRE(interpret_expression(qctx, ex9, tup) == false);
+        REQUIRE(compile_expression(qctx, ex9, tup) == false);
 
         auto ex10 = GE(Int(16), Int(1));
         REQUIRE(interpret_expression(qctx, ex10, tup) == true);
+        REQUIRE(compile_expression(qctx, ex10, tup) == true);
 
         auto ex11 = GE(Int(15), Int(15));
         REQUIRE(interpret_expression(qctx, ex11, tup) == true);
+        REQUIRE(compile_expression(qctx, ex11, tup) == true);
 
         auto ex12 = GE(Int(12), Int(14));
         REQUIRE(interpret_expression(qctx, ex12, tup) == false);
+        REQUIRE(compile_expression(qctx, ex12, tup) == false);
 
         auto ex13 = NEQ(Int(42), Int(42));
         REQUIRE(interpret_expression(qctx, ex13, tup) == false);
+        REQUIRE(compile_expression(qctx, ex13, tup) == false);
 
         auto ex14 = NEQ(Int(43), Int(42));
         REQUIRE(interpret_expression(qctx, ex14, tup) == true);
+        REQUIRE(compile_expression(qctx, ex14, tup) == true);
     }
 
     SECTION("plain expressions with double") {
         qr_tuple tup;
         auto ex1 = EQ(Float(42.0), Float(42.0));
         REQUIRE(interpret_expression(qctx, ex1, tup) == true);
+        REQUIRE(compile_expression(qctx, ex1, tup, true) == true);
 
         auto ex2 = EQ(Float(42.0), Float(15.0));
         REQUIRE(interpret_expression(qctx, ex2, tup) == false);
+        //REQUIRE(load_compiled_expression(qctx, ex2, tup, 22) == false);
+        REQUIRE(compile_expression(qctx, ex2, tup, true) == false);
 
         auto ex3 = LT(Float(42.0), Float(15.0));
         REQUIRE(interpret_expression(qctx, ex3, tup) == false);
+        REQUIRE(compile_expression(qctx, ex3, tup) == false);
 
         auto ex4 = LT(Float(15.0), Float(16.0));
         REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+        REQUIRE(compile_expression(qctx, ex4, tup) == true);
 
         auto ex5 = LE(Float(15.0), Float(16.0));
         REQUIRE(interpret_expression(qctx, ex5, tup) == true);
+        REQUIRE(compile_expression(qctx, ex5, tup) == true);
 
         auto ex6 = LE(Float(15.0), Float(15.0));
         REQUIRE(interpret_expression(qctx, ex6, tup) == true);
+        REQUIRE(compile_expression(qctx, ex6, tup) == true);
 
         auto ex7 = LE(Float(15.0), Float(14.0));
         REQUIRE(interpret_expression(qctx, ex7, tup) == false);
+        REQUIRE(compile_expression(qctx, ex7, tup) == false);
 
         auto ex8 = GT(Float(42.0), Float(15.0));
         REQUIRE(interpret_expression(qctx, ex8, tup) == true);
+        REQUIRE(compile_expression(qctx, ex8, tup) == true);
 
         auto ex9 = GT(Float(15.0), Float(16.0));
         REQUIRE(interpret_expression(qctx, ex9, tup) == false);
+        REQUIRE(compile_expression(qctx, ex9, tup) == false);
 
         auto ex10 = GE(Float(16.0), Float(1.0));
         REQUIRE(interpret_expression(qctx, ex10, tup) == true);
+        REQUIRE(compile_expression(qctx, ex10, tup) == true);
 
         auto ex11 = GE(Float(15.0), Float(15.0));
         REQUIRE(interpret_expression(qctx, ex11, tup) == true);
+        REQUIRE(compile_expression(qctx, ex11, tup) == true);
 
         auto ex12 = GE(Float(12.0), Float(14.0));
         REQUIRE(interpret_expression(qctx, ex12, tup) == false);
+        REQUIRE(compile_expression(qctx, ex12, tup) == false);
 
         auto ex13 = NEQ(Float(42.0), Float(42.0));
         REQUIRE(interpret_expression(qctx, ex13, tup) == false);
+        REQUIRE(compile_expression(qctx, ex13, tup) == false);
 
         auto ex14 = NEQ(Float(43.0), Float(42.0));
         REQUIRE(interpret_expression(qctx, ex14, tup) == true);
+        REQUIRE(compile_expression(qctx, ex14, tup) == true);
     }
 
     SECTION("plain expressions with strings") {
@@ -188,9 +254,26 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
             ex1->accept(vis);
             REQUIRE(interpret_expression(qctx, ex1, tup) == true);
 
+            auto ex2 = EQ(Variable(0, "id", 25), Int(42));
+            ex2->accept(vis);
+            REQUIRE(interpret_expression(qctx, ex2, tup) == true);
+            REQUIRE(compile_expression(qctx, ex2, tup) == true);
+
+            auto ex3 = EQ(Variable(0, "id", 25), Int(4));
+            ex3->accept(vis);
+            REQUIRE(interpret_expression(qctx, ex3, tup) == false);
+            REQUIRE(compile_expression(qctx, ex3, tup) == false);
+
+            auto ex4 = LT(Variable(0, "id", 25), Int(100));
+            ex4->accept(vis);
+            REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+            REQUIRE(compile_expression(qctx, ex4, tup) == true);
+           
             return true;
         });
     }
 
+    gen.reset();
+    jit.reset();
     graph_pool::destroy(pool);
 }

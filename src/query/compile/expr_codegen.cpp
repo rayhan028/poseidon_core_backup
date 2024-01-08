@@ -30,8 +30,12 @@ void* expr_codegen::visit(std::shared_ptr<number_literal> op) {
         return llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(64, op->ivalue_, true));
     else if (op->ftype_ == expr_type::UINT64)
         return llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(64, op->lvalue_, true));
-    else
+    else {
+        //auto vptr = gen_.get_builder()->CreateAlloca(llvm::Type::getDoubleTy(gen_.get_context()));
+        //gen_.get_builder()->CreateStore(llvm::ConstantFP::get(gen_.get_context(), llvm::APFloat(op->dvalue_)), vptr);
+        //return gen_.get_builder()->CreateLoad(vptr);
         return llvm::ConstantFP::get(gen_.get_context(), llvm::APFloat(op->dvalue_));
+    }
 }
 
 /**
@@ -57,9 +61,28 @@ void* expr_codegen::visit(std::shared_ptr<func_call> op) {}
  */
 void* expr_codegen::visit(std::shared_ptr<eq_predicate> op) {
    // TODO: handle other types than int
-     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
+   spdlog::info("visit eq_predicate: {}", (int)op->result_type());
+    auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
-    return gen_.get_builder()->CreateICmpEQ(lhs, rhs);
+    auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
+    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
+        return gen_.get_builder()->CreateFCmpOEQ(lhs, rhs);
+    else 
+        return gen_.get_builder()->CreateICmpEQ(lhs, rhs);
+}  
+
+/**
+ * Generates the code for a <> predicate.
+ */
+void* expr_codegen::visit(std::shared_ptr<neq_predicate> op) {
+   // TODO: handle other types than int
+    auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
+    auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
+    auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
+    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
+        return gen_.get_builder()->CreateFCmpONE(lhs, rhs);
+    else 
+        return gen_.get_builder()->CreateICmpNE(lhs, rhs);
 }  
 
 /**
@@ -69,7 +92,11 @@ void* expr_codegen::visit(std::shared_ptr<le_predicate> op) {
    // TODO: handle other types than int
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
-    return gen_.get_builder()->CreateICmpSLE(lhs, rhs);
+    auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
+    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
+        return gen_.get_builder()->CreateFCmpOLE(lhs, rhs);
+    else
+        return gen_.get_builder()->CreateICmpSLE(lhs, rhs);
 }
 
 /**
@@ -79,8 +106,11 @@ void* expr_codegen::visit(std::shared_ptr<lt_predicate> op) {
    // TODO: handle other types than int
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
-    return gen_.get_builder()->CreateICmpSLT(lhs, rhs);
-
+    auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
+    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
+        return gen_.get_builder()->CreateFCmpOLT(lhs, rhs);
+    else
+        return gen_.get_builder()->CreateICmpSLT(lhs, rhs);
 }
 
 /**
@@ -90,8 +120,11 @@ void* expr_codegen::visit(std::shared_ptr<ge_predicate> op) {
    // TODO: handle other types than int
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
-    return gen_.get_builder()->CreateICmpSGE(lhs, rhs);
-
+    auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
+    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
+        return gen_.get_builder()->CreateFCmpOGE(lhs, rhs);
+    else
+        return gen_.get_builder()->CreateICmpSGE(lhs, rhs);
 }
 
 /**
@@ -101,7 +134,11 @@ void* expr_codegen::visit(std::shared_ptr<gt_predicate> op) {
    // TODO: handle other types than int
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
-    return gen_.get_builder()->CreateICmpSGT(lhs, rhs);
+    auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
+    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
+        return gen_.get_builder()->CreateFCmpOGT(lhs, rhs);
+    else
+        return gen_.get_builder()->CreateICmpSGT(lhs, rhs);
 }
 
 void* expr_codegen::visit(std::shared_ptr<and_predicate> op) {}

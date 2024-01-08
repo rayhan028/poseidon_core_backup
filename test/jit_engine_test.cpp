@@ -149,7 +149,7 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
 
         auto ex = EQ(Variable(0, "id", 25), UInt64(42));
         auto fop = std::make_shared<filter_op>(ex);
-        auto module = codegen.generate(fop, "simple_filter_2");
+        auto module = codegen.generate(fop->ex_, "simple_filter_2");
         // codegen.dump(module);
 
         auto res = jit.add_module(std::move(module));

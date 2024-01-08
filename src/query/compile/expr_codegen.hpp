@@ -40,6 +40,7 @@ public:
     void* visit(std::shared_ptr<time_literal> op) override;
     void* visit(std::shared_ptr<func_call> op) override;
     void* visit(std::shared_ptr<eq_predicate> op) override;  
+    void* visit(std::shared_ptr<neq_predicate> op) override;  
     void* visit(std::shared_ptr<le_predicate> op) override;
     void* visit(std::shared_ptr<lt_predicate> op) override;
     void* visit(std::shared_ptr<ge_predicate> op) override;

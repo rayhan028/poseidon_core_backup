@@ -63,8 +63,8 @@ llvm::FunctionCallee ir_generator::extern_func(std::unique_ptr<llvm::Module>& mo
     return module->getOrInsertFunction(fct_name, func_types_[fct_name]);
 }
 
-std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<filter_op> fop, const std::string& fct_name) {
-    auto module = std::make_unique<llvm::Module>("MyModule2", ctx_);
+std::unique_ptr<llvm::Module> ir_generator::generate(expr ex, const std::string& fct_name) {
+    auto module = std::make_unique<llvm::Module>("MyModule", ctx_);
 
     auto target_triple = LLVMGetDefaultTargetTriple();
     module->setTargetTriple(target_triple);
@@ -81,7 +81,7 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<filter_op> 
     builder_->SetInsertPoint(bb);
     // expression init  
     expr_codegen codegen(*this, module, start);
-    llvm::Value *condition = static_cast<llvm::Value*>(fop->ex_->accept(codegen));
+    llvm::Value *condition = static_cast<llvm::Value*>(ex->accept(codegen));
 
     builder_->CreateCondBr(condition, finish_true, finish_false);
 
