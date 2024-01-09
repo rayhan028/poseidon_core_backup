@@ -33,6 +33,7 @@ Option | Description
   `-b` [ `--buffersize` ] arg | Size of the bufferpool (in pages)
   `-o` [ `--output` ] arg     | dumps the graph to the given file (in DOT format)
   `--strict`                  | strict mode - assumes that all columns contain values of the same type
+  `-e` [ `--explain` ]        | print the query execution plan with statistics
   `--delimiter` arg           | specifies the delimiter character
   `-f` [ `--format` ] arg     | specifies CSV format: n4j | gtpc | ldbc
   `--import-path` arg         | specifies the directory containing import files

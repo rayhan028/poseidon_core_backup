@@ -24,12 +24,12 @@
 #include "qop_builtins.hpp"
 
 void* prepare_expr_visitor::visit(std::shared_ptr<func_call> op) {
-    std::cout << "prepare func_call: " << op->func_prefix_ << ":" << op->func_name_ << " : " << op->param_list_.size() << std::endl;     
+    // std::cout << "prepare func_call: " << op->func_prefix_ << ":" << op->func_name_ << " : " << op->param_list_.size() << std::endl;     
     if (op->func_prefix_ == "pb") {
         if (op->func_name_ == "label") {
             op->func1_ptr_ = [](query_ctx& ctx, const query_result& v) { return builtin::get_label(ctx, v); };
         }
-        else if (op->func_name_ == "iso_dtimestring_to_ptime") {
+        else if (op->func_name_ == "to_datetime") {
            op->func1_ptr_ = [](query_ctx& ctx, const query_result& v) { return builtin::dtimestring_to_ptime(qv_get_string(v)); };
         }
         else if (op->func_name_ == "ptime_to_dtimestring") {

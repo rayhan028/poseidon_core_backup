@@ -111,13 +111,15 @@ bool less_than(const query_result& qr1, const query_result& qr2) {
             case rship_ptr_type: // relationship *
                 break;
             case int_type: // int
-                return int_less_than(qr1, qr2);
+                return qv_get_int(qr1) < qv_get_int(qr2);
             case double_type: // double
-                return double_less_than(qr1, qr2);
+                return qv_get_double(qr1) < qv_get_double(qr2);
             case string_type: // std::string
                 return string_less_than(qr1, qr2);
             case uint64_type: // uint64_t
-                return uint64_less_than(qr1, qr2);
+                return qv_get_uint64(qr1) < qv_get_uint64(qr2);
+            case ptime_type:
+                return qv_get_ptime(qr1) < qv_get_ptime(qr2);
             default:
                 break;
         }
@@ -140,13 +142,15 @@ bool greater_than(const query_result& qr1, const query_result& qr2) {
             case rship_ptr_type: // relationship *
                 break;
             case int_type: // int
-                return int_greater_than(qr1, qr2);
+                return qv_get_int(qr1) > qv_get_int(qr2);
             case double_type: // double
-                return double_greater_than(qr1, qr2);
+               return qv_get_double(qr1) > qv_get_double(qr2);
             case string_type: // std::string
                 return string_greater_than(qr1, qr2);
             case uint64_type: // uint64_t
-                return uint64_greater_than(qr1, qr2);
+                return qv_get_uint64(qr1) > qv_get_uint64(qr2);
+            case ptime_type: // uint64_t
+                return qv_get_ptime(qr1) > qv_get_ptime(qr2);
             default:
                 break;
         }
@@ -226,7 +230,7 @@ public:
                 stack_.push(inp);
                 break;
             default:
-                // std::cout << "visit key_token ==> " << inp.which() << std::endl;
+                // std::cout << "visit variable ==> " << inp.which() << std::endl;
                 // Ooops!!
                 break;
         }
@@ -240,6 +244,9 @@ public:
             case p_item::p_uint64:
                 stack_.push(query_result(res.get<uint64_t>()));
                 break;
+            case p_item::p_ptime:
+                stack_.push(query_result(res.get<boost::posix_time::ptime>()));
+                break;
             case p_item::p_dcode:
                 {
                     auto str = ctx_.gdb_->get_dictionary()->lookup_code(res.get<dcode_t>());
@@ -250,7 +257,7 @@ public:
                 // node* or relationship*
                 break;
             default:
-                // spdlog::info("cannot push for #{} : inp={}, res={}", op->qr_id_, inp.which(), res.typecode());
+                // spdlog::info("cannot push for #{} : inp={}, res={}", op->id_, inp.which(), res.typecode());
                 break;
         }            
         // std::cout << "PUSH: " << res << std::endl;
@@ -303,7 +310,7 @@ public:
     }
     
     virtual void* visit(std::shared_ptr<neq_predicate> op) override {
-        // std::cout << "visit neq_predicate: ==" << std::endl;  
+        // std::cout << "visit neq_predicate: <>" << std::endl;  
         op->left_->accept(*this);     
         op->right_->accept(*this); 
 
@@ -314,6 +321,8 @@ public:
             // std::cout << "visit eq_predicate: ->" << res << std::endl;       
             stack_.push(query_result(res ? 1 : 0));
         }
+        else
+            throw query_processing_error("invalid <> expression");
         return nullptr;
     }
     

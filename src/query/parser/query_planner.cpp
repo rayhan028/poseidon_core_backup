@@ -925,8 +925,15 @@ std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *c
         for (auto i = 0u; i < fc_params.size(); i++) {
             auto& pm = fc_params[i];
             if (pm->value() != nullptr) {
-                std::cout << "\tparam value: " << pm->value()->getText() << std::endl; 
-                // TODO: add parameter value
+                if (pm->value()->STRING_()) {
+                    param_list.push_back(Str(trim_string(pm->value()->getText())));
+                }
+                else if (pm->value()->INTEGER()) {
+                    param_list.push_back(Int(std::stoi(pm->value()->getText())));
+                }
+                else if (pm->value()->FLOAT()) {
+                    param_list.push_back(Float(std::stof(pm->value()->getText())));
+                }
             }
             else {
                 auto p_idx = extract_tuple_id(pm->Var()->getText());

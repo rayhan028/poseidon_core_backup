@@ -226,13 +226,76 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
         REQUIRE(interpret_expression(qctx, ex4, tup) == true);
     }
 
+   SECTION("plain expressions with ptime") {
+        qr_tuple tup;
+        boost::posix_time::ptime t1(boost::posix_time::time_from_string("2023-01-20 23:59:59.000"));
+        boost::posix_time::ptime t2(boost::posix_time::time_from_string("2023-01-20 23:59:59.000"));
+        boost::posix_time::ptime t3(boost::posix_time::time_from_string("2023-09-20 23:59:59.000"));
+
+        auto ex1 = EQ(Time(t1), Time(t2));
+        REQUIRE(interpret_expression(qctx, ex1, tup) == true);
+        REQUIRE(compile_expression(qctx, ex1, tup) == true);
+
+        auto ex2 = EQ(Time(t1), Time(t3));
+        REQUIRE(interpret_expression(qctx, ex2, tup) == false);
+        REQUIRE(compile_expression(qctx, ex2, tup) == false);
+
+        auto ex3 = LT(Time(t1), Time(t2));
+        REQUIRE(interpret_expression(qctx, ex3, tup) == false);
+        REQUIRE(compile_expression(qctx, ex3, tup) == false);
+
+        auto ex4 = LT(Time(t1), Time(t3));
+        REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+        REQUIRE(compile_expression(qctx, ex4, tup) == true);
+
+        auto ex5 = LE(Time(t1), Time(t3));
+        REQUIRE(interpret_expression(qctx, ex5, tup) == true);
+        REQUIRE(compile_expression(qctx, ex5, tup) == true);
+
+        auto ex6 = LE(Time(t1), Time(t3));
+        REQUIRE(interpret_expression(qctx, ex6, tup) == true);
+        REQUIRE(compile_expression(qctx, ex6, tup) == true);
+
+        auto ex7 = LE(Time(t3), Time(t1));
+        REQUIRE(interpret_expression(qctx, ex7, tup) == false);
+        REQUIRE(compile_expression(qctx, ex7, tup) == false);
+
+        auto ex8 = GT(Time(t3), Time(t2));
+        REQUIRE(interpret_expression(qctx, ex8, tup) == true);
+        REQUIRE(compile_expression(qctx, ex8, tup) == true);
+
+        auto ex9 = GT(Time(t1), Time(t2));
+        REQUIRE(interpret_expression(qctx, ex9, tup) == false);
+        REQUIRE(compile_expression(qctx, ex9, tup) == false);
+
+        auto ex10 = GE(Time(t1), Time(t2));
+        REQUIRE(interpret_expression(qctx, ex10, tup) == true);
+        REQUIRE(compile_expression(qctx, ex10, tup) == true);
+
+        auto ex11 = GE(Time(t1), Time(t2));
+        REQUIRE(interpret_expression(qctx, ex11, tup) == true);
+        REQUIRE(compile_expression(qctx, ex11, tup) == true);
+
+        auto ex12 = GE(Time(t1), Time(t3));
+        REQUIRE(interpret_expression(qctx, ex12, tup) == false);
+        REQUIRE(compile_expression(qctx, ex12, tup) == false);
+
+        auto ex13 = NEQ(Time(t1), Time(t2));
+        REQUIRE(interpret_expression(qctx, ex13, tup) == false);
+        REQUIRE(compile_expression(qctx, ex13, tup) == false);
+
+        auto ex14 = NEQ(Time(t1), Time(t3));
+        REQUIRE(interpret_expression(qctx, ex14, tup) == true);
+        REQUIRE(compile_expression(qctx, ex14, tup) == true);
+    }
+
     SECTION("expressions with functions") {
         qr_tuple tup;
         std::string ts("2002-01-20 23:59:59.000");
         boost::posix_time::ptime t(boost::posix_time::time_from_string(ts));
         prepare_expr_visitor vis(qctx, nullptr);
 
-        auto ex1 = EQ(Fct("pb", "iso_dtimestring_to_ptime", std::vector<expr>{ Str(ts)}), Time(t));
+        auto ex1 = EQ(Fct("pb", "to_datetime", std::vector<expr>{ Str(ts)}), Time(t));
         ex1->accept(vis);
         REQUIRE(interpret_expression(qctx, ex1, tup) == true);
 

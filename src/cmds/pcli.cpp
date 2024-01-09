@@ -491,6 +491,7 @@ int main(int argc, char* argv[]) {
   query_proc::mode qmode = query_proc::Interpret; 
   char delim_character = ',';
   bool strict = false;
+  bool explain = false;
   cmd_mode mode = undefined_mode;
 
   auto console = spdlog::stdout_color_mt("poseidon");
@@ -509,6 +510,7 @@ int main(int argc, char* argv[]) {
         ("strict", bool_switch()->default_value(true), "Strict mode - assumes that all columns contain values of the same type")
         ("delimiter", value<char>(&delim_character)->default_value('|'), "Character delimiter")
         ("format,f", value<std::string>(&format), "CSV format: n4j | gtpc | ldbc")
+        ("explain,e", bool_switch()->default_value(false), "Print the query execution plan")
         ("import-path", value<std::string>(&import_path), "Directory containing import files")
         ("import", value<std::vector<std::string>>()->composing(),
         "Import files in CSV format (either nodes:<node type>:<filename> or "
@@ -559,6 +561,9 @@ int main(int argc, char* argv[]) {
 
     if (vm.count("strict"))
       strict = vm["strict"].as<bool>();
+
+    if (vm.count("explain"))
+      explain = vm["explain"].as<bool>();
 
     if (vm.count("format"))
       format = vm["format"].as<std::string>();
@@ -629,7 +634,7 @@ int main(int argc, char* argv[]) {
       if (is_command(qs))
         exec_command(qs);
       else
-        exec_query(qs, qmode, false);
+        exec_query(qs, qmode, explain);
     }
   }
 

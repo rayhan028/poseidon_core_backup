@@ -46,6 +46,8 @@ bool result_set::operator==(const result_set &other) const {
 bool result_set::qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple &qr2,
                             const sort_spec_list &spec) {
   auto qr_less = [&](const qr_tuple &q1, const qr_tuple &q2, const sort_spec& sp) -> int {
+    assert(q1.size() > sp.vidx);
+    assert(q2.size() > sp.vidx);
     query_result v1 = q1[sp.vidx];
     query_result v2 = q2[sp.vidx];
     if (sp.pcode > 0) {
@@ -116,8 +118,8 @@ bool result_set::qr_compare(query_ctx& ctx, const qr_tuple &qr1, const qr_tuple 
         break;
       case ptime_type: // datetime
         {
-          auto i1 = boost::get<boost::posix_time::ptime>(v1);
-          auto i2 = boost::get<boost::posix_time::ptime>(v2);
+          auto i1 = qv_get_ptime(v1);
+          auto i2 = qv_get_ptime(v2);
           if (i1 == i2)
             return 0;
           else if (i1 < i2)

@@ -17,6 +17,7 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 #include "expr_codegen.hpp"
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 expr_codegen::expr_codegen(ir_generator& ir, std::unique_ptr<llvm::Module>& module, llvm::Function *start) : 
     gen_(ir), module_(module), start_(start) {
@@ -30,12 +31,8 @@ void* expr_codegen::visit(std::shared_ptr<number_literal> op) {
         return llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(64, op->ivalue_, true));
     else if (op->ftype_ == expr_type::UINT64)
         return llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(64, op->lvalue_, true));
-    else {
-        //auto vptr = gen_.get_builder()->CreateAlloca(llvm::Type::getDoubleTy(gen_.get_context()));
-        //gen_.get_builder()->CreateStore(llvm::ConstantFP::get(gen_.get_context(), llvm::APFloat(op->dvalue_)), vptr);
-        //return gen_.get_builder()->CreateLoad(vptr);
+    else
         return llvm::ConstantFP::get(gen_.get_context(), llvm::APFloat(op->dvalue_));
-    }
 }
 
 /**
@@ -52,7 +49,14 @@ void* expr_codegen::visit(std::shared_ptr<variable> op) {
 
 void* expr_codegen::visit(std::shared_ptr<string_literal> op) {}
 
-void* expr_codegen::visit(std::shared_ptr<time_literal> op) {}
+void* expr_codegen::visit(std::shared_ptr<time_literal> op) {
+    using namespace boost::posix_time;
+
+    static ptime epoch(boost::gregorian::date(1970, 1, 1));
+    auto msecs = (op->time_ - epoch).total_milliseconds();
+
+    return llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(64, msecs, true));    
+}
     
 void* expr_codegen::visit(std::shared_ptr<func_call> op) {}
 
@@ -67,7 +71,9 @@ void* expr_codegen::visit(std::shared_ptr<eq_predicate> op) {
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
     if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
         return gen_.get_builder()->CreateFCmpOEQ(lhs, rhs);
-    else 
+    else if (op->left_->ftype_ == expr_type::STRING) 
+        abort();
+    else
         return gen_.get_builder()->CreateICmpEQ(lhs, rhs);
 }  
 
@@ -81,6 +87,8 @@ void* expr_codegen::visit(std::shared_ptr<neq_predicate> op) {
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
     if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
         return gen_.get_builder()->CreateFCmpONE(lhs, rhs);
+    else if (op->left_->ftype_ == expr_type::STRING) 
+        abort();
     else 
         return gen_.get_builder()->CreateICmpNE(lhs, rhs);
 }  
@@ -95,6 +103,8 @@ void* expr_codegen::visit(std::shared_ptr<le_predicate> op) {
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
     if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
         return gen_.get_builder()->CreateFCmpOLE(lhs, rhs);
+    else if (op->left_->ftype_ == expr_type::STRING) 
+        abort();
     else
         return gen_.get_builder()->CreateICmpSLE(lhs, rhs);
 }
@@ -109,6 +119,8 @@ void* expr_codegen::visit(std::shared_ptr<lt_predicate> op) {
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
     if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
         return gen_.get_builder()->CreateFCmpOLT(lhs, rhs);
+    else if (op->left_->ftype_ == expr_type::STRING) 
+        abort();
     else
         return gen_.get_builder()->CreateICmpSLT(lhs, rhs);
 }
@@ -123,6 +135,8 @@ void* expr_codegen::visit(std::shared_ptr<ge_predicate> op) {
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
     if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
         return gen_.get_builder()->CreateFCmpOGE(lhs, rhs);
+    else if (op->left_->ftype_ == expr_type::STRING) 
+        abort();
     else
         return gen_.get_builder()->CreateICmpSGE(lhs, rhs);
 }
@@ -137,6 +151,8 @@ void* expr_codegen::visit(std::shared_ptr<gt_predicate> op) {
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
     if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
         return gen_.get_builder()->CreateFCmpOGT(lhs, rhs);
+    else if (op->left_->ftype_ == expr_type::STRING) 
+        abort();
     else
         return gen_.get_builder()->CreateICmpSGT(lhs, rhs);
 }
