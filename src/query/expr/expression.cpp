@@ -74,25 +74,27 @@ void* expression_visitor::visit(std::shared_ptr<or_predicate> op) {
 std::string expression::op_as_string(expr_op fop) const {
     switch (fop) {
         case expr_op::EQ:
-            return "==";
+            return " == ";
         case expr_op::NEQ:
-            return "!=";
+            return " != ";
         case expr_op::LE:
-            return "<=";
+            return " <= ";
         case expr_op::LT:
-            return "<";
+            return " < ";
         case expr_op::GE:
-            return ">=";
+            return " >= ";
         case expr_op::GT:
-            return ">";
+            return " > ";
         case expr_op::AND:
-            return "&&";
+            return " && ";
         case expr_op::OR:
-            return "||";
+            return " || ";
         case expr_op::NOT:
-            return "!";
+            return " ! ";
+        case expr_op::REGEX:
+            return " =~ ";
         default:
-            return "";
+            return " ?? ";
     }
 }
 

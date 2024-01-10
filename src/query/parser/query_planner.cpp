@@ -151,9 +151,17 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
             assert(fc_params.size() == 1);
             // TODO: handle UDFs with more than one parameter
             if (prefix == "pb") {
+                auto p_idx = extract_tuple_id(fc_params[0]->Var()->getText());
+                auto prop_name = fc_params[0]->Identifier_() != nullptr ? fc_params[0]->Identifier_()->getText() : "";
+
+                // TODO: handle all builtin functions in the same way
                 if (fc_name == "label") {
-                    auto p_idx = extract_tuple_id(fc_params[0]->Var()->getText());
                     pexpr_list.push_back(projection::expr{ p_idx, "", prj::label});
+                }
+                else if (fc_name == "year") {
+                    pexpr_list.push_back(projection::expr{ p_idx, prop_name, prj::function});
+                    prj_udf_list.push_back([=](auto ctx, auto res) { 
+                            return builtin::pr_year(res, prop_name); });
                 }
             }
             else if (prefix == "udf") {
@@ -465,7 +473,7 @@ std::any query_planner::visitGroup_by_op(poseidonParser::Group_by_opContext *ctx
         else if (aggr->aggr_func()->Max_() != nullptr)
             aggr_func = aggregate::expr::f_max;
 
-        if (tspec->IntType_() == nullptr)
+        if (tspec->IntType_() != nullptr)
             aggr_type = int_type;
         else if (tspec->DoubleType_() != nullptr)
             aggr_type = double_type;
