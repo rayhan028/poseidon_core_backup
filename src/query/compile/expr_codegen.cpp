@@ -157,6 +157,14 @@ void* expr_codegen::visit(std::shared_ptr<gt_predicate> op) {
         return gen_.get_builder()->CreateICmpSGT(lhs, rhs);
 }
 
-void* expr_codegen::visit(std::shared_ptr<and_predicate> op) {}
+void* expr_codegen::visit(std::shared_ptr<and_predicate> op) {
+    auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
+    auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
+    return gen_.get_builder()->CreateAnd({ lhs, rhs });
+}
 
-void* expr_codegen::visit(std::shared_ptr<or_predicate> op) {}
+void* expr_codegen::visit(std::shared_ptr<or_predicate> op) {
+    auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
+    auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
+    return gen_.get_builder()->CreateOr({ lhs, rhs });
+}

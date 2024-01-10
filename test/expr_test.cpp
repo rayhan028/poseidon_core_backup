@@ -155,12 +155,12 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
         qr_tuple tup;
         auto ex1 = EQ(Float(42.0), Float(42.0));
         REQUIRE(interpret_expression(qctx, ex1, tup) == true);
-        REQUIRE(compile_expression(qctx, ex1, tup, true) == true);
+        REQUIRE(compile_expression(qctx, ex1, tup) == true);
 
         auto ex2 = EQ(Float(42.0), Float(15.0));
         REQUIRE(interpret_expression(qctx, ex2, tup) == false);
         //REQUIRE(load_compiled_expression(qctx, ex2, tup, 22) == false);
-        REQUIRE(compile_expression(qctx, ex2, tup, true) == false);
+        REQUIRE(compile_expression(qctx, ex2, tup) == false);
 
         auto ex3 = LT(Float(42.0), Float(15.0));
         REQUIRE(interpret_expression(qctx, ex3, tup) == false);
@@ -334,6 +334,29 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
            
             return true;
         });
+    }
+
+    SECTION("plain expressions with logical ops") {
+        qr_tuple tup;
+        auto ex1 = AND(EQ(Int(42), Int(42)), EQ(Float(33.0), Float(33.0)));
+        REQUIRE(interpret_expression(qctx, ex1, tup) == true);
+        REQUIRE(compile_expression(qctx, ex1, tup, true) == true);
+
+        auto ex2 = AND(EQ(Int(42), Int(42)), EQ(Float(33.0), Float(88.0)));
+        REQUIRE(interpret_expression(qctx, ex2, tup) == false);
+        REQUIRE(compile_expression(qctx, ex2, tup) == false);
+
+        auto ex3 = OR(EQ(Int(42), Int(42)), EQ(Float(33.0), Float(88.0)));
+        REQUIRE(interpret_expression(qctx, ex3, tup) == true);
+        REQUIRE(compile_expression(qctx, ex3, tup) == true);
+
+        auto ex4 = OR(EQ(Float(33.0), Float(88.0)), EQ(Int(42), Int(42)));
+        REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+        REQUIRE(compile_expression(qctx, ex4, tup) == true);
+
+        auto ex5 = OR(EQ(Float(33.0), Float(88.0)), EQ(Int(40), Int(42)));
+        REQUIRE(interpret_expression(qctx, ex5, tup) == false);
+        REQUIRE(compile_expression(qctx, ex5, tup) == false);
     }
 
     gen.reset();
