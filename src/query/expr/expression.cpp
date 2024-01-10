@@ -32,6 +32,11 @@ void* expression_visitor::visit(std::shared_ptr<neq_predicate> op) {
     return nullptr; 
 } 
 
+void* expression_visitor::visit(std::shared_ptr<regex_predicate> op) { 
+    if (op->left_) op->left_->accept(*this);
+    if (op->right_) op->right_->accept(*this);
+    return nullptr; 
+} 
 void* expression_visitor::visit(std::shared_ptr<le_predicate> op) { 
     if (op->left_) op->left_->accept(*this);
     if (op->right_) op->right_->accept(*this);

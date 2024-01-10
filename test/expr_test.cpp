@@ -224,6 +224,15 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
 
         auto ex4 = NEQ(Str("Hallo"), Str("Hallo2"));
         REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+
+        auto ex5 = RE(Str("Hallo"), Str("H.*"));
+        REQUIRE(interpret_expression(qctx, ex5, tup) == true);
+
+        auto ex6 = RE(Str("Halto"), Str("Hal[lt]o"));
+        REQUIRE(interpret_expression(qctx, ex6, tup) == true);
+
+        auto ex7 = RE(Str("None"), Str("H.*"));
+        REQUIRE(interpret_expression(qctx, ex7, tup) == false);
     }
 
    SECTION("plain expressions with ptime") {

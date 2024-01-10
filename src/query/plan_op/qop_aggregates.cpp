@@ -17,13 +17,18 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <boost/functional/hash.hpp>
 #include "qop_aggregates.hpp"
 
 
 int aggregate::get_int_value(query_ctx &ctx, const qr_tuple& v, const expr& ex) {
-  return ex.pkey == UNKNOWN_CODE ? boost::get<int>(v[ex.var]) 
+  return ex.pkey == UNKNOWN_CODE ? qv_get_int(v[ex.var]) 
               : get_property_value<int>(ctx, v, ex.var, ex.pkey);
+}
 
+boost::posix_time::ptime aggregate::get_ptime_value(query_ctx &ctx, const qr_tuple& v, const expr& ex) {
+  return ex.pkey == UNKNOWN_CODE ? qv_get_ptime(v[ex.var]) 
+              : get_property_value<boost::posix_time::ptime>(ctx, v, ex.var, ex.pkey);
 }
 
 double aggregate::get_double_value(query_ctx &ctx, const qr_tuple& v, const expr& ex) {
@@ -31,12 +36,12 @@ double aggregate::get_double_value(query_ctx &ctx, const qr_tuple& v, const expr
     return get_property_value<double>(ctx, v, ex.var, ex.pkey);
   auto qv = v[ex.var];
   if (qv.which() == int_type)
-    return (double)boost::get<int>(qv); 
-  return boost::get<double>(qv);
+    return (double)qv_get_int(qv); 
+  return qv_get_double(qv);
 }
 
 std::string aggregate::get_string_value(query_ctx &ctx, const qr_tuple& v, const expr& ex) {
-  return ex.pkey == UNKNOWN_CODE ? boost::get<std::string>(v[ex.var]) 
+  return ex.pkey == UNKNOWN_CODE ? qv_get_string(v[ex.var]) 
               : get_property_value<std::string>(ctx, v, ex.var, ex.pkey);
 }
 
@@ -318,31 +323,44 @@ uint64_t group_by::hasher(query_ctx &ctx, const qr_tuple& v) {
         break;
       case int_type:
       {
-        auto i = (!g.property.empty() ?  aggregate::get_int_value(ctx, v, expr(g.var, g.pkey)) : boost::get<int>(elem));
+        auto i = (!g.property.empty() ?  aggregate::get_int_value(ctx, v, expr(g.var, g.pkey)) : qv_get_int(elem));
         h ^= i + 0x9e3779b9 + (h << 6) + (h >> 2);
         break;
       }
       case uint64_type:
       {
-        auto u = (!g.property.empty() ?  aggregate::get_uint64_value(ctx, v, expr(g.var, g.pkey)) : boost::get<uint64_t>(elem));
+        auto u = (!g.property.empty() ?  aggregate::get_uint64_value(ctx, v, expr(g.var, g.pkey)) : qv_get_uint64(elem));
         h ^= u + 0x9e3779b9 + (h << 6) + (h >> 2);
         break;
       }
       case double_type:
       {
-        auto d = (!g.property.empty() ?  aggregate::get_double_value(ctx, v, expr(g.var, g.pkey)) : boost::get<double>(elem));
+        auto d = (!g.property.empty() ?  aggregate::get_double_value(ctx, v, expr(g.var, g.pkey)) : qv_get_double(elem));
         h ^= std::hash<double>{}(d) + 0x9e3779b9 + (h << 6) + (h >> 2);
         break;
       }
       case string_type:
       {
-        auto s = (!g.property.empty() ?  aggregate::get_string_value(ctx, v, expr(g.var, g.pkey)) : boost::get<std::string>(elem));
+        auto s = (!g.property.empty() ?  aggregate::get_string_value(ctx, v, expr(g.var, g.pkey)) : qv_get_string(elem));
         h ^= std::hash<std::string>{}(s) + 0x9e3779b9 + (h << 6) + (h >> 2);
         break;
       }
       case node_descr_type:
       case rship_descr_type:
+        break;
       case ptime_type:
+      {
+        auto p = (!g.property.empty() ?  aggregate::get_ptime_value(ctx, v, expr(g.var, g.pkey)) : qv_get_ptime(elem));
+        auto d = p.date();
+        auto t = p.time_of_day();
+        std::size_t seed = 0;
+        boost::hash_combine(seed, d.day_count().as_number());
+        boost::hash_combine(seed, t.ticks());
+        h ^= seed;
+        // h ^= std::hash<boost::posix_time::ptime>{}(p) + 0x9e3779b9 + (h << 6) + (h >> 2);
+        break;
+
+      }
       case array_type:
       default:
         // TODO
@@ -420,6 +438,9 @@ void group_by::finish(query_ctx &ctx) {
             break;
           case uint64_type:
             v.push_back(qv_get_uint64(tup[i]));
+            break;
+          case ptime_type:
+            v.push_back(qv_get_ptime(tup[i]));
             break;
           default:
             break;

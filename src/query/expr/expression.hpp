@@ -44,7 +44,8 @@ enum class expr_op {
     MULT = 11,
     DIV = 12,
     MOD = 13,
-    CALL = 14
+    CALL = 14,
+    REGEX = 15
 };
 
 enum class expr_type {
@@ -72,6 +73,7 @@ struct time_literal;
 struct func_call;
 struct eq_predicate;
 struct neq_predicate;
+struct regex_predicate;
 struct le_predicate;
 struct lt_predicate;
 struct ge_predicate;
@@ -95,6 +97,7 @@ public:
     virtual void* visit(std::shared_ptr<func_call> op) { return nullptr; }
     virtual void* visit(std::shared_ptr<eq_predicate> op);   
     virtual void* visit(std::shared_ptr<neq_predicate> op);  
+    virtual void* visit(std::shared_ptr<regex_predicate> op);  
     virtual void* visit(std::shared_ptr<le_predicate> op);
     virtual void* visit(std::shared_ptr<lt_predicate> op);
     virtual void* visit(std::shared_ptr<ge_predicate> op);
@@ -152,21 +155,6 @@ struct variable : public expression, std::enable_shared_from_this<variable> {
 
 inline expr Variable(unsigned int id, const std::string& p = "") { return std::make_shared<variable>(id, p); }
 inline expr Variable(unsigned int id, const std::string& p, dcode_t pc) { return std::make_shared<variable>(id, p, pc); }
-
-/*
-struct key_token : public expression, std::enable_shared_from_this<key_token> {
-    std::string key_;
-    unsigned qr_id_; 
-
-    key_token(unsigned qr_id, std::string key);
-
-    std::string dump() const override;
-
-    void* accept(expression_visitor& fep) override;
-};
-
-inline expr Key(unsigned qr_id, std::string value = "") { return std::make_shared<key_token>(qr_id, value); }
-*/
 
 struct string_literal : public expression, std::enable_shared_from_this<string_literal> {
     std::string str_;

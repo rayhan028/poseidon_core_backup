@@ -130,6 +130,12 @@ uint64_t get_property_value<uint64_t>(query_ctx &ctx, const qr_tuple& v, std::si
 }
 
 template <>
+ptime get_property_value<ptime>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
+  auto qv = get_property_value(ctx, v, var, prop);
+  return qv.get<ptime>();
+}
+
+template <>
 double get_property_value<double>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
   double res = 0;
   auto qv = get_property_value(ctx, v, var, prop);
@@ -214,6 +220,12 @@ uint64_t get_property_value<uint64_t>(query_ctx &ctx, const qr_tuple& v, std::si
       break;
   }
   return res;
+}
+
+template <>
+ptime get_property_value<ptime>(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
+  auto qv = get_property_value(ctx, v, var, pkey);
+  return qv.get<ptime>();
 }
 
 template <>
@@ -324,7 +336,7 @@ void node_has_label::process(query_ctx &ctx, const qr_tuple &v) {
 
 void get_from_node::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
-  auto rship = boost::get<relationship *>(v.back());
+  auto rship = qv_get_relationship(v.back());
   auto v2 = append(v, query_result(&(ctx.gdb_->node_by_id(rship->src_node))));
   consume_(ctx, v2);
   PROF_POST(1);
@@ -339,7 +351,7 @@ void get_from_node::dump(std::ostream &os) const {
 
 void get_to_node::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
-  auto rship = boost::get<relationship *>(v.back());
+  auto rship = qv_get_relationship(v.back());
   auto v2 = append(v, query_result(&(ctx.gdb_->node_by_id(rship->dest_node))));
   consume_(ctx, v2);
   PROF_POST(1);
@@ -358,6 +370,7 @@ template <> struct fmt::formatter<rship_description> : ostream_formatter {};
 void printer::dump(std::ostream &os) const { os << "printer()"; }
 
 void printer::process(query_ctx &ctx, const qr_tuple &v) {
+  std::unique_lock lock(m_);
   if (ntuples_ == 0) {
     std::cout << "+";
     for (auto i = 0u; i < v.size(); i++)

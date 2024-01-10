@@ -47,14 +47,6 @@ struct shortest_path_opr : public qop, public std::enable_shared_from_this<short
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
   path_item path_;
   bool bidirectional_;
   bool all_spaths_;
@@ -82,14 +74,6 @@ struct weighted_shortest_path_opr : public qop, public std::enable_shared_from_t
     vis.visit(shared_from_this()); 
     if (has_subscriber())
       subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
   }
 
   path_item path_;
@@ -171,14 +155,6 @@ struct k_weighted_shortest_path_opr : public qop, public std::enable_shared_from
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
   std::size_t k_;
   path_item path_;
   bool bidirectional_;
@@ -211,14 +187,6 @@ struct csr_data : public qop, public std::enable_shared_from_this<csr_data> {
     vis.visit(shared_from_this()); 
     if (has_subscriber())
       subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
   }
 
   std::size_t pos_;

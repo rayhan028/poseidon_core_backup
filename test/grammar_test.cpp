@@ -27,6 +27,7 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE(qp.parse_("Filter($0.id == 42, NodeScan('Person'))"));
         REQUIRE(qp.parse_("Filter($0.num > 1.0, NodeScan('Person'))"));
         REQUIRE(qp.parse_("Filter($0.num > 1.0 && $1.id == 13, NodeScan('Person'))"));
+        REQUIRE(qp.parse_("Filter($0.name =~ 'A.*', NodeScan('Person'))"));
     }
 
     SECTION("Limit") {

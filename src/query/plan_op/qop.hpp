@@ -241,11 +241,6 @@ struct qop {
    */
   virtual void accept(qop_visitor& vis) = 0;
 
-  /**
-   * Accept method for code generation
-   */
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) = 0;
-
   unsigned operator_id_;
 
   qop_type type_;
@@ -280,14 +275,6 @@ struct is_property : public qop, public std::enable_shared_from_this<is_property
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 1;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
   std::string property;
   dcode_t pcode;
   std::function<bool(const p_item &)> predicate;
@@ -316,14 +303,6 @@ struct node_has_label : public qop, public std::enable_shared_from_this<node_has
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = labels.empty() ? 1 : labels.size();
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
   std::vector<std::string> labels;
   std::string label;
   dcode_t lcode;
@@ -336,14 +315,6 @@ struct expand : public qop, public std::enable_shared_from_this<expand> {
     vis.visit(shared_from_this()); 
     if (has_subscriber())
       subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 1;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
   }
 
   EXPAND dir_;
@@ -407,17 +378,9 @@ struct printer : public qop, public std::enable_shared_from_this<printer> {
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    if(has_subscriber())
-      subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
   std::size_t ntuples_;
   std::size_t output_width_;
+  mutable std::mutex m_; 
 };
 
 /**
@@ -436,14 +399,6 @@ struct limit_result : public qop, std::enable_shared_from_this<limit_result> {
     vis.visit(shared_from_this()); 
     if (has_subscriber())
       subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
   }
 
   std::size_t num_;
@@ -488,14 +443,6 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
       }
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
   result_set results_;
   static std::function<bool(const qr_tuple &, const qr_tuple &)> cmp_func_;
 };
@@ -516,14 +463,6 @@ struct distinct_tuples : public qop, public std::enable_shared_from_this<distinc
     vis.visit(shared_from_this()); 
     if (has_subscriber())
       subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
   }
 
   std::mutex m_;
@@ -555,14 +494,6 @@ struct filter_op : public qop, public std::enable_shared_from_this<filter_op> {
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 1;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
   std::function<bool(const qr_tuple &)> pred_func1_;
   std::function<bool(const qr_tuple &, expr&)> pred_func2_;
   expr ex_;
@@ -591,14 +522,6 @@ struct union_all_op : public qop, public std::enable_shared_from_this<union_all_
     vis.visit(shared_from_this()); 
     if (has_subscriber())
       subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
   }
 
   bool is_binary() const override { return true; }
@@ -634,16 +557,6 @@ struct collect_result : public qop, public std::enable_shared_from_this<collect_
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 1;
-
-    vis.visit(shared_from_this());
-    if(has_subscriber())
-      subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-
-  }
-
   result_set &results_;
 private:
   std::mutex collect_mtx;
@@ -669,15 +582,6 @@ struct end_pipeline : public qop, public std::enable_shared_from_this<end_pipeli
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-
-    vis.visit(shared_from_this());
-    if(has_subscriber()) {
-      //subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
-    }
-  }
-
   void set_other(qop_type other, std::size_t other_idx = -1) {
     other_ = other;
     other_idx_ = other_idx;
@@ -686,138 +590,5 @@ struct end_pipeline : public qop, public std::enable_shared_from_this<end_pipeli
   qop_type other_;
   std::size_t other_idx_;
 };
-
-#if 0
-/**
- * Macro to simplify definition of arguments in project etc.
- * Usage: Instead of requiring to define a lambda expression
- *        we simply use PExpr_(my_func(res, ...))
- *        Note that res has to be used to refer to the query_result vector.
- */
-#define PExpr_(i, func)                                                        \
-  projection::expr {                                                           \
-    i, [&](auto ctx, auto res) { return func; }                                \
-  }
-
-#define PVar_(i)                                                               \
-  projection::expr { i, nullptr }
-
-/**
- * Structure to express projections on tuple elements
- */
-struct projection_expr {
-    /**
-     * Possible projection types
-     */
-    enum PROJECTION_TYPE {
-        PROPERTY_PR,
-        FORWARD_PR,
-        FUNCTIONAL_VAL,
-        CONDITIONAL_VAL,
-    };
-
-    typedef int (*int_prj_func_node)(node *n);
-
-    typedef query_result (*udf_projection)(query_ctx*, void*);
-    /**
-     * The position of the tuple element to project
-     */
-    std::size_t id;
-
-    /**
-     * The projection key / property name
-     */
-    std::string key;
-
-    /**
-     * The property type
-     */
-    result_type type;
-
-    /**
-     * Flag to project only if the key exists
-     */
-    bool if_exist_;
-
-    /**
-     * List to check if a tuple element has the properties
-     */
-    std::vector<std::string> has_properties;
-
-    /**
-     * If/Else construct to express an alternative projection
-     */
-    std::pair<std::string, std::string> then_else;
-    
-    /**
-     * UDF for projection
-     */
-    int_prj_func_node int_node_func;
-    udf_projection udf_function;
-
-    /**
-     * The actual projection type
-     */
-    PROJECTION_TYPE prt;
-
-    projection_expr(udf_projection udf) : udf_function(udf), prt(PROJECTION_TYPE::FUNCTIONAL_VAL) {}
-    projection_expr(std::size_t i) : id(i), type(result_type::none), int_node_func(nullptr), prt(PROJECTION_TYPE::FORWARD_PR)  {}
-    projection_expr(std::size_t i, int_prj_func_node func) : id(i), int_node_func(func), prt(PROJECTION_TYPE::FUNCTIONAL_VAL) {}
-    projection_expr(std::size_t i, std::string k, result_type t, bool if_exist = false) : id(i), key(k), type(t), if_exist_(if_exist), prt(PROJECTION_TYPE::PROPERTY_PR) {}
-    projection_expr(std::size_t i, std::vector<std::string> properties, std::pair<std::string, std::string> then) : 
-        id(i), has_properties(properties), then_else(then), prt(PROJECTION_TYPE::CONDITIONAL_VAL) {}
-};
-
-/**
- * projection implements a project operator.
- */
-struct projection : public qop, public std::enable_shared_from_this<projection> {
-  struct expr {
-    std::size_t vidx;
-    std::function<query_result(query_ctx&, const query_result&)> func;
-    expr() = default;
-    // expr(const expr& ex) = default;
-    expr(std::size_t i, std::function<query_result(query_ctx&, const query_result&)> f) : vidx(i), func(f) {}
-  };
-
-  using expr_list = std::vector<expr>;
-
-  projection(const expr_list &exprs);
-  projection(const expr_list &exprs, std::vector<projection_expr>& prexpr);
-
-  projection(const std::vector<projection_expr>& prexpr) : prexpr_(prexpr) {
-    type_ = qop_type::project;
-  }
-
-  void dump(std::ostream &os) const override;
-
-  void process(query_ctx &ctx, const qr_tuple &v);
-
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
-    if (has_subscriber())
-      subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);      
-  }
-
-  void init_expr_vars();
-
-  expr_list exprs_;
-  std::size_t nvars_, npvars_;
-  std::vector<std::size_t> var_map_;
-  std::set<std::size_t> accessed_vars_;
-
-  std::vector<projection_expr> prexpr_;
-  std::vector<int> new_types;
-};
-
-#endif
 
 #endif

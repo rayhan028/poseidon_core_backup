@@ -42,10 +42,6 @@ struct create_node : public qop, public std::enable_shared_from_this<create_node
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
-  }
-
   std::string label;
   properties_t props;
 };
@@ -72,10 +68,6 @@ struct create_relationship : public qop, public std::enable_shared_from_this<cre
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
-  }
-
   std::string label;
   properties_t props;
   std::pair<int, int> src_des_nodes_;
@@ -98,10 +90,6 @@ struct update_node : public qop, public std::enable_shared_from_this<update_node
     vis.visit(shared_from_this()); 
     if (has_subscriber())
       subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
   }
 
   std::size_t var_no_;
@@ -128,10 +116,6 @@ struct detach_node : public qop, public std::enable_shared_from_this<detach_node
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
-  }
-
   std::size_t pos_;
   // std::vector<std::size_t> rels_;
 };
@@ -154,10 +138,6 @@ struct remove_node : public qop, public std::enable_shared_from_this<remove_node
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
-  }
-
   std::size_t pos_;
 };
 
@@ -177,10 +157,6 @@ struct remove_relationship : public qop, public std::enable_shared_from_this<rem
     vis.visit(shared_from_this()); 
     if (has_subscriber())
       subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
   }
   
   std::size_t pos_;

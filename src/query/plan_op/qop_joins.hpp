@@ -44,14 +44,6 @@ struct cross_join_op : public qop, public std::enable_shared_from_this<cross_joi
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 1;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
   bool is_binary() const override { return true; }
 
   qop_ptr &get_rhs() { return rhs_; }
@@ -84,14 +76,6 @@ struct nested_loop_join_op : public qop, public std::enable_shared_from_this<nes
     vis.visit(shared_from_this()); 
     if (has_subscriber())
       subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 1;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
   }
 
   bool is_binary() const override { return true; }
@@ -131,14 +115,6 @@ struct hash_join_op : public qop, public std::enable_shared_from_this<hash_join_
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 1;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
-  }
-
   bool is_binary() const override { return true; }
 
   qop_ptr &get_rhs() { return rhs_; }
@@ -173,8 +149,6 @@ struct left_outer_join_op : public qop, public std::enable_shared_from_this<left
     if (has_subscriber())
       subscriber_->accept(vis);
   }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {}
 
   bool is_binary() const override { return true; }
   

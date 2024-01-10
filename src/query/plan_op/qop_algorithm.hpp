@@ -72,14 +72,6 @@ struct algorithm_op : public qop, public std::enable_shared_from_this<algorithm_
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_ += next_offset, interpreted);
-  }
-
     std::string algorithm_name_;          // name of algorithm
     param_list args_;                     // parameter list
     tuple_algorithm_func tuple_func_ptr_; // function pointer to a algorithm called in tuple mode (only one of both is used)

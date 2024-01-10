@@ -17,6 +17,7 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stack>
+#include <regex>
 
 #include "properties.hpp"
 #include "expr_interpreter.hpp"
@@ -326,6 +327,19 @@ public:
         return nullptr;
     }
     
+    virtual void* visit(std::shared_ptr<regex_predicate> op) override {
+        //std::cout << "visit regex_predicate: =~" << std::endl;  
+        op->left_->accept(*this);     
+        if(stack_.empty())
+            throw query_processing_error("invalid =~ expression");
+
+        auto v1 = pop(stack_);
+
+        bool res = std::regex_match(qv_get_string(v1), op->re_) ? 1 : 0;
+        //spdlog::info("visit regex_predicate: {} = {}", qv_get_string(v1), res);       
+        stack_.push(query_result(res ? 1 : 0));
+    }
+
     virtual void* visit(std::shared_ptr<le_predicate> op) override {
         // std::cout << "visit le_predicate: <=" << std::endl;       
         op->left_->accept( *this);     

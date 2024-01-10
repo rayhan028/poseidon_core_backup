@@ -23,9 +23,9 @@ void foreach_from_relationship::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   node *n = nullptr;
   if (npos == std::numeric_limits<int>::max())
-    n = boost::get<node *>(v.back());
+    n = qv_get_node(v.back());
   else
-    n = boost::get<node *>(v[npos]);
+    n = qv_get_node(v[npos]);
 
   if (lcode == 0)
     lcode = ctx.gdb_->get_code(label);
@@ -50,9 +50,9 @@ void foreach_variable_from_relationship::process(query_ctx &ctx,
   PROF_PRE;
   node *n = nullptr;
   if (npos == std::numeric_limits<int>::max())
-    n = boost::get<node *>(v.back());
+    n = qv_get_node(v.back());
   else
-    n = boost::get<node *>(v[npos]);
+    n = qv_get_node(v[npos]);
 
   if (lcode == 0)
     lcode = ctx.gdb_->get_code(label);
@@ -77,7 +77,7 @@ void foreach_variable_from_relationship::dump(std::ostream &os) const {
 void foreach_all_relationship::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   node *n = npos == std::numeric_limits<int>::max() ?
-            boost::get<node *>(v.back()) : boost::get<node *>(v[npos]);
+            qv_get_node(v.back()) : qv_get_node(v[npos]);
 
   if (lcode == 0)
     lcode = ctx.gdb_->get_code(label);
@@ -108,7 +108,7 @@ void foreach_variable_all_relationship::process(query_ctx &ctx,
                                                  const qr_tuple &v) {
   PROF_PRE;
   node *n = npos == std::numeric_limits<int>::max() ?
-            boost::get<node *>(v.back()) : boost::get<node *>(v[npos]);
+            qv_get_node(v.back()) : qv_get_node(v[npos]);
 
   if (lcode == 0)
     lcode = ctx.gdb_->get_code(label);
@@ -142,9 +142,9 @@ void foreach_to_relationship::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   node *n = nullptr;
   if (npos == std::numeric_limits<int>::max())
-    n = boost::get<node *>(v.back());
+    n = qv_get_node(v.back());
   else
-    n = boost::get<node *>(v[npos]);
+    n = qv_get_node(v[npos]);
 
   if (lcode == 0)
     lcode = ctx.gdb_->get_code(label);
@@ -168,9 +168,9 @@ void foreach_variable_to_relationship::process(query_ctx &ctx,
   PROF_PRE;
   node *n = nullptr;
   if (npos == std::numeric_limits<int>::max())
-    n = boost::get<node *>(v.back());
+    n = qv_get_node(v.back());
   else
-    n = boost::get<node *>(v[npos]);
+    n = qv_get_node(v[npos]);
 
   if (lcode == 0)
     lcode = ctx.gdb_->get_code(label);

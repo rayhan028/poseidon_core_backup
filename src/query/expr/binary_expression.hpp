@@ -20,6 +20,7 @@
 #ifndef binary_expression_hpp_
 #define binary_expression_hpp_
 
+#include <regex>
 #include "expression.hpp"
 
 struct binary_expression : public expression {
@@ -110,5 +111,16 @@ struct or_predicate : public binary_predicate, std::enable_shared_from_this<or_p
 };
 
 inline bin_expr OR(expr lhs, expr rhs) { return std::make_shared<or_predicate>(lhs, rhs); }
+
+struct regex_predicate : public binary_predicate, std::enable_shared_from_this<regex_predicate> {
+    regex_predicate(expr const left, expr const right);
+
+    void* accept(expression_visitor &fep) override;
+
+    std::regex re_;
+};
+
+inline bin_expr RE(expr lhs, expr rhs) { return std::make_shared<regex_predicate>(lhs, rhs); }
+
 
 #endif

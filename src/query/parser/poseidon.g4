@@ -103,7 +103,7 @@ filter_op : Filter_ '(' logical_expr ',' query_operator ')' ;
 logical_expr : boolean_expr ( OR boolean_expr )* ;
 boolean_expr : equality_expr ( AND equality_expr )* ;
 equality_expr : relational_expr ( (EQUALS | NOTEQUALS) relational_expr)* ;
-relational_expr : additive_expr ( (LT | LTEQ | GT | GTEQ) additive_expr)* ;
+relational_expr : additive_expr ( (LT | LTEQ | GT | GTEQ | REGEX) additive_expr)* ;
 additive_expr : multiplicative_expr ( (PLUS_ | '-') multiplicative_expr )* ;
 multiplicative_expr : unary_expr (( MULT | DIV | MOD ) unary_expr)* ;
 unary_expr : NOT? primary_expr ;
@@ -232,6 +232,7 @@ PLUS_     :    '+';
 MULT      :    '*';
 DIV       :    '/';
 MOD       :    '%';
+REGEX     :    '=~';
 NOT       :    '!' | 'not';
 
 WHITESPACE : [ \t\r\n]+ -> skip ;

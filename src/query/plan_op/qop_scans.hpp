@@ -45,15 +45,6 @@ struct scan_nodes : public qop, public std::enable_shared_from_this<scan_nodes> 
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = labels.empty() ? 1 : labels.size();
-
-    vis.visit(shared_from_this());
-    if(has_subscriber())
-      subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
-  }
-
   std::string label;
   std::vector<std::string> labels;
   std::map<std::size_t, std::vector<std::size_t>> ranges;
@@ -78,14 +69,6 @@ struct index_scan : public qop, public std::enable_shared_from_this<index_scan> 
     vis.visit(shared_from_this()); 
     if (has_subscriber())
       subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 3;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);
   }
 
   index_id idx;

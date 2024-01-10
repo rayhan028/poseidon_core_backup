@@ -79,14 +79,6 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor& vis, unsigned& op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 0;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_ += next_offset, interpreted);      
-  }
-
   void init_expressions();
 
   expr_list exprs_; // the list of defined projection expressions

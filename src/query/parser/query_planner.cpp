@@ -836,6 +836,12 @@ std::any query_planner::visitRelational_expr(poseidonParser::Relational_exprCont
             auto mult_expr = GE(lhs_expr, rhs_expr);
             lhs_expr = mult_expr;
         }
+        else if (ctx->REGEX(i-1) != nullptr) {
+            if (rhs_expr->ftype_ != expr_type::STRING)
+                throw query_processing_error("invalid regular expression");
+            auto re_expr = RE(lhs_expr, rhs_expr);
+            lhs_expr = re_expr;            
+        }
     }
     return std::make_any<expr>(lhs_expr);      
 }

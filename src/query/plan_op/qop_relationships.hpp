@@ -39,14 +39,6 @@ struct foreach_relationship : public qop, public std::enable_shared_from_this<fo
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    operator_id_ = op_id;
-    auto next_offset = 1;
-
-    vis.visit(shared_from_this());
-    subscriber_->codegen(vis, operator_id_+=next_offset, interpreted);    
-  }
-
   RSHIP_DIR dir_;
   std::string label;
   dcode_t lcode;
@@ -95,10 +87,6 @@ struct foreach_variable_from_relationship : public foreach_relationship {
     if (has_subscriber())
       subscriber_->accept(vis);
   }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
-  }
 };
 
 /**
@@ -121,9 +109,6 @@ struct foreach_all_relationship : public foreach_relationship {
       subscriber_->accept(vis);
   }
 
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
-  }
 };
 
 /**
@@ -146,10 +131,6 @@ struct foreach_variable_all_relationship : public foreach_relationship {
     vis.visit(shared_from_this()); 
     if (has_subscriber())
       subscriber_->accept(vis);
-  }
-
-  virtual void codegen(qop_visitor & vis, unsigned & op_id, bool interpreted = false) override {
-    
   }
 };
 

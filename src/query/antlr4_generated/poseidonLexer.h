@@ -26,7 +26,7 @@ public:
     NAME_ = 55, STRING_ = 56, COLON_ = 57, DOUBLE_COLON = 58, COMMA_ = 59, 
     LPAREN = 60, RPAREN = 61, LBRACKET = 62, RBRACKET = 63, OR = 64, AND = 65, 
     EQUALS = 66, NOTEQUALS = 67, LT = 68, LTEQ = 69, GT = 70, GTEQ = 71, 
-    PLUS_ = 72, MULT = 73, DIV = 74, MOD = 75, NOT = 76, WHITESPACE = 77
+    PLUS_ = 72, MULT = 73, DIV = 74, MOD = 75, REGEX = 76, NOT = 77, WHITESPACE = 78
   };
 
   explicit poseidonLexer(antlr4::CharStream *input);

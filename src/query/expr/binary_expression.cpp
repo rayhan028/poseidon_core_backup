@@ -151,3 +151,15 @@ void* or_predicate::accept(expression_visitor &fep) {
     return fep.visit(shared_from_this());
     // TODO: do binary stuff here
 }
+
+regex_predicate::regex_predicate(const expr left, const expr right)
+        : binary_predicate(expr_op::REGEX, left, right) {
+    rtype_ = ftype_ = expr_type::BOOL_OP;
+    name_ = "REGEX";
+    auto s = dynamic_cast<string_literal *>(right.get());
+    re_ = std::regex(s->str_);
+}
+
+void* regex_predicate::accept(expression_visitor &fep) {
+    return fep.visit(shared_from_this());
+}
