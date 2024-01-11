@@ -101,6 +101,7 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
         REQUIRE(fun2 != nullptr);
         REQUIRE(fun3 != nullptr);
 
+        auto fun_iterate = fun2; // workaround for a bug in clang before C++20
         uint8_t* buf = (uint8_t *)malloc(100);
         // aggr[0]: sum(id), aggr[1] = count(id), aggr2[0] = avg(id)
         uint64_t *aggr = reinterpret_cast<uint64_t *>(buf);
@@ -117,7 +118,7 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
             qr_tuple v(1);
             auto& node1 = graph->node_by_id(n1);
             v[0] = &node1;
-            fun2(&ctx, buf, 100, &v);
+            fun_iterate(&ctx, buf, 100, &v);
             REQUIRE(aggr[0] == 42);
             REQUIRE(aggr[1] == 1);
             REQUIRE(aggr[2] == 42);
@@ -125,7 +126,7 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
 
             auto& node2 = graph->node_by_id(n2);
             v[0] = &node2;
-            fun2(&ctx, buf, 100, &v);
+            fun_iterate(&ctx, buf, 100, &v);
             REQUIRE(aggr[0] == 86);
             REQUIRE(aggr[1] == 2);
             REQUIRE(aggr[2] == 86);
@@ -209,6 +210,7 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
         REQUIRE(fun1 != nullptr);
         REQUIRE(fun2 != nullptr);
         REQUIRE(fun3 != nullptr);
+        auto fun_iterate = fun2;
 
         uint8_t *buf = new uint8_t[1024];
         fun1(buf, 1024);
@@ -217,11 +219,11 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
             qr_tuple v(1);
             auto& node1 = graph->node_by_id(n1);
             v[0] = &node1;
-            fun2(&ctx, buf, 1024, &v);
+            fun_iterate(&ctx, buf, 1024, &v);
 
             auto& node2 = graph->node_by_id(n2);
             v[0] = &node2;
-            fun2(&ctx, buf, 1024, &v);
+            fun_iterate(&ctx, buf, 1024, &v);
 
             return true;
         });

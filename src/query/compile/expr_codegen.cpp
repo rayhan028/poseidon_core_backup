@@ -65,7 +65,7 @@ void* expr_codegen::visit(std::shared_ptr<func_call> op) {}
  */
 void* expr_codegen::visit(std::shared_ptr<eq_predicate> op) {
    // TODO: handle other types than int
-   spdlog::info("visit eq_predicate: {}", (int)op->result_type());
+    // spdlog::info("visit eq_predicate: {}", (int)op->result_type());
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());

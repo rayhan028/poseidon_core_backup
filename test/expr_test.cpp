@@ -90,6 +90,8 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
                         {"lastName", std::any(std::string("Sator"))}});
         return true;
     });
+    graph->flush();
+    
     query_ctx qctx(graph);
 
     SECTION("plain expressions with int") {
@@ -322,7 +324,7 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
             auto& n = graph->node_by_id(n1);
             tup[0] = &n;
    
-            auto ex1 = EQ(Fct("pb", "label", std::vector<expr>{ Variable(0)}), Str("Person"));
+            auto ex1 = EQ(Fct("pb", "label", std::vector<expr>{ Variable(0) }), Str("Person"));
             ex1->accept(vis);
             REQUIRE(interpret_expression(qctx, ex1, tup) == true);
 
@@ -349,7 +351,7 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
         qr_tuple tup;
         auto ex1 = AND(EQ(Int(42), Int(42)), EQ(Float(33.0), Float(33.0)));
         REQUIRE(interpret_expression(qctx, ex1, tup) == true);
-        REQUIRE(compile_expression(qctx, ex1, tup, true) == true);
+        REQUIRE(compile_expression(qctx, ex1, tup) == true);
 
         auto ex2 = AND(EQ(Int(42), Int(42)), EQ(Float(33.0), Float(88.0)));
         REQUIRE(interpret_expression(qctx, ex2, tup) == false);
