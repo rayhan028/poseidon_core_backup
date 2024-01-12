@@ -41,7 +41,7 @@ proj_list : '[' proj_expr (',' proj_expr)* ']' ;
 proj_expr : function_call
         | Var ('.' Identifier_)? ':' type_spec 
         ;
-type_spec : IntType_ | DoubleType_ | Uint64Type_ | StringType_ | DateType_ | ResultType_ ;
+type_spec : IntType_ | DoubleType_ | Uint64Type_ | StringType_ | DateType_ | NodeResultType_ | RshipResultType_ ;
 
 // Limit
 limit_op : Limit_ '(' INTEGER ',' query_operator ')' ;
@@ -181,7 +181,8 @@ Uint64Type_  : 'uint64';
 DoubleType_  : 'double' ;
 StringType_  : 'string' ;
 DateType_    : 'datetime' ;
-ResultType_  : 'qresult' ;
+NodeResultType_  : 'node' ;
+RshipResultType_  : 'rship' ;
 
 Count_       : 'count' ;
 Sum_         : 'sum' ;

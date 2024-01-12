@@ -155,36 +155,18 @@ auto q = query(gdb)
 
 In addition, there is a thin wrapper library for providing a Python API. This API allows creating and opening graph databases, importing CVS data, and specifying query execution plans. The latter reflects the C++ query class (see above).
 
-In the following Python example the database `imdb` is created by loading the IMDB data from three files.
+In the following Python example we assume an existing database `testdb` in the pool (directory) `demo``.
 
 ```python
 import poseidon
+p = poseidon.open_pool("demo", 1024 * 1024 * 80)
+g = p.open_graph("testdb", 5000)
 
-# create a new graph database
-graph = poseidon.graph_db()
-graph.create("imdb")
+res = g.query("Filter($0.title:string =~ 'Inception.*', NodeScan('Movies'))")
+for tup in res:
+  print(tup)
 
-# we need a mapping table for mapping logical node ids to ids used for
-# creating relationships
-m = graph.mapping()
-
-# import nodes and relationships for the IMDB database
-n = graph.import_nodes("Movies", "imdb-data/movies.csv", m)
-print(n, "movies imported.")
-n = graph.import_nodes("Actor", "imdb-data/actors.csv", m)
-print(n, "actors imported.")
-n = graph.import_relationships("imdb-data/roles.csv", m)
-print(n, "roles imported.")
-```
-
-After creating the graph database, it can be queried:
-
-```python
-q = poseidon.query(graph) \
-    .all_nodes("Movies") \
-    .print()
-
-q.start()
+p.close()
 ```
 
 ## Storage structure

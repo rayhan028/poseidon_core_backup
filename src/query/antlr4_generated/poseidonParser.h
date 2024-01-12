@@ -18,15 +18,16 @@ public:
     ForeachRelationship_ = 18, Aggregate_ = 19, GroupBy_ = 20, Sort_ = 21, 
     Distinct_ = 22, Create_ = 23, Union_ = 24, RemoveNode_ = 25, RemoveRelationship_ = 26, 
     DetachNode_ = 27, Algorithm_ = 28, IntType_ = 29, Uint64Type_ = 30, 
-    DoubleType_ = 31, StringType_ = 32, DateType_ = 33, ResultType_ = 34, 
-    Count_ = 35, Sum_ = 36, Avg_ = 37, Min_ = 38, Max_ = 39, UDF_ = 40, 
-    BUILTIN_ = 41, InExpandDir_ = 42, OutExpandDir_ = 43, TupleMode_ = 44, 
-    ResultSetMode_ = 45, FromDir_ = 46, ToDir_ = 47, AllDir_ = 48, DescOrder_ = 49, 
-    AscOrder_ = 50, INTEGER = 51, FLOAT = 52, Identifier_ = 53, Var = 54, 
-    NAME_ = 55, STRING_ = 56, COLON_ = 57, DOUBLE_COLON = 58, COMMA_ = 59, 
-    LPAREN = 60, RPAREN = 61, LBRACKET = 62, RBRACKET = 63, OR = 64, AND = 65, 
-    EQUALS = 66, NOTEQUALS = 67, LT = 68, LTEQ = 69, GT = 70, GTEQ = 71, 
-    PLUS_ = 72, MULT = 73, DIV = 74, MOD = 75, REGEX = 76, NOT = 77, WHITESPACE = 78
+    DoubleType_ = 31, StringType_ = 32, DateType_ = 33, NodeResultType_ = 34, 
+    RshipResultType_ = 35, Count_ = 36, Sum_ = 37, Avg_ = 38, Min_ = 39, 
+    Max_ = 40, UDF_ = 41, BUILTIN_ = 42, InExpandDir_ = 43, OutExpandDir_ = 44, 
+    TupleMode_ = 45, ResultSetMode_ = 46, FromDir_ = 47, ToDir_ = 48, AllDir_ = 49, 
+    DescOrder_ = 50, AscOrder_ = 51, INTEGER = 52, FLOAT = 53, Identifier_ = 54, 
+    Var = 55, NAME_ = 56, STRING_ = 57, COLON_ = 58, DOUBLE_COLON = 59, 
+    COMMA_ = 60, LPAREN = 61, RPAREN = 62, LBRACKET = 63, RBRACKET = 64, 
+    OR = 65, AND = 66, EQUALS = 67, NOTEQUALS = 68, LT = 69, LTEQ = 70, 
+    GT = 71, GTEQ = 72, PLUS_ = 73, MULT = 74, DIV = 75, MOD = 76, REGEX = 77, 
+    NOT = 78, WHITESPACE = 79
   };
 
   enum {
@@ -335,7 +336,8 @@ public:
     antlr4::tree::TerminalNode *Uint64Type_();
     antlr4::tree::TerminalNode *StringType_();
     antlr4::tree::TerminalNode *DateType_();
-    antlr4::tree::TerminalNode *ResultType_();
+    antlr4::tree::TerminalNode *NodeResultType_();
+    antlr4::tree::TerminalNode *RshipResultType_();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;

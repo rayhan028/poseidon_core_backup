@@ -989,5 +989,9 @@ expr_type query_planner::typespec_to_exprtype(poseidonParser::Type_specContext *
         ex_ty = expr_type::STRING;
     else if (var_type->DateType_() != nullptr)
         ex_ty = expr_type::DATETIME;
+    else if (var_type->NodeResultType_() != nullptr)
+        ex_ty = expr_type::NODE;
+    else if (var_type->RshipResultType_() != nullptr)
+        ex_ty = expr_type::RELATIONSHIP;
     return ex_ty;
 }

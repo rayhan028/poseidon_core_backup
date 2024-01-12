@@ -37,7 +37,7 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
 
     SECTION("Project") {
         REQUIRE(qp.parse_("Project([$1.attr:datetime, $0.attr:string, $0.attr:int], NodeScan('Person'))"));
-        REQUIRE(qp.parse_("Project([pb::label($1:qresult)], NodeScan())"));
+        REQUIRE(qp.parse_("Project([pb::label($1:node)], NodeScan())"));
         REQUIRE_FALSE(qp.parse_("Project([$1.attr:something], NodeScan('Person'))"));
         REQUIRE_FALSE(qp.parse_("Project($1.attr:something, NodeScan('Person'))"));
         REQUIRE_FALSE(qp.parse_("Project([$1.attr], NodeScan('Person'))"));
@@ -46,7 +46,7 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
     }
 
     SECTION("Distinct") {
-        REQUIRE(qp.parse_("Distinct(Project([pb::label($1:qresult)], NodeScan()))"));
+        REQUIRE(qp.parse_("Distinct(Project([pb::label($1:node)], NodeScan()))"));
     }
 
     SECTION("Join") {
@@ -132,6 +132,6 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE_FALSE(qp.parse_("Algorithm([ShortestPath], NodeScan())"));
         REQUIRE(qp.parse_("Algorithm([ShortestPath, SET, 'knows', 4], NodeScan())"));
         REQUIRE(qp.parse_("Algorithm([PageRank, SET, 'knows'], NodeScan())"));
-        REQUIRE(qp.parse_("Project([$1.result:qresult], Algorithm([PageRank, SET, 'knows'], NodeScan()))"));
+        REQUIRE(qp.parse_("Project([$1.result:rship], Algorithm([PageRank, SET, 'knows'], NodeScan()))"));
     }
 }
