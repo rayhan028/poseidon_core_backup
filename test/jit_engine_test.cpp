@@ -148,7 +148,7 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
         jit_engine jit(graph);
         ir_generator codegen(jit.get_context());
 
-        auto ex = EQ(Variable(0, "id", 25), UInt64(42));
+        auto ex = EQ(Variable(0, "id", 25, expr_type::INT), UInt64(42));
         auto fop = std::make_shared<filter_op>(ex);
         auto module = codegen.generate(fop->ex_, "simple_filter_2");
         // codegen.dump(module);
@@ -173,7 +173,7 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
     SECTION("Testing compiling eq expression as part of filter_op") {
         query_ctx ctx(graph);    
         query_proc qp(ctx);    
-        auto res = qp.execute_query(query_proc::Compile, "Filter($0.id == 42, NodeScan())");
+        auto res = qp.execute_query(query_proc::Compile, "Filter($0.id:int == 42, NodeScan())");
     
         result_set expected;
         expected.append({qv_("Person[0]{firstName: \"Dom\", id: 42, lastName: \"Cobb\"}")});
@@ -183,7 +183,7 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
     SECTION("Testing compiling lt expression as part of filter_op") {
         query_ctx ctx(graph);    
         query_proc qp(ctx);    
-        auto res = qp.execute_query(query_proc::Compile, "Filter($0.id < 100, NodeScan())");
+        auto res = qp.execute_query(query_proc::Compile, "Filter($0.id:int < 100, NodeScan())");
     
         result_set expected;
         expected.append({qv_("Person[0]{firstName: \"Dom\", id: 42, lastName: \"Cobb\"}")});

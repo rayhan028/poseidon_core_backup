@@ -23,11 +23,11 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
     }
 
     SECTION("Filter") {
-        REQUIRE(qp.parse_("Filter($0 == 42, Project([$0.id:uint64], NodeScan('Person')))"));
-        REQUIRE(qp.parse_("Filter($0.id == 42, NodeScan('Person'))"));
-        REQUIRE(qp.parse_("Filter($0.num > 1.0, NodeScan('Person'))"));
-        REQUIRE(qp.parse_("Filter($0.num > 1.0 && $1.id == 13, NodeScan('Person'))"));
-        REQUIRE(qp.parse_("Filter($0.name =~ 'A.*', NodeScan('Person'))"));
+        REQUIRE(qp.parse_("Filter($0:uint64 == 42, Project([$0.id:uint64], NodeScan('Person')))"));
+        REQUIRE(qp.parse_("Filter($0.id:uint64 == 42, NodeScan('Person'))"));
+        REQUIRE(qp.parse_("Filter($0.num:int > 1.0, NodeScan('Person'))"));
+        REQUIRE(qp.parse_("Filter($0.num:int > 1.0 && $1.id:uint64 == 13, NodeScan('Person'))"));
+        REQUIRE(qp.parse_("Filter($0.name:string =~ 'A.*', NodeScan('Person'))"));
     }
 
     SECTION("Limit") {
@@ -53,7 +53,7 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE(qp.parse_("CrossJoin(NodeScan('Order'), NodeScan('Person'))"));
         REQUIRE_FALSE(qp.parse_("CrossJoin(NodeScan('Order'))"));
 
-        REQUIRE(qp.parse_("HashJoin($0.id == $1.id, NodeScan('Order'), NodeScan('Person'))"));
+        REQUIRE(qp.parse_("HashJoin($0.id:uint64 == $1.id:uint64, NodeScan('Order'), NodeScan('Person'))"));
         REQUIRE_FALSE(qp.parse_("HashJoin(NodeScan('Order'))"));
     }
 
@@ -118,7 +118,7 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE(qp.parse_("Create((n:Label { name1: 'Val1', name2: 42 }), NodeScan('Person'))"));
 
         REQUIRE(qp.parse_("Create(($0)-[r:knows]->($1))"));
-        REQUIRE(qp.parse_("Create(($0)-[r:knows { creationDate: '2010-07-21' } ]->($1), CrossJoin(Filter($0.id == 1, NodeScan('Person')), Filter($0.id == 2, NodeScan('Person'))))"));
+        REQUIRE(qp.parse_("Create(($0)-[r:knows { creationDate: '2010-07-21' } ]->($1), CrossJoin(Filter($0.id:uint64 == 1, NodeScan('Person')), Filter($0.id:uint64 == 2, NodeScan('Person'))))"));
     }
 
     SECTION("Remove") {

@@ -78,7 +78,7 @@ TEST_CASE("Testing queries with algorithms", "[algorithm]") {
     auto res = qp.execute_query(
         query_proc::Interpret,
         "Algorithm([ShortestPath, TUPLE, 'connects', 0, 0], CrossJoin( "
-        "Filter($0.name == 'Frankfurt', NodeScan('City')), Filter($0.name == "
+        "Filter($0.name:string == 'Frankfurt', NodeScan('City')), Filter($0.name:string == "
         "'München', NodeScan('City'))))",
         true);
 
@@ -93,7 +93,7 @@ TEST_CASE("Testing queries with algorithms", "[algorithm]") {
     auto res = qp.execute_query(
         query_proc::Interpret,
         "Algorithm([WeightedShortestPath, TUPLE, 'connects', 'distance', 0, 0], CrossJoin( "
-        "Filter($0.name == 'Frankfurt', NodeScan('City')), Filter($0.name == "
+        "Filter($0.name:string == 'Frankfurt', NodeScan('City')), Filter($0.name:string == "
         "'München', NodeScan('City'))))",
         true);
     std::cout << res << std::endl;

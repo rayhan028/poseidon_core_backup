@@ -83,15 +83,21 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
 
     graph->run_transaction([&]() {
         n1 = graph->add_node("Person", {{"id", std::any((int)42)},
+                        {"salary", std::any(3456.7)},
                         {"firstName", std::any(std::string("Dom"))},
                         {"lastName", std::any(std::string("Cobb"))}});
         n2 = graph->add_node("Person", {{"id", std::any((int)44)},
+                        {"salary", std::any(4567.8)},
                         {"firstName", std::any(std::string("Andrei"))},
                         {"lastName", std::any(std::string("Sator"))}});
         return true;
     });
     graph->flush();
     
+    auto id_code = graph->get_code("id");
+    auto salary_code = graph->get_code("salary");
+    auto lastName_code = graph->get_code("lastName");
+
     query_ctx qctx(graph);
 
     SECTION("plain expressions with int") {
@@ -217,15 +223,19 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
         qr_tuple tup;
         auto ex1 = EQ(Str("Hallo"), Str("Hallo"));
         REQUIRE(interpret_expression(qctx, ex1, tup) == true);
+        REQUIRE(compile_expression(qctx, ex1, tup) == true);
 
         auto ex2 = NEQ(Str("Hallo"), Str("Hallo"));
         REQUIRE(interpret_expression(qctx, ex2, tup) == false);
- 
+        REQUIRE(compile_expression(qctx, ex2, tup) == false);
+
         auto ex3 = EQ(Str("Hallo"), Str("Hallo2"));
         REQUIRE(interpret_expression(qctx, ex3, tup) == false);
+        REQUIRE(compile_expression(qctx, ex3, tup) == false);
 
         auto ex4 = NEQ(Str("Hallo"), Str("Hallo2"));
         REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+        REQUIRE(compile_expression(qctx, ex4, tup) == true);
 
         auto ex5 = RE(Str("Hallo"), Str("H.*"));
         REQUIRE(interpret_expression(qctx, ex5, tup) == true);
@@ -235,6 +245,48 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
 
         auto ex7 = RE(Str("None"), Str("H.*"));
         REQUIRE(interpret_expression(qctx, ex7, tup) == false);
+
+        auto ex8 = LT(Str("Hallo"), Str("Hallo2"));
+        REQUIRE(interpret_expression(qctx, ex8, tup) == true);
+        REQUIRE(compile_expression(qctx, ex8, tup) == true);
+
+        auto ex9 = GT(Str("Hallo"), Str("Hallo2"));
+        REQUIRE(interpret_expression(qctx, ex9, tup) == false);
+        REQUIRE(compile_expression(qctx, ex9, tup) == false);
+ 
+        auto ex10 = LT(Str("XYZ"), Str("Hallo"));
+        REQUIRE(interpret_expression(qctx, ex10, tup) == false);
+        REQUIRE(compile_expression(qctx, ex10, tup) == false);
+ 
+        auto ex11 = LT(Str("XYZ"), Str("Hallo"));
+        REQUIRE(interpret_expression(qctx, ex11, tup) == false);
+        REQUIRE(compile_expression(qctx, ex11, tup) == false);
+
+        auto ex12 = LE(Str("Hallo"), Str("Hallo2"));
+        REQUIRE(interpret_expression(qctx, ex12, tup) == true);
+        REQUIRE(compile_expression(qctx, ex12, tup) == true);
+
+        auto ex13 = GE(Str("Hallo2"), Str("Hallo"));
+        REQUIRE(interpret_expression(qctx, ex13, tup) == true);
+        REQUIRE(compile_expression(qctx, ex13, tup) == true);
+
+        auto ex14 = LE(Str("Hallo"), Str("Hallo"));
+        REQUIRE(interpret_expression(qctx, ex14, tup) == true);
+        REQUIRE(compile_expression(qctx, ex14, tup) == true);
+
+        auto ex15 = GE(Str("Hallo"), Str("Hallo"));
+        REQUIRE(interpret_expression(qctx, ex15, tup) == true);
+        REQUIRE(compile_expression(qctx, ex15, tup) == true);
+
+        auto ex16 = GE(Str("Hallo"), Str("Hallo2"));
+        REQUIRE(interpret_expression(qctx, ex16, tup) == false);
+        REQUIRE(compile_expression(qctx, ex16, tup) == false);
+ 
+        auto ex17 = LE(Str("XYZ"), Str("Hallo"));
+        REQUIRE(interpret_expression(qctx, ex17, tup) == false);
+        REQUIRE(compile_expression(qctx, ex17, tup) == false);
+
+       // TODO: LT, GT ...
     }
 
    SECTION("plain expressions with ptime") {
@@ -324,25 +376,40 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
             auto& n = graph->node_by_id(n1);
             tup[0] = &n;
    
-            auto ex1 = EQ(Fct("pb", "label", std::vector<expr>{ Variable(0) }), Str("Person"));
+            auto ex1 = EQ(Fct("pb", "label", std::vector<expr>{ Variable(0, expr_type::NODE) }), Str("Person"));
             ex1->accept(vis);
             REQUIRE(interpret_expression(qctx, ex1, tup) == true);
 
-            auto ex2 = EQ(Variable(0, "id", 25), Int(42));
+            auto ex2 = EQ(Variable(0, "id", id_code, expr_type::INT), Int(42));
             ex2->accept(vis);
             REQUIRE(interpret_expression(qctx, ex2, tup) == true);
             REQUIRE(compile_expression(qctx, ex2, tup) == true);
 
-            auto ex3 = EQ(Variable(0, "id", 25), Int(4));
+            auto ex3 = EQ(Variable(0, "id", id_code, expr_type::INT), Int(4));
             ex3->accept(vis);
             REQUIRE(interpret_expression(qctx, ex3, tup) == false);
             REQUIRE(compile_expression(qctx, ex3, tup) == false);
 
-            auto ex4 = LT(Variable(0, "id", 25), Int(100));
+            auto ex4 = LT(Variable(0, "id", id_code, expr_type::INT), Int(100));
             ex4->accept(vis);
             REQUIRE(interpret_expression(qctx, ex4, tup) == true);
             REQUIRE(compile_expression(qctx, ex4, tup) == true);
-           
+
+            auto ex5 = GT(Variable(0, "salary", salary_code, expr_type::DOUBLE), Float(2500.0));
+            ex5->accept(vis);
+            REQUIRE(interpret_expression(qctx, ex5, tup) == true);
+            REQUIRE(compile_expression(qctx, ex5, tup) == true);
+
+            auto ex6 = GT(Variable(0, "salary", salary_code, expr_type::DOUBLE), Float(10000.0));
+            ex6->accept(vis);
+            REQUIRE(interpret_expression(qctx, ex6, tup) == false);
+            REQUIRE(compile_expression(qctx, ex6, tup) == false);
+
+            auto ex7 = EQ(Variable(0, "lastName", lastName_code, expr_type::STRING), Str("Cobb"));
+            ex7->accept(vis);
+            REQUIRE(interpret_expression(qctx, ex7, tup) == true);
+            REQUIRE(compile_expression(qctx, ex7, tup) == true);
+
             return true;
         });
     }

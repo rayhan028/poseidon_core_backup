@@ -41,13 +41,24 @@ void* expr_codegen::visit(std::shared_ptr<number_literal> op) {
 void* expr_codegen::visit(std::shared_ptr<variable> op) { 
     // TODO: handle other types than int
     // TODO: handle variables of other types than node* or relationship*
-    llvm::FunctionCallee get_int_property_value_func = gen_.extern_func(module_, "get_int_property_value");
     llvm::Value *val1 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, op->id_, true));
     llvm::Value *val2 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, op->pcode_, true));
-    return gen_.get_builder()->CreateCall(get_int_property_value_func, { start_->getArg(0), start_->getArg(1), val1, val2 });
+    llvm::FunctionCallee callee;
+    if (op->result_type() == expr_type::INT) {
+        callee = gen_.extern_func(module_, "get_int_property_value");
+    }
+    else if (op->result_type() == expr_type::DOUBLE) {
+        callee = gen_.extern_func(module_, "get_double_property_value");
+    }
+    else if (op->result_type() == expr_type::STRING) {
+        callee = gen_.extern_func(module_, "get_string_property_value");
+    }
+    return gen_.get_builder()->CreateCall(callee, { start_->getArg(0), start_->getArg(1), val1, val2 });
 }
 
-void* expr_codegen::visit(std::shared_ptr<string_literal> op) {}
+void* expr_codegen::visit(std::shared_ptr<string_literal> op) { 
+    return gen_.get_builder()->CreateGlobalStringPtr(op->str_);
+}
 
 void* expr_codegen::visit(std::shared_ptr<time_literal> op) {
     using namespace boost::posix_time;
@@ -58,7 +69,7 @@ void* expr_codegen::visit(std::shared_ptr<time_literal> op) {
     return llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(64, msecs, true));    
 }
     
-void* expr_codegen::visit(std::shared_ptr<func_call> op) {}
+void* expr_codegen::visit(std::shared_ptr<func_call> op) { return nullptr; }
 
 /**
  * Generates the code for a == predicate.
@@ -71,8 +82,12 @@ void* expr_codegen::visit(std::shared_ptr<eq_predicate> op) {
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
     if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
         return gen_.get_builder()->CreateFCmpOEQ(lhs, rhs);
-    else if (op->left_->ftype_ == expr_type::STRING) 
-        abort();
+    else if (op->left_->ftype_ == expr_type::STRING) {
+        llvm::FunctionCallee callee = gen_.extern_func(module_, "string_compare");
+        auto fcall = gen_.get_builder()->CreateCall(callee, { lhs, rhs });
+        auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
+        return gen_.get_builder()->CreateICmpEQ(fcall, val_0);
+    }
     else
         return gen_.get_builder()->CreateICmpEQ(lhs, rhs);
 }  
@@ -87,8 +102,12 @@ void* expr_codegen::visit(std::shared_ptr<neq_predicate> op) {
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
     if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
         return gen_.get_builder()->CreateFCmpONE(lhs, rhs);
-    else if (op->left_->ftype_ == expr_type::STRING) 
-        abort();
+    else if (op->left_->ftype_ == expr_type::STRING) {
+        llvm::FunctionCallee callee = gen_.extern_func(module_, "string_compare");
+        auto fcall = gen_.get_builder()->CreateCall(callee, { lhs, rhs });
+        auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
+        return gen_.get_builder()->CreateICmpNE(fcall, val_0);
+    }
     else 
         return gen_.get_builder()->CreateICmpNE(lhs, rhs);
 }  
@@ -103,8 +122,12 @@ void* expr_codegen::visit(std::shared_ptr<le_predicate> op) {
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
     if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
         return gen_.get_builder()->CreateFCmpOLE(lhs, rhs);
-    else if (op->left_->ftype_ == expr_type::STRING) 
-        abort();
+    else if (op->left_->ftype_ == expr_type::STRING) {
+        llvm::FunctionCallee callee = gen_.extern_func(module_, "string_compare");
+        auto fcall = gen_.get_builder()->CreateCall(callee, { lhs, rhs });
+        auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
+        return gen_.get_builder()->CreateICmpSLE(fcall, val_0);
+    }
     else
         return gen_.get_builder()->CreateICmpSLE(lhs, rhs);
 }
@@ -119,8 +142,12 @@ void* expr_codegen::visit(std::shared_ptr<lt_predicate> op) {
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
     if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
         return gen_.get_builder()->CreateFCmpOLT(lhs, rhs);
-    else if (op->left_->ftype_ == expr_type::STRING) 
-        abort();
+    else if (op->left_->ftype_ == expr_type::STRING) {
+        llvm::FunctionCallee callee = gen_.extern_func(module_, "string_compare");
+        auto fcall = gen_.get_builder()->CreateCall(callee, { lhs, rhs });
+        auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
+        return gen_.get_builder()->CreateICmpSLT(fcall, val_0);
+    }
     else
         return gen_.get_builder()->CreateICmpSLT(lhs, rhs);
 }
@@ -135,8 +162,12 @@ void* expr_codegen::visit(std::shared_ptr<ge_predicate> op) {
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
     if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
         return gen_.get_builder()->CreateFCmpOGE(lhs, rhs);
-    else if (op->left_->ftype_ == expr_type::STRING) 
-        abort();
+    else if (op->left_->ftype_ == expr_type::STRING) {
+        llvm::FunctionCallee callee = gen_.extern_func(module_, "string_compare");
+        auto fcall = gen_.get_builder()->CreateCall(callee, { lhs, rhs });
+        auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
+        return gen_.get_builder()->CreateICmpSGE(fcall, val_0);
+    }
     else
         return gen_.get_builder()->CreateICmpSGE(lhs, rhs);
 }
@@ -151,8 +182,12 @@ void* expr_codegen::visit(std::shared_ptr<gt_predicate> op) {
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
     if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
         return gen_.get_builder()->CreateFCmpOGT(lhs, rhs);
-    else if (op->left_->ftype_ == expr_type::STRING) 
-        abort();
+    else if (op->left_->ftype_ == expr_type::STRING) {
+        llvm::FunctionCallee callee = gen_.extern_func(module_, "string_compare");
+        auto fcall = gen_.get_builder()->CreateCall(callee, { lhs, rhs });
+        auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
+        return gen_.get_builder()->CreateICmpSGT(fcall, val_0);
+    }
     else
         return gen_.get_builder()->CreateICmpSGT(lhs, rhs);
 }

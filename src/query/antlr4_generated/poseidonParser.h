@@ -1016,6 +1016,8 @@ public:
     VariableContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *Var();
+    antlr4::tree::TerminalNode *COLON_();
+    Type_specContext *type_spec();
     antlr4::tree::TerminalNode *Identifier_();
 
 

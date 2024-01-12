@@ -20,6 +20,12 @@
 #include "expression.hpp"
 #include "binary_expression.hpp"
 
+void* expression_visitor::visit(std::shared_ptr<math_expression> op) { 
+    if (op->left_) op->left_->accept(*this);
+    if (op->right_) op->right_->accept(*this);
+    return nullptr; 
+} 
+
 void* expression_visitor::visit(std::shared_ptr<eq_predicate> op) { 
     if (op->left_) op->left_->accept(*this);
     if (op->right_) op->right_->accept(*this);
@@ -99,34 +105,44 @@ std::string expression::op_as_string(expr_op fop) const {
 }
 
 number_literal::number_literal(int value) : ivalue_(value) {
-    name_ = "INT";
     rtype_ = ftype_ = expr_type::INT;
 }
 
 number_literal::number_literal(uint64_t value) : lvalue_(value) {
-    name_ = "UINT64";
     rtype_ = ftype_ = expr_type::UINT64;
 }
 
 number_literal::number_literal(double value) : dvalue_(value) {
-    name_ = "DOUBLE";
     rtype_ = ftype_ = expr_type::DOUBLE;
 }
 
 std::string number_literal::dump() const {
-    return ftype_ == expr_type::INT ? std::to_string(ivalue_) : std::to_string(dvalue_);
+    switch (ftype_) {
+        case expr_type::INT:
+            return std::to_string(ivalue_);
+        case expr_type::UINT64:
+            return std::to_string(lvalue_);
+        case expr_type::DOUBLE:
+            return std::to_string(dvalue_);
+        default:
+            return "UNKNOWN";
+    }
 }
 
 void* number_literal::accept(expression_visitor &fep) {
     return fep.visit(shared_from_this());
 }
 
-variable::variable(unsigned int id, const std::string& p) : id_(id), pname_(p), pcode_(UNKNOWN_CODE) {
-    // TODO
+variable::variable(unsigned int id, expr_type ty) : id_(id), pname_(""), pcode_(UNKNOWN_CODE) {
+    ftype_ = rtype_ = ty; 
 }
 
-variable::variable(unsigned int id, const std::string& p, dcode_t pc) : id_(id), pname_(p), pcode_(pc) {
-    // TODO
+variable::variable(unsigned int id, const std::string& p, expr_type ty) : id_(id), pname_(p), pcode_(UNKNOWN_CODE) {
+    ftype_ = rtype_ = ty; 
+}
+
+variable::variable(unsigned int id, const std::string& p, dcode_t pc, expr_type ty) : id_(id), pname_(p), pcode_(pc) {
+    ftype_ = rtype_ = ty; 
 }
 
 std::string variable::dump() const {
@@ -139,8 +155,7 @@ void* variable::accept(expression_visitor& fep) {
 }
 
 time_literal::time_literal(boost::posix_time::ptime time) : time_(time) {
-    name_ = "TIME";
-    rtype_ = ftype_ = expr_type::TIME;
+    rtype_ = ftype_ = expr_type::DATETIME;
 }
 
 void* time_literal::accept(expression_visitor &fep) {
@@ -152,7 +167,6 @@ std::string time_literal::dump() const {
 }
 
 string_literal::string_literal(std::string str) : str_(str) {
-    name_ = "STR";
     rtype_ = ftype_ = expr_type::STRING;
 }
 
@@ -165,7 +179,6 @@ void* string_literal::accept(expression_visitor &fep) {
 }
 
 qparam_token::qparam_token(std::string str) : str_(str) {
-    name_ = "QPARAM";
     ftype_ = expr_type::STRING; // TODO
 }
 

@@ -30,38 +30,41 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 enum class expr_op {
-    EQ = 0,
-    NEQ = 1,
-    LE = 2,
-    LT = 3,
-    GE = 4,
-    GT = 5,
-    AND = 6,
-    OR = 7,
-    NOT = 8,
-    PLUS = 9,
-    MINUS = 10,
-    MULT = 11,
-    DIV = 12,
-    MOD = 13,
-    CALL = 14,
-    REGEX = 15
+    UNKNOWN = 0,
+    EQ = 1,
+    NEQ = 2,
+    LE = 3,
+    LT = 4,
+    GE = 5,
+    GT = 6,
+    AND = 7,
+    OR = 8,
+    NOT = 9,
+    PLUS = 10,
+    MINUS = 11,
+    MULT = 12,
+    DIV = 13,
+    MOD = 14,
+    REGEX = 15,
+    CALL = 16
 };
 
 enum class expr_type {
-    INT = 0,
-    DOUBLE = 1,
-    STRING = 2,
-    DATE = 3,
-    TIME = 4,
-    OP = 5,
-    BOOL_OP = 6,
-    KEY = 7,
-    UINT64 = 8
+    UNKNOWN = 0,
+    INT = 1,
+    UINT64 = 2,
+    DOUBLE = 3,
+    STRING = 4,
+    DATETIME = 5,
+    BOOLEAN = 6,
+    NODE = 7,
+    RELATIONSHIP = 8,
+    OP = 10
 };
 
 struct expression;
 struct binary_expression;
+struct math_expression;
 struct binary_predicate;
 struct fep_visitor;
 struct number_literal;
@@ -104,14 +107,14 @@ public:
     virtual void* visit(std::shared_ptr<gt_predicate> op);
     virtual void* visit(std::shared_ptr<and_predicate> op);
     virtual void* visit(std::shared_ptr<or_predicate> op);
+    virtual void* visit(std::shared_ptr<math_expression> op);
 };
 
 struct expression {
-    int opd_num;
-    std::string name_;
     expr_type ftype_;
     expr_type rtype_; // result type - deduced from the operands and the operator
 
+    expression() : ftype_(expr_type::UNKNOWN), rtype_(expr_type::UNKNOWN) {}
     virtual ~expression() {};
 
     virtual std::string dump() const = 0;
@@ -146,15 +149,19 @@ struct variable : public expression, std::enable_shared_from_this<variable> {
     std::string pname_;
     dcode_t pcode_;
 
-    variable(unsigned int id, const std::string& p = "");
-    variable(unsigned int id, const std::string& p, dcode_t pc);
+    variable(unsigned int id, expr_type ty);
+    variable(unsigned int id, const std::string& p, expr_type t);
+    variable(unsigned int id, const std::string& p, dcode_t pc, expr_type ty);
 
     std::string dump() const override;
     void* accept(expression_visitor& fep) override;
 };
 
-inline expr Variable(unsigned int id, const std::string& p = "") { return std::make_shared<variable>(id, p); }
-inline expr Variable(unsigned int id, const std::string& p, dcode_t pc) { return std::make_shared<variable>(id, p, pc); }
+inline expr Variable(unsigned int id, expr_type ty) { return std::make_shared<variable>(id, ty); }
+inline expr Variable(unsigned int id, const std::string& p, expr_type ty) { return std::make_shared<variable>(id, p, ty); }
+inline expr Variable(unsigned int id, const std::string& p, dcode_t pc, expr_type ty) { 
+    return std::make_shared<variable>(id, p, pc, ty); 
+}
 
 struct string_literal : public expression, std::enable_shared_from_this<string_literal> {
     std::string str_;

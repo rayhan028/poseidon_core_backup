@@ -38,6 +38,9 @@ ir_generator::ir_generator(llvm::LLVMContext& ctx) : ctx_(ctx) {
     auto i64_ty = llvm::Type::getInt64Ty(ctx_);
     auto double_ty = llvm::Type::getDoubleTy(ctx_);
 
+    auto i8_ty  = llvm::Type::getInt8Ty(ctx_);
+    auto i8_ptr_ty = llvm::PointerType::get(i8_ty, 0);
+
     // node* qr_get_node(qr_tuple*, std::size_t)
     auto qr_get_node_func_ty = llvm::FunctionType::get(node_ptr_ty, {qr_tuple_ptr_ty, i32_ty}, false);
     func_types_["qr_get_node"] = qr_get_node_func_ty;
@@ -54,9 +57,16 @@ ir_generator::ir_generator(llvm::LLVMContext& ctx) : ctx_(ctx) {
     auto get_uint64_property_value_func_ty = llvm::FunctionType::get(i64_ty, { qctx_ptr_ty, qr_tuple_ptr_ty, i32_ty, i32_ty}, false);
     func_types_["get_uint64_property_value"] = get_uint64_property_value_func_ty;
 
-   // doouble get_double_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label)
+    // double get_double_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label)
     auto get_double_property_value_func_ty = llvm::FunctionType::get(double_ty, { qctx_ptr_ty, qr_tuple_ptr_ty, i32_ty, i32_ty}, false);
     func_types_["get_double_property_value"] = get_double_property_value_func_ty;
+
+    // const char* get_string_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label)
+    auto get_string_property_value_func_ty = llvm::FunctionType::get(i8_ptr_ty, { qctx_ptr_ty, qr_tuple_ptr_ty, i32_ty, i32_ty}, false);
+    func_types_["get_string_property_value"] = get_string_property_value_func_ty;
+
+    auto string_compare_ty = llvm::FunctionType::get(i32_ty, { i8_ptr_ty, i8_ptr_ty }, false);
+    func_types_["string_compare"] = string_compare_ty;
 }
 
 llvm::FunctionCallee ir_generator::extern_func(std::unique_ptr<llvm::Module>& module, const std::string& fct_name) {

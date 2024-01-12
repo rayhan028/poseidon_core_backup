@@ -19,6 +19,7 @@
 #ifndef jit_funcs_hpp_
 #define jit_funcs_hpp_
 
+#include <cstring>
 #include "defs.hpp"
 #include "query_ctx.hpp"
 #include "qresult_iterator.hpp"
@@ -55,6 +56,12 @@ double get_double_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dco
 uint64_t get_uint64_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label);
 
 /**
+ * Returns the value of a string property named by label of a node/relationship pointer 
+ * in the query_tuple v at index i.
+ */
+const char* get_string_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label);
+
+/**
  * Returns the int value of the query tuple v at index i.
  */
 inline int qr_get_int(qr_tuple* v, std::size_t i) { return boost::get<int>(v->at(i)); }
@@ -69,6 +76,11 @@ inline uint64_t qr_get_uint64(qr_tuple* v, std::size_t i) { return boost::get<ui
  */
 inline double qr_get_double(qr_tuple* v, std::size_t i) { return boost::get<double>(v->at(i)); }
 
+
+/**
+ * Compares two strings represented by char *.
+*/
+inline int string_compare(uint8_t *s1, uint8_t *s2) { return std::strcmp((char *)s1, (char *)s2); }
 
 int get_node_property_int_value(query_ctx *ctx, node *n, dcode_t label);
 

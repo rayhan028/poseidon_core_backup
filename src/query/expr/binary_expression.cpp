@@ -20,8 +20,7 @@
 #include "binary_expression.hpp"
 
 void* math_expression::accept(expression_visitor &fep) {
-    // TODO   
-    return nullptr; 
+    return fep.visit(shared_from_this());
 }
 
 std::string math_expression::dump() const {
@@ -44,118 +43,88 @@ std::string binary_predicate::dump() const {
 
 eq_predicate::eq_predicate(const expr left, const expr right)
         : binary_predicate(expr_op::EQ, left, right) {
-    name_ = "EQ";
     ftype_ = expr_type::OP;
-    rtype_ = expr_type::BOOL_OP;
+    rtype_ = expr_type::BOOLEAN;
 }
 
 void* eq_predicate::accept(expression_visitor &fep) {
-    //left_->accept(rank+1, fep);
-    //right_->accept(rank+1, fep);
     return fep.visit(shared_from_this());
-    // TODO: do binary stuff here
 }
 
 neq_predicate::neq_predicate(expr const left, expr const right) 
         : binary_predicate(expr_op::EQ, left, right) {
-    name_ = "NEQ";
     ftype_ = expr_type::OP;
-    rtype_ = expr_type::BOOL_OP;
+    rtype_ = expr_type::BOOLEAN;
 }
 
 void* neq_predicate::accept(expression_visitor &fep) {
-    //left_->accept(rank+1, fep);
-    //right_->accept(rank+1, fep);
     return fep.visit(shared_from_this());
-    // TODO: do binary stuff here
 }
 
 gt_predicate::gt_predicate(const expr left, const expr right)
         : binary_predicate(expr_op::GT, left, right) {
-    name_ = "GT";
     ftype_ = expr_type::OP;
-    rtype_ = expr_type::BOOL_OP;
+    rtype_ = expr_type::BOOLEAN;
 }
 
 void* gt_predicate::accept(expression_visitor &fep) {
-    //left_->accept(rank+1, fep);
-    //right_->accept(rank+1, fep);
     return fep.visit(shared_from_this());
-    // TODO: do binary stuff here
 }
 
 ge_predicate::ge_predicate(const expr left, const expr right)
         : binary_predicate(expr_op::GE, left, right) {
-    name_ = "GE";
     ftype_ = expr_type::OP;
-    rtype_ = expr_type::BOOL_OP;
+    rtype_ = expr_type::BOOLEAN;
 }
 
 void* ge_predicate::accept(expression_visitor &fep) {
-    //left_->accept(rank+1, fep);
-    //right_->accept(rank+1, fep);
     return fep.visit(shared_from_this());
-    // TODO: do binary stuff here
 }
 
 lt_predicate::lt_predicate(const expr left, const expr right)
         : binary_predicate(expr_op::LT, left, right) {
-    name_ = "LT";
     ftype_ = expr_type::OP;
-    rtype_ = expr_type::BOOL_OP;
+    rtype_ = expr_type::BOOLEAN;
 }
 
 void* lt_predicate::accept(expression_visitor &fep) {
-    //left_->accept(rank+1, fep);
-    //right_->accept(rank+1, fep);
     return fep.visit(shared_from_this());
-    // TODO: do binary stuff here
 }
 
 le_predicate::le_predicate(const expr left, const expr right)
         : binary_predicate(expr_op::LE, left, right) {
-    name_ = "LE";
     ftype_ = expr_type::OP;
-    rtype_ = expr_type::BOOL_OP;
+    rtype_ = expr_type::BOOLEAN;
 }
 
 void* le_predicate::accept(expression_visitor &fep) {
-    //left_->accept(rank+1, fep);
-    //right_->accept(rank+1, fep);
     return fep.visit(shared_from_this());
-    // TODO: do binary stuff here
 }
 
 and_predicate::and_predicate(const expr left, const expr right)
         : binary_predicate(expr_op::AND, left, right) {
-    rtype_ = ftype_ = expr_type::BOOL_OP;
-    name_ = "AND";
+    ftype_ = expr_type::OP;
+    rtype_ = expr_type::BOOLEAN;
 }
 
 void* and_predicate::accept(expression_visitor &fep) {
-    //left_->accept(rank+1, fep);
-    //right_->accept(rank+1, fep);
     return fep.visit(shared_from_this());
-    // TODO: do binary stuff here
 }
 
 or_predicate::or_predicate(const expr left, const expr right)
         : binary_predicate(expr_op::OR, left, right) {
-    rtype_ = ftype_ = expr_type::BOOL_OP;
-    name_ = "OR";
+    ftype_ = expr_type::OP;
+    rtype_ = expr_type::BOOLEAN;
 }
 
 void* or_predicate::accept(expression_visitor &fep) {
-    //left_->accept(rank+1, fep);
-    //right_->accept(rank+1, fep);
     return fep.visit(shared_from_this());
-    // TODO: do binary stuff here
 }
 
 regex_predicate::regex_predicate(const expr left, const expr right)
         : binary_predicate(expr_op::REGEX, left, right) {
-    rtype_ = ftype_ = expr_type::BOOL_OP;
-    name_ = "REGEX";
+    ftype_ = expr_type::OP;
+    rtype_ = expr_type::BOOLEAN;
     auto s = dynamic_cast<string_literal *>(right.get());
     re_ = std::regex(s->str_);
 }

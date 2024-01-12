@@ -592,20 +592,30 @@ expr query_planner::property_list_to_expr(properties_t& plist) {
     expr ex;
     for (auto& p : plist) {
         auto prop = p;
-        auto pcode = qctx_.get_code(prop.first);
-        auto lhs_expr = Variable(0, prop.first, pcode);
+        expr_type lhs_type = expr_type::UNKNOWN;
         std::any& val = prop.second;
         expr rhs_expr;
-        if (val.type() == typeid(int))
+        if (val.type() == typeid(int)) {
             rhs_expr = Int(std::any_cast<int>(val));
-        else if (val.type() == typeid(double) || val.type() == typeid(float))
+            lhs_type = expr_type::INT;
+        }
+        else if (val.type() == typeid(double) || val.type() == typeid(float)) {
             rhs_expr = Float(std::any_cast<double>(val));
-        else if (val.type() == typeid(std::string))
+            lhs_type = expr_type::DOUBLE;
+        }
+        else if (val.type() == typeid(std::string)) {
             rhs_expr = Str(std::any_cast<std::string>(val)); 
-        else if (val.type() == typeid(long))
+            lhs_type = expr_type::STRING;
+        }
+        else if (val.type() == typeid(long)) {
             rhs_expr = Int(std::any_cast<long>(val)); 
+            lhs_type = expr_type::UINT64;
+        }
         else
             spdlog::info("ERROR in property_list_to_expr: rhs not handled {}", val.type().name());
+
+        auto pcode = qctx_.get_code(prop.first);
+        auto lhs_expr = Variable(0, prop.first, pcode, lhs_type);
         
         expr ex2 = EQ(lhs_expr, rhs_expr);
         if (ex)
@@ -919,14 +929,15 @@ std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *c
     }
     else if (ctx->variable() != nullptr) {
         auto var_id = extract_tuple_id(ctx->variable()->Var()->getText());
+        auto var_type = typespec_to_exprtype(ctx->variable()->type_spec());
         // Identifier_ could be empty
         if (ctx->variable()->Identifier_() != nullptr) {
             auto attr = ctx->variable()->Identifier_()->getText();
             auto pcode = qctx_.get_code(attr);
-            res = std::make_any<expr>(Variable(var_id, attr, pcode));
+            res = std::make_any<expr>(Variable(var_id, attr, pcode, var_type));
         }
         else
-            res = std::make_any<expr>(Variable(var_id));
+            res = std::make_any<expr>(Variable(var_id, var_type));
     }
     else if (ctx->function_call() != nullptr) {
         // handle UDFs - TODO: should be combined with code in visitProject_op
@@ -952,9 +963,9 @@ std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *c
             else {
                 auto p_idx = extract_tuple_id(pm->Var()->getText());
                 auto p_attr = pm->Identifier_();
-                // auto p_type = pm->type_spec();
+                auto p_type = typespec_to_exprtype(pm->type_spec());
                 // add parameter variable
-                param_list.push_back(Variable(p_idx, p_attr != nullptr ? p_attr->getText() : ""));
+                param_list.push_back(Variable(p_idx, p_attr != nullptr ? p_attr->getText() : "", p_type));
             }
         }
         if (prefix != "")
@@ -964,4 +975,19 @@ std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *c
 
     }
     return res;
+}
+
+expr_type query_planner::typespec_to_exprtype(poseidonParser::Type_specContext *var_type) {
+    expr_type ex_ty = expr_type::UNKNOWN;
+    if (var_type->IntType_() != nullptr) 
+         ex_ty = expr_type::INT;
+    else if (var_type->DoubleType_() != nullptr)
+        ex_ty = expr_type::DOUBLE;
+    else if (var_type->Uint64Type_() != nullptr)
+        ex_ty = expr_type::UINT64;
+    else if (var_type->StringType_() != nullptr)
+        ex_ty = expr_type::STRING;
+    else if (var_type->DateType_() != nullptr)
+        ex_ty = expr_type::DATETIME;
+    return ex_ty;
 }

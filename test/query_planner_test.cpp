@@ -104,7 +104,7 @@ TEST_CASE("Testing the poseidon query processor", "[query_proc]") {
     }
 
    SECTION("Filter") {
-        auto plan = qp.prepare_query("Filter($0.attr > 42, NodeScan('Nodes'))");
+        auto plan = qp.prepare_query("Filter($0.attr:int > 42, NodeScan('Nodes'))");
         plan.print_plan(os);
         os << std::ends;
         REQUIRE(std::string(os.str()) == "filter([$0.attr > 42]) - { in=0 | out=0 | time=0s }\n└── scan_nodes([Nodes]) - { in=0 | out=0 | time=0s }\n");
@@ -118,7 +118,7 @@ TEST_CASE("Testing the poseidon query processor", "[query_proc]") {
     }
 
     SECTION("Create Relationship") {
-        auto plan = qp.prepare_query("Create(($0)-[r:knows { creationDate: '2010-07-21' } ]->($1), CrossJoin(Filter($0.id == 1, NodeScan('Person')), Filter($0.id == 2, NodeScan('Person'))))");
+        auto plan = qp.prepare_query("Create(($0)-[r:knows { creationDate: '2010-07-21' } ]->($1), CrossJoin(Filter($0.id:uint64 == 1, NodeScan('Person')), Filter($0.id:uint64 == 2, NodeScan('Person'))))");
         plan.print_plan(os);
         os << std::ends;
         REQUIRE(std::string(os.str()) == "create_relationship(0->1, [knows], {creationDate: \"2010-07-21\"})\n└── cross_join() - { in=0 | out=0 | time=0s }\n    ├── filter([$0.id == 2]) - { in=0 | out=0 | time=0s }\n    │   └── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n    └── filter([$0.id == 1]) - { in=0 | out=0 | time=0s }\n        └── scan_nodes([Person]) - { in=0 | out=0 | time=0s }\n");
