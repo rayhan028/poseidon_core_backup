@@ -447,6 +447,8 @@ std::any query_planner::visitGroup_by_op(poseidonParser::Group_by_opContext *ctx
             grp_type = string_type;
         else if (tspec->Uint64Type_() != nullptr)
             grp_type = uint64_type;
+        else if (tspec->DateType_() != nullptr)
+            grp_type = ptime_type;
         grps.push_back(group_by::group{ var_id, attr, grp_type });
     }
 

@@ -395,6 +395,9 @@ void group_by::process(query_ctx &ctx, const qr_tuple &v) {
         case double_type:
           v2.insert(std::end(v2), aggregate::get_double_value(ctx, v, expr(g.var, g.pkey)));
           break;
+        case ptime_type:
+          v2.insert(std::end(v2), aggregate::get_ptime_value(ctx, v, expr(g.var, g.pkey)));
+          break;
         default:
           spdlog::info("unhandled group type: {}", g.grp_type);
           break;
