@@ -310,7 +310,7 @@ void node_has_label::dump(std::ostream &os) const {
 void node_has_label::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   bool success = false;
-  auto n = boost::get<node *>(v.back());
+  auto n = qv_get_node(v.back());
   if (labels.empty()) {
     if (lcode == 0)
       lcode = ctx.gdb_->get_code(label);
@@ -602,110 +602,3 @@ void collect_result::finish(query_ctx &ctx) {
 }
 
 /* ------------------------------------------------------------------------ */
-
-void end_pipeline::dump(std::ostream &os) const { os << "end_pipeline()"; }
-
-void end_pipeline::process() { return; }
-
-/* ------------------------------------------------------------------------ */
-
-#if 0
-
-projection::projection(const expr_list &exprs, std::vector<projection_expr>& prexpr) : exprs_(exprs), prexpr_(prexpr) {
-  type_ = qop_type::project;
-  init_expr_vars();
-}
-
-projection::projection(const expr_list &exprs) : exprs_(exprs) {
-  type_ = qop_type::project;
-  init_expr_vars();
-}
-
-void projection::init_expr_vars() {
-  if (exprs_.empty())
-    return;
-  // we build a mapping table where for each expression variable refering to a
-  // property a new index is created
-  auto it =
-    std::max_element(exprs_.begin(), exprs_.end(),
-                       [](expr &e1, expr &e2) { return e1.vidx < e2.vidx; });
-
-  nvars_ = it->vidx + 1;
-  npvars_ = 0;
-  var_map_.resize(nvars_);
-  for (auto &ex : exprs_) {
-    if (ex.func != nullptr) {
-      var_map_[ex.vidx] = nvars_ + ex.vidx;
-      accessed_vars_.insert(ex.vidx);
-      npvars_++;
-    } else
-      var_map_[ex.vidx] = 0;
-  }
-  /*
-  std::ostringstream os;
-  os << "var_map_[";
-  for (auto v : var_map_)
-    os << " " << v;
-  os << " ]";
-  spdlog::info("{}, accessed_vars_={}", os.str(), accessed_vars_.size());
-  */
-}
-
-void projection::dump(std::ostream &os) const {
-  os << "project([";
-  for (auto &ex : exprs_) {
-    os << " $" << ex.vidx;
-    if (ex.func != nullptr)
-      os << ".func";
-  }
-  os << " ]) - " << PROF_DUMP;
-}
-
-void projection::process(query_ctx &ctx, const qr_tuple &v) {
-  // First, we build a list of all node_/rship_description objects which appear
-  // in the query result. This list is used as a cache for property functions.
-  // spdlog::info("projection::process");
-  PROF_PRE;
-  auto i = 0;
-  auto num_accessed_vars = accessed_vars_.size();
-  std::vector<query_result> pv(num_accessed_vars * 2);
-  for (auto index : accessed_vars_) {
-    pv[i] = v[index];
-    if (var_map_[index] == 0)
-      continue;
-    if (v[index].type() == typeid(node *)) {
-      auto n = boost::get<node *>(v[index]);
-      pv[num_accessed_vars + i] = ctx.gdb_->get_node_description(n->id());
-    } else if (v[index].type() == typeid(relationship *)) {
-      auto r = boost::get<relationship *>(v[index]);
-      pv[num_accessed_vars + i] = ctx.gdb_->get_rship_description(r->id());
-    }
-    else {
-      pv[num_accessed_vars + i]  = v[index]; // null_val;
-    }
-    var_map_[index] = num_accessed_vars + i; // we update mapping table
-    i++;
-  }
-
-  // Then, we process all projection functions...
-  qr_tuple res(exprs_.size());
-  for (auto i = 0u; i < exprs_.size(); i++) {
-    auto &ex = exprs_[i];
-    // spdlog::info("projection::process: pv={}, i={}, vidx={} --> {}", pv.size(), i, ex.vidx, var_map_[ex.vidx]);
-    try {
-      if (ex.func != nullptr) {
-        res[i] = ex.func(ctx, pv[var_map_[ex.vidx]]);
-      }
-      else {
-        query_result fwd = v[ex.vidx];
-        res[i] = builtin::forward(fwd);
-      }
-    } catch (unknown_property& exc) { }
-  }
-
-  consume_(ctx, res);
-  PROF_POST(1);
-}
-
-#endif
-/* --------------------------------------------------------------------- */

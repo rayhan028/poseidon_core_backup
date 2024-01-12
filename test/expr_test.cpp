@@ -286,7 +286,7 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
         REQUIRE(interpret_expression(qctx, ex17, tup) == false);
         REQUIRE(compile_expression(qctx, ex17, tup) == false);
 
-       // TODO: LT, GT ...
+       // TODO: RE
     }
 
    SECTION("plain expressions with ptime") {

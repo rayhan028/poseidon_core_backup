@@ -230,11 +230,6 @@ public:
   query_builder &collect(result_set &rs);
 
   /**
-   * Ends a query pipeline.
-   */
-  query_builder &finish();
-
-  /**
    * Add an operator for constructing the cartesian product of the query tuples 
    * of the left and right query pipelines.
    */

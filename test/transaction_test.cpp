@@ -772,7 +772,7 @@ TEST_CASE("Checking that a update transaction is aborted if the object is "
   auto pool = graph_pool::create(test_path);
   auto gdb = pool->create_graph("my_tx_graph17");
 
-barrier b1, b2, b3;
+  barrier b1, b2, b3;
   // 1. create a new node
   node::id_t nid = 0;
 	{
@@ -784,10 +784,12 @@ barrier b1, b2, b3;
    //  spdlog::info("updated #1");
 		gdb->commit_transaction();
 	}
+  gdb->flush();
+
   // 2. start a transaction to update
     auto t1 = std::thread([&]() {
-		b1.wait();
-		gdb->begin_transaction();
+		  b1.wait();
+		  gdb->begin_transaction();
 		// spdlog::info("BOT #2: {}", short_ts(tx->xid()));
 		// perform update
     // spdlog::info("node_by_id #2");

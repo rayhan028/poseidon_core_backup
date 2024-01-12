@@ -562,33 +562,4 @@ private:
   std::mutex collect_mtx;
 };
 
-/**
- * end_pipeline is a query operator to end a query pipeline without
- * collecting the query results.
- */
-struct end_pipeline : public qop, public std::enable_shared_from_this<end_pipeline> {
-  end_pipeline() {
-    type_ = qop_type::end;
-    other_ = qop_type::none;
-  }
-
-  void dump(std::ostream &os) const override;
-
-  void process();
-
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
-    if (has_subscriber())
-      subscriber_->accept(vis);
-  }
-
-  void set_other(qop_type other, std::size_t other_idx = -1) {
-    other_ = other;
-    other_idx_ = other_idx;
-  }
-
-  qop_type other_;
-  std::size_t other_idx_;
-};
-
 #endif

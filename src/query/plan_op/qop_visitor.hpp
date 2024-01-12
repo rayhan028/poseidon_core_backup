@@ -48,7 +48,6 @@ struct weighted_shortest_path_opr;
 struct k_weighted_shortest_path_opr;
 struct csr_data;
 struct collect_result;
-struct end_pipeline;
 struct projection;
 struct cross_join_op;
 struct nested_loop_join_op;
@@ -85,7 +84,6 @@ public:
     virtual void visit(std::shared_ptr<k_weighted_shortest_path_opr> op) {}
     virtual void visit(std::shared_ptr<csr_data> op) {}
     virtual void visit(std::shared_ptr<collect_result> op) {}
-    virtual void visit(std::shared_ptr<end_pipeline> op) {}
     virtual void visit(std::shared_ptr<projection> op) {}
     virtual void visit(std::shared_ptr<cross_join_op> op) {}
     virtual void visit(std::shared_ptr<nested_loop_join_op> op) {}

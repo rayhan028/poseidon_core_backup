@@ -59,7 +59,7 @@ After creating the database, we can execute queries, e.g.
 ./build/pcli --pool demo --db testdb
 poseidon> NodeScan()
 poseidon> NodeScan('Movie')
-poseidon> Filter($0.title == 'Inception (2010)', NodeScan('Movie'))
+poseidon> Filter($0.title:string == 'Inception (2010)', NodeScan('Movie'))
 poseidon> Expand(IN, 'Actor', ForeachRelationship(TO, 'PLAYED_IN', NodeScan('Movie')))
 ```
 
@@ -88,7 +88,7 @@ Operator | Parameter | Example | Description
 ---------| ----------|---------|------------
 NodeScan | node type (optional) | `NodeScan()`<br>`NodeScan('Person')` | Scans the node table and returns all nodes of the optionally given type.
 IndexScan | node type, property, key | `IndexScan('Person', 'id', 933)` | Performs an index lookup and returns all nodes of the given type that satisfy the predicate condition
-Filter | filter expression, input expression | `Filter($0.id == 42, NodeScan('Person'))` | Processes the input list of nodes and rships produced by input expression *query-expr* and returns all tuples satisfying the given condition. In the expressions, the input columns are denoted by $0, $1, $2 etc. 
+Filter | filter expression, input expression | `Filter($0.id:uint64 == 42, NodeScan('Person'))` | Processes the input list of nodes and rships produced by input expression *query-expr* and returns all tuples satisfying the given condition. In the expressions, the input columns are denoted by $0, $1, $2 etc. 
 ForeachRelationship | TO or FROM or ALL, RelationshipType, input | `ForeachRelationship(FROM, 'isLocatedIn', NodeScan('Person'))` | Traverses all incoming or outgoing or both relationships of the given type
 Expand | `IN` or `OUT`, node type, input expression | `Expand(OUT, 'Place', ForeachRelationship(FROM, 'isLocatedIn', NodeScan('Person')))` | Gets all the source or destination nodes of the given type. Used after `ForeachRelationship` operator.
 Match | path pattern, input expression | `Match((p1:Person {id: 933})-[:isLocatedIn]->(p2:Place))` | Evaluates the given path pattern (in Cypher's ASCII art notation) and returns the matching nodes/relationships. In fact, this operator is internally translated to a sequence of corresponding `ForeachRelationship`-`Expand` expressions.

@@ -227,12 +227,6 @@ query_builder &query_builder::collect(result_set &rs) {
   return *this;                               
 }
 
-query_builder &query_builder::finish() {
-  auto op = std::make_shared<end_pipeline>();
-  qpipeline_.append_op(op, std::bind(&end_pipeline::process, op.get()));
-  return *this;                               
-}
-
 query_builder &query_builder::project(const projection::expr_list &exprs) {
   auto op = std::make_shared<projection>(exprs);
   qpipeline_.append_op(op,
