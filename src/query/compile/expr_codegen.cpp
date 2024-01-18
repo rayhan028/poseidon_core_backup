@@ -53,6 +53,13 @@ void* expr_codegen::visit(std::shared_ptr<variable> op) {
     else if (op->result_type() == expr_type::STRING) {
         callee = gen_.extern_func(module_, "get_string_property_value");
     }
+    else if (op->result_type() == expr_type::DATETIME) {
+        callee = gen_.extern_func(module_, "get_ptime_property_value");
+    }
+    if (!callee) {
+        spdlog::info("unknown get_???_property_value for property of type '{}'", (int)op->result_type());
+        abort();
+    }
     return gen_.get_builder()->CreateCall(callee, { start_->getArg(0), start_->getArg(1), val1, val2 });
 }
 

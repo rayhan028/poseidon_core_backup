@@ -57,6 +57,10 @@ ir_generator::ir_generator(llvm::LLVMContext& ctx) : ctx_(ctx) {
     auto get_uint64_property_value_func_ty = llvm::FunctionType::get(i64_ty, { qctx_ptr_ty, qr_tuple_ptr_ty, i32_ty, i32_ty}, false);
     func_types_["get_uint64_property_value"] = get_uint64_property_value_func_ty;
 
+    // uint64_t get_ptime_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label)
+    auto get_ptime_property_value_func_ty = llvm::FunctionType::get(i64_ty, { qctx_ptr_ty, qr_tuple_ptr_ty, i32_ty, i32_ty}, false);
+    func_types_["get_ptime_property_value"] = get_ptime_property_value_func_ty;
+
     // double get_double_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label)
     auto get_double_property_value_func_ty = llvm::FunctionType::get(double_ty, { qctx_ptr_ty, qr_tuple_ptr_ty, i32_ty, i32_ty}, false);
     func_types_["get_double_property_value"] = get_double_property_value_func_ty;

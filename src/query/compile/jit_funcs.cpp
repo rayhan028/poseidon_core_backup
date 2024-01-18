@@ -56,6 +56,26 @@ uint64_t get_uint64_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, d
     throw invalid_typecast();
 }
 
+uint64_t get_ptime_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label) {
+    using namespace boost::posix_time;
+    ptime pt;
+    if (v->at(i).which() == node_ptr_type) {
+        auto n = boost::get<node *>(v->at(i));
+        auto item = ctx->gdb_->get_node_properties()->property_value(n->property_list, label);
+        pt = item.get<ptime>();     
+    }
+    else if (v->at(i).which() == rship_ptr_type) {
+        auto r = boost::get<relationship *>(v->at(i));
+        auto item = ctx->gdb_->get_rship_properties()->property_value(r->property_list, label);
+        pt = item.get<ptime>(); 
+    }
+    else
+        throw invalid_typecast();
+
+    static ptime epoch(boost::gregorian::date(1970, 1, 1));
+    return (pt - epoch).total_milliseconds();
+}
+
 double get_double_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label) {
     if (v->at(i).which() == node_ptr_type) {
         auto n = boost::get<node *>(v->at(i));

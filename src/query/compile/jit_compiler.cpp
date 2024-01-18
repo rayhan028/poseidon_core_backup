@@ -129,6 +129,8 @@ jit_compiler::jit_compiler(ExitOnError ExitOnErr) : ctx_(std::make_unique<LLVMCo
                 pointerToJITTargetAddress(&get_int_property_value), JITSymbolFlags::Exported);
     s_map[mangle("get_uint64_property_value")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_uint64_property_value), JITSymbolFlags::Exported);
+    s_map[mangle("get_ptime_property_value")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_ptime_property_value), JITSymbolFlags::Exported);
     s_map[mangle("get_double_property_value")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_double_property_value), JITSymbolFlags::Exported);
     s_map[mangle("get_string_property_value")] = JITEvaluatedSymbol(

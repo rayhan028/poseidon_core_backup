@@ -49,3 +49,67 @@ void* prepare_expr_visitor::visit(std::shared_ptr<func_call> op) {
     }
     return nullptr;
 }
+
+void* prepare_expr_visitor::handle_binary_expression(std::shared_ptr<binary_expression> op) {
+    op->left_->accept(*this);
+    op->right_->accept(*this);
+    if (is_func_call(op->left_)) {
+        auto fcall = std::dynamic_pointer_cast<func_call>(op->left_);
+        spdlog::info("replace func_call: {}", fcall->func_name_);
+        op->left_ = fcall->replace_by_literal(ctx_);
+    }
+    if (is_func_call(op->right_)) {
+        auto fcall = std::dynamic_pointer_cast<func_call>(op->right_);
+        spdlog::info("replace func_call: {}", fcall->func_name_);
+        op->right_ = fcall->replace_by_literal(ctx_);
+    }
+    return nullptr;
+}
+
+void* prepare_expr_visitor::visit(std::shared_ptr<eq_predicate> op) {
+    return handle_binary_expression(op);
+}
+
+void* prepare_expr_visitor::visit(std::shared_ptr<neq_predicate> op) {
+    return handle_binary_expression(op);
+}  
+    
+void* prepare_expr_visitor::visit(std::shared_ptr<regex_predicate> op) {
+    return handle_binary_expression(op);
+}
+
+void* prepare_expr_visitor::visit(std::shared_ptr<le_predicate> op) {
+    return handle_binary_expression(op);
+}
+
+void* prepare_expr_visitor::visit(std::shared_ptr<lt_predicate> op) {
+    return handle_binary_expression(op);
+}
+
+void* prepare_expr_visitor::visit(std::shared_ptr<ge_predicate> op) {
+    return handle_binary_expression(op);
+}
+
+void* prepare_expr_visitor::visit(std::shared_ptr<gt_predicate> op) {
+    return handle_binary_expression(op);
+}
+
+void* prepare_expr_visitor::visit(std::shared_ptr<and_predicate> op) {
+    return handle_binary_expression(op);
+}
+
+void* prepare_expr_visitor::visit(std::shared_ptr<or_predicate> op) {
+    return handle_binary_expression(op);
+}
+
+void* prepare_expr_visitor::visit(std::shared_ptr<math_expression> op) {
+    return handle_binary_expression(op);
+}
+
+bool prepare_expr_visitor::is_func_call(expr op) const {
+    if (op->fop_ == expr_op::CALL) {
+        auto fcall = std::dynamic_pointer_cast<func_call>(op);
+        return fcall->is_constant();
+    }
+    return false;
+}

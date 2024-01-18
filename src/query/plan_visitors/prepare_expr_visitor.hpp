@@ -29,13 +29,27 @@
 class prepare_expr_visitor : public expression_visitor {
 public:
     prepare_expr_visitor(query_ctx& ctx, std::shared_ptr<boost::dll::shared_library> udf_lib) : 
-        udf_lib_(udf_lib) {}
+        udf_lib_(udf_lib), ctx_(ctx) {}
     ~prepare_expr_visitor() = default;
 
     void* visit(std::shared_ptr<func_call> op) override; 
-
+    void* visit(std::shared_ptr<eq_predicate> op) override;     
+    void* visit(std::shared_ptr<neq_predicate> op) override;  
+    void* visit(std::shared_ptr<regex_predicate> op) override;  
+    void* visit(std::shared_ptr<le_predicate> op) override;
+    void* visit(std::shared_ptr<lt_predicate> op) override;
+    void* visit(std::shared_ptr<ge_predicate> op) override;
+    void* visit(std::shared_ptr<gt_predicate> op) override;
+    void* visit(std::shared_ptr<and_predicate> op) override;
+    void* visit(std::shared_ptr<or_predicate> op) override;
+    void* visit(std::shared_ptr<math_expression> op) override;
+    
 private:
+    bool is_func_call(expr op) const;
+    void* handle_binary_expression(std::shared_ptr<binary_expression> op);
+
     std::shared_ptr<boost::dll::shared_library> udf_lib_;
+    query_ctx& ctx_;
 };
 
 #endif

@@ -19,6 +19,7 @@
 
 #include "expression.hpp"
 #include "binary_expression.hpp"
+#include "qresult.hpp"
 
 void* expression_visitor::visit(std::shared_ptr<math_expression> op) { 
     if (op->left_) op->left_->accept(*this);
@@ -135,14 +136,17 @@ void* number_literal::accept(expression_visitor &fep) {
 
 variable::variable(unsigned int id, expr_type ty) : id_(id), pname_(""), pcode_(UNKNOWN_CODE) {
     ftype_ = rtype_ = ty; 
+    fop_ = expr_op::VARIABLE;
 }
 
 variable::variable(unsigned int id, const std::string& p, expr_type ty) : id_(id), pname_(p), pcode_(UNKNOWN_CODE) {
     ftype_ = rtype_ = ty; 
+    fop_ = expr_op::VARIABLE;
 }
 
 variable::variable(unsigned int id, const std::string& p, dcode_t pc, expr_type ty) : id_(id), pname_(p), pcode_(pc) {
     ftype_ = rtype_ = ty; 
+    fop_ = expr_op::VARIABLE;
 }
 
 std::string variable::dump() const {
@@ -205,4 +209,71 @@ void* func_call::accept(expression_visitor &fep) {
     for (auto& p : param_list_)    
         p->accept(fep);
     return fep.visit(shared_from_this());
+}
+
+bool func_call::is_constant() const {
+    if (!is_deterministic_)
+        return false;
+    
+    bool res = true;
+    for (auto& p : param_list_) {
+        res &= p->fop_ == expr_op::LITERAL; 
+    }
+    return res;
+}
+
+class literal_visitor : public expression_visitor {
+public:
+    literal_visitor() = default;
+
+    void* visit(std::shared_ptr<number_literal> op) override { 
+        if (op->ftype_ == expr_type::INT)
+            res_= qv_(op->ivalue_);
+        else if (op->ftype_ == expr_type::UINT64)
+            res_ = qv_(op->lvalue_);
+        else
+            res_ = qv_(op->dvalue_); 
+            return nullptr; 
+    }
+    void* visit(std::shared_ptr<string_literal> op) override { res_ = qv_(op->str_); return nullptr; }
+    void* visit(std::shared_ptr<time_literal> op) override { res_ = qv_(op->time_); return nullptr; }
+
+    query_result res_;
+};
+
+query_result literal_expr_to_qresult(expr ex) {
+    literal_visitor vis;
+    ex->accept(vis);
+    return vis.res_;
+}
+
+expr qresult_to_expr(const query_result& v) {
+    if (v.which() == int_type)
+        return Int(qv_get_int(v));
+    else if (v.which() == double_type)
+        return Float(qv_get_double(v));
+    else if (v.which() == uint64_type)
+        return Float(qv_get_uint64(v));
+    else if (v.which() == ptime_type)
+        return Time(qv_get_ptime(v));
+    else if (v.which() == string_type) 
+        return Str(qv_get_string(v));
+    else
+        return expr();
+}
+
+expr func_call::replace_by_literal(query_ctx& ctx) {
+    auto arg1 = literal_expr_to_qresult(param_list_[0]);
+    if (func1_ptr_ != nullptr) {
+        auto res = func1_ptr_(ctx, arg1);
+        return qresult_to_expr(res);
+    }
+    else if (func2_ptr_ != nullptr) {
+        auto arg2 = literal_expr_to_qresult(param_list_[1]);
+        auto res = func2_ptr_(ctx, arg1, arg2);  
+        return qresult_to_expr(res);
+    }
+    else {
+        spdlog::info("ERROR: Invalid function pointer in function '{}'", func_name_);
+    }
 }

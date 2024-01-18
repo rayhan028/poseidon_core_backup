@@ -56,6 +56,12 @@ double get_double_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dco
 uint64_t get_uint64_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label);
 
 /**
+ * Returns the value of an ptime property named by label of a node/relationship pointer 
+ * in the query_tuple v at index i.
+ */
+uint64_t get_ptime_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t label);
+
+/**
  * Returns the value of a string property named by label of a node/relationship pointer 
  * in the query_tuple v at index i.
  */

@@ -46,7 +46,9 @@ enum class expr_op {
     DIV = 13,
     MOD = 14,
     REGEX = 15,
-    CALL = 16
+    CALL = 16,
+    VARIABLE = 19,
+    LITERAL = 20
 };
 
 enum class expr_type {
@@ -113,8 +115,9 @@ public:
 struct expression {
     expr_type ftype_;
     expr_type rtype_; // result type - deduced from the operands and the operator
+    expr_op fop_;
 
-    expression() : ftype_(expr_type::UNKNOWN), rtype_(expr_type::UNKNOWN) {}
+    expression() : ftype_(expr_type::UNKNOWN), rtype_(expr_type::UNKNOWN), fop_(expr_op::LITERAL) {}
     virtual ~expression() {};
 
     virtual std::string dump() const = 0;
@@ -205,16 +208,32 @@ struct func_call : public expression, std::enable_shared_from_this<func_call> {
     std::vector<expr> param_list_;
     std::function<query_result(query_ctx&, query_result&)> func1_ptr_;
     std::function<query_result(query_ctx&, query_result&, query_result&)> func2_ptr_;
+    bool is_deterministic_;
 
     func_call(const std::string& fn, const std::vector<expr>& pl) : 
-        func_prefix_(""), func_name_(fn), param_list_(pl), func1_ptr_(nullptr), func2_ptr_(nullptr) {}
+        func_prefix_(""), func_name_(fn), param_list_(pl), func1_ptr_(nullptr), func2_ptr_(nullptr), is_deterministic_(true) {
+            fop_ = expr_op::CALL;
+        }
 
    func_call(const std::string& pfx, const std::string& fn, const std::vector<expr>& pl) : 
-        func_prefix_(pfx), func_name_(fn), param_list_(pl), func1_ptr_(nullptr), func2_ptr_(nullptr) {}
+        func_prefix_(pfx), func_name_(fn), param_list_(pl), func1_ptr_(nullptr), func2_ptr_(nullptr), is_deterministic_(true) {
+            fop_ = expr_op::CALL;
+        }
 
     std::string dump() const override;
 
     void* accept(expression_visitor &fep) override;
+
+    /**
+     * Return true if all args are literals and the function is deterministic. In this
+     * case we can replace the function call by its result.
+     */
+    bool is_constant() const;
+
+    /**
+     * Returns a literal expression that replaces the function call.
+    */
+    expr replace_by_literal(query_ctx& ctx);
 };
 
 inline expr Fct(const std::string& fname, const std::vector<expr>& params) { 
