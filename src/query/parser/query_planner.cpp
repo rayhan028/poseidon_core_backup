@@ -167,14 +167,21 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
             else if (prefix == "udf") {
                 if (!udf_lib_ || !udf_lib_->is_loaded())
                     throw udf_not_found();
-                spdlog::info("trying to find udf '{}'...", fc_name);
+                // spdlog::info("trying to find udf '{}'...", fc_name);
                 // auto fc_func = udf_lib_->get<user_defined_func1>(fc_name);
                 auto fc_func = udf_lib_->get<query_result(query_ctx*, void*)>(fc_name);
                 auto& pm = fc_params[0];
                 if (pm->value() != nullptr) {
-                    std::cout << "\tparam value: " << pm->value()->getText() << std::endl; 
-                    // pexprs.push_back(projection::expr());
-                    // prexprs.push_back({});
+                    abort();
+                    if (pm->value()->STRING_()) {
+                        //TODO: param_list.push_back(Str(trim_string(pm->value()->getText())));
+                    }
+                    else if (pm->value()->INTEGER()) {
+                        //TODO: param_list.push_back(Int(std::stoi(pm->value()->getText())));
+                    }
+                    else if (pm->value()->FLOAT()) {
+                        //TODO: param_list.push_back(Float(std::stof(pm->value()->getText())));
+                    }
                 }
                 else {
                     auto p_idx = extract_tuple_id(pm->Var()->getText());
@@ -642,7 +649,7 @@ std::any query_planner::visitNode_pattern(poseidonParser::Node_patternContext *c
     if (props.size() == 1) {
         // check whether we can process the node pattern with an index scan
         auto pname = props.begin()->first;
-        spdlog::info("lookup index {}.{}", label, pname);
+        spdlog::debug("lookup index {}.{}", label, pname);
   
         if (qctx_.gdb_ && qctx_.gdb_->has_index(label, pname)) {
             auto idx_id = qctx_.gdb_->get_index(label, pname);

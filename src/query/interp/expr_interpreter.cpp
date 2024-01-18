@@ -338,6 +338,7 @@ public:
         bool res = std::regex_match(qv_get_string(v1), op->re_) ? 1 : 0;
         //spdlog::info("visit regex_predicate: {} = {}", qv_get_string(v1), res);       
         stack_.push(query_result(res ? 1 : 0));
+        return nullptr;
     }
 
     virtual void* visit(std::shared_ptr<le_predicate> op) override {

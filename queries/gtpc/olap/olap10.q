@@ -1,30 +1,6 @@
-auto filterEntryD = [&](auto res) {
-    auto dt = (*(reinterpret_cast<const ptime *>(prop.value_)));
-    auto edt = %sdt + hours(24 * 30 * 3);
-    return %sdt <= dt && dt < edt;
-});
-
-Limit(20,
-    Sort([$2:double DESC],
-        GroupBy([$0, $1, $5, $2, $3, $4], 
-                [count($1)],
-            Project([$2.id:uint64, $2.last:string, $6.amount:double, $2.city:string, $2.phone:uint64, $4.name:string],
-                Expand(OUT, "OrderLine",
-                    ForeachRelationship(FROM, ":contains", $0,
-                        Expand(OUT, "Nation",
-                            ForeachRelationship(FROM, ":isLocatedIn",
-                                Expand(IN, "Customer",
-                                    ForeachRelationship(TO, ":hasPlaced",
-                                        Filter(filterEntryD($0.entry_d:datetime),
-                                            NodeScan("Order")
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
-    )
-)
+Sort([$5:double ASC],
+    GroupBy([$0.id:uint64, $0.last:string, $0.city:string, $0.phone:uint64, $6.name:string], [sum($4.amount:double)],
+        Expand(OUT, 'Nation',
+            ForeachRelationship(FROM, 'isLocatedIn', $0,
+                Filter($2.entry_d:datetime >= pb::to_datetime('2007-01-02 00:00:00.000000') && $2.entry_d:datetime <= $4.delivery_d:datetime,
+                    Match((c:Customer)-[:hasPlaced]->(o:Order)-[:contains]->(ol:OrderLine))))))) 

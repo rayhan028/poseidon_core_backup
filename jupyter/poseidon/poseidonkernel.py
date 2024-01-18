@@ -50,13 +50,15 @@ class PoseidonKernel(Kernel):
             logging.info("UNKNOWN CMD: '%s'", code)
             return "Ooops."
 
+
     def handle_query(self, code):
         logging.info("EXEC QUERY: '%s'", code)
         res = self.db.query(code)
 #        s = ""
 #        for tup in res:
 #                s = s + str(tup)
-        return tabulate(res, tablefmt="html")
+               
+        return tabulate(res, tablefmt="html", colglobalalign='left')
     
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
