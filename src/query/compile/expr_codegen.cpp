@@ -44,23 +44,41 @@ void* expr_codegen::visit(std::shared_ptr<variable> op) {
     llvm::Value *val1 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, op->id_, true));
     llvm::Value *val2 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, op->pcode_, true));
     llvm::FunctionCallee callee;
-    if (op->result_type() == expr_type::INT) {
-        callee = gen_.extern_func(module_, "get_int_property_value");
+
+    if (op->pcode_ == UNKNOWN_CODE) {
+        switch(op->result_type()) {
+        case expr_type::INT:
+            callee = gen_.extern_func(module_, "qr_get_int"); break;
+        case expr_type::DOUBLE:
+            callee = gen_.extern_func(module_, "qr_get_double"); break;
+        case expr_type::STRING:
+            callee = gen_.extern_func(module_, "qr_get_string"); break;
+        case expr_type::DATETIME:
+            callee = gen_.extern_func(module_, "qr_get_ptime"); break;
+        case expr_type::UINT64:
+            callee = gen_.extern_func(module_, "qr_get_uint64"); break;
+        }
+        return gen_.get_builder()->CreateCall(callee, { start_->getArg(1), val1 });
     }
-    else if (op->result_type() == expr_type::DOUBLE) {
-        callee = gen_.extern_func(module_, "get_double_property_value");
+    else {
+        switch (op->result_type()) {
+        case expr_type::INT:
+            callee = gen_.extern_func(module_, "get_int_property_value"); break;
+        case expr_type::DOUBLE:
+            callee = gen_.extern_func(module_, "get_double_property_value"); break;
+        case expr_type::STRING:
+            callee = gen_.extern_func(module_, "get_string_property_value"); break;
+        case expr_type::DATETIME:
+            callee = gen_.extern_func(module_, "get_ptime_property_value"); break;
+        case expr_type::UINT64:
+            callee = gen_.extern_func(module_, "get_uint64_property_value"); break;
+        }
+        if (!callee) {
+            spdlog::info("unknown get_???_property_value for property of type '{}'", (int)op->result_type());
+            abort();
+        }
+        return gen_.get_builder()->CreateCall(callee, { start_->getArg(0), start_->getArg(1), val1, val2 });
     }
-    else if (op->result_type() == expr_type::STRING) {
-        callee = gen_.extern_func(module_, "get_string_property_value");
-    }
-    else if (op->result_type() == expr_type::DATETIME) {
-        callee = gen_.extern_func(module_, "get_ptime_property_value");
-    }
-    if (!callee) {
-        spdlog::info("unknown get_???_property_value for property of type '{}'", (int)op->result_type());
-        abort();
-    }
-    return gen_.get_builder()->CreateCall(callee, { start_->getArg(0), start_->getArg(1), val1, val2 });
 }
 
 void* expr_codegen::visit(std::shared_ptr<string_literal> op) { 
@@ -210,3 +228,13 @@ void* expr_codegen::visit(std::shared_ptr<or_predicate> op) {
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
     return gen_.get_builder()->CreateOr({ lhs, rhs });
 }
+
+void* expr_codegen::visit(std::shared_ptr<regex_predicate> op) {
+    auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
+    auto rhs = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(64, (uint64_t) &(op->re_), true));
+
+    llvm::FunctionCallee callee = gen_.extern_func(module_, "regex_match");
+    //    bool res = std::regex_match(qv_get_string(v1), op->re_) ? 1 : 0;
+    return gen_.get_builder()->CreateCall(callee, { lhs, rhs });
+}  
+ 

@@ -20,6 +20,7 @@
 #define jit_funcs_hpp_
 
 #include <cstring>
+#include <regex>
 #include "defs.hpp"
 #include "query_ctx.hpp"
 #include "qresult_iterator.hpp"
@@ -82,11 +83,12 @@ inline uint64_t qr_get_uint64(qr_tuple* v, std::size_t i) { return boost::get<ui
  */
 inline double qr_get_double(qr_tuple* v, std::size_t i) { return boost::get<double>(v->at(i)); }
 
-
 /**
  * Compares two strings represented by char *.
 */
 inline int string_compare(uint8_t *s1, uint8_t *s2) { return std::strcmp((char *)s1, (char *)s2); }
+
+inline int regex_match(uint8_t *s, uint8_t *re) { return std::regex_match((char *)s,  *((std::regex *)re)); }
 
 int get_node_property_int_value(query_ctx *ctx, node *n, dcode_t label);
 

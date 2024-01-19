@@ -137,6 +137,8 @@ jit_compiler::jit_compiler(ExitOnError ExitOnErr) : ctx_(std::make_unique<LLVMCo
                 pointerToJITTargetAddress(&get_string_property_value), JITSymbolFlags::Exported);
     s_map[mangle("string_compare")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&string_compare), JITSymbolFlags::Exported);
+    s_map[mangle("regex_match")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&regex_match), JITSymbolFlags::Exported);
 
     s_map[mangle("get_node_property_int_value")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_node_property_int_value), JITSymbolFlags::Exported);

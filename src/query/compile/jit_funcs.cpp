@@ -53,6 +53,7 @@ uint64_t get_uint64_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, d
         auto item = ctx->gdb_->get_rship_properties()->property_value(r->property_list, label);
         return item.get<uint64_t>(); 
     }
+    spdlog::info("unexpected variable: ${} type={}", i, v->at(i).which());
     throw invalid_typecast();
 }
 

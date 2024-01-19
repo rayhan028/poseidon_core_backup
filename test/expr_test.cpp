@@ -410,6 +410,12 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
             REQUIRE(interpret_expression(qctx, ex7, tup) == true);
             REQUIRE(compile_expression(qctx, ex7, tup) == true);
 
+            tup[0] = 42;
+            auto ex8 = EQ(Variable(0, expr_type::INT), Int(42));
+            ex8->accept(vis);
+            REQUIRE(interpret_expression(qctx, ex8, tup) == true);
+            REQUIRE(compile_expression(qctx, ex8, tup) == true);
+
             return true;
         });
     }
