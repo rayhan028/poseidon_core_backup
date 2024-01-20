@@ -220,13 +220,23 @@ void* expr_codegen::visit(std::shared_ptr<gt_predicate> op) {
 void* expr_codegen::visit(std::shared_ptr<and_predicate> op) {
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
-    return gen_.get_builder()->CreateAnd({ lhs, rhs });
+    auto i32_ty = llvm::Type::getInt32Ty(gen_.get_context());
+    auto lhs32 = gen_.get_builder()->CreateIntCast(lhs, i32_ty, true);
+    auto rhs32 = gen_.get_builder()->CreateIntCast(rhs, i32_ty, true);
+    auto and_op = gen_.get_builder()->CreateAnd({ lhs32, rhs32 });
+    auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
+    return gen_.get_builder()->CreateICmpNE(and_op, val_0);
 }
 
 void* expr_codegen::visit(std::shared_ptr<or_predicate> op) {
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
-    return gen_.get_builder()->CreateOr({ lhs, rhs });
+    auto i32_ty = llvm::Type::getInt32Ty(gen_.get_context());
+    auto lhs32 = gen_.get_builder()->CreateIntCast(lhs, i32_ty, true);
+    auto rhs32 = gen_.get_builder()->CreateIntCast(rhs, i32_ty, true);
+    auto or_op = gen_.get_builder()->CreateOr({ lhs, rhs });
+    auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
+    return gen_.get_builder()->CreateICmpNE(or_op, val_0);
 }
 
 void* expr_codegen::visit(std::shared_ptr<regex_predicate> op) {
@@ -234,7 +244,6 @@ void* expr_codegen::visit(std::shared_ptr<regex_predicate> op) {
     auto rhs = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(64, (uint64_t) &(op->re_), true));
 
     llvm::FunctionCallee callee = gen_.extern_func(module_, "regex_match");
-    //    bool res = std::regex_match(qv_get_string(v1), op->re_) ? 1 : 0;
     return gen_.get_builder()->CreateCall(callee, { lhs, rhs });
 }  
  

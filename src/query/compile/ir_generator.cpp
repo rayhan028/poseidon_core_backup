@@ -84,7 +84,7 @@ ir_generator::ir_generator(llvm::LLVMContext& ctx) : ctx_(ctx) {
     auto string_compare_ty = llvm::FunctionType::get(i32_ty, { i8_ptr_ty, i8_ptr_ty }, false);
     func_types_["string_compare"] = string_compare_ty;
 
-    auto regex_match_ty = llvm::FunctionType::get(i32_ty, { i8_ptr_ty, i8_ptr_ty }, false);
+    auto regex_match_ty = llvm::FunctionType::get(i32_ty, { i8_ptr_ty, i64_ty }, false);
     func_types_["regex_match"] = regex_match_ty;
 }
 

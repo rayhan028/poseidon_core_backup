@@ -32,6 +32,8 @@ int get_int_property_value(query_ctx *ctx, qr_tuple* v, std::size_t i, dcode_t l
     if (v->at(i).which() == node_ptr_type) {
         auto n = boost::get<node *>(v->at(i));
         auto item = ctx->gdb_->get_node_properties()->property_value(n->property_list, label);
+        if (item.typecode() != p_item::p_int)
+            spdlog::info("unexpected property type: {}", item.typecode());
         return item.get<int>();     
     }
     else if (v->at(i).which() == rship_ptr_type) {
