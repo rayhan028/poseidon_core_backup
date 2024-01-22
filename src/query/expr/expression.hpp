@@ -24,7 +24,6 @@
 #include <iostream>
 #include "defs.hpp"
 #include "qresult_iterator.hpp"
-// #include "filter_visitor.hpp"
 
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>

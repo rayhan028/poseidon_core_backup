@@ -516,9 +516,9 @@ void filter_op::dump(std::ostream &os) const {
 void filter_op::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
 #ifdef USE_LLVM
-  bool tp = pred_func_ != nullptr ? pred_func_(&ctx, &v) : (ex_ ? interpret_expression(ctx, ex_, v) : pred_func1_(v));
+  bool tp = pred_func_ != nullptr ? pred_func_(&ctx, &v) : (ex_ ? interpret_bool_expression(ctx, ex_, v) : pred_func1_(v));
 #else
-  bool tp = ex_ ? interpret_expression(ctx, ex_, v) : pred_func1_(v);
+  bool tp = ex_ ? interpret_bool_expression(ctx, ex_, v) : pred_func1_(v);
 #endif
   if (tp) {
     consume_(ctx, v);

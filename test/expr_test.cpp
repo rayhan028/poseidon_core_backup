@@ -103,187 +103,187 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
     SECTION("plain expressions with int") {
         qr_tuple tup;
         auto ex1 = EQ(Int(42), Int(42));
-        REQUIRE(interpret_expression(qctx, ex1, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex1, tup) == true);
         REQUIRE(compile_expression(qctx, ex1, tup) == true);
 
         auto ex2 = EQ(Int(42), Int(15));
-        REQUIRE(interpret_expression(qctx, ex2, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex2, tup) == false);
         REQUIRE(compile_expression(qctx, ex2, tup) == false);
 
         auto ex3 = LT(Int(42), Int(15));
-        REQUIRE(interpret_expression(qctx, ex3, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex3, tup) == false);
         REQUIRE(compile_expression(qctx, ex3, tup) == false);
 
         auto ex4 = LT(Int(15), Int(16));
-        REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex4, tup) == true);
         REQUIRE(compile_expression(qctx, ex4, tup) == true);
 
         auto ex5 = LE(Int(15), Int(16));
-        REQUIRE(interpret_expression(qctx, ex5, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex5, tup) == true);
         REQUIRE(compile_expression(qctx, ex5, tup) == true);
 
         auto ex6 = LE(Int(15), Int(15));
-        REQUIRE(interpret_expression(qctx, ex6, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex6, tup) == true);
         REQUIRE(compile_expression(qctx, ex6, tup) == true);
 
         auto ex7 = LE(Int(15), Int(14));
-        REQUIRE(interpret_expression(qctx, ex7, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex7, tup) == false);
         REQUIRE(compile_expression(qctx, ex7, tup) == false);
 
         auto ex8 = GT(Int(42), Int(15));
-        REQUIRE(interpret_expression(qctx, ex8, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex8, tup) == true);
         REQUIRE(compile_expression(qctx, ex8, tup) == true);
 
         auto ex9 = GT(Int(15), Int(16));
-        REQUIRE(interpret_expression(qctx, ex9, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex9, tup) == false);
         REQUIRE(compile_expression(qctx, ex9, tup) == false);
 
         auto ex10 = GE(Int(16), Int(1));
-        REQUIRE(interpret_expression(qctx, ex10, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex10, tup) == true);
         REQUIRE(compile_expression(qctx, ex10, tup) == true);
 
         auto ex11 = GE(Int(15), Int(15));
-        REQUIRE(interpret_expression(qctx, ex11, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex11, tup) == true);
         REQUIRE(compile_expression(qctx, ex11, tup) == true);
 
         auto ex12 = GE(Int(12), Int(14));
-        REQUIRE(interpret_expression(qctx, ex12, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex12, tup) == false);
         REQUIRE(compile_expression(qctx, ex12, tup) == false);
 
         auto ex13 = NEQ(Int(42), Int(42));
-        REQUIRE(interpret_expression(qctx, ex13, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex13, tup) == false);
         REQUIRE(compile_expression(qctx, ex13, tup) == false);
 
         auto ex14 = NEQ(Int(43), Int(42));
-        REQUIRE(interpret_expression(qctx, ex14, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex14, tup) == true);
         REQUIRE(compile_expression(qctx, ex14, tup) == true);
     }
 
     SECTION("plain expressions with double") {
         qr_tuple tup;
         auto ex1 = EQ(Float(42.0), Float(42.0));
-        REQUIRE(interpret_expression(qctx, ex1, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex1, tup) == true);
         REQUIRE(compile_expression(qctx, ex1, tup) == true);
 
         auto ex2 = EQ(Float(42.0), Float(15.0));
-        REQUIRE(interpret_expression(qctx, ex2, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex2, tup) == false);
         //REQUIRE(load_compiled_expression(qctx, ex2, tup, 22) == false);
         REQUIRE(compile_expression(qctx, ex2, tup) == false);
 
         auto ex3 = LT(Float(42.0), Float(15.0));
-        REQUIRE(interpret_expression(qctx, ex3, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex3, tup) == false);
         REQUIRE(compile_expression(qctx, ex3, tup) == false);
 
         auto ex4 = LT(Float(15.0), Float(16.0));
-        REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex4, tup) == true);
         REQUIRE(compile_expression(qctx, ex4, tup) == true);
 
         auto ex5 = LE(Float(15.0), Float(16.0));
-        REQUIRE(interpret_expression(qctx, ex5, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex5, tup) == true);
         REQUIRE(compile_expression(qctx, ex5, tup) == true);
 
         auto ex6 = LE(Float(15.0), Float(15.0));
-        REQUIRE(interpret_expression(qctx, ex6, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex6, tup) == true);
         REQUIRE(compile_expression(qctx, ex6, tup) == true);
 
         auto ex7 = LE(Float(15.0), Float(14.0));
-        REQUIRE(interpret_expression(qctx, ex7, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex7, tup) == false);
         REQUIRE(compile_expression(qctx, ex7, tup) == false);
 
         auto ex8 = GT(Float(42.0), Float(15.0));
-        REQUIRE(interpret_expression(qctx, ex8, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex8, tup) == true);
         REQUIRE(compile_expression(qctx, ex8, tup) == true);
 
         auto ex9 = GT(Float(15.0), Float(16.0));
-        REQUIRE(interpret_expression(qctx, ex9, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex9, tup) == false);
         REQUIRE(compile_expression(qctx, ex9, tup) == false);
 
         auto ex10 = GE(Float(16.0), Float(1.0));
-        REQUIRE(interpret_expression(qctx, ex10, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex10, tup) == true);
         REQUIRE(compile_expression(qctx, ex10, tup) == true);
 
         auto ex11 = GE(Float(15.0), Float(15.0));
-        REQUIRE(interpret_expression(qctx, ex11, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex11, tup) == true);
         REQUIRE(compile_expression(qctx, ex11, tup) == true);
 
         auto ex12 = GE(Float(12.0), Float(14.0));
-        REQUIRE(interpret_expression(qctx, ex12, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex12, tup) == false);
         REQUIRE(compile_expression(qctx, ex12, tup) == false);
 
         auto ex13 = NEQ(Float(42.0), Float(42.0));
-        REQUIRE(interpret_expression(qctx, ex13, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex13, tup) == false);
         REQUIRE(compile_expression(qctx, ex13, tup) == false);
 
         auto ex14 = NEQ(Float(43.0), Float(42.0));
-        REQUIRE(interpret_expression(qctx, ex14, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex14, tup) == true);
         REQUIRE(compile_expression(qctx, ex14, tup) == true);
     }
 
     SECTION("plain expressions with strings") {
         qr_tuple tup;
         auto ex1 = EQ(Str("Hallo"), Str("Hallo"));
-        REQUIRE(interpret_expression(qctx, ex1, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex1, tup) == true);
         REQUIRE(compile_expression(qctx, ex1, tup) == true);
 
         auto ex2 = NEQ(Str("Hallo"), Str("Hallo"));
-        REQUIRE(interpret_expression(qctx, ex2, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex2, tup) == false);
         REQUIRE(compile_expression(qctx, ex2, tup) == false);
 
         auto ex3 = EQ(Str("Hallo"), Str("Hallo2"));
-        REQUIRE(interpret_expression(qctx, ex3, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex3, tup) == false);
         REQUIRE(compile_expression(qctx, ex3, tup) == false);
 
         auto ex4 = NEQ(Str("Hallo"), Str("Hallo2"));
-        REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex4, tup) == true);
         REQUIRE(compile_expression(qctx, ex4, tup) == true);
 
         auto ex5 = RE(Str("Hallo"), Str("H.*"));
-        REQUIRE(interpret_expression(qctx, ex5, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex5, tup) == true);
 
         auto ex6 = RE(Str("Halto"), Str("Hal[lt]o"));
-        REQUIRE(interpret_expression(qctx, ex6, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex6, tup) == true);
 
         auto ex7 = RE(Str("None"), Str("H.*"));
-        REQUIRE(interpret_expression(qctx, ex7, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex7, tup) == false);
 
         auto ex8 = LT(Str("Hallo"), Str("Hallo2"));
-        REQUIRE(interpret_expression(qctx, ex8, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex8, tup) == true);
         REQUIRE(compile_expression(qctx, ex8, tup) == true);
 
         auto ex9 = GT(Str("Hallo"), Str("Hallo2"));
-        REQUIRE(interpret_expression(qctx, ex9, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex9, tup) == false);
         REQUIRE(compile_expression(qctx, ex9, tup) == false);
  
         auto ex10 = LT(Str("XYZ"), Str("Hallo"));
-        REQUIRE(interpret_expression(qctx, ex10, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex10, tup) == false);
         REQUIRE(compile_expression(qctx, ex10, tup) == false);
  
         auto ex11 = LT(Str("XYZ"), Str("Hallo"));
-        REQUIRE(interpret_expression(qctx, ex11, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex11, tup) == false);
         REQUIRE(compile_expression(qctx, ex11, tup) == false);
 
         auto ex12 = LE(Str("Hallo"), Str("Hallo2"));
-        REQUIRE(interpret_expression(qctx, ex12, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex12, tup) == true);
         REQUIRE(compile_expression(qctx, ex12, tup) == true);
 
         auto ex13 = GE(Str("Hallo2"), Str("Hallo"));
-        REQUIRE(interpret_expression(qctx, ex13, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex13, tup) == true);
         REQUIRE(compile_expression(qctx, ex13, tup) == true);
 
         auto ex14 = LE(Str("Hallo"), Str("Hallo"));
-        REQUIRE(interpret_expression(qctx, ex14, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex14, tup) == true);
         REQUIRE(compile_expression(qctx, ex14, tup) == true);
 
         auto ex15 = GE(Str("Hallo"), Str("Hallo"));
-        REQUIRE(interpret_expression(qctx, ex15, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex15, tup) == true);
         REQUIRE(compile_expression(qctx, ex15, tup) == true);
 
         auto ex16 = GE(Str("Hallo"), Str("Hallo2"));
-        REQUIRE(interpret_expression(qctx, ex16, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex16, tup) == false);
         REQUIRE(compile_expression(qctx, ex16, tup) == false);
  
         auto ex17 = LE(Str("XYZ"), Str("Hallo"));
-        REQUIRE(interpret_expression(qctx, ex17, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex17, tup) == false);
         REQUIRE(compile_expression(qctx, ex17, tup) == false);
 
        // TODO: RE
@@ -296,59 +296,59 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
         boost::posix_time::ptime t3(boost::posix_time::time_from_string("2023-09-20 23:59:59.000"));
 
         auto ex1 = EQ(Time(t1), Time(t2));
-        REQUIRE(interpret_expression(qctx, ex1, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex1, tup) == true);
         REQUIRE(compile_expression(qctx, ex1, tup) == true);
 
         auto ex2 = EQ(Time(t1), Time(t3));
-        REQUIRE(interpret_expression(qctx, ex2, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex2, tup) == false);
         REQUIRE(compile_expression(qctx, ex2, tup) == false);
 
         auto ex3 = LT(Time(t1), Time(t2));
-        REQUIRE(interpret_expression(qctx, ex3, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex3, tup) == false);
         REQUIRE(compile_expression(qctx, ex3, tup) == false);
 
         auto ex4 = LT(Time(t1), Time(t3));
-        REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex4, tup) == true);
         REQUIRE(compile_expression(qctx, ex4, tup) == true);
 
         auto ex5 = LE(Time(t1), Time(t3));
-        REQUIRE(interpret_expression(qctx, ex5, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex5, tup) == true);
         REQUIRE(compile_expression(qctx, ex5, tup) == true);
 
         auto ex6 = LE(Time(t1), Time(t3));
-        REQUIRE(interpret_expression(qctx, ex6, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex6, tup) == true);
         REQUIRE(compile_expression(qctx, ex6, tup) == true);
 
         auto ex7 = LE(Time(t3), Time(t1));
-        REQUIRE(interpret_expression(qctx, ex7, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex7, tup) == false);
         REQUIRE(compile_expression(qctx, ex7, tup) == false);
 
         auto ex8 = GT(Time(t3), Time(t2));
-        REQUIRE(interpret_expression(qctx, ex8, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex8, tup) == true);
         REQUIRE(compile_expression(qctx, ex8, tup) == true);
 
         auto ex9 = GT(Time(t1), Time(t2));
-        REQUIRE(interpret_expression(qctx, ex9, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex9, tup) == false);
         REQUIRE(compile_expression(qctx, ex9, tup) == false);
 
         auto ex10 = GE(Time(t1), Time(t2));
-        REQUIRE(interpret_expression(qctx, ex10, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex10, tup) == true);
         REQUIRE(compile_expression(qctx, ex10, tup) == true);
 
         auto ex11 = GE(Time(t1), Time(t2));
-        REQUIRE(interpret_expression(qctx, ex11, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex11, tup) == true);
         REQUIRE(compile_expression(qctx, ex11, tup) == true);
 
         auto ex12 = GE(Time(t1), Time(t3));
-        REQUIRE(interpret_expression(qctx, ex12, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex12, tup) == false);
         REQUIRE(compile_expression(qctx, ex12, tup) == false);
 
         auto ex13 = NEQ(Time(t1), Time(t2));
-        REQUIRE(interpret_expression(qctx, ex13, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex13, tup) == false);
         REQUIRE(compile_expression(qctx, ex13, tup) == false);
 
         auto ex14 = NEQ(Time(t1), Time(t3));
-        REQUIRE(interpret_expression(qctx, ex14, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex14, tup) == true);
         REQUIRE(compile_expression(qctx, ex14, tup) == true);
     }
 
@@ -360,12 +360,12 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
 
         auto ex1 = EQ(Fct("pb", "to_datetime", std::vector<expr>{ Str(ts)}), Time(t));
         ex1->accept(vis);
-        REQUIRE(interpret_expression(qctx, ex1, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex1, tup) == true);
 
         auto ts2 = boost::posix_time::to_iso_extended_string(t);
         auto ex2 = EQ(Fct("pb", "ptime_to_dtimestring", std::vector<expr>{ Time(t)}), Str(ts2));
         ex2->accept(vis);
-        REQUIRE(interpret_expression(qctx, ex2, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex2, tup) == true);
     }
     
     SECTION("expressions with variables") {
@@ -378,42 +378,42 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
    
             auto ex1 = EQ(Fct("pb", "label", std::vector<expr>{ Variable(0, expr_type::NODE) }), Str("Person"));
             ex1->accept(vis);
-            REQUIRE(interpret_expression(qctx, ex1, tup) == true);
+            REQUIRE(interpret_bool_expression(qctx, ex1, tup) == true);
 
             auto ex2 = EQ(Variable(0, "id", id_code, expr_type::INT), Int(42));
             ex2->accept(vis);
-            REQUIRE(interpret_expression(qctx, ex2, tup) == true);
+            REQUIRE(interpret_bool_expression(qctx, ex2, tup) == true);
             REQUIRE(compile_expression(qctx, ex2, tup) == true);
 
             auto ex3 = EQ(Variable(0, "id", id_code, expr_type::INT), Int(4));
             ex3->accept(vis);
-            REQUIRE(interpret_expression(qctx, ex3, tup) == false);
+            REQUIRE(interpret_bool_expression(qctx, ex3, tup) == false);
             REQUIRE(compile_expression(qctx, ex3, tup) == false);
 
             auto ex4 = LT(Variable(0, "id", id_code, expr_type::INT), Int(100));
             ex4->accept(vis);
-            REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+            REQUIRE(interpret_bool_expression(qctx, ex4, tup) == true);
             REQUIRE(compile_expression(qctx, ex4, tup) == true);
 
             auto ex5 = GT(Variable(0, "salary", salary_code, expr_type::DOUBLE), Float(2500.0));
             ex5->accept(vis);
-            REQUIRE(interpret_expression(qctx, ex5, tup) == true);
+            REQUIRE(interpret_bool_expression(qctx, ex5, tup) == true);
             REQUIRE(compile_expression(qctx, ex5, tup) == true);
 
             auto ex6 = GT(Variable(0, "salary", salary_code, expr_type::DOUBLE), Float(10000.0));
             ex6->accept(vis);
-            REQUIRE(interpret_expression(qctx, ex6, tup) == false);
+            REQUIRE(interpret_bool_expression(qctx, ex6, tup) == false);
             REQUIRE(compile_expression(qctx, ex6, tup) == false);
 
             auto ex7 = EQ(Variable(0, "lastName", lastName_code, expr_type::STRING), Str("Cobb"));
             ex7->accept(vis);
-            REQUIRE(interpret_expression(qctx, ex7, tup) == true);
+            REQUIRE(interpret_bool_expression(qctx, ex7, tup) == true);
             REQUIRE(compile_expression(qctx, ex7, tup) == true);
 
             tup[0] = 42;
             auto ex8 = EQ(Variable(0, expr_type::INT), Int(42));
             ex8->accept(vis);
-            REQUIRE(interpret_expression(qctx, ex8, tup) == true);
+            REQUIRE(interpret_bool_expression(qctx, ex8, tup) == true);
             REQUIRE(compile_expression(qctx, ex8, tup) == true);
 
             return true;
@@ -423,24 +423,48 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
     SECTION("plain expressions with logical ops") {
         qr_tuple tup;
         auto ex1 = AND(EQ(Int(42), Int(42)), EQ(Float(33.0), Float(33.0)));
-        REQUIRE(interpret_expression(qctx, ex1, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex1, tup) == true);
         REQUIRE(compile_expression(qctx, ex1, tup) == true);
 
         auto ex2 = AND(EQ(Int(42), Int(42)), EQ(Float(33.0), Float(88.0)));
-        REQUIRE(interpret_expression(qctx, ex2, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex2, tup) == false);
         REQUIRE(compile_expression(qctx, ex2, tup) == false);
 
         auto ex3 = OR(EQ(Int(42), Int(42)), EQ(Float(33.0), Float(88.0)));
-        REQUIRE(interpret_expression(qctx, ex3, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex3, tup) == true);
         REQUIRE(compile_expression(qctx, ex3, tup) == true);
 
         auto ex4 = OR(EQ(Float(33.0), Float(88.0)), EQ(Int(42), Int(42)));
-        REQUIRE(interpret_expression(qctx, ex4, tup) == true);
+        REQUIRE(interpret_bool_expression(qctx, ex4, tup) == true);
         REQUIRE(compile_expression(qctx, ex4, tup) == true);
 
         auto ex5 = OR(EQ(Float(33.0), Float(88.0)), EQ(Int(40), Int(42)));
-        REQUIRE(interpret_expression(qctx, ex5, tup) == false);
+        REQUIRE(interpret_bool_expression(qctx, ex5, tup) == false);
         REQUIRE(compile_expression(qctx, ex5, tup) == false);
+    }
+
+    SECTION("arithmetic expressions") {
+        qr_tuple tup;
+        auto ex1 = PLUS(Int(2), Int(5));
+        auto res1 = interpret_expression(qctx, ex1, tup);
+        REQUIRE(qv_get_int(res1) == 7);
+
+        auto ex2 = MINUS(Int(20), Int(5));
+        auto res2 = interpret_expression(qctx, ex2, tup);
+        REQUIRE(qv_get_int(res2) == 15);
+ 
+        auto ex3 = MULT(Int(3), Int(5));
+        auto res3 = interpret_expression(qctx, ex3, tup);
+        REQUIRE(qv_get_int(res3) == 15);
+ 
+        auto ex4 = DIV(Int(12), Int(6));
+        auto res4 = interpret_expression(qctx, ex4, tup);
+        REQUIRE(qv_get_int(res4) == 2);
+ 
+        auto ex5 = MOD(Int(13), Int(6));
+        auto res5 = interpret_expression(qctx, ex5, tup);
+        REQUIRE(qv_get_int(res5) == 1);
+ 
     }
 
     gen.reset();

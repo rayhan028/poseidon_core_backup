@@ -141,7 +141,7 @@ void left_outer_join_op::process_left(query_ctx &ctx, const qr_tuple &v) {
     bool tp = false;
     if (ex_) {
       auto tv = concat(v, t);
-      tp = interpret_expression(ctx, ex_, tv);
+      tp = interpret_bool_expression(ctx, ex_, tv);
     }
     else
       tp = pred_(v, t);

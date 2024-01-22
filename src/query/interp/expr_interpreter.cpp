@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2024 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -101,7 +101,14 @@ bool equal(const query_result& qr1, const query_result& qr2) {
         return (uint64_t)qv_get_int(qr1) == qv_get_uint64(qr2);
     else if (qr1.which() == uint64_type && qr2.which() == int_type)
         return qv_get_uint64(qr1) == (uint64_t)qv_get_int(qr2);
-
+   else if (qr1.which() == double_type && qr2.which() == uint64_type)
+        return qv_get_double(qr1) == (double)qv_get_uint64(qr2);
+    else if (qr1.which() == uint64_type && qr2.which() == double_type)
+        return (double)qv_get_uint64(qr1) == qv_get_double(qr2);
+    else if (qr1.which() == double_type && qr2.which() == int_type)
+        return qv_get_double(qr1) == (double)qv_get_int(qr2);
+    else if (qr1.which() == int_type && qr2.which() == double_type)
+        return (double)qv_get_int(qr1) == qv_get_double(qr2);
     return false;
 }
 
@@ -129,6 +136,14 @@ bool less_than(const query_result& qr1, const query_result& qr2) {
         return (uint64_t)qv_get_int(qr1) <qv_get_uint64(qr2);
     else if (qr1.which() == uint64_type && qr2.which() ==int_type)
         return qv_get_uint64(qr1) < (uint64_t)qv_get_int(qr2);
+   else if (qr1.which() == double_type && qr2.which() == uint64_type)
+        return qv_get_double(qr1) < (double)qv_get_uint64(qr2);
+    else if (qr1.which() == uint64_type && qr2.which() == double_type)
+        return (double)qv_get_uint64(qr1) < qv_get_double(qr2);
+    else if (qr1.which() == double_type && qr2.which() == int_type)
+        return qv_get_double(qr1) < (double)qv_get_int(qr2);
+    else if (qr1.which() == int_type && qr2.which() == double_type)
+        return (double)qv_get_int(qr1) < qv_get_double(qr2);    
     return false;
 }
 
@@ -160,11 +175,51 @@ bool greater_than(const query_result& qr1, const query_result& qr2) {
         return (uint64_t)qv_get_int(qr1) > qv_get_uint64(qr2);
     else if (qr1.which() == uint64_type && qr2.which() == int_type)
         return qv_get_uint64(qr1) > (uint64_t)qv_get_int(qr2);
+    else if (qr1.which() == double_type && qr2.which() == uint64_type)
+        return qv_get_double(qr1) > (double)qv_get_uint64(qr2);
+    else if (qr1.which() == uint64_type && qr2.which() == double_type)
+        return (double)qv_get_uint64(qr1) > qv_get_double(qr2);
+    else if (qr1.which() == double_type && qr2.which() == int_type)
+        return qv_get_double(qr1) > (double)qv_get_int(qr2);
+    else if (qr1.which() == int_type && qr2.which() == double_type)
+        return (double)qv_get_int(qr1) > qv_get_double(qr2);
     return false;
 }
 
 bool greater_or_equal(const query_result& qr1, const query_result& qr2) {
     return greater_than(qr1, qr2) || equal(qr1, qr2);
+}
+
+int int_math_op(expr_op op, int v1, int v2) {
+    switch(op) {
+    case expr_op::PLUS: return v1 + v2;
+    case expr_op::MINUS: return v1 - v2;
+    case expr_op::MULT: return v1 * v2;
+    case expr_op::DIV: return v1 / v2;
+    case expr_op::MOD: return v1 % v2;
+    default: return 0;
+    }
+}
+
+uint64_t uint64_math_op(expr_op op, uint64_t v1, uint64_t v2) {
+    switch(op) {
+    case expr_op::PLUS: return v1 + v2;
+    case expr_op::MINUS: return v1 - v2;
+    case expr_op::MULT: return v1 * v2;
+    case expr_op::DIV: return v1 / v2;
+    case expr_op::MOD: return v1 % v2;
+    default: return 0;
+    }
+}
+
+double double_math_op(expr_op op, double v1, double v2) {
+    switch(op) {
+    case expr_op::PLUS: return v1 + v2;
+    case expr_op::MINUS: return v1 - v2;
+    case expr_op::MULT: return v1 * v2;
+    case expr_op::DIV: return v1 / v2;
+    default: return 0.0;
+    }
 }
 
 query_result pop(std::stack<query_result>& st) {
@@ -173,14 +228,19 @@ query_result pop(std::stack<query_result>& st) {
     return v;
 }
 
-struct filter_visitor : public expression_visitor {
+struct expr_eval_visitor : public expression_visitor {
 public:
-    filter_visitor(query_ctx& ctx, const qr_tuple& tup) : ctx_(ctx), tup_(tup) {}
-    ~filter_visitor() = default;
+    expr_eval_visitor(query_ctx& ctx, const qr_tuple& tup) : ctx_(ctx), tup_(tup) {}
+    ~expr_eval_visitor() = default;
 
-    bool result() {  
+    bool bool_result() {  
         auto v = pop(stack_); 
-        return boost::get<int>(v) != 0; 
+        return qv_get_int(v) != 0; 
+    }
+
+    query_result result() {
+        auto v = pop(stack_);
+        return v;
     }
 
     virtual void* visit(std::shared_ptr<number_literal> op) override {
@@ -404,7 +464,7 @@ public:
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
-            bool res = boost::get<int>(v1) && boost::get<int>(v2);
+            bool res = qv_get_int(v1) && qv_get_int(v2);
             stack_.push(query_result(res ? 1 : 0));
         }
         return nullptr;
@@ -417,12 +477,53 @@ public:
          if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
-            bool res = boost::get<int>(v1) || boost::get<int>(v2);
+            bool res = qv_get_int(v1) || qv_get_int(v2);
             stack_.push(query_result(res ? 1 : 0));
         }       
         return nullptr;
     }
 
+    virtual void* visit(std::shared_ptr<math_expression> op) override {
+        op->left_->accept(*this);     
+        op->right_->accept(*this); 
+
+        if (valid_operands()) {
+            auto v2 = pop(stack_);
+            auto v1 = pop(stack_);
+            query_result res;
+
+            if (v1.which() == v2.which()) {
+                switch (v1.which()) {
+                case int_type: // int
+                    res = query_result(int_math_op(op->fop_, qv_get_int(v1), qv_get_int(v2)));
+                    break;
+                case double_type: // double
+                    res = query_result(double_math_op(op->fop_, qv_get_int(v1), qv_get_int(v2)));
+                    break;
+                case uint64_type: // uint64_t
+                    res = query_result(uint64_math_op(op->fop_, qv_get_int(v1), qv_get_int(v2)));
+                    break;
+                default:
+                    break;
+                }
+            } 
+            else if (v1.which() == int_type && v2.which() == uint64_type)
+                res = query_result(uint64_math_op(op->fop_, (uint64_t)qv_get_int(v1), qv_get_uint64(v2)));
+            else if (v1.which() == uint64_type && v2.which() == int_type)
+                res = query_result(uint64_math_op(op->fop_, qv_get_uint64(v1), (uint64_t)qv_get_int(v2)));
+            else if (v1.which() == double_type && v2.which() == int_type)
+                res = query_result(double_math_op(op->fop_, qv_get_double(v1), (double)qv_get_int(v2)));
+            else if (v1.which() == int_type && v2.which() == double_type)
+                res = query_result(double_math_op(op->fop_, (double)qv_get_int(v1), qv_get_double(v2)));
+            else if (v1.which() == double_type && v2.which() == uint64_type)
+                res = query_result(double_math_op(op->fop_, qv_get_double(v1), (double)qv_get_uint64(v2)));
+            else if (v1.which() == uint64_type && v2.which() == double_type)
+                res = query_result(double_math_op(op->fop_, (double)qv_get_uint64(v1), qv_get_double(v2)));
+            
+            stack_.push(res);
+        }
+        return nullptr;
+    }
 
 private:
     bool valid_operands() {
@@ -440,8 +541,15 @@ private:
     std::stack<query_result> stack_;
 };
 
-bool interpret_expression(query_ctx& ctx, const expr& ex, const qr_tuple& tup) {
-    filter_visitor vis(ctx, tup);
+bool interpret_bool_expression(query_ctx& ctx, const expr& ex, const qr_tuple& tup) {
+    expr_eval_visitor vis(ctx, tup);
+    // std::cout << "interpret_expression: " << ex->dump() << std::endl;
+    ex->accept(vis);
+    return vis.bool_result();
+}
+
+query_result interpret_expression(query_ctx& ctx, const expr& ex, const qr_tuple& tup) {
+    expr_eval_visitor vis(ctx, tup);
     // std::cout << "interpret_expression: " << ex->dump() << std::endl;
     ex->accept(vis);
     return vis.result();

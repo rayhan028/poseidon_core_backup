@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2024 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -28,6 +28,7 @@
 
 std::ostream& operator<<(std::ostream& os, const query_result& qr);
 
-bool interpret_expression(query_ctx& ctx, const expr& ex, const qr_tuple& tup);
+bool interpret_bool_expression(query_ctx& ctx, const expr& ex, const qr_tuple& tup);
+query_result interpret_expression(query_ctx& ctx, const expr& ex, const qr_tuple& tup);
 
 #endif
