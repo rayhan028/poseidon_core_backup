@@ -388,9 +388,12 @@ public:
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *HashJoin_();
     antlr4::tree::TerminalNode *LPAREN();
-    Logical_exprContext *logical_expr();
+    antlr4::tree::TerminalNode *LBRACKET();
+    std::vector<VariableContext *> variable();
+    VariableContext* variable(size_t i);
     std::vector<antlr4::tree::TerminalNode *> COMMA_();
     antlr4::tree::TerminalNode* COMMA_(size_t i);
+    antlr4::tree::TerminalNode *RBRACKET();
     std::vector<Query_operatorContext *> query_operator();
     Query_operatorContext* query_operator(size_t i);
     antlr4::tree::TerminalNode *RPAREN();

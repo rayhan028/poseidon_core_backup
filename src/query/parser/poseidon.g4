@@ -40,6 +40,7 @@ project_op : Project_ '(' proj_list ',' query_operator ')' ;
 proj_list : '[' proj_expr (',' proj_expr)* ']' ;
 proj_expr : function_call
         | Var ('.' Identifier_)? ':' type_spec 
+//TODO:          | variable
         ;
 type_spec : IntType_ | DoubleType_ | Uint64Type_ | StringType_ | DateType_ | NodeResultType_ | RshipResultType_ ;
 
@@ -50,7 +51,7 @@ limit_op : Limit_ '(' INTEGER ',' query_operator ')' ;
 crossjoin_op : CrossJoin_ '(' query_operator ',' query_operator ')' ;
 
 // HashJoin
-hashjoin_op : HashJoin_ '(' logical_expr ',' query_operator ',' query_operator ')' ;
+hashjoin_op : HashJoin_ '(' '[' variable ',' variable ']' ',' query_operator ',' query_operator ')' ;
 
 // LeftOuterJoin
 leftouterjoin_op : LeftOuterJoin_ '(' logical_expr ',' query_operator ',' query_operator ')' ;
@@ -94,6 +95,7 @@ union_op : Union_ '(' query_operator ',' query_operator ')';
 group_by_op : GroupBy_ '(' grouping_list ',' aggregate_list ',' query_operator ')' ;
 grouping_list : '[' grouping_expr (',' grouping_expr)* ']' ;
 grouping_expr : Var ('.' Identifier_)? ':' type_spec ;
+// TODO: grouping_expr : variable ;
 
 // Distinct
 distinct_op : Distinct_ '(' query_operator ')' ;

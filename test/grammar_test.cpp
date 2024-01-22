@@ -53,7 +53,7 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE(qp.parse_("CrossJoin(NodeScan('Order'), NodeScan('Person'))"));
         REQUIRE_FALSE(qp.parse_("CrossJoin(NodeScan('Order'))"));
 
-        REQUIRE(qp.parse_("HashJoin($0.id:uint64 == $1.id:uint64, NodeScan('Order'), NodeScan('Person'))"));
+        REQUIRE(qp.parse_("HashJoin([$0.id:uint64, $1.id:uint64], NodeScan('Order'), NodeScan('Person'))"));
         REQUIRE_FALSE(qp.parse_("HashJoin(NodeScan('Order'))"));
     }
 
