@@ -46,8 +46,6 @@ struct cross_join_op : public qop, public std::enable_shared_from_this<cross_joi
 
   bool is_binary() const override { return true; }
 
-  qop_ptr &get_rhs() { return rhs_; }
-
 private:
   std::size_t phases_;
   std::list<qr_tuple> input_;
@@ -79,8 +77,6 @@ struct nested_loop_join_op : public qop, public std::enable_shared_from_this<nes
   }
 
   bool is_binary() const override { return true; }
-  
-  qop_ptr &get_rhs() { return rhs_; }
 
   std::pair<int, int> left_right_nodes_;
 private:
@@ -116,8 +112,6 @@ struct hash_join_op : public qop, public std::enable_shared_from_this<hash_join_
   }
 
   bool is_binary() const override { return true; }
-
-  qop_ptr &get_rhs() { return rhs_; }
 
   std::pair<int, int> left_right_nodes_;
 private:

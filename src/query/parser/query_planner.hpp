@@ -50,7 +50,7 @@ public:
     std::any visitForeach_relationship_op(poseidonParser::Foreach_relationship_opContext *ctx) override;
     std::any visitCrossjoin_op(poseidonParser::Crossjoin_opContext *ctx) override;
     std::any visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opContext *ctx) override;
-     // std::any visitHashjoin_op(poseidonParser::Hashjoin_opContext *ctx) override;
+    std::any visitHashjoin_op(poseidonParser::Hashjoin_opContext *ctx) override;
     std::any visitAggregate_op(poseidonParser::Aggregate_opContext *ctx) override;
     std::any visitUnion_op(poseidonParser::Union_opContext *ctx) override;
     std::any visitGroup_by_op(poseidonParser::Group_by_opContext *ctx) override;

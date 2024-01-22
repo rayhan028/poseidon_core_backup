@@ -39,10 +39,16 @@ index_scan_param : STRING_ ',' STRING_ ',' value ;
 project_op : Project_ '(' proj_list ',' query_operator ')' ;
 proj_list : '[' proj_expr (',' proj_expr)* ']' ;
 proj_expr : function_call
-        | Var ('.' Identifier_)? ':' type_spec 
-//TODO:          | variable
+          | variable
+          | additive_expr
+          | case_expr
         ;
 type_spec : IntType_ | DoubleType_ | Uint64Type_ | StringType_ | DateType_ | NodeResultType_ | RshipResultType_ ;
+
+case_expr : Case_ '(' logical_expr ',' case_result ',' case_result ')' ;
+case_result : variable 
+            | value
+            ;
 
 // Limit
 limit_op : Limit_ '(' INTEGER ',' query_operator ')' ;
@@ -55,6 +61,9 @@ hashjoin_op : HashJoin_ '(' '[' variable ',' variable ']' ',' query_operator ','
 
 // LeftOuterJoin
 leftouterjoin_op : LeftOuterJoin_ '(' logical_expr ',' query_operator ',' query_operator ')' ;
+
+// LeftOuterJoin
+nljoin_op : NLJoin_ '(' logical_expr ',' query_operator ',' query_operator ')' ;
 
 // ForeachRelationship
 foreach_relationship_op : ForeachRelationship_ '(' rship_dir ',' STRING_ (',' rship_cardinality)?  (',' rship_source_var)? ',' query_operator ')' ;
@@ -85,7 +94,7 @@ no_dir    : '-' ;
 // Aggregate
 aggregate_op : Aggregate_ '(' aggregate_list ',' query_operator ')' ;
 aggregate_list : '[' aggr_expr (',' aggr_expr)*']' ;
-aggr_expr : aggr_func '(' proj_expr ')';
+aggr_expr : aggr_func '(' variable ')';
 aggr_func : Count_ | Sum_ | Avg_ | Min_ | Max_ ;
 
 // Union
@@ -94,8 +103,7 @@ union_op : Union_ '(' query_operator ',' query_operator ')';
 // GroupBy
 group_by_op : GroupBy_ '(' grouping_list ',' aggregate_list ',' query_operator ')' ;
 grouping_list : '[' grouping_expr (',' grouping_expr)* ']' ;
-grouping_expr : Var ('.' Identifier_)? ':' type_spec ;
-// TODO: grouping_expr : variable ;
+grouping_expr : variable ;
 
 // Distinct
 distinct_op : Distinct_ '(' query_operator ')' ;
@@ -164,6 +172,7 @@ Project_     : 'Project' ;
 Limit_       : 'Limit' ;
 CrossJoin_   : 'CrossJoin' ;
 HashJoin_    : 'HashJoin' ;
+NLJoin_    : 'NLJoin' ;
 LeftOuterJoin_ : 'LeftOuterJoin' ;
 Expand_      : 'Expand' ;
 ForeachRelationship_ : 'ForeachRelationship' ;
@@ -177,6 +186,7 @@ RemoveNode_  : 'RemoveNode' ;
 RemoveRelationship_ : 'RemoveRelationship' ;
 DetachNode_  : 'DetachNode' ;
 Algorithm_   : 'Algorithm' ;
+Case_        : 'Case' ;
 
 IntType_     : 'int' ;
 Uint64Type_  : 'uint64';

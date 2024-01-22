@@ -14,20 +14,20 @@ public:
   enum {
     T__0 = 1, T__1 = 2, T__2 = 3, T__3 = 4, T__4 = 5, T__5 = 6, T__6 = 7, 
     Filter_ = 8, Nodescan_ = 9, Indexscan_ = 10, Match_ = 11, Project_ = 12, 
-    Limit_ = 13, CrossJoin_ = 14, HashJoin_ = 15, LeftOuterJoin_ = 16, Expand_ = 17, 
-    ForeachRelationship_ = 18, Aggregate_ = 19, GroupBy_ = 20, Sort_ = 21, 
-    Distinct_ = 22, Create_ = 23, Union_ = 24, RemoveNode_ = 25, RemoveRelationship_ = 26, 
-    DetachNode_ = 27, Algorithm_ = 28, IntType_ = 29, Uint64Type_ = 30, 
-    DoubleType_ = 31, StringType_ = 32, DateType_ = 33, NodeResultType_ = 34, 
-    RshipResultType_ = 35, Count_ = 36, Sum_ = 37, Avg_ = 38, Min_ = 39, 
-    Max_ = 40, UDF_ = 41, BUILTIN_ = 42, InExpandDir_ = 43, OutExpandDir_ = 44, 
-    TupleMode_ = 45, ResultSetMode_ = 46, FromDir_ = 47, ToDir_ = 48, AllDir_ = 49, 
-    DescOrder_ = 50, AscOrder_ = 51, INTEGER = 52, FLOAT = 53, Identifier_ = 54, 
-    Var = 55, NAME_ = 56, STRING_ = 57, COLON_ = 58, DOUBLE_COLON = 59, 
-    COMMA_ = 60, LPAREN = 61, RPAREN = 62, LBRACKET = 63, RBRACKET = 64, 
-    OR = 65, AND = 66, EQUALS = 67, NOTEQUALS = 68, LT = 69, LTEQ = 70, 
-    GT = 71, GTEQ = 72, PLUS_ = 73, MULT = 74, DIV = 75, MOD = 76, REGEX = 77, 
-    NOT = 78, WHITESPACE = 79
+    Limit_ = 13, CrossJoin_ = 14, HashJoin_ = 15, NLJoin_ = 16, LeftOuterJoin_ = 17, 
+    Expand_ = 18, ForeachRelationship_ = 19, Aggregate_ = 20, GroupBy_ = 21, 
+    Sort_ = 22, Distinct_ = 23, Create_ = 24, Union_ = 25, RemoveNode_ = 26, 
+    RemoveRelationship_ = 27, DetachNode_ = 28, Algorithm_ = 29, Case_ = 30, 
+    IntType_ = 31, Uint64Type_ = 32, DoubleType_ = 33, StringType_ = 34, 
+    DateType_ = 35, NodeResultType_ = 36, RshipResultType_ = 37, Count_ = 38, 
+    Sum_ = 39, Avg_ = 40, Min_ = 41, Max_ = 42, UDF_ = 43, BUILTIN_ = 44, 
+    InExpandDir_ = 45, OutExpandDir_ = 46, TupleMode_ = 47, ResultSetMode_ = 48, 
+    FromDir_ = 49, ToDir_ = 50, AllDir_ = 51, DescOrder_ = 52, AscOrder_ = 53, 
+    INTEGER = 54, FLOAT = 55, Identifier_ = 56, Var = 57, NAME_ = 58, STRING_ = 59, 
+    COLON_ = 60, DOUBLE_COLON = 61, COMMA_ = 62, LPAREN = 63, RPAREN = 64, 
+    LBRACKET = 65, RBRACKET = 66, OR = 67, AND = 68, EQUALS = 69, NOTEQUALS = 70, 
+    LT = 71, LTEQ = 72, GT = 73, GTEQ = 74, PLUS_ = 75, MULT = 76, DIV = 77, 
+    MOD = 78, REGEX = 79, NOT = 80, WHITESPACE = 81
   };
 
   explicit poseidonLexer(antlr4::CharStream *input);

@@ -59,6 +59,14 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitCase_expr(poseidonParser::Case_exprContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitCase_result(poseidonParser::Case_resultContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitLimit_op(poseidonParser::Limit_opContext *ctx) override {
     return visitChildren(ctx);
   }
@@ -72,6 +80,10 @@ public:
   }
 
   virtual std::any visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitNljoin_op(poseidonParser::Nljoin_opContext *ctx) override {
     return visitChildren(ctx);
   }
 

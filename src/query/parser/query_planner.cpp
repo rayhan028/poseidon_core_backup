@@ -117,13 +117,14 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
     projection::udf_list prj_udf_list;
 
     for (auto& pexpr : ctx->proj_list()->proj_expr()) {
-        if (pexpr->Var() != nullptr) {
-            auto var = pexpr->Var()->getText();
+        if (pexpr->variable() != nullptr) {
+            auto pex = pexpr->variable();
+            auto var = pex->Var()->getText();
             auto var_id = extract_tuple_id(var);
             std::string attr;
-            if (pexpr->Identifier_() != nullptr)
-                attr = pexpr->Identifier_()->getText();
-            auto attr_type = pexpr->type_spec();
+            if (pex->Identifier_() != nullptr)
+                attr = pex->Identifier_()->getText();
+            auto attr_type = pex->type_spec();
             if (attr.empty()) {
                 // handle cases where attr is empty
                 pexpr_list.push_back(projection::expr{ var_id, "", prj::forward });
@@ -359,21 +360,26 @@ std::any query_planner::visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opCo
     return std::make_any<qop_ptr>(qop);        
 }
 
-/*
 std::any query_planner::visitHashjoin_op(poseidonParser::Hashjoin_opContext *ctx) {
-    auto qop = std::make_shared<hash_join>();
+/*
+    auto qop = std::make_shared<hash_join_op>();
     auto ch1 = visit(ctx->query_operator()[0]);
     auto ch2 = visit(ctx->query_operator()[1]);
     auto child1 = std::any_cast<qop_ptr>(ch1);
     auto child2 = std::any_cast<qop_ptr>(ch2);
 
     
-    child1->connect(qop, std::bind(&hash_join::process_right, qop.get(), ph::_1, ph::_2));
-    child2->connect(qop, std::bind(&hash_join::process_left, qop.get(), ph::_1, ph::_2));
+    child2->connect(qop, std::bind(&hash_join_op::build_phase, qop.get(), ph::_1, ph::_2),
+                        std::bind(&hash_join_op::finish, qop.get(), ph::_1));
+    child1->connect(qop, std::bind(&hash_join_op::probe_phase, qop.get(), ph::_1, ph::_2),
+                        std::bind(&hash_join_op::finish, qop.get(), ph::_1));
+
    
-    return std::make_any<qop_ptr>(qop);        
+    return std::make_any<qop_ptr>(qop); 
+    */
+   return nullptr;       
 }
-*/
+
 std::any query_planner::visitAggregate_op(poseidonParser::Aggregate_opContext *ctx) {
     std::vector<aggregate::expr> aggrs; 
     auto ch = visit(ctx->query_operator());
@@ -381,7 +387,7 @@ std::any query_planner::visitAggregate_op(poseidonParser::Aggregate_opContext *c
 
     auto aggr_list = ctx->aggregate_list()->aggr_expr();
     for (auto& aggr : aggr_list) {
-        auto expr = aggr->proj_expr();
+        auto expr = aggr->variable();
         auto v_id = extract_tuple_id(expr->Var()->getText());
         auto v_name = expr->Identifier_() == nullptr ? "" : expr->Identifier_()->getText();
         auto tspec = expr->type_spec();
@@ -439,12 +445,13 @@ std::any query_planner::visitGroup_by_op(poseidonParser::Group_by_opContext *ctx
 
     auto grp_list = ctx->grouping_list()->grouping_expr();
     for (auto& gexpr : grp_list) {
-        auto var = gexpr->Var()->getText();
+        auto gex = gexpr->variable();
+        auto var = gex->Var()->getText();
         auto var_id = extract_tuple_id(var);
         std::string attr;
-        if (gexpr->Identifier_() != nullptr)
-            attr = gexpr->Identifier_()->getText();
-        auto tspec = gexpr->type_spec();
+        if (gex->Identifier_() != nullptr)
+            attr = gex->Identifier_()->getText();
+        auto tspec = gex->type_spec();
         qr_type grp_type = int_type;
         if (tspec->IntType_() != nullptr)
             grp_type = int_type;
@@ -461,7 +468,7 @@ std::any query_planner::visitGroup_by_op(poseidonParser::Group_by_opContext *ctx
 
     auto aggr_list = ctx->aggregate_list()->aggr_expr();
     for (auto& aggr : aggr_list) {
-        auto expr = aggr->proj_expr();
+        auto expr = aggr->variable();
         auto v_id = extract_tuple_id(expr->Var()->getText());
         std::string v_name;
         if (expr->Identifier_() != nullptr)

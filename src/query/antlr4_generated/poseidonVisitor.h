@@ -41,6 +41,10 @@ public:
 
     virtual std::any visitType_spec(poseidonParser::Type_specContext *context) = 0;
 
+    virtual std::any visitCase_expr(poseidonParser::Case_exprContext *context) = 0;
+
+    virtual std::any visitCase_result(poseidonParser::Case_resultContext *context) = 0;
+
     virtual std::any visitLimit_op(poseidonParser::Limit_opContext *context) = 0;
 
     virtual std::any visitCrossjoin_op(poseidonParser::Crossjoin_opContext *context) = 0;
@@ -48,6 +52,8 @@ public:
     virtual std::any visitHashjoin_op(poseidonParser::Hashjoin_opContext *context) = 0;
 
     virtual std::any visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opContext *context) = 0;
+
+    virtual std::any visitNljoin_op(poseidonParser::Nljoin_opContext *context) = 0;
 
     virtual std::any visitForeach_relationship_op(poseidonParser::Foreach_relationship_opContext *context) = 0;
 
