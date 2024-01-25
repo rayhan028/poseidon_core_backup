@@ -284,6 +284,54 @@ public:
                     res = ctx_.gdb_->get_property_value(*rptr, op->pcode_);
                 break;
             }
+            case node_descr_type:
+            {
+                auto nd = qv_get_node_descr(inp);
+                if (op->pname_.empty() && op->pcode_ == UNKNOWN_CODE)
+                    stack_.push(query_result(nd));
+                else {
+                    auto ty = op->result_type();
+                    switch(ty) {
+                    case expr_type::INT:
+                        stack_.push(qv_(get_property<int>(nd.properties, op->pname_).value())); break;
+                    case expr_type::UINT64:
+                        stack_.push(qv_(get_property<uint64_t>(nd.properties, op->pname_).value())); break;
+                    case expr_type::DOUBLE:
+                        stack_.push(qv_(get_property<double>(nd.properties, op->pname_).value())); break;
+                   case expr_type::STRING:
+                        stack_.push(qv_(get_property<std::string>(nd.properties, op->pname_).value())); break;
+                   case expr_type::DATETIME:
+                        stack_.push(qv_(get_property<boost::posix_time::ptime>(nd.properties, op->pname_).value())); break;
+                    default:
+                        break;
+                 }
+                }
+                break;
+            }
+            case rship_descr_type:
+  {
+                auto rd = qv_get_rship_descr(inp);
+                if (op->pname_.empty() && op->pcode_ == UNKNOWN_CODE)
+                    stack_.push(query_result(rd));
+                else {
+                    auto ty = op->result_type();
+                    switch(ty) {
+                    case expr_type::INT:
+                        stack_.push(qv_(get_property<int>(rd.properties, op->pname_).value())); break;
+                    case expr_type::UINT64:
+                        stack_.push(qv_(get_property<uint64_t>(rd.properties, op->pname_).value())); break;
+                    case expr_type::DOUBLE:
+                        stack_.push(qv_(get_property<double>(rd.properties, op->pname_).value())); break;
+                   case expr_type::STRING:
+                        stack_.push(qv_(get_property<std::string>(rd.properties, op->pname_).value())); break;
+                   case expr_type::DATETIME:
+                        stack_.push(qv_(get_property<boost::posix_time::ptime>(rd.properties, op->pname_).value())); break;
+                    default:
+                        break;
+                 }
+                }
+                break;
+            }            
             case uint64_type:
             case int_type:
             case double_type:
@@ -291,7 +339,7 @@ public:
                 stack_.push(inp);
                 break;
             default:
-                // std::cout << "visit variable ==> " << inp.which() << std::endl;
+                std::cout << "visit variable ==> " << inp.which() << std::endl;
                 // Ooops!!
                 break;
         }

@@ -39,28 +39,9 @@ using namespace boost::posix_time;
 result_set::sort_spec_list sort_spec_;
 
 /* ------------------------------------------------------------------------ */
-
+// TODO: DEAL WITH DIRTY OBJECTS!!!!
 p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
-  auto qv = v[var];
-  p_item res;
-  switch (qv.which()) {
-    case node_ptr_type: // node *
-      {
-        auto nptr = boost::get<node *>(qv);
-        res = ctx.gdb_->get_property_value(*nptr, prop);
-      }
-      break;
-    case rship_ptr_type: // relationship *
-      {
-        auto rptr = boost::get<relationship *>(qv);
-        res = ctx.gdb_->get_property_value(*rptr, prop);
-      }
-      break;
-    default:
-      // return null
-      break;
-  }
-  return res;
+  return get_property_value(ctx, v, var, ctx.get_code(prop));
 }
 
 p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
@@ -70,13 +51,13 @@ p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, dc
   case node_ptr_type: // node *
       {
         auto nptr = boost::get<node *>(qv);
-        res = ctx.gdb_->get_property_value(*nptr, pkey);
+        res = ctx.get_valid_node_property_value(*nptr, pkey);
       }
       break;
     case rship_ptr_type: // relationship *
       {
         auto rptr = boost::get<relationship *>(qv);
-        res = ctx.gdb_->get_property_value(*rptr, pkey);
+        res = ctx.get_valid_rship_property_value(*rptr, pkey);
       }
       break;
     default:

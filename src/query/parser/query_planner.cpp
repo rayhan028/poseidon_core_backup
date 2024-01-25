@@ -113,7 +113,7 @@ std::any query_planner::visitFilter_op(poseidonParser::Filter_opContext *ctx) {
 }
 
 std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) {
-    projection::expr_list pexpr_list;
+    projection::pexpr_list pex_list;
     projection::udf_list prj_udf_list;
 
     for (auto& pexpr : ctx->proj_list()->proj_expr()) {
@@ -127,21 +127,29 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
             auto attr_type = pex->type_spec();
             if (attr.empty()) {
                 // handle cases where attr is empty
-                pexpr_list.push_back(projection::expr{ var_id, "", prj::forward });
+                pex_list.push_back(projection::pexpr{ var_id, "", prj::forward });
             }
             else {
                 if (attr_type->StringType_() != nullptr) {
-                    pexpr_list.push_back(projection::expr{ var_id, attr, prj::string_property});
+                    pex_list.push_back(projection::pexpr{ var_id, attr, prj::string_property});
                 } else if (attr_type->IntType_() != nullptr) {
-                    pexpr_list.push_back(projection::expr{ var_id, attr, prj::int_property});
+                    pex_list.push_back(projection::pexpr{ var_id, attr, prj::int_property});
                 } else if (attr_type->DoubleType_() != nullptr) {
-                    pexpr_list.push_back(projection::expr{ var_id, attr, prj::double_property});
+                    pex_list.push_back(projection::pexpr{ var_id, attr, prj::double_property});
                 } else if (attr_type->Uint64Type_() != nullptr) {
-                    pexpr_list.push_back(projection::expr{ var_id, attr, prj::uint64_property});
+                    pex_list.push_back(projection::pexpr{ var_id, attr, prj::uint64_property});
                 } else if (attr_type->DateType_() != nullptr) {
-                    pexpr_list.push_back(projection::expr{ var_id, attr, prj::date_property});
+                    pex_list.push_back(projection::pexpr{ var_id, attr, prj::date_property});
                 }
             }
+        }
+        else if (pexpr->additive_expr() != nullptr) {
+            auto e = visit(pexpr->additive_expr());
+            auto ex = std::any_cast<expr>(e);
+            pex_list.push_back(projection::pexpr{ 0, "", prj::arithmetic_expr, ex});
+        }
+        else if (pexpr->case_expr() != nullptr) {
+
         }
         else if (pexpr->function_call() != nullptr) {
             // handle UDFs
@@ -157,10 +165,10 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
 
                 // TODO: handle all builtin functions in the same way
                 if (fc_name == "label") {
-                    pexpr_list.push_back(projection::expr{ p_idx, "", prj::label});
+                    pex_list.push_back(projection::pexpr{ p_idx, "", prj::label});
                 }
                 else if (fc_name == "year") {
-                    pexpr_list.push_back(projection::expr{ p_idx, prop_name, prj::function});
+                    pex_list.push_back(projection::pexpr{ p_idx, prop_name, prj::function});
                     prj_udf_list.push_back([=](auto ctx, auto res) { 
                             return builtin::pr_year(res, prop_name); });
                 }
@@ -186,7 +194,7 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
                 }
                 else {
                     auto p_idx = extract_tuple_id(pm->Var()->getText());
-                    pexpr_list.push_back(projection::expr{ p_idx, "", prj::function});
+                    pex_list.push_back(projection::pexpr{ p_idx, "", prj::function});
                     prj_udf_list.push_back([=](auto ctx, auto res) { return fc_func(&ctx, &res); });
                     // TODO: pexprs.push_back(projection::expr(p_idx, ([=](auto ctx, auto res) { return fc_func(&ctx, &res); } )));
                 }
@@ -197,7 +205,7 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
             }
         }
     }
-    auto qp = std::make_shared<projection>(pexpr_list, prj_udf_list);
+    auto qp = std::make_shared<projection>(pex_list, prj_udf_list);
 
     auto ch = visit(ctx->query_operator());
     auto child_op = std::any_cast<qop_ptr>(ch);
@@ -361,23 +369,23 @@ std::any query_planner::visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opCo
 }
 
 std::any query_planner::visitHashjoin_op(poseidonParser::Hashjoin_opContext *ctx) {
-/*
-    auto qop = std::make_shared<hash_join_op>();
     auto ch1 = visit(ctx->query_operator()[0]);
     auto ch2 = visit(ctx->query_operator()[1]);
     auto child1 = std::any_cast<qop_ptr>(ch1);
     auto child2 = std::any_cast<qop_ptr>(ch2);
 
-    
-    child2->connect(qop, std::bind(&hash_join_op::build_phase, qop.get(), ph::_1, ph::_2),
+    // TODO: lhs, rhs
+    auto lhs = std::any_cast<expr>(visit(ctx->variable()[0]));
+    auto rhs = std::any_cast<expr>(visit(ctx->variable()[1]));
+
+    auto qop = std::make_shared<hash_join_op>(std::dynamic_pointer_cast<variable>(lhs), std::dynamic_pointer_cast<variable>(rhs));
+
+    child1->connect(qop, std::bind(&hash_join_op::build_phase, qop.get(), ph::_1, ph::_2),
                         std::bind(&hash_join_op::finish, qop.get(), ph::_1));
-    child1->connect(qop, std::bind(&hash_join_op::probe_phase, qop.get(), ph::_1, ph::_2),
+    child2->connect(qop, std::bind(&hash_join_op::probe_phase, qop.get(), ph::_1, ph::_2),
                         std::bind(&hash_join_op::finish, qop.get(), ph::_1));
 
-   
     return std::make_any<qop_ptr>(qop); 
-    */
-   return nullptr;       
 }
 
 std::any query_planner::visitAggregate_op(poseidonParser::Aggregate_opContext *ctx) {
@@ -990,6 +998,23 @@ std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *c
             res = std::make_any<expr>(Fct(fc_name, param_list));
 
     }
+    return res;
+}
+
+
+std::any query_planner::visitVariable(poseidonParser::VariableContext *ctx) {
+    std::any res;
+
+    auto var_id = extract_tuple_id(ctx->Var()->getText());
+    auto var_type = typespec_to_exprtype(ctx->type_spec());
+    // Identifier_ could be empty
+    if (ctx->Identifier_() != nullptr) {
+        auto attr = ctx->Identifier_()->getText();
+        auto pcode = qctx_.get_code(attr);
+        res = std::make_any<expr>(Variable(var_id, attr, pcode, var_type));
+    }
+    else
+        res = std::make_any<expr>(Variable(var_id, var_type));
     return res;
 }
 

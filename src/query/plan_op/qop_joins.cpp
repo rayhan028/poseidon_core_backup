@@ -17,6 +17,8 @@
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <functional>
+#include <boost/container_hash/hash.hpp>
 #include "qop_joins.hpp"
 #include "profiling.hpp"
 #include "expr_interpreter.hpp"
@@ -81,48 +83,79 @@ void nested_loop_join_op::finish(query_ctx &ctx) { qop::default_finish(ctx); }
 /* ------------------------------------------------------------------------ */
 
 void hash_join_op::dump(std::ostream &os) const { // TODO
-  os << "hash_join() - " << PROF_DUMP;
+  os << "hash_join([" << lhs_var_->dump() << "," << rhs_var_->dump() << "]) - " << PROF_DUMP;
 }
 
 void hash_join_op::probe_phase(query_ctx &ctx, const qr_tuple &v) {
-  auto n = boost::get<node *>(v[left_right_nodes_.first]);
-  auto nid = n->id();
-  #ifdef HASHER
-  int bucket = int(hasher(nid) % BUCKETS);
-  #else
-  int bucket = int(nid % BUCKETS);
-  #endif
+  // spdlog::info("probe phase");
+  PROF_PRE;
+  auto jval = get_var_value(ctx, v, lhs_var_);
+  auto key = hasher(jval);
   
-  auto i = 0;
-  for (auto id : join_ids_[bucket]) {
-    if (id == nid){
-      auto res = concat(v, input_[bucket][i]);
-      consume_(ctx, res);
+  auto n = 0u;
+  std::shared_lock lock(m_);
+
+  auto it = htable_.find(key);
+  if (it != htable_.end()) {
+    auto& vec = it->second;
+    for (auto& jc : vec) {
+      // std::cout << "jval: " << jval << " == jc: " << jc.first << std::endl;
+      if (jval == jc.first) {
+        auto res = concat(v, jc.second);
+        consume_(ctx, res);
+        n++;
+      }
     }
-    i++;
   }
+  PROF_POST(n);
 }
 
 void hash_join_op::build_phase(query_ctx &ctx, const qr_tuple &v) {
-  auto n = boost::get<node *>(v[left_right_nodes_.second]);
-  auto nd = n->id();
-
-  #ifdef HASHER
-  int bucket = int(hasher(nd) % BUCKETS);
-  #else
-  int bucket = int(nd % BUCKETS);
-  #endif
-  join_ids_[bucket].push_back(nd);
-  input_[bucket].push_back(v);
+  // spdlog::info("build phase");
+  PROF_PRE;
+  auto jval = get_var_value(ctx, v, rhs_var_);
+  auto key = hasher(jval);
+  std::unique_lock lock(m_);
+  auto it = htable_.find(key);
+  if (it != htable_.end())
+    it->second.push_back(std::make_pair(jval, v));
+  else {
+    std::vector<join_candidate> vec { std::make_pair(jval, v) };
+    htable_.emplace(key, vec);
+  }
+  PROF_POST(0);
 }
 
-uint64_t hash_join_op::hasher(uint64_t id){
-  id = (id ^ (id >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
-  id = (id ^ (id >> 27)) * UINT64_C(0x94d049bb133111eb);
-  id = id ^ (id >> 31);
-  return id;
+query_result hash_join_op::get_var_value(query_ctx& ctx, const qr_tuple& v, std::shared_ptr<variable> var) {
+  auto inp = v[var->id_];
+  query_result res;
+
+  if (inp.which() == node_ptr_type || inp.which() == rship_ptr_type) {
+    auto n = qv_get_node(inp);
+    auto nlabel = ctx.get_string(n->node_label);
+    switch(var->result_type()) {
+      case expr_type::INT: res = qv_(get_property_value<int>(ctx, v, var->id_, var->pcode_)); break; 
+      case expr_type::UINT64: res = qv_(get_property_value<uint64_t>(ctx, v, var->id_, var->pcode_)); break; 
+      case expr_type::DOUBLE: res = qv_(get_property_value<double>(ctx, v, var->id_, var->pcode_)); break; 
+      case expr_type::STRING: res = qv_(get_property_value<std::string>(ctx, v, var->id_, var->pcode_)); break; 
+      case expr_type::DATETIME: res = qv_(get_property_value<boost::posix_time::ptime>(ctx, v, var->id_, var->pcode_)); break; 
+      default: break;
+    }
+  }
+  else
+    res = inp;
+  return res;     
 }
-void hash_join_op::finish(query_ctx &ctx) { qop::default_finish(ctx); }
+
+
+uint64_t hash_join_op::hasher(const query_result& q) {
+  return boost::hash<query_result>()(q);
+}
+
+void hash_join_op::finish(query_ctx &ctx) { 
+  if (++phases_ > 1)
+    qop::default_finish(ctx); 
+  }
 
 /* ------------------------------------------------------------------------ */
 

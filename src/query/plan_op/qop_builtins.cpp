@@ -20,6 +20,7 @@
 #include <boost/hana.hpp>
 
 #include "qop_builtins.hpp"
+#include "expr_interpreter.hpp"
 
 using namespace boost::posix_time;
 
@@ -300,5 +301,9 @@ std::string ptime_to_dtimestring(boost::posix_time::ptime t) {
 
 
 bool is_null(const query_result& pv) { return pv.type() == typeid(null_t); }
+
+query_result eval_expr(query_ctx& qctx, const qr_tuple& qr, const expr& ex) {
+  return interpret_expression(qctx, ex, qr);  
+}
 
 } // namespace builtin

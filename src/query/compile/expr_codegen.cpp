@@ -234,7 +234,7 @@ void* expr_codegen::visit(std::shared_ptr<or_predicate> op) {
     auto i32_ty = llvm::Type::getInt32Ty(gen_.get_context());
     auto lhs32 = gen_.get_builder()->CreateIntCast(lhs, i32_ty, true);
     auto rhs32 = gen_.get_builder()->CreateIntCast(rhs, i32_ty, true);
-    auto or_op = gen_.get_builder()->CreateOr({ lhs, rhs });
+    auto or_op = gen_.get_builder()->CreateOr({ lhs32, rhs32 });
     auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
     return gen_.get_builder()->CreateICmpNE(or_op, val_0);
 }

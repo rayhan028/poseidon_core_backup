@@ -123,6 +123,8 @@ struct p_item {
 
   bool empty() const { return P_UNUSED(flags_); }
 
+  bool operator==(p_item& other) { return memcmp(value_, other.value_, 8) == 0 && flags_ == other.flags_; }
+
   uint8_t value_[8]; // placeholder for storing int, double or dcode_t values
   dcode_t key_;   // dictionary code for property name
   uint8_t flags_; // Bit 0-2 used for representing the typecode (see p_typecode)

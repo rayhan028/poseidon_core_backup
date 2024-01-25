@@ -20,12 +20,12 @@
 #include "qop_projection.hpp"
 #include "qop_builtins.hpp"
 
-projection::projection(const expr_list &exprs) : exprs_(exprs) {
+projection::projection(const pexpr_list &exprs) : exprs_(exprs) {
   type_ = qop_type::project;
   init_expressions();
 }
 
-projection::projection(const expr_list &exprs, udf_list& ul) : exprs_(exprs), udfs_(ul) {
+projection::projection(const pexpr_list &exprs, udf_list& ul) : exprs_(exprs), udfs_(ul) {
   type_ = qop_type::project;
   init_expressions();
 }
@@ -47,38 +47,39 @@ void projection::init_expressions() {
         //if (ex.pfunc != prj::forward  && prop_code == UNKNOWN_CODE)
         //    spdlog::info("unknown string '{}'", ex.pname);
 
+        auto var_id = ex.idx;
         switch(ex.pfunc) {
             case prj::forward:
-                pfuncs_[i] = prj_func { ex.idx, [](query_ctx&, const query_result& qr) { return qr; }};
+                pfuncs_[i] = prj_func { ex.idx, [var_id](query_ctx&, const qr_tuple& qr) { return qr[var_id]; }};
                 break;
             case prj::int_property:
-                pfuncs_[i] = prj_func { ex.idx, [pname](query_ctx&, const query_result& qr) { 
-                    return builtin::int_property(qr, pname); }};
+                pfuncs_[i] = prj_func { ex.idx, [pname,var_id](query_ctx&, const qr_tuple& qr) { 
+                    return builtin::int_property(qr[var_id], pname); }};
                 break;
             case prj::int_property_as_datestring:
-                pfuncs_[i] = prj_func { ex.idx, [pname](query_ctx&, const query_result& qr) { 
-                    return builtin::int_to_datestring(builtin::int_property(qr, pname)); }};
+                pfuncs_[i] = prj_func { ex.idx, [pname,var_id](query_ctx&, const qr_tuple& qr) { 
+                    return builtin::int_to_datestring(builtin::int_property(qr[var_id], pname)); }};
                 break;
             case prj::int_property_as_datetimestring:
-                pfuncs_[i] = prj_func { ex.idx, [pname](query_ctx&, const query_result& qr) { 
-                    return builtin::int_to_dtimestring(builtin::int_property(qr, pname)); }};
+                pfuncs_[i] = prj_func { ex.idx, [pname,var_id](query_ctx&, const qr_tuple& qr) { 
+                    return builtin::int_to_dtimestring(builtin::int_property(qr[var_id], pname)); }};
                 break;            
             case prj::uint64_property:
-                pfuncs_[i] = prj_func { ex.idx, [pname](query_ctx&, const query_result& qr) { 
-                    return builtin::uint64_property(qr, pname); }};
+                pfuncs_[i] = prj_func { ex.idx, [pname,var_id](query_ctx&, const qr_tuple& qr) { 
+                    return builtin::uint64_property(qr[var_id], pname); }};
                 break;
             case prj::double_property:
-                pfuncs_[i] = prj_func { ex.idx, [pname](query_ctx&, const query_result& qr) { 
-                    return builtin::double_property(qr, pname); }};
+                pfuncs_[i] = prj_func { ex.idx, [pname,var_id](query_ctx&, const qr_tuple& qr) { 
+                    return builtin::double_property(qr[var_id], pname); }};
                 break;
             case prj::string_property:
-                pfuncs_[i] = prj_func { ex.idx, [pname](query_ctx&, const query_result& qr) { 
-                    return builtin::string_property(qr, pname); }};
+                pfuncs_[i] = prj_func { ex.idx, [pname,var_id](query_ctx&, const qr_tuple& qr) { 
+                    return builtin::string_property(qr[var_id], pname); }};
                 break;
             case prj::ptime_property:
             case prj::date_property:
-                pfuncs_[i] = prj_func { ex.idx, [pname](query_ctx&, const query_result& qr) { 
-                    return builtin::ptime_property(qr, pname); }};
+                pfuncs_[i] = prj_func { ex.idx, [pname,var_id](query_ctx&, const qr_tuple& qr) { 
+                    return builtin::ptime_property(qr[var_id], pname); }};
                 break;
             /*
             case prj::date_property:
@@ -86,16 +87,23 @@ void projection::init_expressions() {
                     return builtin::pr_date(qr, pname); }};
                 break;
             */
+            case prj::arithmetic_expr:
+            {
+                auto pe = ex.pex;
+                pfuncs_[i] = prj_func { ex.idx, [pe](query_ctx& ctx, const qr_tuple& qr) { 
+                    return builtin::eval_expr(ctx, qr, pe); }};
+                break;
+            }
             case prj::label:
-                pfuncs_[i] = prj_func { ex.idx, [](query_ctx&, const query_result& qr) { 
-                    return builtin::get_label(qr); }};
+                pfuncs_[i] = prj_func { ex.idx, [var_id](query_ctx&, const qr_tuple& qr) { 
+                    return builtin::get_label(qr[var_id]); }};
                 break;
             case prj::function:
                 {
                     auto fv = udfs_[udf_idx];
                     if (fv.which() == 0) {
                         auto func = boost::get<user_defined_func1>(fv);
-                       pfuncs_[i] = prj_func { ex.idx, [=](query_ctx& ctx, const query_result& qr) { return func(ctx, qr); }};
+                       pfuncs_[i] = prj_func { ex.idx, [=](query_ctx& ctx, const qr_tuple& qr) { return func(ctx, qr[var_id]); }};
                     }
                     else {
                         // TODO: handle UDFs with more params
@@ -166,8 +174,8 @@ void projection::process(query_ctx &ctx, const qr_tuple &v) {
     for (auto i = 0u; i < pfuncs_.size(); i++) {
         try {
             auto& pf = pfuncs_[i];
-            auto& qv = v_cached[pf.idx];
-            res[i] = pf.func(ctx, qv);
+            // auto& qv = v_cached[pf.idx];
+            res[i] = pf.func(ctx, v_cached);
         } catch (unknown_property& exc) { }
     }
     consume_(ctx, res);

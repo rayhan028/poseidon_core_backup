@@ -77,6 +77,39 @@ enum qr_type {
   rship_descr_type = 10
 };
 
+namespace boost {
+    /**
+     * Specialize std::hash for ptime
+     */
+    template<>
+    class hash<boost::posix_time::ptime> {
+    public:
+        size_t operator()(const boost::posix_time::ptime& t) const {
+          std::size_t seed = 0;
+          auto d = t.date();
+          auto td = t.time_of_day();
+          boost::hash_combine(seed, d.day_count().as_number());
+          boost::hash_combine(seed, td.ticks());
+          return seed;
+        }
+    };
+
+    template<>
+    class hash<query_result> {
+    public:
+        size_t operator()(const query_result& qr) const {
+          switch(qr.which()) {
+          case int_type: return boost::hash<int>()(qv_get_int(qr));
+          case double_type: return boost::hash<double>()(qv_get_double(qr));
+          case string_type: return boost::hash<std::string>()(qv_get_string(qr));
+          case uint64_type: return boost::hash<uint64_t>()(qv_get_uint64(qr));
+          case ptime_type: return boost::hash<boost::posix_time::ptime>()(qv_get_ptime(qr));
+          default: return 0;
+          }
+        }
+    };
+}
+
 /**
  * Typedef for a list of result elements which are passed to the next query
  * operator in an execution plan.

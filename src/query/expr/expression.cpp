@@ -100,6 +100,16 @@ std::string expression::op_as_string(expr_op fop) const {
             return " ! ";
         case expr_op::REGEX:
             return " =~ ";
+        case expr_op::PLUS:
+            return " + ";
+        case expr_op::MINUS:
+            return " - ";
+        case expr_op::MULT:
+            return " * ";
+        case expr_op::DIV:
+            return " / ";
+        case expr_op::MOD:
+            return " % ";
         default:
             return " ?? ";
     }

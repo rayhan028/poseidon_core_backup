@@ -159,6 +159,7 @@ boost::posix_time::ptime dtimestring_to_ptime(const std::string& d);
 
 std::string ptime_to_dtimestring(boost::posix_time::ptime t);
 
+query_result eval_expr(query_ctx& qctx, const qr_tuple& qr, const expr& ex);
 /*
 CASE:
  return !string_property(res, 0, "content").empty() ?

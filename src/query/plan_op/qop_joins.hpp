@@ -93,15 +93,13 @@ private:
    * The node positions are specified by the pos pair.
    */
 struct hash_join_op : public qop, public std::enable_shared_from_this<hash_join_op> {
-  hash_join_op(std::pair<int, int> pos) : left_right_nodes_(pos) {} 
-  hash_join_op(std::pair<int, int> pos, qop_ptr &rhs) : left_right_nodes_(pos), rhs_(rhs) {} 
+  hash_join_op(std::shared_ptr<variable> l, std::shared_ptr<variable> r) : phases_(0), lhs_var_(l), rhs_var_(r) {} 
   ~hash_join_op() = default;
 
   void dump(std::ostream &os) const override;
 
   void build_phase(query_ctx &ctx, const qr_tuple &v);
   void probe_phase(query_ctx &ctx, const qr_tuple &v);
-  static uint64_t hasher(uint64_t id);
 
   void finish(query_ctx &ctx);
 
@@ -113,12 +111,17 @@ struct hash_join_op : public qop, public std::enable_shared_from_this<hash_join_
 
   bool is_binary() const override { return true; }
 
-  std::pair<int, int> left_right_nodes_;
 private:
-  const static int BUCKETS = 10;
-  std::vector<qr_tuple> input_[BUCKETS];
-  std::vector<node::id_t> join_ids_[BUCKETS];
-  qop_ptr rhs_;
+  query_result get_var_value(query_ctx& ctx, const qr_tuple& v, std::shared_ptr<variable> var);
+  uint64_t hasher(const query_result& qr);
+
+  std::size_t phases_;
+
+  using join_candidate = std::pair<query_result, qr_tuple>;
+  std::unordered_map<uint64_t, std::vector<join_candidate>> htable_;
+
+  std::shared_ptr<variable> lhs_var_, rhs_var_;
+    mutable std::shared_mutex m_;  
 };
 
 /**

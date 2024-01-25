@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023 DBIS Group - TU Ilmenau, All Rights Reserved.
+ * Copyright (C) 2019-2024 DBIS Group - TU Ilmenau, All Rights Reserved.
  *
  * This file is part of the Poseidon package.
  *
@@ -22,6 +22,7 @@
 
 #include "qop.hpp"
 #include "qop_builtins.hpp"
+#include "expression.hpp"
 
 enum class prj {
   unknown,
@@ -32,6 +33,8 @@ enum class prj {
   double_property, // get a string property
   ptime_property,  // get a ptime property
   date_property,   // get a date property
+  arithmetic_expr, // return the result of the arithmetic expression
+  case_expr,       // return the result of a case expression
   int_property_as_datestring,
   int_property_as_datetimestring,
   label,           // get the label of a node or relationship
@@ -39,7 +42,7 @@ enum class prj {
 };
 
 
-using builtin_func = std::function<query_result(query_ctx&, const query_result&)>;
+using builtin_func = std::function<query_result(query_ctx&, const qr_tuple&)>;
 using user_defined_func1 = std::function<query_result(query_ctx&, const query_result&)>;
 using user_defined_func2 = std::function<query_result(query_ctx&, const query_result&, const query_result&)>;
 
@@ -49,13 +52,14 @@ using user_defined_func = boost::variant<user_defined_func1, user_defined_func2>
  * projection implements a project operator.
  */
 struct projection : public qop, public std::enable_shared_from_this<projection> {
-  struct expr {
+  struct pexpr {
     std::size_t idx;   // index of the input in the query_result
     std::string pname; // name of the property pr empty 
     prj pfunc;         // projection function
+    expr pex;          // arithmetic or case expression
   };
 
-  using expr_list = std::vector<expr>;
+  using pexpr_list = std::vector<pexpr>;
 
   struct prj_func {
     std::size_t idx;
@@ -66,8 +70,8 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
 
   using udf_list = std::vector<user_defined_func>;
 
-  projection(const expr_list &exprs);
-  projection(const expr_list &exprs, udf_list &ul);
+  projection(const pexpr_list &exprs);
+  projection(const pexpr_list &exprs, udf_list &ul);
 
   void dump(std::ostream &os) const override;
 
@@ -81,7 +85,7 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
 
   void init_expressions();
 
-  expr_list exprs_; // the list of defined projection expressions
+  pexpr_list exprs_; // the list of defined projection expressions
   udf_list udfs_;
 
   prj_func_list pfuncs_;

@@ -549,6 +549,37 @@ bool query_ctx::is_relationship_property(const relationship &r, dcode_t pcode,
   return val.empty() ? false : pred(val);
 }
 
+p_item query_ctx::get_valid_node_property_value(node &n, dcode_t pcode) {
+  p_item res;
+  if (!n.has_dirty_versions())
+    res = gdb_->get_property_value(n, pcode);
+  else {
+    auto xid = current_transaction()->xid();
+    // auto &nv = gdb_->get_valid_node_version(n, xid);
+    const auto& dn = n.find_valid_version(xid);
+    // spdlog::info("AAAAAAAAAARGGGJHHHH {} - {}", nv.id(), dn->properties_.size());  
+    for (auto& pi : dn->properties_) {
+      if (pi.key() == pcode) {
+        res = pi;
+        break;
+      }
+    }
+  }
+  return res;
+}
+
+p_item query_ctx::get_valid_rship_property_value(relationship &r, dcode_t pcode) {
+  p_item res;
+  if (!r.has_dirty_versions())
+    res = gdb_->get_property_value(r, pcode);
+  else {
+    auto xid = current_transaction()->xid();
+    auto &rv = gdb_->get_valid_rship_version(r, xid);
+    spdlog::info("AAAAAAAAAARGGGJHHHH");        
+  }
+  return res;
+}
+
 void query_ctx::start(query_ctx& qctx, std::initializer_list<query_pipeline *> queries) {
   for (auto &q : queries) {
     q->start(qctx);

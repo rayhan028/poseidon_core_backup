@@ -186,6 +186,25 @@ TEST_CASE("Testing query operators", "[qop]") {
     q.print_plan();
   }
 
+  SECTION("project with expressions") {
+    result_set rs, expected;
+    auto dc = graph->get_code("aaa4");
+    REQUIRE(dc != 0);
+
+    auto ex = PLUS(Variable(0, "id", dc, expr_type::INT), Int(5));
+    auto q = query_builder(ctx)
+                 .nodes_where("Node", "name", [dc](auto &p) { return p.equal(dc); })
+                 .project({{0, "id", prj::int_property},
+                           {0, "", prj::arithmetic_expr, ex}})
+                 .collect(rs).get_pipeline();
+    q.start(ctx);
+
+    rs.wait();
+    expected.append({query_result(std::to_string(4)), query_result(std::to_string(4+5))});
+    REQUIRE(rs == expected);
+    q.print_plan();
+  }
+
   SECTION("use index") {
     ctx.commit_transaction();
     ctx.begin_transaction();
@@ -207,12 +226,12 @@ TEST_CASE("Testing query operators", "[qop]") {
     q.print_plan();
   }
 
-  SECTION("where_qr_tuple") {
+  SECTION("filter") {
     result_set rs, expected;
     auto q = query_builder(ctx)
                  .all_nodes("Node")
                  .project({{0, "id", prj::int_property}})
-                 .where_qr_tuple([&](const auto &v) {
+                 .filter([&](const auto &v) {
                    return qv_get_int(v[0]) > 4; })
                  .collect(rs).get_pipeline();
     q.start(ctx);
@@ -609,6 +628,7 @@ TEST_CASE("Testing other Join operators", "[qop]") {
 
     SECTION("hashjoin_on_node") {
       result_set rs, expected;
+      auto code = ctx.get_code("id");
       auto q1 = query_builder(ctx)
                 .all_nodes("Person")
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
@@ -620,7 +640,7 @@ TEST_CASE("Testing other Join operators", "[qop]") {
                 .property("firstName", [&](auto &p) { return p.equal(graph->get_code("A")); })
                 .from_relationships({1, 3}, ":knows")
                 .to_node("Person")
-                .hash_join({2, 2}, q1)
+                .hash_join(Variable(2, "id", code, expr_type::INT), Variable(2, "id", code, expr_type::INT), q1)
                 .project({{0, "firstName", prj::string_property},
                           {2, "firstName", prj::string_property},
                           {3, "firstName", prj::string_property},
@@ -637,6 +657,38 @@ TEST_CASE("Testing other Join operators", "[qop]") {
                               query_result("A"), query_result("C")});
       expected.data.push_back({query_result("A"), query_result("B"),
                               query_result("A"), query_result("B")});
+
+      REQUIRE(rs == expected);
+    }
+  
+    SECTION("hashjoin #2") {
+      graph->add_node("AnotherPerson", {{"pid", std::any(2)},
+                                        {"firstName", std::any(std::string("A"))}});
+      graph->add_node("AnotherPerson", {{"pid", std::any(3)},
+                                        {"firstName", std::any(std::string("B"))}});
+      graph->add_node("AnotherPerson", {{"pid", std::any(4)},
+                                        {"firstName", std::any(std::string("C"))}});
+      result_set rs, expected;
+      auto code = ctx.get_code("id");
+      auto code2 = ctx.get_code("pid");
+      auto q1 = query_builder(ctx)
+                .all_nodes("Person")
+                .get_pipeline();
+
+      auto q2 = query_builder(ctx)
+                .all_nodes("AnotherPerson")
+                .hash_join(Variable(0, "pid", code2, expr_type::INT), Variable(0, "id", code, expr_type::INT), q1)
+                .project({{0, "pid", prj::int_property},
+                          {1, "id", prj::int_property}})
+                .collect(rs).get_pipeline();
+
+      query_ctx::start(ctx, {&q1, &q2});
+      rs.wait();
+      query_ctx::print_plans({&q1, &q2});
+
+      expected.data.push_back({query_result("2"), query_result("2")});
+      expected.data.push_back({query_result("3"), query_result("3")});
+      expected.data.push_back({query_result("4"), query_result("4")});
 
       REQUIRE(rs == expected);
     }

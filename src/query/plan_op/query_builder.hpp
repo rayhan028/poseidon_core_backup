@@ -136,8 +136,6 @@ public:
   query_builder &property(const std::string &key,
                   std::function<bool(const p_item &)> pred);
 
-  query_builder &filter(const expr &ex);
-
   /**
    * Add an operator the retrieves the node at the destination side of the
    * currently processed relationship with an optional filter for label(s).
@@ -176,7 +174,7 @@ public:
    * Add a projection operator that applies the given list of projection
    * functions to the query result.
    */
-  query_builder &project(const projection::expr_list &exprs);
+  query_builder &project(const projection::pexpr_list &exprs);
 
   /**
    * Add an operator for sorting the results.
@@ -203,7 +201,9 @@ public:
   /**
    * Add an operator to filter projected result tuples based on the pred function.
    */
-  query_builder &where_qr_tuple(std::function<bool(const qr_tuple &)> pred);
+  query_builder &filter(const expr &ex);
+
+  query_builder &filter(std::function<bool(const qr_tuple &)> pred);
 
   /**
    * Add an operator to unions all the query tuples of the left query 
@@ -249,7 +249,7 @@ public:
    * is the same as the node at another given position in the right tuple.
    * The node positions are specified by the pos pair. 
    */
-  query_builder &hash_join(std::pair<int, int> left_right, query_pipeline &other);
+  query_builder &hash_join(expr lhs, expr rhs, query_pipeline &other);
 
   /**
    * Add a left outer join operator for merging tuples of two queries based 

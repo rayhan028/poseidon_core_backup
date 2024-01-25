@@ -237,10 +237,12 @@ struct query_ctx {
   bool is_relationship_property(const relationship &r, dcode_t pcode,
                                 p_item::predicate_func pred);
 
+  p_item get_valid_node_property_value(node &n, dcode_t pcode);
+
+  p_item get_valid_rship_property_value(relationship &r, dcode_t pcode);
 
   static void start(query_ctx& qctx, std::initializer_list<query_pipeline *> queries);
   static void print_plans(std::initializer_list<query_pipeline *> queries, std::ostream& os = std::cout);
-
 };
 
 

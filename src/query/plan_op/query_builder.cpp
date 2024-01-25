@@ -227,7 +227,7 @@ query_builder &query_builder::collect(result_set &rs) {
   return *this;                               
 }
 
-query_builder &query_builder::project(const projection::expr_list &exprs) {
+query_builder &query_builder::project(const projection::pexpr_list &exprs) {
   auto op = std::make_shared<projection>(exprs);
   qpipeline_.append_op(op,
                    std::bind(&projection::process, op.get(), ph::_1, ph::_2));  
@@ -264,7 +264,7 @@ query_builder::distinct() {
 }
 
 query_builder &
-query_builder::where_qr_tuple(std::function<bool(const qr_tuple &)> pred) {
+query_builder::filter(std::function<bool(const qr_tuple &)> pred) {
   auto op = std::make_shared<filter_op>(pred);
   qpipeline_.append_op(op,
                    std::bind(&filter_op::process, op.get(), ph::_1, ph::_2));
@@ -323,8 +323,10 @@ query_builder &query_builder::nested_loop_join(std::pair<int, int> left_right, q
   return *this;                               
 }
 
-query_builder &query_builder::hash_join(std::pair<int, int> left_right, query_pipeline &other) {
-  auto op = std::make_shared<hash_join_op>(left_right, other.plan_head());
+ query_builder &query_builder::hash_join(expr lhs, expr rhs, query_pipeline &other) {
+  auto l = std::dynamic_pointer_cast<variable>(lhs);
+  auto r = std::dynamic_pointer_cast<variable>(rhs);
+  auto op = std::make_shared<hash_join_op>(l, r);
   other.append_op(
       op, std::bind(&hash_join_op::build_phase, op.get(), ph::_1, ph::_2));
   qpipeline_.append_op(
