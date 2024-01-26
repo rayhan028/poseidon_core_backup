@@ -77,6 +77,7 @@ inline std::ostream& operator<< (std::ostream& os, const prof_metrics& pm) { ret
 #else // !QOP_PROFILING
 
 #define PROF_DATA
+#define PROF_PRE0
 #define PROF_PRE
 #define PROF_POST(n)
 #define PROF_DUMP ""

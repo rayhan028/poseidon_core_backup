@@ -20,7 +20,7 @@ ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++
 
 RUN cd /home/$USER/poseidon_core/build \
-     && cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_PMDK=OFF -DUSE_LLVM=OFF .. \
-     && make
+      && cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_PMDK=OFF -DUSE_LLVM=OFF .. \
+      && make
 
 ENTRYPOINT /bin/sh
