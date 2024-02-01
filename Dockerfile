@@ -19,8 +19,8 @@ RUN cp /root/.m2/repository/org/antlr/antlr4/4.13.1/antlr4-4.13.1-complete.jar /
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++
 
-RUN cd /home/$USER/poseidon_core/build \
-      && cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_PMDK=OFF -DUSE_LLVM=OFF .. \
-      && make
+# RUN cd /home/$USER/poseidon_core/build \
+#      && cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_PMDK=OFF -DUSE_LLVM=OFF .. \
+#      && make
 
 ENTRYPOINT /bin/sh

@@ -89,7 +89,7 @@ void hash_join_op::dump(std::ostream &os) const { // TODO
 void hash_join_op::probe_phase(query_ctx &ctx, const qr_tuple &v) {
   // spdlog::info("probe phase");
   PROF_PRE;
-  auto jval = get_var_value(ctx, v, lhs_var_);
+  auto jval = get_var_value(ctx, v, rhs_var_);
   auto key = hasher(jval);
   
   auto n = 0u;
@@ -99,21 +99,23 @@ void hash_join_op::probe_phase(query_ctx &ctx, const qr_tuple &v) {
   if (it != htable_.end()) {
     auto& vec = it->second;
     for (auto& jc : vec) {
+    // spdlog::info("probe: {}", key);
       // std::cout << "jval: " << jval << " == jc: " << jc.first << std::endl;
       if (jval == jc.first) {
-        auto res = concat(v, jc.second);
+        auto res = concat(jc.second, v);
         consume_(ctx, res);
         n++;
       }
     }
   }
+  // else spdlog::info("key not found: {}", key);
   PROF_POST(n);
 }
 
 void hash_join_op::build_phase(query_ctx &ctx, const qr_tuple &v) {
   // spdlog::info("build phase");
   PROF_PRE;
-  auto jval = get_var_value(ctx, v, rhs_var_);
+  auto jval = get_var_value(ctx, v, lhs_var_);
   auto key = hasher(jval);
   std::unique_lock lock(m_);
   auto it = htable_.find(key);
@@ -132,7 +134,6 @@ query_result hash_join_op::get_var_value(query_ctx& ctx, const qr_tuple& v, std:
 
   if (inp.which() == node_ptr_type || inp.which() == rship_ptr_type) {
     auto n = qv_get_node(inp);
-    auto nlabel = ctx.get_string(n->node_label);
     switch(var->result_type()) {
       case expr_type::INT: res = qv_(get_property_value<int>(ctx, v, var->id_, var->pcode_)); break; 
       case expr_type::UINT64: res = qv_(get_property_value<uint64_t>(ctx, v, var->id_, var->pcode_)); break; 

@@ -168,7 +168,10 @@ void print_result(qresult_iterator& qres) {
  * Execute the query given as string. If qex_cc is set to true then the
  * query is compiled using LLVM, otherwise the query interpreter is used.
  */
-void exec_query(const std::string &qstr, query_proc::mode qmode, bool print_plan) {
+void exec_query(std::string &qstr, query_proc::mode qmode, bool print_plan) {
+  trim(qstr);
+  if (qstr.empty()) return;
+  
   try {
     auto start_qp = std::chrono::steady_clock::now();
     qproc_ptr->execute_and_output_query(qmode, qstr, print_plan);
