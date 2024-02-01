@@ -520,7 +520,7 @@ int main(int argc, char* argv[]) {
         "relationships:<rship type>:<filename>")
         ("query,q", value<std::string>(&query_file), "Execute the queries from the given file")
         ("shell,s", bool_switch()->default_value(false), "Start the interactive shell (default)")
-        ("qmode", value<std::string>(&qmode_str), "Query compile mode: llvm | interp (default)");
+        ("llvm", bool_switch()->default_value(false), "Use query compile mode");
 
     variables_map vm;
     store(parse_command_line(argc, argv, desc), vm);
@@ -584,16 +584,8 @@ int main(int argc, char* argv[]) {
     if (vm.count("shell"))
       start_shell = vm["shell"].as<bool>();
 
-    if (vm.count("qmode")) {
-      if (qmode_str != "llvm" && qmode_str != "interp") {
-        std::cout << "ERROR: unknown query mode value: 'compile' or 'interp' expected.\n";
-        return -1;
-      }
-      if (qmode_str == "llvm")
-        qmode = query_proc::Compile;
-      else // qmode_str == "interp"
-        qmode = query_proc::Interpret;
-    }
+    if (vm.count("llvm"))
+      qmode = vm["llvm"].as<bool>() ? query_proc::Compile : query_proc::Interpret;
 
     if (start_shell && !query_file.empty()) {
       std::cerr
