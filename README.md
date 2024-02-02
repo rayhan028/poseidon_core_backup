@@ -40,7 +40,7 @@ Option | Description
   `--import` arg              | imports the files in CSV format either `nodes:<node-type>:<filename>` or `relationships:<rship-type>:<filename>`
   `-q` [ `--query` ] arg      | executes the query from the given file
   `-s` [ `--shell` ]          | starts the interactive shell
-  `--qmode` arg               | specifies the query compile mode: interp (default) or llvm
+  `--llvm`                    | use LLVM query compilation
 
 In the following example, we create a new database and load the graph data from CSV files in Neo4j file format. Note, that all files representing a database have to imported with a single invocation of `pcli` as in the following example:
 
