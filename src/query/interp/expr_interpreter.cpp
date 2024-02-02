@@ -546,10 +546,10 @@ public:
                     res = query_result(int_math_op(op->fop_, qv_get_int(v1), qv_get_int(v2)));
                     break;
                 case double_type: // double
-                    res = query_result(double_math_op(op->fop_, qv_get_int(v1), qv_get_int(v2)));
+                    res = query_result(double_math_op(op->fop_, qv_get_double(v1), qv_get_double(v2)));
                     break;
                 case uint64_type: // uint64_t
-                    res = query_result(uint64_math_op(op->fop_, qv_get_int(v1), qv_get_int(v2)));
+                    res = query_result(uint64_math_op(op->fop_, qv_get_uint64(v1), qv_get_uint64(v2)));
                     break;
                 default:
                     break;

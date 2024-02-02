@@ -2,8 +2,14 @@ from ipykernel.kernelbase import Kernel
 from tabulate import tabulate
 import logging
 import sys
+import pathlib
+import os
 
-sys.path.append('/Users/kai/Projects/poseidon_core/build')
+lib_path = pathlib.Path(__file__).parent.parent.parent.resolve() / 'build'
+if os.path.isdir(lib_path):
+    sys.path.append(str(lib_path))
+else:
+    print(f"Cannot infer lib_path {lib_path}")
 
 import poseidon
 
@@ -58,7 +64,7 @@ class PoseidonKernel(Kernel):
 #        for tup in res:
 #                s = s + str(tup)
                
-        return tabulate(res, tablefmt="html", colglobalalign='left')
+        return tabulate(res, tablefmt="html")
     
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):

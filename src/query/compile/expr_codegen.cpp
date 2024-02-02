@@ -57,6 +57,9 @@ void* expr_codegen::visit(std::shared_ptr<variable> op) {
             callee = gen_.extern_func(module_, "qr_get_ptime"); break;
         case expr_type::UINT64:
             callee = gen_.extern_func(module_, "qr_get_uint64"); break;
+        default:
+            // TODO
+            break;
         }
         return gen_.get_builder()->CreateCall(callee, { start_->getArg(1), val1 });
     }
@@ -72,6 +75,9 @@ void* expr_codegen::visit(std::shared_ptr<variable> op) {
             callee = gen_.extern_func(module_, "get_ptime_property_value"); break;
         case expr_type::UINT64:
             callee = gen_.extern_func(module_, "get_uint64_property_value"); break;
+        default:
+            // TODO
+            break;
         }
         if (!callee) {
             spdlog::info("unknown get_???_property_value for property of type '{}'", (int)op->result_type());
