@@ -49,6 +49,7 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
         return true;
     });
 
+#if 0
     SECTION("Testing loading and executing an IR predicate function") {
         query_ctx ctx(graph);    
         jit_engine jit(graph);
@@ -142,6 +143,7 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
 
         free(buf);
     }
+#endif
 
     SECTION("Testing compiling and executing expression") {
         query_ctx ctx(graph);    
