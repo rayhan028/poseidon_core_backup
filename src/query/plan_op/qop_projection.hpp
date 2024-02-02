@@ -57,6 +57,7 @@ struct projection : public qop, public std::enable_shared_from_this<projection> 
     std::string pname; // name of the property pr empty 
     prj pfunc;         // projection function
     expr pex;          // arithmetic or case expression
+    expr pex_1, pex_2; // results for case expressions
   };
 
   using pexpr_list = std::vector<pexpr>;

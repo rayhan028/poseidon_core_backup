@@ -87,6 +87,19 @@ void projection::init_expressions() {
                     return builtin::pr_date(qr, pname); }};
                 break;
             */
+            case prj::case_expr:
+            {
+                auto pe0 = ex.pex;
+                auto pe1 = ex.pex_1;
+                auto pe2 = ex.pex_2;
+
+                pfuncs_[i] = prj_func { ex.idx, [pe0,pe1,pe2](query_ctx& ctx, const qr_tuple& qr) {
+                    return builtin::eval_bool_expr(ctx, qr, pe0) ? 
+                        builtin::eval_expr(ctx, qr, pe1) :
+                        builtin::eval_expr(ctx, qr, pe2);                        
+                }};
+                break;
+            }
             case prj::arithmetic_expr:
             {
                 auto pe = ex.pex;

@@ -159,6 +159,8 @@ boost::posix_time::ptime dtimestring_to_ptime(const std::string& d);
 
 std::string ptime_to_dtimestring(boost::posix_time::ptime t);
 
+bool eval_bool_expr(query_ctx& qctx, const qr_tuple& qr, const expr& ex);
+
 query_result eval_expr(query_ctx& qctx, const qr_tuple& qr, const expr& ex);
 /*
 CASE:

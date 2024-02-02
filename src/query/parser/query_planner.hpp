@@ -82,7 +82,7 @@ public:
     std::any visitUnary_expr(poseidonParser::Unary_exprContext *ctx) override;
     std::any visitPrimary_expr(poseidonParser::Primary_exprContext *ctx) override;
     std::any visitVariable(poseidonParser::VariableContext *ctx) override;
-
+    std::any visitValue(poseidonParser::ValueContext *ctx) override;
 
 private:
   query_ctx qctx_;

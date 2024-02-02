@@ -677,9 +677,11 @@ TEST_CASE("Testing other Join operators", "[qop]") {
 
       auto q2 = query_builder(ctx)
                 .all_nodes("AnotherPerson")
-                .hash_join(Variable(0, "pid", code2, expr_type::INT), Variable(0, "id", code, expr_type::INT), q1)
-                .project({{0, "pid", prj::int_property},
-                          {1, "id", prj::int_property}})
+                .hash_join(Variable(0, "id", code, expr_type::INT),
+                          Variable(0, "pid", code2, expr_type::INT), 
+                          q1)
+                .project({{0, "id", prj::int_property},
+                          {1, "pid", prj::int_property}})
                 .collect(rs).get_pipeline();
 
       query_ctx::start(ctx, {&q1, &q2});

@@ -149,7 +149,23 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
             pex_list.push_back(projection::pexpr{ 0, "", prj::arithmetic_expr, ex});
         }
         else if (pexpr->case_expr() != nullptr) {
-
+            auto e = visit(pexpr->case_expr()->logical_expr());
+            auto ex = std::any_cast<expr>(e);
+            auto res1 = pexpr->case_expr()->case_result()[0];
+            expr res_ex1, res_ex2;
+            if (res1->variable() != nullptr) {
+                res_ex1 = std::any_cast<expr>(visit(res1->variable()));
+            } else if (res1->value() != nullptr) {
+                res_ex1 = std::any_cast<expr>(visit(res1->value()));
+            }
+            auto res2 = pexpr->case_expr()->case_result()[1];
+            if (res2->variable() != nullptr) {
+                res_ex2 = std::any_cast<expr>(visit(res2->variable()));
+            } else if (res2->value() != nullptr) {
+                res_ex2 = std::any_cast<expr>(visit(res2->value()));
+            }
+            spdlog::info("CASE: {} | {} | {}", ex->dump(), res_ex1->dump(), res_ex2->dump());
+            pex_list.push_back(projection::pexpr{ 0, "", prj::case_expr, ex, res_ex1, res_ex2});
         }
         else if (pexpr->function_call() != nullptr) {
             // handle UDFs
@@ -936,22 +952,11 @@ std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *c
     if (ctx->logical_expr() != nullptr)
         res = visit(ctx->logical_expr());    
     else if (ctx->value() != nullptr) {
-        if (ctx->value()->INTEGER()) {
-            try {
-                res = std::make_any<expr>(Int(std::stoi(ctx->value()->INTEGER()->getText())));
-            } catch (std::out_of_range& exc) {
-                // if we are out of range we try to parse a uint64_t value
-                res = std::make_any<expr>(UInt64(std::stoull(ctx->value()->INTEGER()->getText())));
-            }
-        }
-        else if (ctx->value()->FLOAT())
-            res = std::make_any<expr>(Float(std::stod(ctx->value()->FLOAT()->getText())));
-        else if (ctx->value()->STRING_())
-            res = std::make_any<expr>(Str(trim_string(ctx->value()->STRING_()->getText())));
-        else
-            assert("Primary expression not handled");
+        res = visit(ctx->value());
     }
     else if (ctx->variable() != nullptr) {
+        res = visit(ctx->variable());
+        /*
         auto var_id = extract_tuple_id(ctx->variable()->Var()->getText());
         auto var_type = typespec_to_exprtype(ctx->variable()->type_spec());
         // Identifier_ could be empty
@@ -962,6 +967,7 @@ std::any query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *c
         }
         else
             res = std::make_any<expr>(Variable(var_id, var_type));
+        */
     }
     else if (ctx->function_call() != nullptr) {
         // handle UDFs - TODO: should be combined with code in visitProject_op
@@ -1016,6 +1022,26 @@ std::any query_planner::visitVariable(poseidonParser::VariableContext *ctx) {
     else
         res = std::make_any<expr>(Variable(var_id, var_type));
     return res;
+}
+
+std::any query_planner::visitValue(poseidonParser::ValueContext *ctx) {
+    std::any res;
+
+    if (ctx->INTEGER()) {
+        try {
+            res = std::make_any<expr>(Int(std::stoi(ctx->INTEGER()->getText())));
+        } catch (std::out_of_range& exc) {
+            // if we are out of range we try to parse a uint64_t value
+            res = std::make_any<expr>(UInt64(std::stoull(ctx->INTEGER()->getText())));
+        }
+    }
+    else if (ctx->FLOAT())
+        res = std::make_any<expr>(Float(std::stod(ctx->FLOAT()->getText())));
+    else if (ctx->STRING_())
+        res = std::make_any<expr>(Str(trim_string(ctx->STRING_()->getText())));
+    else
+        assert("Primary expression not handled");   
+    return res; 
 }
 
 expr_type query_planner::typespec_to_exprtype(poseidonParser::Type_specContext *var_type) {

@@ -302,6 +302,9 @@ std::string ptime_to_dtimestring(boost::posix_time::ptime t) {
 
 bool is_null(const query_result& pv) { return pv.type() == typeid(null_t); }
 
+bool eval_bool_expr(query_ctx& qctx, const qr_tuple& qr, const expr& ex) {
+  return interpret_bool_expression(qctx, ex, qr);  
+}
 query_result eval_expr(query_ctx& qctx, const qr_tuple& qr, const expr& ex) {
   return interpret_expression(qctx, ex, qr);  
 }
