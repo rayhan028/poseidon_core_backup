@@ -4,7 +4,6 @@ image:
 
 stages:
   - build
-  - cover
   - test
 
 build:
@@ -37,7 +36,7 @@ test:
     - build
 
 coverage:
-  stage: cover
+  stage: test
   tags:
     - grouprunner
   script:
@@ -51,6 +50,6 @@ coverage:
     - echo pass | sudo -S mkdir -m 777 -p /mnt/pmem0/poseidon
     - ctest --verbose --output-on-failure
     - ~/.local/bin/gcovr -r .. --exclude _deps --exclude "../bench/*"
-   dependencies:
-    - build
+  dependencies:
+    - test
   coverage: '/^TOTAL.*\s+(\d+\%)$/'
