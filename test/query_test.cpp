@@ -191,7 +191,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     auto dc = graph->get_code("aaa4");
     REQUIRE(dc != 0);
 
-    auto ex = PLUS(Variable(0, "id", dc, expr_type::INT), Int(5));
+    auto ex = PLUS(Variable(0, "id", graph->get_code("id"), expr_type::INT), Int(5));
     auto q = query_builder(ctx)
                  .nodes_where("Node", "name", [dc](auto &p) { return p.equal(dc); })
                  .project({{0, "id", prj::int_property},

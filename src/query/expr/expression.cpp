@@ -243,7 +243,7 @@ public:
             res_ = qv_(op->lvalue_);
         else
             res_ = qv_(op->dvalue_); 
-            return nullptr; 
+        return nullptr; 
     }
     void* visit(std::shared_ptr<string_literal> op) override { res_ = qv_(op->str_); return nullptr; }
     void* visit(std::shared_ptr<time_literal> op) override { res_ = qv_(op->time_); return nullptr; }
@@ -286,4 +286,5 @@ expr func_call::replace_by_literal(query_ctx& ctx) {
     else {
         spdlog::info("ERROR: Invalid function pointer in function '{}'", func_name_);
     }
+    return expr();
 }

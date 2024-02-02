@@ -574,8 +574,14 @@ p_item query_ctx::get_valid_rship_property_value(relationship &r, dcode_t pcode)
     res = gdb_->get_property_value(r, pcode);
   else {
     auto xid = current_transaction()->xid();
-    auto &rv = gdb_->get_valid_rship_version(r, xid);
-    spdlog::info("AAAAAAAAAARGGGJHHHH");        
+    auto &rn = r.find_valid_version(xid);
+    // spdlog::info("AAAAAAAAAARGGGJHHHH");   
+       for (auto& pi : rn->properties_) {
+      if (pi.key() == pcode) {
+        res = pi;
+        break;
+      }
+    }     
   }
   return res;
 }

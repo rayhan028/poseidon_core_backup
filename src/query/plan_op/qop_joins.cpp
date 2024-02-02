@@ -133,7 +133,6 @@ query_result hash_join_op::get_var_value(query_ctx& ctx, const qr_tuple& v, std:
   query_result res;
 
   if (inp.which() == node_ptr_type || inp.which() == rship_ptr_type) {
-    auto n = qv_get_node(inp);
     switch(var->result_type()) {
       case expr_type::INT: res = qv_(get_property_value<int>(ctx, v, var->id_, var->pcode_)); break; 
       case expr_type::UINT64: res = qv_(get_property_value<uint64_t>(ctx, v, var->id_, var->pcode_)); break; 
