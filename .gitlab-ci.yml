@@ -16,11 +16,10 @@ build:
     - cmake -DCMAKE_BUILD_TYPE=Release -DUSE_PMDK=OFF -DLLVM_DIR=/usr/lib64/cmake/llvm ..
     - make -j 3
     # clean up unnecessary files and strip binaries
-    - rm -rf _deps 
     - strip test/*_test
   artifacts:
     paths:
-      - build/
+      - build
     expire_in: 30 minutes
 
 test:
@@ -31,25 +30,8 @@ test:
     - pip install pytest --user
     - echo pass | sudo -S mkdir -m 777 -p /mnt/pmem0/poseidon
     - cd build
+    - cmake -DCMAKE_BUILD_TYPE=Release -DUSE_PMDK=OFF -DLLVM_DIR=/usr/lib64/cmake/llvm ..
+    - make -j 3
     - ctest --output-on-failure
   dependencies:
     - build
-
-coverage:
-  stage: test
-  tags:
-    - grouprunner
-  script:
-    #- dnf -y install python-pip
-    - pip install pytest --user
-    - pip install gcovr --user
-    - mkdir build
-    - cd build
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_PMDK=OFF -DLLVM_DIR=/usr/lib64/cmake/llvm -DCMAKE_CXX_FLAGS="-g -O0 -fprofile-arcs -ftest-coverage" ..
-    - make -j 3
-    - echo pass | sudo -S mkdir -m 777 -p /mnt/pmem0/poseidon
-    - ctest --verbose --output-on-failure
-    - ~/.local/bin/gcovr -r .. --exclude _deps --exclude "../bench/*"
-  dependencies:
-    - test
-  coverage: '/^TOTAL.*\s+(\d+\%)$/'

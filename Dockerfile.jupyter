@@ -1,0 +1,69 @@
+FROM jupyter/base-notebook:python-3.11
+
+USER root
+
+# Prepare the environment for building Poseidon
+RUN apt-get update
+RUN apt-get upgrade --yes
+RUN apt-get install --yes git make cmake
+RUN apt-get install --yes python3-dev pipenv
+RUN apt-get install --yes clang-15 libboost-all-dev
+RUN apt-get install --yes openjdk-19-jdk
+
+RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-15 100
+RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-15 100
+RUN update-alternatives --config cc
+
+RUN python3 -m venv /home/venv
+
+RUN . /home/venv/bin/activate && pip install antlr4-tools && echo "yes" | antlr4
+
+# install git and graphviz
+RUN apt-get install -y graphviz                                                                     \
+ && rm -rf /var/lib/apt/lists/*                                                                         \
+# install the kernel
+# disable the default python3 kernel
+ && jupyter kernelspec remove -y python3                                                                \
+ && echo "c.KernelSpecManager.ensure_native_kernel = False" >> /etc/jupyter/jupyter_server_config.py    \
+# install nbgitpuller
+ && pip install --no-cache-dir nbgitpuller                                                              \
+# fix permissions
+ && fix-permissions "/home/${NB_USER}"
+
+# Set default user
+USER ${NB_UID}
+WORKDIR /home/jovyan
+
+RUN cd /home/jovyan && git clone https://dbgit.prakinf.tu-ilmenau.de/code/poseidon_core.git
+RUN mkdir /home/jovyan/poseidon_core/build 
+RUN mkdir /home/jovyan/poseidon_core/jars 
+RUN cp /home/jovyan/.m2/repository/org/antlr/antlr4/4.13.1/antlr4-4.13.1-complete.jar /home/jovyan/poseidon_core/jars
+
+ENV CC=/usr/bin/clang
+ENV CXX=/usr/bin/clang++
+
+# Build Poseidon
+RUN cd /home/jovyan/poseidon_core/build \
+      && cmake -DCMAKE_BUILD_TYPE=Release -DUSE_PMDK=OFF -DUSE_LLVM=OFF .. \
+      && make
+
+# copy source code
+#COPY src/      /opt/jupyter-duckdb/src/
+#COPY README.md /opt/jupyter-duckdb/
+#COPY setup.py  /opt/jupyter-duckdb/
+
+# copy examples
+#COPY examples/ /home/jovyan/work/
+
+# switch to root user
+USER root
+
+RUN cd /home/jovyan/poseidon_core/jupyter && jupyter kernelspec install poseidon
+
+# switch back to jovyan
+USER ${NB_UID}
+
+# set workdir
+WORKDIR /home/jovyan/poseidon_core/jupyter/poseidon
+
+# Password: nayvoj
