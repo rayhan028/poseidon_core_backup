@@ -303,6 +303,11 @@ endif()
 #
 SET(BOOST_MIN_VERSION "1.70.0")
 
+# get rid of an annoying warning
+if(POLICY CMP0144)
+   cmake_policy(SET CMP0144 NEW) # find_package() uses <PackageName>_ROOT variables
+ endif()
+
 find_package(Boost ${BOOST_MIN_VERSION} REQUIRED COMPONENTS
     program_options
     filesystem

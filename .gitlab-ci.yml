@@ -1,5 +1,5 @@
 image: 
-  name: "dbisilm/llvm_pmdk:clang"
+  name: "dbisilm/alpine-clang-boost:latest"
   entrypoint: [ '/bin/sh', '-c' ]
 
 stages:
