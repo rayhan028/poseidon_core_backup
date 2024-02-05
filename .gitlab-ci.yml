@@ -28,7 +28,6 @@ test:
   tags:
     - grouprunner
   script:
-    - pip install pytest --user
     - cd build
     - cmake -DCMAKE_BUILD_TYPE=Release -DUSE_PMDK=OFF -DLLVM_DIR=/usr/lib/cmake/llvm16 ..
     - make -j 3
