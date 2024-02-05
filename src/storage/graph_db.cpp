@@ -818,7 +818,7 @@ node &graph_db::get_valid_node_version(node &n, xid_t xid) {
 
   // or (3) node is locked by another transaction
   else {
-    spdlog::debug("node #{} is locked by another tx in {}", n.id(), xid);
+    spdlog::debug("node #{} is locked by another tx in {}", n.id(), short_ts(xid));
     // dump();
     // try to find a valid version which is not locked
     auto &nv = n.find_valid_version(xid)->elem_;

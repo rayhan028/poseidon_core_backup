@@ -772,60 +772,77 @@ TEST_CASE("Checking that a update transaction is aborted if the object is "
   auto pool = graph_pool::create(test_path);
   auto gdb = pool->create_graph("my_tx_graph17");
 
-  barrier b1, b2, b3;
+  barrier b1, b2, b3, b4, b5;
+
   // 1. create a new node
   node::id_t nid = 0;
-	{
-		gdb->begin_transaction();
-		// spdlog::info("BOT #1: {}", short_ts(tx->xid()));
+  gdb->run_transaction([&]() {
     nid = gdb->add_node("Actor",
                         {{"name", std::any(std::string("Mark Wahlberg"))},
                          {"age", std::any(48)}});
-   //  spdlog::info("updated #1");
-		gdb->commit_transaction();
-	}
+    return true;
+  });
   gdb->flush();
 
   // 2. start a transaction to update
-    auto t1 = std::thread([&]() {
-		  b1.wait();
-		  gdb->begin_transaction();
-		// spdlog::info("BOT #2: {}", short_ts(tx->xid()));
-		// perform update
-    // spdlog::info("node_by_id #2");
-   		auto &n = gdb->node_by_id(nid);
-    // spdlog::info("update_node #2");
-    	gdb->update_node(n,
-                     {{
-                         "age",
-                         std::any(52),
-                     }},
-                     "Updated Actor");
-		b2.notify();
-		// but don't commit yet - let's make sure that the other transaction tries 
-		// to update, too
-		b3.wait();
-		gdb->commit_transaction();
-	});
+  auto t1 = std::thread([&]() {
+    // 1. wait for transaction #2
+    b1.wait();
+    gdb->run_transaction([&]() {
+      // spdlog::info("t1: BOT {}", short_ts(current_transaction()->xid()));
+
+      // 2. we fetch the node
+      // spdlog::info("t1: read");
+      auto &n = gdb->node_by_id(nid);
+      // spdlog::info("update_node #2");
+      b2.notify();
+      b3.wait();
+      // 3. then we update the node
+      // spdlog::info("t1: update");
+      gdb->update_node(n, {{ "age", std::any(52), }},
+                      "Updated Actor");
+
+      // 4. inform the other transaction that the update
+      // was performed
+      b4.notify();
+      
+      // 5. but don't commit yet - let's make sure that the 
+      // other transaction tries to update, too
+      b4.wait();
+
+      return true;
+    });
+  });
   // 3. start a concurrent transaction which tries to read the same node
-    auto t2 = std::thread([&]() {
-		b1.notify();
-		gdb->begin_transaction();
-		b2.wait();
+  auto t2 = std::thread([&]() {
+    gdb->run_transaction([&]() {
+      // spdlog::info("t2: BOT {}", short_ts(current_transaction()->xid()));
+      // 1. we inform transaction t1 that we have started
+      b1.notify();
+      // 2. and then we wait that t1 has updated the node
+      b2.wait();
 
-   		auto &n = gdb->node_by_id(nid);
-		// try to update: should fail
-    	REQUIRE_THROWS_AS(gdb->update_node(n,
-                     {{
-                         "age",
-                         std::any(55),
-                     }}), transaction_abort);
-		b3.notify();
-		gdb->abort_transaction();
-	});
+      // 3. now we try to fetch the node ...
+      // spdlog::info("t2: read");
+      auto &n = gdb->node_by_id(nid);
+      b3.notify();
 
-	t1.join();
-	t2.join();
+      // 4. and try to update: should fail
+      b4.wait();
+      // spdlog::info("t2: update");
+      REQUIRE_THROWS_AS(
+        gdb->update_node(n, {{"age", std::any(55), }}),
+                      transaction_abort);   
+
+      // 5. inform t1
+      b5.notify();
+   
+      return false;
+    });
+  });
+
+  t1.join();
+  t2.join();
 
   graph_pool::destroy(pool);
 }
@@ -1215,4 +1232,3 @@ TEST_CASE("Checking two concurrent transactions trying to create node", "[transa
   graph_pool::destroy(pool);
 } 
 /* -------------------------------------------------------------------------------- */
-

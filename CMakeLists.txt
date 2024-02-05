@@ -211,7 +211,7 @@ endif()
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v3.4.0
+  GIT_TAG        v3.5.2
 )
 
 FetchContent_MakeAvailable(Catch2)
@@ -229,7 +229,7 @@ FetchContent_MakeAvailable(CSV)
  FetchContent_Declare(
   spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog.git
-   GIT_TAG        v1.12.0
+   GIT_TAG        v1.13.0
 )
 
 FetchContent_MakeAvailable(spdlog)
@@ -248,16 +248,6 @@ execute_process(COMMAND llvm-config --libs all
 # LLVM_DYLIB_COMPONENTS in case of dynamic lib
 endif() 
 
-# PEGTL =================================================================== #
-# FetchContent_Declare(
-#  pegtl
-#  GIT_REPOSITORY https://github.com/taocpp/PEGTL.git
-#  GIT_TAG       3.2.2
-#  )
-#
-#FetchContent_MakeAvailable(pegtl)
-
-
 # linenoise =================================================================== #
  FetchContent_Declare(
   linenoise
@@ -272,7 +262,7 @@ set (BUILD_SHARED_LIBS ON)
 FetchContent_Declare(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-  GIT_TAG        10.1.1
+  GIT_TAG        10.2.1
 )
 
 FetchContent_MakeAvailable(fmt)

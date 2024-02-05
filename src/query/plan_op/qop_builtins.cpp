@@ -77,6 +77,7 @@ query_result get_label(query_ctx& qctx, const query_result& pv) {
     auto r = qv_get_relationship(pv);
     return query_result(qctx.get_string(r->rship_label));
   }
+  std::cout << "get_label:: invalid param - " << pv.which() << std::endl;
   return null_val;
 }
 query_result int_property(const query_result &pv, const std::string &key) {

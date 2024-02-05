@@ -389,6 +389,7 @@ public:
         if (op->param_list_.size() == 1) {
             auto arg = pop(stack_);
             assert(op->func1_ptr_ != nullptr);
+            // std::cout << "func_call: arg = " << arg << std::endl;
             auto res = op->func1_ptr_(ctx_, arg);
             // std::cout << "func_call: result = " << res << std::endl;
             stack_.push(res);

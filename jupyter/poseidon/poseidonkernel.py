@@ -45,26 +45,48 @@ class PoseidonKernel(Kernel):
         if cmds[0] == "%OPEN" and cmds[2] == "IN":
             pool_name = cmds[3].strip("'")
             db_name = cmds[1].strip("'")
-            logging.info("trying to open %s/%s", pool_name, db_name)
+            logging.info("TRYING TO OPEN: %s/%s", pool_name, db_name)
             try:
                 self.pool = poseidon.open_pool(pool_name, 1024 * 1024 * 80)
                 self.db = self.pool.open_graph(db_name, 10000)
                 return "Poseidon database opened successfully."
             except RuntimeError as e:
                 return str(e)
+        elif cmds[0] == "%CREATE" and cmds[2] == "IN":
+            pool_name = cmds[3].strip("'")
+            db_name = cmds[1].strip("'")
+            logging.info("TRYING TO CREATE: %s/%s", pool_name, db_name)
+            try:
+                self.pool = poseidon.create_pool(pool_name, 1024 * 1024 * 80)
+                self.db = self.pool.create_graph(db_name, 10000)
+                return "Poseidon database created successfully."
+            except RuntimeError as e:
+                return str(e)
+        elif cmds[0] == "%CLOSE":
+            self.pool.close()
+            return "Poseidon closed."
         else:
             logging.info("UNKNOWN CMD: '%s'", code)
-            return "Ooops."
+            return f"Ooops: unknown command {code}"
 
 
+    def rows_table(self, rows) -> str:
+        return ''.join(map(
+            lambda row: '<tr>' + ''.join(map(lambda e: f'<td style="text-align: left">{e}</td>', row)) + '</tr>',
+            rows
+        ))
+    
     def handle_query(self, code):
         logging.info("EXEC QUERY: '%s'", code)
         res = self.db.query(code)
-#        s = ""
-#        for tup in res:
-#                s = s + str(tup)
-               
-        return tabulate(res, tablefmt="html")
+
+        table_data = self.rows_table(res)
+ 
+        return f'''
+                <table class="poseidon-query-result">
+                    {table_data}
+                </table>
+            '''
     
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):

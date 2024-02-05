@@ -149,7 +149,6 @@ bool all_unweighted_shortest_paths(query_ctx& ctx, node::id_t start, node::id_t 
 
 bool weighted_shortest_path(query_ctx& ctx, node::id_t start, node::id_t stop, bool bidirectional,
                 rship_predicate rpred, rship_weight weight_func, path_visitor visit, path_item &spath) {
-    bool found = false;
     uint64_t num_nodes = ctx.gdb_->get_nodes()->as_vec().capacity();
     boost::dynamic_bitset<> visited(num_nodes);
     std::vector<uint64_t> parent(num_nodes, UNKNOWN - 1);
@@ -170,7 +169,6 @@ bool weighted_shortest_path(query_ctx& ctx, node::id_t start, node::id_t stop, b
         }
 
         if (min_nid == stop) {
-            found = true;
             spath.trace_path(parent, stop);
             spath.set_weight(weight[stop]);
             return true;
@@ -394,7 +392,6 @@ bool k_weighted_shortest_path(query_ctx& ctx, node::id_t start, node::id_t stop,
                     path compare_path(p.get_path().begin(), p.get_path().begin() + j + 1);
                     // delete common relationships
                     if (compare_path == root_path /*&& p.get_path().size() > (j + 1)*/) {    
-                        bool d = true;
                         auto src_nid = p.get_path().at(j);
                         auto des_nid = p.get_path().at(j + 1);
                         auto &src_node = ctx.gdb_->node_by_id(src_nid);
@@ -410,7 +407,6 @@ bool k_weighted_shortest_path(query_ctx& ctx, node::id_t start, node::id_t stop,
                                     if (nid == des_nid) {
                                         del_rships.push_back(ctx.gdb_->get_rship_description(r.id()));
                                         ctx.gdb_->delete_relationship(r.id());
-                                        d = false;
                                     }
                                 }
                             }
@@ -419,7 +415,6 @@ bool k_weighted_shortest_path(query_ctx& ctx, node::id_t start, node::id_t stop,
                                 if (nid == des_nid) {
                                     del_rships.push_back(ctx.gdb_->get_rship_description(r.id()));
                                     ctx.gdb_->delete_relationship(r.id());
-                                    d = false;
                                 }
                             }
                             rid = r.next_src_rship;

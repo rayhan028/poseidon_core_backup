@@ -49,7 +49,7 @@ std::unique_ptr<jit_engine> jit;
 
 static int f_cnt = 1;
 
-bool compile_expression(query_ctx& ctx, const expr& ex, const qr_tuple& tup, bool print = true) {
+bool compile_expression(query_ctx& ctx, const expr& ex, const qr_tuple& tup, bool print = false) {
     auto fname = fmt::format("filter_{}", f_cnt++);
     auto module = gen->generate(ex, fname);
     if (print)
