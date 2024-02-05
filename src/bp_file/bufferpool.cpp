@@ -129,7 +129,7 @@ void bufferpool::free_page(paged_file::page_id pid) {
         auto file_id = (pid & 0xF000000000000000) >> 60;
         assert(file_id < MAX_PFILES && files_[file_id]);
         spdlog::debug("free_page: #{}(raw:{}|file_id:{})", pid, raw_pid, file_id);
-        memset(iter->second.p_, 0, sizeof(PAGE_SIZE));
+        memset(iter->second.p_, 0, sizeof(PF_PAGE_SIZE));
         lru_list_.remove(iter->second.lru_node_);
         ptable_.erase(pid);
 
@@ -189,7 +189,7 @@ void bufferpool::flush_page(paged_file::page_id pid, bool evict) {
     if (evict) {
         lru_list_.remove(iter->second.lru_node_);
         slots_.set(iter->second.pos_);
-        memset(iter->second.p_, 0, sizeof(PAGE_SIZE));
+        memset(iter->second.p_, 0, sizeof(PF_PAGE_SIZE));
         ptable_.erase(pid);
     }
 }
@@ -225,7 +225,7 @@ bool bufferpool::evict_page() {
             //    spdlog::info("bufferpool::evict page {} of file {} - pinned: {}", 
             //    pid & 0xFFFFFFFFFFFFFFF, (pid & 0xF000000000000000) >> 60, it2->second.pinned_);
             slots_.set(it2->second.pos_);
-            memset(it2->second.p_, 0, sizeof(PAGE_SIZE));
+            memset(it2->second.p_, 0, sizeof(PF_PAGE_SIZE));
             lru_list_.remove(it2->second.lru_node_);
             ptable_.erase(pid);
             return true;

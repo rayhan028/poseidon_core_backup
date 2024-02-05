@@ -25,8 +25,8 @@
 #include <bitset>
 #include <functional>
 
-#define PAGE_SIZE           1048576 // 1024 * 1024
-#define FHEADER_PAYLOAD_SIZE 9216
+#define PF_PAGE_SIZE           1048576 // 1024 * 1024
+#define FHEADER_PAYLOAD_SIZE   9216
 /**
  * The header of a file.
  */
@@ -41,7 +41,7 @@ struct file_header {
  * A page as the object read from and written to the file.
  */
 struct page {
-    uint8_t payload[PAGE_SIZE];
+    uint8_t payload[PF_PAGE_SIZE];
 };
 
 /**

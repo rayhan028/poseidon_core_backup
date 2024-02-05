@@ -37,10 +37,10 @@ bool paged_string_pool::scan(std::function<void(const char *s, dcode_t c)> cb) {
     bpool_.scan_file(file_id_, [&](auto pg) {
         auto data = &(pg->payload[0]);
         auto lastp = sizeof(uint32_t);
-        auto spos = npage * PAGE_SIZE + sizeof(uint32_t);
+        auto spos = npage * PF_PAGE_SIZE + sizeof(uint32_t);
         auto ppos = spos;
 
-        for (auto p = sizeof(uint32_t); p < PAGE_SIZE; p++, spos++) {
+        for (auto p = sizeof(uint32_t); p < PF_PAGE_SIZE; p++, spos++) {
             if (data[p] == '\0' && data[lastp] != '\0') {
                 cb((const char *)&data[lastp], ppos);
                 lastp = p + 1;
@@ -57,18 +57,18 @@ bool paged_string_pool::scan(std::function<void(const char *s, dcode_t c)> cb) {
 }
 
 const char *paged_string_pool::extract(dcode_t pos) const {
-    paged_file::page_id pid = pos / PAGE_SIZE + 1;
+    paged_file::page_id pid = pos / PF_PAGE_SIZE + 1;
     auto pg = bpool_.fetch_page(pid | file_mask_);
-    auto page_offset = pos % PAGE_SIZE;
+    auto page_offset = pos % PF_PAGE_SIZE;
     return (const char *) &(pg->payload[page_offset]);
 }
 
 bool paged_string_pool::equal(dcode_t pos, const std::string& s) const {
-    paged_file::page_id pid = pos / PAGE_SIZE + 1;
+    paged_file::page_id pid = pos / PF_PAGE_SIZE + 1;
     auto pg = bpool_.fetch_page(pid | file_mask_);
-    auto page_offset = pos % PAGE_SIZE;
+    auto page_offset = pos % PF_PAGE_SIZE;
     auto i = 0u;
-    for (; i < s.length() && i + page_offset < PAGE_SIZE; i++)
+    for (; i < s.length() && i + page_offset < PF_PAGE_SIZE; i++)
         if (pg->payload[page_offset + i] != s.at(i))
             return false;
     return pg->payload[page_offset + i] == '\0';
@@ -81,15 +81,15 @@ dcode_t paged_string_pool::add(const std::string& str) {
     memcpy(&last_pos, &(pg.first->payload[0]), sizeof(uint32_t));
     if (last_pos == 0) last_pos += sizeof(uint32_t);
 
-    auto page_pos = last_pos - (npages_ - 1) * PAGE_SIZE; // the position on the page
-    if (page_pos + str.length() + 1 >= PAGE_SIZE) {
+    auto page_pos = last_pos - (npages_ - 1) * PF_PAGE_SIZE; // the position on the page
+    if (page_pos + str.length() + 1 >= PF_PAGE_SIZE) {
         // we need a new page
         pg = bpool_.allocate_page(file_id_);
         npages_++;
-        last_pos = (npages_ - 1) * PAGE_SIZE + sizeof(uint32_t);
+        last_pos = (npages_ - 1) * PF_PAGE_SIZE + sizeof(uint32_t);
         page_pos = sizeof(uint32_t);
     }
-    dcode_t pos = last_pos/* + (npages_ - 1) * PAGE_SIZE*/;
+    dcode_t pos = last_pos/* + (npages_ - 1) * PF_PAGE_SIZE*/;
     memcpy(&(pg.first->payload[page_pos]), str.c_str(), str.length());
     // spdlog::info("add string '{}'/{} at page_pos={}(last_pos={}) - {}", str, pos, page_pos, last_pos, page_pos + str.length());
     last_pos += str.length() + 1;

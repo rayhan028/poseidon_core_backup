@@ -41,7 +41,7 @@ TODO:
 #include "paged_file.hpp"
 #include "spdlog/spdlog.h"
 
-#define DEFAULT_BCHUNK_SIZE PAGE_SIZE
+#define DEFAULT_BCHUNK_SIZE PF_PAGE_SIZE
 
 /**
  * bchunk is a contiguous buffer of a fixed size which stores records (byte

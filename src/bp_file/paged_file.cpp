@@ -52,7 +52,7 @@ bool paged_file::open(const std::string& path, int file_type) {
     if (header_callback_ != nullptr)
         header_callback_(header_read, header_.payload_);
     file_.seekp(0, file_.end);
-    npages_ = ((unsigned long)file_.tellp() - sizeof(file_header)) / PAGE_SIZE;
+    npages_ = ((unsigned long)file_.tellp() - sizeof(file_header)) / PF_PAGE_SIZE;
     spdlog::debug("file '{}' opened with {} pages", path, npages_);
     return is_open();
 }
@@ -81,8 +81,8 @@ void paged_file::close() {
 }
 
 paged_file::page_id paged_file::allocate_page() {
-    uint8_t *buf = new uint8_t[PAGE_SIZE];
-    memset(buf, 0, PAGE_SIZE);
+    uint8_t *buf = new uint8_t[PF_PAGE_SIZE];
+    memset(buf, 0, PF_PAGE_SIZE);
 
     // find first 0 bit in slots_
     paged_file::page_id pid = find_first_slot();
@@ -90,16 +90,16 @@ paged_file::page_id paged_file::allocate_page() {
     if (pid != UNKNOWN) {
         // reuse a freed page
         // file_.seekp(0, file_.end);
-        file_.seekp(pid * PAGE_SIZE + sizeof(file_header));
-        file_.write((const char *) buf, PAGE_SIZE);
+        file_.seekp(pid * PF_PAGE_SIZE + sizeof(file_header));
+        file_.write((const char *) buf, PF_PAGE_SIZE);
         pid += 1;
     }
     else {
         // append a page to the file
         file_.seekp(0, file_.end);
-        file_.write((const char *) buf, PAGE_SIZE);
+        file_.write((const char *) buf, PF_PAGE_SIZE);
         npages_++;
-        pid = ((unsigned long)file_.tellp() - sizeof(file_header)) / PAGE_SIZE;
+        pid = ((unsigned long)file_.tellp() - sizeof(file_header)) / PF_PAGE_SIZE;
     }
     // mark slot
     // std::cout << "allocate --> " << pid << " : " << npages_ << std::endl;
@@ -137,11 +137,11 @@ bool paged_file::read_page(paged_file::page_id pid, page& pg) {
         spdlog::info("ERROR in read_page in {}: {}, pages={} -> slot={}", file_name_, pid, npages_, header_.slots_.test(pid-1));
         throw index_out_of_range();
     }
-    // std::cout << "read from pos " << (pid-1) * PAGE_SIZE + sizeof(file_header) << std::endl;
+    // std::cout << "read from pos " << (pid-1) * PF_PAGE_SIZE + sizeof(file_header) << std::endl;
 
     spdlog::debug("read page in {}: {}", file_name_, pid);
-    file_.seekg((pid-1) * PAGE_SIZE + sizeof(file_header));
-    file_.read((char *) pg.payload, PAGE_SIZE);     
+    file_.seekg((pid-1) * PF_PAGE_SIZE + sizeof(file_header));
+    file_.read((char *) pg.payload, PF_PAGE_SIZE);     
 
     return file_.good();
 }
@@ -153,8 +153,8 @@ bool paged_file::write_page(paged_file::page_id pid, page& pg) {
         throw index_out_of_range();
     }
     spdlog::debug("write page in {}: {}", file_name_, pid);
-    file_.seekp((pid-1) * PAGE_SIZE + sizeof(file_header));
-    file_.write((char *) pg.payload, PAGE_SIZE); 
+    file_.seekp((pid-1) * PF_PAGE_SIZE + sizeof(file_header));
+    file_.write((char *) pg.payload, PF_PAGE_SIZE); 
 
     return file_.good();
 }
@@ -171,7 +171,7 @@ void paged_file::scan_pages(page& pg, std::function<void(page&, paged_file::page
     paged_file::page_id pid = 1;
     file_.seekg(sizeof(file_header));
     while (!file_.eof()) {
-        file_.read((char *) pg.payload, PAGE_SIZE);   
+        file_.read((char *) pg.payload, PF_PAGE_SIZE);   
         if (header_.slots_.test(pid-1))  
             cb(pg, pid);
         pid++;

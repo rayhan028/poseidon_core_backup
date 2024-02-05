@@ -17,13 +17,13 @@ TEST_CASE("Creating a paged file", "[paged_file]") {
     REQUIRE(pf.num_pages() == 1);
 
     page p1;
-    memset(p1.payload, 0xff, PAGE_SIZE);
+    memset(p1.payload, 0xff, PF_PAGE_SIZE);
     pf.write_page(pid, p1);
 
     page p2;
     REQUIRE(pf.read_page(pid, p2) == true);
     REQUIRE(p2.payload[0] == 0xff);
-    REQUIRE(p2.payload[PAGE_SIZE-1] == 0xff);
+    REQUIRE(p2.payload[PF_PAGE_SIZE-1] == 0xff);
     pf.close();
     remove("test.dat");
 }
@@ -39,7 +39,7 @@ TEST_CASE("Creating a larger paged file", "[paged_file]") {
             pf.allocate_page();
 
         page p1;
-        memset(p1.payload, 0xcc, PAGE_SIZE);
+        memset(p1.payload, 0xcc, PF_PAGE_SIZE);
         pf.write_page(42, p1);
         pf.close();
     }
@@ -53,10 +53,10 @@ TEST_CASE("Creating a larger paged file", "[paged_file]") {
         page p2;
         REQUIRE(pf.read_page(42, p2) == true);
         auto n = 0u;
-        for (auto i = 0u; i < PAGE_SIZE; i++)
+        for (auto i = 0u; i < PF_PAGE_SIZE; i++)
             if (p2.payload[i] == 0xcc)
                 n++;
-        REQUIRE(n == PAGE_SIZE);
+        REQUIRE(n == PF_PAGE_SIZE);
         pf.close();
     }
     remove("test2.dat");
@@ -73,7 +73,7 @@ TEST_CASE("Creating another larger paged file", "[paged_file]") {
             pf.allocate_page();
 
         page p1;
-        memset(p1.payload, 0xcc, PAGE_SIZE);
+        memset(p1.payload, 0xcc, PF_PAGE_SIZE);
 
         for (auto i = 0u; i < 100; i++) {
             p1.payload[0] = i;
@@ -94,11 +94,11 @@ TEST_CASE("Creating another larger paged file", "[paged_file]") {
             REQUIRE(pf.read_page(i+1, p2) == true);
             auto n = 1u;
             REQUIRE(p2.payload[0] == i);
-            for (auto i = 1u; i < PAGE_SIZE; i++) {
+            for (auto i = 1u; i < PF_PAGE_SIZE; i++) {
                 if (p2.payload[i] == 0xcc)
                     n++;
             }
-            REQUIRE(n == PAGE_SIZE);
+            REQUIRE(n == PF_PAGE_SIZE);
         }
         pf.close();
     }
