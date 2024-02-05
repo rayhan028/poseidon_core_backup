@@ -55,8 +55,9 @@
  */
 class jit_compiler {
 public:
-    jit_compiler(llvm::ExitOnError exitOnError);
+    static std::unique_ptr<jit_compiler> create(llvm::ExitOnError exitOnError);
 
+    jit_compiler(llvm::ExitOnError exitOnError, std::unique_ptr<llvm::orc::ExecutionSession> es, llvm::orc::JITTargetMachineBuilder jtmb);
     ~jit_compiler();
 
     /**
@@ -126,8 +127,6 @@ private:
     
     std::unique_ptr<llvm::TargetMachine> create_target_machine(llvm::ExitOnError ExitOnErr);
 
-    llvm::orc::RTDyldObjectLinkingLayer::GetMemoryManagerFunction create_memory_manager_ftor();
-
     std::string mangle(llvm::StringRef unmangled_name);
 
     llvm::Error apply_data_layout(llvm::Module &mod);
@@ -136,16 +135,16 @@ private:
     * LLVM Context and machine information
     */
     llvm::orc::ThreadSafeContext ctx_; // LLVM context
+    llvm::ExitOnError E_ERR; // JIT compiler error object
     std::unique_ptr<llvm::orc::ExecutionSession> es_;
     std::unique_ptr<llvm::TargetMachine> tm_;
-    llvm::ExitOnError E_ERR; // JIT compiler error object
     llvm::orc::RTDyldObjectLinkingLayer objLinkingLayer_; // LLVM IR transformation layers
     // std::unique_ptr<PJitObjectCache> objCache_; // cache for compiled query IR code
 
     llvm::orc::IRCompileLayer compileLayer_;
     llvm::orc::IRTransformLayer optimizeLayer_;
 
-    llvm::orc::JITDylib &mainJD_; // The main JIT Dylib of the compiler
+    llvm::orc::JITDylib& mainJD_; // The main JIT Dylib of the compiler
 };
 
 #endif

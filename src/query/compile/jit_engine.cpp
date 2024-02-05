@@ -36,15 +36,14 @@
 using namespace llvm;
 
 jit_engine::jit_engine(graph_db_ptr gdb) : gdb_(gdb) { 
-    ExitOnError ExitOnErr;
-    ExitOnErr.setBanner("Poseidon JIT Engine");
+    ExitOnError exitOnErr;
+    exitOnErr.setBanner("Poseidon JIT Engine");
 
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
 
-    ExitOnError exitOnError;
-    jit_ = std::make_unique<jit_compiler>(exitOnError);
+    jit_ = jit_compiler::create(exitOnErr);
 }
 
 bool jit_engine::load_code(const std::string& filename) {

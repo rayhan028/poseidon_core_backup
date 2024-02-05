@@ -19,6 +19,7 @@
 
 #include <llvm/ExecutionEngine/Orc/CompileUtils.h>
 #include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
+#include <llvm/ExecutionEngine/Orc/ExecutorProcessControl.h>
 #include <llvm/ExecutionEngine/Orc/ThreadSafeModule.h>
 #include <llvm/ExecutionEngine/Orc/Core.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
@@ -93,22 +94,38 @@ ir_optimize::operator()(ThreadSafeModule tsm, const MaterializationResponsibilit
     pmb_.populateModulePassManager(mpm);
     
     std::error_code ec;
-    llvm::raw_fd_ostream ostr("module", ec, llvm::sys::fs::F_None);
+    llvm::raw_fd_ostream ostr("module", ec,  llvm::sys::fs::OF_None);
     WriteBitcodeToFile(mod, ostr);
     ostr.flush();
 
     return std::move(tsm);
 }
 
-jit_compiler::jit_compiler(ExitOnError ExitOnErr) : ctx_(std::make_unique<LLVMContext>()),
-          es_(std::make_unique<ExecutionSession>()),
-          tm_(create_target_machine(ExitOnErr)),
-          E_ERR(ExitOnErr),
-          objLinkingLayer_(*es_, create_memory_manager_ftor()),
-          compileLayer_(*es_, objLinkingLayer_, std::make_unique<SimpleCompiler>(*tm_)),
-          optimizeLayer_(*es_, compileLayer_),
-          mainJD_(es_->createBareJITDylib("main")) {
+std::unique_ptr<jit_compiler> jit_compiler::create(llvm::ExitOnError exitOnError) {
+    auto epc = SelfExecutorProcessControl::Create();
+    auto EPC = SelfExecutorProcessControl::Create();
+    if (!epc)
+      return nullptr;
 
+    auto es = std::make_unique<ExecutionSession>(std::move(*epc));
+
+    JITTargetMachineBuilder jtmb(
+        es->getExecutorProcessControl().getTargetTriple());
+
+    return std::make_unique<jit_compiler>(exitOnError, std::move(es), std::move(jtmb));
+}
+
+jit_compiler::jit_compiler(llvm::ExitOnError exitOnError, std::unique_ptr<ExecutionSession> es, JITTargetMachineBuilder jtmb)
+      : ctx_(std::make_unique<LLVMContext>()), 
+        E_ERR(exitOnError),
+        es_(std::move(es)),
+        tm_(create_target_machine(exitOnError)),
+        objLinkingLayer_(*es_,
+                    []() { return std::make_unique<SectionMemoryManager>(); }),
+        compileLayer_(*es_, objLinkingLayer_,
+                     std::make_unique<ConcurrentIRCompiler>(std::move(jtmb))),
+        optimizeLayer_(*es_, compileLayer_),
+        mainJD_(es_->createBareJITDylib("<main>")) {
     auto dl = get_data_layout();
     cantFail(DynamicLibrarySearchGenerator::GetForCurrentProcess(dl.getGlobalPrefix()));
             
@@ -147,7 +164,7 @@ jit_compiler::jit_compiler(ExitOnError ExitOnErr) : ctx_(std::make_unique<LLVMCo
     s_map[mangle("get_node_property_string_value")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_node_property_string_value), JITSymbolFlags::Exported);
 
-    ExitOnErr(mainJD_.define(absoluteSymbols(s_map)));
+    exitOnError(mainJD_.define(absoluteSymbols(s_map)));
 }
 
 jit_compiler::~jit_compiler() {
@@ -175,14 +192,6 @@ std::unique_ptr<TargetMachine> jit_compiler::create_target_machine(llvm::ExitOnE
 
 llvm::Error jit_compiler::clear() {
     return mainJD_.clear();
-}
-
-using GetMemoryManagerFunction_T = RTDyldObjectLinkingLayer::GetMemoryManagerFunction;
-
-GetMemoryManagerFunction_T jit_compiler::create_memory_manager_ftor() {
-    return []() -> GetMemoryManagerFunction_T::result_type {
-        return std::make_unique<SectionMemoryManager>();
-    };
 }
 
 std::string jit_compiler::mangle(llvm::StringRef unmangled_name) {

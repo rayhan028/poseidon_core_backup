@@ -24,7 +24,7 @@ endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(USE_PMDK OFF)
-  set(LLVM_DIR "/opt/homebrew/opt/llvm@12/lib/cmake/llvm")
+  set(LLVM_DIR "/opt/homebrew/opt/llvm@16/lib/cmake/llvm")
   set(ANTLR_EXECUTABLE "/opt/homebrew/Cellar/antlr/4.13.1/antlr-4.13.1-complete.jar")
 endif()
 
