@@ -5,8 +5,8 @@ RUN apk update
 RUN apk upgrade
 RUN apk add alpine-sdk git make cmake clang clang-dev boost boost-dev python3-dev py3-pip openjdk11
 RUN apk add llvm16-static llvm16-dev
-RUN python3 -m venv /home/venv
-RUN . /home/venv/bin/activate && pip install antlr4-tools && echo "yes" | antlr4
+RUN apk add py3-antlr4-tools && echo "yes" | antlr4
+RUN apk add py3-pytest
 
 # Set default user
 USER $USER
