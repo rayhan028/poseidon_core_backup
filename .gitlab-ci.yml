@@ -1,5 +1,6 @@
 image: 
   name: "dbisilm/alpine-clang-boost:latest"
+  name: "alpine-clang-boost/mac"
   entrypoint: [ '/bin/sh', '-c' ]
 
 stages:
