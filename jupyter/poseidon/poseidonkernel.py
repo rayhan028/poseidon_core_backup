@@ -42,7 +42,7 @@ class PoseidonKernel(Kernel):
 
     def handle_cmd(self, code):
         cmds = code.split(" ")
-        if cmds[0] == "%OPEN" and cmds[2] == "IN":
+        if cmds[0].upper() == "%OPEN" and cmds[2].upper() == "IN":
             pool_name = cmds[3].strip("'")
             db_name = cmds[1].strip("'")
             logging.info("TRYING TO OPEN: %s/%s", pool_name, db_name)
@@ -52,7 +52,7 @@ class PoseidonKernel(Kernel):
                 return "Poseidon database opened successfully."
             except RuntimeError as e:
                 return str(e)
-        elif cmds[0] == "%CREATE" and cmds[2] == "IN":
+        elif cmds[0] == "%CREATE".upper() and cmds[2].upper() == "IN":
             pool_name = cmds[3].strip("'")
             db_name = cmds[1].strip("'")
             logging.info("TRYING TO CREATE: %s/%s", pool_name, db_name)
@@ -62,7 +62,7 @@ class PoseidonKernel(Kernel):
                 return "Poseidon database created successfully."
             except RuntimeError as e:
                 return str(e)
-        elif cmds[0] == "%CLOSE":
+        elif cmds[0].upper() == "%CLOSE":
             self.pool.close()
             return "Poseidon closed."
         else:

@@ -169,6 +169,44 @@ for tup in res:
 p.close()
 ```
 
+## Docker
+
+We provide several docker files to create docker images:
+
+### Jupyter Notebook with Poseidon
+
+The file `Dockerfile.jupyter` can be used to create a docker container running Jupyter with Poseidon. Build the docker image using
+
+```
+docker build -f Dockerfile.jupyter . -t poseidon-jupyter
+```
+This takes a while because Poseidon is built as part of the image creation. Using the newly created image you can run a container via
+
+```
+docker run -ti --rm -p 8888:8888 -v "${PWD}":/home/jovyan/data poseidon-jupyter
+```
+
+The jupyter server is running at  http://127.0.0.1:8888, simply use the URL print during startup to connect. In addition to Poseidon queries which can be entered into the notebook cells, the following commands are supported:
+
+```
+%OPEN testdb IN '/home/jovyan/data/mypool'
+```
+Opens the Poseidon database `testdb` in the given pool. Note that with the `docker run` command shown above the current host directory os mounted to `home/jovyan/data`.
+
+```
+%CREATE testdb IN '/home/jovyan/data/mypool'
+```
+Creates a new database `testdb` in the given pool.
+
+```
+%CLOSE testdb
+```
+Closes the given database.
+
+### Development container
+
+TODO
+
 ## Storage structure
 
 Poseidon stores nodes and relationships in separate vectors where each vector is implemented as a chunked vector stored on disk pages, i.e. a linked list of array of fixed size. Furthermore, properties are stored separately in a third vector. Whereas for nodes and relationships each object is represented by its own record, properties belonging to the same node or relationship are stored in batches of five properties per record. Note, that strings a compressed via dictionary compression and neither stored directly in nodes, relationships, or properties.
@@ -184,8 +222,3 @@ The architecture of the persistent memory-based version is described **[here](ht
 * [query recovery](https://doi.org/10.1145/3465998.3466011),
 * [processing-in-memory](https://doi.org/10.1145/3592980.3595323),
 * [temporal graph processing](https://doi.org/10.1007/978-3-031-42914-9_8).
-
-## Docker
-
-docker build -f Dockerfile.jupyter . -t poseidon-jupyter
-docker run -ti --rm -p 8888:8888 poseidon-jupyter
