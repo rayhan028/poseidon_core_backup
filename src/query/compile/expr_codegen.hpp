@@ -48,7 +48,8 @@ public:
     void* visit(std::shared_ptr<and_predicate> op) override;
     void* visit(std::shared_ptr<or_predicate> op) override;
     void* visit(std::shared_ptr<regex_predicate> op) override;  
- 
+    void* visit(std::shared_ptr<math_expression> op) override;  
+  
 private:
     ir_generator& gen_; // the actual code generator
     std::unique_ptr<llvm::Module>& module_; // the LLVM module to which the generated code belongs

@@ -226,23 +226,30 @@ void* expr_codegen::visit(std::shared_ptr<gt_predicate> op) {
 void* expr_codegen::visit(std::shared_ptr<and_predicate> op) {
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
-    auto i32_ty = llvm::Type::getInt32Ty(gen_.get_context());
+ /*   auto i32_ty = llvm::Type::getInt32Ty(gen_.get_context());
     auto lhs32 = gen_.get_builder()->CreateIntCast(lhs, i32_ty, true);
     auto rhs32 = gen_.get_builder()->CreateIntCast(rhs, i32_ty, true);
     auto and_op = gen_.get_builder()->CreateAnd({ lhs32, rhs32 });
     auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
     return gen_.get_builder()->CreateICmpNE(and_op, val_0);
+    */
+    return gen_.get_builder()->CreateLogicalAnd(lhs, rhs);
+
 }
 
 void* expr_codegen::visit(std::shared_ptr<or_predicate> op) {
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
+    /*
     auto i32_ty = llvm::Type::getInt32Ty(gen_.get_context());
     auto lhs32 = gen_.get_builder()->CreateIntCast(lhs, i32_ty, true);
     auto rhs32 = gen_.get_builder()->CreateIntCast(rhs, i32_ty, true);
+
     auto or_op = gen_.get_builder()->CreateOr({ lhs32, rhs32 });
     auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
     return gen_.get_builder()->CreateICmpNE(or_op, val_0);
+    */
+   return gen_.get_builder()->CreateLogicalOr(lhs, rhs);
 }
 
 void* expr_codegen::visit(std::shared_ptr<regex_predicate> op) {
@@ -252,4 +259,43 @@ void* expr_codegen::visit(std::shared_ptr<regex_predicate> op) {
     llvm::FunctionCallee callee = gen_.extern_func(module_, "regex_match");
     return gen_.get_builder()->CreateCall(callee, { lhs, rhs });
 }  
- 
+
+void* expr_codegen::visit(std::shared_ptr<math_expression> op) {
+    llvm::Value *res = nullptr;
+    auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
+    auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
+    
+    if (op->result_type() == expr_type::INT || op->result_type() == expr_type::UINT64) {
+        switch (op->fop_) {
+        case expr_op::PLUS:
+        spdlog::info("createAdd");
+            res = gen_.get_builder()->CreateAdd(lhs, rhs);
+            break;
+        case expr_op::MINUS:
+            res = gen_.get_builder()->CreateSub(lhs, rhs);
+            break;
+        case expr_op::MULT:
+            res = gen_.get_builder()->CreateMul(lhs, rhs);
+            break;
+        case expr_op::DIV:
+            if (op->result_type() == expr_type::UINT64)
+                res = gen_.get_builder()->CreateUDiv(lhs, rhs);
+            else
+                res = gen_.get_builder()->CreateSDiv(lhs, rhs);
+            break;
+        case expr_op::MOD:
+            if (op->result_type() == expr_type::UINT64)
+                res = gen_.get_builder()->CreateURem(lhs, rhs);
+            else
+                res = gen_.get_builder()->CreateSRem(lhs, rhs);
+            break;
+        default:
+            break;
+        }
+    }
+    else if (op->result_type() == expr_type::DOUBLE) {
+    }
+    else if (op->result_type() == expr_type::UINT64) {
+    }
+    return res;
+}

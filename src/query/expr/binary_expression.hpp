@@ -32,7 +32,7 @@ struct binary_expression : public expression {
 };
 
 struct math_expression : public binary_expression, std::enable_shared_from_this<math_expression> {
-    math_expression(expr_op fp, expr const left, expr const right) : binary_expression(fp, left, right) {}
+    math_expression(expr_op fp, expr const left, expr const right);
     void* accept(expression_visitor &fep) override;
     std::string dump() const override;
 };

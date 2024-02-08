@@ -19,6 +19,15 @@
 
 #include "binary_expression.hpp"
 
+math_expression::math_expression(expr_op fp, expr const left, expr const right) : binary_expression(fp, left, right) {
+    if (left_->result_type() == right_->result_type()) 
+        rtype_ = left_->result_type();
+    else if (left_->result_type() == expr_type::DOUBLE ||right_->result_type() == expr_type::DOUBLE)       
+        rtype_ = expr_type::DOUBLE;
+    else if (left_->result_type() == expr_type::UINT64 ||right_->result_type() == expr_type::UINT64)       
+        rtype_ = expr_type::UINT64;
+}
+
 void* math_expression::accept(expression_visitor &fep) {
     return fep.visit(shared_from_this());
 }

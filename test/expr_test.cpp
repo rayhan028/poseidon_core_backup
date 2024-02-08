@@ -456,27 +456,46 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
     }
 
     SECTION("arithmetic expressions") {
+        spdlog::info("1");
         qr_tuple tup;
         auto ex1 = PLUS(Int(2), Int(5));
         auto res1 = interpret_expression(qctx, ex1, tup);
         REQUIRE(qv_get_int(res1) == 7);
 
+        auto ex11 = EQ(ex1, Int(7));
+        CC_REQUIRE(compile_expression(qctx, ex11, tup));
+
+        spdlog::info("2");
         auto ex2 = MINUS(Int(20), Int(5));
         auto res2 = interpret_expression(qctx, ex2, tup);
         REQUIRE(qv_get_int(res2) == 15);
- 
+
+        auto ex22 = EQ(ex2, Int(15));
+        CC_REQUIRE(compile_expression(qctx, ex22, tup));
+
+        spdlog::info("3");
         auto ex3 = MULT(Int(3), Int(5));
         auto res3 = interpret_expression(qctx, ex3, tup);
         REQUIRE(qv_get_int(res3) == 15);
- 
+
+        auto ex33 = EQ(ex3, Int(15));
+        CC_REQUIRE(compile_expression(qctx, ex33, tup));
+
+        spdlog::info("4");
         auto ex4 = DIV(Int(12), Int(6));
         auto res4 = interpret_expression(qctx, ex4, tup);
         REQUIRE(qv_get_int(res4) == 2);
- 
+
+        auto ex44 = EQ(ex4, Int(2));
+        CC_REQUIRE(compile_expression(qctx, ex44, tup));
+
+        spdlog::info("5");
         auto ex5 = MOD(Int(13), Int(6));
         auto res5 = interpret_expression(qctx, ex5, tup);
         REQUIRE(qv_get_int(res5) == 1);
- 
+
+        auto ex55 = EQ(ex5, Int(1));
+        CC_REQUIRE(compile_expression(qctx, ex55, tup));
     }
 #ifdef USE_LLVM
     gen.reset();
