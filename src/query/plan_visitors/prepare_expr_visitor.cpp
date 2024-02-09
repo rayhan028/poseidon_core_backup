@@ -55,12 +55,12 @@ void* prepare_expr_visitor::handle_binary_expression(std::shared_ptr<binary_expr
     op->right_->accept(*this);
     if (is_func_call(op->left_)) {
         auto fcall = std::dynamic_pointer_cast<func_call>(op->left_);
-        spdlog::info("replace func_call: {}", fcall->func_name_);
+        // spdlog::info("replace func_call: {}", fcall->func_name_);
         op->left_ = fcall->replace_by_literal(ctx_);
     }
     if (is_func_call(op->right_)) {
         auto fcall = std::dynamic_pointer_cast<func_call>(op->right_);
-        spdlog::info("replace func_call: {}", fcall->func_name_);
+        // spdlog::info("replace func_call: {}", fcall->func_name_);
         op->right_ = fcall->replace_by_literal(ctx_);
     }
     return nullptr;

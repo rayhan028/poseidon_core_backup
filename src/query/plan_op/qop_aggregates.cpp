@@ -193,7 +193,7 @@ void aggregate::finish(query_ctx &ctx) {
 
   if (buf_) {
     finish_func_(&ctx, buf_, 1024);
-    spdlog::info("aggregate: finished");
+    // spdlog::info("aggregate: finished");
     // fill v
     auto idx = 0u;
     for (auto i = 0u; i < aggr_exprs_.size(); i++) {

@@ -274,7 +274,7 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
         builder_->SetInsertPoint(bb);
 
         auto base_ptr = builder_->CreateBitCast(start->getArg(1), aggr_ptr_ty); // bitcast -> base_ptr
-
+        auto elem_ty = elements[0];
         auto idx = 0u;
         for (auto& ex : aggr->aggr_exprs_) {
             switch(ex.func) {
@@ -289,7 +289,7 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
                 break;
 
             case aggregate::expr::f_sum:
-                generate_sum_iterate(module, ex, start, aggr_ty, base_ptr, idx++);
+                generate_sum_iterate(module, ex, start, aggr_ty, elem_ty, base_ptr, idx++);
                 break;
             case aggregate::expr::f_avg:
                 generate_avg_iterate(module, ex, start, aggr_ty, base_ptr, idx);
@@ -364,14 +364,14 @@ void ir_generator::generate_count_iterate(aggregate::expr& ex, llvm::StructType 
 }
 
 void ir_generator::generate_sum_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
-    llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx) {
+    llvm::Function *start, llvm::StructType *aggr_ty, llvm::Type *elem_ty, llvm::Value *base_ptr, uint32_t idx) {
     llvm::Value *pval = generate_get_value(module, ex, start);
 
     auto ptr = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, {
         llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
         llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx, true))}); // GEP
-    auto aggr_val = builder_->CreateLoad(aggr_ty, ptr);
-    auto res = builder_->CreateAdd(pval, aggr_val);
+    auto aggr_val = builder_->CreateLoad(elem_ty, ptr);
+    auto res = ex.aggr_type == double_type ? builder_->CreateFAdd(pval, aggr_val) : builder_->CreateAdd(pval, aggr_val);
     builder_->CreateStore(res, ptr); // store
 }
 
