@@ -30,20 +30,21 @@ def main(pool, db, buffersize, query_dir, num):
     p = poseidon.open_pool(pool, 1024 * 1024 * 80)
     g = p.open_graph(db, buffersize)
 
-    query_list = read_queries(query_dir) 
+    query_list, files = read_queries(query_dir) 
 
     # run_random(g, query_list, num)
     qtimes = run_profile(g, query_list)
-    print(qtimes)
+    for i in range(0, len(query_list)):
+        print(f"{files[i]}: {qtimes[i]}")
     
     p.close()
 
 def run_profile(g, query_list):
     query_times = [0] * len(query_list)
-    for i in range(0, 10):
+    for i in range(0, 3):
         for q in range(0, len(query_list)):
             qstr = query_list[q]
-            tm = timeit.timeit(lambda: run_query(g, qstr), number=1)    
+            tm = timeit.timeit(lambda: run_query(g, q, qstr), number=1)    
             query_times[q] += tm
 
     for q in range(0, len(query_list)):
@@ -55,7 +56,7 @@ def run_random(g, query_list, num):
     for i in range(0,num):
         qstr = random.choice(query_list)   
         print(qstr)
-        run_query(g, qstr)
+        run_query(g, i, qstr)
 
 def read_query_from_file(fname):
     txt = Path(fname).read_text()    
@@ -63,18 +64,21 @@ def read_query_from_file(fname):
 
 def read_queries(dir):
     query_list = []
+    file_names = []
     p = Path(dir)
     fnames = list(p.glob('**/*.q'))
     for file in fnames:
         qstr = read_query_from_file(str(file))
+        file_names.append(str(file))
         query_list.append(qstr)
-    return query_list
+    return query_list, file_names
 
-def run_query(g, qstr):
+def run_query(g, num, qstr):
+    print(f"RUN #{num}: {qstr}")
     try:
         res = g.query(qstr)
 
-        print(tabulate(res, tablefmt="simple_grid", maxcolwidths=20))
+        # print(tabulate(res, tablefmt="simple_grid", maxcolwidths=20))
 
     except EOFError:
         print("EOF")

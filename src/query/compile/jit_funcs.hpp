@@ -88,7 +88,7 @@ inline double qr_get_double(qr_tuple* v, std::size_t i) { return boost::get<doub
 */
 inline int string_compare(uint8_t *s1, uint8_t *s2) { return std::strcmp((char *)s1, (char *)s2); }
 
-inline int regex_match(uint8_t *s, uint64_t re) { return std::regex_match((char *)s,  *((std::regex *)re)); }
+inline bool regex_match(uint8_t *s, uint64_t re) { return std::regex_match((char *)s,  *((std::regex *)re)); }
 
 int get_node_property_int_value(query_ctx *ctx, node *n, dcode_t label);
 

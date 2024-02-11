@@ -20,7 +20,8 @@
 #define lru_list_hpp_
 
 #include <cstdint>
-
+#include <mutex>
+#include <shared_mutex>
 #include "defs.hpp"
 
 class lru_list {
@@ -67,13 +68,19 @@ public:
     uint64_t remove_lru_node();
     void remove(node *n);
 
-    std::size_t size() const { return size_; }
+    std::size_t size() {    
+        std::shared_lock lck(mtx_);
+        return size_; 
+    }
     void clear();
+
+    // std::unique_lock<std::shared_mutex>& get_lock() { return std::unique_lock<std::shared_mutex>(mtx_); }
 
 private:
     node *head_, // LRU
          *tail_; // MRU
     std::size_t size_;
+    std::shared_mutex mtx_;
 };
 
 #endif

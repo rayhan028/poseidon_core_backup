@@ -151,8 +151,14 @@ void* expr_codegen::visit(std::shared_ptr<le_predicate> op) {
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
-    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
-        return gen_.get_builder()->CreateFCmpOLE(lhs, rhs);
+    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty) {
+        // TODO: ensure that bot operands are double values
+        if (lhs->getType() != dbl_ty)
+            lhs = gen_.get_builder()->CreateSIToFP(lhs, dbl_ty);
+        else if (rhs->getType() != dbl_ty)
+            rhs = gen_.get_builder()->CreateSIToFP(rhs, dbl_ty);
+         return gen_.get_builder()->CreateFCmpOLE(lhs, rhs);
+    }
     else if (op->left_->ftype_ == expr_type::STRING) {
         llvm::FunctionCallee callee = gen_.extern_func(module_, "string_compare");
         auto fcall = gen_.get_builder()->CreateCall(callee, { lhs, rhs });
@@ -171,8 +177,10 @@ void* expr_codegen::visit(std::shared_ptr<lt_predicate> op) {
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
-    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
+    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty) {
+        // TODO: ensure that bot operands are double values
         return gen_.get_builder()->CreateFCmpOLT(lhs, rhs);
+    }
     else if (op->left_->ftype_ == expr_type::STRING) {
         llvm::FunctionCallee callee = gen_.extern_func(module_, "string_compare");
         auto fcall = gen_.get_builder()->CreateCall(callee, { lhs, rhs });
@@ -191,8 +199,14 @@ void* expr_codegen::visit(std::shared_ptr<ge_predicate> op) {
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
-    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
+    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty) {
+        // TODO: ensure that bot operands are double values
+        if (lhs->getType() != dbl_ty)
+            lhs = gen_.get_builder()->CreateSIToFP(lhs, dbl_ty);
+        else if (rhs->getType() != dbl_ty)
+            rhs = gen_.get_builder()->CreateSIToFP(rhs, dbl_ty);
         return gen_.get_builder()->CreateFCmpOGE(lhs, rhs);
+    }
     else if (op->left_->ftype_ == expr_type::STRING) {
         llvm::FunctionCallee callee = gen_.extern_func(module_, "string_compare");
         auto fcall = gen_.get_builder()->CreateCall(callee, { lhs, rhs });
@@ -211,8 +225,14 @@ void* expr_codegen::visit(std::shared_ptr<gt_predicate> op) {
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
     auto dbl_ty = llvm::Type::getDoubleTy(gen_.get_context());
-    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty)
+    if (lhs->getType() == dbl_ty || rhs->getType() == dbl_ty) {
+        // TODO: ensure that bot operands are double values
+        if (lhs->getType() != dbl_ty)
+            lhs = gen_.get_builder()->CreateSIToFP(lhs, dbl_ty);
+        else if (rhs->getType() != dbl_ty)
+            rhs = gen_.get_builder()->CreateSIToFP(rhs, dbl_ty);
         return gen_.get_builder()->CreateFCmpOGT(lhs, rhs);
+    }
     else if (op->left_->ftype_ == expr_type::STRING) {
         llvm::FunctionCallee callee = gen_.extern_func(module_, "string_compare");
         auto fcall = gen_.get_builder()->CreateCall(callee, { lhs, rhs });
@@ -226,13 +246,6 @@ void* expr_codegen::visit(std::shared_ptr<gt_predicate> op) {
 void* expr_codegen::visit(std::shared_ptr<and_predicate> op) {
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
- /*   auto i32_ty = llvm::Type::getInt32Ty(gen_.get_context());
-    auto lhs32 = gen_.get_builder()->CreateIntCast(lhs, i32_ty, true);
-    auto rhs32 = gen_.get_builder()->CreateIntCast(rhs, i32_ty, true);
-    auto and_op = gen_.get_builder()->CreateAnd({ lhs32, rhs32 });
-    auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
-    return gen_.get_builder()->CreateICmpNE(and_op, val_0);
-    */
     return gen_.get_builder()->CreateLogicalAnd(lhs, rhs);
 
 }
@@ -240,16 +253,18 @@ void* expr_codegen::visit(std::shared_ptr<and_predicate> op) {
 void* expr_codegen::visit(std::shared_ptr<or_predicate> op) {
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
-    /*
-    auto i32_ty = llvm::Type::getInt32Ty(gen_.get_context());
-    auto lhs32 = gen_.get_builder()->CreateIntCast(lhs, i32_ty, true);
-    auto rhs32 = gen_.get_builder()->CreateIntCast(rhs, i32_ty, true);
+
+    /*  
+    auto i1_ty = llvm::Type::getInt1Ty(gen_.get_context());
+    auto lhs32 = gen_.get_builder()->CreateIntCast(lhs, i1_ty, true);
+    auto rhs32 = gen_.get_builder()->CreateIntCast(rhs, i1_ty, true);
+
 
     auto or_op = gen_.get_builder()->CreateOr({ lhs32, rhs32 });
     auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
     return gen_.get_builder()->CreateICmpNE(or_op, val_0);
-    */
-   return gen_.get_builder()->CreateLogicalOr(lhs, rhs);
+  */  
+    return gen_.get_builder()->CreateLogicalOr(lhs, rhs);
 }
 
 void* expr_codegen::visit(std::shared_ptr<regex_predicate> op) {

@@ -141,7 +141,6 @@ private:
     };
 
     lru_list lru_list_;
-    // std::list<uint64_t> lru_list_; // the LRU list
     std::unordered_map<uint64_t, buf_slot> ptable_; // a hashtable to map page_id to pages
     boost::dynamic_bitset<> slots_; // a bitset indicating which slot in buffer_ is occupied
 
@@ -149,7 +148,7 @@ private:
 
     std::size_t p_reads_, l_reads_; // number of physical and logical reads
 
-    mutable std::recursive_mutex mutex_;
+    mutable std::recursive_mutex mutex_, slot_mtx_, ptable_mtx_, buf_mtx_;
 };
 
 #endif

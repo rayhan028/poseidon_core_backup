@@ -27,7 +27,7 @@ public:
 	 * Inform the other thread that it can proceed.
 	 */
   void notify() {
-    std::lock_guard<std::mutex> lock(m);
+    std::unique_lock lock(m);
     ready = true;
     cond_var.notify_one();
   }
@@ -36,7 +36,7 @@ public:
 	 * Wait on the barrier until the other threads calls notify.
 	 */
   void wait() {
-    std::unique_lock<std::mutex> lock(m);
+    std::unique_lock lock(m);
     cond_var.wait(lock, [&] { return ready.load(); });
   }
 };

@@ -104,7 +104,7 @@ pm_ulog::id_t pm_ulog::transaction_begin(xid_t txid) {
   auto pop = pmem::obj::pool_by_vptr(this);
   // find the first empty slot in ulog_ and return its index as log_id
   for (std::size_t i = 0; i < nlogs_; i++) {
-    std::lock_guard<std::mutex> guard(lmtx_);
+    std::unique_lock guard(lmtx_);
     if (ulog_[i].txid_ == 0) {
       ulog_[i].txid_ = txid;
       pop.persist(&(ulog_[i].txid_), sizeof(xid_t));
@@ -114,7 +114,7 @@ pm_ulog::id_t pm_ulog::transaction_begin(xid_t txid) {
     // TODO: handle the case of more than 50 active transactions
 #else
   for (std::size_t i = 0; i < nlogs_; i++) {
-    std::lock_guard<std::mutex> guard(lmtx_);
+    std::unique_lock guard(lmtx_);
     if (ulog_[i].txid_ == 0) {
       ulog_[i].txid_ = txid;
       return i;
@@ -127,7 +127,7 @@ pm_ulog::id_t pm_ulog::transaction_begin(xid_t txid) {
 
 void pm_ulog::transaction_end(pm_ulog::id_t log_id) {
   // finally, mark the slot as available
-  std::lock_guard<std::mutex> guard(lmtx_);
+  std::unique_lock guard(lmtx_);
 
 #ifdef USE_PMDK
   auto pop = pmem::obj::pool_by_vptr(this);
@@ -141,7 +141,7 @@ void pm_ulog::transaction_end(pm_ulog::id_t log_id) {
 }
 
 void pm_ulog::append(id_t log_id, void *log_entry, uint32_t lsize) {
-  std::lock_guard<std::mutex> guard(lmtx_);
+  std::unique_lock guard(lmtx_);
   assert(log_id < nlogs_);
   auto entry = &(ulog_[log_id]);
 #ifdef USE_PMDK

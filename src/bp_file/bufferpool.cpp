@@ -90,7 +90,7 @@ std::pair<page*, paged_file::page_id> bufferpool::last_valid_page(uint8_t file_i
 }
 
 page *bufferpool::fetch_page(paged_file::page_id pid) {
-    std::unique_lock lock(mutex_);
+    std::unique_lock lck(mutex_); // TODO: EXPENSIVE!!
     l_reads_++;
     auto iter = ptable_.find(pid);
     // spdlog::info("bufferpool::fetch_page {}", pid & 0xFFFFFFFFFFFFFFF);
@@ -104,8 +104,10 @@ page *bufferpool::fetch_page(paged_file::page_id pid) {
         auto res = evict_page();
         assert(res == true);
     }
+
     // load page from file
     auto p = load_page_from_file(pid);
+
     // ... and to the LRU list
     auto *node = lru_list_.add_to_mru(pid);
     // ... add it to the hashtable
@@ -210,6 +212,7 @@ bool bufferpool::has_page(paged_file::page_id pid) {
 bool bufferpool::evict_page() {
     spdlog::debug("\t---- evict_page...");
     std::unique_lock lock(mutex_);
+    // TODO: obtain lru_list lock
     for (auto it1 = lru_list_.begin(); it1 != lru_list_.end(); ++it1) {
         auto pid = *it1;
         auto it2 = ptable_.find(pid);
@@ -236,15 +239,14 @@ bool bufferpool::evict_page() {
 
 std::pair<page *, std::size_t> bufferpool::load_page_from_file(paged_file::page_id pid) {
     // find empty slot
+    std::unique_lock lck(mutex_);
     auto pos = slots_.find_first();
     if (pos >= bsize_) {
         throw bufferpool_overrun();
     }
-
-    assert(pos != boost::dynamic_bitset<>::npos);
-    assert(pos < bsize_);
-
+    // mark slot as occupied
     slots_.set(pos, false);
+
     // remove file_id from pid
     auto raw_pid = pid & 0xFFFFFFFFFFFFFFF;
 
@@ -253,7 +255,6 @@ std::pair<page *, std::size_t> bufferpool::load_page_from_file(paged_file::page_
     assert(file_id < MAX_PFILES && files_[file_id]);
     spdlog::debug("read page {}|{} from file {} -> position: {}", pid, raw_pid, file_id, pos);
     files_[file_id]->read_page(raw_pid, buffer_[pos]);
-    p_reads_++;
     return std::make_pair(&(buffer_[pos]), pos);
 }
 

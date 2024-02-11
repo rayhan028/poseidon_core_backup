@@ -29,12 +29,12 @@
 using namespace boost::posix_time;
 
 void result_set::wait() {
-  std::unique_lock<std::mutex> lock(m);
+  std::unique_lock lock(m);
   cond_var.wait(lock, [&] { return ready.load(); });
 }
 
 void result_set::notify() {
-  std::lock_guard<std::mutex> lock(m);
+  std::unique_lock lock(m);
   ready = true;
   cond_var.notify_one();
 }

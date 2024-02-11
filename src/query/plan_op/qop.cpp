@@ -475,7 +475,7 @@ void distinct_tuples::process(query_ctx &ctx, const qr_tuple &v) {
     }
   }
 
-  std::lock_guard<std::mutex> lock(m_);
+  std::unique_lock lock(m_);
   if (keys_.find(key) == keys_.end()) {
     keys_.insert(key); // TODO optimize with integer value representation
     consume_(ctx, v);
@@ -547,7 +547,7 @@ void collect_result::dump(std::ostream &os) const {
 
 
 void collect_result::process(query_ctx &ctx, const qr_tuple &v) {
-  std::lock_guard<std::mutex> lock(collect_mtx);
+  std::unique_lock lock(collect_mtx);
   PROF_PRE;
   // we transform node and relationship into their string representations ...
   qr_tuple res(v.size());

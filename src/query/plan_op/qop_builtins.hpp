@@ -106,6 +106,11 @@ query_result pr_month(const query_result &pv,
                  const std::string &key);
 
 /**
+ * Return the substring of property key starting at position start (first = 0) up to length len.
+*/
+query_result substring(const query_result& pv, const std::string &key, std::size_t start, std::size_t len = std::string::npos);
+
+/**
  * Return the string representation of a node/relationship stored in
  * projection_result res.
  */

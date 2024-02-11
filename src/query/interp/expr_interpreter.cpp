@@ -309,7 +309,7 @@ public:
                 break;
             }
             case rship_descr_type:
-  {
+            {
                 auto rd = qv_get_rship_descr(inp);
                 if (op->pname_.empty() && op->pcode_ == UNKNOWN_CODE)
                     stack_.push(query_result(rd));
@@ -337,6 +337,7 @@ public:
             case double_type:
             case string_type:
                 stack_.push(inp);
+                return nullptr;
                 break;
             default:
                 std::cout << "visit variable ==> " << inp.which() << std::endl;

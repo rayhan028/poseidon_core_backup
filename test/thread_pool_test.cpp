@@ -89,7 +89,7 @@ struct Task {
     Task(std::set<std::thread::id>& s, std::mutex& m): ids_(s), mutex_(m) {}
     void operator()() {
         {
-            std::unique_lock<std::mutex> lock{mutex_};
+            std::unique_lock lock{mutex_};
             ids_.insert(std::this_thread::get_id());
         }
         std::this_thread::sleep_for(1s);
@@ -123,7 +123,7 @@ struct IntegerTask : public Task {
 	IntegerTask(std::set<std::thread::id>& s, std::mutex& m) : Task(s, m) {}
 	std::thread::id operator()() {
 		{
-			std::unique_lock<std::mutex> lock{mutex_};
+			std::unique_lock lock{mutex_};
 			ids_.insert(std::this_thread::get_id());
 		}
 		std::this_thread::sleep_for(1s);
@@ -155,7 +155,7 @@ struct StringTask {
 	std::string operator()() {
 		const auto id = std::this_thread::get_id();
         {
-            std::unique_lock<std::mutex> lock{mutex_};
+            std::unique_lock lock{mutex_};
             ids_.insert(id);
         }
         std::this_thread::sleep_for(1s);

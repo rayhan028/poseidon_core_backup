@@ -337,7 +337,7 @@ class buffered_vec {
     ch->set(pos, true);
 
     if (!ch->is_used(pos)) {
-      std::lock_guard<std::mutex> lk(hd_mtx_);
+      std::unique_lock lk(hd_mtx_);
       available_slots_--;
     }
     
@@ -352,7 +352,7 @@ class buffered_vec {
   std::pair<offset_t, T *> append(T &&o, std::function<void(offset_t)> callback = nullptr) {
     bchunk_ptr tail = nullptr;
     {
-      std::lock_guard<std::mutex> lk(rsz_mtx_);
+      std::unique_lock lk(rsz_mtx_);
 
       if (is_full()) {
         resize(1);
@@ -371,7 +371,7 @@ class buffered_vec {
     auto offs = (bpool_.get_file(file_id_)->num_pages() - 1) * elems_per_chunk_;
     if (callback != nullptr) callback(offs + pos);
     {
-      std::lock_guard<std::mutex> lk(hd_mtx_);
+      std::unique_lock lk(hd_mtx_);
       available_slots_--;
     }
     tail->set(pos, true);
@@ -390,7 +390,7 @@ class buffered_vec {
     paged_file::page_id pid = 0;
 
     {
-      std::lock_guard<std::mutex> lk(rsz_mtx_);
+      std::unique_lock lk(rsz_mtx_);
       if (is_full()) {
         resize(1);
     
@@ -413,7 +413,7 @@ class buffered_vec {
     auto offs = (bpool_.get_file(file_id_)->num_pages() - 1) * elems_per_chunk_;
     if (callback != nullptr) callback(offs + pos);
     {
-      std::lock_guard<std::mutex> lk(hd_mtx_);
+      std::unique_lock lk(hd_mtx_);
       available_slots_--;
     }
     chk->set(pos, true);
@@ -431,7 +431,7 @@ class buffered_vec {
     offset_t pos = idx % elems_per_chunk_;
     ch->set(pos, false);
     if (ch->is_used(pos)) {
-      std::lock_guard<std::mutex> lk(hd_mtx_);
+      std::unique_lock lk(hd_mtx_);
       available_slots_++;
     }
     // TODO: if (ch->empty()) delete ch;
@@ -516,7 +516,7 @@ class buffered_vec {
    */
   void resize(int nchunks) {
     spdlog::debug("resize paged file #{}", file_id_);
-    std::lock_guard<std::mutex> lk(hd_mtx_);
+    std::unique_lock lk(hd_mtx_);
     for (auto i = 0; i < nchunks; i++) {
       auto pg = bpool_.allocate_page(file_id_);
       // initialize pg with chunk
@@ -542,7 +542,7 @@ class buffered_vec {
    * Return true if the buffered_vec does not contain any empty slot anymore.
    */
   bool is_full() const {
-    std::lock_guard<std::mutex> lk(hd_mtx_);
+    std::unique_lock lk(hd_mtx_);
     return available_slots_ == 0;
   }
 
@@ -563,14 +563,14 @@ private:
   void remove_from_free_list(offset_t idx) {
     paged_file::page_id pid = idx / elems_per_chunk_ + 1;
     spdlog::debug("remove_from_free_list: {}", pid);
-    std::lock_guard<std::shared_mutex> lk(fl_mtx_);
+    std::unique_lock lk(fl_mtx_);
     freelist_.set(pid-1, false);
   }
 
   void add_to_free_list(offset_t idx) {
     paged_file::page_id pid = idx / elems_per_chunk_ + 1;
     spdlog::debug("add_to_free_list: {}", pid);
-    std::lock_guard<std::shared_mutex> lk(fl_mtx_);
+    std::unique_lock lk(fl_mtx_);
     freelist_.set(pid-1);
     // std::cout << "freelist: " << freelist_.to_string() << std::endl;
   }

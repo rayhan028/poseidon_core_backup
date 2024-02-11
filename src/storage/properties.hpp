@@ -279,7 +279,7 @@ public:
   for (auto &pi : props) {
     pil[pidx++] = pi;
     if (++n == props.size() || pidx == pil.max_size()) {
-      std::unique_lock<std::mutex> ulock(m); 
+      std::unique_lock ulock(m); 
       auto pr = properties_.store(property_set(nid, std::move(pil), next_id), callback);
       ulock.unlock();  
       next_id = pr.first;

@@ -168,17 +168,19 @@ void print_result(qresult_iterator& qres) {
  * Execute the query given as string. If qex_cc is set to true then the
  * query is compiled using LLVM, otherwise the query interpreter is used.
  */
-void exec_query(std::string &qstr, query_proc::mode qmode, bool print_plan) {
+void exec_query(std::string &qstr, query_proc::mode qmode, bool print_plan, int num = 1) {
   trim(qstr);
   if (qstr.empty()) return;
   
   try {
-    auto start_qp = std::chrono::steady_clock::now();
-    qproc_ptr->execute_and_output_query(qmode, qstr, print_plan);
-    auto end_qp = std::chrono::steady_clock::now();
+    for (auto i = 0; i < num; i++) {
+      auto start_qp = std::chrono::steady_clock::now();
+      qproc_ptr->execute_and_output_query(qmode, qstr, print_plan);
+      auto end_qp = std::chrono::steady_clock::now();
 
-    std::chrono::duration<double> diff = end_qp - start_qp;
-    fmt::print("Query executed in {}\n", diff); 
+      std::chrono::duration<double> diff = end_qp - start_qp;
+      fmt::print("Query executed in {}\n", diff); 
+    }
   } catch (std::exception& exc) {
     std::cerr << "Error in query execution: " << exc.what() << std::endl;
     qproc_ptr->abort_transaction();
@@ -495,6 +497,7 @@ int main(int argc, char* argv[]) {
   char delim_character = ',';
   bool strict = false;
   bool explain = false;
+  int num = 1;
   cmd_mode mode = undefined_mode;
 
   auto console = spdlog::stdout_color_mt("poseidon");
@@ -520,7 +523,8 @@ int main(int argc, char* argv[]) {
         "relationships:<rship type>:<filename>")
         ("query,q", value<std::string>(&query_file), "Execute the queries from the given file")
         ("shell,s", bool_switch()->default_value(false), "Start the interactive shell (default)")
-        ("llvm", bool_switch()->default_value(false), "Use query compile mode");
+        ("llvm", bool_switch()->default_value(false), "Use query compile mode")
+        ("num,n", value<int>(&num)->default_value(1), "Run query num times");
 
     variables_map vm;
     store(parse_command_line(argc, argv, desc), vm);
@@ -567,6 +571,9 @@ int main(int argc, char* argv[]) {
 
     if (vm.count("explain"))
       explain = vm["explain"].as<bool>();
+
+    if (vm.count("num"))
+      num = vm["num"].as<int>();
 
     if (vm.count("format"))
       format = vm["format"].as<std::string>();
@@ -627,7 +634,7 @@ int main(int argc, char* argv[]) {
       if (is_command(qs))
         exec_command(qs);
       else
-        exec_query(qs, qmode, explain);
+        exec_query(qs, qmode, explain, num);
     }
   }
 

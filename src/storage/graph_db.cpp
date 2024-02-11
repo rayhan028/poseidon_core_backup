@@ -209,7 +209,7 @@ void graph_db::begin_transaction() {
 #elif defined(USE_PFILES)
   walog_->transaction_begin(tx->xid());  
 #endif
-  std::lock_guard<std::mutex> guard(*m_);
+  std::unique_lock guard(*m_);
   active_tx_->insert({tx->xid(), tx});
   // spdlog::info("begin transaction {}", tx->xid());
 }
@@ -297,7 +297,7 @@ void graph_db::commit_dirty_node(transaction_ptr tx, node::id_t node_id) {
         // Because there might be an active transaction which still needs the object
         // we cannot delete the node, yet. However, we set the bts and cts accordingly.
         {
-          std::unique_lock<std::mutex> l(*gcm_);
+          std::unique_lock l(*gcm_);
           garbage_->push_back(gc_item { xid, node_id, gc_item::gc_node });
         }
 		    n.set_cts(xid);
@@ -436,7 +436,7 @@ void graph_db::commit_dirty_relationship(transaction_ptr tx, relationship::id_t 
         // we cannot delete the relationship, yet. However, we set the cts accordingly.
         // TODO: make sure that r is eventually removed from the rships_ table!!
         {
-          std::unique_lock<std::mutex> l(*gcm_);
+          std::unique_lock l(*gcm_);
           garbage_->push_back(gc_item { xid, rel_id, gc_item::gc_rship });
         }
 		    r.set_cts(xid);
@@ -501,7 +501,7 @@ bool graph_db::commit_transaction() {
 
   {
     // remove transaction from the active transaction set
-    std::lock_guard<std::mutex> guard(*m_);
+    std::unique_lock guard(*m_);
     active_tx_->erase(xid);
     oldest_xid_ = !active_tx_->empty() ? active_tx_->begin()->first : xid;
   }
@@ -613,7 +613,7 @@ bool graph_db::abort_transaction() {
 
   {
     // remove transaction from the active transaction set
-    std::lock_guard<std::mutex> guard(*m_);
+    std::unique_lock guard(*m_);
     active_tx_->erase(xid);
     oldest_xid_ = !active_tx_->empty() ? active_tx_->begin()->first : xid;
   }

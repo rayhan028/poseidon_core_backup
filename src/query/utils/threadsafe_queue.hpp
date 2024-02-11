@@ -38,7 +38,7 @@ private:
   std::condition_variable data_cond;
 
   node *get_tail() {
-    std::lock_guard<std::mutex> tail_lock(tail_mutex);
+    std::unique_lock tail_lock(tail_mutex);
     return tail;
   }
 
@@ -67,7 +67,7 @@ private:
   }
 
   std::unique_ptr<node> try_pop_head() {
-    std::lock_guard<std::mutex> head_lock(head_mutex);
+    std::unique_lock head_lock(head_mutex);
     if (head.get() == get_tail()) {
       return std::unique_ptr<node>();
     }
@@ -75,7 +75,7 @@ private:
   }
 
   std::unique_ptr<node> try_pop_head(T &value) {
-    std::lock_guard<std::mutex> head_lock(head_mutex);
+    std::unique_lock head_lock(head_mutex);
     if (head.get() == get_tail()) {
       return std::unique_ptr<node>();
     }
@@ -101,7 +101,7 @@ public:
     std::shared_ptr<T> new_data(std::make_shared<T>(std::move(new_value)));
     std::unique_ptr<node> p(new node);
     {
-      std::lock_guard<std::mutex> tail_lock(tail_mutex);
+      std::unique_lock tail_lock(tail_mutex);
       tail->data = new_data;
       node *const new_tail = p.get();
       tail->next = std::move(p);
@@ -121,7 +121,7 @@ public:
   }
 
   void empty() {
-    std::lock_guard<std::mutex> head_lock(head_mutex);
+    std::unique_lock head_lock(head_mutex);
     return (head.get() == get_tail());
   }
 };

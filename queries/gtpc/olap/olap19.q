@@ -1,7 +1,7 @@
 Aggregate([sum($0.amount:double)],
-    Filter(($9.data:string =~  '.*a' && ($4.id:int == 1 || $4.id:int == 2 || $4.id:int == 3)) ||
-        ($9.data:string =~  '.*b' && ($4.id:int == 1 || $4.id:int == 2 || $4.id:int == 4)) ||
-        ($9.data:string =~  '.*c' && ($4.id:int == 1 || $4.id:int == 5 || $4.id:int == 3)),
+    Filter(($9.data:string =~  '.*a' && ($4.id:uint64 == 1 || $4.id:uint64 == 2 || $4.id:uint64 == 3)) ||
+        ($9.data:string =~  '.*b' && ($4.id:uint64 == 1 || $4.id:uint64 == 2 || $4.id:uint64 == 4)) ||
+        ($9.data:string =~  '.*c' && ($4.id:uint64 == 1 || $4.id:uint64 == 5 || $4.id:uint64 == 3)),
         HashJoin([$0.id:uint64, $0.id:uint64],
             Filter($0.quantity:int >= 1 && $0.quantity:int <= 10,
                 Match((ol:OrderLine)-[:hasStock]->(s2:Stock)<-[:hasStock]-(w:Warehouse))),

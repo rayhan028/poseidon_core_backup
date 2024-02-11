@@ -41,6 +41,8 @@ ir_generator::ir_generator(llvm::LLVMContext& ctx) : ctx_(ctx) {
     auto i8_ty  = llvm::Type::getInt8Ty(ctx_);
     auto i8_ptr_ty = llvm::PointerType::get(i8_ty, 0);
 
+    auto i1_ty  = llvm::Type::getInt1Ty(ctx_);
+ 
     // node* qr_get_node(qr_tuple*, std::size_t)
     auto qr_get_node_func_ty = llvm::FunctionType::get(node_ptr_ty, {qr_tuple_ptr_ty, i32_ty}, false);
     func_types_["qr_get_node"] = qr_get_node_func_ty;
@@ -84,7 +86,7 @@ ir_generator::ir_generator(llvm::LLVMContext& ctx) : ctx_(ctx) {
     auto string_compare_ty = llvm::FunctionType::get(i32_ty, { i8_ptr_ty, i8_ptr_ty }, false);
     func_types_["string_compare"] = string_compare_ty;
 
-    auto regex_match_ty = llvm::FunctionType::get(i32_ty, { i8_ptr_ty, i64_ty }, false);
+    auto regex_match_ty = llvm::FunctionType::get(i1_ty, { i8_ptr_ty, i64_ty }, false);
     func_types_["regex_match"] = regex_match_ty;
 }
 

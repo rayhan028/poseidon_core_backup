@@ -174,7 +174,6 @@ query_result pr_year(const query_result &pv, const std::string &key) {
         auto yr = dt.substr(0, dt.find("-"));
         return query_result(std::stoi(yr));
       }
-      return query_result(null_val);
     }
   } else if (pv.which() == rship_descr_type) {
     auto rd = qv_get_rship_descr(pv);
@@ -185,7 +184,6 @@ query_result pr_year(const query_result &pv, const std::string &key) {
         auto yr = dt.substr(0, dt.find("-"));
         return query_result(std::stoi(yr));
       }
-      return query_result(null_val);
     }
   }
   return null_val;
@@ -193,7 +191,7 @@ query_result pr_year(const query_result &pv, const std::string &key) {
 
 query_result pr_month(const query_result &pv, const std::string &key) {
   if (pv.which() == node_descr_type) {
-    auto nd = boost::get<const node_description &>(pv);
+    auto nd = qv_get_node_descr(pv);
     if (nd.has_property(key)) {
       auto o = get_property<ptime>(nd.properties, key);
       if (o.has_value()) {
@@ -201,10 +199,9 @@ query_result pr_month(const query_result &pv, const std::string &key) {
         auto mo = dt.substr(5, 2);
         return query_result(std::stoi(mo));
       }
-      return query_result(null_val);
     }
   } else if (pv.which() == rship_descr_type) {
-    auto rd = boost::get<const rship_description &>(pv);
+    auto rd = qv_get_rship_descr(pv);
     if (rd.has_property(key)) {
       auto o = get_property<ptime>(rd.properties, key);
       if (o.has_value()) {
@@ -212,10 +209,39 @@ query_result pr_month(const query_result &pv, const std::string &key) {
         auto mo = dt.substr(5, 2);
         return query_result(std::stoi(mo));
       }
-      return query_result(null_val);
     }
   }
   return null_val;
+}
+
+query_result substring(const query_result& pv, const std::string &key, std::size_t start, std::size_t len) {
+  if (key.empty() && pv.which() == string_type) {
+    auto s = qv_get_string(pv);
+    auto res = s.substr(start, len);
+    return query_result(res);
+  }
+  if (pv.which() == node_descr_type) {
+    auto nd = qv_get_node_descr(pv);
+    if (nd.has_property(key)) {
+      auto o = get_property<std::string>(nd.properties, key);
+      if (o.has_value()) {
+        auto s = o.value();
+        auto res = s.substr(start, len);
+        return query_result(res);
+      }
+    }
+  } else if (pv.which() == rship_descr_type) {
+    auto rd = qv_get_rship_descr(pv);
+    if (rd.has_property(key)) {
+      auto o = get_property<std::string>(rd.properties, key);
+      if (o.has_value()) {
+        auto s = o.value();
+        auto res = s.substr(start, len);
+        return query_result(res);
+      }
+    }
+  }
+  return null_val;  
 }
 
 std::string string_rep(query_result &res) {

@@ -167,7 +167,7 @@ void query_ctx::parallel_nodes(const std::string &label, node_consumer_func cons
   auto lc = gdb_->dict_->lookup_string(label);
 
   const int nchunks = 5;
-  spdlog::info("Start parallel query with {} threads",
+  spdlog::debug("Start parallel query with {} threads",
                 gdb_->nodes_->num_chunks() / nchunks + 1);
 
   res.reserve(gdb_->nodes_->num_chunks() / nchunks + 1);

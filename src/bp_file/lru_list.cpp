@@ -13,6 +13,7 @@ lru_list::~lru_list() {
 }
 
 lru_list::node* lru_list::add_to_mru(uint64_t pid) {
+    std::unique_lock lck(mtx_);
     auto n = new node(pid);
     n->next = tail_;
     n->prev = tail_->prev;
@@ -23,6 +24,7 @@ lru_list::node* lru_list::add_to_mru(uint64_t pid) {
 }
     
 lru_list::node* lru_list::add_to_lru(uint64_t pid) {
+    std::unique_lock lck(mtx_);
     auto n = new node(pid);
     n->prev = head_;
     n->next = head_->next;
@@ -33,10 +35,12 @@ lru_list::node* lru_list::add_to_lru(uint64_t pid) {
 }
 
 lru_list::node* lru_list::lru() {
+    std::shared_lock lck(mtx_);
     return head_->next;
 }
    
 void lru_list::move_to_mru(lru_list::node *n) {
+    std::unique_lock lck(mtx_);
     auto pn = n->prev;
     auto nn = n->next;
     pn->next = nn;
@@ -49,6 +53,7 @@ void lru_list::move_to_mru(lru_list::node *n) {
 }
 
 uint64_t lru_list::remove_lru_node() {
+    std::unique_lock lck(mtx_);
     if (size_ == 0)
         return UNKNOWN;
 
@@ -63,6 +68,7 @@ uint64_t lru_list::remove_lru_node() {
 }
 
 void lru_list::remove(lru_list::node *n) {
+    std::unique_lock lck(mtx_);
     auto pn = n->prev;
     auto nn = n->next;
     pn->next = nn;
@@ -71,6 +77,7 @@ void lru_list::remove(lru_list::node *n) {
 }
 
 void lru_list::clear() {
+    std::unique_lock lck(mtx_);
     auto n = head_->next;
     while (n != tail_) {
         auto nn = n->next;

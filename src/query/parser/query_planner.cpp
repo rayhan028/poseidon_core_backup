@@ -164,7 +164,7 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
             } else if (res2->value() != nullptr) {
                 res_ex2 = std::any_cast<expr>(visit(res2->value()));
             }
-            spdlog::info("CASE: {} | {} | {}", ex->dump(), res_ex1->dump(), res_ex2->dump());
+            spdlog::debug("CASE: {} | {} | {}", ex->dump(), res_ex1->dump(), res_ex2->dump());
             pex_list.push_back(projection::pexpr{ 0, "", prj::case_expr, ex, res_ex1, res_ex2});
         }
         else if (pexpr->function_call() != nullptr) {
@@ -173,7 +173,6 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
             auto prefix =  fc->prefix()->getText();
             auto fc_name = fc->Identifier_()->getText();
             auto fc_params = fc->param_list()->param();
-            assert(fc_params.size() == 1);
             // TODO: handle UDFs with more than one parameter
             if (prefix == "pb") {
                 auto p_idx = extract_tuple_id(fc_params[0]->Var()->getText());
@@ -181,13 +180,26 @@ std::any query_planner::visitProject_op(poseidonParser::Project_opContext *ctx) 
 
                 // TODO: handle all builtin functions in the same way
                 if (fc_name == "label") {
+                    assert(fc_params.size() == 1);
                     pex_list.push_back(projection::pexpr{ p_idx, "", prj::label});
                 }
                 else if (fc_name == "year") {
+                    assert(fc_params.size() == 1);
                     pex_list.push_back(projection::pexpr{ p_idx, prop_name, prj::function});
                     prj_udf_list.push_back([=](auto ctx, auto res) { 
                             return builtin::pr_year(res, prop_name); });
                 }
+                else if (fc_name == "substr") {
+                    assert(fc_params.size() == 3);
+                    auto start = std::stoi(fc_params[1]->value()->INTEGER()->getText());
+                    auto len = std::stoi(fc_params[2]->value()->INTEGER()->getText());
+                    pex_list.push_back(projection::pexpr{ p_idx, prop_name, prj::function});
+                    prj_udf_list.push_back([=](auto ctx, auto res) { 
+                            return builtin::substring(res, prop_name, start, len); });
+ 
+                }
+                else
+                    throw query_processing_error("unknown builtin function");
             }
             else if (prefix == "udf") {
                 if (!udf_lib_ || !udf_lib_->is_loaded())

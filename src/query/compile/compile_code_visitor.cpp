@@ -21,7 +21,7 @@
 
 void compile_code_visitor::visit(std::shared_ptr<filter_op> op) {
     // TODO: generate unique name by including query id
-    std::cout << op->ex_->dump() << std::endl;
+    // std::cout << op->ex_->dump() << std::endl;
     auto fname = fmt::format("filter_{}", f_cnt_++);
     auto module = gen_->generate(op->ex_, fname);
     // gen_->dump(module);
