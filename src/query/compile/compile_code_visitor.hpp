@@ -34,7 +34,7 @@
 class compile_code_visitor : public qop_visitor {
 public:
     compile_code_visitor(query_ctx& ctx, std::unique_ptr<jit_engine>& jit, std::unique_ptr<ir_generator>& gen) : 
-        f_cnt_(1), jit_(jit), gen_(gen) {}
+        qctx_(ctx), f_cnt_(1), jit_(jit), gen_(gen) {}
 
     ~compile_code_visitor() = default;
 
@@ -42,6 +42,7 @@ public:
     void visit(std::shared_ptr<aggregate> op) override;
 
 private:
+    query_ctx& qctx_;
     uint32_t f_cnt_; // a counter for creating unique function names
     std::unique_ptr<jit_engine>& jit_; // the JIT engine
     std::unique_ptr<ir_generator>& gen_; // the actual IR code generator

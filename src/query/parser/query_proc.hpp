@@ -69,6 +69,7 @@ public:
 private:
   void prepare_plan(query_batch &qplan, mode m);
 
+  std::size_t qcnt_;
   query_ctx& qctx_;
   std::unique_ptr<qinterp> interp_;
 #ifdef USE_LLVM

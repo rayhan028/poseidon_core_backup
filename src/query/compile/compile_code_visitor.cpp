@@ -22,7 +22,7 @@
 void compile_code_visitor::visit(std::shared_ptr<filter_op> op) {
     // TODO: generate unique name by including query id
     // std::cout << op->ex_->dump() << std::endl;
-    auto fname = fmt::format("filter_{}", f_cnt_++);
+    auto fname = fmt::format("q{}_filter_{}", qctx_.query_counter(), f_cnt_++);
     auto module = gen_->generate(op->ex_, fname);
     // gen_->dump(module);
     jit_->add_module(std::move(module));
@@ -30,7 +30,7 @@ void compile_code_visitor::visit(std::shared_ptr<filter_op> op) {
 }
 
 void compile_code_visitor::visit(std::shared_ptr<aggregate> op) {
-    auto fname = fmt::format("aggr_{}", f_cnt_++);
+    auto fname = fmt::format("q{}_aggr_{}", qctx_.query_counter(), f_cnt_++);
     auto module = gen_->generate(op, fname);
     // gen_->dump(module);
     jit_->add_module(std::move(module));

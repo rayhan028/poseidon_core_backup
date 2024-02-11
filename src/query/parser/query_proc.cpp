@@ -63,7 +63,7 @@ void ParserErrorListener::syntaxError(antlr4::Recognizer *recognizer, antlr4::To
     throw query_processing_error(mstr);
 }
 
-query_proc::query_proc(query_ctx &ctx) : qctx_(ctx) {
+query_proc::query_proc(query_ctx &ctx) : qcnt_(1), qctx_(ctx) {
     interp_ = std::make_unique<qinterp>();
 #ifdef USE_LLVM
     jit_ = std::make_unique<jit_engine>(qctx_.gdb_);
@@ -136,6 +136,7 @@ query_batch query_proc::prepare_query(const std::string &query) {
 }
 
 void query_proc::run_query(query_batch& plan) {
+    qctx_.set_query_counter(qcnt_++);
     interp_->execute(qctx_, plan);
 #ifdef USE_LLVM
     jit_->clear();

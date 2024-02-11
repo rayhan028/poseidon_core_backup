@@ -31,13 +31,14 @@ class query_pipeline;
  */
 struct query_ctx {
   graph_db_ptr gdb_; /// the pointer to the graph database (storage engine)
+  std::size_t qcnt_;
 
   /**
    * Constructors.
    */
   query_ctx() = default;
-  query_ctx(query_ctx& ctx) : gdb_(ctx.gdb_) {  }
-  query_ctx(graph_db_ptr& gdb) : gdb_(gdb) {  }
+  query_ctx(query_ctx& ctx) : gdb_(ctx.gdb_), qcnt_(0) {  }
+  query_ctx(graph_db_ptr& gdb) : gdb_(gdb), qcnt_(0) {  }
 
   /**
    * Destructor.
@@ -240,6 +241,13 @@ struct query_ctx {
   p_item get_valid_node_property_value(node &n, dcode_t pcode);
 
   p_item get_valid_rship_property_value(relationship &r, dcode_t pcode);
+
+   // ------------------------------------------------------------------------------
+
+  inline void set_query_counter(std::size_t c) { qcnt_ = c; }
+  inline std::size_t query_counter() const { return qcnt_; }
+
+  // ------------------------------------------------------------------------------
 
   static void start(query_ctx& qctx, std::initializer_list<query_pipeline *> queries);
   static void print_plans(std::initializer_list<query_pipeline *> queries, std::ostream& os = std::cout);

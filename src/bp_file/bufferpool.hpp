@@ -148,7 +148,7 @@ private:
 
     std::size_t p_reads_, l_reads_; // number of physical and logical reads
 
-    mutable std::recursive_mutex mutex_, slot_mtx_, ptable_mtx_, buf_mtx_;
+    mutable std::recursive_mutex mutex_;
 };
 
 #endif

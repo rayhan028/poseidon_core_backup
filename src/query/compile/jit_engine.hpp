@@ -79,8 +79,9 @@ public:
 
     /**
      * Remove all generated modules from the JIT - used after the query was finished.
+     * TODO: remove only the generated code, not the registered external functions!
      */
-    void clear() { /*auto res = jit_->clear();*/ }
+    void clear() { /* auto res = jit_->clear(); */ }
     
 private:
     graph_db_ptr gdb_; // the graph database
