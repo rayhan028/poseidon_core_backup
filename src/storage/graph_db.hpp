@@ -307,6 +307,11 @@ public:
    */
   node &get_valid_node_version(node &n, xid_t xid);
 
+  /**
+   * Return the relationship version from the dirty list that is valid for the
+   * transaction identified by xid.
+   */
+  relationship &get_valid_rship_version(relationship &r, xid_t xid);
 
   /**
    * Returns the string value encoded with the given dictionary code.
@@ -471,12 +476,6 @@ private:
    * Handle the commit of a relationship from the dirty list.
    */
   void commit_dirty_relationship(transaction_ptr tx, relationship::id_t rship_id);
-
-  /**
-   * Return the relationship version from the dirty list that is valid for the
-   * transaction identified by xid.
-   */
-  relationship &get_valid_rship_version(relationship &r, xid_t xid);
 
   /**
    * Copy the properties from the dirty node to the nodes_ and properties_

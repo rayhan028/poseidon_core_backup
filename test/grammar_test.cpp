@@ -15,6 +15,12 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE(qp.parse_("NodeScan(['Comment', 'Post'])"));
     }
 
+    SECTION("RelationshipScan") {
+        REQUIRE(qp.parse_("RelationshipScan()"));
+        REQUIRE(qp.parse_("RelationshipScan('isLocated')"));
+        REQUIRE(qp.parse_("RelationshipScan(['knows', 'friendOf'])"));
+    }
+
     SECTION("IndexScan") {
         REQUIRE(qp.parse_("IndexScan('Person', 'id', 42)"));
         REQUIRE(qp.parse_("IndexScan('Person', 'name', 'Dave')"));
@@ -53,11 +59,16 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE(qp.parse_("Distinct(Project([pb::label($1:node)], NodeScan()))"));
     }
 
+    SECTION("Except") {
+        REQUIRE(qp.parse_("Except([$0.id:uint64], [$1.id:uint64], NodeScan('Order'), NodeScan('Person'))"));
+    }
+
     SECTION("Join") {
         REQUIRE(qp.parse_("CrossJoin(NodeScan('Order'), NodeScan('Person'))"));
         REQUIRE_FALSE(qp.parse_("CrossJoin(NodeScan('Order'))"));
 
-        REQUIRE(qp.parse_("HashJoin([$0.id:uint64, $1.id:uint64], NodeScan('Order'), NodeScan('Person'))"));
+        REQUIRE(qp.parse_("HashJoin([$0.id:uint64], [$1.id:uint64], NodeScan('Order'), NodeScan('Person'))"));
+        REQUIRE_FALSE(qp.parse_("HashJoin([$0.id:uint64, $1.id:uint64], NodeScan('Order'), NodeScan('Person'))"));
         REQUIRE_FALSE(qp.parse_("HashJoin(NodeScan('Order'))"));
     }
 

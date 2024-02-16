@@ -121,8 +121,14 @@ void print_plan_helper(std::ostream& os, qop_node_ptr root, const std::string& p
     os << ((hasFirst  && hasSecond) ? "├── " : "");
     os << ((!hasFirst && hasSecond) ? "└── " : "");
 
+    int first = 0, second = 1;   
+    if (hasFirst && hasSecond) {
+        first = 1;
+        second = 0;
+    }
+
     if (hasSecond) {
-        auto& rchild = root->children_[1];
+        auto& rchild = root->children_[second/*1*/];
         bool printStrand = (hasFirst && hasSecond && (rchild->children_.size() > 0));
         std::string newPrefix = prefix + (printStrand ? "│   " : "    ");
         rchild->print(os);
@@ -131,8 +137,8 @@ void print_plan_helper(std::ostream& os, qop_node_ptr root, const std::string& p
 
     if (hasFirst) {
         os << (hasSecond ? prefix : "") << "└── ";
-        root->children_[0]->print(os);
-        print_plan_helper(os, root->children_[0], prefix + "    ");
+        root->children_[first/*0*/]->print(os);
+        print_plan_helper(os, root->children_[first/*0*/], prefix + "    ");
     }
 }
 

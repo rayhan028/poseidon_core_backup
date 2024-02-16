@@ -4,6 +4,7 @@ grammar poseidon;
 query : query_operator EOF ;
 query_operator : filter_op 
         | node_scan_op 
+        | rship_scan_op
         | index_scan_op
         | match_op 
         | project_op 
@@ -16,6 +17,7 @@ query_operator : filter_op
         | aggregate_op
         | group_by_op
         | union_op
+        | except_op
         | sort_op
         | distinct_op
         | create_op
@@ -27,6 +29,7 @@ query_operator : filter_op
 
 // Scan
 node_scan_op : Nodescan_ '(' scan_param? ')' ;
+rship_scan_op : Rshipscan_ '(' scan_param? ')' ;
 scan_param : STRING_ 
            | scan_list
            ;
@@ -57,7 +60,7 @@ limit_op : Limit_ '(' INTEGER ',' query_operator ')' ;
 crossjoin_op : CrossJoin_ '(' query_operator ',' query_operator ')' ;
 
 // HashJoin
-hashjoin_op : HashJoin_ '(' '[' variable ',' variable ']' ',' query_operator ',' query_operator ')' ;
+hashjoin_op : HashJoin_ '(' '[' variable ']' ',' '[' variable ']' ',' query_operator ',' query_operator ')' ;
 
 // LeftOuterJoin
 leftouterjoin_op : LeftOuterJoin_ '(' logical_expr ',' query_operator ',' query_operator ')' ;
@@ -99,6 +102,9 @@ aggr_func : Count_ | Sum_ | Avg_ | Min_ | Max_ ;
 
 // Union
 union_op : Union_ '(' query_operator ',' query_operator ')';
+
+// Except
+except_op : Except_ '(' '[' variable ']' ',' '[' variable ']' ',' query_operator ',' query_operator ')';
 
 // GroupBy
 group_by_op : GroupBy_ '(' grouping_list ',' aggregate_list ',' query_operator ')' ;
@@ -166,13 +172,14 @@ algo_param : value ;
 // Lexer
 Filter_      : 'Filter' ;
 Nodescan_    : 'NodeScan' ;
+Rshipscan_   : 'RelationshipScan' ;
 Indexscan_   : 'IndexScan' ;
 Match_       : 'Match' ;
 Project_     : 'Project' ;
 Limit_       : 'Limit' ;
 CrossJoin_   : 'CrossJoin' ;
 HashJoin_    : 'HashJoin' ;
-NLJoin_    : 'NLJoin' ;
+NLJoin_      : 'NLJoin' ;
 LeftOuterJoin_ : 'LeftOuterJoin' ;
 Expand_      : 'Expand' ;
 ForeachRelationship_ : 'ForeachRelationship' ;
@@ -182,6 +189,7 @@ Sort_        : 'Sort' ;
 Distinct_    : 'Distinct' ;
 Create_      : 'Create' ;
 Union_       : 'Union' ;
+Except_       : 'Except' ;
 RemoveNode_  : 'RemoveNode' ;
 RemoveRelationship_ : 'RemoveRelationship' ;
 DetachNode_  : 'DetachNode' ;

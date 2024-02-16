@@ -22,7 +22,8 @@
 
 #include <memory>
 
-struct scan_nodes;
+struct node_scan;
+struct relationship_scan;
 struct index_scan;
 struct foreach_from_relationship;
 struct foreach_variable_from_relationship;
@@ -43,6 +44,7 @@ struct group_by;
 struct distinct_tuples;
 struct filter_op;
 struct union_all_op;
+struct except_op;
 struct shortest_path_opr;
 struct weighted_shortest_path_opr;
 struct k_weighted_shortest_path_opr;
@@ -65,7 +67,8 @@ class qop_visitor {
 public:
     virtual ~qop_visitor() = default;
 
-    virtual void visit(std::shared_ptr<scan_nodes> op) {}
+    virtual void visit(std::shared_ptr<node_scan> op) {}
+    virtual void visit(std::shared_ptr<relationship_scan> op) {}
     virtual void visit(std::shared_ptr<index_scan> op) {}
     virtual void visit(std::shared_ptr<foreach_relationship> op) {}
     virtual void visit(std::shared_ptr<is_property> op) {}
@@ -79,6 +82,7 @@ public:
     virtual void visit(std::shared_ptr<distinct_tuples> op) {}
     virtual void visit(std::shared_ptr<filter_op> op) {}
     virtual void visit(std::shared_ptr<union_all_op> op) {}
+    virtual void visit(std::shared_ptr<except_op> op) {}
     virtual void visit(std::shared_ptr<shortest_path_opr> op) {}
     virtual void visit(std::shared_ptr<weighted_shortest_path_opr> op) {}
     virtual void visit(std::shared_ptr<k_weighted_shortest_path_opr> op) {}

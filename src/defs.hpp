@@ -134,4 +134,11 @@ inline p_ptr<T> p_make_ptr(Args &&... args) {
 
 #endif
 
+#define CHUNKS_PER_THREAD 50
+
+#define PF_PAGE_SIZE           1048576 // 1024 * 1024 = 1 MB
+// #define PF_PAGE_SIZE           16384 // 16 * 1024 = 16 KB
+// #define PF_PAGE_SIZE           65536 // 64 * 1024 = 64 KB
+// #define PF_PAGE_SIZE           8192 // 8 * 1024 = 16 KB
+
 #endif

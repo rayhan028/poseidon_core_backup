@@ -21,11 +21,14 @@
 #include "query_printer.hpp"
 
 query_pipeline::query_pipeline(qop_ptr qop) {
+  priority_ = 0;
   plan_head_ = qop;
   // initialize plan_tail_
   plan_tail_ = qop;
-  while (plan_tail_->has_subscriber())
+  while (plan_tail_->has_subscriber()) {
+    priority_ = std::max(priority_, plan_tail_->priority_);
     plan_tail_ = plan_tail_->subscriber();
+  }
 }
 
 query_pipeline &query_pipeline::operator=(const query_pipeline &q) {
@@ -44,7 +47,8 @@ query_pipeline &query_pipeline::append_op(qop_ptr op, qop::consume_func cf) {
   return *this;
 }
 
-query_pipeline &query_pipeline::append_op(qop_ptr op, qop::consume_func cf, qop::finish_func ff) {
+query_pipeline &query_pipeline::append_op(qop_ptr op, qop::consume_func cf,
+                                          qop::finish_func ff) {
   if (!plan_head_)
     plan_head_ = op;
   else
@@ -54,16 +58,17 @@ query_pipeline &query_pipeline::append_op(qop_ptr op, qop::consume_func cf, qop:
   return *this;
 }
 
-
-void query_pipeline::start(query_ctx& ctx) { 
+void query_pipeline::start(query_ctx &ctx) {
   assert(ctx.gdb_->get_dictionary());
-  plan_head_->start(ctx); 
+  plan_head_->start(ctx);
 }
 
-void query_pipeline::print_plan(std::ostream& os) {
-    os << ">>---------------------------------------------------------------------->>\n";
-    auto qop_tree = build_qop_tree(plan_head_);
-    qop_tree.first->print(os);
-    print_plan_helper(os, qop_tree.first, "");
-    os << "<<----------------------------------------------------------------------<<\n";
+void query_pipeline::print_plan(std::ostream &os) {
+  os << ">>--------------------------------------------------------------------"
+        "-->>\n";
+  auto qop_tree = build_qop_tree(plan_head_);
+  qop_tree.first->print(os);
+  print_plan_helper(os, qop_tree.first, "");
+  os << "<<--------------------------------------------------------------------"
+        "--<<\n";
 }

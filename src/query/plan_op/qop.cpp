@@ -256,6 +256,26 @@ std::string get_property_value<std::string>(query_ctx &ctx, const qr_tuple& v, s
 
 /* ------------------------------------------------------------------------ */
 
+query_result get_var_value(query_ctx& ctx, const qr_tuple& v, std::shared_ptr<variable> var) {
+  auto inp = v[var->id_];
+  query_result res;
+
+  if (inp.which() == node_ptr_type || inp.which() == rship_ptr_type) {
+    switch(var->result_type()) {
+      case expr_type::INT: res = qv_(get_property_value<int>(ctx, v, var->id_, var->pcode_)); break; 
+      case expr_type::UINT64: res = qv_(get_property_value<uint64_t>(ctx, v, var->id_, var->pcode_)); break; 
+      case expr_type::DOUBLE: res = qv_(get_property_value<double>(ctx, v, var->id_, var->pcode_)); break; 
+      case expr_type::STRING: res = qv_(get_property_value<std::string>(ctx, v, var->id_, var->pcode_)); break; 
+      case expr_type::DATETIME: res = qv_(get_property_value<boost::posix_time::ptime>(ctx, v, var->id_, var->pcode_)); break; 
+      default: break;
+    }
+  }
+  else
+    res = inp;
+  return res;     
+}
+
+
 void is_property::dump(std::ostream &os) const {
   os << "is_property([" << property << "]) - " << PROF_DUMP;
 }
@@ -506,37 +526,6 @@ void filter_op::process(query_ctx &ctx, const qr_tuple &v) {
     PROF_POST(1);
   }
   else PROF_POST(0);
-}
-
-/* ------------------------------------------------------------------------ */
-
-void union_all_op::dump(std::ostream &os) const { // TODO
-  os << "union_all() - " << PROF_DUMP;
-}
-
-void union_all_op::process_left(query_ctx &ctx, const qr_tuple &v) {
-  PROF_PRE;
-  /*
-  if (init_) {
-    for (auto &r : res_)
-      consume_(ctx, r);
-    init_ = false;
-  }
-  */
-  consume_(ctx, v);
-  PROF_POST(1);
-}
-
-void union_all_op::process_right(query_ctx &ctx, const qr_tuple &v) {
-  PROF_PRE;
-  // res_.push_back(v);
-  consume_(ctx, v);
-  PROF_POST(1);
-}
-
-void union_all_op::finish(query_ctx &ctx) { 
-  if (++phases_ > 1)
-    qop::default_finish(ctx); 
 }
 
 /* ------------------------------------------------------------------------ */

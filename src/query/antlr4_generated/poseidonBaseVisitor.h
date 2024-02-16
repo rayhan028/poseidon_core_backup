@@ -27,6 +27,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitRship_scan_op(poseidonParser::Rship_scan_opContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitScan_param(poseidonParser::Scan_paramContext *ctx) override {
     return visitChildren(ctx);
   }
@@ -176,6 +180,10 @@ public:
   }
 
   virtual std::any visitUnion_op(poseidonParser::Union_opContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitExcept_op(poseidonParser::Except_opContext *ctx) override {
     return visitChildren(ctx);
   }
 

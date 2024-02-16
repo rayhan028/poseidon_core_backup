@@ -13,46 +13,46 @@ class  poseidonParser : public antlr4::Parser {
 public:
   enum {
     T__0 = 1, T__1 = 2, T__2 = 3, T__3 = 4, T__4 = 5, T__5 = 6, T__6 = 7, 
-    Filter_ = 8, Nodescan_ = 9, Indexscan_ = 10, Match_ = 11, Project_ = 12, 
-    Limit_ = 13, CrossJoin_ = 14, HashJoin_ = 15, NLJoin_ = 16, LeftOuterJoin_ = 17, 
-    Expand_ = 18, ForeachRelationship_ = 19, Aggregate_ = 20, GroupBy_ = 21, 
-    Sort_ = 22, Distinct_ = 23, Create_ = 24, Union_ = 25, RemoveNode_ = 26, 
-    RemoveRelationship_ = 27, DetachNode_ = 28, Algorithm_ = 29, Case_ = 30, 
-    IntType_ = 31, Uint64Type_ = 32, DoubleType_ = 33, StringType_ = 34, 
-    DateType_ = 35, NodeResultType_ = 36, RshipResultType_ = 37, Count_ = 38, 
-    Sum_ = 39, Avg_ = 40, Min_ = 41, Max_ = 42, UDF_ = 43, BUILTIN_ = 44, 
-    InExpandDir_ = 45, OutExpandDir_ = 46, TupleMode_ = 47, ResultSetMode_ = 48, 
-    FromDir_ = 49, ToDir_ = 50, AllDir_ = 51, DescOrder_ = 52, AscOrder_ = 53, 
-    INTEGER = 54, FLOAT = 55, Identifier_ = 56, Var = 57, NAME_ = 58, STRING_ = 59, 
-    COLON_ = 60, DOUBLE_COLON = 61, COMMA_ = 62, LPAREN = 63, RPAREN = 64, 
-    LBRACKET = 65, RBRACKET = 66, OR = 67, AND = 68, EQUALS = 69, NOTEQUALS = 70, 
-    LT = 71, LTEQ = 72, GT = 73, GTEQ = 74, PLUS_ = 75, MULT = 76, DIV = 77, 
-    MOD = 78, REGEX = 79, NOT = 80, WHITESPACE = 81
+    Filter_ = 8, Nodescan_ = 9, Rshipscan_ = 10, Indexscan_ = 11, Match_ = 12, 
+    Project_ = 13, Limit_ = 14, CrossJoin_ = 15, HashJoin_ = 16, NLJoin_ = 17, 
+    LeftOuterJoin_ = 18, Expand_ = 19, ForeachRelationship_ = 20, Aggregate_ = 21, 
+    GroupBy_ = 22, Sort_ = 23, Distinct_ = 24, Create_ = 25, Union_ = 26, 
+    Except_ = 27, RemoveNode_ = 28, RemoveRelationship_ = 29, DetachNode_ = 30, 
+    Algorithm_ = 31, Case_ = 32, IntType_ = 33, Uint64Type_ = 34, DoubleType_ = 35, 
+    StringType_ = 36, DateType_ = 37, NodeResultType_ = 38, RshipResultType_ = 39, 
+    Count_ = 40, Sum_ = 41, Avg_ = 42, Min_ = 43, Max_ = 44, UDF_ = 45, 
+    BUILTIN_ = 46, InExpandDir_ = 47, OutExpandDir_ = 48, TupleMode_ = 49, 
+    ResultSetMode_ = 50, FromDir_ = 51, ToDir_ = 52, AllDir_ = 53, DescOrder_ = 54, 
+    AscOrder_ = 55, INTEGER = 56, FLOAT = 57, Identifier_ = 58, Var = 59, 
+    NAME_ = 60, STRING_ = 61, COLON_ = 62, DOUBLE_COLON = 63, COMMA_ = 64, 
+    LPAREN = 65, RPAREN = 66, LBRACKET = 67, RBRACKET = 68, OR = 69, AND = 70, 
+    EQUALS = 71, NOTEQUALS = 72, LT = 73, LTEQ = 74, GT = 75, GTEQ = 76, 
+    PLUS_ = 77, MULT = 78, DIV = 79, MOD = 80, REGEX = 81, NOT = 82, WHITESPACE = 83
   };
 
   enum {
-    RuleQuery = 0, RuleQuery_operator = 1, RuleNode_scan_op = 2, RuleScan_param = 3, 
-    RuleScan_list = 4, RuleIndex_scan_op = 5, RuleIndex_scan_param = 6, 
-    RuleProject_op = 7, RuleProj_list = 8, RuleProj_expr = 9, RuleType_spec = 10, 
-    RuleCase_expr = 11, RuleCase_result = 12, RuleLimit_op = 13, RuleCrossjoin_op = 14, 
-    RuleHashjoin_op = 15, RuleLeftouterjoin_op = 16, RuleNljoin_op = 17, 
-    RuleForeach_relationship_op = 18, RuleRship_dir = 19, RuleRship_cardinality = 20, 
-    RuleRship_source_var = 21, RuleExpand_op = 22, RuleExpand_dir = 23, 
-    RuleMatch_op = 24, RulePath_pattern = 25, RulePath_component = 26, RuleNode_pattern = 27, 
-    RuleRship_pattern = 28, RuleCardinality_spec = 29, RuleMin_cardinality = 30, 
-    RuleMax_cardinality = 31, RuleDir_spec = 32, RuleLeft_dir = 33, RuleRight_dir = 34, 
-    RuleNo_dir = 35, RuleAggregate_op = 36, RuleAggregate_list = 37, RuleAggr_expr = 38, 
-    RuleAggr_func = 39, RuleUnion_op = 40, RuleGroup_by_op = 41, RuleGrouping_list = 42, 
-    RuleGrouping_expr = 43, RuleDistinct_op = 44, RuleFilter_op = 45, RuleLogical_expr = 46, 
-    RuleBoolean_expr = 47, RuleEquality_expr = 48, RuleRelational_expr = 49, 
-    RuleAdditive_expr = 50, RuleMultiplicative_expr = 51, RuleUnary_expr = 52, 
-    RulePrimary_expr = 53, RuleVariable = 54, RuleValue = 55, RuleFunction_call = 56, 
-    RulePrefix = 57, RuleParam_list = 58, RuleParam = 59, RuleSort_op = 60, 
-    RuleSort_list = 61, RuleSort_expr = 62, RuleSort_spec = 63, RuleCreate_op = 64, 
-    RuleCreate_node = 65, RuleProperty_list = 66, RuleProperty = 67, RuleCreate_rship = 68, 
-    RuleNode_var = 69, RuleRemove_node_op = 70, RuleRemove_relationship_op = 71, 
-    RuleDetach_node_op = 72, RuleAlgorithm_op = 73, RuleCall_mode = 74, 
-    RuleAlgo_param_list = 75, RuleAlgo_param = 76
+    RuleQuery = 0, RuleQuery_operator = 1, RuleNode_scan_op = 2, RuleRship_scan_op = 3, 
+    RuleScan_param = 4, RuleScan_list = 5, RuleIndex_scan_op = 6, RuleIndex_scan_param = 7, 
+    RuleProject_op = 8, RuleProj_list = 9, RuleProj_expr = 10, RuleType_spec = 11, 
+    RuleCase_expr = 12, RuleCase_result = 13, RuleLimit_op = 14, RuleCrossjoin_op = 15, 
+    RuleHashjoin_op = 16, RuleLeftouterjoin_op = 17, RuleNljoin_op = 18, 
+    RuleForeach_relationship_op = 19, RuleRship_dir = 20, RuleRship_cardinality = 21, 
+    RuleRship_source_var = 22, RuleExpand_op = 23, RuleExpand_dir = 24, 
+    RuleMatch_op = 25, RulePath_pattern = 26, RulePath_component = 27, RuleNode_pattern = 28, 
+    RuleRship_pattern = 29, RuleCardinality_spec = 30, RuleMin_cardinality = 31, 
+    RuleMax_cardinality = 32, RuleDir_spec = 33, RuleLeft_dir = 34, RuleRight_dir = 35, 
+    RuleNo_dir = 36, RuleAggregate_op = 37, RuleAggregate_list = 38, RuleAggr_expr = 39, 
+    RuleAggr_func = 40, RuleUnion_op = 41, RuleExcept_op = 42, RuleGroup_by_op = 43, 
+    RuleGrouping_list = 44, RuleGrouping_expr = 45, RuleDistinct_op = 46, 
+    RuleFilter_op = 47, RuleLogical_expr = 48, RuleBoolean_expr = 49, RuleEquality_expr = 50, 
+    RuleRelational_expr = 51, RuleAdditive_expr = 52, RuleMultiplicative_expr = 53, 
+    RuleUnary_expr = 54, RulePrimary_expr = 55, RuleVariable = 56, RuleValue = 57, 
+    RuleFunction_call = 58, RulePrefix = 59, RuleParam_list = 60, RuleParam = 61, 
+    RuleSort_op = 62, RuleSort_list = 63, RuleSort_expr = 64, RuleSort_spec = 65, 
+    RuleCreate_op = 66, RuleCreate_node = 67, RuleProperty_list = 68, RuleProperty = 69, 
+    RuleCreate_rship = 70, RuleNode_var = 71, RuleRemove_node_op = 72, RuleRemove_relationship_op = 73, 
+    RuleDetach_node_op = 74, RuleAlgorithm_op = 75, RuleCall_mode = 76, 
+    RuleAlgo_param_list = 77, RuleAlgo_param = 78
   };
 
   explicit poseidonParser(antlr4::TokenStream *input);
@@ -75,6 +75,7 @@ public:
   class QueryContext;
   class Query_operatorContext;
   class Node_scan_opContext;
+  class Rship_scan_opContext;
   class Scan_paramContext;
   class Scan_listContext;
   class Index_scan_opContext;
@@ -113,6 +114,7 @@ public:
   class Aggr_exprContext;
   class Aggr_funcContext;
   class Union_opContext;
+  class Except_opContext;
   class Group_by_opContext;
   class Grouping_listContext;
   class Grouping_exprContext;
@@ -170,6 +172,7 @@ public:
     virtual size_t getRuleIndex() const override;
     Filter_opContext *filter_op();
     Node_scan_opContext *node_scan_op();
+    Rship_scan_opContext *rship_scan_op();
     Index_scan_opContext *index_scan_op();
     Match_opContext *match_op();
     Project_opContext *project_op();
@@ -182,6 +185,7 @@ public:
     Aggregate_opContext *aggregate_op();
     Group_by_opContext *group_by_op();
     Union_opContext *union_op();
+    Except_opContext *except_op();
     Sort_opContext *sort_op();
     Distinct_opContext *distinct_op();
     Create_opContext *create_op();
@@ -212,6 +216,22 @@ public:
   };
 
   Node_scan_opContext* node_scan_op();
+
+  class  Rship_scan_opContext : public antlr4::ParserRuleContext {
+  public:
+    Rship_scan_opContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *Rshipscan_();
+    antlr4::tree::TerminalNode *LPAREN();
+    antlr4::tree::TerminalNode *RPAREN();
+    Scan_paramContext *scan_param();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Rship_scan_opContext* rship_scan_op();
 
   class  Scan_paramContext : public antlr4::ParserRuleContext {
   public:
@@ -425,12 +445,14 @@ public:
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *HashJoin_();
     antlr4::tree::TerminalNode *LPAREN();
-    antlr4::tree::TerminalNode *LBRACKET();
+    std::vector<antlr4::tree::TerminalNode *> LBRACKET();
+    antlr4::tree::TerminalNode* LBRACKET(size_t i);
     std::vector<VariableContext *> variable();
     VariableContext* variable(size_t i);
+    std::vector<antlr4::tree::TerminalNode *> RBRACKET();
+    antlr4::tree::TerminalNode* RBRACKET(size_t i);
     std::vector<antlr4::tree::TerminalNode *> COMMA_();
     antlr4::tree::TerminalNode* COMMA_(size_t i);
-    antlr4::tree::TerminalNode *RBRACKET();
     std::vector<Query_operatorContext *> query_operator();
     Query_operatorContext* query_operator(size_t i);
     antlr4::tree::TerminalNode *RPAREN();
@@ -842,6 +864,31 @@ public:
   };
 
   Union_opContext* union_op();
+
+  class  Except_opContext : public antlr4::ParserRuleContext {
+  public:
+    Except_opContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *Except_();
+    antlr4::tree::TerminalNode *LPAREN();
+    std::vector<antlr4::tree::TerminalNode *> LBRACKET();
+    antlr4::tree::TerminalNode* LBRACKET(size_t i);
+    std::vector<VariableContext *> variable();
+    VariableContext* variable(size_t i);
+    std::vector<antlr4::tree::TerminalNode *> RBRACKET();
+    antlr4::tree::TerminalNode* RBRACKET(size_t i);
+    std::vector<antlr4::tree::TerminalNode *> COMMA_();
+    antlr4::tree::TerminalNode* COMMA_(size_t i);
+    std::vector<Query_operatorContext *> query_operator();
+    Query_operatorContext* query_operator(size_t i);
+    antlr4::tree::TerminalNode *RPAREN();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Except_opContext* except_op();
 
   class  Group_by_opContext : public antlr4::ParserRuleContext {
   public:

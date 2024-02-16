@@ -24,8 +24,8 @@
 #include <memory>
 #include <bitset>
 #include <functional>
+#include "defs.hpp"
 
-#define PF_PAGE_SIZE           1048576 // 1024 * 1024
 #define FHEADER_PAYLOAD_SIZE   9216
 /**
  * The header of a file.

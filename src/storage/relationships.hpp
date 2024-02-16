@@ -105,6 +105,8 @@ struct rship_description {
   bool has_property(const std::string& pname) const;
 
   bool operator==(const rship_description& other) const;
+  
+  bool operator<(const rship_description& other) const { return id < other.id; }
 };
 
 /**

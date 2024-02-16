@@ -20,7 +20,7 @@
 
 #include "qop_scans.hpp"
 
-void scan_nodes::start(query_ctx &ctx) {
+void node_scan::start(query_ctx &ctx) {
   if (label.empty() && labels.empty())
       ctx.parallel_nodes([&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
   else if (!label.empty())
@@ -32,15 +32,38 @@ void scan_nodes::start(query_ctx &ctx) {
   qop::default_finish(ctx);
 }
 
-void scan_nodes::dump(std::ostream &os) const {
+void node_scan::dump(std::ostream &os) const {
   if (labels.size() > 0) {
-    os << "scan_nodes(["; 
+    os << "node_scan(["; 
     for (auto& l : labels) 
       os << " " << l;
     os << "]) - " << PROF_DUMP;
   }
   else
-    os << "scan_nodes([" << label << "]) - " << PROF_DUMP;
+    os << "node_scan([" << label << "]) - " << PROF_DUMP;
+}
+
+void relationship_scan::start(query_ctx &ctx) {
+  if (label.empty() && labels.empty())
+      ctx.parallel_relationships([&](relationship &r) { PROF_PRE; consume_(ctx, {&r}); PROF_POST(1); });
+  else if (!label.empty())
+    // ctx.nodes_by_label(label, [&](node &n) { PROF_PRE; consume_(ctx, {&n}); PROF_POST(1); });
+    ctx.parallel_relationships(label, [&](relationship &r) { PROF_PRE; consume_(ctx, {&r}); PROF_POST(1); });
+  else
+    ctx.relationships_by_label(labels, [&](relationship &r) { PROF_PRE; consume_(ctx, {&r}); PROF_POST(1); });
+
+  qop::default_finish(ctx);
+}
+
+void relationship_scan::dump(std::ostream &os) const {
+  if (labels.size() > 0) {
+    os << "relationship_scan(["; 
+    for (auto& l : labels) 
+      os << " " << l;
+    os << "]) - " << PROF_DUMP;
+  }
+  else
+    os << "relationship_scan([" << label << "]) - " << PROF_DUMP;
 }
 
 void index_scan::start(query_ctx &ctx) {

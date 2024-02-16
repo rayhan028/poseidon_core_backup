@@ -23,7 +23,7 @@
 #include "qop.hpp"
 
 /**
- * A query_pipeline is a sequence of query operators, typically starting 
+ * A query_pipeline is a sequence of query operators, typically starting
  * with a scan and ending with a pipeline breaker or the end of the query.
  * A set of query_pipeline objects form a query_batch which represents
  * a complete query in Poseidon.
@@ -32,38 +32,42 @@
  */
 
 class query_pipeline {
-    friend class query_builder;
-    friend class query_batch;
-    friend struct query_ctx;
+  friend class query_builder;
+  friend class query_batch;
+  friend struct query_ctx;
 
 public:
-    query_pipeline() = default;
+  query_pipeline() = default;
 
-    query_pipeline(qop_ptr qop);
+  query_pipeline(qop_ptr qop);
 
-    ~query_pipeline() = default;
+  ~query_pipeline() = default;
 
-  query_pipeline& operator=(const query_pipeline &);
+  query_pipeline &operator=(const query_pipeline &);
 
   /**
    * Start the execution of the query pipeline.
    */
-  void start(query_ctx& ctx);
+  void start(query_ctx &ctx);
 
   /**
    * Print the query plan.
    */
-  void print_plan(std::ostream& os = std::cout);
+  void print_plan(std::ostream &os = std::cout);
 
   void extract_args();
 
   qop_ptr &plan_head() { return plan_head_; }
 
+  std::size_t priority() const { return priority_; }
+
 private:
-  query_pipeline &append_op(qop_ptr op, qop::consume_func cf, qop::finish_func ff);
+  query_pipeline &append_op(qop_ptr op, qop::consume_func cf,
+                            qop::finish_func ff);
   query_pipeline &append_op(qop_ptr op, qop::consume_func cf);
 
   qop_ptr plan_head_, plan_tail_;
+  std::size_t priority_;
 };
 
 #endif

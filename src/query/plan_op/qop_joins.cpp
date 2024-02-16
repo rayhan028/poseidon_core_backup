@@ -42,6 +42,7 @@ void cross_join_op::process_left(query_ctx &ctx, const qr_tuple &v) {
 
 void cross_join_op::process_right(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE0;
+  std::unique_lock lck(m_);
   input_.push_back(v);
   PROF_POST(0);
 }
@@ -58,7 +59,7 @@ void nested_loop_join_op::dump(std::ostream &os) const { // TODO
 }
 
 void nested_loop_join_op::process_left(query_ctx &ctx, const qr_tuple &v) {
-  auto n = boost::get<node *>(v[left_right_nodes_.first]);
+  auto n = qv_get_node(v[left_right_nodes_.first]);
   auto nid = n->id();
 
   auto i = 0;
@@ -72,8 +73,9 @@ void nested_loop_join_op::process_left(query_ctx &ctx, const qr_tuple &v) {
 }
 
 void nested_loop_join_op::process_right(query_ctx &ctx, const qr_tuple &v) {
-  auto n = boost::get<node *>(v[left_right_nodes_.second]);
+  auto n = qv_get_node(v[left_right_nodes_.second]);
   auto nd = n->id();
+  std::unique_lock lck(m_);
   join_ids_.push_back(nd);
   input_.push_back(v);
 }
@@ -128,29 +130,6 @@ void hash_join_op::build_phase(query_ctx &ctx, const qr_tuple &v) {
   PROF_POST(0);
 }
 
-query_result hash_join_op::get_var_value(query_ctx& ctx, const qr_tuple& v, std::shared_ptr<variable> var) {
-  auto inp = v[var->id_];
-  query_result res;
-
-  if (inp.which() == node_ptr_type || inp.which() == rship_ptr_type) {
-    switch(var->result_type()) {
-      case expr_type::INT: res = qv_(get_property_value<int>(ctx, v, var->id_, var->pcode_)); break; 
-      case expr_type::UINT64: res = qv_(get_property_value<uint64_t>(ctx, v, var->id_, var->pcode_)); break; 
-      case expr_type::DOUBLE: res = qv_(get_property_value<double>(ctx, v, var->id_, var->pcode_)); break; 
-      case expr_type::STRING: res = qv_(get_property_value<std::string>(ctx, v, var->id_, var->pcode_)); break; 
-      case expr_type::DATETIME: res = qv_(get_property_value<boost::posix_time::ptime>(ctx, v, var->id_, var->pcode_)); break; 
-      default: break;
-    }
-  }
-  else
-    res = inp;
-  return res;     
-}
-
-
-uint64_t hash_join_op::hasher(const query_result& q) {
-  return boost::hash<query_result>()(q);
-}
 
 void hash_join_op::finish(query_ctx &ctx) { 
   if (++phases_ > 1)
@@ -198,6 +177,7 @@ void left_outer_join_op::process_left(query_ctx &ctx, const qr_tuple &v) {
 
 void left_outer_join_op::process_right(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE0;
+  std::unique_lock lck(m_);
   input_.push_back(v);
   PROF_POST(0);
 }

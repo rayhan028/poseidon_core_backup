@@ -20,6 +20,7 @@
 #include "query_builder.hpp"
 #include "qop_joins.hpp"
 #include "qop_scans.hpp"
+#include "qop_set.hpp"
 #include "qop_relationships.hpp"
 #include "qop_updates.hpp"
 #include "qop_aggregates.hpp"
@@ -45,18 +46,18 @@ query_builder &query_builder::operator=(const query_builder &q) {
 }
 
 query_builder &query_builder::all_nodes(const std::string &label) {  
-  qpipeline_.plan_head_ = qpipeline_.plan_tail_ = std::make_shared<scan_nodes>(label);
+  qpipeline_.plan_head_ = qpipeline_.plan_tail_ = std::make_shared<node_scan>(label);
   return *this;
 }
 
 query_builder &query_builder::all_nodes(std::map<std::size_t, std::vector<std::size_t>> &range_map, const std::string &label) {
-  qpipeline_.plan_head_ = qpipeline_.plan_tail_ = std::make_shared<scan_nodes>(label, range_map);
+  qpipeline_.plan_head_ = qpipeline_.plan_tail_ = std::make_shared<node_scan>(label, range_map);
   return *this;
 }
 
 query_builder &query_builder::nodes_where(const std::string &label, const std::string &key,
                           std::function<bool(const p_item &)> pred) {
-  qpipeline_.plan_head_ = qpipeline_.plan_tail_ = std::make_shared<scan_nodes>(label);
+  qpipeline_.plan_head_ = qpipeline_.plan_tail_ = std::make_shared<node_scan>(label);
   auto op = std::make_shared<is_property>(key, pred);
   qpipeline_.append_op(op, std::bind(&is_property::process, op.get(), ph::_1, ph::_2));
   return *this;
@@ -64,7 +65,7 @@ query_builder &query_builder::nodes_where(const std::string &label, const std::s
 
 query_builder &query_builder::nodes_where(const std::vector<std::string> &labels, const std::string &key,
                           std::function<bool(const p_item &)> pred) {
-  qpipeline_.plan_head_ = qpipeline_.plan_tail_ = std::make_shared<scan_nodes>(labels);
+  qpipeline_.plan_head_ = qpipeline_.plan_tail_ = std::make_shared<node_scan>(labels);
   auto op = std::make_shared<is_property>(key, pred);
   qpipeline_.append_op(op, std::bind(&is_property::process, op.get(), ph::_1, ph::_2));
   return *this;

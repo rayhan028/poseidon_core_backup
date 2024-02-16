@@ -15,7 +15,7 @@ option(USE_PMDK         "Use Intel PMDK"                         ON)
 option(USE_LLVM         "Use LLVM for query compilation"         ON)
 option(USE_IN_MEMORY    "Use only in-memory storage"             OFF)
 option(BUILD_PYTHON     "Build python interface for poseidon"    ON)
-option(QOP_PROFILING    "Enable query profiling"                 OFF)
+option(QOP_PROFILING    "Enable query profiling"                 ON)
 option(USE_GUNROCK      "Use Gunrock for graph analytics"        OFF)
 option(CSR_DELTA        "Use delta store for updating CSR"       OFF)
 option(USE_UPMEM        "Use UPMEM SDK for PIM"                  OFF)
@@ -420,6 +420,7 @@ set(src_files
   src/query/plan_op/qop_algorithm.cpp
   src/query/plan_op/qop_updates.cpp
   src/query/plan_op/qop_joins.cpp
+  src/query/plan_op/qop_set.cpp
   src/query/plan_op/query_batch.cpp
   src/query/plan_op/query_pipeline.cpp
   src/query/plan_op/query_builder.cpp

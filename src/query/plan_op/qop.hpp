@@ -23,24 +23,24 @@
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-#include <memory>
-#include <vector>
-#include <set>
-#include <iterator>
-#include <condition_variable>
 #include <atomic>
+#include <condition_variable>
+#include <iterator>
+#include <memory>
+#include <set>
 #include <unordered_map>
+#include <vector>
 
+#include "binary_expression.hpp"
 #include "defs.hpp"
+#include "expression.hpp"
 #include "graph_db.hpp"
 #include "nodes.hpp"
-#include "relationships.hpp"
-#include "properties.hpp"
 #include "profiling.hpp"
-#include "expression.hpp"
-#include "binary_expression.hpp"
-#include "qresult_iterator.hpp"
+#include "properties.hpp"
 #include "qop_visitor.hpp"
+#include "qresult_iterator.hpp"
+#include "relationships.hpp"
 // #include "query_ctx.hpp"
 
 template <typename T> std::vector<T> append(const std::vector<T> &v, T t) {
@@ -61,78 +61,62 @@ std::vector<T> concat(const std::vector<T> &v1, const std::vector<T> &v2) {
 }
 
 enum class qop_type {
-    none,
-    any,
-    scan,
-    project,
-    printer,
-    is_property,
-    filter,
-    foreach_rship,
-    expand,
-    node_has_label,
-    union_all,
-    cross_join,
-    left_join,
-    hash_join,
-    nest_loop_join,
-    sort,
-    limit,
-    distinct,
-    collect,
-    aggregate,
-    order_by,
-    group_by,
-    create,
-    store,
-    end
-};
-
-/**
- * Tuple result types
- */
-enum class result_type {
-    node = 0,
-    relationship = 1,
-    integer = 2,
-    double_t = 3,
-    string = 4,
-    date = 5,
-    time = 6,
-    boolean = 7,
-    uint64 = 8,
-    none = 9,
-    qres = 10
+  none,
+  any,
+  scan,
+  project,
+  printer,
+  is_property,
+  filter,
+  foreach_rship,
+  expand,
+  node_has_label,
+  union_all,
+  except,
+  cross_join,
+  left_join,
+  hash_join,
+  nest_loop_join,
+  sort,
+  limit,
+  distinct,
+  collect,
+  aggregate,
+  order_by,
+  group_by,
+  create,
+  store,
+  end
 };
 
 /**
  * Directions of relationships.
  */
-enum class RSHIP_DIR {
-    FROM = 0,
-    TO = 1,
-    ALL = 2
-};
+enum class RSHIP_DIR { FROM = 0, TO = 1, ALL = 2 };
 
 /**
  * Directions of the expand operator.
  */
-enum class EXPAND {
-    IN,
-    OUT
-};
+enum class EXPAND { IN, OUT };
 
 /**
- * Functions to get a property value (defined by var=pos and property name) from a qr_tuple.
+ * Functions to get a property value (defined by var=pos and property name) from
+ * a qr_tuple.
  */
-p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop);
-p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey);
+p_item get_property_value(query_ctx &ctx, const qr_tuple &v, std::size_t var,
+                          const std::string &prop);
+p_item get_property_value(query_ctx &ctx, const qr_tuple &v, std::size_t var,
+                          dcode_t pkey);
 
 template <typename T>
-T get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop);
+T get_property_value(query_ctx &ctx, const qr_tuple &v, std::size_t var,
+                     const std::string &prop);
 template <typename T>
-T get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey);
+T get_property_value(query_ctx &ctx, const qr_tuple &v, std::size_t var,
+                     dcode_t pkey);
 
+query_result get_var_value(query_ctx &ctx, const qr_tuple &v,
+                           std::shared_ptr<variable> var);
 
 struct qop;
 using qop_ptr = std::shared_ptr<qop>;
@@ -163,7 +147,9 @@ struct qop {
   /**
    * Constructor.
    */
-  qop() : subscriber_(nullptr), consume_(nullptr), finish_(nullptr) {}
+  qop()
+      : priority_(0), subscriber_(nullptr), consume_(nullptr),
+        finish_(nullptr) {}
 
   /**
    * Destructor.
@@ -172,7 +158,7 @@ struct qop {
 
   /**
    * Starts the processing of the whole query. This method is implemented only
-   * in producer operators such as scan_nodes.
+   * in producer operators such as node_scan.
    */
   virtual void start(query_ctx &ctx) {}
 
@@ -182,9 +168,7 @@ struct qop {
    */
   virtual void dump(std::ostream &os) const {}
 
-  void connect(qop_ptr op) {
-    subscriber_ = op;
-  }
+  void connect(qop_ptr op) { subscriber_ = op; }
 
   /**
    * Registers the subscriber by initializing the subscriber_ pointer and
@@ -234,18 +218,22 @@ struct qop {
    */
   virtual bool is_binary() const { return false; }
 
+  inline uint64_t hasher(const query_result &q) {
+    return boost::hash<query_result>()(q);
+  }
+
   PROF_ACCESSOR;
 
   /**
    * Accept method for generic visitor
    */
-  virtual void accept(qop_visitor& vis) = 0;
-
-  unsigned operator_id_;
+  virtual void accept(qop_visitor &vis) = 0;
 
   qop_type type_;
-protected:
 
+  std::size_t priority_;
+
+protected:
   qop_ptr subscriber_; // pointer to the subsequent operator which receives and
                        // processes the results
 
@@ -260,17 +248,20 @@ protected:
  * their properties. For this purpose, the name of the property and a predicate
  * function for checking the value of this property have to be given.
  */
-struct is_property : public qop, public std::enable_shared_from_this<is_property> {
+struct is_property : public qop,
+                     public std::enable_shared_from_this<is_property> {
   is_property(const std::string &p, std::function<bool(const p_item &)> pred)
-      : property(p), pcode(0), predicate(pred) { type_ = qop_type::is_property; }
+      : property(p), pcode(0), predicate(pred) {
+    type_ = qop_type::is_property;
+  }
   ~is_property() = default;
 
   void dump(std::ostream &os) const override;
 
   void process(query_ctx &ctx, const qr_tuple &v);
 
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
+  void accept(qop_visitor &vis) override {
+    vis.visit(shared_from_this());
     if (has_subscriber())
       subscriber_->accept(vis);
   }
@@ -284,7 +275,8 @@ struct is_property : public qop, public std::enable_shared_from_this<is_property
  * node_has_label is a query operator representing a filter for nodes which have
  * the given label.
  */
-struct node_has_label : public qop, public std::enable_shared_from_this<node_has_label> {
+struct node_has_label : public qop,
+                        public std::enable_shared_from_this<node_has_label> {
   node_has_label(const std::vector<std::string> &l) : labels(l), lcode(0) {
     type_ = qop_type::node_has_label;
   }
@@ -297,8 +289,8 @@ struct node_has_label : public qop, public std::enable_shared_from_this<node_has
 
   void process(query_ctx &ctx, const qr_tuple &v);
 
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
+  void accept(qop_visitor &vis) override {
+    vis.visit(shared_from_this());
     if (has_subscriber())
       subscriber_->accept(vis);
   }
@@ -309,10 +301,10 @@ struct node_has_label : public qop, public std::enable_shared_from_this<node_has
 };
 
 struct expand : public qop, public std::enable_shared_from_this<expand> {
-  expand(EXPAND dir) : dir_(dir) { type_ = qop_type::expand;  }
+  expand(EXPAND dir) : dir_(dir) { type_ = qop_type::expand; }
 
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
+  void accept(qop_visitor &vis) override {
+    vis.visit(shared_from_this());
     if (has_subscriber())
       subscriber_->accept(vis);
   }
@@ -332,12 +324,11 @@ struct get_from_node : public expand {
 
   void process(query_ctx &ctx, const qr_tuple &v);
 
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
+  void accept(qop_visitor &vis) override {
+    vis.visit(shared_from_this());
     if (has_subscriber())
       subscriber_->accept(vis);
   }
-
 };
 
 /**
@@ -351,12 +342,11 @@ struct get_to_node : public expand {
 
   void process(query_ctx &ctx, const qr_tuple &v);
 
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
+  void accept(qop_visitor &vis) override {
+    vis.visit(shared_from_this());
     if (has_subscriber())
       subscriber_->accept(vis);
   }
-
 };
 
 /**
@@ -372,15 +362,15 @@ struct printer : public qop, public std::enable_shared_from_this<printer> {
 
   void finish(query_ctx &ctx);
 
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
+  void accept(qop_visitor &vis) override {
+    vis.visit(shared_from_this());
     if (has_subscriber())
       subscriber_->accept(vis);
   }
 
   std::size_t ntuples_;
   std::size_t output_width_;
-  mutable std::mutex m_; 
+  mutable std::mutex m_;
 };
 
 /**
@@ -388,15 +378,17 @@ struct printer : public qop, public std::enable_shared_from_this<printer> {
  * results.
  */
 struct limit_result : public qop, std::enable_shared_from_this<limit_result> {
-  limit_result(std::size_t n) : num_(n), processed_(0) { type_ = qop_type::limit;  }
+  limit_result(std::size_t n) : num_(n), processed_(0) {
+    type_ = qop_type::limit;
+  }
   ~limit_result() = default;
 
   void dump(std::ostream &os) const override;
 
   void process(query_ctx &ctx, const qr_tuple &v);
 
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
+  void accept(qop_visitor &vis) override {
+    vis.visit(shared_from_this());
     if (has_subscriber())
       subscriber_->accept(vis);
   }
@@ -405,20 +397,22 @@ struct limit_result : public qop, std::enable_shared_from_this<limit_result> {
   std::atomic_ulong processed_;
 };
 
-
 extern result_set::sort_spec_list sort_spec_;
 /**
  * order_by implements an operator for sorting results either by giving a
  * comparison function or a specificaton of sorting criteria.
  */
 struct order_by : public qop, public std::enable_shared_from_this<order_by> {
-    order_by(const result_set::sort_spec_list &spec)  { type_ = qop_type::order_by; sort_spec_= spec; }
- 
+  order_by(const result_set::sort_spec_list &spec) {
+    type_ = qop_type::order_by;
+    sort_spec_ = spec;
+  }
+
   order_by(std::function<bool(const qr_tuple &, const qr_tuple &)> func)
-      //: cmp_func_(func) 
-  { 
+  //: cmp_func_(func)
+  {
     cmp_func_ = func;
-    type_ = qop_type::order_by;  
+    type_ = qop_type::order_by;
   }
   ~order_by() = default;
 
@@ -428,19 +422,19 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
 
   void finish(query_ctx &ctx);
 
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
+  void accept(qop_visitor &vis) override {
+    vis.visit(shared_from_this());
     if (has_subscriber())
       subscriber_->accept(vis);
   }
 
   static void sort(result_set *rs) {
-      query_ctx ctx; // TODO!!!!
-      if (cmp_func_ != nullptr)
-        rs->sort(ctx, cmp_func_);
-      else {
-        rs->sort(ctx, sort_spec_);
-      }
+    query_ctx ctx; // TODO!!!!
+    if (cmp_func_ != nullptr)
+      rs->sort(ctx, cmp_func_);
+    else {
+      rs->sort(ctx, sort_spec_);
+    }
   }
 
   result_set results_;
@@ -451,7 +445,8 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
  * distinct_tuples implements an operator for outputing distinct
  * result tuples.
  */
-struct distinct_tuples : public qop, public std::enable_shared_from_this<distinct_tuples> {
+struct distinct_tuples : public qop,
+                         public std::enable_shared_from_this<distinct_tuples> {
   distinct_tuples() { type_ = qop_type::distinct; }
   ~distinct_tuples() = default;
 
@@ -459,8 +454,8 @@ struct distinct_tuples : public qop, public std::enable_shared_from_this<distinc
 
   void process(query_ctx &ctx, const qr_tuple &v);
 
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
+  void accept(qop_visitor &vis) override {
+    vis.visit(shared_from_this());
     if (has_subscriber())
       subscriber_->accept(vis);
   }
@@ -475,8 +470,12 @@ struct distinct_tuples : public qop, public std::enable_shared_from_this<distinc
  */
 struct filter_op : public qop, public std::enable_shared_from_this<filter_op> {
   filter_op(std::function<bool(const qr_tuple &)> func)
-      : pred_func1_(func), pred_func_(nullptr) { type_ = qop_type::filter;  }
-  filter_op(const expr &ex): ex_(ex), pred_func_(nullptr) { type_ = qop_type::filter;  }
+      : pred_func1_(func), pred_func_(nullptr) {
+    type_ = qop_type::filter;
+  }
+  filter_op(const expr &ex) : ex_(ex), pred_func_(nullptr) {
+    type_ = qop_type::filter;
+  }
 
   ~filter_op() = default;
 
@@ -488,47 +487,18 @@ struct filter_op : public qop, public std::enable_shared_from_this<filter_op> {
 
   expr get_expression() { return ex_; }
 
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
+  void accept(qop_visitor &vis) override {
+    vis.visit(shared_from_this());
     if (has_subscriber())
       subscriber_->accept(vis);
   }
 
   std::function<bool(const qr_tuple &)> pred_func1_;
-  std::function<bool(const qr_tuple &, expr&)> pred_func2_;
+  std::function<bool(const qr_tuple &, expr &)> pred_func2_;
   expr ex_;
 
-  using predicate_fptr = bool(*)(const query_ctx*, const qr_tuple*);
+  using predicate_fptr = bool (*)(const query_ctx *, const qr_tuple *);
   predicate_fptr pred_func_;
-};
-
-/**
- * union_all_op implements an operator that unions all the
- * query tuples of the left query pipeline and the right query
- * pipeline(s).
- */
-struct union_all_op : public qop, public std::enable_shared_from_this<union_all_op> {
-  union_all_op() : init_(true), phases_(0) { type_ = qop_type::union_all; }
-  ~union_all_op() = default;
-
-  void dump(std::ostream &os) const override;
-
-  void process_left(query_ctx &ctx, const qr_tuple &v);
-  void process_right(query_ctx &ctx, const qr_tuple &v);
-
-  void finish(query_ctx &ctx);
-
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
-    if (has_subscriber())
-      subscriber_->accept(vis);
-  }
-
-  bool is_binary() const override { return true; }
-
-  bool init_;
-  std::size_t phases_;
-  std::list<qr_tuple> res_;
 };
 
 /**
@@ -541,8 +511,9 @@ std::ostream &operator<<(std::ostream &os, const result_set &rs);
  * to check the results or to further process the data. Note, that all result
  * values are represented as strings.
  */
-struct collect_result : public qop, public std::enable_shared_from_this<collect_result> {
-  collect_result(result_set &res) : results_(res) { type_ = qop_type::collect;  }
+struct collect_result : public qop,
+                        public std::enable_shared_from_this<collect_result> {
+  collect_result(result_set &res) : results_(res) { type_ = qop_type::collect; }
   ~collect_result() = default;
 
   void dump(std::ostream &os) const override;
@@ -551,13 +522,14 @@ struct collect_result : public qop, public std::enable_shared_from_this<collect_
 
   void finish(query_ctx &ctx);
 
-  void accept(qop_visitor& vis) override { 
-    vis.visit(shared_from_this()); 
+  void accept(qop_visitor &vis) override {
+    vis.visit(shared_from_this());
     if (has_subscriber())
       subscriber_->accept(vis);
   }
 
   result_set &results_;
+
 private:
   std::mutex collect_mtx;
 };

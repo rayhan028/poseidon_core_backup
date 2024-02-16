@@ -27,8 +27,8 @@
  * product of the results provided by the two input query operators.
  */
 struct cross_join_op : public qop, public std::enable_shared_from_this<cross_join_op> {
-  cross_join_op() : phases_(0) {}
-  cross_join_op(qop_ptr &rhs) : rhs_(rhs) {}
+  cross_join_op() : phases_(0) { type_ = qop_type::cross_join; }
+  cross_join_op(qop_ptr &rhs) : rhs_(rhs) { type_ = qop_type::cross_join; }
   ~cross_join_op() = default;
 
   void dump(std::ostream &os) const override;
@@ -50,6 +50,7 @@ private:
   std::size_t phases_;
   std::list<qr_tuple> input_;
   qop_ptr rhs_;
+    mutable std::shared_mutex m_;  
 };
 
   /**
@@ -59,8 +60,8 @@ private:
    * The node positions are specified by the pos pair.
    */
 struct nested_loop_join_op : public qop, public std::enable_shared_from_this<nested_loop_join_op> {
-  nested_loop_join_op(std::pair<int, int> pos) : left_right_nodes_(pos) {} 
-  nested_loop_join_op(std::pair<int, int> pos, qop_ptr &rhs) : left_right_nodes_(pos), rhs_(rhs) {}
+  nested_loop_join_op(std::pair<int, int> pos) : left_right_nodes_(pos) { type_ = qop_type::nest_loop_join; } 
+  nested_loop_join_op(std::pair<int, int> pos, qop_ptr &rhs) : left_right_nodes_(pos), rhs_(rhs) { type_ = qop_type::nest_loop_join; }
   ~nested_loop_join_op() = default;
 
   void dump(std::ostream &os) const override;
@@ -84,6 +85,7 @@ private:
   std::vector<node::id_t> join_ids_;
   
   qop_ptr rhs_;
+    mutable std::shared_mutex m_;  
 };
 
   /**
@@ -93,7 +95,9 @@ private:
    * The node positions are specified by the pos pair.
    */
 struct hash_join_op : public qop, public std::enable_shared_from_this<hash_join_op> {
-  hash_join_op(std::shared_ptr<variable> l, std::shared_ptr<variable> r) : phases_(0), lhs_var_(l), rhs_var_(r) {} 
+  hash_join_op(std::shared_ptr<variable> l, std::shared_ptr<variable> r) : phases_(0), lhs_var_(l), rhs_var_(r) { 
+    type_ = qop_type::hash_join;
+  } 
   ~hash_join_op() = default;
 
   void dump(std::ostream &os) const override;
@@ -112,16 +116,13 @@ struct hash_join_op : public qop, public std::enable_shared_from_this<hash_join_
   bool is_binary() const override { return true; }
 
 private:
-  query_result get_var_value(query_ctx& ctx, const qr_tuple& v, std::shared_ptr<variable> var);
-  uint64_t hasher(const query_result& qr);
-
   std::size_t phases_;
 
   using join_candidate = std::pair<query_result, qr_tuple>;
   std::unordered_map<uint64_t, std::vector<join_candidate>> htable_;
 
   std::shared_ptr<variable> lhs_var_, rhs_var_;
-    mutable std::shared_mutex m_;  
+  mutable std::shared_mutex m_;  
 };
 
 /**
@@ -130,8 +131,8 @@ private:
  * Dangling tuples are padded with "null_val" 
  */
 struct left_outer_join_op : public qop, public std::enable_shared_from_this<left_outer_join_op> {
-  left_outer_join_op(const expr &ex) : phases_(0), ex_(ex) {}
-  left_outer_join_op(std::function<bool(const qr_tuple &, const qr_tuple &)> pred) : phases_(0), pred_(pred) {} 
+  left_outer_join_op(const expr &ex) : phases_(0), ex_(ex) { type_ = qop_type::left_join; }
+  left_outer_join_op(std::function<bool(const qr_tuple &, const qr_tuple &)> pred) : phases_(0), pred_(pred) { type_ = qop_type::left_join; } 
   ~left_outer_join_op() = default;
 
   void dump(std::ostream &os) const override;
@@ -156,6 +157,7 @@ private:
   std::vector<qr_tuple> input_;
   std::function<bool(const qr_tuple &, const qr_tuple &)> pred_;
   expr ex_;  
+  mutable std::shared_mutex m_;  
 };
 
 #endif

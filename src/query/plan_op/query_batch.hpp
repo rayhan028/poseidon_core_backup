@@ -20,11 +20,8 @@
 #ifndef query_batch_hpp_
 #define query_batch_hpp_
 
-#include "query_pipeline.hpp"
-#include "qop.hpp"
 #include "qop_visitor.hpp"
-
-namespace ph = std::placeholders;
+#include "query_pipeline.hpp"
 
 /**
  * A query batch combines multiple queries producing a joint result. This is
@@ -35,29 +32,32 @@ class query_batch {
 public:
   query_batch() = default;
 
-  void add(query_pipeline &q) { queries_.push_back(q); }
-  std::size_t size() const { return queries_.size(); }
-  query_pipeline& front() { return queries_.front(); }
-  query_pipeline& at(std::size_t i) { return queries_[i];  }
-  bool empty() const { return queries_.empty(); }
+  void add(query_pipeline &q) { query_pipelines_.push_back(q); }
+  std::size_t size() const { return query_pipelines_.size(); }
+  query_pipeline &front() { return query_pipelines_.front(); }
+  query_pipeline &at(std::size_t i) { return query_pipelines_[i]; }
+  bool empty() const { return query_pipelines_.empty(); }
 
-  void accept(qop_visitor& visitor);
-  
+  void accept(qop_visitor &visitor);
+
   void append_printer();
-  void append_collect(result_set& rs);
+  void append_collect(result_set &rs);
 
   /**
    * Start the execution of the query.
    */
-  void start(query_ctx& ctx);
+  void start(query_ctx &ctx);
 
- /**
+  /**
    * Print the query plan.
    */
-  void print_plan(std::ostream& os = std::cout);
+  void print_plan(std::ostream &os = std::cout);
+
+  void schedule_pipelines();
 
 private:
-  std::vector<query_pipeline> queries_;
+  std::vector<query_pipeline> query_pipelines_;
+  std::vector<std::size_t> pipeline_seq_;
 };
 
 #endif

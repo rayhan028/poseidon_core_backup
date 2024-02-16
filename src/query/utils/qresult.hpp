@@ -29,9 +29,10 @@ struct node;
 struct relationship;
 
 struct null_t {
-    explicit constexpr null_t(int) {}
+  explicit constexpr null_t(int) {}
   inline bool operator()(const null_t& one, const null_t& two) { return true; }
- inline bool operator==(const null_t& other) const { return true; }
+  inline bool operator==(const null_t& other) const { return true; }
+  inline bool operator<(const null_t& other) const { return false; }
 };
 
 inline constexpr null_t null_val(-1);
@@ -39,6 +40,8 @@ inline constexpr null_t null_val(-1);
 struct array_t {
   array_t(std::vector<uint64_t> v) : elems(v) {}
   inline bool operator==(const array_t& other) const { return elems == other.elems; }
+  inline bool operator<(const array_t& other) const { return elems < other.elems; }
+  
   std::vector<uint64_t> elems;
 };
 

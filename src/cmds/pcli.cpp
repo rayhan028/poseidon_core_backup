@@ -511,7 +511,7 @@ int main(int argc, char* argv[]) {
         ("verbose,v", bool_switch()->default_value(false), "Verbose - show debug output")
         ("db,d", value<std::string>(&db_name)->required(), "Database name (required)")
         ("pool,p", value<std::string>(&pool_path)->required(), "Path to the PMem/file pool")  
-        ("buffersize,b", value<std::size_t>(&bp_size), "Size of the bufferpool (in pages)")
+        ("buffersize,b", value<std::size_t>(&bp_size), "Size of the bufferpool (in MB)")
         ("output,o", value<std::string>(&dot_file), "Dump the graph to the given file (in DOT format)")
         ("strict", bool_switch()->default_value(true), "Strict mode - assumes that all columns contain values of the same type")
         ("delimiter", value<char>(&delim_character)->default_value('|'), "Character delimiter")
@@ -604,14 +604,16 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
+  auto num_buf_pages = (bp_size * 1024 * 1024) / PF_PAGE_SIZE;
+
   if (access(pool_path.c_str(), F_OK) != 0) {
     spdlog::info("creating poolset {}", pool_path);
     pool = graph_pool::create(pool_path);
-    graph = pool->create_graph(db_name, bp_size);
+    graph = pool->create_graph(db_name, num_buf_pages /*bp_size*/);
   } else {
     spdlog::info("opening poolset {}", pool_path);
     pool = graph_pool::open(pool_path, true);
-    graph = pool->open_graph(db_name, bp_size);
+    graph = pool->open_graph(db_name, num_buf_pages /*bp_size*/);
   }
 
   if (!import_files.empty()) {

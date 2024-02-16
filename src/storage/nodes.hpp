@@ -143,6 +143,7 @@ struct node_description {
   bool has_property(const std::string& pname) const;
 
   bool operator==(const node_description& other) const;
+  bool operator<(const node_description& other) const { return id < other.id; }
 };
 
 /**

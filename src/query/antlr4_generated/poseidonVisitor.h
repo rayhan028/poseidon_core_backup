@@ -25,6 +25,8 @@ public:
 
     virtual std::any visitNode_scan_op(poseidonParser::Node_scan_opContext *context) = 0;
 
+    virtual std::any visitRship_scan_op(poseidonParser::Rship_scan_opContext *context) = 0;
+
     virtual std::any visitScan_param(poseidonParser::Scan_paramContext *context) = 0;
 
     virtual std::any visitScan_list(poseidonParser::Scan_listContext *context) = 0;
@@ -100,6 +102,8 @@ public:
     virtual std::any visitAggr_func(poseidonParser::Aggr_funcContext *context) = 0;
 
     virtual std::any visitUnion_op(poseidonParser::Union_opContext *context) = 0;
+
+    virtual std::any visitExcept_op(poseidonParser::Except_opContext *context) = 0;
 
     virtual std::any visitGroup_by_op(poseidonParser::Group_by_opContext *context) = 0;
 

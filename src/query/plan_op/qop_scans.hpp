@@ -23,17 +23,46 @@
 #include "qop.hpp"
 
 /**
- * scan_nodes represents a query operator for scanning all nodes of a graph
+ * node_scan represents a query operator for scanning all nodes of a graph
  * (optionally with a given label). All these nodes are then forwarded to the
  * subscriber.
  */
-struct scan_nodes : public qop, public std::enable_shared_from_this<scan_nodes> {
-  scan_nodes(const std::string &l) : label(l), ranged(false) { type_ = qop_type::scan;  }
-  scan_nodes(const std::string &l, std::map<std::size_t, std::vector<std::size_t>> &range_map) : label(l), 
+struct node_scan : public qop, public std::enable_shared_from_this<node_scan> {
+  node_scan(const std::string &l) : label(l), ranged(false) { type_ = qop_type::scan;  }
+  node_scan(const std::string &l, std::map<std::size_t, std::vector<std::size_t>> &range_map) : label(l), 
         ranges(range_map), ranged(true) { type_ = qop_type::scan;  }
-  scan_nodes(const std::vector<std::string> &l) : labels(l), ranged(false) { type_ = qop_type::scan;  }
-  scan_nodes() = default;
-  ~scan_nodes() = default;
+  node_scan(const std::vector<std::string> &l) : labels(l), ranged(false) { type_ = qop_type::scan;  }
+  node_scan() = default;
+  ~node_scan() = default;
+
+  void dump(std::ostream &os) const override;
+
+  virtual void start(query_ctx &ctx) override;
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  std::string label;
+  std::vector<std::string> labels;
+  std::map<std::size_t, std::vector<std::size_t>> ranges;
+  bool ranged;
+};
+
+/**
+ * relationship_scan represents a query operator for scanning all relationships of a graph
+ * (optionally with a given label). All these relationships are then forwarded to the
+ * subscriber.
+ */
+struct relationship_scan : public qop, public std::enable_shared_from_this<relationship_scan> {
+  relationship_scan(const std::string &l) : label(l), ranged(false) { type_ = qop_type::scan;  }
+  relationship_scan(const std::string &l, std::map<std::size_t, std::vector<std::size_t>> &range_map) : label(l), 
+        ranges(range_map), ranged(true) { type_ = qop_type::scan;  }
+  relationship_scan(const std::vector<std::string> &l) : labels(l), ranged(false) { type_ = qop_type::scan;  }
+  relationship_scan() = default;
+  ~relationship_scan() = default;
 
   void dump(std::ostream &os) const override;
 

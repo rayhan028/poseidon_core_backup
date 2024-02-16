@@ -220,7 +220,7 @@ bool bufferpool::evict_page() {
             if (it2->second.pinned_)
                 continue;
             if (it2->second.dirty_) {
-                spdlog::info("bufferpool::evict dirty page {}", pid & 0xFFFFFFFFFFFFFFF);
+                spdlog::info("bufferpool::evict dirty page {} of file {}", pid & 0xFFFFFFFFFFFFFFF, (pid & 0xF000000000000000) >> 60);
                 // TODO: write WAL log record for UNDO
                 write_page_to_file(pid, it2->second.p_);
             }

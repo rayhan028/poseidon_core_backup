@@ -21,10 +21,12 @@
 #include "query_printer.hpp"
 #include "thread_pool.hpp"
 
-scan_task::scan_task(graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func c, 
+/* -------------------------------------------------------------------------------------------------- */
+
+node_scan_task::node_scan_task(graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func c, 
   transaction_ptr tp, std::size_t start_pos) : graph_db_(gdb), range_(first, last), consumer_(c), tx_(tp), start_pos_(start_pos) {}
 
-void scan_task::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func consumer) {
+void node_scan_task::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::node_consumer_func consumer) {
     // spdlog::info("scan {}-{} started...", first, last);
     xid_t xid = 0;
     // uint64_t pos = 0;
@@ -48,19 +50,19 @@ void scan_task::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, st
 }
 
 std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, 
-  query_ctx::node_consumer_func consumer)> scan_task::callee_ = &scan_task::scan;
+  query_ctx::node_consumer_func consumer)> node_scan_task::callee_ = &node_scan_task::scan;
 
-void scan_task::operator()() {
+void node_scan_task::operator()() {
    callee_(tx_, graph_db_, range_.first, range_.second, consumer_);
 }
 
 //-----------------------------------------------------------------------------------------------
 
-scan_task_with_label::scan_task_with_label(graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+node_scan_task_with_label::node_scan_task_with_label(graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
   query_ctx::node_consumer_func c, transaction_ptr tp, std::size_t start_pos) : graph_db_(gdb), range_(first, last), label_(label),
   consumer_(c), tx_(tp), start_pos_(start_pos) {}
 
-void scan_task_with_label::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+void node_scan_task_with_label::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
   query_ctx::node_consumer_func consumer) {
     xid_t xid = 0;
     if (tx) { // we need the transaction pointer in thread-local storage
@@ -81,9 +83,77 @@ void scan_task_with_label::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_
 }
 
 std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
-  query_ctx::node_consumer_func consumer)> scan_task_with_label::callee_ = &scan_task_with_label::scan;
+  query_ctx::node_consumer_func consumer)> node_scan_task_with_label::callee_ = &node_scan_task_with_label::scan;
 
-void scan_task_with_label::operator()() {
+void node_scan_task_with_label::operator()() {
+   callee_(tx_, graph_db_, range_.first, range_.second, label_, consumer_);
+}
+
+/* -------------------------------------------------------------------------------------------------- */
+
+rship_scan_task::rship_scan_task(graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::rship_consumer_func c, 
+  transaction_ptr tp, std::size_t start_pos) : graph_db_(gdb), range_(first, last), consumer_(c), tx_(tp), start_pos_(start_pos) {}
+
+void rship_scan_task::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::rship_consumer_func consumer) {
+    // spdlog::info("scan {}-{} started...", first, last);
+    xid_t xid = 0;
+    // uint64_t pos = 0;
+    if (tx) { // we need the transaction pointer in thread-local storage
+	    current_transaction_ = tx;
+	    xid = tx->xid();				    
+    }
+    auto iter = gdb->get_relationships()->range(first, last);
+    while (iter) {
+	    auto &r = *iter;
+	    if (r.is_valid()) {
+	      auto &rv = gdb->get_valid_rship_version(r, xid);
+        // spdlog::info("scan: {} -> {}", nv.id(), nv.property_list);
+
+		    consumer(rv);
+	    }
+	    ++iter;
+      // spdlog::info("scan[{},{}]: {}", first, last, pos++);
+    }
+    // spdlog::info("scan {}-{} finished", first, last);
+}
+
+std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, 
+  query_ctx::rship_consumer_func consumer)> rship_scan_task::callee_ = &rship_scan_task::scan;
+
+void rship_scan_task::operator()() {
+   callee_(tx_, graph_db_, range_.first, range_.second, consumer_);
+}
+
+//-----------------------------------------------------------------------------------------------
+
+rship_scan_task_with_label::rship_scan_task_with_label(graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+  query_ctx::rship_consumer_func c, transaction_ptr tp, std::size_t start_pos) : graph_db_(gdb), range_(first, last), label_(label),
+  consumer_(c), tx_(tp), start_pos_(start_pos) {}
+
+void rship_scan_task_with_label::scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+  query_ctx::rship_consumer_func consumer) {
+    xid_t xid = 0;
+    if (tx) { // we need the transaction pointer in thread-local storage
+	    current_transaction_ = tx;
+	    xid = tx->xid();				    
+    }
+    auto iter = gdb->get_relationships()->range(first, last);
+    while (iter) {
+	    auto &r = *iter;
+	    if (r.is_valid()) {
+	      auto &rv = gdb->get_valid_rship_version(r, xid);
+
+        if (rv.rship_label == label)
+  		    consumer(rv);
+	    }
+	    ++iter;
+    }
+}
+
+std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+  query_ctx::rship_consumer_func consumer)> rship_scan_task_with_label::callee_ = &rship_scan_task_with_label::scan;
+
+void rship_scan_task_with_label::operator()() {
    callee_(tx_, graph_db_, range_.first, range_.second, label_, consumer_);
 }
 
@@ -141,7 +211,7 @@ void query_ctx::parallel_nodes(node_consumer_func consumer) {
   std::vector<std::future<void>> res;
   thread_pool pool;
 
-  const int nchunks = 10;
+  const int nchunks = CHUNKS_PER_THREAD;
   spdlog::debug("Start parallel query with {} threads",
                 gdb_->nodes_->num_chunks() / nchunks + 1);
 
@@ -149,7 +219,7 @@ void query_ctx::parallel_nodes(node_consumer_func consumer) {
   std::size_t start = 0, end = nchunks - 1;
   while (start < gdb_->nodes_->num_chunks()) {
     res.push_back(pool.submit(
-        scan_task(gdb_, start, end, consumer, current_transaction_)));
+        node_scan_task(gdb_, start, end, consumer, current_transaction_)));
     start = end + 1;
     end += nchunks;
   }
@@ -166,7 +236,7 @@ void query_ctx::parallel_nodes(const std::string &label, node_consumer_func cons
   thread_pool pool;
   auto lc = gdb_->dict_->lookup_string(label);
 
-  const int nchunks = 5;
+  const int nchunks = CHUNKS_PER_THREAD;
   spdlog::debug("Start parallel query with {} threads",
                 gdb_->nodes_->num_chunks() / nchunks + 1);
 
@@ -174,7 +244,7 @@ void query_ctx::parallel_nodes(const std::string &label, node_consumer_func cons
   std::size_t start = 0, end = nchunks - 1;
   while (start < gdb_->nodes_->num_chunks()) {
     res.push_back(pool.submit(
-        scan_task_with_label(gdb_, start, end, lc, consumer, current_transaction_)));
+       node_scan_task_with_label(gdb_, start, end, lc, consumer, current_transaction_)));
     start = end + 1;
     end += nchunks;
   }
@@ -209,6 +279,77 @@ void query_ctx::nodes_where(const std::string &pkey, p_item::predicate_func pred
   });
 }
 
+void query_ctx::parallel_relationships(rship_consumer_func consumer) {
+  check_tx_context();
+  std::vector<std::future<void>> res;
+  thread_pool pool;
+
+  const int nchunks = CHUNKS_PER_THREAD;
+  spdlog::debug("Start parallel query with {} threads",
+                gdb_->rships_->num_chunks() / nchunks + 1);
+
+  res.reserve(gdb_->rships_->num_chunks() / nchunks + 1);
+  std::size_t start = 0, end = nchunks - 1;
+  while (start < gdb_->rships_->num_chunks()) {
+    res.push_back(pool.submit(
+        rship_scan_task(gdb_, start, end, consumer, current_transaction_)));
+    start = end + 1;
+    end += nchunks;
+  }
+ 
+  spdlog::debug("parallel scan: waiting ...");
+  for (auto &f : res) {
+    f.get();
+  }
+}
+
+void query_ctx::parallel_relationships(const std::string &label, rship_consumer_func consumer) {
+  check_tx_context();
+  std::vector<std::future<void>> res;
+  thread_pool pool;
+  auto lc = gdb_->dict_->lookup_string(label);
+
+  const int nchunks = CHUNKS_PER_THREAD;
+  spdlog::debug("Start parallel query with {} threads",
+                gdb_->rships_->num_chunks() / nchunks + 1);
+
+  res.reserve(gdb_->rships_->num_chunks() / nchunks + 1);
+  std::size_t start = 0, end = nchunks - 1;
+  while (start < gdb_->rships_->num_chunks()) {
+    res.push_back(pool.submit(
+        rship_scan_task_with_label(gdb_, start, end, lc, consumer, current_transaction_)));
+    start = end + 1;
+    end += nchunks;
+  }
+ 
+  // std::cout << "waiting ..." << std::endl;
+  for (auto &f : res) {
+    f.get();
+  }
+}
+
+void query_ctx::relationships_by_label(const std::vector<std::string> &labels,
+                                      rship_consumer_func consumer) {
+  check_tx_context();
+  xid_t txid = current_transaction()->xid();
+
+  std::vector<dcode_t> codes(labels.size());
+  for (auto i = 0u; i < labels.size(); i++) 
+    codes[i] = gdb_->dict_->lookup_string(labels[i]);
+  for (auto &r : gdb_->rships_->as_vec()) {
+
+    if (r.is_valid()) {
+      auto &rv = gdb_->get_valid_rship_version(r, txid);
+      for (auto &lc : codes) {
+        if (rv.rship_label == lc) {
+          consumer(rv);
+          break;
+        }
+      }
+    }
+  }
+}
+
 void query_ctx::relationships_by_label(const std::string &label,
                                       rship_consumer_func consumer) {
   check_tx_context();
@@ -221,7 +362,6 @@ void query_ctx::relationships_by_label(const std::string &label,
       consumer(rv);
   }
 }
-
 void query_ctx::foreach_from_relationship_of_node(const node &n,
                                                  rship_consumer_func consumer) {
   auto relship_id = n.from_rship_list;

@@ -119,12 +119,20 @@ struct query_ctx {
   void nodes_where(const std::string &pkey, p_item::predicate_func pred,
                    node_consumer_func consumer);
 
+
+  void parallel_relationships(rship_consumer_func consumer);
+
+
+  void parallel_relationships(const std::string &label, rship_consumer_func consumer);
+  
   /**
    * Scans all relationships of the graph with the given label and invokes for
    * each of these relationship the consumer function.
    */
   void relationships_by_label(const std::string &label,
                               rship_consumer_func consumer);
+
+  void relationships_by_label(const std::vector<std::string> &labels, rship_consumer_func consumer);
 
   /**
    * Scans all FROM relationships recursivley starting from the the given node
@@ -253,10 +261,11 @@ struct query_ctx {
   static void print_plans(std::initializer_list<query_pipeline *> queries, std::ostream& os = std::cout);
 };
 
+/* -------------------------------------------------------------------------------------------------- */
 
-struct scan_task {
+struct node_scan_task {
   using range = std::pair<std::size_t, std::size_t>;
-  scan_task(graph_db_ptr gdb, std::size_t first, std::size_t last,
+  node_scan_task(graph_db_ptr gdb, std::size_t first, std::size_t last,
 	    query_ctx::node_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0);
 
   void operator()();
@@ -273,9 +282,9 @@ struct scan_task {
   std::size_t start_pos_;
 };
 
-struct scan_task_with_label {
+struct node_scan_task_with_label {
   using range = std::pair<std::size_t, std::size_t>;
-  scan_task_with_label(graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+  node_scan_task_with_label(graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
 	    query_ctx::node_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0);
 
   void operator()();
@@ -290,6 +299,48 @@ struct scan_task_with_label {
   range range_;
   dcode_t label_;
   query_ctx::node_consumer_func consumer_;
+  transaction_ptr tx_;
+  std::size_t start_pos_;
+};
+
+/* -------------------------------------------------------------------------------------------------- */
+
+struct rship_scan_task {
+  using range = std::pair<std::size_t, std::size_t>;
+  rship_scan_task(graph_db_ptr gdb, std::size_t first, std::size_t last,
+	    query_ctx::rship_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0);
+
+  void operator()();
+
+  static void scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, query_ctx::rship_consumer_func consumer);
+
+  static std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, 
+    query_ctx::rship_consumer_func consumer)> callee_;
+
+  graph_db_ptr graph_db_;
+  range range_;
+  query_ctx::rship_consumer_func consumer_;
+  transaction_ptr tx_;
+  std::size_t start_pos_;
+};
+
+struct rship_scan_task_with_label {
+  using range = std::pair<std::size_t, std::size_t>;
+  rship_scan_task_with_label(graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+	    query_ctx::rship_consumer_func c, transaction_ptr tp = nullptr, std::size_t start_pos = 0);
+
+  void operator()();
+
+  static void scan(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+    query_ctx::rship_consumer_func consumer);
+
+  static std::function<void(transaction_ptr tx, graph_db_ptr gdb, std::size_t first, std::size_t last, dcode_t label,
+    query_ctx::rship_consumer_func consumer)> callee_;
+
+  graph_db_ptr graph_db_;
+  range range_;
+  dcode_t label_;
+  query_ctx::rship_consumer_func consumer_;
   transaction_ptr tx_;
   std::size_t start_pos_;
 };
