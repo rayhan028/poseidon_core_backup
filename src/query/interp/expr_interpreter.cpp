@@ -255,7 +255,7 @@ public:
     }
 
     virtual void* visit(std::shared_ptr<variable> op) override {
-        // std::cout << "visit variable: " << op->id_ << ", " << op->pcode_ << " : " << tup_.size() << std::endl;
+         std::cout << "visit variable: " << op->id_ << ", " << op->pcode_ << " : " << tup_.size() << std::endl;
         auto inp = tup_[op->id_];
         p_item res;
         switch (inp.which()) {
@@ -264,7 +264,7 @@ public:
                 auto nptr = qv_get_node(inp);
                 // if key_ is empty then the node is requested ($i:node)
                 if (op->pcode_ == UNKNOWN_CODE) {
-                    // std::cout << "id = " << nptr->id() << std::endl;
+                     std::cout << "id = " << nptr->id() << std::endl;
                     stack_.push(query_result(nptr));
                 }
                 else {
