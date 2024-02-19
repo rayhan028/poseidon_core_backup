@@ -385,12 +385,12 @@ public:
     }
 
     virtual void* visit(std::shared_ptr<func_call> op) override {
-        // std::cout << "visit func_call: " << op->func_name_ << " : " << op->param_list_.size() << std::endl;
+         std::cout << "visit func_call: " << op->func_name_ << " : " << op->param_list_.size() << std::endl;
 
         if (op->param_list_.size() == 1) {
             auto arg = pop(stack_);
             assert(op->func1_ptr_ != nullptr);
-            // std::cout << "func_call: arg = " << arg << std::endl;
+             std::cout << "func_call: arg = " << arg << std::endl;
             auto res = op->func1_ptr_(ctx_, arg);
             // std::cout << "func_call: result = " << res << std::endl;
             stack_.push(res);
