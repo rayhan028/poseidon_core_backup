@@ -283,7 +283,6 @@ void* expr_codegen::visit(std::shared_ptr<math_expression> op) {
     if (op->result_type() == expr_type::INT || op->result_type() == expr_type::UINT64) {
         switch (op->fop_) {
         case expr_op::PLUS:
-        spdlog::info("createAdd");
             res = gen_.get_builder()->CreateAdd(lhs, rhs);
             break;
         case expr_op::MINUS:

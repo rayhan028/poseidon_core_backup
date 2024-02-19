@@ -388,6 +388,12 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
             auto& n = graph->node_by_id(n1);
             tup[0] = &n;
    
+            auto ex0 = Fct("pb", "label", std::vector<expr>{ Variable(0, expr_type::NODE) });
+            ex0->accept(vis);
+            auto res = interpret_expression(qctx, ex0, tup);
+            spdlog::info("pb::label(...) -> {}:{}", qv_get_string(res), res.which());
+            REQUIRE(qv_get_string(res) == "Person");
+
             auto ex1 = EQ(Fct("pb", "label", std::vector<expr>{ Variable(0, expr_type::NODE) }), Str("Person"));
             ex1->accept(vis);
             REQUIRE(interpret_bool_expression(qctx, ex1, tup) == true);
@@ -456,7 +462,6 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
     }
 
     SECTION("arithmetic expressions") {
-        spdlog::info("1");
         qr_tuple tup;
         auto ex1 = PLUS(Int(2), Int(5));
         auto res1 = interpret_expression(qctx, ex1, tup);
@@ -465,7 +470,6 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
         auto ex11 = EQ(ex1, Int(7));
         CC_REQUIRE(compile_expression(qctx, ex11, tup));
 
-        spdlog::info("2");
         auto ex2 = MINUS(Int(20), Int(5));
         auto res2 = interpret_expression(qctx, ex2, tup);
         REQUIRE(qv_get_int(res2) == 15);
@@ -473,7 +477,6 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
         auto ex22 = EQ(ex2, Int(15));
         CC_REQUIRE(compile_expression(qctx, ex22, tup));
 
-        spdlog::info("3");
         auto ex3 = MULT(Int(3), Int(5));
         auto res3 = interpret_expression(qctx, ex3, tup);
         REQUIRE(qv_get_int(res3) == 15);
@@ -481,7 +484,6 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
         auto ex33 = EQ(ex3, Int(15));
         CC_REQUIRE(compile_expression(qctx, ex33, tup));
 
-        spdlog::info("4");
         auto ex4 = DIV(Int(12), Int(6));
         auto res4 = interpret_expression(qctx, ex4, tup);
         REQUIRE(qv_get_int(res4) == 2);
@@ -489,7 +491,6 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
         auto ex44 = EQ(ex4, Int(2));
         CC_REQUIRE(compile_expression(qctx, ex44, tup));
 
-        spdlog::info("5");
         auto ex5 = MOD(Int(13), Int(6));
         auto res5 = interpret_expression(qctx, ex5, tup);
         REQUIRE(qv_get_int(res5) == 1);
