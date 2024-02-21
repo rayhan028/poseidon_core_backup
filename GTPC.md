@@ -55,4 +55,6 @@ can be found in `${POSEIDON_HOME}/queries/gtpc/olap`. The file `queries.pql` con
 all queries. Alternatively, the directory contains also all single queries, e.g. `olap1.q`,
 `olap2.q` etc.
 
+```
 ${POSEIDON_HOME}/build/pcli --pool gtpc --db testdb -b 10000 -q queries.pql
+```

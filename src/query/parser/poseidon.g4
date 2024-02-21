@@ -257,3 +257,5 @@ REGEX     :    '=~';
 NOT       :    '!' | 'not';
 
 WHITESPACE : [ \t\r\n]+ -> skip ;
+
+COMMENT : '/*' ( COMMENT | . )*? '*/'  -> skip ; 

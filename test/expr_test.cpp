@@ -370,14 +370,22 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
         boost::posix_time::ptime t(boost::posix_time::time_from_string(ts));
         prepare_expr_visitor vis(qctx, nullptr);
 
-        auto ex1 = EQ(Fct("pb", "to_datetime", std::vector<expr>{ Str(ts)}), Time(t));
+        auto fc1 = Fct("pb", "to_datetime", std::vector<expr>{ Str(ts) }, expr_type::DATETIME);
+        // for testing purpose only
+        std::dynamic_pointer_cast<func_call>(fc1)->is_deterministic_ = false;
+        auto ex1 = EQ(fc1, Time(t));
         ex1->accept(vis);
         REQUIRE(interpret_bool_expression(qctx, ex1, tup) == true);
+        CC_REQUIRE(compile_expression(qctx, ex1, tup, true) == true);
 
         auto ts2 = boost::posix_time::to_iso_extended_string(t);
-        auto ex2 = EQ(Fct("pb", "ptime_to_dtimestring", std::vector<expr>{ Time(t)}), Str(ts2));
+        auto fc2 = Fct("pb", "ptime_to_dtimestring", std::vector<expr>{ Time(t) }, expr_type::STRING);
+        // for testing purpose only
+        std::dynamic_pointer_cast<func_call>(fc2)->is_deterministic_ = false;
+        auto ex2 = EQ(fc2, Str(ts2));
         ex2->accept(vis);
         REQUIRE(interpret_bool_expression(qctx, ex2, tup) == true);
+        // TODO: bus error -- CC_REQUIRE(compile_expression(qctx, ex2, tup, true) == true);
     }
     
     SECTION("expressions with variables") {
@@ -391,12 +399,12 @@ TEST_CASE("Creating and interpreting expressions", "[expression]") {
             auto ex0 = Fct("pb", "label", std::vector<expr>{ Variable(0, expr_type::NODE) });
             ex0->accept(vis);
             auto res = interpret_expression(qctx, ex0, tup);
-            spdlog::info("pb::label(...) -> {}:{}", qv_get_string(res), res.which());
             REQUIRE(qv_get_string(res) == "Person");
 
-            auto ex1 = EQ(Fct("pb", "label", std::vector<expr>{ Variable(0, expr_type::NODE) }), Str("Person"));
+            auto ex1 = EQ(Fct("pb", "label", std::vector<expr>{ Variable(0, expr_type::NODE) }, expr_type::STRING), Str("Person"));
             ex1->accept(vis);
             REQUIRE(interpret_bool_expression(qctx, ex1, tup) == true);
+            CC_REQUIRE(compile_expression(qctx, ex1, tup) == true);
 
             auto ex2 = EQ(Variable(0, "id", id_code, expr_type::INT), Int(42));
             ex2->accept(vis);

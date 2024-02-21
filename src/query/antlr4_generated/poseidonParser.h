@@ -27,7 +27,8 @@ public:
     NAME_ = 60, STRING_ = 61, COLON_ = 62, DOUBLE_COLON = 63, COMMA_ = 64, 
     LPAREN = 65, RPAREN = 66, LBRACKET = 67, RBRACKET = 68, OR = 69, AND = 70, 
     EQUALS = 71, NOTEQUALS = 72, LT = 73, LTEQ = 74, GT = 75, GTEQ = 76, 
-    PLUS_ = 77, MULT = 78, DIV = 79, MOD = 80, REGEX = 81, NOT = 82, WHITESPACE = 83
+    PLUS_ = 77, MULT = 78, DIV = 79, MOD = 80, REGEX = 81, NOT = 82, WHITESPACE = 83, 
+    COMMENT = 84
   };
 
   enum {

@@ -214,9 +214,11 @@ struct func_call : public expression, std::enable_shared_from_this<func_call> {
             fop_ = expr_op::CALL;
         }
 
-   func_call(const std::string& pfx, const std::string& fn, const std::vector<expr>& pl) : 
+   func_call(const std::string& pfx, const std::string& fn, const std::vector<expr>& pl, expr_type res = expr_type::INT) : 
         func_prefix_(pfx), func_name_(fn), param_list_(pl), func1_ptr_(nullptr), func2_ptr_(nullptr), is_deterministic_(true) {
             fop_ = expr_op::CALL;
+            ftype_ = rtype_ = res;
+
         }
 
     std::string dump() const override;
@@ -239,8 +241,8 @@ inline expr Fct(const std::string& fname, const std::vector<expr>& params) {
     return std::make_shared<func_call>(fname, params); 
 }
 
-inline expr Fct(const std::string& pfx, const std::string& fname, const std::vector<expr>& params) { 
-    return std::make_shared<func_call>(pfx, fname, params); 
+inline expr Fct(const std::string& pfx, const std::string& fname, const std::vector<expr>& params, expr_type res = expr_type::INT) { 
+    return std::make_shared<func_call>(pfx, fname, params, res); 
 }
 
 #endif 

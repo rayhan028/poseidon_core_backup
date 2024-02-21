@@ -98,4 +98,11 @@ dcode_t get_node_property_string_value(query_ctx *ctx, node *n, dcode_t label);
 
 inline node* qr_get_node(qr_tuple* v, std::size_t i) { return boost::get<node*>(v->at(i)); }
 
+const char *get_node_label(query_ctx *ctx, node *n);
+
+ 
+uint64_t string_to_ptime(query_ctx *ctx, uint8_t *s);
+
+std::string ptime_to_string(query_ctx *ctx, uint64_t pt);
+
 #endif

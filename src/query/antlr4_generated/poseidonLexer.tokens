@@ -81,6 +81,7 @@ MOD=80
 REGEX=81
 NOT=82
 WHITESPACE=83
+COMMENT=84
 '..'=1
 '<-'=2
 '->'=3

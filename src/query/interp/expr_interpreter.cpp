@@ -255,7 +255,7 @@ public:
     }
 
     virtual void* visit(std::shared_ptr<variable> op) override {
-         std::cout << "visit variable: " << op->id_ << ", " << op->pcode_ << " : " << tup_.size() << std::endl;
+        // std::cout << "visit variable: " << op->id_ << ", " << op->pcode_ << " : " << tup_.size() << std::endl;
         auto inp = tup_[op->id_];
         p_item res;
         switch (inp.which()) {
@@ -264,7 +264,7 @@ public:
                 auto nptr = qv_get_node(inp);
                 // if key_ is empty then the node is requested ($i:node)
                 if (op->pcode_ == UNKNOWN_CODE) {
-                     std::cout << "id = " << nptr->id() << std::endl;
+                    // std::cout << "id = " << nptr->id() << std::endl;
                     stack_.push(query_result(nptr));
                 }
                 else {
@@ -385,12 +385,12 @@ public:
     }
 
     virtual void* visit(std::shared_ptr<func_call> op) override {
-         std::cout << "visit func_call: " << op->func_name_ << " : " << op->param_list_.size() << std::endl;
+        // std::cout << "visit func_call: " << op->func_name_ << " : " << op->param_list_.size() << std::endl;
 
         if (op->param_list_.size() == 1) {
             auto arg = pop(stack_);
             assert(op->func1_ptr_ != nullptr);
-             std::cout << "func_call: arg = " << arg << std::endl;
+            // std::cout << "func_call: arg = " << arg << std::endl;
             auto res = op->func1_ptr_(ctx_, arg);
             // std::cout << "func_call: result = " << res << std::endl;
             stack_.push(res);

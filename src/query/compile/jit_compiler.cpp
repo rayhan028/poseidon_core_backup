@@ -164,6 +164,13 @@ jit_compiler::jit_compiler(llvm::ExitOnError exitOnError, std::unique_ptr<Execut
     s_map[mangle("get_node_property_string_value")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_node_property_string_value), JITSymbolFlags::Exported);
 
+    s_map[mangle("get_node_label")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&get_node_label), JITSymbolFlags::Exported);
+    s_map[mangle("string_to_ptime")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&string_to_ptime), JITSymbolFlags::Exported);
+    s_map[mangle("ptime_to_string")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&ptime_to_string), JITSymbolFlags::Exported);
+
     exitOnError(mainJD_.define(absoluteSymbols(s_map)));
 }
 

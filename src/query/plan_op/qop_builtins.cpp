@@ -323,6 +323,7 @@ boost::posix_time::ptime iso_dtimestring_to_ptime(const std::string& d) {
 }
 
 std::string ptime_to_dtimestring(boost::posix_time::ptime t) {
+  std::cout << "---> " << t << std::endl;
   return to_iso_extended_string(t);
 }
 

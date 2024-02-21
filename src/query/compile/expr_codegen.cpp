@@ -57,6 +57,8 @@ void* expr_codegen::visit(std::shared_ptr<variable> op) {
             callee = gen_.extern_func(module_, "qr_get_ptime"); break;
         case expr_type::UINT64:
             callee = gen_.extern_func(module_, "qr_get_uint64"); break;
+        case expr_type::NODE:
+            callee = gen_.extern_func(module_, "qr_get_node"); break;
         default:
             // TODO
             break;
@@ -99,8 +101,33 @@ void* expr_codegen::visit(std::shared_ptr<time_literal> op) {
 
     return llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(64, msecs, true));    
 }
-    
-void* expr_codegen::visit(std::shared_ptr<func_call> op) { return nullptr; }
+
+    // map op->func_name_ to JIT function
+std::string expr_codegen::get_jit_func_name(const std::string& pfx, const std::string& fname) {
+    if (pfx == "pb") {
+        // Poseidon builtin functions
+        spdlog::info("get_jit_func_name: {}", fname);
+        if (fname == "label")
+            return "get_node_label";
+        else if (fname == "to_datetime")
+            return "string_to_ptime";
+        else if (fname == "ptime_to_dtimestring")
+            return "ptime_to_string";
+    }
+    return "";
+}
+   
+void* expr_codegen::visit(std::shared_ptr<func_call> op) { 
+    std::vector<llvm::Value *> arg_list;
+    arg_list.push_back(start_->getArg(0));
+    for (auto& p : op->param_list_) {
+        auto pv = static_cast<llvm::Value*>(p->accept(*this));
+        arg_list.push_back(pv);
+    }
+    auto fname = get_jit_func_name(op->func_prefix_, op->func_name_);
+    llvm::FunctionCallee callee = gen_.extern_func(module_, fname);
+    return gen_.get_builder()->CreateCall(callee, llvm::ArrayRef<llvm::Value *>(arg_list));
+}
 
 /**
  * Generates the code for a == predicate.
@@ -254,16 +281,6 @@ void* expr_codegen::visit(std::shared_ptr<or_predicate> op) {
     auto lhs = static_cast<llvm::Value*>(op->left_->accept(*this));
     auto rhs = static_cast<llvm::Value*>(op->right_->accept(*this));
 
-    /*  
-    auto i1_ty = llvm::Type::getInt1Ty(gen_.get_context());
-    auto lhs32 = gen_.get_builder()->CreateIntCast(lhs, i1_ty, true);
-    auto rhs32 = gen_.get_builder()->CreateIntCast(rhs, i1_ty, true);
-
-
-    auto or_op = gen_.get_builder()->CreateOr({ lhs32, rhs32 });
-    auto val_0 = llvm::ConstantInt::get(gen_.get_context(), llvm::APInt(32, 0, true));
-    return gen_.get_builder()->CreateICmpNE(or_op, val_0);
-  */  
     return gen_.get_builder()->CreateLogicalOr(lhs, rhs);
 }
 

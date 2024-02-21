@@ -15,6 +15,10 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE(qp.parse_("NodeScan(['Comment', 'Post'])"));
     }
 
+    SECTION("Comment") {
+        REQUIRE(qp.parse_("/* a comment */ NodeScan()"));
+    }
+
     SECTION("RelationshipScan") {
         REQUIRE(qp.parse_("RelationshipScan()"));
         REQUIRE(qp.parse_("RelationshipScan('isLocated')"));

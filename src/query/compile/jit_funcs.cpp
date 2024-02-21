@@ -16,6 +16,10 @@
  * You should have received a copy of the GNU General Public License
  * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
  */
+
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 #include "exceptions.hpp"
 #include "jit_funcs.hpp"
 
@@ -118,4 +122,29 @@ dcode_t get_node_property_string_value(query_ctx *ctx, node *n, dcode_t label) {
     auto item = ctx->gdb_->get_node_properties()->property_value(n->property_list, label);
     std::cout << "item: " << item << std::endl;
     return item.get<dcode_t>();
+}
+
+const char *get_node_label(query_ctx *ctx, node *n) {
+    return ctx->get_string(n->node_label);
+}
+
+uint64_t string_to_ptime(query_ctx *ctx, uint8_t *s) {
+    using namespace boost::posix_time;
+
+    auto d = (const char *)s;
+    auto tm = time_from_string(d);
+
+    static ptime epoch(boost::gregorian::date(1970, 1, 1));
+    auto msecs = (tm - epoch).total_milliseconds();
+    return msecs;
+}
+
+std::string ptime_to_string(query_ctx *ctx, uint64_t ms) {
+    using namespace boost::posix_time;
+
+    static const ptime epoch(boost::gregorian::date(1970, 1, 1));
+    auto p = epoch + milliseconds(ms);   
+
+    std::string s = to_iso_extended_string(p); 
+    return s;   
 }

@@ -88,6 +88,19 @@ ir_generator::ir_generator(llvm::LLVMContext& ctx) : ctx_(ctx) {
 
     auto regex_match_ty = llvm::FunctionType::get(i1_ty, { i8_ptr_ty, i64_ty }, false);
     func_types_["regex_match"] = regex_match_ty;
+
+    // builtin functions
+    // const char* get_node_label(query_ctx& qctx, node *) 
+    auto get_node_label_ty = llvm::FunctionType::get(i8_ptr_ty, { qctx_ptr_ty, node_ptr_ty }, false);
+    func_types_["get_node_label"] = get_node_label_ty;
+
+    // boost::posix_time::ptime (milliseconds) string_to_ptime(query_ctx *, uint8_t *)
+    auto string_to_ptime_ty = llvm::FunctionType::get(i64_ty, { qctx_ptr_ty, i8_ptr_ty }, false);
+    func_types_["string_to_ptime"] = string_to_ptime_ty;
+
+    // std::string ptime_to_string(query_ctx *ctx, boost::posix_time::ptime pt (milliseconds))
+    auto ptime_to_string_ty = llvm::FunctionType::get(i8_ptr_ty, { qctx_ptr_ty, i64_ty }, false);
+    func_types_["ptime_to_string"] = ptime_to_string_ty;
 }
 
 llvm::FunctionCallee ir_generator::extern_func(std::unique_ptr<llvm::Module>& module, const std::string& fct_name) {
