@@ -20,6 +20,16 @@ ${GTPC_HOME}/datagen/build/gtpc_datagen -d data -w 5
 
 4. Import the data in Poseidon
 
+The CSV importer tries to infer the data types of the columns automatically. This doesn't produce
+always the best results, but can be controlled by a type specification file, e.g. the following
+ `types.mapping` file for GTPC:
+```
+Customer.phone:string
+Supplier.phone:string
+```
+
+Using this file you can import the previously generated data:
+
 ```
 ${POSEIDON_HOME}/build/pcli -b 100000 --pool gtpc --db testdb -f ldbc --delimiter '|' \
     --import-path data \
@@ -43,7 +53,8 @@ ${POSEIDON_HOME}/build/pcli -b 100000 --pool gtpc --db testdb -f ldbc --delimite
     --import relationships:hasSupplier:stock_hasSupplier_supplier_0_0.csv \
     --import relationships:isLocatedIn:supplier_isLocatedIn_nation_0_0.csv \
     --import relationships:covers:warehouse_covers_district_0_0.csv \
-    --import relationships:hasStock:warehouse_hasStock_stock_0_0.csv
+    --import relationships:hasStock:warehouse_hasStock_stock_0_0.csv \
+    --typespec types.mapping
 ```
 
 This creates a database `testdb` in the pool `gtpc` in the current directory.
