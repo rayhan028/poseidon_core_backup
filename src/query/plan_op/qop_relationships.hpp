@@ -22,8 +22,7 @@
 
 #include "qop.hpp"
 
-
-struct foreach_relationship : public qop, public std::enable_shared_from_this<foreach_relationship> {
+struct foreach_relationship : public enable_shared<qop, foreach_relationship> {
   foreach_relationship() = default;
   
   foreach_relationship(RSHIP_DIR dir, const std::string &l, int pos = std::numeric_limits<int>::max()) 

@@ -26,7 +26,7 @@
  * cross_join_op implements a binary operator for constructing the cartesian
  * product of the results provided by the two input query operators.
  */
-struct cross_join_op : public qop, public std::enable_shared_from_this<cross_join_op> {
+struct cross_join_op : public enable_shared<qop, cross_join_op> {
   cross_join_op() : phases_(0) { type_ = qop_type::cross_join; }
   cross_join_op(qop_ptr &rhs) : rhs_(rhs) { type_ = qop_type::cross_join; }
   ~cross_join_op() = default;
@@ -59,7 +59,7 @@ private:
    * is the same as the node at another given position in the right tuple.
    * The node positions are specified by the pos pair.
    */
-struct nested_loop_join_op : public qop, public std::enable_shared_from_this<nested_loop_join_op> {
+struct nested_loop_join_op : public enable_shared<qop, nested_loop_join_op> {
   nested_loop_join_op(std::pair<int, int> pos) : left_right_nodes_(pos) { type_ = qop_type::nest_loop_join; } 
   nested_loop_join_op(std::pair<int, int> pos, qop_ptr &rhs) : left_right_nodes_(pos), rhs_(rhs) { type_ = qop_type::nest_loop_join; }
   ~nested_loop_join_op() = default;
@@ -94,7 +94,7 @@ private:
    * is the same as the node at another given position in the right tuple.
    * The node positions are specified by the pos pair.
    */
-struct hash_join_op : public qop, public std::enable_shared_from_this<hash_join_op> {
+struct hash_join_op : public enable_shared<qop, hash_join_op> {
   hash_join_op(std::shared_ptr<variable> l, std::shared_ptr<variable> r) : phases_(0), lhs_var_(l), rhs_var_(r) { 
     type_ = qop_type::hash_join;
   } 
@@ -130,7 +130,7 @@ private:
  * of two queries based on the given join condition. 
  * Dangling tuples are padded with "null_val" 
  */
-struct left_outer_join_op : public qop, public std::enable_shared_from_this<left_outer_join_op> {
+struct left_outer_join_op : public enable_shared<qop, left_outer_join_op>  {
   left_outer_join_op(const expr &ex) : phases_(0), ex_(ex) { type_ = qop_type::left_join; }
   left_outer_join_op(std::function<bool(const qr_tuple &, const qr_tuple &)> pred) : phases_(0), pred_(pred) { type_ = qop_type::left_join; } 
   ~left_outer_join_op() = default;

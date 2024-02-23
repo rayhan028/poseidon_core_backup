@@ -83,6 +83,14 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitExists_op(poseidonParser::Exists_opContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitAll_exists(poseidonParser::All_existsContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opContext *ctx) override {
     return visitChildren(ctx);
   }

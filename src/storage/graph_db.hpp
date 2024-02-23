@@ -63,6 +63,8 @@ public:
    */
   using mapping_t = robin_hood::unordered_map<std::string, node::id_t>;
 
+  using typespec_t = robin_hood::unordered_map<std::string, p_item::p_typecode>;
+
   using node_consumer_func = std::function<void(node &)>;
   using rship_consumer_func = std::function<void(relationship &)>;
 
@@ -241,7 +243,7 @@ public:
 
   std::size_t import_typed_nodes_from_csv(const std::string &label,
                                     const std::string &filename, char delim,
-                                    mapping_t &m, std::mutex *mtx = nullptr);
+                                    mapping_t &m, typespec_t &ty, std::mutex *mtx = nullptr);
   std::size_t import_typed_n4j_nodes_from_csv(const std::string &label,
                                     const std::string &filename, char delim,
                                     mapping_t &m);

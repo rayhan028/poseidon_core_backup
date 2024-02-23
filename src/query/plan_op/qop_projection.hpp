@@ -51,7 +51,7 @@ using user_defined_func = boost::variant<user_defined_func1, user_defined_func2>
 /**
  * projection implements a project operator.
  */
-struct projection : public qop, public std::enable_shared_from_this<projection> {
+struct projection : public enable_shared<qop, projection> {
   struct pexpr {
     std::size_t idx;   // index of the input in the query_result
     std::string pname; // name of the property pr empty 

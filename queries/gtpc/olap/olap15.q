@@ -1,6 +1,8 @@
-Project([$3.id:uint64, $3.name:string, $3.address:string, $3.phone:uint64, $1:double],
-    HashJoin([$0:uint64, $0.id:uint64],
-        Filter($1:double = $2:double,
+/* This query finds the top supplier or suppliers who contributed the most to the overall revenue for items 
+   shipped during a given period of time. */
+Project([$3.id:uint64, $3.name:string, $3.address:string, $3.phone:string, $1:double],
+    HashJoin([$0:uint64], [$0.id:uint64],
+        Filter($1:double == $2:double,
             GroupBy([$0:uint64, $1:double],[max($1:double)],
                 GroupBy([$4.id:uint64],[sum($0.amount:double)],
                     Filter($0.delivery_d:datetime <= pb::to_datetime('2011-01-02 00:00:00.000000'), 

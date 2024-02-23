@@ -37,11 +37,11 @@
 #endif
 
 
-void shortest_path_opr::dump(std::ostream &os) const {
-  os << "shortest_path_opr([]) - " << PROF_DUMP;
+void shortest_path_op::dump(std::ostream &os) const {
+  os << "shortest_path_op([]) - " << PROF_DUMP;
 }
 
-void shortest_path_opr::process(query_ctx &ctx, const qr_tuple &v) {
+void shortest_path_op::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   auto start = boost::get<node *>(v[start_stop_.first])->id();
   auto stop = boost::get<node *>(v[start_stop_.second])->id();
@@ -76,11 +76,11 @@ void shortest_path_opr::process(query_ctx &ctx, const qr_tuple &v) {
 
 /* ------------------------------------------------------------------------ */
 
-void weighted_shortest_path_opr::dump(std::ostream &os) const {
-  os << "weighted_shortest_path_opr([]) - " << PROF_DUMP;
+void weighted_shortest_path_op::dump(std::ostream &os) const {
+  os << "weighted_shortest_path_op([]) - " << PROF_DUMP;
 }
 
-void weighted_shortest_path_opr::process(query_ctx &ctx, const qr_tuple &v) {
+void weighted_shortest_path_op::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   auto start = boost::get<node *>(v[start_stop_.first])->id();
   auto stop = boost::get<node *>(v[start_stop_.second])->id();
@@ -116,11 +116,11 @@ void weighted_shortest_path_opr::process(query_ctx &ctx, const qr_tuple &v) {
 
 /* ------------------------------------------------------------------------ */
 
-void k_weighted_shortest_path_opr::dump(std::ostream &os) const {
+void k_weighted_shortest_path_op::dump(std::ostream &os) const {
   os << "k_weighted_shortest_path_opr([]) - " << PROF_DUMP;
 }
 
-void k_weighted_shortest_path_opr::process(query_ctx &ctx, const qr_tuple &v) {
+void k_weighted_shortest_path_op::process(query_ctx &ctx, const qr_tuple &v) {
   PROF_PRE;
   auto start = boost::get<node *>(v[start_stop_.first])->id();
   auto stop = boost::get<node *>(v[start_stop_.second])->id();

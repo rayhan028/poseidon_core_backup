@@ -30,7 +30,7 @@
  *   to the subscriber. 
  * - In SET mode all the input tuples are collected and finally passed to the algorithm. The result is a single tuple.
 */
-struct algorithm_op : public qop, public std::enable_shared_from_this<algorithm_op> {
+struct algorithm_op : public enable_shared<qop, algorithm_op> /*public qop, public std::enable_shared_from_this<algorithm_op>*/ {
     enum mode_t { m_tuple, m_set } call_mode_; // call mode of algorithm: per tuple or whole result set  
     using param_list = std::vector<std::any>; // parameter list for invoking the algorithm
 

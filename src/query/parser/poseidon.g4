@@ -18,6 +18,7 @@ query_operator : filter_op
         | group_by_op
         | union_op
         | except_op
+        | exists_op
         | sort_op
         | distinct_op
         | create_op
@@ -62,6 +63,10 @@ crossjoin_op : CrossJoin_ '(' query_operator ',' query_operator ')' ;
 // HashJoin
 hashjoin_op : HashJoin_ '(' '[' variable ']' ',' '[' variable ']' ',' query_operator ',' query_operator ')' ;
 
+// Exists / NotExists
+exists_op : all_exists '(' query_operator ',' query_operator ')' ;
+all_exists : Exists_ | NotExists_ ;
+
 // LeftOuterJoin
 leftouterjoin_op : LeftOuterJoin_ '(' logical_expr ',' query_operator ',' query_operator ')' ;
 
@@ -69,7 +74,7 @@ leftouterjoin_op : LeftOuterJoin_ '(' logical_expr ',' query_operator ',' query_
 nljoin_op : NLJoin_ '(' logical_expr ',' query_operator ',' query_operator ')' ;
 
 // ForeachRelationship
-foreach_relationship_op : ForeachRelationship_ '(' rship_dir ',' STRING_ (',' rship_cardinality)?  (',' rship_source_var)? ',' query_operator ')' ;
+foreach_relationship_op : ForeachRelationship_ '(' rship_dir ',' STRING_ (',' rship_cardinality)?  (',' rship_source_var)? (',' query_operator)? ')' ;
 rship_dir : FromDir_ | ToDir_ | AllDir_;
 rship_cardinality : INTEGER ',' INTEGER ;
 rship_source_var : Var ;
@@ -179,6 +184,8 @@ Project_     : 'Project' ;
 Limit_       : 'Limit' ;
 CrossJoin_   : 'CrossJoin' ;
 HashJoin_    : 'HashJoin' ;
+Exists_      : 'Exists' ;
+NotExists_   : 'NotExists' ;
 NLJoin_      : 'NLJoin' ;
 LeftOuterJoin_ : 'LeftOuterJoin' ;
 Expand_      : 'Expand' ;

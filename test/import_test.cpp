@@ -146,7 +146,8 @@ TEST_CASE("Importing nodes with many properties from CSV", "[graph_db]") {
     home = h;
 
   graph_db::mapping_t id_map;
-  auto num = graph->import_typed_nodes_from_csv("Post", home + "/test/post.csv", '|', id_map);
+  graph_db::typespec_t type_map;
+  auto num = graph->import_typed_nodes_from_csv("Post", home + "/test/post.csv", '|', id_map, type_map);
   REQUIRE(num == 19);
 
   graph->begin_transaction();

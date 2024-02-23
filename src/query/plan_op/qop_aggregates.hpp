@@ -27,7 +27,7 @@
  * aggregate is a query operator for aggregating results. Multiple different
  * aggregates are possible but the operator produces only a single result tuple.
  */
-struct aggregate : public qop, public std::enable_shared_from_this<aggregate> {
+struct aggregate : public enable_shared<qop, aggregate> {
   /**
    * Aggregation expression.
    */
@@ -132,7 +132,7 @@ struct aggregate : public qop, public std::enable_shared_from_this<aggregate> {
                                    const expr &ex);
 };
 
-struct group_by : public qop, public std::enable_shared_from_this<group_by> {
+struct group_by : public enable_shared<qop, group_by> {
   using expr = aggregate::expr;
   using val_t = aggregate::val_t;
   using aggr_vals_t = std::vector<val_t>;

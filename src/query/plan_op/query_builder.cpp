@@ -349,18 +349,18 @@ query_builder &query_builder::left_outer_join(query_pipeline &other, std::functi
 
 query_builder &query_builder::algo_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
                       rship_predicate rpred, bool bidirectional, bool all_spaths) {
-  auto op = std::make_shared<shortest_path_opr>(start_stop, rpred, bidirectional, all_spaths);
+  auto op = std::make_shared<shortest_path_op>(start_stop, rpred, bidirectional, all_spaths);
   qpipeline_.append_op(op,
-                   std::bind(&shortest_path_opr::process, op.get(), ph::_1, ph::_2));
+                   std::bind(&shortest_path_op::process, op.get(), ph::_1, ph::_2));
   return *this;                               
 }
 
 query_builder &query_builder::algo_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
             rship_predicate rpred, rship_weight weight, bool bidirectional, bool all_spaths) {
-  auto op = std::make_shared<weighted_shortest_path_opr>(start_stop, rpred, weight,
+  auto op = std::make_shared<weighted_shortest_path_op>(start_stop, rpred, weight,
                                                           bidirectional, all_spaths);
   qpipeline_.append_op(op,
-                   std::bind(&weighted_shortest_path_opr::process, op.get(), ph::_1, ph::_2));
+                   std::bind(&weighted_shortest_path_op::process, op.get(), ph::_1, ph::_2));
   return *this;                               
 }
 
@@ -389,9 +389,9 @@ query_builder &query_builder::gunrock_pr(bool bidirectional) {
 
 query_builder &query_builder::algo_k_weighted_shortest_path(std::pair<std::size_t, std::size_t> start_stop,
       std::size_t k, rship_predicate rpred, rship_weight weight, bool bidirectional) {
-  auto op = std::make_shared<k_weighted_shortest_path_opr>(start_stop, k, rpred, weight, bidirectional);
+  auto op = std::make_shared<k_weighted_shortest_path_op>(start_stop, k, rpred, weight, bidirectional);
   qpipeline_.append_op(op,
-                   std::bind(&k_weighted_shortest_path_opr::process, op.get(), ph::_1, ph::_2));
+                   std::bind(&k_weighted_shortest_path_op::process, op.get(), ph::_1, ph::_2));
   return *this;                               
 }
 

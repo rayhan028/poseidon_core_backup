@@ -4,7 +4,7 @@ GroupBy([$0.number:int], [sum($0.quantity:int), count($0.id:int), sum($0.amount:
 		NodeScan('OrderLine'))))
 
 Sort([$2:string DESC, $1:string DESC, $0:uint64 DESC],
-Project([$0.id:uint64, $4.name:string, $6.name:string, $0.name:string, $4.address:string, $4.phone:uint64, $4.comment:string],
+Project([$0.id:uint64, $4.name:string, $6.name:string, $0.name:string, $4.address:string, $4.phone:string, $4.comment:string],
 Filter($0.id:uint64 = $9:uint64 && $2.quantity:int = $10:int,
     CrossJoin(
     Filter($8.name:string =~ 'EUROP.*' && $0.data:string =~ '.*b',
@@ -73,7 +73,7 @@ Sort([$0:string DESC, $1:int DESC],
                                 Match((o:Order)-[:contains]->(ol:OrderLine)-[:hasStock]->(s:Stock)<-[:hasStock]-(i:Item))))))))))
 
 Sort([$5:double ASC],
-    GroupBy([$0.id:uint64, $0.last:string, $0.city:string, $0.phone:uint64, $6.name:string], [sum($4.amount:double)],
+    GroupBy([$0.id:uint64, $0.last:string, $0.city:string, $0.phone:string, $6.name:string], [sum($4.amount:double)],
         Expand(OUT, 'Nation',
             ForeachRelationship(FROM, 'isLocatedIn', $0,
                 Filter($2.entry_d:datetime >= pb::to_datetime('2007-01-02 00:00:00.000000') && $2.entry_d:datetime <= $4.delivery_d:datetime,
@@ -95,10 +95,16 @@ Sort([$2:int ASC],
 )
 
 Sort([$0:int ASC],
-GroupBy([$0:int], [sum($1:int), sum($2:int)],
-Project([$0.ol_cnt:int, Case($0.carrier_id:int == 1 || $0.carrier_id:int == 2, 1, 0), Case($0.carrier_id:int != 1 && $0.carrier_id:int != 2, 1, 0)],
-Filter($0.entry_d:datetime <= $2.delivery_d:datetime && $2.delivery_d:datetime < pb::to_datetime('2020-01-01 00:00:00.000000'),
-    Match((o:Order)-[:contains]->(ol:OrderLine)))))) 
+    GroupBy([$0:int], [sum($1:int), sum($2:int)],
+        Project([$0.ol_cnt:int, Case($0.carrier_id:int == 1 || $0.carrier_id:int == 2, 1, 0), 
+                Case($0.carrier_id:int != 1 && $0.carrier_id:int != 2, 1, 0)],
+            Filter($0.entry_d:datetime <= $2.delivery_d:datetime && 
+                    $2.delivery_d:datetime < pb::to_datetime('2020-01-01 00:00:00.000000'),
+                Match((o:Order)-[:contains]->(ol:OrderLine))
+            )
+        )
+    )
+) 
 
 Sort([$1:int DESC, $0:int DESC],
 GroupBy([$1:int], [count($0:uint64)],
@@ -112,9 +118,9 @@ Project([$0:double/$1:double],
             Project([$0.amount:double, Case($4.data:string =~ 'PR.*', $0.amount:double, 0.0)],
                 Match((ol:OrderLine)-[:hasStock]->(s:Stock)<-[:hasStock]-(i:Item)))))) 
 
-Project([$3.id:uint64, $3.name:string, $3.address:string, $3.phone:uint64, $1:double],
-    HashJoin([$0:uint64, $0.id:uint64],
-        Filter($1:double = $2:double,
+Project([$3.id:uint64, $3.name:string, $3.address:string, $3.phone:string, $1:double],
+    HashJoin([$0:uint64], [$0.id:uint64],
+        Filter($1:double == $2:double,
             GroupBy([$0:uint64, $1:double],[max($1:double)],
                 GroupBy([$4.id:uint64],[sum($0.amount:double)],
                     Filter($0.delivery_d:datetime <= pb::to_datetime('2011-01-02 00:00:00.000000'), 
@@ -177,3 +183,14 @@ Filter($1:int > $2:int,
                 Match((i:Item)-[:hasStock]->(s:Stock)<-[:hasStock]-(ol:OrderLine)))))),
     Match((n:Nation {name: 'TAIWAN'})<-[:isLocatedIn]-(supp:Supplier)<-[:hasSupplier]-(s:Stock))
 )))
+
+GroupBy([$6.name:string], [count($0.id:uint64)],
+    NotExists(
+        Filter($2.delivery_d:datetime > $0.entry_d:datetime && $8.name:string == 'GERMANY',
+            Match((o:Order)-[:contains]->(ol1:OrderLine)-[:hasStock]->(s:Stock)-[:hasSupplier]->(sup:Supplier)-[:isLocatedIn]->(n:Nation))),
+        Filter($10.delivery_d:datetime > $2.delivery_d:datetime,
+            Expand(OUT, 'OrderLine',
+                ForeachRelationship(FROM, 'contains', $0))
+        )
+    )
+)

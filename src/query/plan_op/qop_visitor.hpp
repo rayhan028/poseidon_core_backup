@@ -45,9 +45,9 @@ struct distinct_tuples;
 struct filter_op;
 struct union_all_op;
 struct except_op;
-struct shortest_path_opr;
-struct weighted_shortest_path_opr;
-struct k_weighted_shortest_path_opr;
+struct shortest_path_op;
+struct weighted_shortest_path_op;
+struct k_weighted_shortest_path_op;
 struct csr_data;
 struct collect_result;
 struct projection;
@@ -62,6 +62,8 @@ struct detach_node;
 struct remove_node;
 struct remove_relationship;
 struct algorithm_op;
+struct exists_op;
+struct start_pipeline;
 
 class qop_visitor {
 public:
@@ -83,9 +85,9 @@ public:
     virtual void visit(std::shared_ptr<filter_op> op) {}
     virtual void visit(std::shared_ptr<union_all_op> op) {}
     virtual void visit(std::shared_ptr<except_op> op) {}
-    virtual void visit(std::shared_ptr<shortest_path_opr> op) {}
-    virtual void visit(std::shared_ptr<weighted_shortest_path_opr> op) {}
-    virtual void visit(std::shared_ptr<k_weighted_shortest_path_opr> op) {}
+    virtual void visit(std::shared_ptr<shortest_path_op> op) {}
+    virtual void visit(std::shared_ptr<weighted_shortest_path_op> op) {}
+    virtual void visit(std::shared_ptr<k_weighted_shortest_path_op> op) {}
     virtual void visit(std::shared_ptr<csr_data> op) {}
     virtual void visit(std::shared_ptr<collect_result> op) {}
     virtual void visit(std::shared_ptr<projection> op) {}
@@ -100,6 +102,8 @@ public:
     virtual void visit(std::shared_ptr<remove_node> op) {}
     virtual void visit(std::shared_ptr<remove_relationship> op) {}
     virtual void visit(std::shared_ptr<algorithm_op> op) {}
+    virtual void visit(std::shared_ptr<exists_op> op) {}
+    virtual void visit(std::shared_ptr<start_pipeline> op) {}
 };
 
 #endif

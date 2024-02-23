@@ -61,6 +61,7 @@ public:
   std::any visitAggregate_op(poseidonParser::Aggregate_opContext *ctx) override;
   std::any visitUnion_op(poseidonParser::Union_opContext *ctx) override;
   std::any visitExcept_op(poseidonParser::Except_opContext *ctx) override;
+  std::any visitExists_op(poseidonParser::Exists_opContext *ctx) override;
   std::any visitGroup_by_op(poseidonParser::Group_by_opContext *ctx) override;
   std::any visitDistinct_op(poseidonParser::Distinct_opContext *ctx) override;
 
@@ -104,6 +105,7 @@ public:
 private:
   query_ctx qctx_;
   std::vector<qop_ptr> sources_;
+  std::vector<qop_ptr> roots_;
   std::shared_ptr<boost::dll::shared_library> udf_lib_;
 
   /**

@@ -54,13 +54,42 @@ graph_pool_ptr pool;
 graph_db_ptr graph;
 std::unique_ptr<query_proc> qproc_ptr;
 
+graph_db::typespec_t load_typespecs(const std::string& filename) {
+  graph_db::typespec_t typespecs;
+
+  std::ifstream is(filename);
+  std::string line;
+
+  if (is.is_open()) {
+    while (getline(is, line)) {   
+      std::vector<std::string> res;
+      boost::split(res, line, boost::is_any_of(":"));
+      p_item::p_typecode tc = p_item::p_typecode::p_unused;
+      
+      if (res[1] == "string")
+        tc = p_item::p_typecode::p_dcode;
+      else if (res[1] == "int")
+        tc = p_item::p_typecode::p_int;
+      else if (res[1] == "double")
+        tc = p_item::p_typecode::p_double;
+      else if (res[1] == "uint64")
+        tc = p_item::p_typecode::p_uint64;
+      else if (res[1] == "datetime")
+        tc = p_item::p_typecode::p_date;
+      
+      typespecs.insert({ res[0], tc});
+    }
+  }
+  return typespecs;
+}
+
 /**
  * Import data from the given list of CSV files. The list contains
  * not only the files names but also nodes/relationships as well as
  * the labels.
  */
 bool import_csv_files(graph_db_ptr &gdb, std::string import_path, const std::vector<std::string> &files,
-                      char delimiter, std::string format, bool strict) {
+                      char delimiter, std::string format, bool strict, graph_db::typespec_t& import_types) {
   graph_db::mapping_t id_mapping;
 
   for (auto s : files) {
@@ -85,7 +114,7 @@ bool import_csv_files(graph_db_ptr &gdb, std::string import_path, const std::vec
       }
       else {
         num = strict
-          ? gdb->import_typed_nodes_from_csv(result[1], file_name, delimiter, id_mapping)
+          ? gdb->import_typed_nodes_from_csv(result[1], file_name, delimiter, id_mapping, import_types)
           : gdb->import_nodes_from_csv(result[1], file_name, delimiter, id_mapping);
       }
       auto end = std::chrono::steady_clock::now();
@@ -489,7 +518,7 @@ void exec_command(const std::string& cmd) {
 }
 
 int main(int argc, char* argv[]) {
-  std::string db_name, pool_path, query_file, import_path, dot_file, qmode_str, format = "ldbc";
+  std::string db_name, pool_path, query_file, import_path, dot_file, qmode_str, format = "ldbc", typespec_file;
   std::size_t bp_size = 0;
   std::vector<std::string> import_files;
   bool start_shell = false;
@@ -521,6 +550,7 @@ int main(int argc, char* argv[]) {
         ("import", value<std::vector<std::string>>()->composing(),
         "Import files in CSV format (either nodes:<node type>:<filename> or "
         "relationships:<rship type>:<filename>")
+        ("typespec,ts", value<std::string>(&typespec_file), "File with type definitions for CSV import")
         ("query,q", value<std::string>(&query_file), "Execute the queries from the given file")
         ("shell,s", bool_switch()->default_value(false), "Start the interactive shell (default)")
         ("llvm", bool_switch()->default_value(false), "Use query compile mode")
@@ -557,6 +587,9 @@ int main(int argc, char* argv[]) {
       import_files = vm["import"].as<std::vector<std::string>>();
       mode = import_mode;
     }
+    if (vm.count("typespec"))
+      typespec_file = vm["typespec"].as<std::string>();
+
     if (vm.count("pool"))
       pool_path = vm["pool"].as<std::string>();
 
@@ -617,8 +650,13 @@ int main(int argc, char* argv[]) {
   }
 
   if (!import_files.empty()) {
+    graph_db::typespec_t import_types;
+
+    if (!typespec_file.empty()) 
+      import_types = load_typespecs(typespec_file);
+
     spdlog::info("--------- Importing files ...");
-    import_csv_files(graph, import_path, import_files, delim_character, format, strict);
+    import_csv_files(graph, import_path, import_files, delim_character, format, strict, import_types);
     graph->print_stats();
   }
 

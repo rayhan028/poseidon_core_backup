@@ -21,13 +21,14 @@
 #define qop_set_hpp_
 
 #include "qop.hpp"
+#include "query_pipeline.hpp"
 
 /**
  * union_all_op implements an operator that unions all the
  * query tuples of the left query pipeline and the right query
  * pipeline(s).
  */
-struct union_all_op : public qop, public std::enable_shared_from_this<union_all_op> {
+struct union_all_op : public enable_shared<qop, union_all_op> {
   union_all_op() : init_(true), phases_(0) { type_ = qop_type::union_all; }
   ~union_all_op() = default;
 
@@ -51,7 +52,7 @@ struct union_all_op : public qop, public std::enable_shared_from_this<union_all_
   std::list<qr_tuple> res_;
 };
 
-struct except_op : public qop, public std::enable_shared_from_this<except_op> {
+struct except_op : public enable_shared<qop, except_op> {
   except_op(std::shared_ptr<variable> l, std::shared_ptr<variable> r) : phases_(0), lhs_var_(l), rhs_var_(r) { type_ = qop_type::except; } 
   ~except_op() = default;
 
@@ -75,6 +76,28 @@ struct except_op : public qop, public std::enable_shared_from_this<except_op> {
     std::shared_ptr<variable> lhs_var_, rhs_var_;
     std::set<query_result> subtrahend_;
   mutable std::shared_mutex m_;  
+};
+
+struct exists_op : public enable_shared<qop, exists_op> {
+  exists_op(qop_ptr sub, bool not_flag = false);
+  ~exists_op() = default;
+
+  void dump(std::ostream& os) const override;
+
+  void process(query_ctx &ctx, const qr_tuple &v);
+
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  void sub_query_processed(query_ctx &ctx, const qr_tuple &v);
+
+  bool is_not_;
+  qop_ptr tail_;
+  std::shared_ptr<start_pipeline> subquery_;
+  std::atomic_uint64_t counter_;
 };
 
 #endif

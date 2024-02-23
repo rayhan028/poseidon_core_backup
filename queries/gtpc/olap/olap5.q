@@ -1,3 +1,5 @@
+/* Query result for getting information about achieved revenues of nations within a given region. 
+All nations are sorted by the total amount of revenue gained since the given date. */
 GroupBy([$8.name:string], [sum($6.amount:double)],
     Filter($8.name:string = 'EUROPE',
         Expand(OUT, 'Region',

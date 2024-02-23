@@ -334,7 +334,7 @@ std::size_t graph_db::import_nodes_from_csv(const std::string &label,
 
 std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
                                             const std::string &filename,
-                                            char delim, mapping_t &m, std::mutex *mtx) {
+                                            char delim, mapping_t &m, typespec_t &ty, std::mutex *mtx) {
   using namespace aria::csv;
 
   std::ifstream f(filename);
@@ -394,7 +394,11 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
 
         // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
         if (const auto& col {columns[i]}; !col.empty() && !field.empty()) {
-          if (col == "id" || col == "phone") {
+          auto qcol = label + "." + columns[i];
+          auto it = ty.find(qcol);
+          if (it != ty.end())
+            prop_types[i] = it->second;
+          else if (col == "id") {
             prop_types[i] = p_item::p_uint64;     
           }
           else {   
@@ -406,7 +410,7 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
           // the field is empty, let's assume a string value
            // spdlog::info("empty field #{} at record #{}", i, num-1);
             prop_types[i] = p_item::p_dcode;
-        }     
+        }    
         i++;
       }
       if (mtx != nullptr) 

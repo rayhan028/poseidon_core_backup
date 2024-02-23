@@ -354,8 +354,11 @@ std::any query_planner::visitForeach_relationship_op(
   auto cardinality = ctx->rship_cardinality();
   auto rship_src = ctx->rship_source_var();
 
-  auto ch = visit(ctx->query_operator());
-  auto child = std::any_cast<qop_ptr>(ch);
+  qop_ptr child = nullptr;
+  if (ctx->query_operator() != nullptr) {
+    auto ch = visit(ctx->query_operator());
+    child = std::any_cast<qop_ptr>(ch);
+  }
 
   int m1 = 0, m2 = 0;
   if (cardinality != nullptr) {
@@ -370,10 +373,22 @@ std::any query_planner::visitForeach_relationship_op(
     if (cardinality != nullptr) {
       auto qp = std::make_shared<foreach_variable_from_relationship>(
           label, m1, m2, origin_idx);
-      qop = qop_append(child, qp);
+      if (child)
+        qop = qop_append(child, qp);
+      else {
+        qop_ptr start = std::make_shared<start_pipeline>();
+        roots_.push_back(start);
+        qop = qop_append(start, qp);
+      }
     } else {
       auto qp = std::make_shared<foreach_from_relationship>(label, origin_idx);
-      qop = qop_append(child, qp);
+      if (child)
+        qop = qop_append(child, qp);
+      else {
+        qop_ptr start = std::make_shared<start_pipeline>();
+        roots_.push_back(start);
+        qop = qop_append(start, qp);
+      }
     }
   } else if (dir->ToDir_() != nullptr) {
     if (cardinality != nullptr) {
@@ -552,6 +567,29 @@ std::any query_planner::visitExcept_op(poseidonParser::Except_opContext *ctx) {
   // execute child2 before child1
   child1->priority_ = 0;
   child2->priority_ = 1;
+  return std::make_any<qop_ptr>(qop);
+}
+
+
+std::any query_planner::visitExists_op(poseidonParser::Exists_opContext *ctx) {
+  bool is_not = ctx->all_exists()->NotExists_() != nullptr;
+
+  auto ch = visit(ctx->query_operator(0));
+  auto child = std::any_cast<qop_ptr>(ch);
+
+  auto sub_ops = std::any_cast<qop_ptr>(visit(ctx->query_operator(1)));  
+  // find head
+  qop* head = sub_ops.get();
+  while (head->parent_ != nullptr) {
+    head = head->parent_;
+  }
+
+  if (head->type_ != qop_type::start)
+    throw query_processing_error("Invalid query operator in nested query");
+
+  auto qp = std::make_shared<exists_op>(head->shared_from_this(), is_not);
+  auto qop = qop_append(child, qp);
+
   return std::make_any<qop_ptr>(qop);
 }
 

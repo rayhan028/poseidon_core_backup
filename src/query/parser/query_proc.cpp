@@ -107,6 +107,7 @@ std::size_t query_proc::execute_and_output_query(query_proc::mode m, const std::
     run_query(qplan);
     if (print_plan)
         qplan.print_plan();
+
     return 0; // qplan.result_size();    
 }
 

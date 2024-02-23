@@ -27,7 +27,7 @@
  * (optionally with a given label). All these nodes are then forwarded to the
  * subscriber.
  */
-struct node_scan : public qop, public std::enable_shared_from_this<node_scan> {
+struct node_scan : public enable_shared<qop, node_scan> /*public qop, public std::enable_shared_from_this<node_scan>*/ {
   node_scan(const std::string &l) : label(l), ranged(false) { type_ = qop_type::scan;  }
   node_scan(const std::string &l, std::map<std::size_t, std::vector<std::size_t>> &range_map) : label(l), 
         ranges(range_map), ranged(true) { type_ = qop_type::scan;  }
@@ -56,7 +56,7 @@ struct node_scan : public qop, public std::enable_shared_from_this<node_scan> {
  * (optionally with a given label). All these relationships are then forwarded to the
  * subscriber.
  */
-struct relationship_scan : public qop, public std::enable_shared_from_this<relationship_scan> {
+struct relationship_scan : public enable_shared<qop, relationship_scan> /*public qop, public std::enable_shared_from_this<relationship_scan>*/ {
   relationship_scan(const std::string &l) : label(l), ranged(false) { type_ = qop_type::scan;  }
   relationship_scan(const std::string &l, std::map<std::size_t, std::vector<std::size_t>> &range_map) : label(l), 
         ranges(range_map), ranged(true) { type_ = qop_type::scan;  }
@@ -85,7 +85,7 @@ struct relationship_scan : public qop, public std::enable_shared_from_this<relat
  * a given property key/value. All the matching nodes are then forwarded to the
  * subscriber.
  */
-struct index_scan : public qop, public std::enable_shared_from_this<index_scan> {
+struct index_scan : public enable_shared<qop, index_scan> /*public qop, public std::enable_shared_from_this<index_scan>*/ {
   index_scan(index_id ix, uint64_t k) : idx(ix), key(k) { type_ = qop_type::scan;  }
   index_scan(std::list<index_id> &ixs, uint64_t k) : key(k), idxs(ixs) { type_ = qop_type::scan;  }
   ~index_scan() = default;
@@ -103,6 +103,21 @@ struct index_scan : public qop, public std::enable_shared_from_this<index_scan> 
   index_id idx;
   uint64_t key;
   std::list<index_id> idxs;
+};
+
+struct start_pipeline : public enable_shared<qop, start_pipeline> {
+  start_pipeline() { type_ = qop_type::start;  }
+  ~start_pipeline() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void start(query_ctx &ctx, const qr_tuple &v) override;
+  
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
 };
 
 #endif

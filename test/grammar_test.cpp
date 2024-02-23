@@ -67,6 +67,12 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE(qp.parse_("Except([$0.id:uint64], [$1.id:uint64], NodeScan('Order'), NodeScan('Person'))"));
     }
 
+    SECTION("Exists") {
+        REQUIRE(qp.parse_("Exists(NodeScan('Orderline'), Filter($0.id:uint64 == $1.id:uint64, NodeScan('Order')))"));
+        REQUIRE(qp.parse_("NotExists(NodeScan('Orderline'), Filter($0.id:uint64 == $1.id:uint64, NodeScan('Order')))"));
+        REQUIRE(qp.parse_("Exists(NodeScan('Orderline'), Expand(OUT, 'Customer', ForeachRelationship(FROM, 'hasOrdered', $0)))"));
+    }
+
     SECTION("Join") {
         REQUIRE(qp.parse_("CrossJoin(NodeScan('Order'), NodeScan('Person'))"));
         REQUIRE_FALSE(qp.parse_("CrossJoin(NodeScan('Order'))"));
@@ -99,7 +105,7 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE_FALSE(qp.parse_("ForeachRelationship(':knows', NodeScan('Person'))"));
         REQUIRE_FALSE(qp.parse_("ForeachRelationship(SOME, ':knows', NodeScan('Person'))"));
         REQUIRE_FALSE(qp.parse_("ForeachRelationship(TO, NodeScan('Person'))"));
-        REQUIRE_FALSE(qp.parse_("ForeachRelationship(TO, 'knows')"));
+        // REQUIRE_FALSE(qp.parse_("ForeachRelationship(TO, 'knows')"));
     }
 
     SECTION("Expand") {

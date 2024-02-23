@@ -78,3 +78,12 @@ void index_scan::start(query_ctx &ctx) {
 void index_scan::dump(std::ostream &os) const {
   os << "index_scan([" << key << "]) - " << PROF_DUMP;
 }
+
+ void start_pipeline::dump(std::ostream &os) const {
+  os << "start_pipeline()"; 
+ }
+
+void start_pipeline::start(query_ctx &ctx, const qr_tuple &v) {
+  consume_(ctx, v);  
+}
+  

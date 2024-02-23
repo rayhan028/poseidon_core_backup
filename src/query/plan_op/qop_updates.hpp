@@ -26,7 +26,7 @@
  * create_node represents a query operator for creating a new node. The operator
  * can act as a root operator (via start) are also as subscriber.
  */
-struct create_node : public qop, public std::enable_shared_from_this<create_node> {
+struct create_node : public enable_shared<qop, create_node> {
   create_node(const std::string &l) : label(l) {}
   create_node(const std::string &l, const properties_t &p) : label(l), props(p) {}
   ~create_node() = default;
@@ -51,7 +51,7 @@ struct create_node : public qop, public std::enable_shared_from_this<create_node
  * relationship. The operator connects two nodes at any given positions 
  * in the query result.
  */
-struct create_relationship : public qop, public std::enable_shared_from_this<create_relationship> {
+struct create_relationship : public enable_shared<qop, create_relationship> {
   create_relationship(const std::string &l) : label(l) {}
   create_relationship(const std::string &l, const properties_t &p,
                       std::pair<int, int> src_des)
@@ -77,7 +77,7 @@ struct create_relationship : public qop, public std::enable_shared_from_this<cre
  * update_node represents a query operator for updating properties of a node
  * which is passed via consume parameters.
  */
-struct update_node : public qop, public std::enable_shared_from_this<update_node> {
+struct update_node : public enable_shared<qop, update_node> {
   update_node(std::size_t var, properties_t &p) : var_no_(var), props(p) {}
   update_node() : var_no_(0) {}
   ~update_node() = default;
@@ -101,7 +101,7 @@ struct update_node : public qop, public std::enable_shared_from_this<update_node
  * All relationship objects connected to the node are also deleted.
  * The optional p specifies a node to be deleted at other positions in the tuple.
  */
-struct detach_node : public qop, public std::enable_shared_from_this<detach_node> {
+struct detach_node : public enable_shared<qop, detach_node> {
   // detach_node(const std::vector<std::size_t> &r, std::size_t p)  : pos_(p), /*rels_(r)*/ {} 
   detach_node(std::size_t p = std::numeric_limits<std::size_t>::max())  : pos_(p) {}
   ~detach_node() = default;
@@ -124,7 +124,7 @@ struct detach_node : public qop, public std::enable_shared_from_this<detach_node
  * remove_node implements an operator for deleting the last node in a query tuple.
  * The optional p specifies a node to be deleted at other positions in the tuple.
  */
-struct remove_node : public qop, public std::enable_shared_from_this<remove_node> {
+struct remove_node : public enable_shared<qop, remove_node> {
   remove_node(std::size_t p = std::numeric_limits<std::size_t>::max())  : pos_(p) {} 
   ~remove_node() = default;
 
@@ -145,7 +145,7 @@ struct remove_node : public qop, public std::enable_shared_from_this<remove_node
  * remove_relationship implements an operator for deleting the last relationship in a query tuple.
  * The optional p specifies a relationship to be deleted at other positions in the tuple.
  */
-struct remove_relationship : public qop, public std::enable_shared_from_this<remove_relationship> {
+struct remove_relationship : public enable_shared<qop, remove_relationship> {
   remove_relationship(std::size_t p = std::numeric_limits<std::size_t>::max())  : pos_(p) {} 
   ~remove_relationship() = default;
 

@@ -61,16 +61,16 @@ std::vector<T> concat(const std::vector<T> &v1, const std::vector<T> &v2) {
 }
 
 enum class qop_type {
-  none,
-  any,
-  scan,
-  project,
-  printer,
-  is_property,
-  filter,
-  foreach_rship,
-  expand,
-  node_has_label,
+  none,            // 0
+  any,             // 1
+  scan,            // 2
+  project,         // 3
+  printer,         // 4
+  is_property,     // 5
+  filter,          // 6
+  foreach_rship,   // 7
+  expand,          // 8
+  node_has_label,  // 9
   union_all,
   except,
   cross_join,
@@ -86,6 +86,7 @@ enum class qop_type {
   group_by,
   create,
   store,
+  start,
   end
 };
 
@@ -121,6 +122,14 @@ query_result get_var_value(query_ctx &ctx, const qr_tuple &v,
 struct qop;
 using qop_ptr = std::shared_ptr<qop>;
 
+template <class Base, class Derived>
+struct enable_shared : public Base {   
+    std::shared_ptr<Derived> shared_from_this() {   
+          return std::static_pointer_cast<Derived>(
+                                          Base::shared_from_this());
+    }
+};
+
 /**
  * qop represents the abstract base class for all query operators. It implements
  * a push-style query engine where the execution is initiated by calling the
@@ -129,7 +138,9 @@ using qop_ptr = std::shared_ptr<qop>;
  * finish method are invoked via a signal/slot mechanism implemented via the
  * connect method.
  */
-struct qop {
+struct qop : public std::enable_shared_from_this<qop> {
+  friend class query_planner;
+
   /**
    * function pointer for a function called as subscriber consume function, i.e.
    * a function which  processes the list of graph elements (nodes,
@@ -148,7 +159,7 @@ struct qop {
    * Constructor.
    */
   qop()
-      : priority_(0), subscriber_(nullptr), consume_(nullptr),
+      : priority_(0), subscriber_(nullptr), parent_(nullptr), consume_(nullptr),
         finish_(nullptr) {}
 
   /**
@@ -161,6 +172,7 @@ struct qop {
    * in producer operators such as node_scan.
    */
   virtual void start(query_ctx &ctx) {}
+  virtual void start(query_ctx &ctx, const qr_tuple &v) {}
 
   /**
    * Prints a description of the operator and recursively calls
@@ -168,7 +180,10 @@ struct qop {
    */
   virtual void dump(std::ostream &os) const {}
 
-  void connect(qop_ptr op) { subscriber_ = op; }
+  void connect(qop_ptr op) { 
+    op->parent_ = this; // shared_from_this();
+    subscriber_ = op; 
+  }
 
   /**
    * Registers the subscriber by initializing the subscriber_ pointer and
@@ -176,6 +191,7 @@ struct qop {
    * function.
    */
   void connect(qop_ptr op, consume_func cf) {
+    op->parent_ = this; // shared_from_this();
     subscriber_ = op;
     consume_ = cf;
     finish_ = std::bind(&qop::default_finish, subscriber_.get(),
@@ -187,9 +203,14 @@ struct qop {
    * registering its consume and finish functions.
    */
   void connect(qop_ptr op, consume_func cf, finish_func ff) {
+    op->parent_ = this; // shared_from_this();
     subscriber_ = op;
     consume_ = cf;
     finish_ = ff;
+  }
+
+  void connect_consume(consume_func cf) {
+    consume_ = cf;
   }
 
   /**
@@ -222,6 +243,8 @@ struct qop {
     return boost::hash<query_result>()(q);
   }
 
+  inline void consume(query_ctx &ctx, const qr_tuple &tup) { consume_(ctx, tup); }
+  
   PROF_ACCESSOR;
 
   /**
@@ -234,9 +257,9 @@ struct qop {
   std::size_t priority_;
 
 protected:
-  qop_ptr subscriber_; // pointer to the subsequent operator which receives and
-                       // processes the results
-
+  qop_ptr subscriber_;   // pointer to the subsequent operator which receives and
+                         // processes the results
+  qop* parent_;
   consume_func consume_; // pointer to the subscriber's consume function
   finish_func finish_;   // pointer to the subscriber's finish function
 
@@ -248,8 +271,7 @@ protected:
  * their properties. For this purpose, the name of the property and a predicate
  * function for checking the value of this property have to be given.
  */
-struct is_property : public qop,
-                     public std::enable_shared_from_this<is_property> {
+struct is_property : public enable_shared<qop, is_property> {
   is_property(const std::string &p, std::function<bool(const p_item &)> pred)
       : property(p), pcode(0), predicate(pred) {
     type_ = qop_type::is_property;
@@ -275,8 +297,7 @@ struct is_property : public qop,
  * node_has_label is a query operator representing a filter for nodes which have
  * the given label.
  */
-struct node_has_label : public qop,
-                        public std::enable_shared_from_this<node_has_label> {
+struct node_has_label : public enable_shared<qop, node_has_label> {
   node_has_label(const std::vector<std::string> &l) : labels(l), lcode(0) {
     type_ = qop_type::node_has_label;
   }
@@ -300,7 +321,7 @@ struct node_has_label : public qop,
   dcode_t lcode;
 };
 
-struct expand : public qop, public std::enable_shared_from_this<expand> {
+struct expand : public enable_shared<qop, expand> {
   expand(EXPAND dir) : dir_(dir) { type_ = qop_type::expand; }
 
   void accept(qop_visitor &vis) override {
@@ -353,7 +374,7 @@ struct get_to_node : public expand {
  * printer is a query operator to output the query results collected in the
  * vector v to standard output.
  */
-struct printer : public qop, public std::enable_shared_from_this<printer> {
+struct printer : public enable_shared<qop, printer> {
   printer() : ntuples_(0), output_width_(0) { type_ = qop_type::printer; }
 
   void dump(std::ostream &os) const override;
@@ -377,7 +398,7 @@ struct printer : public qop, public std::enable_shared_from_this<printer> {
  * limit_result is a query operator for producing only the given number of
  * results.
  */
-struct limit_result : public qop, std::enable_shared_from_this<limit_result> {
+struct limit_result : public enable_shared<qop, limit_result>  {
   limit_result(std::size_t n) : num_(n), processed_(0) {
     type_ = qop_type::limit;
   }
@@ -402,7 +423,7 @@ extern result_set::sort_spec_list sort_spec_;
  * order_by implements an operator for sorting results either by giving a
  * comparison function or a specificaton of sorting criteria.
  */
-struct order_by : public qop, public std::enable_shared_from_this<order_by> {
+struct order_by : public enable_shared<qop, order_by> {
   order_by(const result_set::sort_spec_list &spec) {
     type_ = qop_type::order_by;
     sort_spec_ = spec;
@@ -445,8 +466,7 @@ struct order_by : public qop, public std::enable_shared_from_this<order_by> {
  * distinct_tuples implements an operator for outputing distinct
  * result tuples.
  */
-struct distinct_tuples : public qop,
-                         public std::enable_shared_from_this<distinct_tuples> {
+struct distinct_tuples : public enable_shared<qop, distinct_tuples> {
   distinct_tuples() { type_ = qop_type::distinct; }
   ~distinct_tuples() = default;
 
@@ -468,7 +488,7 @@ struct distinct_tuples : public qop,
  * filter_op implements an operator that filters a tuple
  * based on a predicate function.
  */
-struct filter_op : public qop, public std::enable_shared_from_this<filter_op> {
+struct filter_op : public enable_shared<qop, filter_op> {
   filter_op(std::function<bool(const qr_tuple &)> func)
       : pred_func1_(func), pred_func_(nullptr) {
     type_ = qop_type::filter;
@@ -511,8 +531,7 @@ std::ostream &operator<<(std::ostream &os, const result_set &rs);
  * to check the results or to further process the data. Note, that all result
  * values are represented as strings.
  */
-struct collect_result : public qop,
-                        public std::enable_shared_from_this<collect_result> {
+struct collect_result : public enable_shared<qop, collect_result> {
   collect_result(result_set &res) : results_(res) { type_ = qop_type::collect; }
   ~collect_result() = default;
 

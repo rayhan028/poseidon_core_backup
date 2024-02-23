@@ -53,6 +53,10 @@ public:
 
     virtual std::any visitHashjoin_op(poseidonParser::Hashjoin_opContext *context) = 0;
 
+    virtual std::any visitExists_op(poseidonParser::Exists_opContext *context) = 0;
+
+    virtual std::any visitAll_exists(poseidonParser::All_existsContext *context) = 0;
+
     virtual std::any visitLeftouterjoin_op(poseidonParser::Leftouterjoin_opContext *context) = 0;
 
     virtual std::any visitNljoin_op(poseidonParser::Nljoin_opContext *context) = 0;

@@ -18,6 +18,7 @@
  */
 
 #include "qop_set.hpp"
+#include "qop_scans.hpp"
 
 void union_all_op::dump(std::ostream &os) const {
   os << "union_all() - " << PROF_DUMP;
@@ -76,4 +77,47 @@ void except_op::process_right(query_ctx &ctx, const qr_tuple &v) {
 void except_op::finish(query_ctx &ctx) {
   if (++phases_ > 1)
     qop::default_finish(ctx);
+}
+
+/* ------------------------------------------------------------------------ */
+
+exists_op::exists_op(qop_ptr sub, bool not_flag) : is_not_(not_flag), counter_(0) {
+  namespace ph = std::placeholders;
+
+  subquery_ = std::dynamic_pointer_cast<start_pipeline>(sub);
+  // connect subquery_ with counter_
+  tail_ = subquery_;
+  while (tail_->has_subscriber()) {
+    tail_ = tail_->subscriber();
+  }
+  tail_->connect_consume(std::bind(&exists_op::sub_query_processed, this,
+                                 ph::_1, ph::_2));
+  /*
+  std::cout << "exists_op: tail: "; tail_->dump(std::cout); std::cout << std::endl;
+  std::cout << "exists_op: subquery: "; subquery_->dump(std::cout); std::cout << std::endl;
+  */
+}
+
+void exists_op::dump(std::ostream& os) const {
+  if (is_not_)
+    os << "not_exists([";
+  else
+    os << "exists([";
+
+  os << "]) - " << PROF_DUMP;
+}
+
+void exists_op::process(query_ctx &ctx, const qr_tuple &v) {
+  counter_ = 0;
+  // send tuple to subquery  
+  subquery_->start(ctx, v);
+
+  if (is_not_ && counter_ == 0)
+    consume_(ctx, v);
+  else if (!is_not_ && counter_ > 0)
+    consume_(ctx, v);
+}
+
+void exists_op::sub_query_processed(query_ctx &ctx, const qr_tuple &v) {
+  counter_++;
 }

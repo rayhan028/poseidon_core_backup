@@ -29,11 +29,11 @@
  * all_spaths_ specfies if all shortest path of equal 
  * distance are searched.
  */
-struct shortest_path_opr : public qop, public std::enable_shared_from_this<shortest_path_opr> {
-  shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
+struct shortest_path_op : public enable_shared<qop, shortest_path_op> {
+  shortest_path_op(std::pair<std::size_t, std::size_t> uv,
     rship_predicate pred, bool bidir, bool all) : bidirectional_(bidir),
           all_spaths_(all), rpred_(pred), start_stop_(uv) {}
-  ~shortest_path_opr() = default;
+  ~shortest_path_op() = default;
 
   void dump(std::ostream &os) const override;
 
@@ -60,11 +60,11 @@ struct shortest_path_opr : public qop, public std::enable_shared_from_this<short
  * all_spaths_ specfies if all shortest path of equal 
  * weight are searched.
  */
-struct weighted_shortest_path_opr : public qop, public std::enable_shared_from_this<weighted_shortest_path_opr> {
-  weighted_shortest_path_opr(std::pair<std::size_t, std::size_t> uv, rship_predicate pred,
+struct weighted_shortest_path_op : public enable_shared<qop, weighted_shortest_path_op> {
+  weighted_shortest_path_op(std::pair<std::size_t, std::size_t> uv, rship_predicate pred,
     rship_weight weight, bool bidir, bool all) : bidirectional_(bidir), all_spaths_(all),
       rpred_(pred), rweight_(weight), start_stop_(uv) {}
-  ~weighted_shortest_path_opr() = default;
+  ~weighted_shortest_path_op() = default;
 
   void dump(std::ostream &os) const override;
 
@@ -139,11 +139,11 @@ struct gunrock_pr_opr : public qop {
  * k_weighted_shortest_path_opr implements an operator that finds the
  * top k weighted shortest path between two nodes.
  */
-struct k_weighted_shortest_path_opr : public qop, public std::enable_shared_from_this<k_weighted_shortest_path_opr> {
-  k_weighted_shortest_path_opr(std::pair<std::size_t, std::size_t> uv,
+struct k_weighted_shortest_path_op : public enable_shared<qop, k_weighted_shortest_path_op> {
+  k_weighted_shortest_path_op(std::pair<std::size_t, std::size_t> uv,
     std::size_t k, rship_predicate pred, rship_weight weight, bool b) : 
     k_(k), bidirectional_(b), rpred_(pred), rweight_(weight), start_stop_(uv) {}
-  ~k_weighted_shortest_path_opr() = default;
+  ~k_weighted_shortest_path_op() = default;
 
   void dump(std::ostream &os) const override;
 
@@ -173,7 +173,7 @@ struct k_weighted_shortest_path_opr : public qop, public std::enable_shared_from
  * are considered (false) or both outgoing and incoming relationships 
  * are considered (true).
  */
-struct csr_data : public qop, public std::enable_shared_from_this<csr_data> {
+struct csr_data : public enable_shared<qop, csr_data> {
   csr_data(rship_weight func, bool bidir = false,
            std::size_t pos = std::numeric_limits<std::size_t>::max())
            : pos_(pos), bidirectional_(bidir), weight_func_(func) {}

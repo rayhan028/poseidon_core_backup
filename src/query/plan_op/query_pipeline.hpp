@@ -58,14 +58,15 @@ public:
   void extract_args();
 
   qop_ptr &plan_head() { return plan_head_; }
+  qop_ptr &plan_tail() { return plan_tail_; }
 
   std::size_t priority() const { return priority_; }
 
-private:
   query_pipeline &append_op(qop_ptr op, qop::consume_func cf,
                             qop::finish_func ff);
   query_pipeline &append_op(qop_ptr op, qop::consume_func cf);
 
+private:
   qop_ptr plan_head_, plan_tail_;
   std::size_t priority_;
 };
