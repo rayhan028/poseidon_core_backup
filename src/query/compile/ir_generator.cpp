@@ -59,6 +59,10 @@ ir_generator::ir_generator(llvm::LLVMContext& ctx) : ctx_(ctx) {
     auto qr_get_double_func_ty = llvm::FunctionType::get(double_ty, {qr_tuple_ptr_ty, i32_ty}, false);
     func_types_["qr_get_double"] = qr_get_double_func_ty;
 
+    // double qr_get_double(qr_tuple* v, std::size_t i) 
+    auto qr_get_string_func_ty = llvm::FunctionType::get(i8_ptr_ty, {qr_tuple_ptr_ty, i32_ty}, false);
+    func_types_["qr_get_string"] = qr_get_string_func_ty;
+
     // int get_node_property_int_value(query_ctx *, node *, dcode_t)
     auto get_node_property_int_value_func_ty = llvm::FunctionType::get(i64_ty, { qctx_ptr_ty, node_ptr_ty, i32_ty}, false);
     func_types_["get_node_property_int_value"] = get_node_property_int_value_func_ty;
@@ -307,7 +311,7 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
                 generate_sum_iterate(module, ex, start, aggr_ty, elem_ty, base_ptr, idx++);
                 break;
             case aggregate::expr::f_avg:
-                generate_avg_iterate(module, ex, start, aggr_ty, base_ptr, idx);
+                generate_avg_iterate(module, ex, start, aggr_ty, elem_ty, base_ptr, idx);
                 idx += 3;
                 break;
             default:
@@ -339,13 +343,21 @@ std::unique_ptr<llvm::Module> ir_generator::generate(std::shared_ptr<aggregate> 
                 int_0, llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
             };
             auto ptr1 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices1); // GEP
-            auto val1 = builder_->CreateLoad(aggr_ty, ptr1);
+            //auto val1 = builder_->CreateLoad(aggr_ty, ptr1);
+            llvm::Value* val1;
+            if (ex.aggr_type == int_type || ex.aggr_type == uint64_type)
+                val1 = builder_->CreateLoad(i64_ty, ptr1);
+            else if (ex.aggr_type == double_type)
+                val1 = builder_->CreateLoad(double_ty, ptr1);
+            else
+                abort();
 
             llvm::ArrayRef<llvm::Value*> indices2 {
                 int_0, llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx++, true)), 
             };
             auto ptr2 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, indices2); // GEP
-            auto val2 = builder_->CreateLoad(aggr_ty, ptr2);
+            //auto val2 = builder_->CreateLoad(aggr_ty, ptr2);
+            auto val2 = builder_->CreateLoad(i64_ty, ptr2);
             auto fval2 = builder_->CreateSIToFP(val2, double_ty);
 
             llvm::Value *res = nullptr;
@@ -417,20 +429,29 @@ void ir_generator::generate_max_iterate(std::unique_ptr<llvm::Module>& module, a
 }
 
 void ir_generator::generate_avg_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
-    llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx) {
+    llvm::Function *start, llvm::StructType *aggr_ty, llvm::Type *elem_ty, llvm::Value *base_ptr, uint32_t idx) {
     llvm::Value *pval = generate_get_value(module, ex, start);
 
     auto ptr1 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, {
         llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
         llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx, true))}); // GEP
-    auto aggr_val1 = builder_->CreateLoad(aggr_ty, ptr1);
-    auto res1 = builder_->CreateAdd(pval, aggr_val1);
+    //auto aggr_val1 = builder_->CreateLoad(aggr_ty, ptr1);
+    auto aggr_val1 = builder_->CreateLoad(elem_ty, ptr1);
+    llvm::Value *res1;
+    
+    if (ex.aggr_type == int_type || ex.aggr_type == uint64_type)
+        res1 = builder_->CreateAdd(pval, aggr_val1);
+    else if (ex.aggr_type == double_type)
+        res1 = builder_->CreateFAdd(pval, aggr_val1);
+    else
+        abort();
     builder_->CreateStore(res1, ptr1); // store
 
     auto ptr2 = builder_->CreateInBoundsGEP(aggr_ty, base_ptr, {
         llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0, true)), 
         llvm::ConstantInt::get(ctx_, llvm::APInt(32, idx+1, true))}); // GEP
-    auto aggr_val2 = builder_->CreateLoad(aggr_ty, ptr2);
+    //auto aggr_val2 = builder_->CreateLoad(aggr_ty, ptr2);
+    auto aggr_val2 = builder_->CreateLoad(llvm::Type::getInt64Ty(ctx_), ptr2);
     auto res2 = builder_->CreateAdd(llvm::ConstantInt::get(ctx_, llvm::APInt(64, 1, true)), aggr_val2);
     builder_->CreateStore(res2, ptr2); // store
 }

@@ -80,7 +80,7 @@ private:
     void generate_sum_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
         llvm::Function *start, llvm::StructType *aggr_ty, llvm::Type *elem_ty, llvm::Value *base_ptr, uint32_t idx);
     void generate_avg_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
-        llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx);
+        llvm::Function *start, llvm::StructType *aggr_ty, llvm::Type *elem_ty, llvm::Value *base_ptr, uint32_t idx);
     void generate_min_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 
         llvm::Function *start, llvm::StructType *aggr_ty, llvm::Value *base_ptr, uint32_t idx);
     void generate_max_iterate(std::unique_ptr<llvm::Module>& module, aggregate::expr& ex, 

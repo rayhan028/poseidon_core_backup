@@ -84,6 +84,11 @@ inline uint64_t qr_get_uint64(qr_tuple* v, std::size_t i) { return boost::get<ui
 inline double qr_get_double(qr_tuple* v, std::size_t i) { return boost::get<double>(v->at(i)); }
 
 /**
+ * Returns the string value of the query tuple v at index i.
+ */
+inline const uint8_t* qr_get_string(qr_tuple* v, std::size_t i) { return (uint8_t *) boost::get<std::string>(v->at(i)).c_str(); }
+
+/**
  * Compares two strings represented by char *.
 */
 inline int string_compare(uint8_t *s1, uint8_t *s2) { return std::strcmp((char *)s1, (char *)s2); }

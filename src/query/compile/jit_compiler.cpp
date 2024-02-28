@@ -142,6 +142,8 @@ jit_compiler::jit_compiler(llvm::ExitOnError exitOnError, std::unique_ptr<Execut
                 pointerToJITTargetAddress(&qr_get_uint64), JITSymbolFlags::Exported);
     s_map[mangle("qr_get_double")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&qr_get_double), JITSymbolFlags::Exported);
+    s_map[mangle("qr_get_string")] = JITEvaluatedSymbol(
+                pointerToJITTargetAddress(&qr_get_string), JITSymbolFlags::Exported);
     s_map[mangle("get_int_property_value")] = JITEvaluatedSymbol(
                 pointerToJITTargetAddress(&get_int_property_value), JITSymbolFlags::Exported);
     s_map[mangle("get_uint64_property_value")] = JITEvaluatedSymbol(
