@@ -25,6 +25,7 @@ query_operator : filter_op
         | remove_node_op
         | detach_node_op
         | remove_relationship_op
+        | update_op
         | algorithm_op
         ;
 
@@ -134,7 +135,7 @@ primary_expr : '(' logical_expr ')'
         | variable
         ;
 
-variable : Var ('.' Identifier_ )?':' type_spec ;
+variable : Var ('.' Identifier_ )? ':' type_spec ;
 
 value   : INTEGER
         | FLOAT
@@ -158,10 +159,13 @@ sort_spec : DescOrder_ | AscOrder_ ;
 create_op     : Create_ '(' (create_rship | create_node) (',' query_operator)? ')' ;
 create_node   : '(' Identifier_ ':' Identifier_ property_list? ')';
 property_list : '{' property (',' property)* '}' ;
-property      : Identifier_ ':' value ;
+property      : Identifier_ ':' (value | additive_expr) ;
 
 create_rship : node_var '-' '[' (Identifier_)? ':' Identifier_  property_list? ']' '->' node_var;
 node_var     : '(' Var ')' ;
+
+// Update
+update_op     : Update_ '(' Var ':' type_spec property_list ',' query_operator ')' ;
 
 // Remove
 remove_node_op : RemoveNode_ '(' query_operator ')' ;
@@ -195,6 +199,7 @@ GroupBy_     : 'GroupBy' ;
 Sort_        : 'Sort' ;
 Distinct_    : 'Distinct' ;
 Create_      : 'Create' ;
+Update_      : 'Update' ;
 Union_       : 'Union' ;
 Except_       : 'Except' ;
 RemoveNode_  : 'RemoveNode' ;

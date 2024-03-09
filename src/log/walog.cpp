@@ -145,8 +145,10 @@ void wa_log::close(bool trunc) {
     if (log_fp_ != nullptr) {
         std::fseek(log_fp_, 0, SEEK_SET);
         std::fwrite((void *)&header_, 1, sizeof(header_), log_fp_);
-        if (trunc)
+        if (trunc) {
+            spdlog::debug("truncate log file...");
             ::ftruncate(fileno(log_fp_), sizeof(header_));
+        }
         ::fsync(fileno(log_fp_));
         std::fclose(log_fp_);
     }
@@ -215,7 +217,7 @@ void wa_log::append(xid_t tx_id, wal::log_dict_record &log_entry)  {
 }  
 
 void wa_log::checkpoint() {
-    spdlog::info("write checkpoint to WAL");
+    // spdlog::info("write checkpoint to WAL");
     std::fseek(log_fp_, 0, SEEK_END);
     wal::log_checkpoint_record log_entry(next_lsn());
     append(static_cast<void *>(&log_entry), sizeof(log_entry)); 

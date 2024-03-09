@@ -378,16 +378,20 @@ public:
    * then an execption is raised.
    */
   p_item property_value(offset_t id, dcode_t pkey) {
- offset_t pset_id = id;
-  while (pset_id != UNKNOWN) {
-    auto &p = properties_.at(pset_id);
-    for (auto &item : p.items) {
-      if (item.key() == pkey)
-        return item;
+    offset_t pset_id = id;
+    try {
+    while (pset_id != UNKNOWN) {
+      auto &p = properties_.at(pset_id);
+      for (auto &item : p.items) {
+        if (item.key() == pkey)
+          return item;
+      }
+      pset_id = p.next;
     }
-    pset_id = p.next;
-  }
-  return p_item();    
+    } catch(unknown_id& exc) {
+      spdlog::info("property #{} not found", pset_id);
+    }
+    return p_item();    
   }
 
   /**

@@ -101,7 +101,26 @@ private:
 
 class qresult_iterator {
 public:
-    qresult_iterator(result_set&& rs) : rset_(rs) {}
+    qresult_iterator(result_set&& rs) : rset_(rs) {
+      iter_ = rset_.begin();
+    }
+
+    bool is_valid() { return iter_ != rset_.end(); }
+    qresult_iterator& operator++() { iter_++; return *this; }
+    void close() { rset_.data.clear(); }
+    void reset() { iter_ = rset_.begin(); }
+
+    template<typename T>
+    T get(std::size_t pos) { 
+      if (pos >= iter_->size())
+        throw query_processing_error(fmt::format("invalid position #{} in get", pos));
+      try {
+        std::cout << (*iter_)[pos] << std::endl; 
+        return boost::get<T>((*iter_)[pos]); 
+      } catch (boost::bad_get& exc) {
+        throw query_processing_error(fmt::format("invalid type at position #{} in get - type was: {}", pos, (*iter_)[pos].which()));
+      }
+    }
 
     using iterator = std::list<qr_tuple>::iterator;
 
@@ -117,6 +136,7 @@ public:
 
 private:
     result_set rset_;
+    iterator iter_;
 };
 
 #endif

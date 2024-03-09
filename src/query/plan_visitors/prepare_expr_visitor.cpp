@@ -35,6 +35,9 @@ void* prepare_expr_visitor::visit(std::shared_ptr<func_call> op) {
         else if (op->func_name_ == "ptime_to_dtimestring") {
            op->func1_ptr_ = [](query_ctx& ctx, const query_result& v) { return builtin::ptime_to_dtimestring(qv_get_ptime(v)); };
         }
+        else if (op->func_name_ == "now") {
+            op->func1_ptr_ = [](query_ctx& ctx, const query_result& v) { return builtin::now(); };
+        }
         else
             throw udf_not_found();
         return nullptr;

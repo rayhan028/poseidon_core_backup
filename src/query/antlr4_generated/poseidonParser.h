@@ -17,18 +17,18 @@ public:
     Project_ = 13, Limit_ = 14, CrossJoin_ = 15, HashJoin_ = 16, Exists_ = 17, 
     NotExists_ = 18, NLJoin_ = 19, LeftOuterJoin_ = 20, Expand_ = 21, ForeachRelationship_ = 22, 
     Aggregate_ = 23, GroupBy_ = 24, Sort_ = 25, Distinct_ = 26, Create_ = 27, 
-    Union_ = 28, Except_ = 29, RemoveNode_ = 30, RemoveRelationship_ = 31, 
-    DetachNode_ = 32, Algorithm_ = 33, Case_ = 34, IntType_ = 35, Uint64Type_ = 36, 
-    DoubleType_ = 37, StringType_ = 38, DateType_ = 39, NodeResultType_ = 40, 
-    RshipResultType_ = 41, Count_ = 42, Sum_ = 43, Avg_ = 44, Min_ = 45, 
-    Max_ = 46, UDF_ = 47, BUILTIN_ = 48, InExpandDir_ = 49, OutExpandDir_ = 50, 
-    TupleMode_ = 51, ResultSetMode_ = 52, FromDir_ = 53, ToDir_ = 54, AllDir_ = 55, 
-    DescOrder_ = 56, AscOrder_ = 57, INTEGER = 58, FLOAT = 59, Identifier_ = 60, 
-    Var = 61, NAME_ = 62, STRING_ = 63, COLON_ = 64, DOUBLE_COLON = 65, 
-    COMMA_ = 66, LPAREN = 67, RPAREN = 68, LBRACKET = 69, RBRACKET = 70, 
-    OR = 71, AND = 72, EQUALS = 73, NOTEQUALS = 74, LT = 75, LTEQ = 76, 
-    GT = 77, GTEQ = 78, PLUS_ = 79, MULT = 80, DIV = 81, MOD = 82, REGEX = 83, 
-    NOT = 84, WHITESPACE = 85, COMMENT = 86
+    Update_ = 28, Union_ = 29, Except_ = 30, RemoveNode_ = 31, RemoveRelationship_ = 32, 
+    DetachNode_ = 33, Algorithm_ = 34, Case_ = 35, IntType_ = 36, Uint64Type_ = 37, 
+    DoubleType_ = 38, StringType_ = 39, DateType_ = 40, NodeResultType_ = 41, 
+    RshipResultType_ = 42, Count_ = 43, Sum_ = 44, Avg_ = 45, Min_ = 46, 
+    Max_ = 47, UDF_ = 48, BUILTIN_ = 49, InExpandDir_ = 50, OutExpandDir_ = 51, 
+    TupleMode_ = 52, ResultSetMode_ = 53, FromDir_ = 54, ToDir_ = 55, AllDir_ = 56, 
+    DescOrder_ = 57, AscOrder_ = 58, INTEGER = 59, FLOAT = 60, Identifier_ = 61, 
+    Var = 62, NAME_ = 63, STRING_ = 64, COLON_ = 65, DOUBLE_COLON = 66, 
+    COMMA_ = 67, LPAREN = 68, RPAREN = 69, LBRACKET = 70, RBRACKET = 71, 
+    OR = 72, AND = 73, EQUALS = 74, NOTEQUALS = 75, LT = 76, LTEQ = 77, 
+    GT = 78, GTEQ = 79, PLUS_ = 80, MULT = 81, DIV = 82, MOD = 83, REGEX = 84, 
+    NOT = 85, WHITESPACE = 86, COMMENT = 87
   };
 
   enum {
@@ -52,9 +52,9 @@ public:
     RuleParam_list = 62, RuleParam = 63, RuleSort_op = 64, RuleSort_list = 65, 
     RuleSort_expr = 66, RuleSort_spec = 67, RuleCreate_op = 68, RuleCreate_node = 69, 
     RuleProperty_list = 70, RuleProperty = 71, RuleCreate_rship = 72, RuleNode_var = 73, 
-    RuleRemove_node_op = 74, RuleRemove_relationship_op = 75, RuleDetach_node_op = 76, 
-    RuleAlgorithm_op = 77, RuleCall_mode = 78, RuleAlgo_param_list = 79, 
-    RuleAlgo_param = 80
+    RuleUpdate_op = 74, RuleRemove_node_op = 75, RuleRemove_relationship_op = 76, 
+    RuleDetach_node_op = 77, RuleAlgorithm_op = 78, RuleCall_mode = 79, 
+    RuleAlgo_param_list = 80, RuleAlgo_param = 81
   };
 
   explicit poseidonParser(antlr4::TokenStream *input);
@@ -148,6 +148,7 @@ public:
   class PropertyContext;
   class Create_rshipContext;
   class Node_varContext;
+  class Update_opContext;
   class Remove_node_opContext;
   class Remove_relationship_opContext;
   class Detach_node_opContext;
@@ -197,6 +198,7 @@ public:
     Remove_node_opContext *remove_node_op();
     Detach_node_opContext *detach_node_op();
     Remove_relationship_opContext *remove_relationship_op();
+    Update_opContext *update_op();
     Algorithm_opContext *algorithm_op();
 
 
@@ -1376,6 +1378,7 @@ public:
     antlr4::tree::TerminalNode *Identifier_();
     antlr4::tree::TerminalNode *COLON_();
     ValueContext *value();
+    Additive_exprContext *additive_expr();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -1418,6 +1421,27 @@ public:
   };
 
   Node_varContext* node_var();
+
+  class  Update_opContext : public antlr4::ParserRuleContext {
+  public:
+    Update_opContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *Update_();
+    antlr4::tree::TerminalNode *LPAREN();
+    antlr4::tree::TerminalNode *Var();
+    antlr4::tree::TerminalNode *COLON_();
+    Type_specContext *type_spec();
+    Property_listContext *property_list();
+    antlr4::tree::TerminalNode *COMMA_();
+    Query_operatorContext *query_operator();
+    antlr4::tree::TerminalNode *RPAREN();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  Update_opContext* update_op();
 
   class  Remove_node_opContext : public antlr4::ParserRuleContext {
   public:

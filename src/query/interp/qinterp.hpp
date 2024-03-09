@@ -41,7 +41,8 @@ public:
     ~qinterp() = default;
 
     /**
-     * Starts the given query within the context of a new transaction.
+     * Starts the given query within the context of a new transaction or the current transaction
+     * (depending on the auto_commit mode).
      */
     void execute(query_ctx& ctx, query_batch& qbatch);
 };

@@ -167,6 +167,8 @@ public:
 
     virtual std::any visitNode_var(poseidonParser::Node_varContext *context) = 0;
 
+    virtual std::any visitUpdate_op(poseidonParser::Update_opContext *context) = 0;
+
     virtual std::any visitRemove_node_op(poseidonParser::Remove_node_opContext *context) = 0;
 
     virtual std::any visitRemove_relationship_op(poseidonParser::Remove_relationship_opContext *context) = 0;

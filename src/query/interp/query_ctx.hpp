@@ -32,13 +32,14 @@ class query_pipeline;
 struct query_ctx {
   graph_db_ptr gdb_; /// the pointer to the graph database (storage engine)
   std::size_t qcnt_;
+  bool auto_commit_;
 
   /**
    * Constructors.
    */
   query_ctx() = default;
-  query_ctx(query_ctx& ctx) : gdb_(ctx.gdb_), qcnt_(0) {  }
-  query_ctx(graph_db_ptr& gdb) : gdb_(gdb), qcnt_(0) {  }
+  query_ctx(query_ctx& ctx) : gdb_(ctx.gdb_), qcnt_(0), auto_commit_(true) {  }
+  query_ctx(graph_db_ptr& gdb) : gdb_(gdb), qcnt_(0), auto_commit_(true) {  }
 
   /**
    * Destructor.
@@ -71,6 +72,10 @@ struct query_ctx {
    * the transaction is committed, otherwise the transaction is aborted.
    */
   bool run_transaction(std::function<bool()> body) { return gdb_->run_transaction(body); }
+
+  void set_auto_commit(bool ac_mode = true) { auto_commit_ = ac_mode; }
+
+  bool is_auto_commit() { return auto_commit_; }
 
   /* ---------------- dictionary access ---------------- */
 

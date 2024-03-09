@@ -404,7 +404,7 @@ class buffered_vec {
       }
       else {
         pid = find_in_free_list();
-        chk = load_chunk(pid);
+        chk = load_chunk(pid, true);
         assert(chk != nullptr);
       }
     }

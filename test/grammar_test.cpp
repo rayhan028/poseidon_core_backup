@@ -141,9 +141,15 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE(qp.parse_("Create((n:Label { name1: 'Val1', name2: 42 }))"));
         REQUIRE(qp.parse_("Create((p:Person))"));
         REQUIRE(qp.parse_("Create((n:Label { name1: 'Val1', name2: 42 }), NodeScan('Person'))"));
+        REQUIRE(qp.parse_("Create((n:Label { name1: 'Val1', name2: 42, birthday: pb::now() }), NodeScan('Person'))"));
 
         REQUIRE(qp.parse_("Create(($0)-[r:knows]->($1))"));
         REQUIRE(qp.parse_("Create(($0)-[r:knows { creationDate: '2010-07-21' } ]->($1), CrossJoin(Filter($0.id:uint64 == 1, NodeScan('Person')), Filter($0.id:uint64 == 2, NodeScan('Person'))))"));
+        REQUIRE(qp.parse_("Create(($0)-[r:knows { creationDate: pb::to_datetime('2010-07-21') } ]->($1), CrossJoin(Filter($0.id:uint64 == 1, NodeScan('Person')), Filter($0.id:uint64 == 2, NodeScan('Person'))))"));
+    }
+
+    SECTION("Update") {
+        REQUIRE(qp.parse_("Update($0:node { name1: 'Val1', name2: 42 }, NodeScan('Person'))"));
     }
 
     SECTION("Remove") {

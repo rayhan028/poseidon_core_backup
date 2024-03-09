@@ -883,6 +883,21 @@ query_planner::visitCreate_rship(poseidonParser::Create_rshipContext *ctx) {
   return std::make_any<std::shared_ptr<create_relationship>>(qp);
 }
 
+std::any query_planner::visitUpdate_op(poseidonParser::Update_opContext *ctx) {
+  auto ch = visit(ctx->query_operator());
+  auto child = std::any_cast<qop_ptr>(ch);
+
+  auto var_id = extract_tuple_id(ctx->Var()->getText());
+  properties_t props;
+  if (ctx->property_list() != nullptr) {
+    auto pl = visit(ctx->property_list());
+    props = std::any_cast<properties_t>(pl);
+  }
+  auto qp = std::make_shared<update_node>(var_id, props);
+  auto qop = qop_append(child, qp);
+  return std::make_any<qop_ptr>(qop);
+}
+
 std::any
 query_planner::visitRemove_node_op(poseidonParser::Remove_node_opContext *ctx) {
   auto ch = visit(ctx->query_operator());
@@ -963,12 +978,17 @@ query_planner::visitProperty_list(poseidonParser::Property_listContext *ctx) {
   for (auto &p : ctx->property()) {
     auto pname = p->Identifier_()->getText();
     std::any pval;
+    if (p->value() != nullptr) {
     if (p->value()->INTEGER())
       pval = std::stoi(p->value()->INTEGER()->getText());
     else if (p->value()->FLOAT())
       pval = std::stod(p->value()->FLOAT()->getText());
     else if (p->value()->STRING_())
       pval = trim_string(p->value()->STRING_()->getText());
+    }
+    else if (p->additive_expr() != nullptr) {
+      pval = visit(p->additive_expr());
+    }
     props.insert({pname, pval});
   }
   return std::make_any<properties_t>(props);
@@ -1119,8 +1139,11 @@ query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *ctx) {
     auto fc = ctx->function_call();
     auto prefix = fc->prefix()->getText();
     auto fc_name = fc->Identifier_()->getText();
-    auto fc_params = fc->param_list()->param();
+    std::vector<poseidonParser::ParamContext*> fc_params;
     std::vector<expr> param_list;
+
+    if (fc->param_list())
+      fc_params = fc->param_list()->param();
 
     for (auto i = 0u; i < fc_params.size(); i++) {
       auto &pm = fc_params[i];

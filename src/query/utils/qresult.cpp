@@ -52,6 +52,21 @@ query_result qv_from_pitem(const p_item& p) {
   return qr;
 }
 
+std::any qv_to_any(const query_result& qr) {
+  std::any res;
+  switch (qr.which()) {
+  case int_type: res = qv_get_int(qr); break;
+  case double_type: res = qv_get_double(qr); break;
+  case string_type: res = qv_get_string(qr); break;
+  case uint64_type: res = qv_get_uint64(qr); break;
+  case ptime_type: res = qv_get_ptime(qr); break;
+  default:
+  break;
+ }
+  return res;
+}
+
+
 std::ostream &operator<<(std::ostream &os, const query_result &qr) {
   switch (qr.which()) {
   case node_ptr_type: { auto n = qv_get_node(qr); os << n->id(); break; }

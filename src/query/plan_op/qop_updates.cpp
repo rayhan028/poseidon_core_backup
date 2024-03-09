@@ -18,6 +18,7 @@
  */
 
 #include "qop_updates.hpp"
+#include "expr_interpreter.hpp"
 
 /* ------------------------------------------------------------------------ */
 
@@ -38,14 +39,58 @@ void create_node::dump(std::ostream &os) const {
 }
 
 void create_node::start(query_ctx &ctx) { 
-  auto &n = ctx.gdb_->node_by_id(ctx.gdb_->add_node(label, props, true));
-  consume_(ctx, {&n});
+  // evaluate expressions in property
+  if (expr_in_properties_) {
+    qr_tuple dummy;
+    auto new_props = eval_properties(ctx, dummy);
+    auto &n = ctx.gdb_->node_by_id(ctx.gdb_->add_node(label, new_props, true));
+    consume_(ctx, {&n});
+  }
+  else {
+    auto &n = ctx.gdb_->node_by_id(ctx.gdb_->add_node(label, props, true));
+    consume_(ctx, {&n});
+  }
 }
 
 void create_node::process(query_ctx &ctx, const qr_tuple &v) {
-  auto &n = ctx.gdb_->node_by_id(ctx.gdb_->add_node(label, props, true));
-  auto v2 = append(v, query_result(&n));
-  consume_(ctx, v2);
+  // evaluate expressions in property
+    if (expr_in_properties_) {
+      auto new_props = eval_properties(ctx, v);
+      auto &n = ctx.gdb_->node_by_id(ctx.gdb_->add_node(label, props, true));
+      auto v2 = append(v, query_result(&n));
+      consume_(ctx, v2);
+  }
+  else {
+    auto &n = ctx.gdb_->node_by_id(ctx.gdb_->add_node(label, props, true));
+    auto v2 = append(v, query_result(&n));
+    consume_(ctx, v2);
+  }
+}
+
+bool create_node::check_for_expr_in_properties() {
+  for (auto& prop : props) {
+        auto& any_val = prop.second;
+        if (any_val.type() == typeid(expr)) {
+          return true;
+        }
+  }
+  return false;
+}
+
+properties_t create_node::eval_properties(query_ctx &ctx, const qr_tuple &v) {
+  properties_t new_props;
+    for (auto& prop : props) {
+        auto& any_val = prop.second;
+        if (any_val.type() == typeid(expr)) {
+          auto ex = std::any_cast<expr>(any_val);
+          auto val = interpret_expression(ctx, ex, v); 
+          // boost::variant(val) -> value 
+          new_props.insert({prop.first, qv_to_any(val)});
+        }
+        else
+          new_props.insert({prop.first, prop.second});
+    }
+    return new_props;
 }
 
 /* ------------------------------------------------------------------------ */

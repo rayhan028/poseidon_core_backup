@@ -25,6 +25,7 @@
 #include "query_ctx.hpp"
 #include "expression.hpp"
 #include "qop.hpp"
+#include "qop_updates.hpp"
 #include "prepare_expr_visitor.hpp"
 
 class prepare_plan_visitor : public qop_visitor {
@@ -35,8 +36,8 @@ public:
     ~prepare_plan_visitor() = default;
 
     void visit(std::shared_ptr<filter_op> op) override;
-
     void visit(std::shared_ptr<left_outer_join_op> op) override;
+    void visit(std::shared_ptr<create_node> op) override;
 
 private:
     prepare_expr_visitor expr_visitor_;

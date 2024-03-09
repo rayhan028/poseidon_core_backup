@@ -803,22 +803,21 @@ relationship::id_t graph_db::add_relationship(node::id_t from_id,
 
 node &graph_db::get_valid_node_version(node &n, xid_t xid) {
   if (n.is_locked_by(xid)) {
-    // spdlog::debug("[tx {}] node #{} is locked by {}", short_ts(xid), n.id(), short_ts(n.txn_id()));
+    // spdlog::info("[tx {}] node #{} is locked by {}", short_ts(xid), n.id(), short_ts(n.txn_id()));
     // because the node is locked we know that it was already updated by us
     // and we should look for the dirty object containing the new values
     assert(n.has_dirty_versions());
     return n.find_valid_version(xid)->elem_;
   }
   // or (2) is not locked and xid is in [bts,cts]
-  if (!n.is_locked()) {
-    //spdlog::debug("node_by_id: node #{} is unlocked: [{}, {}] <=> {}", n.id(),
+  else if (!n.is_locked()) {
+    //spdlog::info("node_by_id: node #{} is unlocked: [{}, {}] <=> {}", n.id(),
     //             n.bts(), n.cts(), xid);
     return n.is_valid_for(xid) ? n : n.find_valid_version(xid)->elem_;
   }
-
   // or (3) node is locked by another transaction
   else {
-    spdlog::debug("node #{} is locked by another tx in {}", n.id(), short_ts(xid));
+    // spdlog::info("node #{} is locked by another tx in {}", n.id(), short_ts(xid));
     // dump();
     // try to find a valid version which is not locked
     auto &nv = n.find_valid_version(xid)->elem_;
@@ -1443,6 +1442,8 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
             oid, 0, items, next, node_id);
       ulog_->append(log_id, rec);
     };
+#elif defined(USE_PFILES)
+  // TODO: log property update
 #endif
     node_properties_->foreach_property_set(n.property_list, UNDO_CB);
     // we have to update the properties
@@ -1459,6 +1460,8 @@ void graph_db::copy_properties(node &n, const dirty_node_ptr& dn) {
       pmlog::log_ins_record rec(log_insert, log_property, p_id);
       ulog_->append(log_id, rec);
     };
+#elif defined(USE_PFILES)
+  // TODO: log property add
 #endif
     pid = node_properties_->add_pitems(n.id(), dn->properties_, dict_, UNDO_CB);
   }

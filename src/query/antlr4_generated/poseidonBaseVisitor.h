@@ -311,6 +311,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitUpdate_op(poseidonParser::Update_opContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitRemove_node_op(poseidonParser::Remove_node_opContext *ctx) override {
     return visitChildren(ctx);
   }

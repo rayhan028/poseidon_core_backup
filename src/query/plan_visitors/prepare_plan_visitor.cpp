@@ -33,3 +33,13 @@ void prepare_plan_visitor::visit(std::shared_ptr<left_outer_join_op> op) {
     if (ex)
         ex->accept(expr_visitor_);
 }
+
+void prepare_plan_visitor::visit(std::shared_ptr<create_node> op) { 
+    for (auto& prop : op->props) {
+        auto& any_val = prop.second;
+        if (any_val.type() == typeid(expr)) {
+            auto ex = std::any_cast<expr>(any_val);
+            ex->accept(expr_visitor_);
+        }
+    }
+}

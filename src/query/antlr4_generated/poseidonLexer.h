@@ -17,18 +17,18 @@ public:
     Project_ = 13, Limit_ = 14, CrossJoin_ = 15, HashJoin_ = 16, Exists_ = 17, 
     NotExists_ = 18, NLJoin_ = 19, LeftOuterJoin_ = 20, Expand_ = 21, ForeachRelationship_ = 22, 
     Aggregate_ = 23, GroupBy_ = 24, Sort_ = 25, Distinct_ = 26, Create_ = 27, 
-    Union_ = 28, Except_ = 29, RemoveNode_ = 30, RemoveRelationship_ = 31, 
-    DetachNode_ = 32, Algorithm_ = 33, Case_ = 34, IntType_ = 35, Uint64Type_ = 36, 
-    DoubleType_ = 37, StringType_ = 38, DateType_ = 39, NodeResultType_ = 40, 
-    RshipResultType_ = 41, Count_ = 42, Sum_ = 43, Avg_ = 44, Min_ = 45, 
-    Max_ = 46, UDF_ = 47, BUILTIN_ = 48, InExpandDir_ = 49, OutExpandDir_ = 50, 
-    TupleMode_ = 51, ResultSetMode_ = 52, FromDir_ = 53, ToDir_ = 54, AllDir_ = 55, 
-    DescOrder_ = 56, AscOrder_ = 57, INTEGER = 58, FLOAT = 59, Identifier_ = 60, 
-    Var = 61, NAME_ = 62, STRING_ = 63, COLON_ = 64, DOUBLE_COLON = 65, 
-    COMMA_ = 66, LPAREN = 67, RPAREN = 68, LBRACKET = 69, RBRACKET = 70, 
-    OR = 71, AND = 72, EQUALS = 73, NOTEQUALS = 74, LT = 75, LTEQ = 76, 
-    GT = 77, GTEQ = 78, PLUS_ = 79, MULT = 80, DIV = 81, MOD = 82, REGEX = 83, 
-    NOT = 84, WHITESPACE = 85, COMMENT = 86
+    Update_ = 28, Union_ = 29, Except_ = 30, RemoveNode_ = 31, RemoveRelationship_ = 32, 
+    DetachNode_ = 33, Algorithm_ = 34, Case_ = 35, IntType_ = 36, Uint64Type_ = 37, 
+    DoubleType_ = 38, StringType_ = 39, DateType_ = 40, NodeResultType_ = 41, 
+    RshipResultType_ = 42, Count_ = 43, Sum_ = 44, Avg_ = 45, Min_ = 46, 
+    Max_ = 47, UDF_ = 48, BUILTIN_ = 49, InExpandDir_ = 50, OutExpandDir_ = 51, 
+    TupleMode_ = 52, ResultSetMode_ = 53, FromDir_ = 54, ToDir_ = 55, AllDir_ = 56, 
+    DescOrder_ = 57, AscOrder_ = 58, INTEGER = 59, FLOAT = 60, Identifier_ = 61, 
+    Var = 62, NAME_ = 63, STRING_ = 64, COLON_ = 65, DOUBLE_COLON = 66, 
+    COMMA_ = 67, LPAREN = 68, RPAREN = 69, LBRACKET = 70, RBRACKET = 71, 
+    OR = 72, AND = 73, EQUALS = 74, NOTEQUALS = 75, LT = 76, LTEQ = 77, 
+    GT = 78, GTEQ = 79, PLUS_ = 80, MULT = 81, DIV = 82, MOD = 83, REGEX = 84, 
+    NOT = 85, WHITESPACE = 86, COMMENT = 87
   };
 
   explicit poseidonLexer(antlr4::CharStream *input);

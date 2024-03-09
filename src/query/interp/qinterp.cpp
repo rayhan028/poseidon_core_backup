@@ -19,8 +19,11 @@
 #include "qinterp.hpp"
 
 void qinterp::execute(query_ctx& ctx, query_batch& qbatch) {
-  ctx.run_transaction([&]() {
-    qbatch.start(ctx); 
-    return true;
-  });    
+  if (ctx.is_auto_commit())
+    ctx.run_transaction([&]() {
+      qbatch.start(ctx); 
+      return true;
+    });
+  else
+    qbatch.start(ctx);    
 }

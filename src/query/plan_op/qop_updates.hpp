@@ -28,7 +28,9 @@
  */
 struct create_node : public enable_shared<qop, create_node> {
   create_node(const std::string &l) : label(l) {}
-  create_node(const std::string &l, const properties_t &p) : label(l), props(p) {}
+  create_node(const std::string &l, const properties_t &p) : label(l), props(p) {
+    expr_in_properties_= check_for_expr_in_properties();
+  }
   ~create_node() = default;
 
   void dump(std::ostream &os) const override;
@@ -42,8 +44,12 @@ struct create_node : public enable_shared<qop, create_node> {
       subscriber_->accept(vis);
   }
 
+  bool check_for_expr_in_properties();
+  properties_t eval_properties(query_ctx &ctx, const qr_tuple &v);
+  
   std::string label;
   properties_t props;
+  bool expr_in_properties_;
 };
 
 /**

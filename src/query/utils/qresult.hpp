@@ -65,7 +65,6 @@ inline std::string qv_get_string(const query_result& v) { return boost::get<std:
 inline const node_description& qv_get_node_descr(const query_result& v) { return boost::get<const node_description&>(v); }
 inline const rship_description& qv_get_rship_descr(const query_result& v) { return boost::get<const rship_description&>(v); }
 
-
 enum qr_type {
   node_ptr_type = 0,
   rship_ptr_type = 1,
@@ -124,6 +123,14 @@ using qr_tuple = std::vector<query_result>;
  */
 query_result qv_from_pitem(const p_item& p);
 
+/**
+ * Create an any value from query_result.
+ */
+std::any qv_to_any(const query_result& qr);
+
+/**
+ * Output a query_result.
+ */
 std::ostream &operator<<(std::ostream &os, const query_result &qr);
 
 #endif
