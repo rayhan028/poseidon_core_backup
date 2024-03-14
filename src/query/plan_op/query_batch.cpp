@@ -68,10 +68,10 @@ void query_batch::append_printer() {
                std::bind(&printer::finish, op.get(), ph::_1));
 }
 
-void query_batch::append_collect(result_set &rs) {
+void query_batch::append_collect(result_set &rs, bool as_string) {
   // find the last operator
   auto qop = query_pipelines_.at(0).plan_tail_;
-  auto op = std::make_shared<collect_result>(rs);
+  auto op = std::make_shared<collect_result>(rs, as_string);
   qop->connect(op,
                std::bind(&collect_result::process, op.get(), ph::_1, ph::_2),
                std::bind(&collect_result::finish, op.get(), ph::_1));

@@ -538,7 +538,7 @@ void collect_result::dump(std::ostream &os) const {
 void collect_result::process(query_ctx &ctx, const qr_tuple &v) {
   std::unique_lock lock(collect_mtx);
   PROF_PRE;
-#ifdef COLLECT_RESULT_AS_STRING
+  if (as_string_) { 
   // we transform node and relationship into their string representations ...
   qr_tuple res(v.size());
   auto my_visitor = boost::hana::overload(
@@ -565,9 +565,10 @@ void collect_result::process(query_ctx &ctx, const qr_tuple &v) {
   }
 
   results_.data.push_back(res);
-#else
-  results_.data.push_back(v);
-#endif
+  }
+  else
+    results_.data.push_back(v);
+
   PROF_POST(1);
 }
 

@@ -41,7 +41,7 @@ public:
   void accept(qop_visitor &visitor);
 
   void append_printer();
-  void append_collect(result_set &rs);
+  void append_collect(result_set &rs, bool as_string = false);
 
   /**
    * Start the execution of the query.

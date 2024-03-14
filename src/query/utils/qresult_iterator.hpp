@@ -54,8 +54,8 @@ struct result_set {
   result_set() = default;
   result_set(const result_set &rs) : data(rs.data) {}
 
-    iterator begin() { return data.begin(); }
-    iterator end() { return data.end(); }
+  iterator begin() { return data.begin(); }
+  iterator end() { return data.end(); }
 
   /**
    * Block the current thread until the result data is complete.

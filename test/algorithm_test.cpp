@@ -78,7 +78,7 @@ TEST_CASE("Testing queries with algorithms", "[algorithm]") {
         "Algorithm([ShortestPath, TUPLE, 'connects', 0, 0], CrossJoin( "
         "Filter($0.name:string == 'Frankfurt', NodeScan('City')), Filter($0.name:string == "
         "'München', NodeScan('City'))))",
-        true);
+        true, true);
 
     result_set expected;
     expected.append({qv_("City[0]{name: \"Frankfurt\"}"),
@@ -93,12 +93,12 @@ TEST_CASE("Testing queries with algorithms", "[algorithm]") {
         "Algorithm([WeightedShortestPath, TUPLE, 'connects', 'distance', 0, 0], CrossJoin( "
         "Filter($0.name:string == 'Frankfurt', NodeScan('City')), Filter($0.name:string == "
         "'München', NodeScan('City'))))",
-        true);
+        true, true);
     std::cout << res << std::endl;
     result_set expected;
     expected.append({qv_("City[0]{name: \"Frankfurt\"}"),
                      qv_("City[9]{name: \"München\"}"), qv_("[ 0 2 6 9 ]")});
-
+               
     REQUIRE(res.result() == expected);
   }
 

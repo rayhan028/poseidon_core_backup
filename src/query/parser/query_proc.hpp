@@ -53,7 +53,7 @@ public:
   query_batch prepare_query(const std::string &query);
 
   qresult_iterator execute_query(mode m, const std::string &qstr,
-                                 bool print_plan = false);
+                                 bool print_plan = false, bool as_string = false);
 
   template<typename... Args> 
   qresult_iterator exec_query(mode m, const std::string &qstr, Args... args) {

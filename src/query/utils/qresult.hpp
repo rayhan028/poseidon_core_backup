@@ -133,4 +133,23 @@ std::any qv_to_any(const query_result& qr);
  */
 std::ostream &operator<<(std::ostream &os, const query_result &qr);
 
+/**
+ * Comparison operators.
+ */
+bool equal(const qr_tuple& qr1, const qr_tuple& qr2);
+
+bool qv_equal(const query_result& qr1, const query_result& qr2);
+
+bool less_than(const query_result& qr1, const query_result& qr2);
+
+inline bool less_or_equal(const query_result& qr1, const query_result& qr2) { 
+  return less_than(qr1, qr2) || qv_equal(qr1, qr2);
+}
+
+bool greater_than(const query_result& qr1, const query_result& qr2);
+
+inline bool greater_or_equal(const query_result& qr1, const query_result& qr2) {
+    return greater_than(qr1, qr2) || qv_equal(qr1, qr2);
+}
+
 #endif

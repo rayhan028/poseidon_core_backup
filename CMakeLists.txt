@@ -552,6 +552,16 @@ add_executable(pcli
   Boost::program_options
 )
 
+# add_executable(gtpc_driver
+#  src/cmds/gtpc_driver.cpp
+# )
+
+# target_link_libraries(gtpc_driver
+#  poseidon_core
+#  ${PMDK_LIBRARIES}
+#  Boost::program_options
+# )
+
 add_executable(wal_dump
   src/cmds/wal_dump.cpp
 )

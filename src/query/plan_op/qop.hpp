@@ -532,7 +532,7 @@ std::ostream &operator<<(std::ostream &os, const result_set &rs);
  * values are represented as strings.
  */
 struct collect_result : public enable_shared<qop, collect_result> {
-  collect_result(result_set &res) : results_(res) { type_ = qop_type::collect; }
+  collect_result(result_set &res, bool as_string = false) : results_(res), as_string_(as_string) { type_ = qop_type::collect; }
   ~collect_result() = default;
 
   void dump(std::ostream &os) const override;
@@ -550,6 +550,7 @@ struct collect_result : public enable_shared<qop, collect_result> {
   result_set &results_;
 
 private:
+  bool as_string_;
   std::mutex collect_mtx;
 };
 

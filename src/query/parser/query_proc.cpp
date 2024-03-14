@@ -86,11 +86,11 @@ bool query_proc::parse_(const std::string &query) {
     }
 }
 
-qresult_iterator query_proc::execute_query(query_proc::mode m, const std::string& qstr, bool print_plan) {
+qresult_iterator query_proc::execute_query(query_proc::mode m, const std::string& qstr, bool print_plan, bool as_string) {
     std::cout << "exec: " << qstr << std::endl;
     auto qplan = prepare_query(qstr);
     result_set result;
-    qplan.append_collect(result);
+    qplan.append_collect(result, as_string);
     prepare_plan(qplan, m);
 
     run_query(qplan);

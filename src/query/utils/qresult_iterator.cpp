@@ -40,6 +40,17 @@ void result_set::notify() {
 }
 
 bool result_set::operator==(const result_set &other) const {
+#if not_needed
+  if (data.size() != other.data.size()) return false;
+  auto iter1 = data.begin();
+  auto iter2 = other.data.begin();
+  while (iter1 != data.end()) {
+    if (! equal(*iter1, *iter2))
+      return false;
+    iter1++; iter2++;
+  }
+  return true;
+#endif
   return data == other.data;
 }
 

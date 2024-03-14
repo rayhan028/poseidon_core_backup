@@ -105,7 +105,7 @@ TEST_CASE("Testing query operators", "[qop]") {
 
     rs.wait();
     q.print_plan();
-    expected.data.push_back({query_result("7")});
+    expected.data.push_back({qv_(7)});
     REQUIRE(rs == expected);
   }
 
@@ -123,7 +123,8 @@ TEST_CASE("Testing query operators", "[qop]") {
     rs.wait();
     q.print_plan();
     for (int i = 1; i <= 7; i++) {
-      expected.data.push_back({query_result(std::to_string(i))});
+      // expected.data.push_back({qv_(std::to_string(i))});
+      expected.data.push_back({qv_(i)});
     }
     REQUIRE(rs == expected);
   }
@@ -142,7 +143,7 @@ TEST_CASE("Testing query operators", "[qop]") {
 
     rs.wait();
     q.print_plan();
-    expected.append({query_result(std::to_string(4)), query_result("aaa4")});
+    expected.append({qv_(4), qv_("aaa4")});
     REQUIRE(rs == expected);
   }
 
@@ -163,8 +164,8 @@ TEST_CASE("Testing query operators", "[qop]") {
     q.start(ctx);
 
     rs.wait();
-    expected.append({query_result("m1")});
-    expected.append({query_result("m2")});
+    expected.append({qv_("m1")});
+    expected.append({qv_("m2")});
     q.print_plan();
     REQUIRE(rs == expected);
   }
@@ -181,7 +182,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     q.start(ctx);
 
     rs.wait();
-    expected.append({query_result(std::to_string(4)), query_result("aaa4")});
+    expected.append({qv_(4), qv_("aaa4")});
     REQUIRE(rs == expected);
     q.print_plan();
   }
@@ -200,7 +201,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     q.start(ctx);
 
     rs.wait();
-    expected.append({query_result(std::to_string(4)), query_result(std::to_string(4+5))});
+    expected.append({qv_(4), qv_(4+5)});
     REQUIRE(rs == expected);
     q.print_plan();
   }
@@ -221,7 +222,7 @@ TEST_CASE("Testing query operators", "[qop]") {
     q.start(ctx);
 
     rs.wait();
-    expected.append({query_result(std::to_string(3)), query_result("aaa3")});
+    expected.append({qv_(3), qv_("aaa3")});
     REQUIRE(rs == expected);
     q.print_plan();
   }
@@ -237,9 +238,9 @@ TEST_CASE("Testing query operators", "[qop]") {
     q.start(ctx);
 
     rs.wait();
-    expected.append({query_result("7")});
-    expected.append({query_result("6")});
-    expected.append({query_result("5")});
+    expected.append({qv_(7)});
+    expected.append({qv_(6)});
+    expected.append({qv_(5)});
     REQUIRE(rs == expected);
     q.print_plan();
   }
@@ -270,10 +271,10 @@ TEST_CASE("Testing join operators", "[qop]") {
     query_ctx::start(ctx, {&q1, &q2});
 
     rs.wait();
-    expected.data.push_back({query_result("3"), query_result("1")});
-    expected.data.push_back({query_result("4"), query_result("1")});
-    expected.data.push_back({query_result("3"), query_result("2")});
-    expected.data.push_back({query_result("4"), query_result("2")});
+    expected.data.push_back({qv_(3), qv_(1)});
+    expected.data.push_back({qv_(4), qv_(1)});
+    expected.data.push_back({qv_(3), qv_(2)});
+    expected.data.push_back({qv_(4), qv_(2)});
     REQUIRE(rs == expected);
     query_ctx::print_plans({&q1, &q2});
   }
@@ -317,9 +318,9 @@ TEST_CASE("Projecting node and relationship datetime properties", "[graph_db]") 
     rs.wait();
 
   expected.data.push_back(
-    {query_result("2011-11-01T00:05:56"),
-    query_result("2010-06-10T11:50:26"),
-    query_result("2011-11-02T13:00:00")});
+    {qv_(builtin::iso_dtimestring_to_ptime("2011-11-01T00:05:56")),
+    qv_(builtin::iso_dtimestring_to_ptime("2010-06-10T11:50:26")),
+    qv_(builtin::iso_dtimestring_to_ptime("2011-11-02T13:00:00"))});
   REQUIRE(rs == expected);
 
   ctx.commit_transaction();
@@ -360,8 +361,8 @@ TEST_CASE("Testing union_all operator", "[qop]") {
   auto cd = graph->get_code("aaa7");
   ctx.run_transaction([&]() {
     result_set rs, expected;
-    expected.append({query_result("aaa3")});
-    expected.append({query_result("aaa7")});
+    expected.append({qv_("aaa3")});
+    expected.append({qv_("aaa7")});
 
     auto q1 = query_builder(ctx)
               .all_nodes("Node")
@@ -399,10 +400,10 @@ TEST_CASE("Testing union_all operator 2", "[qop]") {
   auto d = graph->get_code("aaa4");
   ctx.run_transaction([&]() {
     result_set rs, expected;
-    expected.append({query_result("aaa1")});
-    expected.append({query_result("aaa2")});
-    expected.append({query_result("aaa3")});
-    expected.append({query_result("aaa4")});
+    expected.append({qv_("aaa1")});
+    expected.append({qv_("aaa2")});
+    expected.append({qv_("aaa3")});
+    expected.append({qv_("aaa4")});
 
     auto q1 = query_builder(ctx)
               .all_nodes("Node")
@@ -482,9 +483,9 @@ TEST_CASE("Testing outgoing traversal operators", "[qop]") {
       rs.wait();
       q.print_plan();
 
-      expected.data.push_back({query_result("D")});
-      expected.data.push_back({query_result("C")});
-      expected.data.push_back({query_result("B")});
+      expected.data.push_back({qv_("D")});
+      expected.data.push_back({qv_("C")});
+      expected.data.push_back({qv_("B")});
 
       REQUIRE(rs == expected);
     }
@@ -503,11 +504,11 @@ TEST_CASE("Testing outgoing traversal operators", "[qop]") {
       rs.wait();
       q.print_plan();
 
-      expected.data.push_back({query_result("D")});
-      expected.data.push_back({query_result("C")});
-      expected.data.push_back({query_result("B")});
-      expected.data.push_back({query_result("E")});
-      expected.data.push_back({query_result("F")});
+      expected.data.push_back({qv_("D")});
+      expected.data.push_back({qv_("C")});
+      expected.data.push_back({qv_("B")});
+      expected.data.push_back({qv_("E")});
+      expected.data.push_back({qv_("F")});
 
       REQUIRE(rs == expected);
     }
@@ -563,7 +564,7 @@ TEST_CASE("Testing incoming traversal operators", "[qop]") {
       rs.wait();
       q.print_plan();
 
-      expected.data.push_back({query_result("E")});
+      expected.data.push_back({qv_("E")});
 
       REQUIRE(rs == expected);
     }
@@ -582,9 +583,9 @@ TEST_CASE("Testing incoming traversal operators", "[qop]") {
       rs.wait();
       q.print_plan();
 
-      expected.data.push_back({query_result("E")});
-      expected.data.push_back({query_result("B")});
-      expected.data.push_back({query_result("A")});
+      expected.data.push_back({qv_("E")});
+      expected.data.push_back({qv_("B")});
+      expected.data.push_back({qv_("A")});
 
       REQUIRE(rs == expected);
     }
@@ -651,12 +652,12 @@ TEST_CASE("Testing other Join operators", "[qop]") {
       rs.wait();
       query_ctx::print_plans({&q1, &q2});
 
-      expected.data.push_back({query_result("A"), query_result("D"),
-                              query_result("A"), query_result("D")});
-      expected.data.push_back({query_result("A"), query_result("C"),
-                              query_result("A"), query_result("C")});
-      expected.data.push_back({query_result("A"), query_result("B"),
-                              query_result("A"), query_result("B")});
+      expected.data.push_back({qv_("A"), qv_("D"),
+                              qv_("A"), qv_("D")});
+      expected.data.push_back({qv_("A"), qv_("C"),
+                              qv_("A"), qv_("C")});
+      expected.data.push_back({qv_("A"), qv_("B"),
+                              qv_("A"), qv_("B")});
 
       REQUIRE(rs == expected);
     }
@@ -688,9 +689,9 @@ TEST_CASE("Testing other Join operators", "[qop]") {
       rs.wait();
       query_ctx::print_plans({&q1, &q2});
 
-      expected.data.push_back({query_result("2"), query_result("2")});
-      expected.data.push_back({query_result("3"), query_result("3")});
-      expected.data.push_back({query_result("4"), query_result("4")});
+      expected.data.push_back({qv_(2), qv_(2)});
+      expected.data.push_back({qv_(3), qv_(3)});
+      expected.data.push_back({qv_(4), qv_(4)});
 
       REQUIRE(rs == expected);
     }
@@ -719,12 +720,12 @@ TEST_CASE("Testing other Join operators", "[qop]") {
       rs.wait();
       query_ctx::print_plans({&q1, &q2});
 
-      expected.data.push_back({query_result("A"), query_result("D"),
-                              query_result("A"), query_result("D")});
-      expected.data.push_back({query_result("A"), query_result("C"),
-                              query_result("A"), query_result("C")});
-      expected.data.push_back({query_result("A"), query_result("B"),
-                              query_result("A"), query_result("B")});
+      expected.data.push_back({qv_("A"), qv_("D"),
+                              qv_("A"), qv_("D")});
+      expected.data.push_back({qv_("A"), qv_("C"),
+                              qv_("A"), qv_("C")});
+      expected.data.push_back({qv_("A"), qv_("B"),
+                              qv_("A"), qv_("B")});
 
       REQUIRE(rs == expected);
     }
@@ -755,16 +756,16 @@ TEST_CASE("Testing other Join operators", "[qop]") {
       rs.wait();
       query_ctx::print_plans({&q1, &q2});
 
-      expected.data.push_back({query_result("A"), query_result("D"),
-                              query_result("A"), query_result("D")});
-      expected.data.push_back({query_result("A"), query_result("C"),
-                              query_result("A"), query_result("C")});
-      expected.data.push_back({query_result("A"), query_result("B"),
-                              query_result("A"), query_result("B")});
-      expected.data.push_back({query_result("A"), query_result("E"),
-                              query_result("NULL"), query_result("NULL")});
-      expected.data.push_back({query_result("A"), query_result("F"),
-                              query_result("NULL"), query_result("NULL")});
+      expected.data.push_back({qv_("A"), qv_("D"),
+                              qv_("A"), qv_("D")});
+      expected.data.push_back({qv_("A"), qv_("C"),
+                              qv_("A"), qv_("C")});
+      expected.data.push_back({qv_("A"), qv_("B"),
+                              qv_("A"), qv_("B")});
+      expected.data.push_back({qv_("A"), qv_("E"),
+                              qv_(null_val), qv_(null_val)});
+      expected.data.push_back({qv_("A"), qv_("F"),
+                              qv_(null_val), qv_(null_val)});
 
       REQUIRE(rs == expected);
     }
@@ -794,14 +795,14 @@ TEST_CASE("Testing other Join operators", "[qop]") {
       rs.wait();
       query_ctx::print_plans({&q1, &q2});
 
-      expected.data.push_back({query_result("A"), query_result("B")});
-      expected.data.push_back({query_result("A"), query_result("C")});
-      expected.data.push_back({query_result("A"), query_result("D")});
-      expected.data.push_back({query_result("B"), query_result("E")});
-      expected.data.push_back({query_result("C"), query_result("NULL")});
-      expected.data.push_back({query_result("D"), query_result("NULL")});
-      expected.data.push_back({query_result("E"), query_result("F")});
-      expected.data.push_back({query_result("F"), query_result("NULL")});
+      expected.data.push_back({qv_("A"), qv_("B")});
+      expected.data.push_back({qv_("A"), qv_("C")});
+      expected.data.push_back({qv_("A"), qv_("D")});
+      expected.data.push_back({qv_("B"), qv_("E")});
+      expected.data.push_back({qv_("C"), qv_(null_val)});
+      expected.data.push_back({qv_("D"), qv_(null_val)});
+      expected.data.push_back({qv_("E"), qv_("F")});
+      expected.data.push_back({qv_("F"), qv_(null_val)});
 
       REQUIRE(rs == expected);
     }
@@ -877,14 +878,14 @@ TEST_CASE("Testing Groupby operator", "[qop]") {
       q.print_plan();
 
       expected.data.push_back(
-        {query_result("Anastasia"), query_result("1"), query_result("48.000000"),
-          query_result("48"), query_result("48"), query_result("48") });
+        {qv_("Anastasia"), qv_(1), qv_(48.0),
+          qv_(48), qv_(48), qv_(48) });
       expected.data.push_back(
-        {query_result("Michael"), query_result("2"), query_result("88.500000"),
-          query_result("177"),  query_result("77"), query_result("100")});
+        {qv_("Michael"), qv_(2), qv_(88.5),
+          qv_(177),  qv_(77), qv_(100)});
       expected.data.push_back(
-        {query_result("John"), query_result("3"), query_result("33.000000"),
-          query_result("99"), query_result("20"), query_result("42")});
+        {qv_("John"), qv_(3), qv_(33.0),
+          qv_(99), qv_(20), qv_(42)});
 
       REQUIRE(rs == expected);
     }
@@ -910,14 +911,14 @@ TEST_CASE("Testing Groupby operator", "[qop]") {
     q.print_plan();
 
     expected.data.push_back(
-      {query_result("Anastasia"), query_result("1"), query_result("48.000000"),
-        query_result("48"), query_result("48"), query_result("48") });
+      {qv_("Anastasia"), qv_(1), qv_(48.0),
+        qv_(48), qv_(48), qv_(48) });
     expected.data.push_back(
-      {query_result("Michael"), query_result("2"), query_result("88.500000"),
-        query_result("177"),  query_result("77"), query_result("100")});
+      {qv_("Michael"), qv_(2), qv_(88.5),
+        qv_(177),  qv_(77), qv_(100)});
     expected.data.push_back(
-      {query_result("John"), query_result("3"), query_result("33.000000"),
-        query_result("99"), query_result("20"), query_result("42")});
+      {qv_("John"), qv_(3), qv_(33.0),
+        qv_(99), qv_(20), qv_(42)});
 
     REQUIRE(rs == expected);
     }
@@ -977,10 +978,10 @@ TEST_CASE("Testing Bi-directional traversal operator", "[qop]") {
     rs.wait();
     q.print_plan();
 
-    expected.data.push_back({query_result("EEE")});
-    expected.data.push_back({query_result("DDD")});
-    expected.data.push_back({query_result("BBB")});
-    expected.data.push_back({query_result("AAA")});
+    expected.data.push_back({qv_("EEE")});
+    expected.data.push_back({qv_("DDD")});
+    expected.data.push_back({qv_("BBB")});
+    expected.data.push_back({qv_("AAA")});
 
     REQUIRE(rs == expected);
     return true;
@@ -1026,7 +1027,7 @@ TEST_CASE("Testing distinct operator", "[qop]") {
     rs.wait();
     q.print_plan();
 
-    expected.data.push_back({query_result("38")});
+    expected.data.push_back({qv_(38)});
 
     REQUIRE(rs == expected);
     return true;

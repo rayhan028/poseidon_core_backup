@@ -22,173 +22,6 @@
 #include "properties.hpp"
 #include "expr_interpreter.hpp"
 
-// ----------- query_result::int -----------
-inline bool int_not_equal(const query_result& r1, const query_result& r2) {
-    return qv_get_int(r1) != qv_get_int(r2);
-}
-
-inline bool int_greater_than(const query_result& r1, const query_result& r2) {
-    return qv_get_int(r1) > qv_get_int(r2);
-}
-
-inline bool int_less_than(const query_result& r1, const query_result& r2) {
-    return qv_get_int(r1) < qv_get_int(r2);
-}
-
-inline bool uint64_less_than(const query_result& r1, const query_result& r2) {
-    return qv_get_uint64(r1) < qv_get_uint64(r2);
-}
-
-inline bool uint64_greater_than(const query_result& r1, const query_result& r2) {
-    return qv_get_uint64(r1) > qv_get_uint64(r2);
-}
-
-// ----------- query_result::double -----------
-inline bool double_not_equal(const query_result& r1, const query_result& r2) {
-    return qv_get_double(r1) != qv_get_double(r2);
-}
-
-inline bool double_greater_than(const query_result& r1, const query_result& r2) {
-    return qv_get_double(r1) > qv_get_double(r2);
-}
-
-inline bool double_less_than(const query_result& r1, const query_result& r2) {
-    return qv_get_double(r1) < qv_get_double(r2);
-}
-
-// ----------- query_result::string -----------
-inline bool string_not_equal(const query_result& r1, const query_result& r2) {
-    return qv_get_string(r1) != qv_get_string(r2);
-}
-
-inline bool string_equal(const query_result& r1, const query_result& r2) {
-    return qv_get_string(r1) == qv_get_string(r2);
-}
-
-inline bool string_greater_than(const query_result& r1, const query_result& r2) {
-    return qv_get_string(r1) > qv_get_string(r2);
-}
-
-inline bool string_less_than(const query_result& r1, const query_result& r2) {
-    return qv_get_string(r1) < qv_get_string(r2);
-}
-
-// ----------- query_result -----------
-bool equal(const query_result& qr1, const query_result& qr2) {
-    // std::cout << "equal: " << qr1.which() << "-" << qr2.which() << std::endl;
-    if (qr1.which() == qr2.which()) {
-        switch (qr1.which()) {
-            case node_ptr_type: // node *
-                return qv_get_node(qr1) == qv_get_node(qr2);
-            case rship_ptr_type: // relationship *
-                return qv_get_relationship(qr1) == qv_get_relationship(qr2);
-                break;
-            case int_type: // int
-                return qv_get_int(qr1) == qv_get_int(qr2);
-            case double_type: // double
-                return qv_get_double(qr1) == qv_get_double(qr2);
-            case string_type: // std::string
-                return string_equal(qr1, qr2);
-            case uint64_type: // uint64_t
-                return qv_get_uint64(qr1) == qv_get_uint64(qr2);
-            case ptime_type: 
-                return qv_get_ptime(qr1) == qv_get_ptime(qr2);
-            default:
-                break;
-        }
-    } 
-    else if (qr1.which() == int_type && qr2.which() == uint64_type)
-        return (uint64_t)qv_get_int(qr1) == qv_get_uint64(qr2);
-    else if (qr1.which() == uint64_type && qr2.which() == int_type)
-        return qv_get_uint64(qr1) == (uint64_t)qv_get_int(qr2);
-   else if (qr1.which() == double_type && qr2.which() == uint64_type)
-        return qv_get_double(qr1) == (double)qv_get_uint64(qr2);
-    else if (qr1.which() == uint64_type && qr2.which() == double_type)
-        return (double)qv_get_uint64(qr1) == qv_get_double(qr2);
-    else if (qr1.which() == double_type && qr2.which() == int_type)
-        return qv_get_double(qr1) == (double)qv_get_int(qr2);
-    else if (qr1.which() == int_type && qr2.which() == double_type)
-        return (double)qv_get_int(qr1) == qv_get_double(qr2);
-    return false;
-}
-
-bool less_than(const query_result& qr1, const query_result& qr2) {
-    if (qr1.which() == qr2.which()) {
-        switch (qr1.which()) {
-            case node_ptr_type: // node *
-            case rship_ptr_type: // relationship *
-                break;
-            case int_type: // int
-                return qv_get_int(qr1) < qv_get_int(qr2);
-            case double_type: // double
-                return qv_get_double(qr1) < qv_get_double(qr2);
-            case string_type: // std::string
-                return string_less_than(qr1, qr2);
-            case uint64_type: // uint64_t
-                return qv_get_uint64(qr1) < qv_get_uint64(qr2);
-            case ptime_type:
-                return qv_get_ptime(qr1) < qv_get_ptime(qr2);
-            default:
-                break;
-        }
-    } 
-    else if (qr1.which() == int_type && qr2.which() == uint64_type)
-        return (uint64_t)qv_get_int(qr1) <qv_get_uint64(qr2);
-    else if (qr1.which() == uint64_type && qr2.which() ==int_type)
-        return qv_get_uint64(qr1) < (uint64_t)qv_get_int(qr2);
-   else if (qr1.which() == double_type && qr2.which() == uint64_type)
-        return qv_get_double(qr1) < (double)qv_get_uint64(qr2);
-    else if (qr1.which() == uint64_type && qr2.which() == double_type)
-        return (double)qv_get_uint64(qr1) < qv_get_double(qr2);
-    else if (qr1.which() == double_type && qr2.which() == int_type)
-        return qv_get_double(qr1) < (double)qv_get_int(qr2);
-    else if (qr1.which() == int_type && qr2.which() == double_type)
-        return (double)qv_get_int(qr1) < qv_get_double(qr2);    
-    return false;
-}
-
-bool less_or_equal(const query_result& qr1, const query_result& qr2) {
-    return less_than(qr1, qr2) || equal(qr1, qr2);
-}
-
-bool greater_than(const query_result& qr1, const query_result& qr2) {
-    if (qr1.which() == qr2.which()) {
-        switch (qr1.which()) {
-            case node_ptr_type: // node *
-            case rship_ptr_type: // relationship *
-                break;
-            case int_type: // int
-                return qv_get_int(qr1) > qv_get_int(qr2);
-            case double_type: // double
-               return qv_get_double(qr1) > qv_get_double(qr2);
-            case string_type: // std::string
-                return string_greater_than(qr1, qr2);
-            case uint64_type: // uint64_t
-                return qv_get_uint64(qr1) > qv_get_uint64(qr2);
-            case ptime_type: // uint64_t
-                return qv_get_ptime(qr1) > qv_get_ptime(qr2);
-            default:
-                break;
-        }
-    } 
-    else if (qr1.which() == int_type && qr2.which() == uint64_type)
-        return (uint64_t)qv_get_int(qr1) > qv_get_uint64(qr2);
-    else if (qr1.which() == uint64_type && qr2.which() == int_type)
-        return qv_get_uint64(qr1) > (uint64_t)qv_get_int(qr2);
-    else if (qr1.which() == double_type && qr2.which() == uint64_type)
-        return qv_get_double(qr1) > (double)qv_get_uint64(qr2);
-    else if (qr1.which() == uint64_type && qr2.which() == double_type)
-        return (double)qv_get_uint64(qr1) > qv_get_double(qr2);
-    else if (qr1.which() == double_type && qr2.which() == int_type)
-        return qv_get_double(qr1) > (double)qv_get_int(qr2);
-    else if (qr1.which() == int_type && qr2.which() == double_type)
-        return (double)qv_get_int(qr1) > qv_get_double(qr2);
-    return false;
-}
-
-bool greater_or_equal(const query_result& qr1, const query_result& qr2) {
-    return greater_than(qr1, qr2) || equal(qr1, qr2);
-}
 
 int int_math_op(expr_op op, int v1, int v2) {
     switch(op) {
@@ -420,7 +253,7 @@ public:
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
-            bool res = equal(v1, v2);
+            bool res = qv_equal(v1, v2);
             // std::cout << "visit eq_predicate: ->" << v1 << " == " << v2 << std::endl;       
             stack_.push(query_result(res ? 1 : 0));
         }
@@ -435,7 +268,7 @@ public:
         if (valid_operands()) {
             auto v2 = pop(stack_);
             auto v1 = pop(stack_);
-            bool res = ! equal(v1, v2);
+            bool res = ! qv_equal(v1, v2);
             // std::cout << "visit eq_predicate: ->" << res << std::endl;       
             stack_.push(query_result(res ? 1 : 0));
         }
