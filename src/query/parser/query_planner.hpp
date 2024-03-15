@@ -117,7 +117,7 @@ private:
 
   static std::string trim_string(const std::string &s);
 
-  expr property_list_to_expr(properties_t &plist);
+  expr property_list_to_expr(properties_t &plist, int var_offset = 0);
 
   expr_type typespec_to_exprtype(poseidonParser::Type_specContext *var_type);
 

@@ -759,11 +759,20 @@ query_planner::visitPath_pattern(poseidonParser::Path_patternContext *ctx) {
     auto hl_op = std::make_shared<node_has_label>(label);
     node_op = qop_append(node_op, hl_op);
     origin_idx++;
+    
+    if (p->node_pattern()->property_list() != nullptr) {
+      auto pl = visit(p->node_pattern()->property_list());
+      auto props = std::any_cast<properties_t>(pl);
+      auto ex = property_list_to_expr(props, origin_idx);
+      spdlog::info("add filter... {}", origin_idx);
+      auto fop = std::make_shared<filter_op>(ex);
+      node_op = qop_append(node_op, fop);
+    }
   }
   return std::make_any<qop_ptr>(node_op);
 }
 
-expr query_planner::property_list_to_expr(properties_t &plist) {
+expr query_planner::property_list_to_expr(properties_t &plist, int var_offset) {
   expr ex;
   for (auto &p : plist) {
     auto prop = p;
@@ -787,7 +796,7 @@ expr query_planner::property_list_to_expr(properties_t &plist) {
                    val.type().name());
 
     auto pcode = qctx_.get_code(prop.first);
-    auto lhs_expr = Variable(0, prop.first, pcode, lhs_type);
+    auto lhs_expr = Variable(var_offset, prop.first, pcode, lhs_type);
 
     expr ex2 = EQ(lhs_expr, rhs_expr);
     if (ex)

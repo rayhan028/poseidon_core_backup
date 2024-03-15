@@ -89,6 +89,9 @@ public:
 
     virtual void* visit(std::shared_ptr<variable> op) override {
         // std::cout << "visit variable: " << op->id_ << ", " << op->pcode_ << " : " << tup_.size() << std::endl;
+        if (op->id_ >= tup_.size())
+            throw query_processing_error(fmt::format("invalid variable ${}", op->id_));
+
         auto inp = tup_[op->id_];
         p_item res;
         switch (inp.which()) {
