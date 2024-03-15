@@ -403,7 +403,7 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
           "Project([$0.id:uint64, $0.firstName:string, $0.lastName:string], "
           "Filter($0.id:uint64 == 833579, NodeScan('Person')))");
       result_set expected;
-      expected.append({qv_(833579ull), qv_("Otto"), qv_("Becker")});
+      expected.append({qv_(uint64_t(833579)), qv_("Otto"), qv_("Becker")});
       REQUIRE(res.result() == expected);
     }
 
@@ -413,7 +413,7 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
           "Project([$0.id:uint64, $0.lastName:string], "
           "Filter($0.id:uint64 == 1477066812357595144, NodeScan('Person')))");
       result_set expected;
-      expected.append({qv_(1477066812357595144ull), qv_("Beran")});
+      expected.append({qv_(uint64_t(1477066812357595144)), qv_("Beran")});
       REQUIRE(res.result() == expected);
     }
 
@@ -449,11 +449,11 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
                            "ForeachRelationship(FROM, 'knows', Filter($0.id:uint64 "
                            "== 933, NodeScan('Person')))))");
       result_set expected;
-      expected.append({qv_(838375ull)});
-      expected.append({qv_(833579ull)});
-      expected.append({qv_(10995116ull)});
-      expected.append({qv_(65970697ull)});
-      expected.append({qv_(4139ull)});
+      expected.append({qv_(uint64_t(838375))});
+      expected.append({qv_(uint64_t(833579))});
+      expected.append({qv_(uint64_t(10995116))});
+      expected.append({qv_(uint64_t(65970697))});
+      expected.append({qv_(uint64_t(4139))});
 
       REQUIRE(res.result() == expected);
     }
@@ -474,11 +474,11 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
                                   "Project([$2.id:uint64], Match((p1:Person "
                                   "{id: 933})-[:knows]->(p2:Person)))");
       result_set expected;
-      expected.append({qv_(838375ull)});
-      expected.append({qv_(833579ull)});
-      expected.append({qv_(10995116ull)});
-      expected.append({qv_(65970697ull)});
-      expected.append({qv_(4139ull)});
+      expected.append({qv_(uint64_t(838375))});
+      expected.append({qv_(uint64_t(833579))});
+      expected.append({qv_(uint64_t(10995116))});
+      expected.append({qv_(uint64_t(65970697))});
+      expected.append({qv_(uint64_t(4139))});
 
       REQUIRE(res.result() == expected);
     }
@@ -537,15 +537,15 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
     "Project([$0.id:uint64, $1:int, $2:int], Algorithm([NumLinks, TUPLE], Filter($0.id:uint64 < 100000, NodeScan('Person'))))", true);
     result_set expected;
 
-    expected.append({ qv_(65ull), qv_(14), qv_(0) });
-    expected.append({ qv_(1379ull), qv_(1), qv_(0) });
-    expected.append({ qv_(1291ull), qv_(1), qv_(0) });
-    expected.append({ qv_(933ull), qv_(1), qv_(6) });
-    expected.append({ qv_(4139ull), qv_(1), qv_(1) });
-    expected.append({ qv_(4194ull), qv_(1), qv_(0) });
-    expected.append({ qv_(15393ull), qv_(1), qv_(1) });
-    expected.append({ qv_(19791ull), qv_(1), qv_(0) });
-    expected.append({ qv_(90796ull), qv_(2), qv_(0) });
+    expected.append({ qv_(uint64_t(65)), qv_(14), qv_(0) });
+    expected.append({ qv_(uint64_t(1379)), qv_(1), qv_(0) });
+    expected.append({ qv_(uint64_t(1291)), qv_(1), qv_(0) });
+    expected.append({ qv_(uint64_t(933)), qv_(1), qv_(6) });
+    expected.append({ qv_(uint64_t(4139)), qv_(1), qv_(1) });
+    expected.append({ qv_(uint64_t(4194)), qv_(1), qv_(0) });
+    expected.append({ qv_(uint64_t(15393)), qv_(1), qv_(1) });
+    expected.append({ qv_(uint64_t(19791)), qv_(1), qv_(0) });
+    expected.append({ qv_(uint64_t(90796)), qv_(2), qv_(0) });
 
     REQUIRE(res.result() == expected);
   }
