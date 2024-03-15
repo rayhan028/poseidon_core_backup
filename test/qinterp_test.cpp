@@ -464,7 +464,7 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
           "Aggregate([count($0.lastName:string), min($0.id:uint64), "
           "max($0.id:uint64)], NodeScan('Person'))");
       result_set expected;
-      expected.append({qv_(14), qv_(65ull), qv_(1477066812357595144ull)});
+      expected.append({qv_(14), qv_(uint64_t(65)), qv_(uint64_t(1477066812357595144))});
 
       REQUIRE(res.result() == expected);
     }
