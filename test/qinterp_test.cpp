@@ -380,7 +380,7 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
           query_proc::Interpret,
           "Project([$0.id:uint64, $0.title:string], NodeScan('Forum'))");
       result_set expected;
-      expected.append({qv_(37ull), qv_("Wall of Hồ Chí Do")});
+      expected.append({qv_(uint64_t(37)), qv_("Wall of Hồ Chí Do")});
 
       REQUIRE(res.result() == expected);
     }
