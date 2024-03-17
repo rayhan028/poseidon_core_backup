@@ -63,7 +63,7 @@ void ParserErrorListener::syntaxError(antlr4::Recognizer *recognizer, antlr4::To
     throw query_processing_error(mstr);
 }
 
-query_proc::query_proc(query_ctx &ctx) : qcnt_(1), qctx_(ctx) {
+query_proc::query_proc(query_ctx &ctx) : qcnt_(1), qctx_(ctx), exec_mode_(query_proc::Interpret) {
     interp_ = std::make_unique<qinterp>();
 #ifdef USE_LLVM
     jit_ = std::make_unique<jit_engine>(qctx_.gdb_);
@@ -86,24 +86,29 @@ bool query_proc::parse_(const std::string &query) {
     }
 }
 
-qresult_iterator query_proc::execute_query(query_proc::mode m, const std::string& qstr, bool print_plan, bool as_string) {
-    std::cout << "exec: " << qstr << std::endl;
-    auto qplan = prepare_query(qstr);
+qresult_iterator query_proc::execute_query(const std::string& qstr, bool print_plan, bool as_string) {
+    // std::cout << "exec: " << qstr << std::endl;
+    bool has_error = false;
     result_set result;
-    qplan.append_collect(result, as_string);
-    prepare_plan(qplan, m);
+    try {
+        auto qplan = prepare_query(qstr);
+        qplan.append_collect(result, as_string);
+        prepare_plan(qplan, exec_mode_);
 
-    run_query(qplan);
-    if (print_plan)
-        qplan.print_plan();
-
-    return qresult_iterator(std::move(result));
+        run_query(qplan);
+        if (print_plan)
+            qplan.print_plan();
+    } catch(std::exception& exc) {
+        has_error = true;
+        spdlog::info("ERROR in query processing: {}", exc.what());
+    }
+    return qresult_iterator(std::move(result), has_error);    
 }
 
-std::size_t query_proc::execute_and_output_query(query_proc::mode m, const std::string& qstr, bool print_plan) {
+std::size_t query_proc::execute_and_output_query(const std::string& qstr, bool print_plan) {
     auto qplan = prepare_query(qstr);
     qplan.append_printer(); 
-    prepare_plan(qplan, m);
+    prepare_plan(qplan, exec_mode_);
 
     run_query(qplan);
     if (print_plan)

@@ -27,8 +27,9 @@
  * can act as a root operator (via start) are also as subscriber.
  */
 struct create_node : public enable_shared<qop, create_node> {
-  create_node(const std::string &l) : label(l) {}
+  create_node(const std::string &l) : label(l) {  type_ = qop_type::create; }
   create_node(const std::string &l, const properties_t &p) : label(l), props(p) {
+    type_ = qop_type::create;
     expr_in_properties_= check_for_expr_in_properties();
   }
   ~create_node() = default;
@@ -58,10 +59,10 @@ struct create_node : public enable_shared<qop, create_node> {
  * in the query result.
  */
 struct create_relationship : public enable_shared<qop, create_relationship> {
-  create_relationship(const std::string &l) : label(l) {}
+  create_relationship(const std::string &l) : label(l) { type_ = qop_type::create; }
   create_relationship(const std::string &l, const properties_t &p,
                       std::pair<int, int> src_des)
-      : label(l), props(p), src_des_nodes_(src_des) {}
+      : label(l), props(p), src_des_nodes_(src_des) { type_ = qop_type::create; }
   ~create_relationship() = default;
 
   void dump(std::ostream &os) const override;
@@ -84,7 +85,7 @@ struct create_relationship : public enable_shared<qop, create_relationship> {
  * which is passed via consume parameters.
  */
 struct update_node : public enable_shared<qop, update_node> {
-  update_node(std::size_t var, properties_t &p) : var_no_(var), props(p) {}
+  update_node(std::size_t var, properties_t &p) : var_no_(var), props(p) { type_ = qop_type::update; }
   update_node() : var_no_(0) {}
   ~update_node() = default;
 

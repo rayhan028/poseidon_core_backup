@@ -120,4 +120,21 @@ struct start_pipeline : public enable_shared<qop, start_pipeline> {
   }
 };
 
+struct node_by_id : public enable_shared<qop, node_by_id> {
+  node_by_id(node::id_t id) : id_(id) { type_ = qop_type::node_by_id; }  
+  ~node_by_id() = default;
+
+  void dump(std::ostream &os) const override;
+
+  void start(query_ctx &ctx) override;
+  
+  void accept(qop_visitor& vis) override { 
+    vis.visit(shared_from_this()); 
+    if (has_subscriber())
+      subscriber_->accept(vis);
+  }
+
+  node::id_t id_;
+};
+
 #endif

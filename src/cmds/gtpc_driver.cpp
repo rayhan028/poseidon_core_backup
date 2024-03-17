@@ -145,7 +145,7 @@ bool oltp_new_order(bool check_result = false) {
     uint64_t o_id = WAREHOUSE_COUNT * DISTRICT_PER_WAREHOUSE * CUSTOMER_PER_DISTRICT + uniform_random_int(1, 10);
     node* new_order = nullptr;
     auto iter3 = qproc_ptr->exec_query(
-        "Create((o:Order {{id: {0}, entry_d: pb::now(), carrier_id: {1}, ol_cnt: {2}, all_local: {3}, new_order: {4} }}))",
+        "Create((o:Order {{id: {0}ull, entry_d: pb::now(), carrier_id: {1}, ol_cnt: {2}, all_local: {3}, new_order: {4} }}))",
         o_id, o_carrier_id, ol_cnt, all_local, o_new_order);
     if (iter3.is_valid()) {
         new_order = iter3.get<node *>(0);
@@ -220,7 +220,7 @@ bool oltp_new_order(bool check_result = false) {
         auto iter7 = qproc_ptr->exec_query(
         "Create(($2)-[:hasStock]->($1), "
         "Create(($0)-[:contains]->($2), "
-        "Create((o:OrderLine {{ id: {0}, number: {1}, quantity: {2}, amount: {3}, dist_info: '{4}' }}), "
+        "Create((o:OrderLine {{ id: {0}ull, number: {1}, quantity: {2}, amount: {3}, dist_info: '{4}' }}), "
         "CrossJoin(NodeById({5}), IndexScan('Stock', 'id', {6})))))",
         ol_id, ol_number, ol_quantity, ol_amount, ol_dist_info, new_order->id(), stock_id);
         if (!iter7.is_valid()) {
@@ -237,13 +237,13 @@ bool oltp_new_order(bool check_result = false) {
     if (check_result) {
         graph->run_transaction([&]() {
             auto iter8 = qproc_ptr->exec_query(
-                "Project([$0.id:int, $0.ol_cnt:int, $2.id:int, $2.number:int], "
+                "Project([$0.id:uint64, $0.ol_cnt:int, $2.id:uint64, $2.number:int], "
                 "Expand(OUT, 'OrderLine', ForeachRelationship(FROM, 'contains', IndexScan('Order', 'id', {0}))))",
                 o_id);
             while (iter8.is_valid()) {
-                auto order_id = iter8.get<int>(0);
+                auto order_id = iter8.get<uint64_t>(0);
                 auto ol_cnt = iter8.get<int>(1);
-                auto orderline_id = iter8.get<int>(2);
+                auto orderline_id = iter8.get<uint64_t>(2);
                 auto number = iter8.get<int>(3);
                 spdlog::info("---> {}, {}", order_id, orderline_id);
                 ++iter8;

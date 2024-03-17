@@ -197,14 +197,14 @@ void print_result(qresult_iterator& qres) {
  * Execute the query given as string. If qex_cc is set to true then the
  * query is compiled using LLVM, otherwise the query interpreter is used.
  */
-void exec_query(std::string &qstr, query_proc::mode qmode, bool print_plan, int num = 1) {
+void exec_query(std::string &qstr, bool print_plan, int num = 1) {
   trim(qstr);
   if (qstr.empty()) return;
   
   try {
     for (auto i = 0; i < num; i++) {
       auto start_qp = std::chrono::steady_clock::now();
-      qproc_ptr->execute_and_output_query(qmode, qstr, print_plan);
+      qproc_ptr->execute_and_output_query(qstr, print_plan);
       auto end_qp = std::chrono::steady_clock::now();
 
       std::chrono::duration<double> diff = end_qp - start_qp;
@@ -391,7 +391,7 @@ void my_handler (int sig) {
   qproc_ptr->abort_query();
 }
 
-void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
+void run_shell(graph_db_ptr &gdb) {
   // signal(SIGINT, my_handler);
   const auto path = "history.txt";
   // Enable the multi-line mode
@@ -419,7 +419,7 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
 
     if (line.rfind("@", 0) == 0) {
       auto query_string = read_from_file(line.substr(1));
-      exec_query(query_string, qmode, false);
+      exec_query(query_string, false);
     } 
 #if USE_LLVM2    
     else if(line.rfind("set", 0) == 0) { // save sub-query: > q1:End(NodeScan("Person"))
@@ -428,7 +428,7 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
     } else if(line.rfind("run", 0) == 0) { // run saved query plan -> run:q1
       spdlog::info("Execute query: {} ", line.substr(line.find(":") + 1));
       //qlc.exec_plan(line.substr(line.find(":") + 1), gdb);
-      exec_query(line.substr(line.find(":") + 1), qmode, false);
+      exec_query(line.substr(line.find(":") + 1), false);
     }
 #endif
     else if (line.rfind("help", 0) == 0) {
@@ -474,10 +474,10 @@ void run_shell(graph_db_ptr &gdb, query_proc::mode qmode) {
     }
     else if (line.rfind("explain ", 0) == 0) {
       auto qstr = line.substr(8);
-      exec_query(qstr, qmode, true);
+      exec_query(qstr, true);
     }
     else
-      exec_query(line, qmode, false);
+      exec_query(line, false);
 
     // Add line to history
     linenoise::AddHistory(line.c_str());
@@ -665,6 +665,7 @@ int main(int argc, char* argv[]) {
 
   query_ctx ctx(graph);
   qproc_ptr = std::make_unique<query_proc>(ctx);
+  qproc_ptr->set_execution_mode(qmode);
 
   if (!query_file.empty()) {
     mode = script_mode;
@@ -674,12 +675,12 @@ int main(int argc, char* argv[]) {
       if (is_command(qs))
         exec_command(qs);
       else
-        exec_query(qs, qmode, explain, num);
+        exec_query(qs, explain, num);
     }
   }
 
   if (start_shell || mode == undefined_mode) {
-    run_shell(graph, qmode);
+    run_shell(graph);
   }
 
   graph->flush();

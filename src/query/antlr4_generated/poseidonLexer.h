@@ -13,22 +13,23 @@ class  poseidonLexer : public antlr4::Lexer {
 public:
   enum {
     T__0 = 1, T__1 = 2, T__2 = 3, T__3 = 4, T__4 = 5, T__5 = 6, T__6 = 7, 
-    Filter_ = 8, Nodescan_ = 9, Rshipscan_ = 10, Indexscan_ = 11, Match_ = 12, 
-    Project_ = 13, Limit_ = 14, CrossJoin_ = 15, HashJoin_ = 16, Exists_ = 17, 
-    NotExists_ = 18, NLJoin_ = 19, LeftOuterJoin_ = 20, Expand_ = 21, ForeachRelationship_ = 22, 
-    Aggregate_ = 23, GroupBy_ = 24, Sort_ = 25, Distinct_ = 26, Create_ = 27, 
-    Update_ = 28, Union_ = 29, Except_ = 30, RemoveNode_ = 31, RemoveRelationship_ = 32, 
-    DetachNode_ = 33, Algorithm_ = 34, Case_ = 35, IntType_ = 36, Uint64Type_ = 37, 
-    DoubleType_ = 38, StringType_ = 39, DateType_ = 40, NodeResultType_ = 41, 
-    RshipResultType_ = 42, Count_ = 43, Sum_ = 44, Avg_ = 45, Min_ = 46, 
-    Max_ = 47, UDF_ = 48, BUILTIN_ = 49, InExpandDir_ = 50, OutExpandDir_ = 51, 
-    TupleMode_ = 52, ResultSetMode_ = 53, FromDir_ = 54, ToDir_ = 55, AllDir_ = 56, 
-    DescOrder_ = 57, AscOrder_ = 58, INTEGER = 59, FLOAT = 60, Identifier_ = 61, 
-    Var = 62, NAME_ = 63, STRING_ = 64, COLON_ = 65, DOUBLE_COLON = 66, 
-    COMMA_ = 67, LPAREN = 68, RPAREN = 69, LBRACKET = 70, RBRACKET = 71, 
-    OR = 72, AND = 73, EQUALS = 74, NOTEQUALS = 75, LT = 76, LTEQ = 77, 
-    GT = 78, GTEQ = 79, PLUS_ = 80, MULT = 81, DIV = 82, MOD = 83, REGEX = 84, 
-    NOT = 85, WHITESPACE = 86, COMMENT = 87
+    Filter_ = 8, Nodescan_ = 9, Rshipscan_ = 10, Indexscan_ = 11, NodeById_ = 12, 
+    Match_ = 13, Project_ = 14, Limit_ = 15, CrossJoin_ = 16, HashJoin_ = 17, 
+    Exists_ = 18, NotExists_ = 19, NLJoin_ = 20, LeftOuterJoin_ = 21, Expand_ = 22, 
+    ForeachRelationship_ = 23, Aggregate_ = 24, GroupBy_ = 25, Sort_ = 26, 
+    Distinct_ = 27, Create_ = 28, Update_ = 29, Union_ = 30, Except_ = 31, 
+    RemoveNode_ = 32, RemoveRelationship_ = 33, DetachNode_ = 34, Algorithm_ = 35, 
+    Case_ = 36, IntType_ = 37, Uint64Type_ = 38, DoubleType_ = 39, StringType_ = 40, 
+    DateType_ = 41, NodeResultType_ = 42, RshipResultType_ = 43, Count_ = 44, 
+    Sum_ = 45, Avg_ = 46, Min_ = 47, Max_ = 48, UDF_ = 49, BUILTIN_ = 50, 
+    InExpandDir_ = 51, OutExpandDir_ = 52, TupleMode_ = 53, ResultSetMode_ = 54, 
+    FromDir_ = 55, ToDir_ = 56, AllDir_ = 57, DescOrder_ = 58, AscOrder_ = 59, 
+    INTEGER = 60, LONG_INTEGER = 61, FLOAT = 62, Identifier_ = 63, Var = 64, 
+    NAME_ = 65, STRING_ = 66, COLON_ = 67, DOUBLE_COLON = 68, COMMA_ = 69, 
+    LPAREN = 70, RPAREN = 71, LBRACKET = 72, RBRACKET = 73, OR = 74, AND = 75, 
+    EQUALS = 76, NOTEQUALS = 77, LT = 78, LTEQ = 79, GT = 80, GTEQ = 81, 
+    PLUS_ = 82, MULT = 83, DIV = 84, MOD = 85, REGEX = 86, NOT = 87, WHITESPACE = 88, 
+    COMMENT = 89
   };
 
   explicit poseidonLexer(antlr4::CharStream *input);

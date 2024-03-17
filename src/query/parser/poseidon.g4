@@ -27,6 +27,7 @@ query_operator : filter_op
         | remove_relationship_op
         | update_op
         | algorithm_op
+        | node_by_id
         ;
 
 // Scan
@@ -39,6 +40,8 @@ scan_list : '[' STRING_ (',' STRING_)* ']' ;
 
 index_scan_op : Indexscan_ '(' index_scan_param ')' ;
 index_scan_param : STRING_ ',' STRING_ ',' value ;
+
+node_by_id : NodeById_ '(' INTEGER ')' ;
 
 // Project
 project_op : Project_ '(' proj_list ',' query_operator ')' ;
@@ -138,6 +141,7 @@ primary_expr : '(' logical_expr ')'
 variable : Var ('.' Identifier_ )? ':' type_spec ;
 
 value   : INTEGER
+        | LONG_INTEGER
         | FLOAT
         | STRING_
         ;
@@ -183,6 +187,7 @@ Filter_      : 'Filter' ;
 Nodescan_    : 'NodeScan' ;
 Rshipscan_   : 'RelationshipScan' ;
 Indexscan_   : 'IndexScan' ;
+NodeById_    : 'NodeById' ;
 Match_       : 'Match' ;
 Project_     : 'Project' ;
 Limit_       : 'Limit' ;
@@ -234,8 +239,9 @@ AllDir_       : 'ALL' ;
 DescOrder_    : 'DESC' ;
 AscOrder_     : 'ASC' ;
 
-INTEGER     : [0-9]+ ;
-FLOAT       : '-'? ('0'..'9')+ '.' ('0'..'9')+ ;
+INTEGER       : [0-9]+ ;
+LONG_INTEGER  : [0-9]+ 'ull' ;
+FLOAT         : '-'? ('0'..'9')+ '.' ('0'..'9')+ ;
 
 Identifier_  : NAME_ ;
 Var          : '$'[0-9]+;

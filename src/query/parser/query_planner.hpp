@@ -43,6 +43,7 @@ public:
 
   std::any visitQuery(poseidonParser::QueryContext *ctx) override;
   std::any visitNode_scan_op(poseidonParser::Node_scan_opContext *ctx) override;
+  std::any visitNode_by_id(poseidonParser::Node_by_idContext *ctx) override;
   std::any
   visitRship_scan_op(poseidonParser::Rship_scan_opContext *ctx) override;
   std::any

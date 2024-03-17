@@ -87,25 +87,32 @@ The following query operators are supported:
 Operator | Parameter | Example | Description 
 ---------| ----------|---------|------------
 NodeScan | node type (optional) | `NodeScan()`<br>`NodeScan('Person')` | Scans the node table and returns all nodes of the optionally given type.
+NodeById | internal id | |
 IndexScan | node type, property, key | `IndexScan('Person', 'id', 933)` | Performs an index lookup and returns all nodes of the given type that satisfy the predicate condition
-Filter | filter expression, input expression | `Filter($0.id:uint64 == 42, NodeScan('Person'))` | Processes the input list of nodes and rships produced by input expression *query-expr* and returns all tuples satisfying the given condition. In the expressions, the input columns are denoted by $0, $1, $2 etc. 
-ForeachRelationship | TO or FROM or ALL, RelationshipType, input | `ForeachRelationship(FROM, 'isLocatedIn', NodeScan('Person'))` | Traverses all incoming or outgoing or both relationships of the given type
-Expand | `IN` or `OUT`, node type, input expression | `Expand(OUT, 'Place', ForeachRelationship(FROM, 'isLocatedIn', NodeScan('Person')))` | Gets all the source or destination nodes of the given type. Used after `ForeachRelationship` operator.
-Match | path pattern, input expression | `Match((p1:Person {id: 933})-[:isLocatedIn]->(p2:Place))` | Evaluates the given path pattern (in Cypher's ASCII art notation) and returns the matching nodes/relationships. In fact, this operator is internally translated to a sequence of corresponding `ForeachRelationship`-`Expand` expressions.
-Project | [ projection list ], input expr | `Project([$0.firstName:string, $0.lastName:string, $0.id:uint64], NodeScan('Person'))` | Projects query results based on the given projection list
-Limit | number of tuples, input expr | `Limit(10, NodeScan('Person'))` | Limits the input list to the given number of tuples
-Join | condition expression, input1, input2 || Computes a join from the given inputs
-LeftOuterJoin | condition expression, input1, input2 || Computes a left outer join from the given inputs
-Sort |  sort function, input || Orders tuples according to the sorting function
+Filter | filter expression, query-expr | `Filter($0.id:uint64 == 42, NodeScan('Person'))` | Processes the input list of nodes and rships produced by input expression *query-expr* and returns all tuples satisfying the given condition. In the expressions, the input columns are denoted by $0, $1, $2 etc. 
+ForeachRelationship | TO or FROM or ALL, RelationshipType, query-expr | `ForeachRelationship(FROM, 'isLocatedIn', NodeScan('Person'))` | Traverses all incoming or outgoing or both relationships of the given type
+Expand | `IN` or `OUT`, node type, query-expr | `Expand(OUT, 'Place', ForeachRelationship(FROM, 'isLocatedIn', NodeScan('Person')))` | Gets all the source or destination nodes of the given type. Used after `ForeachRelationship` operator.
+Match | path pattern | `Match((p1:Person {id: 933})-[:isLocatedIn]->(p2:Place))` | Evaluates the given path pattern (in Cypher's ASCII art notation) and returns the matching nodes/relationships. In fact, this operator is internally translated to a sequence of corresponding `ForeachRelationship`-`Expand` expressions.
+Project | [ projection list ], query-expr | `Project([$0.firstName:string, $0.lastName:string, $0.id:uint64], NodeScan('Person'))` | Projects query results based on the given projection list
+Limit | number of tuples, query-expr | `Limit(10, NodeScan('Person'))` | Limits the input list to the given number of tuples
+NLJoin | condition expression, query-expr, query-expr || Computes a (nested loops) join from the given inputs
+HashJoin | ??, query-expr, query-expr || Computes a hash join from the given inputs
+CrossJoin | query-expr, query-expr || Computes the cartesian product of the given inputs
+LeftOuterJoin | condition expression, query-expr, query-expr || Computes a left outer join from the given inputs
+Sort |  sort function, query-expr || Orders tuples according to the sorting function
 Aggregate |  [ AggregateType list  ], input || 
 GroupBy | [ GroupKey list ], [ AggregateType list  ], input || Groups all tuples based on grouping key(s) and apply aggregate functions
-Union | [ query list ], input expr || Combines the tuples of multiple queries
-Distinct | input_expr | `Distinct(Project([pb::label($0:qresult)], NodeScan()))` | Eliminates duplicates from the result
+Union | [ query list ], query-expr || Combines the tuples of multiple queries
+Except | | |
+Exists | | |
+NotExists | | |
+Distinct | query-expr | `Distinct(Project([pb::label($0:qresult)], NodeScan()))` | Eliminates duplicates from the result
 Create | (n:NodeType { key: val, ...} ), input || Creates a new node from the literals or the input
 Create | ($1)-[r:RelationshipType { key: val, ...} ]->($2), input || Creates a new relationship from the literals or the input
-RemoveNode | input expression || Deletes the nodes returned from the input expression. If a node is still connected by a relationship then the query is aborted.
-RemoveRelationship | input expression || Deletes the relationships returned from the input expression.
-DetachNode | input expression || Deletes the nodes returned from the input expression together with all their relationships. 
+Update | ||
+RemoveNode | query-expr || Deletes the nodes returned from the input expression. If a node is still connected by a relationship then the query is aborted.
+RemoveRelationship | query-expr || Deletes the relationships returned from the input expression.
+DetachNode | query-expr || Deletes the nodes returned from the input expression together with all their relationships. 
 Algorithm  | algorithm name, `TUPLE` or `SET`, param list |  `Algorithm([NumLinks, TUPLE], Filter($0.id < 100000, NodeScan('Person')))` | Runs the given algorithm either in per-tuple mode (`TUPLE`) or on the whole input (`SET`) with the given parameters.
 
 In addition to executing queries, `pcli` provides several utility commands:

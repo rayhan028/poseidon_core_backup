@@ -47,6 +47,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitNode_by_id(poseidonParser::Node_by_idContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitProject_op(poseidonParser::Project_opContext *ctx) override {
     return visitChildren(ctx);
   }

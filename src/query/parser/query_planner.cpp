@@ -81,6 +81,13 @@ query_planner::visitNode_scan_op(poseidonParser::Node_scan_opContext *ctx) {
   return std::make_any<qop_ptr>(op);
 }
 
+std::any query_planner::visitNode_by_id(poseidonParser::Node_by_idContext *ctx) {
+  uint64_t node_id = std::stoi(ctx->INTEGER()->getText());
+  qop_ptr op = std::make_shared<node_by_id>(node_id);
+  sources_.push_back(op);
+  return std::make_any<qop_ptr>(op);
+}
+
 std::any
 query_planner::visitRship_scan_op(poseidonParser::Rship_scan_opContext *ctx) {
   qop_ptr op = nullptr;
@@ -117,6 +124,8 @@ query_planner::visitIndex_scan_op(poseidonParser::Index_scan_opContext *ctx) {
   uint64_t key = 0;
   if (v->INTEGER() != nullptr)
     key = std::stoi(v->INTEGER()->getText());
+  if (v->LONG_INTEGER() != nullptr)
+    key = std::stoull(v->LONG_INTEGER()->getText());
   else if (v->STRING_() != nullptr) {
     auto str = v->STRING_()->getText();
     key = qctx_.gdb_->get_code(str);
@@ -764,7 +773,7 @@ query_planner::visitPath_pattern(poseidonParser::Path_patternContext *ctx) {
       auto pl = visit(p->node_pattern()->property_list());
       auto props = std::any_cast<properties_t>(pl);
       auto ex = property_list_to_expr(props, origin_idx);
-      spdlog::info("add filter... {}", origin_idx);
+      spdlog::debug("add filter... {}", origin_idx);
       auto fop = std::make_shared<filter_op>(ex);
       node_op = qop_append(node_op, fop);
     }
@@ -969,6 +978,9 @@ std::any query_planner::visitAlgo_param_list(
         res = std::make_any<uint64_t>(
             std::stoull(p->value()->INTEGER()->getText()));
       }
+    } else if (p->value()->LONG_INTEGER()) {
+        res = std::make_any<uint64_t>(
+            std::stoull(p->value()->LONG_INTEGER()->getText()));
     } else if (p->value()->FLOAT())
       res = std::make_any<double>(std::stod(p->value()->FLOAT()->getText()));
     else if (p->value()->STRING_())
@@ -990,6 +1002,8 @@ query_planner::visitProperty_list(poseidonParser::Property_listContext *ctx) {
     if (p->value() != nullptr) {
     if (p->value()->INTEGER())
       pval = std::stoi(p->value()->INTEGER()->getText());
+    else if (p->value()->LONG_INTEGER())
+      pval = std::stoull(p->value()->LONG_INTEGER()->getText());
     else if (p->value()->FLOAT())
       pval = std::stod(p->value()->FLOAT()->getText());
     else if (p->value()->STRING_())
@@ -1161,6 +1175,8 @@ query_planner::visitPrimary_expr(poseidonParser::Primary_exprContext *ctx) {
           param_list.push_back(Str(trim_string(pm->value()->getText())));
         } else if (pm->value()->INTEGER()) {
           param_list.push_back(Int(std::stoi(pm->value()->getText())));
+        } else if (pm->value()->LONG_INTEGER()) {
+          param_list.push_back(UInt64(std::stoull(pm->value()->getText())));
         } else if (pm->value()->FLOAT()) {
           param_list.push_back(Float(std::stof(pm->value()->getText())));
         }
@@ -1206,7 +1222,10 @@ std::any query_planner::visitValue(poseidonParser::ValueContext *ctx) {
       // if we are out of range we try to parse a uint64_t value
       res = std::make_any<expr>(UInt64(std::stoull(ctx->INTEGER()->getText())));
     }
-  } else if (ctx->FLOAT())
+  } 
+  else if (ctx->LONG_INTEGER())
+      res = std::make_any<expr>(UInt64(std::stoull(ctx->LONG_INTEGER()->getText())));
+  else if (ctx->FLOAT())
     res = std::make_any<expr>(Float(std::stod(ctx->FLOAT()->getText())));
   else if (ctx->STRING_())
     res = std::make_any<expr>(Str(trim_string(ctx->STRING_()->getText())));

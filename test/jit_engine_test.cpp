@@ -175,7 +175,8 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
     SECTION("Testing compiling eq expression as part of filter_op") {
         query_ctx ctx(graph);    
         query_proc qp(ctx);    
-        auto res = qp.execute_query(query_proc::Compile, "Filter($0.id:int == 42, NodeScan())", false, true);
+        qp.set_execution_mode(query_proc::Compile);
+        auto res = qp.execute_query("Filter($0.id:int == 42, NodeScan())", false, true);
     
         result_set expected;
         expected.append({qv_("Person[0]{firstName: \"Dom\", id: 42, lastName: \"Cobb\"}")});
@@ -185,7 +186,8 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
     SECTION("Testing compiling lt expression as part of filter_op") {
         query_ctx ctx(graph);    
         query_proc qp(ctx);    
-        auto res = qp.execute_query(query_proc::Compile, "Filter($0.id:int < 100, NodeScan())", false, true);
+        qp.set_execution_mode(query_proc::Compile);
+        auto res = qp.execute_query("Filter($0.id:int < 100, NodeScan())", false, true);
     
         result_set expected;
         expected.append({qv_("Person[0]{firstName: \"Dom\", id: 42, lastName: \"Cobb\"}")});
@@ -245,7 +247,8 @@ TEST_CASE("Testing JIT code generation and compilation", "[jit_engine]") {
     SECTION("Testing compiling and executing aggregation") {
         query_ctx ctx(graph);    
         query_proc qp(ctx);    
-        auto res = qp.execute_query(query_proc::Compile, "Aggregate([sum($0.id:int), count($0.id:int), avg($0.id:int)], NodeScan())");
+        qp.set_execution_mode(query_proc::Compile);
+        auto res = qp.execute_query("Aggregate([sum($0.id:int), count($0.id:int), avg($0.id:int)], NodeScan())");
     
         result_set expected;
         expected.append({qv_(86), qv_(2), qv_(43.0)});

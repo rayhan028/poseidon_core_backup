@@ -35,6 +35,8 @@ public:
 
     virtual std::any visitIndex_scan_param(poseidonParser::Index_scan_paramContext *context) = 0;
 
+    virtual std::any visitNode_by_id(poseidonParser::Node_by_idContext *context) = 0;
+
     virtual std::any visitProject_op(poseidonParser::Project_opContext *context) = 0;
 
     virtual std::any visitProj_list(poseidonParser::Proj_listContext *context) = 0;

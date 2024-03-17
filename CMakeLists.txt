@@ -550,26 +550,30 @@ add_executable(pcli
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
+  ${CMAKE_DL_LIBS}
 )
 
-# add_executable(gtpc_driver
-#  src/cmds/gtpc_driver.cpp
-# )
+add_executable(gtpc_driver
+  src/cmds/gtpc_driver.cpp
+)
 
-# target_link_libraries(gtpc_driver
-#  poseidon_core
-#  ${PMDK_LIBRARIES}
-#  Boost::program_options
-# )
+target_link_libraries(gtpc_driver
+  poseidon_core
+  ${PMDK_LIBRARIES}
+  Boost::program_options
+  ${CMAKE_DL_LIBS}
+)
 
 add_executable(wal_dump
   src/cmds/wal_dump.cpp
+  ${CMAKE_DL_LIBS}
 )
 
 target_link_libraries(wal_dump
   poseidon_core
   ${PMDK_LIBRARIES}
   Boost::program_options
+  ${CMAKE_DL_LIBS}
 )
 
 if(USE_UPMEM MATCHES ON)

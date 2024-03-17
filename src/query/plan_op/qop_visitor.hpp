@@ -63,6 +63,7 @@ struct remove_node;
 struct remove_relationship;
 struct algorithm_op;
 struct exists_op;
+struct node_by_id;
 struct start_pipeline;
 
 class qop_visitor {
@@ -103,6 +104,7 @@ public:
     virtual void visit(std::shared_ptr<remove_relationship> op) {}
     virtual void visit(std::shared_ptr<algorithm_op> op) {}
     virtual void visit(std::shared_ptr<exists_op> op) {}
+    virtual void visit(std::shared_ptr<node_by_id> op) {}
     virtual void visit(std::shared_ptr<start_pipeline> op) {}
 };
 

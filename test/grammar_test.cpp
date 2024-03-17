@@ -13,6 +13,7 @@ TEST_CASE("Testing the poseidon parser", "[parser]") {
         REQUIRE(qp.parse_("NodeScan()"));
         REQUIRE(qp.parse_("NodeScan('Person')"));
         REQUIRE(qp.parse_("NodeScan(['Comment', 'Post'])"));
+        REQUIRE(qp.parse_("NodeById(1234567890)"));
     }
 
     SECTION("Comment") {

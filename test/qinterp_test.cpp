@@ -371,13 +371,12 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
 
   SECTION("Testing queries") {
     {
-      auto res = qp.execute_query(query_proc::Interpret, "NodeScan()");
+      auto res = qp.execute_query("NodeScan()");
       REQUIRE(res.result_size() == 46);
     }
 
     {
       auto res = qp.execute_query(
-          query_proc::Interpret,
           "Project([$0.id:uint64, $0.title:string], NodeScan('Forum'))");
       result_set expected;
       expected.append({qv_(uint64_t(37)), qv_("Wall of Hồ Chí Do")});
@@ -386,20 +385,17 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
     }
 
     {
-      auto res = qp.execute_query(query_proc::Interpret,
-                                  "NodeScan(['Post', 'Comment'])");
+      auto res = qp.execute_query("NodeScan(['Post', 'Comment'])");
       REQUIRE(res.result_size() == 24);
     }
 
     {
-      auto res = qp.execute_query(query_proc::Interpret,
-                                  "Limit(2, NodeScan(['Post', 'Comment']))");
+      auto res = qp.execute_query("Limit(2, NodeScan(['Post', 'Comment']))");
       REQUIRE(res.result_size() == 2);
     }
 
     {
       auto res = qp.execute_query(
-          query_proc::Interpret,
           "Project([$0.id:uint64, $0.firstName:string, $0.lastName:string], "
           "Filter($0.id:uint64 == 833579, NodeScan('Person')))");
       result_set expected;
@@ -409,7 +405,6 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
 
     {
       auto res = qp.execute_query(
-          query_proc::Interpret,
           "Project([$0.id:uint64, $0.lastName:string], "
           "Filter($0.id:uint64 == 1477066812357595144, NodeScan('Person')))");
       result_set expected;
@@ -419,8 +414,7 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
 
     {
       auto res =
-          qp.execute_query(query_proc::Interpret,
-                           "Project([$0.firstName:string, $0.lastName:string], "
+          qp.execute_query("Project([$0.firstName:string, $0.lastName:string], "
                            "Filter($0.firstName:string == 'Otto' && $0.lastName:string == "
                            "'Becker', NodeScan('Person')))");
       result_set expected;
@@ -431,8 +425,7 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
 
     {
       auto res =
-          qp.execute_query(query_proc::Interpret,
-                           "Project([$0.firstName:string, $0.lastName:string], "
+          qp.execute_query("Project([$0.firstName:string, $0.lastName:string], "
                            "Filter($0.firstName:string == 'Otto' || $0.lastName:string == "
                            "'Becker', NodeScan('Person')))");
       result_set expected;
@@ -444,8 +437,7 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
 
     {
       auto res =
-          qp.execute_query(query_proc::Interpret,
-                           "Project([$2.id:uint64], Expand(OUT, 'Person', "
+          qp.execute_query("Project([$2.id:uint64], Expand(OUT, 'Person', "
                            "ForeachRelationship(FROM, 'knows', Filter($0.id:uint64 "
                            "== 933, NodeScan('Person')))))");
       result_set expected;
@@ -460,7 +452,6 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
 
     {
       auto res = qp.execute_query(
-          query_proc::Interpret,
           "Aggregate([count($0.lastName:string), min($0.id:uint64), "
           "max($0.id:uint64)], NodeScan('Person'))");
       result_set expected;
@@ -470,8 +461,7 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
     }
 
     {
-      auto res = qp.execute_query(query_proc::Interpret,
-                                  "Project([$2.id:uint64], Match((p1:Person "
+      auto res = qp.execute_query("Project([$2.id:uint64], Match((p1:Person "
                                   "{id: 933})-[:knows]->(p2:Person)))");
       result_set expected;
       expected.append({qv_(uint64_t(838375))});
@@ -486,8 +476,7 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
 
   SECTION("Testing creating a node") {
     auto res =
-        qp.execute_query(query_proc::Interpret,
-                         "Project([$0.id:int, $0.firstName:string, "
+        qp.execute_query("Project([$0.id:int, $0.firstName:string, "
                          "$0.lastName:string], Create((p:Person { id: 12345, "
                          "firstName: 'Rocky', lastName: 'Balboa' })))");
     result_set expected;
@@ -497,10 +486,8 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
   }
 
   SECTION("Testing removing a node") {
-    qp.execute_query(query_proc::Interpret,
-                    "RemoveNode(Filter($0.id:uint64 == 12345, NodeScan('Person')))");
-    auto res = qp.execute_query(query_proc::Interpret,
-                    "Aggregate([count($0.id:uint64)], Filter($0.id:uint64 == 12345, NodeScan('Person')))");
+    qp.execute_query("RemoveNode(Filter($0.id:uint64 == 12345, NodeScan('Person')))");
+    auto res = qp.execute_query("Aggregate([count($0.id:uint64)], Filter($0.id:uint64 == 12345, NodeScan('Person')))");
 
     result_set expected;
     expected.append({qv_(0)});
@@ -508,24 +495,22 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
   }
 
    SECTION("Testing trying to remove a node with relationships") {
-    REQUIRE_THROWS_AS(qp.execute_query(query_proc::Interpret,
-                    "RemoveNode(Filter($0.id:uint64 == 933, NodeScan('Person')))"), orphaned_relationship);
+    auto res = qp.execute_query("RemoveNode(Filter($0.id:uint64 == 933, NodeScan('Person')))");
+    REQUIRE(! res.is_valid()); // orphaned_relationship
     qp.abort_transaction();
-
-    auto res = qp.execute_query(query_proc::Interpret,
-                    "Aggregate([count($0.id:uint64)], Filter($0.id:uint64 == 933, NodeScan('Person')))");
+ 
+    // make sure the node is still there ...
+    auto res2 = qp.execute_query("Aggregate([count($0.id:uint64)], Filter($0.id:uint64 == 933, NodeScan('Person')))");
 
     result_set expected;
     expected.append({qv_(1)});
-    REQUIRE(res.result() == expected);
+    REQUIRE(res2.result() == expected);
   }
 
   SECTION("Testing detaching a node") {
-    qp.execute_query(query_proc::Interpret,
-                    "DetachNode(Filter($0.id:uint64 == 933, NodeScan('Person')))");
+    qp.execute_query("DetachNode(Filter($0.id:uint64 == 933, NodeScan('Person')))");
 
-    auto res = qp.execute_query(query_proc::Interpret,
-                    "Aggregate([count($0.id:uint64)], Filter($0.id:uint64 == 933, NodeScan('Person')))");
+    auto res = qp.execute_query("Aggregate([count($0.id:uint64)], Filter($0.id:uint64 == 933, NodeScan('Person')))");
 
     result_set expected;
     expected.append({qv_(0)});
@@ -533,7 +518,7 @@ TEST_CASE("Testing queries in interpreted mode", "[qinterp]") {
   }
 
   SECTION("Testing algorithm op") {
-    auto res = qp.execute_query(query_proc::Interpret, 
+    auto res = qp.execute_query(
     "Project([$0.id:uint64, $1:int, $2:int], Algorithm([NumLinks, TUPLE], Filter($0.id:uint64 < 100000, NodeScan('Person'))))", true);
     result_set expected;
 

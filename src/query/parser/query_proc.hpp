@@ -50,17 +50,20 @@ public:
 
   bool parse_(const std::string &query);
 
+  void set_execution_mode(mode m) { exec_mode_ = m; }
+  mode execution_mode() const { return exec_mode_; }
+
   query_batch prepare_query(const std::string &query);
 
-  qresult_iterator execute_query(mode m, const std::string &qstr,
+  qresult_iterator execute_query(const std::string &qstr,
                                  bool print_plan = false, bool as_string = false);
 
   template<typename... Args> 
-  qresult_iterator exec_query(mode m, const std::string &qstr, Args... args) {
-    return execute_query(m, fmt::format(qstr, args...));
+  qresult_iterator exec_query(const std::string &qstr, Args... args) {
+    return execute_query(fmt::format(qstr, args...));
   }
 
-  std::size_t execute_and_output_query(mode m, const std::string &qstr,
+  std::size_t execute_and_output_query(const std::string &qstr,
                                        bool print_plan = false);
 
   void run_query(query_batch &plan);
@@ -77,6 +80,8 @@ private:
   std::size_t qcnt_;
   query_ctx& qctx_;
   std::unique_ptr<qinterp> interp_;
+  mode exec_mode_;
+
 #ifdef USE_LLVM
   std::unique_ptr<jit_engine> jit_;
   std::unique_ptr<ir_generator> codegen_;

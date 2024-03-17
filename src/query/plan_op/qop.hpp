@@ -85,6 +85,8 @@ enum class qop_type {
   order_by,
   group_by,
   create,
+  update,
+  node_by_id,
   store,
   start,
   end

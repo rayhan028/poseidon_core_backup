@@ -101,11 +101,11 @@ private:
 
 class qresult_iterator {
 public:
-    qresult_iterator(result_set&& rs) : rset_(rs) {
+    qresult_iterator(result_set&& rs, bool error = false) : rset_(rs), error_(error) {
       iter_ = rset_.begin();
     }
 
-    bool is_valid() { return iter_ != rset_.end(); }
+    bool is_valid() { return !error_ && iter_ != rset_.end(); }
     qresult_iterator& operator++() { iter_++; return *this; }
     void close() { rset_.data.clear(); }
     void reset() { iter_ = rset_.begin(); }
@@ -115,7 +115,6 @@ public:
       if (pos >= iter_->size())
         throw query_processing_error(fmt::format("invalid position #{} in get", pos));
       try {
-        std::cout << (*iter_)[pos] << std::endl; 
         return boost::get<T>((*iter_)[pos]); 
       } catch (boost::bad_get& exc) {
         throw query_processing_error(fmt::format("invalid type at position #{} in get - type was: {}", pos, (*iter_)[pos].which()));
@@ -136,6 +135,7 @@ public:
 
 private:
     result_set rset_;
+    bool error_;
     iterator iter_;
 };
 

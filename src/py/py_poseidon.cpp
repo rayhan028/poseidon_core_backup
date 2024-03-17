@@ -99,7 +99,7 @@ PYBIND11_MODULE(poseidon, m) {
         //graph_db_ptr gptr(&gdb);
         query_ctx ctx(gdb);
         query_proc qp(ctx);
-        auto res = qp.execute_query(query_proc::Compile, qstr);
+        auto res = qp.execute_query(qstr);
         return res;
       }, "Executes the query.");
 
