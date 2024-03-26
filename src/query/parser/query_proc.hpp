@@ -59,8 +59,8 @@ public:
                                  bool print_plan = false, bool as_string = false);
 
   template<typename... Args> 
-  qresult_iterator exec_query(const std::string &qstr, Args... args) {
-    return execute_query(fmt::format(qstr, args...));
+  qresult_iterator exec_query(fmt::format_string<Args...> qstr, Args&&... args) {
+    return execute_query(fmt::format(qstr, std::forward<Args>(args)...));
   }
 
   std::size_t execute_and_output_query(const std::string &qstr,
