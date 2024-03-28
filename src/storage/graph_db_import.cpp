@@ -88,6 +88,7 @@ infer_datatype(const std::string& s, dict_ptr &dict) {
 p_item::p_typecode
 get_datatype(const std::string& s) {
     if (is_quoted_string(s))  return p_item::p_dcode;
+    else if (is_uint64(s))      return p_item::p_uint64;
     else if (is_int(s))       return p_item::p_int;
     else if (is_float(s))     return p_item::p_double;
     else if (is_date(s))      return p_item::p_date;
@@ -137,7 +138,7 @@ node::id_t graph_db::import_typed_node(dcode_t label,
 node::id_t graph_db::import_typed_node(dcode_t label,
                               const std::vector<dcode_t> &keys,
                               const std::vector<p_item::p_typecode>& typelist,
-				const std::vector<std::string>& values,dict_ptr &dict) {
+				const std::vector<std::string>& values, dict_ptr &dict) {
   auto node_id = nodes_->append(node(label), 0);
 
   // we need the node object not only the id
@@ -268,64 +269,45 @@ relationship::id_t graph_db::import_typed_relationship(node::id_t from_id,
 
 std::size_t graph_db::import_nodes_from_csv(const std::string &label,
                                             const std::string &filename,
-                                            char delim, mapping_t &m, std::mutex *mtx) {
+                                            char delim, std::optional<mapping_t> &m, std::mutex *mtx) {
   using namespace aria::csv;
 
   std::ifstream f(filename);
   if (!f.is_open())
     return 0;
-    // throw file_not_found(filename);
 
   CsvParser parser = CsvParser(f).delimiter(delim);
   std::size_t num = 0;
 
   std::vector<std::string> columns; // name of all fields
-  int id_column = -1;               // field no of :ID
 
   for (auto &row : parser) {
     if (num == 0) {
       // process the header
-      std::size_t i = 0;
-      for (auto &field : row) {
-        //auto pos = field.find(":ID"); // neo4j
+      for (auto &field : row) 
+        columns.push_back(field);
 
-        if (auto pos = field.find("id",0); pos != std::string::npos) {
-          // <name>:ID is a special field // neo4j
-          id_column = i;
-          //columns.push_back(field.substr(0, pos)); // neo4j
-           columns.push_back(field);
-        } else
-          columns.push_back(field);
-        i++;
-      }
-      assert(id_column >= 0);
       num++;
-    } else {
+    } 
+    else {
       properties_t props;
       auto i = 0;
       std::string id_label;
       for (auto &field : row) {
-        if (i == id_column)
-          id_label = field;
-
         auto &col = columns[i++];
-        //if (!col.empty() && !field.empty()) {
-        if (!col.empty() && !(field.empty() && col != "content")) {
-          if (col == "id")
-            props.insert({col, (uint64_t)std::stoll(field)});
-          else
+        if (!col.empty() && !field.empty()) {
             props.insert({col, field});
         }
       }
       try {
         auto id = import_node(label, props);
         auto id_label_s = id_label + "_" + label;
-        m.insert({id_label_s, id});
+        if (m.has_value())
+          m.value().insert({id_label_s, id});
         num++;
-      } catch (...) {
-        spdlog::warn("importing node '{}' failed.", label);
+      } catch (std::exception& exc) {
+        spdlog::warn("ERROR in import_nodes_from_csv during import of '{}': {} in line: {}", label, exc.what(), num);
       }
-      // std::cout << "mapping: " << id_label << " -> " << id << std::endl;
     }
 
   }
@@ -334,7 +316,7 @@ std::size_t graph_db::import_nodes_from_csv(const std::string &label,
 
 std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
                                             const std::string &filename,
-                                            char delim, mapping_t &m, typespec_t &ty, std::mutex *mtx) {
+                                            char delim, std::optional<mapping_t> &m, typespec_t &ty, std::mutex *mtx) {
   using namespace aria::csv;
 
   std::ifstream f(filename);
@@ -342,7 +324,6 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
     spdlog::warn("cannot find node file '{}'", filename);
     return 0;
   }
-    // throw file_not_found(filename);
 
   std::string id_label;
   auto label_code = dict_->insert(label);
@@ -350,297 +331,212 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
   std::size_t num = 0;
 
   std::vector<std::string> columns; // names of all fields
-  int id_column = -1;               // field no of :ID
 
   std::vector<dcode_t> prop_names;
   std::vector<p_item::p_typecode> prop_types; 
   std::vector<bool> inferred;
+  node::id_t id;
 
   for (auto &row : parser) {
     if (num == 0) {
-      /*
-       * process the header
-       */
-      auto i = 0;
-      for (auto &field : row) {
-        //auto pos = field.find(":ID"); // neo4j
-        // auto pos = field.find("id");
-        // if (pos != std::string::npos) {
-        if (field == "id") {
-          // <name>:ID is a special field // neo4j
-          id_column = i;
-          //columns.push_back(field.substr(0, pos)); // neo4j
-           columns.push_back(field);
-        } else
-          columns.push_back(field);
-        i++;
-      }
-      assert(id_column >= 0);
+      // process the header
+      for (auto &field : row)
+        columns.push_back(field);
+
       prop_names.resize(columns.size());
       prop_types.resize(columns.size());
       inferred.resize(columns.size(), false);
-      for (auto j = 0u; j < columns.size(); j++) {
+      for (auto j = 0u; j < columns.size(); j++)
         prop_names[j] = dict_->insert(columns[j]);
-      }
-    } else if (num == 1) {
-      /*
-       * process the first row: infer the data types
-       * Not all data types are inferred from first row
-       */
+      
+    }
+    else if (num == 1) {
+      // process the first row: infer the data types or consult the typespec file
+      // Not all data types are inferred from first row
       auto i = 0;
       for (auto &field : row) {
-        if (i == id_column)
-          id_label = field;
-
-        // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
         if (const auto& col {columns[i]}; !col.empty() && !field.empty()) {
           auto qcol = label + "." + columns[i];
           auto it = ty.find(qcol);
-          if (it != ty.end())
-            prop_types[i] = it->second;
-          else if (col == "id") {
-            prop_types[i] = p_item::p_uint64;     
-          }
-          else {   
-              prop_types[i] = get_datatype(field);
-          }
+          prop_types[i] = it != ty.end() ? it->second : get_datatype(field);
           inferred[i] = true;
+          if (i == 0) id_label = field;
         }  
         else {
           // the field is empty, let's assume a string value
-           // spdlog::info("empty field #{} at record #{}", i, num-1);
             prop_types[i] = p_item::p_dcode;
         }    
         i++;
       }
-      if (mtx != nullptr) 
-        mtx->lock();
-     auto id = import_typed_node(label_code, prop_names, prop_types, row, dict_);
+      if (mtx != nullptr) mtx->lock();
+      
+      try {
+        id = import_typed_node(label_code, prop_names, prop_types, row, dict_);
+      } catch (std::exception& exc) {
+       spdlog::warn("ERROR in import_typed_nodes_from_csv during import of '{}': {} in line: {}", label, exc.what(), num);
+        return num - 1;
+      }
       // fill mapping table
-      auto id_label_s = id_label + "_" + label;
-      m.insert({id_label_s, id});
-      if (mtx != nullptr) 
-        mtx->unlock();
-    } else {
+      if (m.has_value()) {
+        auto id_label_s = id_label + "_" + label;
+        spdlog::info("insert mapping: {}", id_label_s);
+        m.value().insert({id_label_s, id});
+      }
+      
+      if (mtx != nullptr) mtx->unlock();
+    } 
+    else {
+      // any other row
       std::string id_label;
       auto i = 0;
       for (auto &field : row) {
-        if (i == id_column)
-          id_label = field;
-
-        // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
         if (const auto& col {columns[i]}; !col.empty() && !field.empty()) {
-          if (!inferred[i]){ // columns whose datatypes we have not yet inferred
+          if (!inferred[i]) { 
+            // columns whose datatypes we have not yet inferred
         	  prop_types[i] = get_datatype(field);
             inferred[i] = true;
           }
+          if (i == 0) id_label = field;
         }   
-         // spdlog::info("\t==> empty field #{} at record #{}", i, num-1);
-     
         i++;
       }
 
-
-      if (mtx != nullptr) 
-        mtx->lock();
-      // spdlog::info("import line #{}: ncolumns = {}", i, prop_values.size());
-      auto id = import_typed_node(label_code, prop_names, prop_types, row, dict_);
+      if (mtx != nullptr) mtx->lock();
+      try {
+        id = import_typed_node(label_code, prop_names, prop_types, row, dict_);
+      } catch (std::exception& exc) {
+        spdlog::warn("ERROR in import_typed_nodes_from_csv during import of '{}': {} in line: {}", label, exc.what(), num);
+        return num - 1;
+      }
       auto id_label_s = id_label + "_" + label;
-      m.insert({id_label_s, id});
-      if (mtx != nullptr) 
-        mtx->unlock();
+      if (m.has_value())
+        m.value().insert({id_label_s, id});
 
-      // spdlog::info("node_id = {} ({})", id, id_label_s);
+      if (mtx != nullptr) mtx->unlock();
     }
-  num++;
+    num++;
   }
-  return num-1;
+  return num - 1;
 }
 
-std::size_t graph_db::import_typed_n4j_nodes_from_csv(const std::string &label,
-                                            const std::string &filename,
-                                            char delim, mapping_t &m) {
-  using namespace aria::csv;
+node::id_t graph_db::node_id_from_field(const graph_db::mapping_t &m, const std::string& str, const std::string &field) {
+  std::string s(str);
+  if (s[0] >= 'a' && s[0] <= 'z')
+    s[0] -= 32;
+  
+  auto id_s = field + "_" + s;
+  auto it = m.find(id_s);
+  if (it == m.end()) 
+    return UNKNOWN;
 
-  std::ifstream f(filename);
-  if (!f.is_open()) {
-    spdlog::warn("cannot find node file '{}'", filename);
-    return 0;
-  }
-    // throw file_not_found(filename);
-
-  std::string id_label;
-  auto label_code = dict_->insert(label);
-  CsvParser parser = CsvParser(f).delimiter(delim);
-  std::size_t num = 0;
-
-  std::vector<std::string> columns; // names of all fields
-  int id_column = -1;               // field no of :ID
-
-  std::vector<dcode_t> prop_names;
-  std::vector<p_item::p_typecode> prop_types; 
-  std::vector<std::any> prop_values;
-  std::vector<bool> inferred;
-
-  for (auto &row : parser) {
-    if (num == 0) {
-      /*
-       * process the header
-       */
-      auto i = 0;
-      for (auto &field : row) {
-        auto pos = field.find(":ID"); // neo4j
-        if (pos != std::string::npos) {
-          // <name>:ID is a special field // neo4j
-          id_column = i;
-          columns.push_back(field.substr(0, pos)); // neo4j
-        } else
-          columns.push_back(field);
-        i++;
-      }
-      assert(id_column >= 0);
-      prop_names.resize(columns.size());
-      prop_types.resize(columns.size());
-      prop_values.resize(columns.size());
-      inferred.resize(columns.size(), false);
-      for (auto j = 0u; j < columns.size(); j++) {
-        prop_names[j] = dict_->insert(columns[j]);
-      }
-    } else if (num == 1) {
-      /*
-       * process the first row: infer the data types
-       * Not all data types are inferred from first row
-       */
-      auto i = 0;
-      for (auto &field : row) {
-        if (i == id_column)
-          id_label = field;
-
-        // spdlog::info("record #{}: field #{} = '{}'", num-1, i, field);
-
-        auto &col = columns[i];
-        if (!col.empty() && !field.empty()) {
-          auto p2 = infer_datatype(field, dict_);
-          prop_types[i] = p2.first;
-          prop_values[i] = p2.second;
-          inferred[i] = true;
-          if (i == id_column && p2.first == p_item::p_int) {
-            // if we are on a ID field AND the inferred type is int we assume uint64_t 
-            prop_types[i] = p_item::p_uint64;
-            prop_values[i] = std::any((uint64_t)std::stoull(field));
-          }
-        }  
-        else {
-          // the field is empty, let's assume a string value
-           // spdlog::info("empty field #{} at record #{}", i, num-1);
-          prop_types[i] = p_item::p_dcode;
-        }     
-        i++;
-      }
-      auto id = import_typed_node(label_code, prop_names, prop_types, prop_values);
-      // fill mapping table
-      m.insert({id_label, id});
-    } else {
-      auto i = 0;
-      std::string id_label;
-      for (auto &field : row) {
-        if (i == id_column)
-          id_label = field;
-
-        // spdlog::info("record #{}: field #{} = '{}', inferred = {}", num-1, i, field, prop_types[i]);
-        auto &col = columns[i];
-        if (!col.empty() && !field.empty()) {
-          if (inferred[i])
-            prop_values[i] = string_to_any(prop_types[i], field, dict_);
-          else { // columns whose datatypes we have not yet inferred
-            auto p2 = infer_datatype(field, dict_);
-            prop_types[i] = p2.first;
-            prop_values[i] = p2.second;
-            inferred[i] = true;
-          }
-        }
-        else {
-           // spdlog::info("\t==> empty field #{} at record #{}", i, num-1);
-           prop_values[i] = std::any();
-        }
-        i++;
-      }
-      // spdlog::info("import line #{}: ncolumns = {}", i, prop_values.size());
-      auto id = import_typed_node(label_code, prop_names, prop_types, prop_values);
-      m.insert({id_label, id});
-    }
-  num++;
-  }
-  return num-1;
-}
-
-graph_db::mapping_t::const_iterator node_id_from_field(const graph_db::mapping_t &m, 
-   const std::string& str, const std::string &field) {
-     std::string s(str);
-     if (s[0] >= 'a' && s[0] <= 'z')
-        s[0] -= 32;
-      auto id_s = field + "_" + s;
-      return m.find(id_s);
+  return it->second;      
  }
 
-std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
+node::id_t graph_db::node_id_from_db(const std::string& node_label, const std::string& column, const std::string &field) {
+  // field -> key
+  uint64_t kval = 0;
+  if (is_quoted_string(field)) {
+    auto dc = get_code(field.substr(1, field.length()-2));
+    if (dc == UNKNOWN_CODE)
+      return UNKNOWN;
+    kval = dc;
+  }
+  else
+    kval = std::stoll(field);
+  
+  if (has_index(node_label, column)) {
+    // spdlog::info("index lookup: {}, {}", node_label, kval);
+    auto idx_id = get_index(node_label, column);
+    return node_id_from_index(idx_id, kval);
+  }
+  else {
+    //scan nodes for id
+    // spdlog::info("node scan: {}, {}", node_label, kval);
+    auto clabel = get_code(node_label);
+    auto cproperty = get_code(column);
+    return get_node_id_for_property(clabel, cproperty, kval);
+  }
+  return UNKNOWN;
+}
+
+std::tuple<std::string, std::string> graph_db::get_rship_node(const std::string& column) {
+  const auto idx = column.find_first_of('_');
+  if (std::string::npos != idx)
+    return std::make_tuple(column.substr(0, idx), column.substr(idx + 1));
+  else
+    return std::make_tuple(column, "");
+}
+
+std::tuple<node::id_t, node::id_t> graph_db::get_connected_node_ids(const std::string& src_node, 
+                                                                const std::string& src_column,
+                                                                const std::string& dest_node, 
+                                                                const std::string& dest_column,
+                                                                aria::csv::CsvParser::iterator::reference& row,
+                                                                std::optional<mapping_t>& m, std::size_t line) {
+  node::id_t from_node, to_node; 
+  if (m.has_value()) {   
+    from_node = node_id_from_field(m.value(), src_node, row[0]);
+      if (from_node == UNKNOWN) {
+        spdlog::warn("mapping not found for node {} id #{}", src_node, row[0]);
+        return std::make_tuple(UNKNOWN, UNKNOWN);  
+      }
+      to_node = node_id_from_field(m.value(), dest_node, row[1]);
+      if (to_node == UNKNOWN) {
+        spdlog::warn("mapping not found for node {} id #{}", dest_node, row[1]);
+        return std::make_tuple(UNKNOWN, UNKNOWN);  
+      }             
+  }
+  else {
+      from_node = node_id_from_db(src_node, src_column, row[0]);
+      if (from_node == UNKNOWN) {
+        spdlog::warn("source node {} id #{} not found", src_node, row[0]);
+        return std::make_tuple(UNKNOWN, UNKNOWN);  
+      }
+      to_node = node_id_from_db(dest_node, dest_column, row[1]);
+      if (to_node == UNKNOWN) {
+        spdlog::warn("destinstion node {} id #{} not found", dest_node, row[1]);
+        return std::make_tuple(UNKNOWN, UNKNOWN);  
+      }
+  }
+  return std::make_tuple(from_node, to_node);  
+}
+
+std::size_t graph_db::import_relationships_from_csv(const std::string &label, const std::string &filename,
                                                     char delim,
-                                                    const mapping_t &m, std::mutex *mtx) {
+                                                    std::optional<mapping_t> &m, std::mutex *mtx) {
   using namespace aria::csv;
   std::ifstream f(filename);
   if (!f.is_open())
     return 0;
-    // throw file_not_found(filename);
 
   CsvParser parser = CsvParser(f).delimiter(delim);
   std::size_t num = 0;
-
-  std::vector<std::string> fp;
-  boost::split(fp, filename, boost::is_any_of("/"));
-  assert(fp.back().find(".csv", filename.size()-4) != std::string::npos);
-  std::vector<std::string> fn;
-  boost::split(fn, fp.back(), boost::is_any_of("_"));
-  auto label = /*":" + */ fn[1];
-  auto src_node = fn[0];
-  auto des_node = fn[2];
+  std::string src_node, dest_node;
+  std::string src_column, dest_column;
 
   std::vector<std::string> columns;
-  //int start_col = -1, end_col = -1, type_col = -1; // neo4j
-  int start_col = 0, end_col = 1;
 
   for (auto &row : parser) {
     if (num == 0) {
       // process header
-      for (auto &field : row) {
+      for (auto &field : row)
         columns.push_back(field);
-        /*if (field == ":START_ID") // neo4j
-          start_col = i;
-        else if (field == ":END_ID")
-          end_col = i;
-        else if (field == ":TYPE")
-          type_col = i;*/
+    
+      // Column 0 is source node, column 1 is destination node in the form <Label>_<property>
+      std::tie(src_node, src_column) = get_rship_node(columns[0]);
+      std::tie(dest_node, dest_column) = get_rship_node(columns[1]);
+      if (src_column.empty() || dest_column.empty()) {
+        spdlog::warn("ERROR during relationship import: invalid source/destination column");
+        return 0;
       }
-    } else {     
-      mapping_t::const_iterator it = node_id_from_field(m, src_node, row[start_col]);
-      if (it == m.end()) {
-        spdlog::info("mapping not found for node id #{}-{}", src_node, row[start_col]);
-        continue;
-      }
-      node::id_t from_node = it->second;
-      
-      it = node_id_from_field(m, des_node, row[end_col]);
-      if (it == m.end()) {
-        spdlog::info("mapping not found for node id #{}-{}", des_node, row[end_col]);
-        continue;
-      }
-      node::id_t to_node = it->second;      
-      //auto &label = row[type_col]; // neo4j
-
+    } 
+    else { 
+      node::id_t from_node, to_node; 
+      std::tie(from_node, to_node) = get_connected_node_ids(src_node, src_column, dest_node, dest_column, row, m, num);
       properties_t props;
       auto i = 0;
       for (auto &field : row) {
-        //if (i != start_col && i != end_col && i != type_col) {  // neo4j
-        if (i != start_col && i != end_col) {
+        if (i > 1) {
           auto &col = columns[i];
           if (!field.empty())
             props.insert({col, field});
@@ -648,9 +544,6 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
         i++;
       }
       import_relationship(from_node, to_node, label, props);
-      // std::cout << "add rship: " << row[start_col] << "(" << from_node <<
-      // ")->"
-      //    << row[end_col] << "(" << to_node << ")" << std::endl;
     }
     num++;
   }
@@ -658,70 +551,56 @@ std::size_t graph_db::import_relationships_from_csv(const std::string &filename,
   return num-1;
 }
 
-std::size_t graph_db::import_typed_relationships_from_csv(const std::string &filename,
+std::size_t graph_db::import_typed_relationships_from_csv(const std::string &label, const std::string &filename,
                                                     char delim,
-                                                    const mapping_t &m, std::mutex *mtx) {
+                                                    std::optional<mapping_t> &m, typespec_t &ty, std::mutex *mtx) {
   using namespace aria::csv;
 
   std::ifstream f(filename);
   if (!f.is_open()) {
     spdlog::warn("cannot find relationship file '{}'", filename);
     return 0;
-    // throw file_not_found(filename);
   }
   CsvParser parser = CsvParser(f).delimiter(delim);
   std::size_t num = 0;
+  std::string src_node, dest_node;
+  std::string src_column, dest_column;
 
-  std::vector<std::string> fp;
-  boost::split(fp, filename, boost::is_any_of("/"));
-  // spdlog::info("fp = {} : {}", fp.back(), fp.size());
-  // assert(fp.back().find(".csv", fp.size()-4) != std::string::npos);
-  std::vector<std::string> fn;
-  boost::split(fn, fp.back(), boost::is_any_of("_"));
-  auto label = /*":" + */fn[1];
   auto label_code = dict_->insert(label);
-  auto src_node = fn[0];
-  auto des_node = fn[2];
-
   std::vector<std::string> columns;
-  int start_col = 0, end_col = 1;
-
   std::vector<dcode_t> prop_names;
   std::vector<p_item::p_typecode> prop_types; 
   std::vector<std::string> prop_values;
 
   for (auto &row : parser) {
     if (num == 0) {
-      auto i = 0;
       // process header
       for (auto &field : row) {
-        // ignore the src und dest id fields
-        if (i != start_col && i != end_col)
-          columns.push_back(field);
-        i++;
+        columns.push_back(field);
       }
-      prop_names.resize(columns.size());
-      prop_types.resize(columns.size());
-      prop_values.resize(columns.size());
-      for (auto j = 0u; j < columns.size(); j++) {
-        prop_names[j] = dict_->insert(columns[j]);
+      // Column 0 is source node, column 1 is destination node in the form <Label>_<property>
+      std::tie(src_node, src_column) = get_rship_node(columns[0]);
+      std::tie(dest_node, dest_column) = get_rship_node(columns[1]);
+      if (src_column.empty() || dest_column.empty()) {
+        spdlog::warn("ERROR during relationship import: invalid source/destination column");
+        return 0;
+      }
+
+      prop_names.resize(columns.size()-2);
+      prop_types.resize(columns.size()-2);
+      prop_values.resize(columns.size()-2);
+      for (auto j = 2u; j < columns.size(); j++) {
+        prop_names[j-2] = dict_->insert(columns[j]);
       }
       num++;
     } 
     else if (num == 1) {
-      mapping_t::const_iterator it = node_id_from_field(m, src_node, row[start_col]);
-      if (it == m.end())
-        continue;
-      node::id_t from_node = it->second;      
-
-      it = node_id_from_field(m, des_node, row[end_col]);
-      if (it == m.end())
-        continue;
-      node::id_t to_node = it->second;      
+      node::id_t from_node, to_node;
+      std::tie(from_node, to_node) = get_connected_node_ids(src_node, src_column, dest_node, dest_column, row, m, num);
 
       auto i = 0, j = 0;
       for (auto &field : row) {
-        if (i != start_col && i != end_col) {
+        if (i > 1) {
           if (!field.empty()) {
         	  prop_types[j] = get_datatype(field);
         	  prop_values[j] = field;
@@ -730,157 +609,32 @@ std::size_t graph_db::import_typed_relationships_from_csv(const std::string &fil
         }
         i++;
       }
-      if (mtx != nullptr)
-        mtx->lock();
+      if (mtx != nullptr) mtx->lock();
       try {
         import_typed_relationship(from_node, to_node, label_code, prop_names, 
     		    prop_types, prop_values, dict_);
         num++;
-      } catch (...) {
+      } catch (std::exception& exc) {
         spdlog::warn("importing relationship '{}' {} -> {} failed", label, from_node, to_node);
+        continue;
       }
-      if (mtx != nullptr)
-        mtx->unlock();
+      if (mtx != nullptr) mtx->unlock();
     } 
     else {
-     //std::cout << num << " " << std::flush;
-      mapping_t::const_iterator it = node_id_from_field(m, src_node, row[start_col]);
-      if (it == m.end())
-        continue;
-      node::id_t from_node = it->second;      
+      node::id_t from_node, to_node;
+      std::tie(from_node, to_node) = get_connected_node_ids(src_node, src_column, dest_node, dest_column, row, m, num);
 
-     //std::cout << "#" << std::flush;
-
-      it = node_id_from_field(m, des_node, row[end_col]);
-      if (it == m.end())
-        continue;
-      node::id_t to_node = it->second;      
-
-     //std::cout << "@" << from_node << "|" << to_node << std::flush;
-
-      if (mtx != nullptr)
-        mtx->lock();
+      if (mtx != nullptr) mtx->lock();
       try {
         import_typed_relationship(from_node, to_node, label_code, prop_names, 
                                 prop_types, prop_values, dict_);
         num++;
       } catch (std::exception& exc) {
         spdlog::warn("importing relationship '{}' {} -> {} failed", label, from_node, to_node);
+        continue;
       }
-      if (mtx != nullptr)
-        mtx->unlock();
+      if (mtx != nullptr) mtx->unlock();
     }
-    // std::cout << num << " " << std::flush;
-    // std::cout << "$" << std::flush;
   }
   return num > 0 ? num-1 : 0;
-}
-
-std::size_t graph_db::import_typed_n4j_relationships_from_csv(const std::string &filename,
-                                                    char delim,
-                                                    const mapping_t &m, const std::string& rship_type) {
-  using namespace aria::csv;
-
-  std::ifstream f(filename);
-  if (!f.is_open()) {
-    spdlog::warn("cannot find relationship file '{}'", filename);
-    return 0;
-    // throw file_not_found(filename);
-  }
-  CsvParser parser = CsvParser(f).delimiter(delim);
-  std::size_t num = 0;
-
-  std::vector<std::string> columns;
-  int start_col = -1, end_col = -1, type_col = -1; // neo4j
-
-  std::vector<dcode_t> prop_names;
-  std::vector<p_item::p_typecode> prop_types; 
-  std::vector<std::any> prop_values;
-
-  for (auto &row : parser) {
-    if (num == 0) {
-      auto i = 0;
-      // process header
-      for (auto &field : row) {
-        columns.push_back(field);
-        if (field.rfind(":START_ID", 0) == 0) // neo4j
-          start_col = i;
-        else if (field.rfind(":END_ID", 0) == 0)
-          end_col = i;
-        else if (field == ":TYPE")
-          type_col = i;
-        i++;
-      }
-      assert(start_col >= 0); // neo4j
-      assert(end_col >= 0);
-      if (rship_type.empty())
-        assert(type_col >= 0);
-
-      prop_names.resize(columns.size());
-      prop_types.resize(columns.size());
-      prop_values.resize(columns.size());
-      for (auto j = 0u; j < columns.size(); j++) {
-        prop_names[j] = dict_->insert(columns[j]);
-      }
-    } else if (num == 1) {
-      mapping_t::const_iterator it = m.find(row[start_col]); 
-      if (it == m.end()) {
-        std::cout << "Cannot find " << row[start_col] << " in num #1" << std::endl;
-        continue;
-      }
-      node::id_t from_node = it->second;      
-
-      // if the type (label) of the relationship was given, we just use it 
-      auto &label = rship_type.empty() ? row[type_col] : rship_type;
-      auto label_code = dict_->insert(label);
-
-      it = m.find(row[end_col]); 
-      if (it == m.end())
-        continue;
-      node::id_t to_node = it->second;      
-
-      auto i = 0, j = 0;
-      for (auto &field : row) {
-        if (i != start_col && i != end_col && i != type_col) {
-          if (!field.empty()) {
-            auto p2 = infer_datatype(field, dict_);
-            prop_types[j] = p2.first;
-            prop_values[j] = p2.second;
-            j++;
-          }
-        }
-        i++;
-      }
-      import_typed_relationship(from_node, to_node, label_code, prop_names, 
-                                prop_types, prop_values);
-    } else {
-      mapping_t::const_iterator it = m.find(row[start_col]); // node_id_from_field(m, src_node, row[start_col]);
-      if (it == m.end())
-        continue;
-      node::id_t from_node = it->second;      
-
-      auto &label = rship_type.empty() ? row[type_col] : rship_type;
-      auto label_code = dict_->insert(label);
-
-      it = m.find(row[end_col]); // node_id_from_field(m, des_node, row[end_col]);
-      if (it == m.end())
-        continue;
-      node::id_t to_node = it->second;      
-
-      auto i = 0, j = 0;
-      for (auto &field : row) {
-        if (i != start_col && i != end_col && i != type_col) {  // neo4j
-          if (!field.empty())
-            prop_values[j] = string_to_any(prop_types[j], field, dict_);
-          j++;
-        }
-        i++;
-      }
-      import_typed_relationship(from_node, to_node, label_code, prop_names, 
-                                prop_types, prop_values);
-    }
-    num++;
-  }
-
-  return num-1;
 }

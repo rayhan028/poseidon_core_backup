@@ -100,7 +100,7 @@ TEST_CASE("Importing nodes from CSV (old version)", "[graph_db]") {
   if (h != nullptr)
     home = h;
 
-  graph_db::mapping_t id_map;
+  auto id_map = std::make_optional<graph_db::mapping_t>();
   auto num = graph->import_nodes_from_csv("Place", home + "/test/places.csv", '|', id_map);
   REQUIRE(num == 1460);
 
@@ -145,7 +145,7 @@ TEST_CASE("Importing nodes with many properties from CSV", "[graph_db]") {
   if (h != nullptr)
     home = h;
 
-  graph_db::mapping_t id_map;
+  auto id_map = std::make_optional<graph_db::mapping_t>();
   graph_db::typespec_t type_map;
   auto num = graph->import_typed_nodes_from_csv("Post", home + "/test/post.csv", '|', id_map, type_map);
   REQUIRE(num == 19);
@@ -162,7 +162,7 @@ TEST_CASE("Importing nodes with many properties from CSV", "[graph_db]") {
   graph_pool::destroy(pool);
 }
 
-TEST_CASE("Importing nodes with many properties from Neo4j style CSV", "[graph_db]") {
+TEST_CASE("Importing nodes with many properties CSV", "[graph_db]") {
   auto pool = graph_pool::create(test_path);
   auto graph = pool->create_graph("my_import_db5");
 
@@ -172,17 +172,18 @@ TEST_CASE("Importing nodes with many properties from Neo4j style CSV", "[graph_d
   if (h != nullptr)
     home = h;
 
-  spdlog::info("------------ Neo4j import ------------");
+  spdlog::info("------------ CSV import ------------");
 
-  graph_db::mapping_t id_map;
+  auto id_map = std::make_optional<graph_db::mapping_t>();
+  graph_db::typespec_t ts;
   spdlog::info("Importing Actor...");
-  auto num = graph->import_typed_n4j_nodes_from_csv("Actor", home + "/test/actors.csv", ',', id_map);
+  auto num = graph->import_typed_nodes_from_csv("Actor", home + "/test/actors.csv", ',', id_map, ts);
   REQUIRE(num == 8);
   spdlog::info("Importing Movie...");
-  num = graph->import_typed_n4j_nodes_from_csv("Movie", home + "/test/movies.csv", ',', id_map);
+  num = graph->import_typed_nodes_from_csv("Movie", home + "/test/movies.csv", ',', id_map, ts);
   REQUIRE(num == 2);
   spdlog::info("Importing relationships...");
-  num = graph->import_typed_n4j_relationships_from_csv(home + "/test/roles.csv", ',', id_map);
+  num = graph->import_typed_relationships_from_csv("played_in", home + "/test/roles.csv", ',', id_map, ts);
   REQUIRE(num == 9);
 
   graph_pool::destroy(pool);

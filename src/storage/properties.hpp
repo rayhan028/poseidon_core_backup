@@ -160,6 +160,12 @@ bool is_date(const std::string &s);
 bool is_dtime(const std::string &s);
 
 /**
+ * Returns true if s is a large integer number but false if is already an integer.
+ */
+
+bool is_uint64(const std::string& s);
+
+/**
  * A typedef for a list of properties (key-value pairs) where values are
  * either numeric or full strings.
  */
@@ -300,7 +306,7 @@ public:
   property_set::id_t append_properties(offset_t nid,
                                             const properties_t &props,
                                             dict_ptr &dct) {
- property_set::id_t next_id = UNKNOWN;
+  property_set::id_t next_id = UNKNOWN;
   property_set::p_item_list pil;
   std::size_t pidx = 0, n = 0;
 

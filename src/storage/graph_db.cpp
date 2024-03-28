@@ -1564,3 +1564,29 @@ p_item graph_db::get_property_value(const relationship &r, const std::string& pk
 p_item graph_db::get_property_value(const relationship &r, dcode_t pcode) {
   return rship_properties_->property_value(r.property_list, pcode);
 }
+
+node::id_t graph_db::get_node_id_for_property(dcode_t label, dcode_t prop, uint64_t val) {
+   for (auto &n : nodes_->as_vec()) {
+      if (n.is_valid() && n.node_label == label) {
+        // TODO: get property value
+        uint64_t result = 0;
+        auto pi = get_property_value(n, prop);
+        switch (pi.typecode()) {
+        case p_item::p_int:
+          result = pi.get<int>();
+          break;
+        case p_item::p_double:
+          result = (uint64_t)pi.get<double>();
+          break;
+        case p_item::p_uint64:
+          result = pi.get<uint64_t>();
+          break;
+        default:
+          break;
+        }
+        if (val == result)
+          return n.id();
+      }
+   }
+   return UNKNOWN;
+}

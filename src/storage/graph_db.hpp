@@ -44,6 +44,7 @@
 #include "bufferpool.hpp"
 
 #include "analytics.hpp"
+#include "parser.hpp"
 
 #if defined CSR_DELTA
 #include "csr_delta.hpp"
@@ -239,27 +240,21 @@ public:
    */
   std::size_t import_nodes_from_csv(const std::string &label,
                                     const std::string &filename, char delim,
-                                    mapping_t &m, std::mutex *mtx = nullptr);
+                                    std::optional<mapping_t> &m, std::mutex *mtx = nullptr);
 
   std::size_t import_typed_nodes_from_csv(const std::string &label,
                                     const std::string &filename, char delim,
-                                    mapping_t &m, typespec_t &ty, std::mutex *mtx = nullptr);
-  std::size_t import_typed_n4j_nodes_from_csv(const std::string &label,
-                                    const std::string &filename, char delim,
-                                    mapping_t &m);
+                                    std::optional<mapping_t> &m, typespec_t &ty, std::mutex *mtx = nullptr);
 
   /**
    * Read the list of relationships from the given CSV file. The file is in
    * ldbc format with the given delimiter.
    */
-  std::size_t import_relationships_from_csv(const std::string &filename,
-                                            char delim, const mapping_t &m, std::mutex *mtx = nullptr);
+  std::size_t import_relationships_from_csv(const std::string &label, const std::string &filename,
+                                            char delim, std::optional<mapping_t> &m, std::mutex *mtx = nullptr);
 
-  std::size_t import_typed_relationships_from_csv(const std::string &filename,
-                                            char delim, const mapping_t &m, std::mutex *mtx = nullptr);
-
-   std::size_t import_typed_n4j_relationships_from_csv(const std::string &filename,
-                                            char delim, const mapping_t &m, const std::string& rship_type = "");
+  std::size_t import_typed_relationships_from_csv(const std::string &label, const std::string &filename,
+                                            char delim, std::optional<mapping_t> &m, typespec_t &ty, std::mutex *mtx = nullptr);
 
   /* ---------------- helper ---------------- */
 
@@ -377,6 +372,13 @@ public:
   void index_lookup(index_id idx, uint64_t key, node_consumer_func consumer);
 
   void index_lookup(std::list<index_id> &idxs, uint64_t key, node_consumer_func consumer);
+
+  /**
+   * Perform an index lookup on the given index for the given property value key. 
+   * Returns the node id of the corresponding node but without considering
+   * transactions.
+   */
+  node::id_t node_id_from_index(index_id idx_ptr, uint64_t key);
 
 /* ---------------- Analytics support ---------------- */
 
@@ -521,6 +523,18 @@ private:
 
   void apply_undo(wa_log& log, xid_t txid, offset_t pos);
 #endif
+
+  node::id_t node_id_from_field(const graph_db::mapping_t &m, 
+                const std::string& str, const std::string &field);
+  node::id_t node_id_from_db(const std::string& label, const std::string& column, const std::string &field);
+  std::tuple<std::string, std::string> get_rship_node(const std::string& column);
+  std::tuple<node::id_t, node::id_t> get_connected_node_ids(const std::string& src_node, 
+                                                                const std::string& src_column,
+                                                                const std::string& dest_node, 
+                                                                const std::string& dest_column,
+                                                                aria::csv::CsvParser::iterator::reference& row,
+                                                                std::optional<mapping_t>& m, std::size_t line); 
+  node::id_t get_node_id_for_property(dcode_t label, dcode_t prop, uint64_t val);
 
   std::string database_name_; //
   bufferpool bpool_; //

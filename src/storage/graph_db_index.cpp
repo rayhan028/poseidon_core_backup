@@ -157,6 +157,24 @@ void graph_db::index_lookup(index_id idx_ptr, uint64_t key, node_consumer_func c
   }
 }
 
+node::id_t graph_db::node_id_from_index(index_id idx_ptr, uint64_t key) {
+  offset_t val = 0;
+
+  auto my_visitor = boost::hana::overload(
+    [&](boost::blank& b) { return false; },
+   [&](pf_btree_ptr idx) { return idx->lookup(key, &val); },
+    [&](im_btree_ptr idx) { return idx->lookup(key, &val); }
+#ifdef USE_PMDK
+    ,[&](nvm_btree_ptr idx) { return idx->lookup(key, &val); }
+#endif
+  );
+  if (boost::apply_visitor(my_visitor, idx_ptr)) {
+    auto &n = nodes_->get(val); 
+    return n.id();
+  }
+  return UNKNOWN;
+}
+
 void graph_db::index_lookup(std::list<index_id> &idx_ptrs, uint64_t key, node_consumer_func consumer) {
   offset_t val = 0;
   auto my_visitor = boost::hana::overload(

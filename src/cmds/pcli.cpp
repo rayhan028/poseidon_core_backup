@@ -53,6 +53,7 @@ using namespace boost::program_options;
 graph_pool_ptr pool;
 graph_db_ptr graph;
 std::unique_ptr<query_proc> qproc_ptr;
+bool strict_mode = false;
 
 graph_db::typespec_t load_typespecs(const std::string& filename) {
   graph_db::typespec_t typespecs;
@@ -89,8 +90,9 @@ graph_db::typespec_t load_typespecs(const std::string& filename) {
  * the labels.
  */
 bool import_csv_files(graph_db_ptr &gdb, std::string import_path, const std::vector<std::string> &files,
-                      char delimiter, std::string format, bool strict, graph_db::typespec_t& import_types) {
+                      char delimiter, graph_db::typespec_t& import_types) {
   graph_db::mapping_t id_mapping;
+  auto mapping = std::make_optional(id_mapping);
 
   for (auto s : files) {
     if (s.find("nodes:") != std::string::npos) {
@@ -108,15 +110,9 @@ bool import_csv_files(graph_db_ptr &gdb, std::string import_path, const std::vec
       file_name += result[2];
 
       auto start = std::chrono::steady_clock::now();
-      if (format == "n4j") {
-        num = gdb->import_typed_n4j_nodes_from_csv(result[1], file_name,
-                                                   delimiter, id_mapping);
-      }
-      else {
-        num = strict
-          ? gdb->import_typed_nodes_from_csv(result[1], file_name, delimiter, id_mapping, import_types)
-          : gdb->import_nodes_from_csv(result[1], file_name, delimiter, id_mapping);
-      }
+      num = strict_mode
+          ? gdb->import_typed_nodes_from_csv(result[1], file_name, delimiter, mapping, import_types)
+          : gdb->import_nodes_from_csv(result[1], file_name, delimiter, mapping);
       auto end = std::chrono::steady_clock::now();
 
       auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -126,14 +122,7 @@ bool import_csv_files(graph_db_ptr &gdb, std::string import_path, const std::vec
       std::vector<std::string> result;
       boost::split(result, s, boost::is_any_of(":"));
 
-      if (format == "n4j") {
-        if (result.size() < 2 || result.size() > 3) {
-          std::cerr << "ERROR: unknown import option for relationships."
-                    << std::endl;
-          return false;
-        }
-      }
-      else if (result.size() != 3) {
+      if (result.size() != 3) {
           std::cerr << "ERROR: unknown import option for relationships."
                     << std::endl;
           return false;
@@ -144,17 +133,10 @@ bool import_csv_files(graph_db_ptr &gdb, std::string import_path, const std::vec
       if (!file_name.empty()) file_name += "/";
 
       auto start = std::chrono::steady_clock::now();
-      if (format == "n4j") {
-        file_name += result.back();
-        auto rship_type = result.size() == 3 ? result[1] : "";
-        num = gdb->import_typed_n4j_relationships_from_csv(file_name, delimiter, id_mapping, rship_type);
-      }
-      else {
-        file_name += result[2];
-        num = strict
-         ? gdb->import_typed_relationships_from_csv(file_name, delimiter, id_mapping)
-         : gdb->import_relationships_from_csv(file_name, delimiter, id_mapping);
-      }
+      file_name += result[2];
+       num = strict_mode
+         ? gdb->import_typed_relationships_from_csv(result[1], file_name, delimiter, mapping, import_types)
+         : gdb->import_relationships_from_csv(result[1], file_name, delimiter, mapping);
       auto end = std::chrono::steady_clock::now();
 
       auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -241,7 +223,8 @@ std::vector<std::string> read_script_from_file(const std::string& qfile) {
   if (myfile.is_open()) {
     while (getline(myfile, line)) {
       trim(line);
-      if (line.empty()) {
+      if (line.ends_with(";")) {
+        qstr.append(line.substr(0, line.length()-1));
         result.push_back(qstr);
         qstr = "";
       }
@@ -320,6 +303,9 @@ void show_help() {
             << "\tsync                             " << "ensure that all pages are written to disk" << "\n"
             << "\tcreate index <label> <property>  " << "create an index for the given label/property" << "\n"
             << "\tdrop index <label> <property>    " << "delete the index for the given label/property" << "\n"
+            << "\timport nodes|rships <label>      " << "import nodes/relationships from the given file" << "\n"
+            << "\t  from <file> [delimiter <char>] " << "\n"
+            << "\t  [typespec <file>]              " << "\n"
             << "\t@file                            " << "execute the query stored in the given file" << "\n"
             << "\texplain <query-expr>             " << "execute the given query and print the plan" << "\n"
             << "\t<query-expr>                     " << "execute the given query" << "\n"
@@ -383,6 +369,79 @@ void load_library(graph_db_ptr gdb, const std::string& line) {
     }
   }
 }
+
+
+std::string trim_string(const std::string &s) {
+  std::string s2 = s;
+  if (s2[0] == '\'' || s2[0] == '"')
+    s2 = s2.substr(1, s2.size() - 2);
+  return s2;
+}
+
+bool parse_import_command(const std::vector<std::string>& cmd, std::string& label, char& delimiter, 
+std::string& csv_file, std::string& typespec_file) {
+  // import node <label> delimiter <char> from <file> typespec <file>
+  label = cmd[2];
+  int delim_spec = -1, from_spec = -1, type_spec = -1;
+  for (auto i = 3; i < 8; i++) {
+    if (cmd[i] == "delimiter")
+      delim_spec = i + 1;
+    else if (cmd[i] == "from")
+      from_spec = i + 1;
+    else if (cmd[i] == "typespec")
+      type_spec = i + 1;
+  }
+
+  if (delim_spec != -1)
+    delimiter = cmd[delim_spec][1];
+  if (from_spec != -1)
+    csv_file = trim_string(cmd[from_spec]);
+  if (type_spec != -1)
+    typespec_file = trim_string(cmd[type_spec]);
+  return from_spec != -1;
+}
+
+void import_file(graph_db_ptr gdb, const std::string& line) {
+  std::vector<std::string> words;
+  boost::split(words, line, boost::is_any_of(" \t"));
+  std::string label, csv_file, typespec_file;
+  char delimiter = ',';
+  auto empty = std::optional<graph_db::mapping_t>();
+
+  if (words.size() < 5 || (words[1] != "nodes" && words[1] != "rships")) {
+    std::cerr << "ERROR: invalid import command" << std::endl;
+    return;
+  }
+  
+  if (!parse_import_command(words, label, delimiter, csv_file, typespec_file)) {
+    std::cerr << "ERROR: invalid import command" << std::endl;
+    return;
+  }
+    
+  // std::cout << "label=" << label << ", delim=" << delimiter << ", csv=" << csv_file << ", typespec=" << typespec_file << std::endl;
+
+  graph_db::typespec_t import_types;
+  if (!typespec_file.empty())
+    import_types = load_typespecs(typespec_file);
+
+  auto start = std::chrono::steady_clock::now();
+
+  std::size_t num = 0;
+  if (words[1] == "nodes") {
+    num = strict_mode
+          ? gdb->import_typed_nodes_from_csv(label, csv_file, delimiter, empty, import_types)
+          : gdb->import_nodes_from_csv(label, csv_file, delimiter, empty);
+  }
+  else if (words[1] == "rships") {
+      num = strict_mode
+         ? gdb->import_typed_relationships_from_csv(label, csv_file, delimiter, empty, import_types)
+         : gdb->import_relationships_from_csv(label, csv_file, delimiter, empty);
+  }
+
+  auto end = std::chrono::steady_clock::now();
+  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  spdlog::info("{} '{}' {} imported in {} msecs ({} items/s)", num, label, words[1], time, (int)((double)num/time * 1000.0));
+ }
 
 /**
  * Run an interactive shell for entering and executing queries.
@@ -472,6 +531,9 @@ void run_shell(graph_db_ptr &gdb) {
     else if (line.rfind("drop index", 0) == 0) {
       drop_index(gdb, line);     
     }
+    else if (line.rfind("import", 0) == 0) {
+      import_file(gdb, line);
+    }
     else if (line.rfind("explain ", 0) == 0) {
       auto qstr = line.substr(8);
       exec_query(qstr, true);
@@ -505,7 +567,8 @@ std::string check_config_files(const std::string& fname) {
 bool is_command(const std::string& cmd) {
   return (cmd.starts_with("load") ||
     cmd.starts_with("create") ||
-    cmd.starts_with("drop"));
+    cmd.starts_with("drop") ||
+    cmd.starts_with("import"));
 }
 
 void exec_command(const std::string& cmd) {
@@ -515,16 +578,17 @@ void exec_command(const std::string& cmd) {
     drop_index(graph, cmd);
   else if (cmd.rfind("load", 0) == 0)
     load_library(graph, cmd);
+  else if (cmd.rfind("import", 0) == 0)
+    import_file(graph, cmd);
 }
 
 int main(int argc, char* argv[]) {
-  std::string db_name, pool_path, query_file, import_path, dot_file, qmode_str, format = "ldbc", typespec_file;
+  std::string db_name, pool_path, query_file, import_path, dot_file, qmode_str, typespec_file;
   std::size_t bp_size = 0;
   std::vector<std::string> import_files;
   bool start_shell = false;
   query_proc::mode qmode = query_proc::Interpret; 
   char delim_character = ',';
-  bool strict = false;
   bool explain = false;
   int num = 1;
   cmd_mode mode = undefined_mode;
@@ -544,7 +608,6 @@ int main(int argc, char* argv[]) {
         ("output,o", value<std::string>(&dot_file), "Dump the graph to the given file (in DOT format)")
         ("strict", bool_switch()->default_value(true), "Strict mode - assumes that all columns contain values of the same type")
         ("delimiter", value<char>(&delim_character)->default_value('|'), "Character delimiter")
-        ("format,f", value<std::string>(&format), "CSV format: n4j | gtpc | ldbc")
         ("explain,e", bool_switch()->default_value(false), "Print the query execution plan")
         ("import-path", value<std::string>(&import_path), "Directory containing import files")
         ("import", value<std::vector<std::string>>()->composing(),
@@ -600,22 +663,13 @@ int main(int argc, char* argv[]) {
       delim_character = vm["delimiter"].as<char>();
 
     if (vm.count("strict"))
-      strict = vm["strict"].as<bool>();
+      strict_mode = vm["strict"].as<bool>();
 
     if (vm.count("explain"))
       explain = vm["explain"].as<bool>();
 
     if (vm.count("num"))
       num = vm["num"].as<int>();
-
-    if (vm.count("format"))
-      format = vm["format"].as<std::string>();
-
-    if (format != "n4j" && format != "gtpc" && format != "ldbc") {
-      std::cerr
-          << "ERROR: choose format --n4j or --gtpc or --ldbc.\n";
-      return -1;
-    }
 
     if (vm.count("verbose"))
       if (vm["verbose"].as<bool>())
@@ -656,7 +710,7 @@ int main(int argc, char* argv[]) {
       import_types = load_typespecs(typespec_file);
 
     spdlog::info("--------- Importing files ...");
-    import_csv_files(graph, import_path, import_files, delim_character, format, strict, import_types);
+    import_csv_files(graph, import_path, import_files, delim_character, import_types);
     graph->print_stats();
   }
 

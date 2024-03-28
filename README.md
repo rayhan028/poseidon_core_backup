@@ -35,23 +35,33 @@ Option | Description
   `--strict`                  | strict mode - assumes that all columns contain values of the same type
   `-e` [ `--explain` ]        | print the query execution plan with statistics
   `--delimiter` arg           | specifies the delimiter character
-  `-f` [ `--format` ] arg     | specifies CSV format: n4j | gtpc | ldbc
   `--import-path` arg         | specifies the directory containing import files
   `--import` arg              | imports the files in CSV format either `nodes:<node-type>:<filename>` or `relationships:<rship-type>:<filename>`
+  `--typespec` filename       | reads the data types used for import from the given file
   `-q` [ `--query` ] arg      | executes the query from the given file
   `-s` [ `--shell` ]          | starts the interactive shell
   `--llvm`                    | use LLVM query compilation
 
-In the following example, we create a new database and load the graph data from CSV files in Neo4j file format. Note, that all files representing a database have to imported with a single invocation of `pcli` as in the following example:
+In the following example, we create a new database and load the graph data from CSV files. Note, that in this case, all files representing a database have to imported with a single invocation of `pcli` as in the following example:
 
 ```bash
-./build/pcli --pool demo --db testdb  -f n4j --delimiter , \
+./build/pcli --pool demo --db testdb --delimiter , \
      --import nodes:Movie:./test/movies.csv \
      --import nodes:Actor:./test/actors.csv \
-     --import relationships:./test/roles.csv 
+     --import relationships:played_in:./test/roles.csv 
 ```
 
-Alternatively, CVS files in a plain CSV format can be also imported.
+The import is also possible via the import command of `pcli` (see below).
+
+CSV files are expected in the following format:
+ - The first line is a header line naming the properties separated by the specified delimiter character (default: ',').
+ - All subsequent lines contain one node/relationship per line.
+ - In `strict` mode the data types of the properties are inferred from the first object.
+ - If a `typespec` file is given then the data types of the corresponding properties are used from this file.
+ - For import of relationships the FROM node is expected in the first column, the TO node in the second column.
+   Node type and node are specified by `<Label>_<property>`, i.e. `Customer_id` means that the relationship connects
+   a node of type `Customer` with the given value of property `id` to the other node. 
+   All other columns are used as properties of the  relationship object.
 
 After creating the database, we can execute queries, e.g.
 
@@ -128,6 +138,9 @@ Available commands:
 	sync                             ensure that all pages are written to disk
 	create index <label> <property>  create an index for the given label/property
 	drop index <label> <property>    delete the index for the given label/property
+  import nodes|rships <label>      import nodes/relationships from the given file
+	  from <file> [delimiter <char>]
+	  [typespec <file>]
 	@file                            execute the query stored in the given file
 	explain <query-expr>             execute the given query and print the plan
 	<query-expr>                     execute the given query

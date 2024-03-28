@@ -41,6 +41,9 @@ TEST_CASE("Testing helper functions", "[properties]") {
   REQUIRE(!is_float("123"));
   REQUIRE(!is_float("H123"));
   REQUIRE(!is_float("H.123"));
+  REQUIRE(is_uint64("1236950581248"));
+  REQUIRE(!is_uint64("-12369"));
+  REQUIRE(!is_uint64("12369"));
 }
 
 TEST_CASE("Testing p_item", "[properties]") {

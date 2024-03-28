@@ -106,7 +106,7 @@ class BPTree {
     spdlog::debug("read btree depth: {} and root: {}", depth, rootPid);
 
     if (fptr->num_pages() == 0) {
-      spdlog::info("create a new btree...");
+      spdlog::debug("create a new btree...");
       // we create a new empty B+ tree
       auto pg = bpool_.allocate_page(file_id_);
       rootPid = 1;
