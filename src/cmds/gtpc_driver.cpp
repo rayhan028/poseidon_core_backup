@@ -255,16 +255,40 @@ bool oltp_new_order(bool check_result = false) {
     return true;
 }
 
-void oltp_query_2() {
+void oltp_payment(bool check_result = false) {
     
 }
 
-void oltp_query_3() {
+void oltp_delivery(bool check_result = false) {
     
 }
 
-void oltp_query_4() {
-    
+bool oltp_stock_level(bool check_result = false) {
+    uint64_t warehouse_id = 0;
+    uint64_t district_id = 0;
+    int stock_level = 0;
+
+    spdlog::info("Stock-level transaction for w_id={}, d_id={}, s_level={} ", warehouse_id, district_id, stock_level);
+    // 2. start a new transaction
+    graph->begin_transaction();
+
+    uint64_t next_o_id = 0;
+    auto iter1 = qproc_ptr->exec_query(
+        "Project([$0.next_o_id:uint64], Match((d:District {{ id: {0} }})<-[:covers]-(w:Warehouse {{ id: {1} }})))", 
+        district_id, warehouse_id);
+        if (iter1.is_valid())
+            next_o_id = iter1.get<uint64_t>(0);
+        else {
+            graph->abort_transaction();
+            return false;
+        }
+        iter1.close();
+
+
+    //Match((o:OrderLine)-[:]-(s:Stock)-[]-(w:Warehouse))   
+
+    graph->commit_transaction();
+    retutn true;
 }
 
 std::string check_config_files(const std::string& fname) {

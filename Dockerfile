@@ -3,10 +3,13 @@ LABEL Poseidon Graph Database Engine
 
 RUN apk update
 RUN apk upgrade
-RUN apk add alpine-sdk git make cmake clang clang-dev boost boost-dev python3-dev py3-pip openjdk11
+RUN apk add bash alpine-sdk git make cmake clang clang-dev boost boost-dev python3-dev py3-pip openjdk11
 RUN apk add llvm16-static llvm16-dev
-RUN apk add py3-antlr4-tools && echo "yes" | antlr4
-RUN apk add py3-pytest
+# RUN apk add py3-antlr4-tools && echo "yes" | antlr4
+RUN apk add py3-pytest pipx 
+RUN pipx ensurepath
+RUN pipx install antlr4-tools
+RUN /root/.local/bin/antlr4
 
 # Set default user
 USER $USER
@@ -20,8 +23,8 @@ RUN cp /root/.m2/repository/org/antlr/antlr4/4.13.1/antlr4-4.13.1-complete.jar /
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++
 
-# RUN cd /home/$USER/poseidon_core/build \
-#      && cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_PMDK=OFF -DUSE_LLVM=ON .. \
-#      && make
+RUN cd /home/$USER/poseidon_core/build \
+      && cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_PMDK=OFF -DUSE_LLVM=ON .. \
+      && make
 
 ENTRYPOINT /bin/sh
