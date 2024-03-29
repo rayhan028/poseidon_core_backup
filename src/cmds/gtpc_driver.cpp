@@ -288,7 +288,7 @@ bool oltp_stock_level(bool check_result = false) {
     //Match((o:OrderLine)-[:]-(s:Stock)-[]-(w:Warehouse))   
 
     graph->commit_transaction();
-    retutn true;
+    return true;
 }
 
 std::string check_config_files(const std::string& fname) {
