@@ -379,7 +379,7 @@ std::size_t graph_db::import_typed_nodes_from_csv(const std::string &label,
       // fill mapping table
       if (m.has_value()) {
         auto id_label_s = id_label + "_" + label;
-        spdlog::info("insert mapping: {}", id_label_s);
+        spdlog::debug("insert mapping: {}", id_label_s);
         m.value().insert({id_label_s, id});
       }
       
@@ -435,14 +435,20 @@ node::id_t graph_db::node_id_from_field(const graph_db::mapping_t &m, const std:
 node::id_t graph_db::node_id_from_db(const std::string& node_label, const std::string& column, const std::string &field) {
   // field -> key
   uint64_t kval = 0;
-  if (is_quoted_string(field)) {
+  if (is_quoted_string(field) || !is_uint64(field)) {
     auto dc = get_code(field.substr(1, field.length()-2));
     if (dc == UNKNOWN_CODE)
       return UNKNOWN;
     kval = dc;
   }
-  else
-    kval = std::stoll(field);
+  else 
+    try {
+      kval = std::stoll(field);
+    }
+    catch (std::exception& exc) {
+      spdlog::info("WARNING: cannot convert '{}' to uint64", field);
+      return UNKNOWN;
+    }
   
   if (has_index(node_label, column)) {
     // spdlog::info("index lookup: {}, {}", node_label, kval);
