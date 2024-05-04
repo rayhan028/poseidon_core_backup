@@ -22,11 +22,21 @@ import poseidon
 @click.command()
 @click.option('--pool', '-p', help="Path to the PMem/file pool")
 @click.option('--db', '-d', help="Database name (required)")
+@click.option('--create', '-c', is_flag=True, default=False, help="Create database if not exists")
 @click.option('--buffersize', '-b', default=5000, help="Size of the bufferpool (in pages)")
 
-def main(pool, db, buffersize):
-    p = poseidon.open_pool(pool, 1024 * 1024 * 80)
-    g = p.open_graph(db, buffersize)
+def main(pool, db, create, buffersize):
+    pool_path = pathlib.Path(pool)
+    if pool_path.exists():
+        print(f"pool {pool_path} exists")
+        p = poseidon.open_pool(pool, 1024 * 1024 * 80)
+        g = p.open_graph(db, buffersize)
+    elif create:
+        p = poseidon.create_pool(pool, 1024 * 1024 * 80)
+        g = p.create_graph(db, buffersize)
+    else:
+        print(f"ERROR: pool '{pool_path}' doesn't exists.")
+        exit(1)
 
     home = pathlib.Path.home().resolve() / '.phist'
     session = PromptSession(history=FileHistory(str(home)))

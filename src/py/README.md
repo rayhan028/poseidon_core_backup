@@ -9,7 +9,7 @@ import poseidon
 
 # create a new graph pool and a graph database
 pool = poseidon.create_pool("my_pool")
-graph = pool.create_graph("imdb")
+graph = pool.create_graph("imdb", 1000)
 ```
 
 Next, we create a few nodes and relationships that are stored in the database.
@@ -29,6 +29,22 @@ Nodes and relationships can be retrieved by their id. In addition, for a given n
 ```python
 graph.begin()
 n = graph.get_node(m1)
-for r in g.get_to_relationships(n.id):
-    print(r, g.get_node(r.from_node), "-->", g.get_node(r.to_node))
+for r in graph.get_to_relationships(n.id):
+    print(r, graph.get_node(r.from_node), "-->", graph.get_node(r.to_node))
+graph.commit()
+```
+
+Furthermore, access to id, label and properties of nodes and relationships is also possible:
+
+```python
+print(n.id, n.label)
+print(n["title"])
+```
+
+Poseidon queries are also supported:
+
+```python
+res = graph.query("NodeScan('Actor')")
+for tup in res:
+    print(tup)
 ```

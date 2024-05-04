@@ -43,6 +43,19 @@ namespace PYBIND11_NAMESPACE { namespace detail {
     };
 }} // namespace PYBIND11_NAMESPACE::detail
 
+
+std::string prop_to_string(const std::any& v) {
+  std::ostringstream os;
+  if (v.type() == typeid(int))
+    os << std::any_cast<int>(v);
+  else if (v.type() == typeid(double))
+    os << std::any_cast<double>(v);
+  else if (v.type() == typeid(std::string))
+    os << std::any_cast<std::string>(v);
+  
+  return os.str();
+}
+
 properties_t dict_to_props(const py::dict& props) {
   properties_t node_props;
   for (auto item : props) {
@@ -103,16 +116,26 @@ PYBIND11_MODULE(poseidon, m) {
         return res;
       }, "Executes the query.");
 
-      py::class_<node_description>(m, "Node") 
+      py::class_<node>(m, "Node")
+        .def("id", &node::id)
+        .def("__repr__", [](node& self) { return std::format("Node #{}", self.id()); });
+
+      py::class_<node_description>(m, "NodeDescription") 
         .def_readonly("id", &node_description::id)
         .def_readonly("label", &node_description::label)
+        .def("__getitem__",[](node_description& self, const std::string& s) {return prop_to_string(self.properties[s]);})
         .def("__repr__", &node_description::to_string);
 
-      py::class_<rship_description>(m, "Relationship") 
+      py::class_<relationship>(m, "Relationship")
+        .def("id", &relationship::id)
+        .def("__repr__", [](relationship& self) { return std::format("Relationship #{}", self.id()); });
+
+      py::class_<rship_description>(m, "RelationshipDescription") 
         .def_readonly("id", &rship_description::id)
         .def_readonly("label", &rship_description::label)
         .def_readonly("to_node", &rship_description::to_id)
         .def_readonly("from_node", &rship_description::from_id)
+        .def("__getitem__",[](rship_description& self, const std::string& s) {return prop_to_string(self.properties[s]);})
         .def("__repr__", &rship_description::to_string);
 
       py::class_<qresult_iterator>(m, "ResultIterator")

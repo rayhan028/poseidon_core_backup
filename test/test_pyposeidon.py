@@ -51,7 +51,16 @@ def test_create_node():
     g.commit()
     g.begin()
     anode = g.get_node(a1)
+    assert anode != None
+    assert anode.id == 0
+    assert anode.label == "Actor"
+    assert anode["name"] == "John David Washington"
+
     mnode = g.get_node(m1)
+    assert mnode != None
+    assert mnode.id == 1
+    assert mnode.label == "Movie"
+    assert mnode["title"] == "Tenet"
     g.abort()
     p.drop_graph("my_py_graph3")
     p.close()

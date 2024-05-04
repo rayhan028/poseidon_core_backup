@@ -26,6 +26,7 @@
 #include <any>
 
 #include <boost/variant.hpp>
+#include <boost/core/demangle.hpp>
 
 #include "defs.hpp"
 
@@ -181,9 +182,9 @@ std::optional<T> get_property(const properties_t &p, const std::string &key) {
   try {
     return std::optional<T> { std::any_cast<T>(it->second) };
   } catch (std::bad_any_cast& ex) {
-    // TODO: use c++filt
-    spdlog::info("ERROR: wrong cast for property '{}' - {}", key, it->second.type().name());
-    throw query_processing_error("bad cast for property");
+    // spdlog::info("ERROR: wrong cast for property '{}' - {}", key, it->second.type().name());
+    spdlog::debug("ERROR: wrong cast for property '{}' - {} expected", key, boost::core::demangle(it->second.type().name()));
+    throw query_processing_error(std::format("bad cast for property  '{}' - {} expected", key, boost::core::demangle(it->second.type().name())));
   }
 }
 

@@ -64,7 +64,7 @@ class PoseidonKernel(Kernel):
                 return str(e)
         elif cmds[0].upper() == "%CLOSE":
             self.pool.close()
-            return "Poseidon closed."
+            return "Poseidon database closed."
         else:
             logging.info("UNKNOWN CMD: '%s'", code)
             return f"Ooops: unknown command {code}"
