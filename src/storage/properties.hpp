@@ -184,7 +184,7 @@ std::optional<T> get_property(const properties_t &p, const std::string &key) {
   } catch (std::bad_any_cast& ex) {
     // spdlog::info("ERROR: wrong cast for property '{}' - {}", key, it->second.type().name());
     spdlog::debug("ERROR: wrong cast for property '{}' - {} expected", key, boost::core::demangle(it->second.type().name()));
-    throw query_processing_error(std::format("bad cast for property  '{}' - {} expected", key, boost::core::demangle(it->second.type().name())));
+    throw query_processing_error(fmt::format("bad cast for property  '{}' - {} expected", key, boost::core::demangle(it->second.type().name())));
   }
 }
 
