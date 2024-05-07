@@ -118,7 +118,7 @@ PYBIND11_MODULE(poseidon, m) {
 
       py::class_<node>(m, "Node")
         .def("id", &node::id)
-        .def("__repr__", [](node& self) { return std::format("Node #{}", self.id()); });
+        .def("__repr__", [](node& self) { return fmt::format("Node #{}", self.id()); });
 
       py::class_<node_description>(m, "NodeDescription") 
         .def_readonly("id", &node_description::id)
@@ -128,7 +128,7 @@ PYBIND11_MODULE(poseidon, m) {
 
       py::class_<relationship>(m, "Relationship")
         .def("id", &relationship::id)
-        .def("__repr__", [](relationship& self) { return std::format("Relationship #{}", self.id()); });
+        .def("__repr__", [](relationship& self) { return fmt::format("Relationship #{}", self.id()); });
 
       py::class_<rship_description>(m, "RelationshipDescription") 
         .def_readonly("id", &rship_description::id)
