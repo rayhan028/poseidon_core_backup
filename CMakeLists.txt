@@ -211,7 +211,7 @@ endif()
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v3.5.2
+  GIT_TAG        v3.6.0
 )
 
 FetchContent_MakeAvailable(Catch2)
@@ -220,7 +220,6 @@ FetchContent_MakeAvailable(Catch2)
  FetchContent_Declare(
   CSV
   GIT_REPOSITORY https://github.com/AriaFallah/csv-parser.git
-#  GIT_TAG        1.2.1
 )
 
 FetchContent_MakeAvailable(CSV)

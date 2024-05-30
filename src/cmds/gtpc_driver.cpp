@@ -264,9 +264,14 @@ void oltp_delivery(bool check_result = false) {
 }
 
 bool oltp_stock_level(bool check_result = false) {
-    uint64_t warehouse_id = 0;
-    uint64_t district_id = 0;
-    int stock_level = 0;
+    /*
+    auto warehouse_id = uniform_random_int(1, 5);
+    sequence_generator seq(WAREHOUSE_COUNT * DISTRICT_PER_WAREHOUSE * CUSTOMER_PER_DISTRICT * 100 + 1000);
+    auto district_id = (warehouse_id - 1) * DISTRICT_PER_WAREHOUSE + uniform_random_int(1, DISTRICT_PER_WAREHOUSE);
+    */
+    uint64_t warehouse_id = 1;
+    uint64_t district_id = 2;
+    int stock_level = 30;
 
     spdlog::info("Stock-level transaction for w_id={}, d_id={}, s_level={} ", warehouse_id, district_id, stock_level);
     // 2. start a new transaction
@@ -274,10 +279,10 @@ bool oltp_stock_level(bool check_result = false) {
 
     uint64_t next_o_id = 0;
     auto iter1 = qproc_ptr->exec_query(
-        "Project([$0.next_o_id:uint64], Match((d:District {{ id: {0} }})<-[:covers]-(w:Warehouse {{ id: {1} }})))", 
+        "Project([$0.next_o_id:int], Match((d:District {{ id: {0} }})<-[:covers]-(w:Warehouse {{ id: {1} }})))", 
         district_id, warehouse_id);
         if (iter1.is_valid())
-            next_o_id = iter1.get<uint64_t>(0);
+            next_o_id = iter1.get<int>(0);
         else {
             graph->abort_transaction();
             return false;
@@ -285,8 +290,26 @@ bool oltp_stock_level(bool check_result = false) {
         iter1.close();
 
 
-    //Match((o:OrderLine)-[:]-(s:Stock)-[]-(w:Warehouse))   
+    /*
+    Aggregate([count($0.id:int)],
+    Expand(IN, 'Item', 
+    ForeachRelationship(TO, 'hasStock', 
+    Filter($0.id:int < $8.next_o_id:int && $0.id:int >= $8.next_o_id:int - 20 && $4.quantity:int > {stock_level},
+     Match((o:Order)-[:contains]->(ol:OrderLine)-[:hasStock]->(s:Stock)<-[:hasStock]-(w:Warehouse { id: 1 } )-[:covers]->(d:District { id: 2 })))
+     )   
+    */
+   /*
+    Filter($0.id:int < $8.next_o_id:int && $0.id:int >= $8.next_o_id:int - 20,
+   Expand(IN, 'Order', 
+    ForeachRelationship(TO, 'contains', 
 
+    Expand(IN, 'OrderLine', 
+    ForeachRelationship(TO, 'hasStock', 
+    Aggregate([count($0):int],
+   Filter($0.quantity:int > 50,
+   Project[$0:node, $4.next_o_id:int],
+   Match((s:Stock)<-[:hasStock]-(w:Warehouse { id: 1 } )-[:covers]->(d:District { id: 2 })))))
+   */
     graph->commit_transaction();
     return true;
 }

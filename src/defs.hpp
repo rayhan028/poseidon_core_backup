@@ -38,7 +38,7 @@
 #include <thrust/device_ptr.h>
 #endif
 
-#define POSEIDON_VERSION "0.0.13"
+#define POSEIDON_VERSION "0.0.14"
 
 #define DICT_FILE_ID   0
 #define NODE_FILE_ID   1

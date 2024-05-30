@@ -25,6 +25,7 @@
 #include <boost/program_options.hpp>
 
 #include "linenoise.hpp"
+#include "termcolor.hpp"
 #include "fmt/chrono.h"
 #include "query_proc.hpp"
 #include "graph_db.hpp"
@@ -190,7 +191,7 @@ void exec_query(std::string &qstr, bool print_plan, int num = 1) {
       auto end_qp = std::chrono::steady_clock::now();
 
       std::chrono::duration<double> diff = end_qp - start_qp;
-      fmt::print("Query executed in {}\n", diff); 
+      std::cout << termcolor::white << termcolor::on_blue <<  fmt::format("Query executed in {}", diff) << termcolor::reset << std::endl;
     }
   } catch (std::exception& exc) {
     std::cerr << "Error in query execution: " << exc.what() << std::endl;
@@ -564,11 +565,19 @@ std::string check_config_files(const std::string& fname) {
   return "";
 }
 
+void output_message(const std::string& msg) {
+  auto start = msg.find_first_of(" ");
+  auto raw_msg = msg.substr(start);
+  trim(raw_msg);
+  std::cout << termcolor::white << termcolor::on_red << trim_string(raw_msg) << termcolor::reset << std::endl;
+}
+
 bool is_command(const std::string& cmd) {
   return (cmd.starts_with("load") ||
     cmd.starts_with("create") ||
     cmd.starts_with("drop") ||
-    cmd.starts_with("import"));
+    cmd.starts_with("import") ||
+    cmd.starts_with("echo"));
 }
 
 void exec_command(const std::string& cmd) {
@@ -580,6 +589,8 @@ void exec_command(const std::string& cmd) {
     load_library(graph, cmd);
   else if (cmd.rfind("import", 0) == 0)
     import_file(graph, cmd);
+  else if (cmd.rfind("echo", 0) == 0)
+    output_message(cmd);
 }
 
 int main(int argc, char* argv[]) {
@@ -698,6 +709,10 @@ int main(int argc, char* argv[]) {
     pool = graph_pool::create(pool_path);
     graph = pool->create_graph(db_name, num_buf_pages /*bp_size*/);
   } else {
+    if (mode == import_mode) {
+      std::cerr << "WARNING: database already exists. Import aborted - please delete poolset before trying to import." << std::endl;
+      exit(1);
+    }
     spdlog::info("opening poolset {}", pool_path);
     pool = graph_pool::open(pool_path, true);
     graph = pool->open_graph(db_name, num_buf_pages /*bp_size*/);

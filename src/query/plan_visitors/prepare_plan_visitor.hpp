@@ -38,6 +38,7 @@ public:
     void visit(std::shared_ptr<filter_op> op) override;
     void visit(std::shared_ptr<left_outer_join_op> op) override;
     void visit(std::shared_ptr<create_node> op) override;
+    void visit(std::shared_ptr<create_relationship> op) override;
 
 private:
     prepare_expr_visitor expr_visitor_;

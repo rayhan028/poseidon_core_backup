@@ -28,10 +28,8 @@
  */
 struct create_node : public enable_shared<qop, create_node> {
   create_node(const std::string &l) : label(l) {  type_ = qop_type::create; }
-  create_node(const std::string &l, const properties_t &p) : label(l), props(p) {
-    type_ = qop_type::create;
-    expr_in_properties_= check_for_expr_in_properties();
-  }
+  create_node(const std::string &l, const properties_t &p);
+
   ~create_node() = default;
 
   void dump(std::ostream &os) const override;
@@ -45,9 +43,6 @@ struct create_node : public enable_shared<qop, create_node> {
       subscriber_->accept(vis);
   }
 
-  bool check_for_expr_in_properties();
-  properties_t eval_properties(query_ctx &ctx, const qr_tuple &v);
-  
   std::string label;
   properties_t props;
   bool expr_in_properties_;
@@ -59,10 +54,10 @@ struct create_node : public enable_shared<qop, create_node> {
  * in the query result.
  */
 struct create_relationship : public enable_shared<qop, create_relationship> {
-  create_relationship(const std::string &l) : label(l) { type_ = qop_type::create; }
+  create_relationship(const std::string &l) : label(l), expr_in_properties_(0) { type_ = qop_type::create; }
   create_relationship(const std::string &l, const properties_t &p,
                       std::pair<int, int> src_des)
-      : label(l), props(p), src_des_nodes_(src_des) { type_ = qop_type::create; }
+      : label(l), props(p), src_des_nodes_(src_des), expr_in_properties_(0) { type_ = qop_type::create; }
   ~create_relationship() = default;
 
   void dump(std::ostream &os) const override;
@@ -78,6 +73,7 @@ struct create_relationship : public enable_shared<qop, create_relationship> {
   std::string label;
   properties_t props;
   std::pair<int, int> src_des_nodes_;
+  int expr_in_properties_;
 };
 
 /**

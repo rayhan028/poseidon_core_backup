@@ -43,3 +43,13 @@ void prepare_plan_visitor::visit(std::shared_ptr<create_node> op) {
         }
     }
 }
+
+void prepare_plan_visitor::visit(std::shared_ptr<create_relationship> op) { 
+    for (auto& prop : op->props) {
+        auto& any_val = prop.second;
+        if (any_val.type() == typeid(expr)) {
+            auto ex = std::any_cast<expr>(any_val);
+            ex->accept(expr_visitor_);
+        }
+    }
+}

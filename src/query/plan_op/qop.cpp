@@ -384,7 +384,7 @@ void printer::process(query_ctx &ctx, const qr_tuple &v) {
       [&](const node_description& n) { std::cout << fmt::format(" {:<20} |", n); },
       [&](const rship_description& r) { std::cout << fmt::format(" {:<20} |", r); },
       [&](node *n) { std::cout << fmt::format(" {:<20} |", ctx.gdb_->get_node_description(n->id())); },
-      [&](relationship *r) { std::cout << fmt::format(" {:<20} |", ctx.gdb_->get_relationship_label(*r)); },
+      [&](relationship *r) { std::cout << fmt::format(" {:<20} |", ctx.gdb_->get_rship_description(r->id())); },// ctx.gdb_->get_relationship_label(*r)); },
       [&](int i) { std::cout << fmt::format(" {:>20} |", i); }, 
       [&](double d) { std::cout << fmt::format(" {:>20f} |", d); },
       [&](const std::string &s) { std::cout << fmt::format(" {:<20.20} |", s); },

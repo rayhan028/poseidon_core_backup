@@ -600,6 +600,7 @@ bool graph_db::commit_transaction() {
   current_transaction_.reset();
   vacuum(xid);
 
+  spdlog::info("transaction committed.");
   return true;
 }
 

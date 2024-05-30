@@ -22,6 +22,39 @@
 
 /* ------------------------------------------------------------------------ */
 
+bool check_for_expr_in_properties(const properties_t& props) {
+  for (auto& prop : props) {
+        auto& any_val = prop.second;
+        if (any_val.type() == typeid(expr)) {
+          return true;
+        }
+  }
+  return false;
+}
+
+properties_t eval_properties(query_ctx &ctx, const qr_tuple &v, const properties_t& props) {
+  properties_t new_props;
+    for (auto& prop : props) {
+        auto& any_val = prop.second;
+        if (any_val.type() == typeid(expr)) {
+          auto ex = std::any_cast<expr>(any_val);
+          auto val = interpret_expression(ctx, ex, v); 
+          // boost::variant(val) -> value 
+          new_props.insert({prop.first, qv_to_any(val)});
+        }
+        else
+          new_props.insert({prop.first, prop.second});
+    }
+    return new_props;
+}  
+
+/* ------------------------------------------------------------------------ */
+
+create_node::create_node(const std::string &l, const properties_t &p) : label(l), props(p) {
+  type_ = qop_type::create;
+  expr_in_properties_= check_for_expr_in_properties(props);
+}
+
 void create_node::dump(std::ostream &os) const {
   os << "create_node([" << label << "]";
   if (!props.empty()) {
@@ -42,7 +75,7 @@ void create_node::start(query_ctx &ctx) {
   // evaluate expressions in property
   if (expr_in_properties_) {
     qr_tuple dummy;
-    auto new_props = eval_properties(ctx, dummy);
+    auto new_props = eval_properties(ctx, dummy, props);
     auto &n = ctx.gdb_->node_by_id(ctx.gdb_->add_node(label, new_props, true));
     consume_(ctx, {&n});
   }
@@ -54,8 +87,8 @@ void create_node::start(query_ctx &ctx) {
 
 void create_node::process(query_ctx &ctx, const qr_tuple &v) {
   // evaluate expressions in property
-    if (expr_in_properties_) {
-      auto new_props = eval_properties(ctx, v);
+  if (expr_in_properties_) {
+      auto new_props = eval_properties(ctx, v, props);
       auto &n = ctx.gdb_->node_by_id(ctx.gdb_->add_node(label, props, true));
       auto v2 = append(v, query_result(&n));
       consume_(ctx, v2);
@@ -67,6 +100,7 @@ void create_node::process(query_ctx &ctx, const qr_tuple &v) {
   }
 }
 
+/*
 bool create_node::check_for_expr_in_properties() {
   for (auto& prop : props) {
         auto& any_val = prop.second;
@@ -92,7 +126,7 @@ properties_t create_node::eval_properties(query_ctx &ctx, const qr_tuple &v) {
     }
     return new_props;
 }
-
+*/
 /* ------------------------------------------------------------------------ */
 
 void create_relationship::dump(std::ostream &os) const {
@@ -114,11 +148,23 @@ void create_relationship::dump(std::ostream &os) const {
 }
 
 void create_relationship::process(query_ctx &ctx, const qr_tuple &v) {
+  if (expr_in_properties_ == 0)
+    expr_in_properties_ = check_for_expr_in_properties(props) ? 1 : -1;
+
   assert(v[src_des_nodes_.first].which() == node_ptr_type);
-  auto n1 = boost::get<node *>(v[src_des_nodes_.first]);
+  auto n1 = qv_get_node(v[src_des_nodes_.first]);
   assert(v[src_des_nodes_.second].which() == node_ptr_type);
-  auto n2 = boost::get<node *>(v[src_des_nodes_.second]);
-  auto rid = ctx.gdb_->add_relationship(n1->id(), n2->id(), label, props, true);
+  auto n2 = qv_get_node(v[src_des_nodes_.second]);
+
+  relationship::id_t rid = 0;
+
+  if (expr_in_properties_ > 0) {
+      auto new_props = eval_properties(ctx, v, props);
+      rid = ctx.gdb_->add_relationship(n1->id(), n2->id(), label, new_props, true);
+  }
+  else
+    rid = ctx.gdb_->add_relationship(n1->id(), n2->id(), label, props, true);
+
   auto& r = ctx.gdb_->rship_by_id(rid);
   auto v2 = append(v, query_result(&r));
   
@@ -226,16 +272,31 @@ void remove_relationship::dump(std::ostream &os) const {
 
 void remove_relationship::process(query_ctx &ctx, const qr_tuple &v) {
   qr_tuple res = v;
-  relationship * r = nullptr;
+  relationship::id_t rid = 0;
   if (pos_ == std::numeric_limits<std::size_t>::max()) {
-    r = boost::get<relationship *>(v.back());
+    std::cout << "remove: " << v.back() << std::endl;
+    if (v.back().which() == rship_ptr_type) {
+      auto r = qv_get_relationship(v.back());
+      rid = r->id();
+    }
+    else {
+      auto r = qv_get_rship_descr(v.back());
+      rid = r.id;
+    }
     res[(v.size() - 1)] = query_result(null_t(-1));
   }
   else {
-    r = boost::get<relationship *>(v[pos_]);
+    if (v[pos_].which() == rship_ptr_type) {
+      auto r = qv_get_relationship(v[pos_]);
+      rid = r->id();
+    }
+    else {
+      auto r = qv_get_rship_descr(v[pos_]);
+      rid = r.id;
+    }
     res[pos_] = query_result(null_t(-1));
   }
-
-  ctx.gdb_->delete_relationship(r->id());
+  spdlog::info("delete rship #{}", rid);
+  ctx.gdb_->delete_relationship(rid);
   consume_(ctx, res);
 }

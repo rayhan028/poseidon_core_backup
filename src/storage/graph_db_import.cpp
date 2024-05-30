@@ -466,7 +466,7 @@ node::id_t graph_db::node_id_from_db(const std::string& node_label, const std::s
 }
 
 std::tuple<std::string, std::string> graph_db::get_rship_node(const std::string& column) {
-  const auto idx = column.find_first_of('_');
+  const auto idx = column.find_first_of("_.");
   if (std::string::npos != idx)
     return std::make_tuple(column.substr(0, idx), column.substr(idx + 1));
   else
