@@ -161,7 +161,7 @@ bool oltp_new_order(bool check_result = false) {
     for (auto ol_number = 1; ol_number <= ol_cnt; ol_number++) {
         // 9.1 retrieve the data (price, name, data) for the item and the stock; if not found then abort the transaction
         auto item_id = non_uniform_random_int(8191, 1, 100000, uniform_random_int(1, 100000));
-        auto stock_id = 0ul;
+        auto stock_id = 0;
 
         auto iter4 = qproc_ptr->exec_query( 
             "Project([$0.price:double, $0.name:string, $0.data:string], IndexScan('Item', 'id', {}))", item_id);
@@ -181,7 +181,7 @@ bool oltp_new_order(bool check_result = false) {
         std::vector<std::string> s_dist(10);
 
         auto iter5 = qproc_ptr->exec_query( 
-        "Project([$2.quantity:int, $2.data:string, $2.ytd:int, $2.remote_cnt:int, $2.id:uint64, "
+        "Project([$2.quantity:int, $2.data:string, $2.ytd:int, $2.remote_cnt:int, $2.id:int, "
         "$2.dist_01:string, $2.dist_02:string, $2.dist_03:string, $2.dist_04:string, $2.dist_05:string, "
         "$2.dist_06:string, $2.dist_07:string, $2.dist_08:string, $2.dist_09:string, $2.dist_10:string],"
         "Match((i:Item {{ id: {0} }})-[:hasStock]->(s:Stock)))", item_id);
@@ -190,7 +190,7 @@ bool oltp_new_order(bool check_result = false) {
             s_data = iter5.get<std::string>(1);
             s_ytd = iter5.get<int>(2);
             s_remote_cnt = iter5.get<int>(3);
-            stock_id = iter5.get<uint64_t>(4);
+            stock_id = iter5.get<int>(4);
             for (auto i = 0u; i < 10; i++) {
                 s_dist[i] = iter5.get<std::string>(5 + i);
             }
@@ -299,7 +299,7 @@ bool oltp_stock_level(bool check_result = false) {
     auto iter2 = qproc_ptr->exec_query(
         "Aggregate([count($0:int)], Distinct(Project([$2.item_id:int], "
         "Filter($2.quantity:int < {0} && $0.order_id:int < {1} && $0.order_id:int > {2}, "
-        "Match((ol:OrderLine { warehouse_id: {3}, district_id: {4} })-[:hasStock]->(s:Stock { warehouse_id: {5} }))))))",
+        "Match((ol:OrderLine {{ warehouse_id: {3}, district_id: {4} }})-[:hasStock]->(s:Stock {{ warehouse_id: {5} }}))))))",
         stock_level, next_o_id, next_o_id - 20, warehouse_id, district_id, warehouse_id);
      if (iter2.is_valid()) {
         auto stock_count = iter2.get<int>(0);
@@ -331,7 +331,7 @@ int main(int argc, char *argv[]) {
 
     auto console = spdlog::stdout_color_mt("poseidon");
     spdlog::set_default_logger(console);
-    spdlog::info("Starting poseidon cli, Version {}", POSEIDON_VERSION);
+    spdlog::info("Starting Poseidon GTPC driver, Version {}", POSEIDON_VERSION);
 
     try {
         options_description desc{"Options"};
@@ -403,7 +403,8 @@ int main(int argc, char *argv[]) {
     qproc_ptr->set_execution_mode(qmode);
 
     build_indexes(ctx);
-
+    graph->flush();
+    
     ctx.set_auto_commit(false);
 
     // TODO
@@ -412,6 +413,12 @@ int main(int argc, char *argv[]) {
         spdlog::info("New-Order transaction finished successfully.");
     else 
         spdlog::info("New-Order transaction aborted.");
+
+    res = oltp_stock_level(true);
+    if (res)
+        spdlog::info("Stock-Level transaction finished successfully.");
+    else 
+        spdlog::info("Stock-Level transaction aborted.");
 
     graph->flush();
     graph->close_files();
