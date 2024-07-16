@@ -270,13 +270,14 @@ bool oltp_stock_level(bool check_result = false) {
     auto district_id = (warehouse_id - 1) * DISTRICT_PER_WAREHOUSE + uniform_random_int(1, DISTRICT_PER_WAREHOUSE);
     */
     uint64_t warehouse_id = 1;
-    uint64_t district_id = 2;
-    int stock_level = 30;
+    uint64_t district_id = 1;
+    int stock_level = 15;
 
     spdlog::info("Stock-level transaction for w_id={}, d_id={}, s_level={} ", warehouse_id, district_id, stock_level);
-    // 2. start a new transaction
+    // start a new transaction
     graph->begin_transaction();
 
+     // 1. The row in the DISTRICT table with matching D_W_ID and D_ID is selected and D_NEXT_O_ID is retrieved.    
     uint64_t next_o_id = 0;
     auto iter1 = qproc_ptr->exec_query(
         "Project([$0.next_o_id:int], Match((d:District {{ id: {0} }})<-[:covers]-(w:Warehouse {{ id: {1} }})))", 
@@ -289,27 +290,23 @@ bool oltp_stock_level(bool check_result = false) {
         }
         iter1.close();
 
+    // 2. All rows in the ORDER-LINE table with matching OL_W_ID (equals W_ID), OL_D_ID (equals D_ID), and
+    // OL_O_ID (lower than D_NEXT_O_ID and greater than or equal to D_NEXT_O_ID minus 20) are selected.
+    // They are the items for 20 recent orders of the district.
 
-    /*
-    Aggregate([count($0.id:int)],
-    Expand(IN, 'Item', 
-    ForeachRelationship(TO, 'hasStock', 
-    Filter($0.id:int < $8.next_o_id:int && $0.id:int >= $8.next_o_id:int - 20 && $4.quantity:int > {stock_level},
-     Match((o:Order)-[:contains]->(ol:OrderLine)-[:hasStock]->(s:Stock)<-[:hasStock]-(w:Warehouse { id: 1 } )-[:covers]->(d:District { id: 2 })))
-     )   
-    */
-   /*
-    Filter($0.id:int < $8.next_o_id:int && $0.id:int >= $8.next_o_id:int - 20,
-   Expand(IN, 'Order', 
-    ForeachRelationship(TO, 'contains', 
+    // 3. All rows in the STOCK table with matching S_I_ID (equals OL_I_ID) and S_W_ID (equals W_ID) from the list
+    // of distinct item numbers and with S_QUANTITY lower than threshold are counted (giving low_stock).
+    auto iter2 = qproc_ptr->exec_query(
+        "Aggregate([count($0:int)], Distinct(Project([$2.item_id:int], "
+        "Filter($2.quantity:int < {0} && $0.order_id:int < {1} && $0.order_id:int > {2}, "
+        "Match((ol:OrderLine { warehouse_id: {3}, district_id: {4} })-[:hasStock]->(s:Stock { warehouse_id: {5} }))))))",
+        stock_level, next_o_id, next_o_id - 20, warehouse_id, district_id, warehouse_id);
+     if (iter2.is_valid()) {
+        auto stock_count = iter2.get<int>(0);
+         spdlog::info("---> {}", stock_count);
+     }
+    iter2.close();
 
-    Expand(IN, 'OrderLine', 
-    ForeachRelationship(TO, 'hasStock', 
-    Aggregate([count($0):int],
-   Filter($0.quantity:int > 50,
-   Project[$0:node, $4.next_o_id:int],
-   Match((s:Stock)<-[:hasStock]-(w:Warehouse { id: 1 } )-[:covers]->(d:District { id: 2 })))))
-   */
     graph->commit_transaction();
     return true;
 }
