@@ -31,7 +31,7 @@ Supplier.phone:string
 Using this file you can import the previously generated data:
 
 ```
-${POSEIDON_HOME}/build/pcli -b 100000 --pool gtpc --db testdb -f ldbc --delimiter '|' \
+${POSEIDON_HOME}/build/pcli -b 100000 --pool gtpc --db testdb --delimiter '|' \
     --import-path data \
     --import nodes:Customer:customer_0_0.csv \
     --import nodes:District:district_0_0.csv \
@@ -48,7 +48,7 @@ ${POSEIDON_HOME}/build/pcli -b 100000 --pool gtpc --db testdb -f ldbc --delimite
     --import relationships:serves:district_serves_customer_0_0.csv \
     --import relationships:hasStock:item_hasStock_stock_0_0.csv \
     --import relationships:isPartOf:nation_isPartOf_region_0_0.csv \
-    --import relationships:cotains:order_contains_orderLine_0_0.csv \
+    --import relationships:contains:order_contains_orderLine_0_0.csv \
     --import relationships:hasStock:orderLine_hasStock_stock_0_0.csv \
     --import relationships:hasSupplier:stock_hasSupplier_supplier_0_0.csv \
     --import relationships:isLocatedIn:supplier_isLocatedIn_nation_0_0.csv \
