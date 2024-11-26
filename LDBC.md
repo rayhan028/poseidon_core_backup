@@ -7,7 +7,7 @@
 3. Import the data in Poseidon
 
 ```
-${POSEIDON_HOME}/build/pcli pcli -b 100000 --pool ldbc --db testdb --delimiter '|' \
+${POSEIDON_HOME}/build/pcli -b 100000 --pool ldbc --db testdb --delimiter '|' \
     --import-path data/ \
     --import nodes:Comment:comment_0_0.csv \
     --import nodes:Forum:forum_0_0.csv \
