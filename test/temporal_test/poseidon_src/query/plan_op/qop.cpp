@@ -1,0 +1,579 @@
+/*
+ * Copyright (C) 2019-2020 DBIS Group - TU Ilmenau, All Rights Reserved.
+ *
+ * This file is part of the Poseidon package.
+ *
+ * Poseidon is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Poseidon is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Poseidon. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <algorithm>
+#include <iostream>
+#include <numeric>
+#include <sstream>
+
+#include <boost/algorithm/string.hpp>
+#include <boost/dynamic_bitset.hpp>
+#include <boost/hana.hpp>
+
+#include <fmt/ostream.h>
+
+#include "qop.hpp"
+#include "qop_builtins.hpp"
+#include "profiling.hpp"
+
+#include "expr_interpreter.hpp"
+
+using namespace boost::posix_time;
+
+result_set::sort_spec_list sort_spec_;
+
+/* ------------------------------------------------------------------------ */
+// TODO: DEAL WITH DIRTY OBJECTS!!!!
+p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
+  return get_property_value(ctx, v, var, ctx.get_code(prop));
+}
+
+p_item get_property_value(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
+  auto qv = v[var];
+  p_item res;
+  switch (qv.which()) {
+  case node_ptr_type: // node *
+      {
+        auto nptr = boost::get<node *>(qv);
+        res = ctx.get_valid_node_property_value(*nptr, pkey);
+      }
+      break;
+    case rship_ptr_type: // relationship *
+      {
+        auto rptr = boost::get<relationship *>(qv);
+        res = ctx.get_valid_rship_property_value(*rptr, pkey);
+      }
+      break;
+    default:
+      // return null
+      break;
+  }
+  return res;
+}
+
+/* ------------------------------------------------------------------------ */
+
+
+template <>
+int get_property_value<int>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
+  int res = 0;
+  auto qv = get_property_value(ctx, v, var, prop);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = (int)qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = (int)qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
+uint64_t get_property_value<uint64_t>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
+  uint64_t res = 0;
+  auto qv = get_property_value(ctx, v, var, prop);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = (uint64_t)qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
+ptime get_property_value<ptime>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
+  auto qv = get_property_value(ctx, v, var, prop);
+  return qv.get<ptime>();
+}
+
+template <>
+double get_property_value<double>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
+  double res = 0;
+  auto qv = get_property_value(ctx, v, var, prop);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = (double)qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = (double)qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
+std::string get_property_value<std::string>(query_ctx &ctx, const qr_tuple& v, std::size_t var, const std::string& prop) {
+  std::string res;
+  auto qv = get_property_value(ctx, v, var, prop);
+  switch (qv.typecode()) {
+    case p_item::p_dcode:
+      res = ctx.gdb_->get_string(qv.get<dcode_t>());
+      break;
+    case p_item::p_int:
+      res = std::to_string(qv.get<int>());
+      break;
+    case p_item::p_double:
+      res = std::to_string(qv.get<double>());
+      break;
+    case p_item::p_uint64:
+      res = std::to_string(qv.get<uint64_t>());
+      break;
+    case p_item::p_ptime:
+    case p_item::p_unused:
+    // TODO
+      break;
+  }
+  return res;
+}
+
+/* ------------------------------------------------------------------------ */
+
+template <>
+int get_property_value<int>(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
+  int res = 0;
+  auto qv = get_property_value(ctx, v, var, pkey);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = (int)qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = (int)qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
+uint64_t get_property_value<uint64_t>(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
+  uint64_t res = 0;
+  auto qv = get_property_value(ctx, v, var, pkey);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = (uint64_t)qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
+ptime get_property_value<ptime>(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
+  auto qv = get_property_value(ctx, v, var, pkey);
+  return qv.get<ptime>();
+}
+
+template <>
+double get_property_value<double>(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
+  double res = 0;
+  auto qv = get_property_value(ctx, v, var, pkey);
+  switch (qv.typecode()) {
+    case p_item::p_int:
+      res = (double)qv.get<int>();
+      break;
+    case p_item::p_double:
+      res = qv.get<double>();
+      break;
+    case p_item::p_uint64:
+      res = (double)qv.get<uint64_t>();
+      break;
+    default:
+      break;
+  }
+  return res;
+}
+
+template <>
+std::string get_property_value<std::string>(query_ctx &ctx, const qr_tuple& v, std::size_t var, dcode_t pkey) {
+  std::string res;
+  auto qv = get_property_value(ctx, v, var, pkey);
+  switch (qv.typecode()) {
+    case p_item::p_dcode:
+      res = ctx.gdb_->get_string(qv.get<dcode_t>());
+      break;
+    case p_item::p_int:
+      res = std::to_string(qv.get<int>());
+      break;
+    case p_item::p_double:
+      res = std::to_string(qv.get<double>());
+      break;
+    case p_item::p_uint64:
+      res = std::to_string(qv.get<uint64_t>());
+      break;
+    case p_item::p_ptime:
+    case p_item::p_unused:
+    // TODO
+      break;
+  }
+  return res;
+}
+
+/* ------------------------------------------------------------------------ */
+
+query_result get_var_value(query_ctx& ctx, const qr_tuple& v, std::shared_ptr<variable> var) {
+  auto inp = v[var->id_];
+  query_result res;
+
+  if (inp.which() == node_ptr_type || inp.which() == rship_ptr_type) {
+    switch(var->result_type()) {
+      case expr_type::INT: res = qv_(get_property_value<int>(ctx, v, var->id_, var->pcode_)); break; 
+      case expr_type::UINT64: res = qv_(get_property_value<uint64_t>(ctx, v, var->id_, var->pcode_)); break; 
+      case expr_type::DOUBLE: res = qv_(get_property_value<double>(ctx, v, var->id_, var->pcode_)); break; 
+      case expr_type::STRING: res = qv_(get_property_value<std::string>(ctx, v, var->id_, var->pcode_)); break; 
+      case expr_type::DATETIME: res = qv_(get_property_value<boost::posix_time::ptime>(ctx, v, var->id_, var->pcode_)); break; 
+      default: break;
+    }
+  }
+  else
+    res = inp;
+  return res;     
+}
+
+
+void is_property::dump(std::ostream &os) const {
+  os << "is_property([" << property << "]) - " << PROF_DUMP;
+}
+
+void is_property::process(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE;
+  bool success = false;
+  auto n = v.back();
+  if (pcode == 0)
+    pcode = ctx.gdb_->get_code(property);
+
+  if (n.type() == typeid(node *)) {
+    if (ctx.is_node_property(*(boost::get<node *>(n)), pcode, predicate)) {
+      consume_(ctx, v);
+      success = true;
+    }
+  } else if (n.type() == typeid(relationship *)) {
+    if (ctx.is_relationship_property(*(boost::get<relationship *>(n)), pcode,
+                                      predicate)) {
+      consume_(ctx, v);
+      success = true;
+    }
+  }
+  PROF_POST(success ? 1 : 0);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void node_has_label::dump(std::ostream &os) const {
+  os << "node_has_label([" << label << "]) - " << PROF_DUMP;
+}
+
+void node_has_label::process(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE;
+  bool success = false;
+  auto n = qv_get_node(v.back());
+  if (labels.empty()) {
+    if (lcode == 0)
+      lcode = ctx.gdb_->get_code(label);
+    if (n->node_label == lcode) {
+      consume_(ctx, v);
+      success = true;
+    }
+  }
+  else {
+    for (auto &label : labels) {
+      lcode = ctx.gdb_->get_code(label);
+      if (n->node_label == lcode) {
+        consume_(ctx, v);
+        success = true;
+        break;
+      }
+    }
+  }
+  PROF_POST(success ? 1 : 0);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void get_from_node::process(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE;
+  auto rship = qv_get_relationship(v.back());
+  auto v2 = append(v, query_result(&(ctx.gdb_->node_by_id(rship->src_node))));
+  consume_(ctx, v2);
+  PROF_POST(1);
+}
+
+void get_from_node::dump(std::ostream &os) const {
+  os << "get_from_node() - " << PROF_DUMP;
+
+}
+
+/* ------------------------------------------------------------------------ */
+
+void get_to_node::process(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE;
+  auto rship = qv_get_relationship(v.back());
+  auto v2 = append(v, query_result(&(ctx.gdb_->node_by_id(rship->dest_node))));
+  consume_(ctx, v2);
+  PROF_POST(1);
+}
+
+void get_to_node::dump(std::ostream &os) const {
+  os << "get_to_node()" << PROF_DUMP;
+}
+
+/* ------------------------------------------------------------------------ */
+
+template <> struct fmt::formatter<ptime> : ostream_formatter {};
+template <> struct fmt::formatter<node_description> : ostream_formatter {};
+template <> struct fmt::formatter<rship_description> : ostream_formatter {};
+
+void printer::dump(std::ostream &os) const { os << "printer()"; }
+
+void printer::process(query_ctx &ctx, const qr_tuple &v) {
+  std::unique_lock lock(m_);
+  if (ntuples_ == 0) {
+    std::cout << "+";
+    for (auto i = 0u; i < v.size(); i++)
+      std::cout << fmt::format("{0:-^{1}}+", "", 22);
+    std::cout << "\n";
+    output_width_ = 23 * v.size() + 1;
+  }
+  ntuples_++;
+  auto my_visitor = boost::hana::overload(
+      [&](const node_description& n) { std::cout << fmt::format(" {:<20} |", n); },
+      [&](const rship_description& r) { std::cout << fmt::format(" {:<20} |", r); },
+      [&](node *n) { std::cout << fmt::format(" {:<20} |", ctx.gdb_->get_node_description(n->id())); },
+      [&](relationship *r) { std::cout << fmt::format(" {:<20} |", ctx.gdb_->get_rship_description(r->id())); },// ctx.gdb_->get_relationship_label(*r)); },
+      [&](int i) { std::cout << fmt::format(" {:>20} |", i); }, 
+      [&](double d) { std::cout << fmt::format(" {:>20f} |", d); },
+      [&](const std::string &s) { std::cout << fmt::format(" {:<20.20} |", s); },
+      [&](uint64_t ll) { std::cout << fmt::format(" {:>20} |", ll); },
+      [&](null_t n) { std::cout << fmt::format(" {:>20} |", "NULL"); },
+      [&](array_t arr) {
+        std::cout << "[ ";
+        for (auto elem : arr.elems)
+          std::cout << elem << " ";
+        std::cout << " ]"; },
+      [&](ptime dt) { std::cout << fmt::format(" {:<20.20} |", dt); });
+  std::cout << "|";
+  for (auto &ge : v) {
+    boost::apply_visitor(my_visitor, ge);
+  }
+  std::cout << "\n";
+}
+
+void printer::finish(query_ctx &ctx) {
+  auto s = fmt::format("{} tuple(s) returned. ", ntuples_);
+  std::cout << "+-- " << s;
+  for (int i = output_width_ - s.length() - 5; i > 0; i--) 
+    std::cout << "-";
+  std::cout << "+\n";
+}
+
+/* ------------------------------------------------------------------------ */
+
+void limit_result::dump(std::ostream &os) const {
+  os << "limit([" << num_ << "]) - " << PROF_DUMP;
+}
+
+void limit_result::process(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE;
+  if (processed_.load() < num_) {
+    processed_.fetch_add(1);
+    consume_(ctx, v);
+    PROF_POST(1);
+  }
+  else
+    PROF_POST(0);
+}
+
+/* ------------------------------------------------------------------------ */
+
+std::function<bool(const qr_tuple &, const qr_tuple &)> order_by::cmp_func_ = 0;
+
+void order_by::dump(std::ostream &os) const {
+  os << "order_by([";
+  if (! sort_spec_.empty()) {
+    for (auto& sspec : sort_spec_) {
+      os << " " << sspec.vidx << ":" << sspec.s_order;
+    }
+  }
+  os << " ]) - " << PROF_DUMP;
+}
+
+void order_by::process(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE;
+  results_.append(v);
+  PROF_POST(1);
+}
+
+void order_by::finish(query_ctx &ctx) {
+  PROF_PRE0;
+  if (cmp_func_ != nullptr)
+    results_.sort(ctx, cmp_func_);
+  else
+    results_.sort(ctx, sort_spec_);
+  for (auto &v : results_.data) {
+    consume_(ctx, v);
+  }
+  finish_(ctx);
+  PROF_POST(0);
+}
+
+
+/* ------------------------------------------------------------------------ */
+
+void distinct_tuples::dump(std::ostream &os) const {
+  os << "distinct() - " << PROF_DUMP;
+}
+
+void distinct_tuples::process(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE;
+  std::string key = "";
+  for (const auto& qres : v) {
+    if (qres.type() == typeid(std::string)) {
+      key += boost::get<std::string>(qres);
+    } else if (qres.type() == typeid(uint64_t)) {
+      key += std::to_string(boost::get<uint64_t>(qres));
+    } else if (qres.type() == typeid(ptime)) {
+      key += to_iso_extended_string(boost::get<ptime>(qres));
+    } else if (qres.type() == typeid(node *)) {
+      key += std::to_string(boost::get<node *>(qres)->id());
+    } else if (qres.type() == typeid(relationship *)) {
+      key += std::to_string(boost::get<relationship *>(qres)->id());
+    } else if (qres.type() == typeid(int)) {
+      key += std::to_string(boost::get<int>(qres));
+    } else if (qres.type() == typeid(double)) {
+      key += std::to_string(boost::get<double>(qres));
+    } else if (qres.type() == typeid(null_val)) {
+      key += std::string("NULL");
+    } else if (qres.type() == typeid(array_t)) {
+      auto arr = boost::get<array_t>(qres).elems;
+      for (auto a : arr)
+        key += std::to_string(a);
+    }
+  }
+
+  std::unique_lock lock(m_);
+  if (keys_.find(key) == keys_.end()) {
+    keys_.insert(key); // TODO optimize with integer value representation
+    consume_(ctx, v);
+    PROF_POST(1);
+  }
+  else
+    PROF_POST(0);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void filter_op::dump(std::ostream &os) const {
+  os << "filter([";
+  if (ex_) 
+    os << ex_->dump();
+  os << "]) - " << PROF_DUMP;
+}
+
+void filter_op::process(query_ctx &ctx, const qr_tuple &v) {
+  PROF_PRE;
+#ifdef USE_LLVM
+  bool tp = pred_func_ != nullptr ? pred_func_(&ctx, &v) : (ex_ ? interpret_bool_expression(ctx, ex_, v) : pred_func1_(v));
+#else
+  bool tp = ex_ ? interpret_bool_expression(ctx, ex_, v) : pred_func1_(v);
+#endif
+  if (tp) {
+    consume_(ctx, v);
+    PROF_POST(1);
+  }
+  else PROF_POST(0);
+}
+
+/* ------------------------------------------------------------------------ */
+
+void collect_result::dump(std::ostream &os) const {
+  os << "collect_result() - " << PROF_DUMP;
+}
+
+
+void collect_result::process(query_ctx &ctx, const qr_tuple &v) {
+  std::unique_lock lock(collect_mtx);
+  PROF_PRE;
+  if (as_string_) { 
+  // we transform node and relationship into their string representations ...
+  qr_tuple res(v.size());
+  auto my_visitor = boost::hana::overload(
+      [&](const node_description& n) { return n.to_string(); },
+      [&](const rship_description& r) { return r.to_string(); },
+      [&](node *n) { return ctx.gdb_->get_node_description(n->id()).to_string(); },
+      [&](relationship *r) {
+        return ctx.gdb_->get_rship_description(r->id()).to_string();
+      },
+      [&](int i) { return std::to_string(i); },
+      [&](double d) { return std::to_string(d); },
+      [&](const std::string &s) { return s; },
+      [&](uint64_t ll) { return std::to_string(ll); },
+      [&](null_t n) { return std::string("NULL"); },
+      [&](array_t arr) {
+        auto astr = std::string("[ ");
+        for (auto elem : arr.elems)
+          astr += (std::to_string(elem) + std::string(" "));
+        astr += std::string("]");
+        return astr; },
+      [&](ptime dt) { return to_iso_extended_string(dt); });
+  for (std::size_t i = 0; i < v.size(); i++) {
+    res[i] = boost::apply_visitor(my_visitor, v[i]);
+  }
+
+  results_.data.push_back(res);
+  }
+  else
+    results_.data.push_back(v);
+
+  PROF_POST(1);
+}
+
+void collect_result::finish(query_ctx &ctx) { 
+  results_.notify(); 
+}
+
+/* ------------------------------------------------------------------------ */
