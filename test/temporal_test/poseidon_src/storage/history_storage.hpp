@@ -176,7 +176,6 @@ public:
     }
 #endif
 
-    // Full-object archiving, Pruning, Initialization, B-Tree setters
     offset_t append_node_history(node&& n) { // Append full node version to history
         // VT filtering (if enabled)
         if (vt_filter_enabled_ && !vt_filter_node(n)) return static_cast<offset_t>(-1);
@@ -269,7 +268,6 @@ private:
         chain.erase(chain.begin(), chain.begin() + static_cast<std::ptrdiff_t>(excess));
     }
 
-    // retention & Helper collectors
     void enforce_node_full_retention(offset_t /*last_hid*/) {} // Placeholder for node full retention enforcement
     void enforce_rship_full_retention(offset_t /*last_hid*/) {} // Placeholder for relationship full retention enforcement
 

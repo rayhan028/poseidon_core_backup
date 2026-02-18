@@ -18,9 +18,8 @@ namespace poseidon {
 
         auto& hm = *ctx.gdb_->get_history_manager();
         offset_t r_head = UNKNOWN;
-
-        // THE TOPOLOGICAL JUMP 
-        // Access the CheckpointIndex in history_manager.cpp
+        // TOPOLOGICAL JUMP 
+        // Access the CheckpointIndex
         const auto& cp_index = hm.get_checkpoint_index();
         auto it_node_map = cp_index.node_checkpoints.find(src_node->logical_id);
         if (it_node_map != cp_index.node_checkpoints.end()) {
@@ -52,7 +51,7 @@ namespace poseidon {
 
         if (r_head == UNKNOWN || r_head == static_cast<offset_t>(-1)) return;
 
-        // STEP 4: BOUNDED ADJACENCY TRAVERSAL ---
+        //  BOUNDED ADJACENCY TRAVERSAL
         offset_t curr_rid = r_head;
         while (curr_rid != UNKNOWN) {
             relationship::logical_id_t r_lid = UNKNOWN;
@@ -65,7 +64,6 @@ namespace poseidon {
             auto valid_rid = ctx.gdb_->try_get_rship_at_vt(r_lid, target_time_);
             if (valid_rid.has_value()) {
                 auto r_desc = ctx.gdb_->get_rship_description(*valid_rid);              
-                // Optional Label Filter
                 if (!label_filter_.empty() && r_desc.label != label_filter_) goto advance;
                 // Resolve neighbor node at target_time_
                 node::logical_id_t neighbor_lid = is_out_ ? r_desc.to_id : r_desc.from_id;

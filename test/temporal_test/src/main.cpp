@@ -46,20 +46,6 @@ struct RandomHelper {
     }
 };
 
-long get_current_rss_mb() {
-    std::ifstream status("/proc/self/status");
-    std::string line;
-    while (std::getline(status, line)) {
-        if (line.rfind("VmRSS:", 0) == 0) {
-            std::istringstream iss(line);
-            std::string key, unit;
-            long value_kb;
-            iss >> key >> value_kb >> unit;
-            return value_kb / 1024; 
-        }
-    }
-    return -1;
-}
 
 class ZipfGenerator { 
 public:
@@ -228,72 +214,11 @@ int main(int argc, char* argv[]) {
     load_ldbc_edge(*db_ptr, base + "dynamic/person_workAt_organisation_0_0.csv", "WORK_AT", "Person", "Organisation");
     load_ldbc_edge(*db_ptr, base + "dynamic/person_studyAt_organisation_0_0.csv", "STUDY_AT", "Person", "Organisation");
 
-    /* auto hist_mgr = db_ptr->get_history_manager();
-    auto storage = hist_mgr->get_storage();
-
-    auto get_hist_logical_size = [&]() {
-        size_t total_bytes = 0;
-        // Structural Metadata (Records for every version)
-        total_bytes += storage->node_deltas_.size() * sizeof(node_history_record);
-        total_bytes += storage->rship_deltas_.size() * sizeof(rship_history_record);
-
-        // Index Chain overhead (Mapping logic to history)
-        for (auto const& [lid, chain] : storage->node_delta_index_) 
-            total_bytes += chain.size() * sizeof(offset_t);
-        for (auto const& [lid, chain] : storage->rship_delta_index_) 
-            total_bytes += chain.size() * sizeof(offset_t);
-
-        // Historical Delta Properties (Unique to History)
-        auto count_unique_deltas = [&](const auto& delta_vec) {
-            size_t d_bytes = 0;
-            for (const auto& record : delta_vec) {
-                // Only count memory that was created as a result of an UPDATE
-                if (record.delta_pid != 0 && record.delta_pid != static_cast<uint32_t>(-1)) {
-                    d_bytes += sizeof(property_set);
-                }
-            }
-            return d_bytes;
-        };
-
-        total_bytes += count_unique_deltas(storage->node_deltas_);
-        total_bytes += count_unique_deltas(storage->rship_deltas_);
-
-        return total_bytes;
-    };
-
-    auto get_curr_logical_size = [&]() {
-    // Current data is logically the set of Anchors (one per active node/edge)
-        size_t n_count = active_nodes.size();
-        size_t r_count = db_ptr->get_relationships()->as_vec().size(); // Approximate for SF1
-        
-        // Properties physically belonging to the "Current" graph state
-        size_t n_bytes  = n_count * sizeof(node);
-        size_t r_bytes  = r_count * sizeof(relationship);
-        size_t p_bytes  = (n_count + r_count) * sizeof(property_set);       
-        return n_bytes + r_bytes + p_bytes;
-    };
-
-    // Populate active lists for random operations
-    std::vector<uint64_t> p_lids, m_lids, active_nodes;
-    db_ptr->begin_transaction();
-    for(auto lid : db_ptr->get_active_node_lids()) {
-        auto phys = db_ptr->find_current_node(lid);
-        if (phys != UNKNOWN) {
-            auto desc = db_ptr->get_node_description(phys);
-            if (desc.label == "Person") p_lids.push_back(lid);
-            else if (desc.label == "Post" || desc.label == "Comment") m_lids.push_back(lid);
-            active_nodes.push_back(lid);
-        }
-    }
-    db_ptr->commit_transaction();*/
-
     auto hist_mgr = db_ptr->get_history_manager();
     auto storage = hist_mgr->get_storage();
 
-    // --- FIX 1: DECLARE VECTORS HERE (Before the lambdas) ---
     std::vector<uint64_t> p_lids, m_lids, active_nodes;
 
-    // --- FIX 2: HELPER TO COUNT USED SLOTS ---
     auto count_used_slots = [](const auto& list_ptr) {
         size_t used = 0;
         auto& v = list_ptr->as_vec(); 
@@ -304,26 +229,26 @@ int main(int argc, char* argv[]) {
     };
 
    auto get_hist_logical_size = [&]() {
-    size_t total_bytes = 0;
-    auto count_actual_history = [&](const auto& delta_vec) {
-        size_t bytes = 0;
-        for (const auto& record : delta_vec) {
-            // FIX: Only count versions created by the UPDATE workload (vt > base)
-            if (record.delta_pid != 0 && record.delta_pid != static_cast<uint32_t>(-1)) {
-                bytes += sizeof(record); // Metadata record
-                if (record.delta_pid != 0 && record.delta_pid != static_cast<uint32_t>(-1)) {
-                    bytes += sizeof(property_set); // Actual Property Delta
-                }
-            }
+        // FIX: Get a FRESH pointer every time this is called
+        auto latest_storage = db_ptr->get_history_manager()->get_storage(); 
+        size_t total_bytes = 0;
+        // Metadata Records (Growth of the delta log)
+        total_bytes += latest_storage->node_deltas_.size() * sizeof(node_history_record);
+        total_bytes += latest_storage->rship_deltas_.size() * sizeof(rship_history_record);
+
+        // Delta Property Blocks (Total property pool - Properties already counted in 'Current')
+        size_t total_p_slots = count_used_slots(db_ptr->get_node_props()) + 
+                            count_used_slots(db_ptr->get_rship_props());
+        size_t active_p_slots = active_nodes.size() + count_used_slots(db_ptr->get_relationships());
+        
+        if (total_p_slots > active_p_slots) {
+            total_bytes += (total_p_slots - active_p_slots) * sizeof(property_set);
         }
-        return bytes;
-    };
-    total_bytes += count_actual_history(storage->node_deltas_);
-    total_bytes += count_actual_history(storage->rship_deltas_);
-    return total_bytes;
+
+        return total_bytes;
     };
 
-    auto get_curr_logical_size = [&]() {
+    /*auto get_curr_logical_size = [&]() {
         // Use the manual count helper for relationships since .size() doesn't exist
         size_t n_count = active_nodes.size();
         size_t r_count = count_used_slots(db_ptr->get_relationships());
@@ -333,9 +258,19 @@ int main(int argc, char* argv[]) {
         size_t p_bytes  = (n_count + r_count) * sizeof(property_set); 
         
         return n_bytes + r_bytes + p_bytes;
+    };*/
+
+    auto get_curr_logical_size = [&]() {
+        size_t n_count = active_nodes.size();
+        size_t r_count = count_used_slots(db_ptr->get_relationships());
+        size_t n_bytes = n_count * sizeof(node);
+        size_t r_bytes = r_count * sizeof(relationship);
+        // Every active entity has exactly 1 property set in the current view
+        size_t p_bytes = (n_count + r_count) * sizeof(property_set); 
+        return n_bytes + r_bytes + p_bytes;
     };
 
-    // --- POPULATE ACTIVE LISTS (Existing logic) ---
+    // POPULATE ACTIVE LISTS
     db_ptr->begin_transaction();
     for(auto lid : db_ptr->get_active_node_lids()) {
         auto phys = db_ptr->find_current_node(lid);
@@ -361,7 +296,6 @@ int main(int argc, char* argv[]) {
         int successful_writes = 0;
 
         for (int i = 0; i < ops_to_add; ++i) {
-            //uint64_t vt = FUTURE_BASE_TIME + last_ops + i + 1; 
             uint64_t vt = 2000000000000ULL + last_ops + i;
             int roll = mix_dist(gen);
             try {
@@ -395,7 +329,8 @@ int main(int argc, char* argv[]) {
                         did_work = true;
                         active_nodes.push_back(new_lid);
                         p_lids.push_back(new_lid); 
-                    } else if (!p_lids.empty()) {
+                    } 
+                    else if (!p_lids.empty()) {
                         uint64_t src = p_lids[rand() % p_lids.size()];
                         uint64_t dst = p_lids[rand() % p_lids.size()];
                         auto phys_src = db_ptr->find_current_node(src);
@@ -427,11 +362,11 @@ int main(int argc, char* argv[]) {
             } catch(...) {}
         }
 
-       // Manual pause to allow background threads to catch up
+       // allow background threads to catch up
         std::cout << ">>> Waiting 10s for background archival..." << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(10));
 
-        // MEASURE LOGICAL TOTALS (No subtraction, Double precision)
+        // MEASURE LOGICAL TOTALS
         double current_mb = (double)get_curr_logical_size() / (1024.0 * 1024.0);
         double historical_mb = (double)get_hist_logical_size() / (1024.0 * 1024.0);
         double avg_write_latency_ms = (successful_writes > 0) ? (total_write_ns / 1000000.0) / successful_writes : 0;

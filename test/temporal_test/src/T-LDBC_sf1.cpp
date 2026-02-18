@@ -29,7 +29,7 @@ using namespace std::placeholders;
 const std::vector<int> OPS_STAGES = {200000, 400000, 600000, 800000, 1000000};
 const int BENCHMARK_ITERATIONS_PER_STAGE = 20;
 const int SAMPLES_PER_ITER = 100;
-const uint64_t LDBC_BASE_TIME = 1735689600000ULL;
+const uint64_t LDBC_BASE_TIME = 1800000000000ULL;
 
 const std::string QUERY_CSV = "/home/rayhan/poseidon_core/test/temporal_test/benchmark_data_T_LDBC_sf1/poseidon_query_latencies.csv";
 const std::string STORAGE_CSV = "/home/rayhan/poseidon_core/test/temporal_test/benchmark_data_T_LDBC_sf1/poseidon_storage_and_write.csv";
@@ -46,20 +46,6 @@ struct RandomHelper {
     }
 };
 
-long get_current_rss_mb() {
-    std::ifstream status("/proc/self/status");
-    std::string line;
-    while (std::getline(status, line)) {
-        if (line.rfind("VmRSS:", 0) == 0) {
-            std::istringstream iss(line);
-            std::string key, unit;
-            long value_kb;
-            iss >> key >> value_kb >> unit;
-            return value_kb / 1024; 
-        }
-    }
-    return -1;
-}
 
 class ZipfGenerator { 
 public:
@@ -183,7 +169,7 @@ int main(int argc, char* argv[]) {
     std::string sf = (argc > 1) ? argv[1] : "sf1";
     auto db_ptr = std::make_shared<graph_db>("poseidon_ldbc_" + sf, ".", 0);
     std::string base = "/home/rayhan/poseidon_core/Temporal-data-LDBC/" + sf + "_enhanced/";
-    const uint64_t FUTURE_BASE_TIME = 1735689600000ULL; 
+    const uint64_t FUTURE_BASE_TIME = LDBC_BASE_TIME;
 
     // Header Initialization - RSS removed as requested
     std::ofstream s_file(STORAGE_CSV); 
@@ -231,60 +217,60 @@ int main(int argc, char* argv[]) {
     auto hist_mgr = db_ptr->get_history_manager();
     auto storage = hist_mgr->get_storage();
 
-    auto get_hist_logical_size = [&]() {
-        size_t total_bytes = 0;
-        // Count packed history records 
-        total_bytes += storage->node_deltas_.size() * sizeof(node_history_record); //
-        total_bytes += storage->rship_deltas_.size() * sizeof(rship_history_record); //
+    std::vector<uint64_t> p_lids, m_lids, active_nodes;
 
-        // Count the Property Data 
-        auto count_props = [&](auto& prop_handler, const auto& delta_vec) {
-            size_t p_bytes = 0;
-            for (const auto& record : delta_vec) {
-                // base_property_list and delta_pid are IDs into the property vectors
-                if (record.base_property_list != static_cast<uint64_t>(-1)) {
-                    // add the size of a standard property set for each unique version
-                    p_bytes += sizeof(property_set); 
-                }
-                if (record.delta_pid != 0 && record.delta_pid != static_cast<uint32_t>(-1)) {
-                    p_bytes += sizeof(property_set);
-                }
-            }
-            return p_bytes;
-        };
-
-        total_bytes += count_props(*(db_ptr->get_node_props()), storage->node_deltas_);
-        total_bytes += count_props(*(db_ptr->get_rship_props()), storage->rship_deltas_);
-        //  Count Index Chain overhead
-        for (auto const& [lid, chain] : storage->node_delta_index_) {
-            total_bytes += chain.size() * sizeof(offset_t); //
+    auto count_used_slots = [](const auto& list_ptr) {
+        size_t used = 0;
+        auto& v = list_ptr->as_vec(); 
+        for (uint64_t i = 0; i < v.capacity(); i++) {
+            if (v.is_used(i)) used++;
         }
-        for (auto const& [lid, chain] : storage->rship_delta_index_) {
-            total_bytes += chain.size() * sizeof(offset_t); //
+        return used;
+    };
+
+   auto get_hist_logical_size = [&]() {
+        // FIX: Get a FRESH pointer every time this is called
+        auto latest_storage = db_ptr->get_history_manager()->get_storage(); 
+        size_t total_bytes = 0;
+        // Metadata Records (Growth of the delta log)
+        total_bytes += latest_storage->node_deltas_.size() * sizeof(node_history_record);
+        total_bytes += latest_storage->rship_deltas_.size() * sizeof(rship_history_record);
+
+        // Delta Property Blocks (Total property pool - Properties already counted in 'Current')
+        size_t total_p_slots = count_used_slots(db_ptr->get_node_props()) + 
+                            count_used_slots(db_ptr->get_rship_props());
+        size_t active_p_slots = active_nodes.size() + count_used_slots(db_ptr->get_relationships());
+        
+        if (total_p_slots > active_p_slots) {
+            total_bytes += (total_p_slots - active_p_slots) * sizeof(property_set);
         }
 
         return total_bytes;
     };
 
-    // UPDATED HELPER: Logical Current Size (Counts actual used slots)
+    /*auto get_curr_logical_size = [&]() {
+        // Use the manual count helper for relationships since .size() doesn't exist
+        size_t n_count = active_nodes.size();
+        size_t r_count = count_used_slots(db_ptr->get_relationships());
+        
+        size_t n_bytes  = n_count * sizeof(node);
+        size_t r_bytes  = r_count * sizeof(relationship);
+        size_t p_bytes  = (n_count + r_count) * sizeof(property_set); 
+        
+        return n_bytes + r_bytes + p_bytes;
+    };*/
+
     auto get_curr_logical_size = [&]() {
-        auto count_used = [](const auto& list_ptr) {
-            size_t used = 0;
-            auto& v = list_ptr->as_vec(); 
-            for (offset_t i = 0; i < v.capacity(); i++) {
-                if (v.is_used(i)) used++;
-            }
-            return used;
-        };
-        size_t n_bytes  = count_used(db_ptr->get_nodes()) * sizeof(node);
-        size_t r_bytes  = count_used(db_ptr->get_relationships()) * sizeof(relationship);
-        size_t np_bytes = count_used(db_ptr->get_node_props()) * sizeof(property_set);
-        size_t rp_bytes = count_used(db_ptr->get_rship_props()) * sizeof(property_set);
-        return n_bytes + r_bytes + np_bytes + rp_bytes;
+        size_t n_count = active_nodes.size();
+        size_t r_count = count_used_slots(db_ptr->get_relationships());
+        size_t n_bytes = n_count * sizeof(node);
+        size_t r_bytes = r_count * sizeof(relationship);
+        // Every active entity has exactly 1 property set in the current view
+        size_t p_bytes = (n_count + r_count) * sizeof(property_set); 
+        return n_bytes + r_bytes + p_bytes;
     };
 
-    // Populate active lists for random operations
-    std::vector<uint64_t> p_lids, m_lids, active_nodes;
+    // POPULATE ACTIVE LISTS
     db_ptr->begin_transaction();
     for(auto lid : db_ptr->get_active_node_lids()) {
         auto phys = db_ptr->find_current_node(lid);
@@ -310,7 +296,7 @@ int main(int argc, char* argv[]) {
         int successful_writes = 0;
 
         for (int i = 0; i < ops_to_add; ++i) {
-            uint64_t vt = FUTURE_BASE_TIME + last_ops + i + 1; 
+            uint64_t vt = 2000000000000ULL + last_ops + i;
             int roll = mix_dist(gen);
             try {
                 db_ptr->begin_transaction(); 
@@ -343,7 +329,8 @@ int main(int argc, char* argv[]) {
                         did_work = true;
                         active_nodes.push_back(new_lid);
                         p_lids.push_back(new_lid); 
-                    } else if (!p_lids.empty()) {
+                    } 
+                    else if (!p_lids.empty()) {
                         uint64_t src = p_lids[rand() % p_lids.size()];
                         uint64_t dst = p_lids[rand() % p_lids.size()];
                         auto phys_src = db_ptr->find_current_node(src);
@@ -375,15 +362,18 @@ int main(int argc, char* argv[]) {
             } catch(...) {}
         }
 
-        // MEASURE LOGICAL TOTALS (No subtraction, Double precision)
+       // allow background threads to catch up
+        std::cout << ">>> Waiting 10s for background archival..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+
+        // MEASURE LOGICAL TOTALS
         double current_mb = (double)get_curr_logical_size() / (1024.0 * 1024.0);
         double historical_mb = (double)get_hist_logical_size() / (1024.0 * 1024.0);
         double avg_write_latency_ms = (successful_writes > 0) ? (total_write_ns / 1000000.0) / successful_writes : 0;
 
         // Logging
         std::ofstream ws_out(STORAGE_CSV, std::ios_base::app);
-        ws_out << target_ops << "," << std::fixed << std::setprecision(4) << avg_write_latency_ms << "," 
-               << std::setprecision(3) << current_mb << "," << historical_mb << "\n";
+        ws_out << target_ops << "," << std::fixed << std::setprecision(4) << avg_write_latency_ms << "," << std::setprecision(3) << current_mb << "," << historical_mb << "\n";
         ws_out.close();
 
         std::this_thread::sleep_for(std::chrono::seconds(60)); 

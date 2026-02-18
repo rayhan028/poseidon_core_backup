@@ -23,10 +23,8 @@ static inline bool same_value(const p_item& a, const p_item& b) {
 }
 
 template <template <typename> typename VectorType>
-HistoryManager<VectorType>::HistoryManager(std::shared_ptr<Storage> storage,
-                                           std::shared_ptr<NodeProps> node_props,
-                                           std::shared_ptr<RshipProps> rship_props,
-                                           dict_ptr dict, thread_pool& pool, graph_db* gdb)
+HistoryManager<VectorType>::HistoryManager(std::shared_ptr<Storage> storage,std::shared_ptr<NodeProps> node_props,
+                                           std::shared_ptr<RshipProps> rship_props, dict_ptr dict, thread_pool& pool, graph_db* gdb)
     : storage_(std::move(storage)),
       node_props_(std::move(node_props)),
       rship_props_(std::move(rship_props)),
@@ -139,8 +137,8 @@ GraphSnapshot HistoryManager<VectorType>::get_graph_as_of(uint64_t t,  const std
         auto desc = gdb_->get_node_description(nid); // get full description        
         std::lock_guard<std::mutex> lock(snapshot.snap_mtx);
         snapshot.nodes.push_back(desc);
-      } catch (...) { 
-        // Skip: node didn't exist or was aborted
+      } 
+      catch (...) { 
       }
     }));
   }
@@ -154,8 +152,8 @@ GraphSnapshot HistoryManager<VectorType>::get_graph_as_of(uint64_t t,  const std
         auto desc = gdb_->get_rship_description(rid);        
         std::lock_guard<std::mutex> lock(snapshot.snap_mtx);
         snapshot.relationships.push_back(desc);
-      } catch (...) { 
-        // Skip
+      } 
+      catch (...) { 
       }
     }));
   }
@@ -269,7 +267,7 @@ offset_t HistoryManager<VectorType>::archive_node_delta_raw(
     offset_t prev_hist_id;
     
     {
-        std::lock_guard<std::mutex> lock(index_mtx_); // index_mtx_ must be in .hpp
+        std::lock_guard<std::mutex> lock(index_mtx_); 
         current_count = ++update_counts_[lid];
         prev_hist_id = last_node_delta_map_.count(lid) ? last_node_delta_map_[lid] : UNKNOWN;
     }
@@ -373,59 +371,6 @@ offset_t HistoryManager<VectorType>::archive_rship_delta_raw(
 
     return hist_id;
 }
-
-/* template <template <typename> typename VectorType>
-offset_t HistoryManager<VectorType>::archive_rship_delta_raw(
-    uint64_t lid, dcode_t label, uint64_t src_lid, uint64_t dest_lid,
-    uint64_t vt_start, uint64_t vt_end, property_set::id_t pid,
-    const properties_t &updates, uint64_t new_vt_start) 
-{
-    // THREAD-SAFE METADATA RESOLUTION
-    uint32_t current_count;
-    offset_t prev_hist_id;
-    
-    {
-        std::lock_guard<std::mutex> lock(index_mtx_);
-        current_count = ++update_counts_[lid]; // Added counter for relationships
-        prev_hist_id = last_rship_delta_map_.count(lid) ? last_rship_delta_map_[lid] : UNKNOWN;
-    }
-
-    property_set::id_t base_pid = UNKNOWN;
-    property_set::id_t delta_pid = 0;
-
-    // checkpointing +DELTA 
-    uint64_t u = adaptive_interval(current_count);
-    if (current_count % u == 0 || prev_hist_id == UNKNOWN) {
-        std::list<p_item> base_items = rship_props_->build_dirty_property_list(pid);
-        base_pid = rship_props_->add_pitems(0, base_items, dict_);
-        delta_pid = 0;
-    }
-    else {
-        auto prev_record = get_rship_delta(prev_hist_id);
-        base_pid = prev_record.base_property_list;
-        std::list<p_item> delta_items = rship_props_->build_dirty_property_list(updates, dict_);
-        delta_pid = rship_props_->add_pitems(0, delta_items, dict_);
-    }
-
-    rship_history_delta rd { 
-        lid, label, src_lid, dest_lid, vt_start, new_vt_start, base_pid, delta_pid, prev_hist_id,
-        ::current_transaction_->xid(), UINT64_MAX, UNKNOWN, UNKNOWN
-    };
-
-    // THREAD-SAFE INDEXING & PERSISTENCE 
-    offset_t raw_id  = storage_->append_rship_delta(rd);
-    offset_t hist_id = encode_history_id(raw_id);
-
-    {
-        std::lock_guard<std::mutex> lock(index_mtx_);
-        last_rship_delta_map_[lid] = hist_id;
-        temporal_index_.remove_version(lid, vt_start, true);
-        temporal_index_.insert_version(lid, vt_start, TI_PtrType::HIST, hist_id, true);
-    }
-
-    return hist_id;
-} */
-
 
 #ifdef USE_PFILES
 template class HistoryManager<buffered_vec>;

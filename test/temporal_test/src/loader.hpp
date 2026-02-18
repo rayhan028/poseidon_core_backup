@@ -9,7 +9,7 @@
 #include <unordered_set>
 #include "graph_db.hpp"
 
-// keep a local set of loaded LIDs to avoid triggering the engine's internal abort/exceptions
+// keep a local set of loaded LIDs to avoid triggering the internal abort/exceptions
 static std::unordered_set<uint64_t> loaded_node_lids;
 static std::unordered_set<uint64_t> loaded_rship_lids;
 
@@ -57,7 +57,6 @@ void load_finbench_edges(graph_db& db, const std::string& path) {
                 db.add_relationship(*src, *dst, "TRANSFER", {{"amount", cols[4]}}, vt_start, MAX_TIME, rel_lid);
                 loaded_rship_lids.insert(rel_lid);
                 rel_lid++;
-                //db.add_relationship(*src, *dst, "TRANSFER", {{"amount", cols[4]}}, vt_start, MAX_TIME, rel_lid++);
             }
         }
     }

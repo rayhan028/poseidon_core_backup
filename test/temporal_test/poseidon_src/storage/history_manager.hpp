@@ -160,7 +160,7 @@ public:
         const properties_t &updates, uint64_t new_vt_start
     );
 
-    static inline uint64_t isqrt_u64(uint64_t x) {
+    static inline uint64_t isqrt_u64(uint64_t x) { // sqrt implementation for adaptive interval calculation
         uint64_t r = 0;
         uint64_t bit = 1ULL << 62;
         while (bit > x) bit >>= 2;
@@ -177,7 +177,7 @@ public:
     return r;
 }
 
-static inline uint64_t snap_pow2(uint64_t x) {
+static inline uint64_t snap_pow2(uint64_t x) { // snap to nearest power of 2 for adaptive interval calculation
     uint64_t p = 1;
     while (p < x) p <<= 1;
     uint64_t lower = p >> 1;
@@ -202,22 +202,18 @@ private:
     // Temporal index for as-of lookups
     TemporalIndex<temporal_btree_ptr_t> temporal_index_; // temporal index (B-Tree) for version lookups
     
-   static inline uint64_t adaptive_interval(uint64_t freq) {
-    // TUNE THIS: Higher value = Less Storage, Slower Queries
-    //            Lower value  = More Storage, Faster Queries
-    constexpr double COST_RATIO_WEIGHT = 12.0; 
+    static inline uint64_t adaptive_interval(uint64_t freq) {
+        // LOWER value = More snapshots (Anchors), which means HIGHER memory usage.
+        constexpr double COST_RATIO_WEIGHT = 8.0; 
+        constexpr uint64_t MIN_U = 64;  
+        constexpr uint64_t MAX_U = 1024; 
+        if (freq < 64) return MIN_U;
+        uint64_t u = static_cast<uint64_t>(isqrt_u64(freq) * COST_RATIO_WEIGHT);
+        u = std::clamp<uint64_t>(u, MIN_U, MAX_U);
+        return snap_pow2(u);
+    }
 
-    constexpr uint64_t MIN_U = 512;  
-    constexpr uint64_t MAX_U = 2048; // TUNE THIS: The "hard cap" for chain length
-    
-    if (freq < 128) return MIN_U;
-    
-    uint64_t u = static_cast<uint64_t>(isqrt_u64(freq) * COST_RATIO_WEIGHT);
-    u = std::clamp<uint64_t>(u, MIN_U, MAX_U);
-    return snap_pow2(u);
-}
-
-    graph_db* gdb_; // Pointer to graph_db for accessing global state
+    graph_db* gdb_; 
     std::mutex index_mtx_;
 
 };

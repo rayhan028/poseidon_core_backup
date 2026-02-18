@@ -6,8 +6,7 @@
 
 namespace poseidon {
     /**
-     * Filters the temporal result stream based on a C++ predicate.
-     * Essential for implementing CASE and WHERE logic in LDBC IS queries.
+     * Filters the temporal result stream 
      */
     class qop_temporal_filter : public enable_shared<qop, qop_temporal_filter> {
     public:
