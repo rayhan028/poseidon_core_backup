@@ -21,6 +21,11 @@
 #include "qop_temporal_expand.hpp"
 #include "qop_temporal_project.hpp"
 #include "qop_temporal_filter.hpp"
+#include "qop_temporal_hash_join.hpp"
+#include "qop_temporal_topk.hpp"
+#include "qop_temporal_var_expand.hpp"
+#include "qop_temporal_left_join.hpp"
+#include "qop_temporal_optional_expand.hpp"
 #include "loader_ldbc.hpp" 
 
 using namespace std::placeholders;
@@ -82,7 +87,7 @@ struct SilentPrinter : public qop {
 };
 
 void run_bench_stage(std::shared_ptr<graph_db> db, const std::vector<uint64_t>& p_lids, const std::vector<uint64_t>& m_lids,
-                    uint64_t current_ops_count, int iteration) {
+                     uint64_t current_ops_count, int iteration) {
     
     std::default_random_engine local_gen(42 + iteration);
     ZipfGenerator p_zipf(p_lids.size(), 1.1);
@@ -92,7 +97,7 @@ void run_bench_stage(std::shared_ptr<graph_db> db, const std::vector<uint64_t>& 
     auto measure_sample = [&](const std::vector<uint64_t>& source_ids, ZipfGenerator& zipf, auto execute_func) {
         auto t0 = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < SAMPLES_PER_ITER; ++i) {
-            uint64_t id = source_ids[zipf.next(local_gen) % source_ids.size()];           
+            uint64_t id = source_ids[zipf.next(local_gen) % source_ids.size()];          
             uint64_t random_ts = LDBC_BASE_TIME + (rand() % (current_ops_count + 1));
             try {
                 db->begin_transaction();
@@ -104,16 +109,32 @@ void run_bench_stage(std::shared_ptr<graph_db> db, const std::vector<uint64_t>& 
         return std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count() / (1000.0 * SAMPLES_PER_ITER);
     };
 
-    auto is1 = [&](uint64_t target_id, uint64_t query_vt) {
+   auto is1 = [&](uint64_t target_id, uint64_t query_vt) {
         query_ctx ctx(db);
         auto source = std::make_shared<TupleSource>(std::unordered_set<uint64_t>{target_id});
         auto scan = std::make_shared<poseidon::qop_as_of_scan>(query_vt, true);
         auto expand = std::make_shared<poseidon::qop_temporal_expand>(query_vt, true, "IS_LOCATED_IN");
         auto proj = std::make_shared<poseidon::qop_temporal_project>(std::vector<std::string>{"locationIP", "browserUsed"}, 0);
+        
         source->connect(scan, std::bind(&poseidon::qop_as_of_scan::process, scan.get(), _1, _2), nullptr);
         scan->connect(expand, std::bind(&poseidon::qop_temporal_expand::process, expand.get(), _1, _2), nullptr);
         expand->connect(proj, std::bind(&poseidon::qop_temporal_project::process, proj.get(), _1, _2), nullptr);
         proj->connect(sink, std::bind(&SilentPrinter::process, sink.get(), _1, _2), nullptr);
+        source->start(ctx);
+    };
+
+    auto is2 = [&](uint64_t target_id, uint64_t query_vt) {
+        query_ctx ctx(db);
+        auto source = std::make_shared<TupleSource>(std::unordered_set<uint64_t>{target_id});
+        auto scan = std::make_shared<poseidon::qop_as_of_scan>(query_vt, true);
+        auto exp_creator = std::make_shared<poseidon::qop_temporal_expand>(query_vt, false, "HAS_CREATOR"); // IN
+        auto cmp = [](const qr_tuple& a, const qr_tuple& b) { return true; }; 
+        auto topk = std::make_shared<poseidon::qop_temporal_topk>(10, cmp);
+        
+        source->connect(scan, std::bind(&poseidon::qop_as_of_scan::process, scan.get(), _1, _2), nullptr);
+        scan->connect(exp_creator, std::bind(&poseidon::qop_temporal_expand::process, exp_creator.get(), _1, _2), nullptr);
+        exp_creator->connect(topk, std::bind(&poseidon::qop_temporal_topk::process, topk.get(), _1, _2), nullptr);
+        topk->connect(sink, std::bind(&SilentPrinter::process, sink.get(), _1, _2), nullptr);
         source->start(ctx);
     };
 
@@ -123,6 +144,7 @@ void run_bench_stage(std::shared_ptr<graph_db> db, const std::vector<uint64_t>& 
         auto scan = std::make_shared<poseidon::qop_as_of_scan>(query_vt, true);
         auto expand = std::make_shared<poseidon::qop_temporal_expand>(query_vt, true, "KNOWS");
         auto proj = std::make_shared<poseidon::qop_temporal_project>(std::vector<std::string>{"firstName", "lastName"}, 0);
+        
         source->connect(scan, std::bind(&poseidon::qop_as_of_scan::process, scan.get(), _1, _2), nullptr);
         scan->connect(expand, std::bind(&poseidon::qop_temporal_expand::process, expand.get(), _1, _2), nullptr);
         expand->connect(proj, std::bind(&poseidon::qop_temporal_project::process, proj.get(), _1, _2), nullptr);
@@ -135,6 +157,7 @@ void run_bench_stage(std::shared_ptr<graph_db> db, const std::vector<uint64_t>& 
         auto source = std::make_shared<TupleSource>(std::unordered_set<uint64_t>{target_id});
         auto scan = std::make_shared<poseidon::qop_as_of_scan>(query_vt, true);
         auto proj = std::make_shared<poseidon::qop_temporal_project>(std::vector<std::string>{"content"}, 0);
+        
         source->connect(scan, std::bind(&poseidon::qop_as_of_scan::process, scan.get(), _1, _2), nullptr);
         scan->connect(proj, std::bind(&poseidon::qop_temporal_project::process, proj.get(), _1, _2), nullptr);
         proj->connect(sink, std::bind(&SilentPrinter::process, sink.get(), _1, _2), nullptr);
@@ -147,6 +170,7 @@ void run_bench_stage(std::shared_ptr<graph_db> db, const std::vector<uint64_t>& 
         auto scan = std::make_shared<poseidon::qop_as_of_scan>(query_vt, true);
         auto expand = std::make_shared<poseidon::qop_temporal_expand>(query_vt, true, "HAS_CREATOR");
         auto proj = std::make_shared<poseidon::qop_temporal_project>(std::vector<std::string>{"firstName", "lastName"}, 0);
+        
         source->connect(scan, std::bind(&poseidon::qop_as_of_scan::process, scan.get(), _1, _2), nullptr);
         scan->connect(expand, std::bind(&poseidon::qop_temporal_expand::process, expand.get(), _1, _2), nullptr);
         expand->connect(proj, std::bind(&poseidon::qop_temporal_project::process, proj.get(), _1, _2), nullptr);
@@ -154,14 +178,70 @@ void run_bench_stage(std::shared_ptr<graph_db> db, const std::vector<uint64_t>& 
         source->start(ctx);
     };
 
+    auto is6 = [&](uint64_t target_id, uint64_t query_vt) {
+        query_ctx ctx(db);
+        auto source = std::make_shared<TupleSource>(std::unordered_set<uint64_t>{target_id});
+        auto scan = std::make_shared<poseidon::qop_as_of_scan>(query_vt, true);
+        auto var_exp = std::make_shared<poseidon::qop_temporal_var_expand>(query_vt, true, "REPLY_OF", 0, 100);
+        auto exp_forum = std::make_shared<poseidon::qop_temporal_expand>(query_vt, true, "CONTAINER_OF");
+        auto exp_mod = std::make_shared<poseidon::qop_temporal_expand>(query_vt, true, "HAS_MODERATOR");
+        
+        source->connect(scan, std::bind(&poseidon::qop_as_of_scan::process, scan.get(), _1, _2), nullptr);
+        scan->connect(var_exp, std::bind(&poseidon::qop_temporal_var_expand::process, var_exp.get(), _1, _2), nullptr);
+        var_exp->connect(exp_forum, std::bind(&poseidon::qop_temporal_expand::process, exp_forum.get(), _1, _2), nullptr);
+        exp_forum->connect(exp_mod, std::bind(&poseidon::qop_temporal_expand::process, exp_mod.get(), _1, _2), nullptr);
+        exp_mod->connect(sink, std::bind(&SilentPrinter::process, sink.get(), _1, _2), nullptr);
+        source->start(ctx);
+    };
+
+    auto is7 = [&](uint64_t target_id, uint64_t query_vt) {
+        query_ctx ctx(db);
+        auto source = std::make_shared<TupleSource>(std::unordered_set<uint64_t>{target_id});
+        auto scan = std::make_shared<poseidon::qop_as_of_scan>(query_vt, true);
+        
+        // Main path: find reply comments and their authors
+        auto exp_comment = std::make_shared<poseidon::qop_temporal_expand>(query_vt, false, "REPLY_OF"); // IN
+        auto exp_author = std::make_shared<poseidon::qop_temporal_expand>(query_vt, true, "HAS_CREATOR");
+        
+        // Social check path: optionally expand to find if authors know each other at query_vt
+        auto opt_exp = std::make_shared<poseidon::qop_temporal_optional_expand>(query_vt, true, "KNOWS");
+        
+        // Relational correlation: join the streams and apply final limits
+        auto h_join = std::make_shared<poseidon::qop_temporal_hash_join>(0, 0); 
+        auto l_join = std::make_shared<poseidon::qop_temporal_left_join>(0, 0, 2); 
+        auto cmp = [](const qr_tuple& a, const qr_tuple& b) { return true; }; 
+        auto topk = std::make_shared<poseidon::qop_temporal_topk>(10, cmp);
+
+        // Define the physical execution pipeline
+        source->connect(scan, std::bind(&poseidon::qop_as_of_scan::process, scan.get(), _1, _2), nullptr);
+        scan->connect(exp_comment, std::bind(&poseidon::qop_temporal_expand::process, exp_comment.get(), _1, _2), nullptr);
+        exp_comment->connect(exp_author, std::bind(&poseidon::qop_temporal_expand::process, exp_author.get(), _1, _2), nullptr);
+
+        exp_author->connect(opt_exp, std::bind(&poseidon::qop_temporal_optional_expand::process, opt_exp.get(), _1, _2), nullptr);
+        opt_exp->connect(h_join, std::bind(&poseidon::qop_temporal_hash_join::build_phase, h_join.get(), _1, _2), nullptr);
+        h_join->connect(l_join, std::bind(&poseidon::qop_temporal_left_join::build_right_phase, l_join.get(), _1, _2), nullptr);
+        
+        l_join->connect(topk, std::bind(&poseidon::qop_temporal_topk::process, topk.get(), _1, _2), nullptr);
+        topk->connect(sink, std::bind(&SilentPrinter::process, sink.get(), _1, _2), nullptr);
+        
+        source->start(ctx);
+    };
+
+    // Measure all queries
     double avg_is1 = measure_sample(p_lids, p_zipf, is1);
+    double avg_is2 = measure_sample(p_lids, p_zipf, is2);  // Person starts
     double avg_is3 = measure_sample(p_lids, p_zipf, is3);
     double avg_is4 = measure_sample(m_lids, m_zipf, is4);
     double avg_is5 = measure_sample(m_lids, m_zipf, is5);
+    double avg_is6 = measure_sample(m_lids, m_zipf, is6);  // Message starts
+    double avg_is7 = measure_sample(m_lids, m_zipf, is7);  // Message starts
 
+    // Append to CSV
     std::ofstream q_out(QUERY_CSV, std::ios_base::app);
-    q_out << iteration << "," << current_ops_count << "," << avg_is1 << "," << avg_is3 << "," << avg_is4 << "," << avg_is5 << "\n";
-    std::cout << "Iter: " << iteration << " | IS1: " << avg_is1 << " | IS4: " << avg_is4 << " ms" << std::endl;
+    q_out << iteration << "," << current_ops_count << "," << avg_is1 << "," << avg_is2 << "," << avg_is3 << "," << avg_is4 << "," << avg_is5 << "," << avg_is6 << "," << avg_is7 << "\n";
+    
+    // Print summary to terminal
+    std::cout << "Iter: " << iteration << " | IS1: " << avg_is1 << " | IS2: " << avg_is2 << " | IS6: " << avg_is6 << " | IS7: " << avg_is7 << " ms" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -176,7 +256,8 @@ int main(int argc, char* argv[]) {
     s_file << "Total_Ops,Avg_Write_Latency_ms,Current_Data_MB,Historical_Data_MB\n";
     s_file.close();
     std::ofstream q_file(QUERY_CSV); 
-    q_file << "Iteration,Ops_Count,Avg_IS1_ms,Avg_IS3_ms,Avg_IS4_ms,Avg_IS5_ms\n"; 
+    //q_file << "Iteration,Ops_Count,Avg_IS1_ms,Avg_IS3_ms,Avg_IS4_ms,Avg_IS5_ms\n"; 
+    q_file << "Iteration,Ops_Count,Avg_IS1_ms,Avg_IS2_ms,Avg_IS3_ms,Avg_IS4_ms,Avg_IS5_ms,Avg_IS6_ms,Avg_IS7_ms\n";
     q_file.close();
 
     std::cout << ">>> STAGE 1: Loading Initial Dataset (SF1)..." << std::endl;
@@ -229,16 +310,13 @@ int main(int argc, char* argv[]) {
     };
 
    auto get_hist_logical_size = [&]() {
-        // FIX: Get a FRESH pointer every time this is called
         auto latest_storage = db_ptr->get_history_manager()->get_storage(); 
         size_t total_bytes = 0;
         // Metadata Records (Growth of the delta log)
-        total_bytes += latest_storage->node_deltas_.size() * sizeof(node_history_record);
-        total_bytes += latest_storage->rship_deltas_.size() * sizeof(rship_history_record);
-
+        total_bytes += latest_storage->node_deltas_->capacity() * sizeof(node_history_record);
+        total_bytes += latest_storage->rship_deltas_->capacity() * sizeof(rship_history_record);
         // Delta Property Blocks (Total property pool - Properties already counted in 'Current')
-        size_t total_p_slots = count_used_slots(db_ptr->get_node_props()) + 
-                            count_used_slots(db_ptr->get_rship_props());
+        size_t total_p_slots = count_used_slots(db_ptr->get_node_props()) + count_used_slots(db_ptr->get_rship_props());
         size_t active_p_slots = active_nodes.size() + count_used_slots(db_ptr->get_relationships());
         
         if (total_p_slots > active_p_slots) {
@@ -248,17 +326,6 @@ int main(int argc, char* argv[]) {
         return total_bytes;
     };
 
-    /*auto get_curr_logical_size = [&]() {
-        // Use the manual count helper for relationships since .size() doesn't exist
-        size_t n_count = active_nodes.size();
-        size_t r_count = count_used_slots(db_ptr->get_relationships());
-        
-        size_t n_bytes  = n_count * sizeof(node);
-        size_t r_bytes  = r_count * sizeof(relationship);
-        size_t p_bytes  = (n_count + r_count) * sizeof(property_set); 
-        
-        return n_bytes + r_bytes + p_bytes;
-    };*/
 
     auto get_curr_logical_size = [&]() {
         size_t n_count = active_nodes.size();
@@ -373,7 +440,7 @@ int main(int argc, char* argv[]) {
 
         // Logging
         std::ofstream ws_out(STORAGE_CSV, std::ios_base::app);
-        ws_out << target_ops << "," << std::fixed << std::setprecision(4) << avg_write_latency_ms << "," << std::setprecision(3) << current_mb << "," << historical_mb << "\n";
+        ws_out << target_ops << "," << std::fixed << std::setprecision(4) << avg_write_latency_ms << "," << std::setprecision(3) <<       current_mb << "," << historical_mb << "\n";
         ws_out.close();
 
         std::this_thread::sleep_for(std::chrono::seconds(60)); 
